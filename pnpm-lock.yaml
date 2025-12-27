@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@mysten/sui': 1.22.0
+
 importers:
 
   .:
@@ -12,7 +15,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  apps/gensol-website:
+  apps/gensol-website/frontend:
     dependencies:
       '@aws-amplify/auth':
         specifier: ^6.12.4
@@ -205,7 +208,7 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.3)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
 
-  apps/nasun-website:
+  apps/nasun-website/frontend:
     dependencies:
       '@aws-amplify/core':
         specifier: ^6.13.3
@@ -229,8 +232,8 @@ importers:
         specifier: ^0.16.16
         version: 0.16.16(@tanstack/react-query@5.90.12(react@19.2.3))(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(immer@11.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
       '@mysten/sui':
-        specifier: ^1.45.2
-        version: 1.45.2(typescript@5.9.3)
+        specifier: 1.22.0
+        version: 1.22.0(typescript@5.9.3)
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -410,14 +413,8 @@ importers:
   apps/network-explorer:
     dependencies:
       '@mysten/sui':
-        specifier: ^1.45.2
-        version: 1.45.2(typescript@5.9.3)
-      '@nasun/wallet':
-        specifier: workspace:*
-        version: link:../../packages/wallet
-      '@nasun/wallet-ui':
-        specifier: workspace:*
-        version: link:../../packages/wallet-ui
+        specifier: 1.22.0
+        version: 1.22.0(typescript@5.9.3)
       '@scure/bip39':
         specifier: ^2.0.1
         version: 2.0.1
@@ -440,12 +437,6 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.2
-      '@nasun/tailwind-config':
-        specifier: workspace:*
-        version: link:../../packages/tailwind-config
-      '@nasun/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.4
@@ -489,17 +480,11 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0(@types/node@24.10.4)(jiti@1.21.7)(terser@5.44.1)(tsx@4.21.0)
 
-  apps/pado:
+  apps/pado/frontend:
     dependencies:
       '@mysten/sui':
-        specifier: ^1.45.2
-        version: 1.45.2(typescript@5.9.3)
-      '@nasun/wallet':
-        specifier: workspace:*
-        version: link:../../packages/wallet
-      '@nasun/wallet-ui':
-        specifier: workspace:*
-        version: link:../../packages/wallet-ui
+        specifier: 1.22.0
+        version: 1.22.0(typescript@5.9.3)
       '@scure/bip39':
         specifier: ^2.0.1
         version: 2.0.1
@@ -579,8 +564,8 @@ importers:
   packages/wallet:
     dependencies:
       '@mysten/sui':
-        specifier: ^1.22.0
-        version: 1.45.2(typescript@5.9.3)
+        specifier: 1.22.0
+        version: 1.22.0(typescript@5.9.3)
       '@scure/bip39':
         specifier: ^2.0.0
         version: 2.0.1
@@ -1563,15 +1548,6 @@ packages:
   '@mysten/bcs@1.5.0':
     resolution: {integrity: sha512-v39dm5oNfKYMAf2CVI+L0OaJiG9RVXsjqPM4BwTKcHNCZOvr35IIewGtXtWXsI67SQU2TRq8lhQzeibdiC/CNg==}
 
-  '@mysten/bcs@1.6.0':
-    resolution: {integrity: sha512-ydDRYdIkIFCpHCcPvAkMC91fVwumjzbTgjqds0KsphDQI3jUlH3jFG5lfYNTmV6V3pkhOiRk1fupLBcsQsiszg==}
-
-  '@mysten/bcs@1.6.4':
-    resolution: {integrity: sha512-HBBrqMtnVp5vy12efJYhj/HnOYGu+x5SqRQpnOJEHEkxypGZ01WNFoCNw7USzDSyJvPauhqdzUXzR+lYM1D5/g==}
-
-  '@mysten/bcs@1.9.2':
-    resolution: {integrity: sha512-kBk5xrxV9OWR7i+JhL/plQrgQ2/KJhB2pB5gj+w6GXhbMQwS3DPpOvi/zN0Tj84jwPvHMllpEl0QHj6ywN7/eQ==}
-
   '@mysten/dapp-kit@0.16.16':
     resolution: {integrity: sha512-5oP7WnMuXCZuqueWGZ4Ckl84ixy1d+63nqL+L3rjI+zTFjiqMV5CJTiugLLeSmmjlSMCG7Eneg+bB4Osrp58+A==}
     peerDependencies:
@@ -1589,23 +1565,8 @@ packages:
     resolution: {integrity: sha512-dWiDApipHYYPq6xIZ0ZETA309yP40ZSYXI7v4OwQzVsDMcZR9ZHoLYn5fJQ+V7LBvl7IhjOHeRqhHTpP0Lo/oA==}
     engines: {node: '>=18'}
 
-  '@mysten/sui@1.27.1':
-    resolution: {integrity: sha512-ByckbAvDFhPTDT42QwbQHXbGOvCkS/GyJ4ns7OwKZ4r9bAH71SsOKPnchfLdJSDRp6N1N1FORQjq4VMrFfJcqw==}
-    engines: {node: '>=18'}
-
-  '@mysten/sui@1.36.1':
-    resolution: {integrity: sha512-3QmILnc2BpV8sdr5bfJpf6ipE4L6gnm8BDvE5Jk4W1WZPgWMAly39fYsOKCc4TYB013zwxRRStplHdBAGPwX8Q==}
-    engines: {node: '>=18'}
-
-  '@mysten/sui@1.45.2':
-    resolution: {integrity: sha512-gftf7fNpFSiXyfXpbtP2afVEnhc7p2m/MEYc/SO5pov92dacGKOpQIF7etZsGDI1Wvhv+dpph+ulRNpnYSs7Bg==}
-    engines: {node: '>=18'}
-
   '@mysten/utils@0.1.1':
     resolution: {integrity: sha512-jvhJC6/2la1QHltukQXzfyTZ+VVHxe187JjPx+mEXRUWyAo6jCSdioOQJIfaGu4K4i+37KeiydXRwV/bq/7UJQ==}
-
-  '@mysten/utils@0.2.0':
-    resolution: {integrity: sha512-CM6kJcJHX365cK6aXfFRLBiuyXc5WSBHQ43t94jqlCAIRw8umgNcTb5EnEA9n31wPAQgLDGgbG/rCUISCTJ66w==}
 
   '@mysten/wallet-standard@0.16.6':
     resolution: {integrity: sha512-VZUB6WpoBMUxUnZ/uLjJOnYt8D4gDsPe7S5DY25jIKSHXyWXzDWhXGSwRahjzWqBpCF8yjyRU833zpCLcIfaWg==}
@@ -1646,15 +1607,6 @@ packages:
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
-
-  '@protobuf-ts/grpcweb-transport@2.11.1':
-    resolution: {integrity: sha512-1W4utDdvOB+RHMFQ0soL4JdnxjXV+ddeGIUg08DvZrA8Ms6k5NN6GBFU2oHZdTOcJVpPrDJ02RJlqtaoCMNBtw==}
-
-  '@protobuf-ts/runtime-rpc@2.11.1':
-    resolution: {integrity: sha512-4CqqUmNA+/uMz00+d3CYKgElXO9VrEbucjnBFEjqI4GuDrEQ32MaI3q+9qPBvIGOlL4PmHXrzM32vBPWRhQKWQ==}
-
-  '@protobuf-ts/runtime@2.11.1':
-    resolution: {integrity: sha512-KuDaT1IfHkugM2pyz+FwiY80ejWrkH1pAtOBOZFuR6SXEFTsnb/jiQWQ1rCIrcKx2BtyxnxW6BWwsVSA/Ie+WQ==}
 
   '@radix-ui/colors@3.0.0':
     resolution: {integrity: sha512-FUOsGBkHrYJwCSEtWRCIfQbZG7q1e6DgxCIOe1SUQzDe/7rXXeA47s8yCn6fuTNQAj1Zq4oTFi9Yjp3wzElcxg==}
@@ -7018,24 +6970,10 @@ snapshots:
     dependencies:
       '@scure/base': 1.2.6
 
-  '@mysten/bcs@1.6.0':
-    dependencies:
-      '@scure/base': 1.2.6
-
-  '@mysten/bcs@1.6.4':
-    dependencies:
-      '@mysten/utils': 0.1.1
-      '@scure/base': 1.2.6
-
-  '@mysten/bcs@1.9.2':
-    dependencies:
-      '@mysten/utils': 0.2.0
-      '@scure/base': 1.2.6
-
   '@mysten/dapp-kit@0.16.16(@tanstack/react-query@5.90.12(react@19.2.3))(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(immer@11.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)':
     dependencies:
       '@mysten/slush-wallet': 0.1.16(typescript@5.9.3)
-      '@mysten/sui': 1.36.1(typescript@5.9.3)
+      '@mysten/sui': 1.22.0(typescript@5.9.3)
       '@mysten/utils': 0.1.1
       '@mysten/wallet-standard': 0.16.6(typescript@5.9.3)
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -7060,7 +6998,7 @@ snapshots:
 
   '@mysten/kiosk@0.11.6(typescript@5.9.3)':
     dependencies:
-      '@mysten/sui': 1.27.1(typescript@5.9.3)
+      '@mysten/sui': 1.22.0(typescript@5.9.3)
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
@@ -7068,7 +7006,7 @@ snapshots:
 
   '@mysten/slush-wallet@0.1.16(typescript@5.9.3)':
     dependencies:
-      '@mysten/sui': 1.36.1(typescript@5.9.3)
+      '@mysten/sui': 1.22.0(typescript@5.9.3)
       '@mysten/utils': 0.1.1
       '@mysten/wallet-standard': 0.16.6(typescript@5.9.3)
       '@mysten/window-wallet-core': 0.0.6
@@ -7098,76 +7036,13 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/sui@1.27.1(typescript@5.9.3)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
-      '@mysten/bcs': 1.6.0
-      '@noble/curves': 1.9.4
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      gql.tada: 1.9.0(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
-      poseidon-lite: 0.2.1
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - typescript
-
-  '@mysten/sui@1.36.1(typescript@5.9.3)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
-      '@mysten/bcs': 1.6.4
-      '@mysten/utils': 0.1.1
-      '@noble/curves': 1.9.4
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      gql.tada: 1.9.0(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
-      poseidon-lite: 0.2.1
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - typescript
-
-  '@mysten/sui@1.45.2(typescript@5.9.3)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
-      '@mysten/bcs': 1.9.2
-      '@mysten/utils': 0.2.0
-      '@noble/curves': 1.9.4
-      '@noble/hashes': 1.8.0
-      '@protobuf-ts/grpcweb-transport': 2.11.1
-      '@protobuf-ts/runtime': 2.11.1
-      '@protobuf-ts/runtime-rpc': 2.11.1
-      '@scure/base': 1.2.6
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      gql.tada: 1.9.0(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
-      poseidon-lite: 0.2.1
-      valibot: 1.2.0(typescript@5.9.3)
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - typescript
-
   '@mysten/utils@0.1.1':
-    dependencies:
-      '@scure/base': 1.2.6
-
-  '@mysten/utils@0.2.0':
     dependencies:
       '@scure/base': 1.2.6
 
   '@mysten/wallet-standard@0.16.6(typescript@5.9.3)':
     dependencies:
-      '@mysten/sui': 1.36.1(typescript@5.9.3)
+      '@mysten/sui': 1.22.0(typescript@5.9.3)
       '@wallet-standard/core': 1.1.1
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
@@ -7207,17 +7082,6 @@ snapshots:
       fastq: 1.20.1
 
   '@polka/url@1.0.0-next.29': {}
-
-  '@protobuf-ts/grpcweb-transport@2.11.1':
-    dependencies:
-      '@protobuf-ts/runtime': 2.11.1
-      '@protobuf-ts/runtime-rpc': 2.11.1
-
-  '@protobuf-ts/runtime-rpc@2.11.1':
-    dependencies:
-      '@protobuf-ts/runtime': 2.11.1
-
-  '@protobuf-ts/runtime@2.11.1': {}
 
   '@radix-ui/colors@3.0.0': {}
 
