@@ -126,9 +126,8 @@ export default defineConfig(({ mode }) => {
       },
       fs: {
         allow: [
-          "/home/naru/my_apps/nasun-apps/nasun-website/frontend",
-          "/home/naru/my_apps/nasun-apps/nasun-website/public",
-          "/home/naru/my_apps/nasun-apps/nasun-website/frontend/node_modules",
+          path.resolve(__dirname, "."),
+          path.resolve(__dirname, "../../node_modules"),
         ],
       },
     },
