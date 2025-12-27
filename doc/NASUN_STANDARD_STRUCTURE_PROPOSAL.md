@@ -1,0 +1,601 @@
+# 나선 모노레포 폴더 계층 구조 제안 (Nasun Standard Structure) v3
+
+> v2 대비 개선: 실제 현황 반영, 단계별 로드맵, 호환성 전략, 테스트 전략, 네이밍 컨벤션, 템플릿 추가
+
+## 1. 현황 분석 (Current Status)
+
+각 앱은 서로 다른 시기에 개발되어 구조적 파편화가 존재하며, 특히 지갑(Wallet) 관련 로직이 여러 앱에 중복되거나 파편화되어 있습니다.
+
+### packages/ 상태 (실제 확인 결과)
+
+| 패키지 | 상태 | 설명 |
+|--------|------|------|
+| `@nasun/wallet` | ✅ 완성 | hooks, core, sui 유틸, 타입 정의 |
+| `@nasun/wallet-ui` | ✅ 완성 | 8개 React 컴포넌트 |
+| `@nasun/tsconfig` | ✅ 완성 | base, react, node 설정 |
+| `@nasun/tailwind-config` | ✅ 완성 | 브랜드 색상 + 스타일 |
+| `@nasun/sui-utils` | ⏳ **예약됨** | 빈 폴더, 마이그레이션 중 필요시 구현 |
+| `@nasun/ui` | ⏳ **예약됨** | 빈 폴더, 향후 공통 UI 컴포넌트용 |
+
+### 앱별 현재 구조
+
+| 앱 | 지갑 위치 | features/ | 복잡도 | 마이그레이션 난이도 |
+|----|-----------|-----------|--------|---------------------|
+| network-explorer | `/wallet/` (완성도 높음) | ❌ | 중간 | ⭐⭐ |
+| pado | `/components/wallet/` | ✅ (orderbook, trading) | 중간 | ⭐ |
+| gensol-website | 없음 | ❌ | 낮음 | ⭐ |
+| nasun-website | `/hooks/wallet/` | ❌ (파편화) | 높음 | ⭐⭐⭐⭐ |
+
+---
+
+## 2. 제안: Nasun Standard Structure (Feature-Sliced Lite + Shared Packages)
+
+모든 앱에 적용할 수 있는 통일된 아키텍처로 **기능 중심(Feature-First) 구조**와 **공유 패키지(Shared Packages) 적극 활용**을 제안합니다.
+
+### 최적화된 폴더 구조 (Recommended)
+
+```text
+src/
+├── app/                  # 앱 전역 설정 (Providers, Router, Global Styles)
+├── features/             # [핵심] 도메인별 기능 모듈 (Business Logic + UI)
+│   ├── auth/             # 예: 인증 기능
+│   ├── wallet/           # [중요] 지갑 연동 모듈 (공유 패키지 어댑터 역할)
+│   │   ├── components/   # @nasun/wallet-ui를 래핑하거나 커스텀하는 컴포넌트
+│   │   ├── hooks/        # @nasun/wallet 훅을 재수출하거나 앱 특화 훅 작성
+│   │   └── index.ts      # 외부 노출 API
+│   └── trading/          # 예: 거래 기능 (Pado 등)
+├── pages/                # 라우팅 페이지 (로직 최소화, features 조합)
+├── shared/               # 앱 내부에서만 쓰이는 재사용 요소 (패키지로 분리하기 애매한 것들)
+│   ├── ui/               # 앱 특화 디자인 시스템
+│   └── api/              # 공통 API 클라이언트 설정
+└── main.tsx              # 진입점
+```
+
+---
+
+## 3. 마이그레이션 우선순위 및 로드맵
+
+```
+Phase 1: Pado
+    ↓
+Phase 2: Gensol Website
+    ↓
+Phase 3: Network Explorer
+    ↓
+Phase 4: Nasun Website
+```
+
+### Phase 1: Pado (난이도: ⭐)
+
+**이유**: 이미 `features/` 구조가 있어 변경 최소화
+
+**작업 내용**:
+1. `/components/wallet/` → `@nasun/wallet-ui` 교체
+2. 자체 지갑 로직 → `@nasun/wallet` 훅 사용
+3. 기존 features/ 유지
+
+### Phase 2: Gensol Website (난이도: ⭐)
+
+**이유**: 지갑 없음, 가장 단순한 구조
+
+**작업 내용**:
+1. `src/features/` 폴더 생성
+2. `src/components/kiosk/`, `src/components/mypage/` → features로 이동
+3. 표준 구조 템플릿 적용
+
+### Phase 3: Network Explorer (난이도: ⭐⭐)
+
+**이유**: 지갑 코드가 가장 완성도 높음 (packages/wallet의 원본)
+
+**작업 내용**:
+1. `/wallet/` 제거, `@nasun/wallet` + `@nasun/wallet-ui` 의존성 추가
+2. `src/features/{transaction, object, block}` 구조화
+3. 호환성 레이어 생성 (기존 import 유지)
+
+### Phase 4: Nasun Website (난이도: ⭐⭐⭐⭐)
+
+**이유**: 가장 복잡, 레거시 코드 多
+
+**작업 내용**:
+1. `/hooks/wallet/` → `@nasun/wallet` 교체
+2. 도메인별 features 분리:
+   - `features/governance/` (protocol, voting)
+   - `features/finance/` (wave1, pado 연동)
+   - `features/content/` (posts, updates)
+3. 점진적 이관 (Big Bang 금지)
+
+---
+
+## 4. 호환성 전략
+
+### 기존 import 경로 유지를 위한 Re-export 패턴
+
+**예시: Network Explorer 마이그레이션**
+
+```typescript
+// src/wallet/index.ts (호환성 레이어 - 마이그레이션 기간 동안 유지)
+// @deprecated - @nasun/wallet을 직접 import하세요
+export * from '@nasun/wallet';
+export * from '@nasun/wallet-ui';
+
+// 앱 특화 로직만 여기에 유지
+export { useExplorerWalletExtensions } from './extensions';
+```
+
+**단계별 deprecation:**
+1. **1단계**: Re-export로 기존 경로 유지 + 콘솔 경고 추가
+2. **2단계**: IDE에서 import 자동 수정 (2주 후)
+3. **3단계**: 호환성 레이어 제거 (1개월 후)
+
+---
+
+## 5. 테스트 전략
+
+### 마이그레이션 전 체크리스트
+
+- [ ] 현재 빌드 성공 확인 (`pnpm build`)
+- [ ] 기존 기능 동작 스크린샷/영상 기록
+- [ ] 주요 사용자 플로우 문서화
+
+### 각 Phase 완료 시 검증
+
+```bash
+# 1. 빌드 테스트
+pnpm build:{app-name}
+
+# 2. 개발 서버 실행 및 수동 테스트
+pnpm dev:{app-name}
+
+# 3. 지갑 기능 체크리스트
+- [ ] 지갑 생성
+- [ ] 지갑 잠금/해제
+- [ ] 잔액 조회
+- [ ] 토큰 전송
+- [ ] Faucet 요청
+- [ ] 니모닉 백업/복구
+```
+
+### 회귀 방지
+
+- 각 Phase 완료 후 1일 안정화 기간
+- 다음 Phase 시작 전 이전 앱 재검증
+
+---
+
+## 6. shared/ vs packages/ 경계 기준
+
+| 조건 | 위치 | 예시 |
+|------|------|------|
+| 2개 이상 앱에서 사용 | `packages/` | wallet, wallet-ui |
+| 1개 앱에서만 사용 | `src/shared/` | 앱 특화 유틸리티 |
+| 디자인 시스템 공통 요소 | `packages/ui/` (향후) | Button, Modal, Input |
+| 앱 특화 디자인 변형 | `src/shared/ui/` | 커스텀 스타일링 |
+| SUI 블록체인 공통 유틸 | `@nasun/sui-utils` (필요시 구현) | 트랜잭션 빌더, 객체 파싱 |
+| 앱별 블록체인 로직 | `src/features/{domain}/` | 앱 특화 컨트랙트 호출 |
+
+**결정 플로우차트:**
+```
+코드가 2개 이상 앱에서 필요한가?
+  ├─ Yes → packages/에 추가
+  └─ No → 현재 앱에서 재사용 가능성이 높은가?
+           ├─ Yes → src/shared/
+           └─ No → src/features/{domain}/
+```
+
+---
+
+## 7. 네이밍 컨벤션
+
+### 폴더명
+
+| 유형 | 규칙 | 예시 |
+|------|------|------|
+| features | kebab-case | `order-book`, `user-profile` |
+| components | PascalCase | `WalletConnect.tsx` |
+| hooks | camelCase (use 접두사) | `useWallet.ts` |
+| utils | camelCase | `formatBalance.ts` |
+| types | camelCase | `wallet.ts` |
+
+### Feature 내부 구조
+
+```
+features/
+└── trading/                 # kebab-case
+    ├── components/          # 폴더는 소문자
+    │   ├── OrderForm.tsx    # 컴포넌트는 PascalCase
+    │   └── PriceChart.tsx
+    ├── hooks/
+    │   └── useOrderSubmit.ts
+    ├── utils/
+    │   └── calculateFee.ts
+    ├── types/
+    │   └── order.ts
+    └── index.ts             # Public API
+```
+
+---
+
+## 8. Feature 템플릿
+
+### 기본 feature 구조 템플릿
+
+```
+src/features/{feature-name}/
+├── components/           # UI 컴포넌트
+│   └── {FeatureName}View.tsx
+├── hooks/                # 커스텀 훅
+│   └── use{FeatureName}.ts
+├── utils/                # 유틸리티 (optional)
+├── types/                # 타입 정의 (optional)
+├── constants.ts          # 상수 (optional)
+└── index.ts              # Public API (필수)
+```
+
+### index.ts 표준 형태
+
+```typescript
+// src/features/wallet/index.ts
+
+// Components
+export { WalletConnectButton } from './components/WalletConnectButton';
+export { WalletBalanceCard } from './components/WalletBalanceCard';
+
+// Hooks (re-export from @nasun/wallet + app-specific)
+export { useWallet, useBalance } from '@nasun/wallet';
+export { useWalletAnalytics } from './hooks/useWalletAnalytics';
+
+// Types
+export type { WalletFeatureConfig } from './types';
+```
+
+### 지갑 연동 feature 예시 (공유 패키지 어댑터)
+
+```typescript
+// src/features/wallet/components/WalletSection.tsx
+import { WalletConnect, BalanceDisplay } from '@nasun/wallet-ui';
+import { useWallet } from '@nasun/wallet';
+
+export function WalletSection() {
+  const { status } = useWallet();
+
+  return (
+    <div className="wallet-section">
+      <WalletConnect />
+      {status === 'connected' && <BalanceDisplay />}
+    </div>
+  );
+}
+```
+
+---
+
+## 9. 기대 효과 (정량적 목표)
+
+| 지표 | 현재 | 목표 | 측정 방법 |
+|------|------|------|-----------|
+| 지갑 코드 중복 | 4개 위치 | 1개 (packages/wallet) | 파일 수 카운트 |
+| 앱 간 구조 일관성 | 20% | 80% | features/ 채택률 |
+| 새 기능 개발 시간 | 기준 | -30% | 개발자 피드백 |
+| 버그 수정 영향 범위 | 앱별 | 전체 | 패키지 버전 업데이트 |
+
+---
+
+## 10. @nasun/sui-utils 구현 가이드 (필요시)
+
+마이그레이션 중 2개 이상 앱에서 공통으로 필요한 SUI 유틸리티가 발견되면:
+
+```typescript
+// packages/sui-utils/src/index.ts
+export { buildTransaction, executeTransaction } from './transaction';
+export { parseObject, formatObjectId } from './object';
+export { NASUN_CHAIN_ID, DEVNET_RPC_URL } from './constants';
+```
+
+**포함 후보:**
+- 트랜잭션 빌더/실행 헬퍼
+- 객체 ID 포맷팅
+- Nasun 체인 상수 (Chain ID, RPC URL 등)
+- 가스 추정 유틸리티
+
+---
+
+## 11. 롤백 전략 및 Git 워크플로우
+
+### 롤백 포인트 확보
+
+각 Phase 시작 전 반드시 롤백 포인트를 생성합니다:
+
+```bash
+# Phase 시작 전 태그 생성
+git tag -a pre-phase-1-pado -m "Before Pado migration"
+git tag -a pre-phase-2-gensol -m "Before Gensol migration"
+git tag -a pre-phase-3-explorer -m "Before Explorer migration"
+git tag -a pre-phase-4-nasun -m "Before Nasun Website migration"
+
+# 롤백이 필요한 경우
+git checkout pre-phase-1-pado  # 해당 Phase 이전으로 복원
+```
+
+### 브랜치 전략
+
+```
+main
+ └── feature/standard-structure-migration
+      ├── phase-1-pado
+      ├── phase-2-gensol
+      ├── phase-3-explorer
+      └── phase-4-nasun
+```
+
+각 Phase는 별도 브랜치에서 작업 후 검증 완료 시 병합합니다.
+
+### 커밋 컨벤션
+
+```
+refactor(pado): migrate wallet to @nasun/wallet package
+refactor(pado): restructure components to features pattern
+test(pado): verify wallet functionality after migration
+chore(pado): remove deprecated wallet components
+```
+
+---
+
+## 12. Phase별 상세 TODO 체크리스트
+
+### Phase 1: Pado 마이그레이션
+
+#### 1.1 사전 준비
+- [ ] 현재 상태 빌드 확인: `pnpm build:pado`
+- [ ] 롤백 태그 생성: `git tag -a pre-phase-1-pado -m "Before Pado migration"`
+- [ ] 작업 브랜치 생성: `git checkout -b phase-1-pado`
+- [ ] 현재 지갑 기능 스크린샷/영상 기록
+- [ ] 기존 import 경로 목록 문서화
+
+#### 1.2 의존성 추가
+- [ ] `@nasun/wallet` 의존성 추가
+- [ ] `@nasun/wallet-ui` 의존성 추가
+- [ ] `pnpm install` 실행
+- [ ] 빌드 확인: `pnpm build:pado`
+- [ ] **검증**: 기존 기능 영향 없음 확인
+- [ ] **커밋**: `chore(pado): add @nasun/wallet and @nasun/wallet-ui dependencies`
+
+#### 1.3 지갑 컴포넌트 교체
+- [ ] `src/components/wallet/` 분석 및 매핑 문서 작성
+- [ ] 호환성 레이어 생성: `src/components/wallet/index.ts`
+- [ ] 기존 컴포넌트를 `@nasun/wallet-ui`로 교체
+- [ ] 빌드 확인: `pnpm build:pado`
+- [ ] **검증**: 개발 서버에서 지갑 연결 테스트
+- [ ] **커밋**: `refactor(pado): replace wallet components with @nasun/wallet-ui`
+
+#### 1.4 지갑 훅 교체
+- [ ] 기존 지갑 훅 사용처 파악
+- [ ] `@nasun/wallet` 훅으로 교체
+- [ ] 타입 호환성 확인
+- [ ] 빌드 확인: `pnpm build:pado`
+- [ ] **검증**: 잔액 조회, 트랜잭션 기능 테스트
+- [ ] **커밋**: `refactor(pado): migrate wallet hooks to @nasun/wallet`
+
+#### 1.5 정리 및 검증
+- [ ] 더 이상 사용하지 않는 파일 제거
+- [ ] 호환성 레이어에 deprecation 경고 추가
+- [ ] 최종 빌드 확인: `pnpm build:pado`
+- [ ] **전체 검증 체크리스트** 수행 (섹션 13 참조)
+- [ ] **커밋**: `chore(pado): cleanup deprecated wallet files`
+
+#### 1.6 Phase 완료
+- [ ] PR 생성: `phase-1-pado` → `feature/standard-structure-migration`
+- [ ] 코드 리뷰
+- [ ] PR 병합
+- [ ] 완료 태그: `git tag -a phase-1-complete -m "Pado migration complete"`
+
+---
+
+### Phase 2: Gensol Website 마이그레이션
+
+#### 2.1 사전 준비
+- [ ] 현재 상태 빌드 확인: `pnpm build:gensol-website`
+- [ ] 롤백 태그 생성: `git tag -a pre-phase-2-gensol -m "Before Gensol migration"`
+- [ ] 작업 브랜치 생성: `git checkout -b phase-2-gensol`
+- [ ] 현재 기능 스크린샷/영상 기록
+
+#### 2.2 Features 구조 생성
+- [ ] `src/features/` 폴더 생성
+- [ ] 빌드 확인: `pnpm build:gensol-website`
+- [ ] **커밋**: `refactor(gensol): create features directory structure`
+
+#### 2.3 Kiosk 기능 이동
+- [ ] `src/features/kiosk/` 생성
+- [ ] `src/components/kiosk/` → `src/features/kiosk/components/` 이동
+- [ ] `src/features/kiosk/index.ts` 생성 (Public API)
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:gensol-website`
+- [ ] **검증**: 키오스크 기능 동작 확인
+- [ ] **커밋**: `refactor(gensol): migrate kiosk to features structure`
+
+#### 2.4 MyPage 기능 이동
+- [ ] `src/features/mypage/` 생성
+- [ ] `src/components/mypage/` → `src/features/mypage/components/` 이동
+- [ ] `src/features/mypage/index.ts` 생성
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:gensol-website`
+- [ ] **검증**: 마이페이지 기능 동작 확인
+- [ ] **커밋**: `refactor(gensol): migrate mypage to features structure`
+
+#### 2.5 Auth 기능 정리
+- [ ] `src/features/auth/` 생성
+- [ ] 인증 관련 코드 통합
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:gensol-website`
+- [ ] **검증**: 로그인/로그아웃 테스트
+- [ ] **커밋**: `refactor(gensol): consolidate auth to features structure`
+
+#### 2.6 Phase 완료
+- [ ] 최종 빌드 확인: `pnpm build:gensol-website`
+- [ ] **전체 검증 체크리스트** 수행
+- [ ] PR 생성 및 병합
+- [ ] 완료 태그: `git tag -a phase-2-complete -m "Gensol migration complete"`
+
+---
+
+### Phase 3: Network Explorer 마이그레이션
+
+#### 3.1 사전 준비
+- [ ] 현재 상태 빌드 확인: `pnpm build:network-explorer`
+- [ ] 롤백 태그 생성: `git tag -a pre-phase-3-explorer -m "Before Explorer migration"`
+- [ ] 작업 브랜치 생성: `git checkout -b phase-3-explorer`
+- [ ] 현재 지갑 기능 스크린샷/영상 기록
+- [ ] `src/wallet/` 코드와 `@nasun/wallet` 비교 분석
+
+#### 3.2 의존성 추가
+- [ ] `@nasun/wallet` 의존성 추가
+- [ ] `@nasun/wallet-ui` 의존성 추가
+- [ ] `pnpm install` 실행
+- [ ] 빌드 확인: `pnpm build:network-explorer`
+- [ ] **커밋**: `chore(explorer): add @nasun/wallet packages`
+
+#### 3.3 호환성 레이어 생성
+- [ ] `src/wallet/index.ts`에 re-export 설정
+- [ ] deprecation 경고 추가
+- [ ] 빌드 확인: `pnpm build:network-explorer`
+- [ ] **검증**: 기존 import로 동작 확인
+- [ ] **커밋**: `refactor(explorer): create wallet compatibility layer`
+
+#### 3.4 컴포넌트 교체
+- [ ] `src/wallet/components/` → `@nasun/wallet-ui` 교체
+- [ ] 앱 특화 컴포넌트는 `src/features/wallet/`로 이동
+- [ ] 빌드 확인: `pnpm build:network-explorer`
+- [ ] **검증**: 지갑 UI 동작 확인
+- [ ] **커밋**: `refactor(explorer): replace wallet components`
+
+#### 3.5 훅 및 유틸 교체
+- [ ] `src/wallet/hooks/` → `@nasun/wallet` 훅 사용
+- [ ] `src/wallet/lib/` → `@nasun/wallet` 유틸 사용
+- [ ] 빌드 확인: `pnpm build:network-explorer`
+- [ ] **검증**: 전체 지갑 기능 테스트
+- [ ] **커밋**: `refactor(explorer): migrate wallet hooks and utils`
+
+#### 3.6 Features 구조화
+- [ ] `src/features/transaction/` 생성
+- [ ] `src/features/object/` 생성
+- [ ] `src/features/block/` 생성
+- [ ] 관련 코드 이동 및 정리
+- [ ] 빌드 확인: `pnpm build:network-explorer`
+- [ ] **검증**: 탐색기 핵심 기능 테스트
+- [ ] **커밋**: `refactor(explorer): create features structure`
+
+#### 3.7 정리 및 완료
+- [ ] `src/wallet/` 폴더 제거 (호환성 기간 후)
+- [ ] 최종 빌드 확인: `pnpm build:network-explorer`
+- [ ] **전체 검증 체크리스트** 수행
+- [ ] PR 생성 및 병합
+- [ ] 완료 태그: `git tag -a phase-3-complete -m "Explorer migration complete"`
+
+---
+
+### Phase 4: Nasun Website 마이그레이션
+
+#### 4.1 사전 준비
+- [ ] 현재 상태 빌드 확인: `pnpm build:nasun-website`
+- [ ] 롤백 태그 생성: `git tag -a pre-phase-4-nasun -m "Before Nasun Website migration"`
+- [ ] 작업 브랜치 생성: `git checkout -b phase-4-nasun`
+- [ ] 현재 기능 스크린샷/영상 기록
+- [ ] 도메인별 코드 분석 및 매핑 문서 작성
+
+#### 4.2 Features 구조 생성
+- [ ] `src/features/` 폴더 생성
+- [ ] 도메인 목록 확정: governance, finance, content, wallet
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **커밋**: `refactor(nasun): create features directory`
+
+#### 4.3 Governance 기능 이동
+- [ ] `src/features/governance/` 생성
+- [ ] `src/components/app/web3/proposal/` 이동
+- [ ] `src/components/app/protocol/governance/` 이동
+- [ ] `src/hooks/votingSystem/` 이동
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **검증**: 투표/제안 기능 테스트
+- [ ] **커밋**: `refactor(nasun): migrate governance to features`
+
+#### 4.4 Finance 기능 이동
+- [ ] `src/features/finance/` 생성
+- [ ] `src/components/app/finance/` 이동
+- [ ] `src/pages/finance/` 관련 로직 이동
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **검증**: 금융 관련 페이지 테스트
+- [ ] **커밋**: `refactor(nasun): migrate finance to features`
+
+#### 4.5 Content 기능 이동
+- [ ] `src/features/content/` 생성
+- [ ] `src/components/app/posts/` 이동
+- [ ] `src/components/app/updates/` 이동
+- [ ] `src/hooks/wordpress/` 이동
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **검증**: 콘텐츠 페이지 테스트
+- [ ] **커밋**: `refactor(nasun): migrate content to features`
+
+#### 4.6 Wallet 기능 교체
+- [ ] `@nasun/wallet`, `@nasun/wallet-ui` 의존성 추가
+- [ ] `src/features/wallet/` 생성
+- [ ] `src/hooks/wallet/` → `@nasun/wallet` 교체
+- [ ] 호환성 레이어 생성
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **검증**: 지갑 연결 및 트랜잭션 테스트
+- [ ] **커밋**: `refactor(nasun): migrate wallet to @nasun/wallet`
+
+#### 4.7 Network/Protocol 기능 이동
+- [ ] `src/features/protocol/` 생성
+- [ ] `src/components/app/protocol/network/` 이동
+- [ ] import 경로 업데이트
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **검증**: 프로토콜 정보 페이지 테스트
+- [ ] **커밋**: `refactor(nasun): migrate protocol to features`
+
+#### 4.8 레거시 정리
+- [ ] `_legacy/` 폴더 분석
+- [ ] 필요한 코드 features로 이동 또는 삭제
+- [ ] 미사용 코드 제거
+- [ ] 빌드 확인: `pnpm build:nasun-website`
+- [ ] **커밋**: `chore(nasun): cleanup legacy code`
+
+#### 4.9 Phase 완료
+- [ ] 최종 빌드 확인: `pnpm build:nasun-website`
+- [ ] **전체 검증 체크리스트** 수행
+- [ ] PR 생성 및 병합
+- [ ] 완료 태그: `git tag -a phase-4-complete -m "Nasun Website migration complete"`
+
+---
+
+## 13. 검증 체크리스트 (각 Phase 완료 시)
+
+### 빌드 검증
+
+- [ ] `pnpm build:{app}` 성공
+- [ ] TypeScript 에러 없음
+- [ ] 빌드 경고 검토 (새로운 경고 없음)
+
+### 기능 검증 (지갑 기능이 있는 앱)
+
+- [ ] 지갑 생성 (새 니모닉)
+- [ ] 지갑 잠금
+- [ ] 지갑 잠금 해제 (비밀번호 입력)
+- [ ] 잔액 조회
+- [ ] Faucet 토큰 요청
+- [ ] 토큰 전송
+- [ ] 니모닉 백업 표시
+- [ ] 지갑 가져오기 (니모닉 복구)
+- [ ] 개인키 내보내기
+
+### UI 검증
+
+- [ ] 반응형 레이아웃 (모바일/데스크톱)
+- [ ] 다크 모드 (지원하는 경우)
+- [ ] 로딩 상태 표시
+- [ ] 에러 상태 표시
+
+### 회귀 테스트
+
+- [ ] 이전 Phase 앱들 빌드 재확인
+- [ ] 이전 Phase 앱들 기본 기능 재확인
