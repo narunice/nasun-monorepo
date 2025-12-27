@@ -1,9 +1,38 @@
 /**
- * Pado Wallet Module
- * Embedded wallet for Pado trading app
+ * Pado Wallet Module - Compatibility Layer
+ *
+ * This file re-exports from @nasun/wallet for backwards compatibility.
+ * Direct imports from @nasun/wallet are preferred.
+ *
+ * @deprecated Import directly from '@nasun/wallet' instead of './wallet'
  */
 
-// Types
+// Re-export everything from @nasun/wallet
+export {
+  // Hooks
+  useWallet,
+  useWalletStatus,
+  useWalletAccount,
+  useWalletLoading,
+
+  // Crypto utilities
+  generateMnemonicPhrase,
+  isValidMnemonic,
+
+  // SUI utilities
+  configureWallet,
+  getWalletConfig,
+  getSuiClient,
+  getBalance,
+  formatBalance,
+  parseAmount,
+  isValidAddress,
+  shortenAddress,
+  requestFaucet,
+  checkFaucetAvailable,
+} from '@nasun/wallet';
+
+// Re-export types from @nasun/wallet
 export type {
   WalletStatus,
   EncryptedKeystore,
@@ -15,40 +44,9 @@ export type {
   TransactionResult,
   FaucetResponse,
   BalanceInfo,
-} from './types/wallet';
+  WalletConfig,
+} from '@nasun/wallet';
 
-// Hooks
-export {
-  useWallet,
-  useWalletStatus,
-  useWalletAccount,
-  useWalletLoading,
-} from './hooks/useWallet';
-
-// Keystore utilities
-export {
-  hasKeystore,
-  loadKeystore,
-  saveKeystore,
-  deleteKeystore,
-  getStoredAddress,
-  createAndSaveWallet,
-  createWalletWithMnemonic,
-  importWalletFromMnemonic,
-  importWalletFromPrivateKey,
-  unlockKeystore,
-} from './lib/keystore';
-
-// Crypto utilities
-export {
-  generateKeypair,
-  generateMnemonicPhrase,
-  isValidMnemonic,
-  keypairFromMnemonic,
-  keypairFromSecretKey,
-  getAddressFromKeypair,
-  getPublicKeyFromKeypair,
-  getSecretKeyFromKeypair,
-  encryptPrivateKey,
-  decryptPrivateKey,
-} from './lib/crypto';
+// Pado-specific: Multi-token balance hook (not in @nasun/wallet)
+export { useBalance, useNasunBalance } from './hooks/useBalance';
+export type { TokenBalance, Balances } from './hooks/useBalance';
