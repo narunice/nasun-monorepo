@@ -1,43 +1,39 @@
 /**
- * Nasun Wallet Public API
+ * Network Explorer Wallet - Compatibility Layer
  *
- * 사용법:
- * ```tsx
- * import { WalletProvider, WalletConnect, BalanceDisplay, useWallet, useBalance } from './wallet';
- *
- * // App.tsx
- * <WalletProvider>
- *   <App />
- * </WalletProvider>
- *
- * // Header.tsx
- * <WalletConnect />
- * <BalanceDisplay compact />
- *
- * // 지갑 상태 사용
- * const { status, account, lockWallet } = useWallet();
- *
- * // 잔액 조회
- * const { data: balance } = useBalance();
- * ```
+ * @deprecated Import directly from '@nasun/wallet' or '@nasun/wallet-ui' instead
  */
 
-// Components
-export { WalletProvider } from './components/WalletProvider';
-export { WalletConnect } from './components/WalletConnect';
-export { BalanceDisplay } from './components/BalanceDisplay';
-export { SendTransaction } from './components/SendTransaction';
-export { FaucetButton } from './components/FaucetButton';
-export { MnemonicBackup } from './components/MnemonicBackup';
-export { ImportWallet } from './components/ImportWallet';
-export { ExportPrivateKey } from './components/ExportPrivateKey';
+// Re-export from @nasun/wallet
+export {
+  // Hooks
+  useWallet,
+  useWalletStatus,
+  useWalletAccount,
+  useWalletLoading,
+  useBalance,
+  useRefreshBalance,
+  useInvalidateBalance,
+  useTransaction,
 
-// Hooks
-export { useWallet, useWalletStatus, useWalletAccount, useWalletLoading } from './hooks/useWallet';
-export { useBalance, useRefreshBalance, useInvalidateBalance } from './hooks/useBalance';
-export { useTransaction } from './hooks/useTransaction';
+  // Utilities
+  configureWallet,
+  getWalletConfig,
+  getSuiClient,
+  getBalance,
+  formatBalance,
+  parseAmount,
+  isValidAddress,
+  shortenAddress,
+  requestFaucet,
+  checkFaucetAvailable,
 
-// Types
+  // Crypto
+  generateMnemonicPhrase,
+  isValidMnemonic,
+} from '@nasun/wallet';
+
+// Re-export types from @nasun/wallet
 export type {
   WalletStatus,
   WalletState,
@@ -49,18 +45,17 @@ export type {
   TransactionResult,
   FaucetResponse,
   BalanceInfo,
-} from './types/wallet';
+  WalletConfig,
+} from '@nasun/wallet';
 
-// Utilities (필요 시 사용)
+// Re-export from @nasun/wallet-ui
 export {
-  formatBalance,
-  parseAmount,
-  isValidAddress,
-  shortenAddress,
-} from './lib/sui-client';
-
-// Crypto utilities (필요 시 사용)
-export {
-  generateMnemonicPhrase,
-  isValidMnemonic,
-} from './lib/crypto';
+  WalletProvider,
+  WalletConnect,
+  BalanceDisplay,
+  SendTransaction,
+  FaucetButton,
+  MnemonicBackup,
+  ImportWallet,
+  ExportPrivateKey,
+} from '@nasun/wallet-ui';
