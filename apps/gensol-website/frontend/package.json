@@ -16,6 +16,8 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@nasun/wallet": "workspace:*",
+    "@nasun/wallet-ui": "workspace:*",
     "@aws-amplify/auth": "^6.12.4",
     "@aws-amplify/core": "^6.11.4",
     "@aws-sdk/client-cognito-identity": "^3.952.0",

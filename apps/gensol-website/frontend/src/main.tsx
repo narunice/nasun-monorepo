@@ -9,12 +9,21 @@ import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit"
 import { Amplify } from "aws-amplify"
 import awsConfig from "./config/awsConfig"
 import { AuthProvider } from "./providers/auth"
+import { configureWallet } from "@nasun/wallet"
+import { WalletProvider as NasunWalletProvider } from "@nasun/wallet-ui"
 import "@radix-ui/themes/styles.css"
 import "@mysten/dapp-kit/dist/index.css"
 import "./index.css"
 import { ToastContainer } from "react-toastify"
 
 Amplify.configure(awsConfig as any)
+
+// Configure Nasun Wallet
+configureWallet({
+  rpcUrl: import.meta.env.VITE_NASUN_RPC_URL || "https://rpc.devnet.nasun.io",
+  faucetUrl: import.meta.env.VITE_NASUN_FAUCET_URL || "https://faucet.devnet.nasun.io",
+  networkName: "Nasun Devnet",
+})
 
 const queryClient = new QueryClient()
 
@@ -27,14 +36,16 @@ root.render(
   <StrictMode>
     <Theme appearance="dark">
       <QueryClientProvider client={queryClient}>
-        <SuiClientProvider networks={networkConfig} defaultNetwork={getNetwork()}>
-          <WalletProvider autoConnect={true}>
-            <AuthProvider>
-              <App />
-              <ToastContainer position="top-right" autoClose={4000} theme="light" />
-            </AuthProvider>
-          </WalletProvider>
-        </SuiClientProvider>
+        <NasunWalletProvider>
+          <SuiClientProvider networks={networkConfig} defaultNetwork={getNetwork()}>
+            <WalletProvider autoConnect={true}>
+              <AuthProvider>
+                <App />
+                <ToastContainer position="top-right" autoClose={4000} theme="light" />
+              </AuthProvider>
+            </WalletProvider>
+          </SuiClientProvider>
+        </NasunWalletProvider>
       </QueryClientProvider>
     </Theme>
   </StrictMode>

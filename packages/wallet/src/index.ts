@@ -14,6 +14,12 @@
  * // Use wallet hooks
  * const { status, account, createWallet, unlockWallet } = useWallet();
  * const { data: balance } = useBalance();
+ *
+ * // Multi-token support
+ * import { registerToken, useMultiBalance } from '@nasun/wallet';
+ *
+ * registerToken({ symbol: 'NBTC', name: 'NBTC', decimals: 8, type: '0x...' });
+ * const { data: balances } = useMultiBalance();
  * ```
  */
 
@@ -33,6 +39,16 @@ export {
 
 export { useTransaction } from './hooks/useTransaction';
 
+// Multi-token hooks
+export {
+  useMultiBalance,
+  useTokenBalance,
+  useNativeBalance,
+  useRefreshMultiBalance,
+  useInvalidateMultiBalance,
+} from './hooks/useMultiBalance';
+export type { UseMultiBalanceOptions } from './hooks/useMultiBalance';
+
 // Types
 export type {
   WalletStatus,
@@ -46,6 +62,10 @@ export type {
   FaucetResponse,
   BalanceInfo,
   WalletConfig,
+  // Multi-token types
+  TokenConfig,
+  TokenBalance,
+  MultiTokenBalanceInfo,
 } from './types';
 
 // SUI Utilities
@@ -58,12 +78,27 @@ export {
   parseAmount,
   isValidAddress,
   shortenAddress,
+  // Multi-token utilities
+  getAllBalances,
+  getTokenBalance,
 } from './sui/client';
 
 export {
   requestFaucet,
   checkFaucetAvailable,
 } from './sui/faucet';
+
+// Token Registry
+export {
+  NATIVE_TOKEN,
+  registerToken,
+  registerTokens,
+  getToken,
+  getTokenByType,
+  getAllTokens,
+  isTokenRegistered,
+  clearTokens,
+} from './config/tokens';
 
 // Crypto utilities
 export {
