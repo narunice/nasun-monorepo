@@ -1,0 +1,114 @@
+{
+  "title": "PRIVACY POLICY",
+  "lastUpdated": "Last Updated: July 1, 2025",
+  "intro": "This Privacy Policy explains how we collect, use, disclose, and protect your personal information when you use our services on https://nasun.io (the “Website”), operated by Nasun Foundation (“Nasun”, “we”, “us”, or “our”).",
+  "note": "Note: This Privacy Policy does not apply to any future services that may be provided by a decentralized autonomous organization (“DAO”) governing the Nasun ecosystem. If a DAO is established in the future, a separate privacy policy will apply to its services and be provided at that time.",
+
+  "sections": {
+    "1": {
+      "title": "1. Information We Collect",
+      "description": "We collect personal information either automatically or voluntarily.",
+      "automatic": {
+        "title": "1.1 Automatically Collected Information",
+        "logData": "Log and Usage Data: IP address, browser type/version, device type/OS, time zone, pages viewed, time spent, referring URL.",
+        "tracking": "Cookies and Tracking Technologies: We use cookies, web beacons, and similar technologies (see Section 6)."
+      },
+      "voluntary": {
+        "title": "1.2 Voluntarily Provided Information",
+        "fields": [
+          "Name, email, or wallet address (e.g., SUI)",
+          "Social login identifiers (e.g., Discord ID)",
+          "Feedback, support requests, survey answers",
+          "NFT transaction details via connected wallet",
+          "Other information you voluntarily submit"
+        ],
+        "childrenPolicy": "We do not knowingly collect data from users under 13 years old. If you are a parent or guardian and believe we’ve collected personal information from a child, please contact us at contact@nasun.io."
+      }
+    },
+
+    "2": {
+      "title": "2. Purpose of Collection and Use",
+      "items": [
+        "Providing and improving our Services (including NFT minting and wallet integrations)",
+        "Communicating updates and responding to inquiries",
+        "Fraud detection, security monitoring, and legal compliance",
+        "Customizing your user experience"
+      ]
+    },
+
+    "3": {
+      "title": "3. Data Sharing and Transfers",
+      "items": [
+        "With other ecosystem projects operated by the Nasun Foundation (e.g., GEN SOL, WePop, Rider Studio, and future initiatives)",
+        "With service providers (e.g., hosting, analytics, wallet infrastructure, and security providers)",
+        "With regulators, courts, or legal authorities when required by law",
+        "As part of a merger, acquisition, or business reorganization",
+        "With your consent, for any other specified purposes"
+      ],
+      "noSelling": "We do not sell your personal data."
+    },
+
+    "4": {
+      "title": "4. International Transfers",
+      "description": "If you're in the EU, UK, or elsewhere, we may transfer your data outside your region (e.g., to the US or Asia) using legally approved mechanisms like Standard Contractual Clauses (SCCs)."
+    },
+
+    "5": {
+      "title": "5. Data Retention",
+      "description": "We keep your data only as long as needed for its purpose, or as required by law. For example, wallet addresses linked to NFT sales may be retained for tax or security compliance."
+    },
+
+    "6": {
+      "title": "6. Cookies and Tracking",
+      "purposes": [
+        "Enable basic functionality (e.g., wallet connections)",
+        "Analyze usage patterns (via Google Analytics)",
+        "Support marketing and retargeting (via Meta/Facebook, X/Twitter)"
+      ],
+      "consent": "You may control cookies in your browser settings. By using the site, you consent to our cookie use in accordance with GDPR and CCPA."
+    },
+
+    "7": {
+      "title": "7. Your Rights",
+      "rights": [
+        "Access, correct, or delete your data",
+        "Request a copy (data portability)",
+        "Opt out of marketing",
+        "Withdraw consent",
+        "File a complaint with a supervisory authority (EU/UK users)"
+      ],
+      "contact": "To make a request, email admin@nasun.io."
+    },
+
+    "8": {
+      "title": "8. Legal Compliance",
+      "description": "We do not currently enforce KYC/AML/CFT but may implement these in the future for regulatory reasons. If so, this policy will be updated accordingly."
+    },
+
+    "9": {
+      "title": "9. User-Generated Content",
+      "description": "We are not responsible for how others use or share your public content. You assume all risks related to sharing personal information through these channels."
+    },
+
+    "10": {
+      "title": "10. Do Not Track & California Residents",
+      "rights": [
+        "Request access to their data",
+        "Request deletion",
+        "Opt out of the sale of their personal data (we do not sell your data)"
+      ],
+      "contact": "Contact: admin@nasun.io"
+    },
+
+    "11": {
+      "title": "11. Changes to This Policy",
+      "description": "We may update this Privacy Policy as our services evolve or legal requirements change. Material changes will be posted on this page with a new “Last Updated” date."
+    },
+
+    "12": {
+      "title": "12. Contact Us",
+      "email": "📧 Email: admin@nasun.io",
+      "website": "🌐 Website: https://nasun.io"
+    }
+  }
+}

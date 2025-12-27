@@ -1,0 +1,81 @@
+{
+  "products": {
+    "title": "PRODUCTS & SERVICES",
+    "tagline": "Make Fun Things for Real World Adoption",
+    "categories": [
+      "Animation",
+      "Live-Action",
+      "Movies",
+      "Multiplayer Shooter",
+      "Strategy",
+      "RPG",
+      "Open World",
+      "Sci-fi",
+      "Horror",
+      "Comedy",
+      "Children’s Content",
+      "Fantasy",
+      "PC",
+      "Mobile",
+      "Web",
+      "Streaming",
+      "Theatrical",
+      "Dapps",
+      "Handhelds",
+      "Metaverse",
+      "VR/AR/XR",
+      "Mixed Reality",
+      "Mixed Reality Centers",
+      "AI Driven",
+      "Haptics",
+      "Brain Interfaces",
+      "UGC",
+      "Theme Parks",
+      "Cybernetics",
+      "Cyborgs",
+      "Robots",
+      "Giant Robots",
+      "Real Life Giant Robot Arena Competitions",
+      "Live Festivals",
+      "Digital Festivals",
+      "LFGO!",
+      "Merchandise",
+      "Comics",
+      "Graphic Novels",
+      "Novels",
+      "NFTs",
+      "Software",
+      "Hardware",
+      "Spaceships",
+      "Research",
+      "T-shirts",
+      "Mugs",
+      "Cards"
+    ]
+  },
+  "beyondScreens": {
+    "title": "BEYOND SCREENS",
+    "experiences": {
+      "title": "\"I’M DOING MY PART!\"",
+      "description1": "You lead a small unit, your comrades, to the top of a steep, rocky hill. At the top, an epic spectacle across an expansive alien terrain below comes into view. Laser pulses firing from all sides crackle through the air as thousands of sci-fi soldiers wage a bloody war.",
+      "description2": "From down the hill, a creature the size of a t-rex with six limbs gallops towards you. As you raise your rifle, it leaps, roaring, revealing rows of sharp black teeth. Before you can shoot, a stream of staccato lasers fired from behind strikes the creature down before it can pounce on you.",
+      "description3": "The fighter spaceship, responsible for the friendly fire, zooms by overhead, flying skyward above the billowing smoke. It shoots at malevolent looking structures blurring through the atmosphere. Dozens of alien spaceships invade from outer space.",
+      "description4": "One of them gets hits, the fighter tagging its thrusters, blowing it up. White plasma engulfs it as the huge alien ship drops from the sky. Crashing into the middle of the battlefield, the structure crumples into itself. The fiery explosion blinds you with its incandescence.",
+      "description5": "As the bloom of light fades from your retinas, you look back at your soldiers, some of them cowering with fear while others are gripping their weapons, emboldened for battle. They all, however, wait for your signal, your leadership. You nod then start running down the hill, leading the charge into the battlefield below, lasers whizzing by your head."
+    },
+    "robotStadium": {
+      "title": "SMASH BURGERS, COLD BEER AND GIANT ROBOTS",
+      "description1": "You are sitting in the nosebleeds but it’s ok because you can see it all, you can really take it all in. It’s a cool fall night with the clouds gathering over the largest stadium ever built. You can feel the nerves in the pit of your stomach as a monstrous energy is building as 200 thousand plus does the wave and the low rumbling ‘Whoa…’ rolls round and round the stands. You take another bite of the tasty smash burger with a swig of a local pale ale surprisingly ice cold from the red plastic cup.",
+      "description2": "Dark Cinematic music roars on and thunders throughout the stadium as the wave sputters out. Red smoke billows out from the north corridor entrance. Your date grabs your arm, eyes wide in wonder as everyone starts to cheer, losing their minds. Through the haze of smoke you can make out the menacing red eyes glowing as the giant silhouette stomps into the stadium. People are losing their minds as the announcer introduces the first fighter of the night.",
+      "description3": "It doesn’t look real but there it is, standing menacingly on one side of the field. Everyone has gone quiet staring at the technological marvel, a real giant robot over three stories tall designed like a cool looking jaeger. In awe, your date whispers ‘Wow.’ Then gasps from those in attendance as the sound of pistons and motors whirr. The giant jaeger strikes its first kung-fu pose. Then the music roars again as blue smoke billows out from the south entrance, and you can’t stop grinning like a kid."
+    },
+    "horrorCorridor": {
+      "title": "STRAIGHT OUT OF TERROR",
+      "description1": "Rapid breathing, you muster up the courage to peak around the corner. Slowly moving your head, a long white corridor lit by fluorescent lights comes into view. Everything feels institutional, hospital or possibly some research lab. At the end of the corridor is the exit sign above a door, and lying on the floor below it is a figure slumped over. They are wearing a white lab coat, and you squint trying to figure out who it might be.",
+      "description2": "Slow, you move your head back around the corner. Scared out of your mind, your heart is pounding. It feels like it's trying to leap out of your chest and you wonder if they can hear it. The sweat stings your eyes. You lower your 12-gauge shotgun to check your comms watch. You tap it and whisper, “You there? Did you make it? (pause) Are you there?” You wait, but the silence never breaks.",
+      "description3": "Filled with dread, you raise your shotgun, take a deep breath, and step around the corner. Corridor is still empty, but the exit sign seems even further away. You step forward quietly, shotgun leading. You get to around the midway point when you hear a faint sound. You stop in your tracks, and notice the shotgun trembling.",
+      "description4": "The end of the corridor you just came down is empty, but you hear the sound again. This time it’s neither faint nor far off. A rustling wind sound is getting closer. You feel a cool breeze on your perspiring skin. You take a deep breath to control your fear, grip your weapon and take aim down the corridor.",
+      "description5": "Suddenly, they appear, like apparitions in a nightmare except here they are real. Three of them screaming like banshees rush towards you with ferocious velocity. With long skeletal limbs, two race down the corridor, the other scraping sideways rabidly along the wall. Quickly closing in, you can make out the details of their evil, contorted faces. The dead grey skin, long matted hair, and razor sharp fangs. Their piercing scream is insatiable for your blood. The very sight of them is blasphemous. Surprisingly, the fear fades, and your finger on the trigger gets taut with intent. Now you can see the black of their beady eyes…"
+    }
+  }
+}

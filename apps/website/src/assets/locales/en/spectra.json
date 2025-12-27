@@ -1,0 +1,544 @@
+{
+  "pageTitle": "SPECTRA",
+  "communityEngagement": {
+    "title": "COMMUNITY ENGAGEMENT",
+    "p1": "The details of the game and its current state is shared here to begin the process of involving the community in its development. After the Founders NFT drop, the Discord server will open for collaborative discussions and voting to reach consensus on how to proceed with the game in production, marketing and distribution.",
+    "p2": "Over the next few months leading up to the Founders NFT drop, we will share media and progress updates until we can again set up the Discord server for more direct engagement.",
+    "p3": "Gen Sol is trademarked and copyrighted."
+  },
+  "overview": {
+    "title": "OVERVIEW",
+    "specs": {
+      "genre": "Space Combat and Strategy",
+      "perspective": "Third-Person",
+      "players": "2 to 8 (Multiplayer Online)",
+      "setting": "Outer space (Gen Sol Galaxy)",
+      "visualStyle": "Cel-Shaded, Anime-Inspired Art"
+    },
+    "p1": "As multiplayer PvP games have consistently remained popular over the years, SPECTRA will also deliver a game that intends to capture the imagination of the players devoted to this popular genre with dramatic stories and characters with strong motivations set in exciting environments.",
+    "p2": "SPECTRA will launch with three maps all around the core concept of possessing spectra, the most sacred and sought after resource in the Gen Sol Galaxy. Every map tells a unique story that each player holds a pivotal role in how it unfolds. The game play aims to be suspenseful, intense and fun, immersing the player in strategies, interactive environments and clear goals.",
+    "p3": "The first map “Escape from Kramok” will have two teams battle each other to carry spectra energy from a crashed cargo spaceship to a working spaceship that needs fuel to escape the hostile lava planet Kramok. The suspense and tension in the game will be consistently high as the teams need to strategize and converge in specific areas to get the spectra energy from one point of the map to the spaceship in order to get off the unstable planet as soon as possible as the environment becomes more hostile over time.",
+    "p4": "With the funds raised from the Founders NFT drop, the team will continue to focus on building a strong foundation for story, characters, assets, environments and game technology for rapid expansion. Join us on realizing a compelling vision to produce exciting games and content, blending sci-fi and fantasy to build a passionate and loyal fan base."
+  },
+  "gameDescription": {
+    "title": "GAME DESCRIPTION",
+    "p1": "The games are set in the Gen Sol Galaxy where the Dorakken Empire controls a region in space called the Vertex Zone where all the spectra energy is found and sourced. Spectra energy is the most precious commodity in the galaxy as it fuels everything from spaceships to weapons while also possessing mysterious powers.",
+    "p2": "Near the planet Kramok, a Raider spaceship attacks a Dorakken convoy transporting spectra energy. The Raiders destroy the Guard ships and damage the transport ship which hurtles toward Kramok.",
+    "p3": "The transport ship crashes on the alien landscape of erupting volcanoes and terrain shaking and ripping apart from earthquakes. The Raiders also land their ship which is low on spectra from taxing its defense systems during the intense battle.",
+    "p4": "The surviving Dorakken Guards protecting the spectra come out of the wreckage to see that the planet is unstable with burning ash falling from the red sky. There are also creatures called Mugox slithering around, hidden in the rocks and crevices that jump on them and drain their health.",
+    "p5": "Both teams, the Raiders and the Guards, must get the spectra energy from the transport ship to the working raiders’ ship and take off before the instability of the terrain kills them all.",
+    "p6": "A dramatic narrative and visual twist is that when you die, you still play as a phantom. The game will go from 3rd person perspective to first person. As a phantom the other players can’t see you but other phantoms can. You can’t use weapons, but will have supernatural powers that don't work on living players but can permanently destroy other phantoms.",
+    "p7": "One interesting phenomenon is that the slithering creatures, the Mugox, are attracted to phantoms but can’t attach themselves to them, so the phantoms can tactically lead them to the opposing team members who are living.This type of lore will be explained in more detail as more content comes out explaining the backstory of spectra in the Gen Sol Galaxy. All this will add a unique layer to the teams strategizing to win, adding dramatic tension and suspense to the game.",
+    "p8": "When the planet instability reaches a point where the environment destroys the ships, the game is over for everyone including the phantoms."
+  },
+  "strategy": {
+    "title": "STRATEGY",
+    "p1": "The Raiders can choose to take the spectra energy from the Dorakken transport ship that crashed on the planet. Or the Raiders can wait for the Dorakken Guards to carry the spectra over to their ship and then wrest possession of spectra off of the Guards and fuel their ship for take off.",
+    "p2": "Meanwhile, the Dorakken Guards can also carry the spectra energy from their transport ship to the Raiders’ spaceship to get off the planet and survive. Or they can also let the Raiders take the spectra from their transport ship and carry it over to the Raiders’ ship before somehow taking control of it to escape.",
+    "p3": "Both teams must strategize the best course of action to defeat their enemies and get off the planet. They must do this as their environment becomes more and more hostile with erupting volcanoes, earthquakes and deadly creatures."
+  },
+  "details": {
+    "title": "DETAILS",
+    "p1": "Any excess spectra the teams carry over beyond the amount needed to power the ship off the planet they can keep as rewards outside the game. This extra spectra can be sold, traded for game assets, and count towards exclusive NFTs. Trying to take more than the needed spectra to get off the planet is a calculated risk involving many factors such as the players remaining, state of health, increase in creatures and also the planet environment becoming more hostile over time.",
+    "p2": "The landscape on Kramok is very unstable with earthquakes and volcano eruptions spewing lava, and the ships have crashed on a tectonic fault line as fissures form on the ground. Both teams must get the spectra from the crashed transport ship to the Raider ship and off the planet before killing each other or before they die from the terrain as it keeps getting more unstable.",
+    "p3": "Mugoxes, alien millipede-like creatures, crawl out from the ground and stick to you with their sharp legs. They will drain you of health and kill you unless a teammate removes them by force from your body. More and more will appear as the landscape continually gets more unstable from volcanic eruptions, earthquakes and the cracks opening up on the ground. This will add a horde-shooter dimension to the game.",
+    "p4": "Even if one team completely kills off the other team, they must strategize how much spectra they want beyond powering the ship to escape the planet as it becomes more and more dangerous over time.",
+    "p5": "Weapons will be similar to other war and sci-fi games. It will include guns and rifles shooting lasers, pulses and bullet-like shrapnel, all powered by spectra. There will be variations of bazookas, rocket launchers. There will also be melee weapons like swords, knives, axes and whips that will use spectra in different ways than just projectile and laser weapons."
+  },
+  "mainFactors": {
+    "title": "MAIN FACTORS",
+    "items": [
+      "Number of Players - for team mission and deathmatch each team can have a minimum of 2 and up to 8 teammates.",
+      "How teams and players strategize to win.",
+      "The amount of spectra energy needed to fuel the Raiders ship to escape Kramok would affect the number of times players must go back and forth between the crashed cargo ship and the Raiders ship.",
+      "The level of environmental instability due to earthquakes, ground fissures and volcanic eruptions and the rate it goes up.",
+      "The real world value of spectra as players must decide they will try to carry more spectra then they need to fuel the Raiders ship and risk dying from enemies and also the hostile terrain as having extra spectra can be sold or traded for assets/NFTs. This is a calculation of risk as carrying more slows down movement.",
+      "What weapons the players chose to bring on the ships.",
+      "How stealth and ambush tactics are employed."
+    ]
+  },
+  "tournaments": {
+    "title": "TOURNAMENTS",
+    "intro": "Gen Sol will organize tournaments with prizes. \n Climbing up the tournament ranks mean:",
+    "items": [
+      "Teams compete for more spectra.",
+      "Unlock more rare and powerful forms of spectra that can be used to enhance physical powers like strength, speed, healing and health.",
+      "Compete for rare spectra that are more valuable and also easier to carry more since less quantity is needed from crashed cargo ship to the Raiders ship which will lead to winning more spectra.",
+      "Access to specialized and rare weapons, armor, vehicles and equipment powered by spectra.",
+      "Players can agree to play for each others’ in-game assets like weapons and armor.",
+      "Permission to bet on more spectra and assets in a pot."
+    ]
+  },
+  "web3": {
+    "title": "WEB3",
+    "p1": "Players can opt-in to use Web3 and transfer their assets off of the game servers and onto their wallets at any time."
+  },
+  "currentState": {
+    "title": "CURRENT STATE",
+    "intro": "An online multiplayer PvP in Battle Royale mode built in Unreal Engine written in C++ by minimizing bandwidth and maximizing performance for stability and scaling.",
+    "items": [
+      {
+        "title": "AWS Gamelift Integration",
+        "description": "Implemented on AWS Gamelift dedicated servers AWS Setup for prototype testing with Headless Dedicated Cloud Server: EC2 Fleet, Lambda JS Code, API Gateway, Cognito, DynamoDB,"
+      },
+      {
+        "title": "C++ Class Architecture",
+        "description": "Character and weapons written in separate classes in C++ for speed and stability for online multiplayer. Organized weapon classes and functions to all combat related behavior in a combat component to keep character and combat functionality organized. Currently using mostly marketplace weapon assets that need to be swapped for original sci-fi weapons but the code for them is done."
+      },
+      {
+        "title": "Multiplayer Gameplay Logic",
+        "description": "Gameplay logic programmed to work in multiplayer to establish network roles and authority. For instance, the server holds authority over gameplay logic like health, damage and ammo so the game can prevent cheating."
+      },
+      {
+        "title": "Weapon Systems",
+        "description": "There are multiple weapon classes, implementing both head scan weapons and projectile weapons. The classes utilize projectile movement components taking advantage of replication behavior for projectiles and apply damage directly with hit events and apply radial damage with a falloff or explosive weapons."
+      },
+      {
+        "title": "Dynamic Crosshairs",
+        "description": "Achieving an accurate hit with implementation of dynamic crosshairs that spread and shrink and turn red when aiming at another player."
+      },
+      {
+        "title": "AIM Offsets & Inverse Kinematics",
+        "description": "AIM offsets and inverse kinematics for weapons, so hands are always placed correctly on the weapon and make sure that the weapon is always oriented in the correct direction where the bullet is firing and weapons will eject bullet shells with physics and sounds."
+      },
+      {
+        "title": "Optimized Framework",
+        "description": "Optimized framework and engine classes for multiplayer."
+      },
+      {
+        "title": "Lag Compensation",
+        "description": "Utilized lag compensation techniques, like client-side prediction and server-side rewind to make the experience quick and responsive and the game fair in the presence of high lag."
+      },
+      {
+        "title": "Anti-Cheat Architecture",
+        "description": "Lag compensation algorithms will all go on to their own lag compensation component to keep them encapsulated and organized to prevent cheaters."
+      },
+      {
+        "title": "Match State System",
+        "description": "Game mode functionality designed for matchmaking, including the concept of Match State."
+      },
+      {
+        "title": "Custom Match States",
+        "description": "Custom match states, including a warm up stage where the player can fly through the level while waiting for the warm up timer and a cooldown state displaying the name of the winning player and the player's score."
+      },
+      {
+        "title": "Countdown Timer",
+        "description": "Working countdown timer managed by the game mode, the client's running time in sync with the server's time so all players see the exact same number at the same time."
+      },
+      {
+        "title": "Player Eliminations",
+        "description": "Implemented player eliminations and respawning in the game mode as well as assign points when the player scores and store the player's score on the player state class."
+      },
+      {
+        "title": "Game State Tracking",
+        "description": "Game state class keeps track of the top scoring player as well as team scores and top scoring teams."
+      },
+      {
+        "title": "Elimination Effects",
+        "description": "An alarm board that spawns when a player is eliminated and will beam the player up, dissolving the character at runtime dynamically."
+      }
+    ]
+  },
+  "prototypeDevelopment": {
+    "title": "TO FINISH PROTOTYPE DEVELOPMENT",
+    "items": [
+      {
+        "title": "Environment Design",
+        "description": "Build the environment of the lava planet Kramok."
+      },
+      {
+        "title": "Character Design & Animation",
+        "description": "Design, rig and animate Dorakken Guards and Raiders, including their weapons."
+      },
+      {
+        "title": "UI/UX Graphics",
+        "description": "Create professional graphics for HUD and menu."
+      },
+      {
+        "title": "Team Mission Mode",
+        "description": "Finish Team Mission mode of the game where the team, once enough Spectra Energy has been carried to the Raiders ship to fuel it, takes off and escapes the planet, winning the game."
+      },
+      {
+        "title": "C++ Development",
+        "description": "More detailed C++ coding work:"
+      },
+      {
+        "title": "HUD System",
+        "description": "Display all relevant game data on the HUD, including a health bar, a shield bar, score and defeats as well as inventory of grenades, weapon ammo and carried Spectra Energy and will drive these values from C++ with an efficient system that's event based."
+      },
+      {
+        "title": "Event-Based Updates",
+        "description": "Updating the HUD only when a variable changes rather than checking for it in each frame."
+      },
+      {
+        "title": "Server Validation",
+        "description": "Perform validations on data sent to the server and kick players attempting to send bad data."
+      },
+      {
+        "title": "Additional Game Modes",
+        "description": "Implement game modes for Team Deathmatch and a spectra variation of Capture the Flag."
+      },
+      {
+        "title": "Dedicated Server Integration",
+        "description": "Complete dedicated server implementation of AWS Gamelift integration for both fleet servers and EC2 servers for prototype testing."
+      }
+    ]
+  },
+  "beyondPrototype": {
+    "title": "BEYOND THE SCOPE OF THE PROTOTYPE",
+    "items": [
+      {
+        "title": "Map Expansion",
+        "description": "\"Escape from Kramok\" map can expand by adding more players, robotic armor, vehicles from their ships, and different creatures native to Kramok."
+      },
+      {
+        "title": "Phantom POV",
+        "description": "Implement Phantom point of view."
+      },
+      {
+        "title": "AI Combat Robots",
+        "description": "Teams can also have A.I. Robots that fight on their side."
+      },
+      {
+        "title": "Dynamic Environment",
+        "description": "Interactive environment such as flowing lava and ground fissures from earthquakes."
+      },
+      {
+        "title": "AI-Driven Creatures",
+        "description": "Finish the Mugoxes, the alien millipede-like creatures that are run by AI."
+      },
+      {
+        "title": "Matchmaking System",
+        "description": "Establish good matchmaking balancing fairness, latency and queue time."
+      },
+      {
+        "title": "Training Mode",
+        "description": "Create a training section for beginners."
+      },
+      {
+        "title": "NFT Marketplace",
+        "description": "Build NFT Marketplace."
+      },
+      {
+        "title": "Cinematic Introduction",
+        "description": "Cinematic Intro."
+      },
+      {
+        "title": "Advanced Settings",
+        "description": "In-depth game settings."
+      }
+    ]
+  },
+  "foundersNftFunds": {
+    "title": "FOUNDERS NFT FUNDS FOR SPECTRA",
+    "categories": {
+      "serverBackend": {
+        "title": "Server & Backend Development",
+        "items": [
+          "Unreal Engine C++ source for dedicated server module",
+          "Architect AWS gamelift integration",
+          "Lobby logic for set number of players",
+          "Game loop",
+          "Cognito secure signup, sign-in, handling tokens",
+          "HttpRequest for gamesessions, playersessions",
+          "Dynamic MatchStats, Playerstats, Leaderboard"
+        ]
+      },
+      "awsSetup": {
+        "title": "AWS Infrastructure Setup",
+        "items": [
+          "AWS Setup for Prototype Testing with Headless Dedicated Cloud Server",
+          "GameLift: EC2 Fleet",
+          "Lambda JS Code.",
+          "Setup AWS services API Gateway, Cognito, DynamoDB,"
+        ]
+      },
+      "alienSoldier": {
+        "title": "Alien Soldier Character",
+        "items": [
+          "Second character alien soldier Raiders (ex-soldier)",
+          "Design",
+          "Illustrate",
+          "Model (Blender)",
+          "Texture/Material",
+          "Rig",
+          "Import into Unreal Engine (Materials, Rigging)",
+          "Create Animation Blueprints",
+          "C++ Code to integrate Character into gameplay/logic."
+        ]
+      },
+      "aerioWeapons": {
+        "title": "Aerio Sci-fi Weapons",
+        "items": [
+          "Aerio scifi weapons",
+          "Design",
+          "Illustrate",
+          "Model (Blender)",
+          "Texture/Material",
+          "Rig",
+          "Weapon Animations",
+          "Import into Unreal Engine (Materials, Rigging)",
+          "Create Animation Blueprints",
+          "C++ Code to integrate weapon into gameplay/logic."
+        ]
+      },
+      "raidersWeapon": {
+        "title": "Raiders Sci-fi Weapon",
+        "items": [
+          "Raiders scifi weapon",
+          "Rig",
+          "Weapon Animations",
+          "Import into Unreal Engine (Materials, Rigging)",
+          "Create Animation Blueprints",
+          "C++ Code to integrate weapon into gameplay/logic"
+        ]
+      },
+      "weaponParticles": {
+        "title": "Weapon Particle Effects",
+        "items": ["Particle effects for weapons"]
+      },
+      "environment": {
+        "title": "Environment & Terrain",
+        "items": [
+          "Environment",
+          "Terrain",
+          "Design",
+          "Create/Paint",
+          "Implement with Blueprint",
+          "Volcanos: Implement assets",
+          "Sky: Implement assets and plugins"
+        ]
+      },
+      "gameImplementation": {
+        "title": "Game Implementation",
+        "items": [
+          "Start 'Escape from Kramok' game implementation",
+          "Team match gameplay logic",
+          "Ghost first person perspective",
+          "Design, model, animate Aerio and Raiders hands",
+          "Hand particle effects"
+        ]
+      },
+      "creatureMugox": {
+        "title": "Creature Mugox Development",
+        "items": [
+          "Start creating creature Mugox",
+          "Concept art",
+          "Design/illustrate",
+          "Model",
+          "Rig",
+          "Animate"
+        ]
+      }
+    }
+  },
+  "hires": {
+    "title": "HIRES",
+    "positions": {
+      "artist2d": {
+        "title": "2D Artists / Illustrators / Designers",
+        "skills": "Adobe Photoshop, Illustrator.",
+        "work": [
+          "Conceptualize, Design, Illustrate & Color (front, side(profile), back) -",
+          "Sci-fi Game Characters",
+          "Sci-fi Weapons",
+          "Spaceships",
+          "Game UI"
+        ]
+      },
+      "artist3d": {
+        "title": "3D Artists / Modelers",
+        "skills": "Autodesk Maya, 3ds Max, Z Brush, Substance Painter, Blender.",
+        "work": [
+          "Model, Texture/Materials, Rigging, Test Animations -",
+          "Sci-fi Game Characters",
+          "Sci-fi Weapons",
+          "Spaceships"
+        ]
+      },
+      "ueDesigner": {
+        "title": "Unreal Engine Developers (Designer / Blueprints)",
+        "skills": "Unreal Engine 5, Blueprints, Animation, Level Design, Niagara, Lumen, Nanite.",
+        "work": [
+          "Import & optimize models/assets, materials, and rigging.",
+          "Create gameplay animations, animation blueprints, and Animgraphs.",
+          "Design, animate, and make blueprints for particle VFX, weapon VFX, and real-time VFX.",
+          "Finish Prototype level design for \"Escape from Kramok.\""
+        ]
+      },
+      "ueProgrammer": {
+        "title": "Unreal Engine Developers (Programmer)",
+        "skills": "Unreal Engine 5, C++, Javascript, Node.js, AWS Gamelift, AWS Lambda Functions, AWS DynamoDB, AWS Cognito.",
+        "work": [
+          "Refactor code for team games - Team Death Match, Escape from Kramok prototype.",
+          "AWS Architecture - plan, design, and implement EC2 dedicated server virtual resources in cloud infrastructure.",
+          "Design and create framework for AWS Cognito and  persistent data -",
+          "Game Stats",
+          "Player Stats",
+          "Assets (NFTs)",
+          "Player Profiles",
+          "Player Passwords",
+          "Implement matchmaking (Flexmatch), matchstats (DynamoDB), and leaderboards.",
+          "Optimize lobbies and timers.",
+          "C++ and Bluprint Implementation -",
+          "Character Gameplay Logic",
+          "Player Controller Logic",
+          "Weapons Logic",
+          "Animations",
+          "Weapon Effects",
+          "Implement Security Framework.",
+          "Optimize game for dedicated server multiplayer gameplay -",
+          "Refactor Code",
+          "Environment / Maps",
+          "Assets",
+          "Map Transitions",
+          "Optimize EC2 dedicated servers for gameplay by -",
+          "Regions",
+          "Game Sessions",
+          "Player Sessions",
+          "Testing.",
+          "Refactoring."
+        ]
+      }
+    }
+  },
+  "schedule": {
+    "title": "SCHEDULE",
+    "phases": {
+      "phase1": {
+        "sections": [
+          {
+            "title": "Hire 2D Artists / Illustrators / Designers",
+            "items": ["Conceptualize:", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships", "Game UI"]
+          },
+          {
+            "title": "Seek - 3D Artists / Modelers"
+          },
+          {
+            "title": "Seek Full Time - Unreal Engine Developer (Programmer)"
+          },
+          {
+            "title": "Seek Freelance/Part Time - Unreal Engine Developer (Designer / Blueprints)"
+          }
+        ]
+      },
+      "phase2": {
+        "sections": [
+          {
+            "title": "2D Artists / Illustrators / Designers",
+            "items": ["Design, Illustrate & Color (front, side(profile), back):", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships", "Game UI"]
+          },
+          {
+            "title": "Hire - 3D Artists / Modelers"
+          },
+          {
+            "title": "Hire Full Time - Unreal Engine Developer (Programmer)"
+          },
+          {
+            "title": "Hire Freelance/Part Time - Unreal Engine Developer (Designer / Blueprints)"
+          }
+        ]
+      },
+      "phase3": {
+        "sections": [
+          {
+            "title": "3D Artists / Modelers",
+            "items": ["Model:", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships"]
+          },
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Implement UI.", "Design and create or find and import Melee Attack Animation.", "Design and animate particle VFX, weapon VFX, and real-time VFX."]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["Refactor code for team games - Team Death Match, Escape from Kramok prototype."]
+          }
+        ]
+      },
+      "phase4": {
+        "sections": [
+          {
+            "title": "3D Artists / Modelers",
+            "items": ["Model:", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships"]
+          },
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Implement UI.", "Implement melee attack animation.", "Make blueprints for particle VFX, weapon VFX, and real-time VFX."]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["AWS Architecture - plan, design, and implement EC2 dedicated server virtual resources in cloud infrastructure."]
+          }
+        ]
+      },
+      "phase5": {
+        "sections": [
+          {
+            "title": "3D Artists / Modelers",
+            "items": ["Texture/Materials, Rigging, Test Animations -", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships"]
+          },
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Import & optimize models/assets, materials, and rigging.", "Create gameplay animations, animation blueprints, and Animgraphs."]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["Design and create framework for AWS Cognito and persistent data -", "Game Stats", "Player Stats", "Assets (NFTs)", "Player Profiles", "Player Passwords", "Regions", "Game Sessions", "Player Sessions"]
+          }
+        ]
+      },
+      "phase6": {
+        "sections": [
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Import & optimize models/assets, materials, and rigging.", "Create gameplay animations, animation blueprints, and Animgraphs."]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["Implement matchmaking (Flexmatch), matchstats (DynamoDB), and leaderboards.", "Optimize lobbies and timers.", "C++ and Bluprint Implementation -", "Character Gameplay Logic", "Player Controller Logic", "Weapons Logic", "Animations", "Weapon Effects"]
+          }
+        ]
+      },
+      "phase7": {
+        "sections": [
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Create gameplay animations, animation blueprints, and Animgraphs.", "Finish Prototype level design for \"Escape from Kramok.\""]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["Implement Security Framework.", "C++ and Bluprint Implementation -", "Character Gameplay Logic", "Player Controller Logic", "Weapons Logic", "Animations", "Weapon Effects"]
+          }
+        ]
+      },
+      "phase8": {
+        "sections": [
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Create gameplay animations, animation blueprints, and Animgraphs.", "Finish Prototype level design for \"Escape from Kramok.\""]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["Optimize game for dedicated server multiplayer gameplay -", "Refactor Code", "Environment / Maps", "Assets", "Map Transitions"]
+          }
+        ]
+      },
+      "phase9": {
+        "sections": [
+          {
+            "title": "Unreal Engine Developers (Designer / Blueprints)",
+            "items": ["Create gameplay animations, animation blueprints, and Animgraphs.", "Finish Prototype level design for \"Escape from Kramok.\""]
+          },
+          {
+            "title": "Unreal Engine Developers (Programmer)",
+            "items": ["Optimize EC2 dedicated servers for gameplay by -", "Regions", "Game Sessions", "Player Sessions", "Testing.", "Refactoring."]
+          }
+        ]
+      }
+    }
+  },
+  "contact": {
+    "text": "If you work in the gaming industry and want to get involved:",
+    "button": "CONTACT US"
+  }
+}

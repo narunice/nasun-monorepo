@@ -10,6 +10,9 @@
     "build": "pnpm -r build",
     "build:packages": "pnpm --filter './packages/*' build",
     "build:explorer": "pnpm --filter @nasun/explorer build",
+    "build:website": "pnpm --filter @nasun/website build",
+    "build:gensol": "pnpm --filter @nasun/gensol build",
+    "build:pado": "pnpm --filter @nasun/pado build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules"

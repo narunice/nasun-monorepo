@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Bullet Point Design Demo</title>
+  <style>
+    body { background: #0a0a0a; padding: 40px; font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; }
+    .demo { margin-bottom: 50px; padding-bottom: 30px; border-bottom: 1px solid #333; }
+    h3 { color: #c084fc; margin-bottom: 20px; font-size: 18px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { display: flex; align-items: flex-start; color: rgba(255,255,255,0.9); margin-bottom: 16px; line-height: 1.7; font-size: 15px; }
+    .title { font-weight: 600; }
+
+    /* Option 1: Glow Dot */
+    .glow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #c084fc;
+      box-shadow: 0 0 10px #c084fc, 0 0 20px rgba(192,132,252,0.4);
+      margin-right: 16px;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Option 2: Arrow */
+    .arrow {
+      color: #c084fc;
+      margin-right: 12px;
+      margin-top: 1px;
+      font-size: 20px;
+      flex-shrink: 0;
+      font-weight: 300;
+    }
+
+    /* Option 3: Diamond */
+    .diamond {
+      width: 8px;
+      height: 8px;
+      background: #c084fc;
+      transform: rotate(45deg);
+      margin-right: 16px;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Option 4: Outlined Circle */
+    .outline-circle {
+      width: 10px;
+      height: 10px;
+      border: 2px solid #c084fc;
+      border-radius: 50%;
+      margin-right: 16px;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    /* Option 5: Gradient Bar */
+    .gradient-bar {
+      width: 3px;
+      min-height: 100%;
+      background: linear-gradient(to bottom, #c084fc, rgba(192,132,252,0.15));
+      border-radius: 2px;
+      margin-right: 16px;
+      flex-shrink: 0;
+      align-self: stretch;
+    }
+
+    /* Option 6: Checkmark */
+    .checkmark {
+      color: #c084fc;
+      margin-right: 12px;
+      margin-top: 2px;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="color: white; margin-bottom: 40px;">🎨 Bullet Point Design Options</h1>
+
+  <div class="demo">
+    <h3>Option 1: Glow Dot ⭐ (추천)</h3>
+    <ul>
+      <li><span class="glow-dot"></span><span><span class="title">영감을 주는 글로벌 커뮤니티 구축</span> — IP를 함께 창작/획득하고 개발하는 크리에이터와 팬들이 공유된 비전과 협업을 통해 그 잠재력을 최대한 발휘합니다.</span></li>
+      <li><span class="glow-dot"></span><span><span class="title">전략적 파트너십 구축</span> — 게임, 엔터테인먼트, 금융, 소프트웨어 분야의 시장 리더들과 협력하여 나선의 성장을 가속화합니다.</span></li>
+      <li><span class="glow-dot"></span><span><span class="title">지속 가능한 생태계 설계</span> — 장기적인 가치 창출을 위한 토큰 이코노미와 거버넌스 구조를 구축합니다.</span></li>
+    </ul>
+  </div>
+
+  <div class="demo">
+    <h3>Option 2: Arrow Right</h3>
+    <ul>
+      <li><span class="arrow">›</span><span><span class="title">영감을 주는 글로벌 커뮤니티 구축</span> — IP를 함께 창작/획득하고 개발하는 크리에이터와 팬들이 공유된 비전과 협업을 통해 그 잠재력을 최대한 발휘합니다.</span></li>
+      <li><span class="arrow">›</span><span><span class="title">전략적 파트너십 구축</span> — 게임, 엔터테인먼트, 금융, 소프트웨어 분야의 시장 리더들과 협력하여 나선의 성장을 가속화합니다.</span></li>
+      <li><span class="arrow">›</span><span><span class="title">지속 가능한 생태계 설계</span> — 장기적인 가치 창출을 위한 토큰 이코노미와 거버넌스 구조를 구축합니다.</span></li>
+    </ul>
+  </div>
+
+  <div class="demo">
+    <h3>Option 3: Diamond (마름모)</h3>
+    <ul>
+      <li><span class="diamond"></span><span><span class="title">영감을 주는 글로벌 커뮤니티 구축</span> — IP를 함께 창작/획득하고 개발하는 크리에이터와 팬들이 공유된 비전과 협업을 통해 그 잠재력을 최대한 발휘합니다.</span></li>
+      <li><span class="diamond"></span><span><span class="title">전략적 파트너십 구축</span> — 게임, 엔터테인먼트, 금융, 소프트웨어 분야의 시장 리더들과 협력하여 나선의 성장을 가속화합니다.</span></li>
+      <li><span class="diamond"></span><span><span class="title">지속 가능한 생태계 설계</span> — 장기적인 가치 창출을 위한 토큰 이코노미와 거버넌스 구조를 구축합니다.</span></li>
+    </ul>
+  </div>
+
+  <div class="demo">
+    <h3>Option 4: Outlined Circle</h3>
+    <ul>
+      <li><span class="outline-circle"></span><span><span class="title">영감을 주는 글로벌 커뮤니티 구축</span> — IP를 함께 창작/획득하고 개발하는 크리에이터와 팬들이 공유된 비전과 협업을 통해 그 잠재력을 최대한 발휘합니다.</span></li>
+      <li><span class="outline-circle"></span><span><span class="title">전략적 파트너십 구축</span> — 게임, 엔터테인먼트, 금융, 소프트웨어 분야의 시장 리더들과 협력하여 나선의 성장을 가속화합니다.</span></li>
+      <li><span class="outline-circle"></span><span><span class="title">지속 가능한 생태계 설계</span> — 장기적인 가치 창출을 위한 토큰 이코노미와 거버넌스 구조를 구축합니다.</span></li>
+    </ul>
+  </div>
+
+  <div class="demo">
+    <h3>Option 5: Gradient Bar</h3>
+    <ul>
+      <li><span class="gradient-bar"></span><span><span class="title">영감을 주는 글로벌 커뮤니티 구축</span> — IP를 함께 창작/획득하고 개발하는 크리에이터와 팬들이 공유된 비전과 협업을 통해 그 잠재력을 최대한 발휘합니다.</span></li>
+      <li><span class="gradient-bar"></span><span><span class="title">전략적 파트너십 구축</span> — 게임, 엔터테인먼트, 금융, 소프트웨어 분야의 시장 리더들과 협력하여 나선의 성장을 가속화합니다.</span></li>
+      <li><span class="gradient-bar"></span><span><span class="title">지속 가능한 생태계 설계</span> — 장기적인 가치 창출을 위한 토큰 이코노미와 거버넌스 구조를 구축합니다.</span></li>
+    </ul>
+  </div>
+
+  <div class="demo" style="border-bottom: none;">
+    <h3>Option 6: Checkmark (체크마크)</h3>
+    <ul>
+      <li><span class="checkmark">✓</span><span><span class="title">영감을 주는 글로벌 커뮤니티 구축</span> — IP를 함께 창작/획득하고 개발하는 크리에이터와 팬들이 공유된 비전과 협업을 통해 그 잠재력을 최대한 발휘합니다.</span></li>
+      <li><span class="checkmark">✓</span><span><span class="title">전략적 파트너십 구축</span> — 게임, 엔터테인먼트, 금융, 소프트웨어 분야의 시장 리더들과 협력하여 나선의 성장을 가속화합니다.</span></li>
+      <li><span class="checkmark">✓</span><span><span class="title">지속 가능한 생태계 설계</span> — 장기적인 가치 창출을 위한 토큰 이코노미와 거버넌스 구조를 구축합니다.</span></li>
+    </ul>
+  </div>
+</body>
+</html>
