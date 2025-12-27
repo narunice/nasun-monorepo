@@ -3,14 +3,21 @@
  * 상단 잔고 표시 (NASUN, NBTC, NUSDC, Mid Price)
  */
 
-import { useWallet } from '../../../wallet';
-import { useBalance } from '../../../wallet/hooks/useBalance';
+import { useWallet, useMultiBalance } from '@nasun/wallet';
 import { useOrderbook, useFaucet } from '../hooks';
+import { TOKENS } from '../../../config/network';
 
 export function BalancePanel() {
   const { status, account } = useWallet();
-  const { data: balances } = useBalance();
+  const { data: multiBalance } = useMultiBalance();
   const { data: orderbookData } = useOrderbook();
+
+  // Transform multiBalance to pado format
+  const balances = multiBalance ? {
+    nasun: multiBalance.native,
+    nbtc: multiBalance.tokens['NBTC'] || { symbol: 'NBTC', balance: 0n, formatted: '0', decimals: TOKENS.NBTC.decimals, type: TOKENS.NBTC.type },
+    nusdc: multiBalance.tokens['NUSDC'] || { symbol: 'NUSDC', balance: 0n, formatted: '0', decimals: TOKENS.NUSDC.decimals, type: TOKENS.NUSDC.type },
+  } : undefined;
   const { isNasunLoading, isTokenLoading, handleNasunFaucet, handleTokenFaucet } = useFaucet();
 
   const isConnected = status === 'unlocked' && account;

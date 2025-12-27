@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { requestFaucet } from '../../../lib/sui-client';
 import { useTrading } from '../useTrading';
 import { useToast } from '../../../components/common';
-import { useWalletAccount } from '../../../wallet';
+import { useWalletAccount } from '@nasun/wallet';
 
 export interface UseFaucetResult {
   isNasunLoading: boolean;
