@@ -1,1 +1,4 @@
-export { default as AuthProvider, useAuth } from './AuthContext'
+/**
+ * @deprecated Import from '@/features/auth' instead
+ */
+export { AuthProvider, useAuth } from '@/features/auth'
