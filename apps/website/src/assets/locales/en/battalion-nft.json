@@ -1,0 +1,218 @@
+{
+  "featureDisabled": {
+    "title": "NFT Event is Currently Unavailable",
+    "description": "The NFT event feature is currently disabled. Please check back later."
+  },
+  "header": {
+    "title": "Wave 1 Battalion NFT Free Mint",
+    "description": "Complete the tasks below to join the allowlist and mint your NFT."
+  },
+  "errors": {
+    "missingInfo": "Missing required information. Please complete all previous steps.",
+    "registrationFailed": "Registration failed",
+    "registerFailed": "Failed to register. Please try again."
+  },
+  "shareOnX": "Share on X",
+  "share": "Share on",
+  "goToHome": "Go to Home",
+  "goToMyAccount": "Go to My Account Dashboard",
+  "step1": {
+    "title": "Welcome to the Wave 1 Battalion NFT Free Mint Event!",
+    "description": "This is your special opportunity to mint NASUN's first NFT collection for free.",
+    "requirements": {
+      "title": "Requirements",
+      "item1": "Follow X @Nasun_io account",
+      "item2": "Like the event post",
+      "item3": "Retweet the event post",
+      "item4": "Connect MetaMask wallet"
+    },
+    "links": {
+      "officialAccount": "Official X Account",
+      "eventPost": "Event Post"
+    },
+    "rewards": {
+      "title": "Rewards",
+      "item1": "1 Free Wave 1 Battalion NFT Mint per Person",
+      "item2": "Priority access to future airdrops and events",
+      "item3": "Eligible for Random Drawings",
+      "item4": "Collect all Battalion NFTs + Founders NFT to increase Multipliers",
+      "item5": "Exclusive community membership"
+    },
+    "button": "Get Started"
+  },
+  "step2": {
+    "title": "Connect Your X Account",
+    "description": "Please connect your X account to verify your event participation.",
+    "infoSimplified": "This is a one-time authentication for event participation verification.",
+    "privacyNote": "Only your username and ID are collected and used solely for event verification",
+    "authenticationRequired": "⚠️ X Account Authentication Required",
+    "authenticationPurpose": "X OAuth authentication is required to verify the following event tasks:",
+    "verifyLikes": "Check if you liked the target tweet",
+    "verifyRetweets": "Check if you retweeted the target tweet",
+    "notSignUp": "This is verification only — not signing up to our website",
+    "tokenAutoDelete": "🔒 This is a one-time authentication for event participation verification.",
+    "infoTitle": "Why do we need X integration?",
+    "infoDescription": "We need X account integration to verify event participation requirements (follow, like, retweet). We only use read permissions and will not post anything.",
+    "privacyTitle": "Privacy Protection:",
+    "privacyDescription": "When connecting your X account, only your username and ID are collected and used solely for event participation verification.",
+    "followRecommended": "Stay Connected (Recommended)",
+    "followDescription": "Follow us to get early access to future events and exclusive updates!",
+    "followButton": "Follow @Nasun_io",
+    "connecting": "Connecting...",
+    "button": "Connect with X",
+    "errors": {
+      "callbackFailed": "Twitter OAuth callback failed",
+      "noUserInfo": "Failed to get user information from Twitter",
+      "authFailed": "Failed to authenticate with X (Twitter)",
+      "initFailed": "Failed to initiate X OAuth",
+      "connectFailed": "Failed to connect to X (Twitter)"
+    }
+  },
+  "step3": {
+    "title": "Verify Event Tasks",
+    "description": "Verify that you have completed all the tasks below.",
+    "infoPrefix": "Haven't completed tasks?",
+    "eventPostLink": "Visit the event post first!",
+    "recommended": "Recommended",
+    "followButton": "Follow",
+    "tasks": {
+      "follow": "Follow @{{account}}",
+      "like": "Like the event post",
+      "retweet": "Retweet the event post"
+    },
+    "status": {
+      "completed": "Completed",
+      "incomplete": "Incomplete",
+      "pending": "Pending",
+      "checking": "Checking..."
+    },
+    "fallbackTitle": "Task Verification Guide",
+    "fallbackDescription": "Automatic verification is temporarily unavailable. Please manually verify the tasks below:",
+    "fallbackInstructions": {
+      "title": "Please verify the following:",
+      "item1": "Check if you have followed @Nasun_io account",
+      "item2": "Check if you have liked the event post",
+      "item3": "Check if you have retweeted the event post"
+    },
+    "fallbackNote": "💡 <strong>If you have completed all tasks</strong>, try clicking \"Retry\" or proceed to the next step.",
+    "goToTweet": "View Event Tweet",
+    "retry": "Retry Verification",
+    "button": "Verify Tasks",
+    "nextButton": "Next Step",
+    "verifying": "Verifying...",
+    "errors": {
+      "verificationFailed": "Task verification failed",
+      "incomplete": "Some tasks are incomplete. Please complete all tasks and try again.",
+      "failed": "Task verification failed. Please try again later."
+    }
+  },
+  "step4": {
+    "title": "Connect Wallet",
+    "description": "Please connect your Ethereum wallet to receive the NFT.",
+    "infoTitle": "MetaMask Wallet Connection Guide",
+    "infoDescription": "Please connect your Ethereum wallet address to receive the NFT. Approve the connection when the MetaMask popup appears.",
+    "networkLabel": "Network",
+    "networkNote": "⚠️ The network will automatically switch to the correct one when connecting your wallet",
+    "connected": "Connected",
+    "success": "Wallet connected successfully",
+    "connecting": "Connecting...",
+    "button": "Connect MetaMask",
+    "nextButton": "Next Step",
+    "installLink": "Install MetaMask",
+    "installing": "Please refresh this page after installing MetaMask.",
+    "errors": {
+      "connectionFailed": "Failed to connect wallet",
+      "noMetaMask": "MetaMask is not installed. Please install it and try again.",
+      "accountsError": "Failed to get accounts",
+      "switchNetworkError": "Failed to switch network"
+    }
+  },
+  "step5": {
+    "title": "Register for Allowlist",
+    "description": "All tasks completed! Please review the information below and register for the allowlist.",
+    "labels": {
+      "xAccount": "X Account",
+      "walletAddress": "Wallet Address",
+      "tasksCompleted": "Tasks Completed"
+    },
+    "walletNotConnected": "Not connected",
+    "allTasksCompleted": "✅ All tasks completed",
+    "registering": "Registering...",
+    "button": "Register for Allowlist"
+  },
+  "step6": {
+    "title": "🎉 Allowlist Registration Complete!",
+    "description": "Congratulations! You have successfully registered for the Wave 1 Battalion NFT allowlist.",
+    "shareMessage": "I've registered for the Wave 1 Battalion NFT allowlist! 🎉 #NASUN #NFT",
+    "info": {
+      "title": "Registration Info",
+      "wallet": "Wallet Address",
+      "username": "X Account",
+      "registeredAt": "Registered At",
+      "item1": "You will receive an email notification when minting starts",
+      "item2": "You can mint NFT with your registered wallet address",
+      "item3": "Minting price: Free (gas fees only)"
+    },
+    "mintingGuide": {
+      "title": "OpenSea Minting Guide",
+      "step1": "Go to the OpenSea collection page",
+      "step2": "Log in to OpenSea with your registered wallet (MetaMask)",
+      "step3": "Click the 'Mint' button to mint your NFT",
+      "step4": "Confirm the gas fee and approve the transaction",
+      "note": "The minting start date will be announced separately",
+      "button": "Mint on OpenSea"
+    },
+    "tip": "💡 Tip: Bookmark the OpenSea minting page!",
+    "sharePrompt": "Share this event with your friends!",
+    "summary": {
+      "title": "Registration Information",
+      "xAccount": "X Account",
+      "wallet": "Wallet Address",
+      "registeredAt": "Registered At"
+    },
+    "actions": {
+      "share": "Share on X",
+      "viewOnX": "View My Profile",
+      "goHome": "Go to Home"
+    },
+    "walletDisconnected": {
+      "title": "⚠️ Wallet Disconnected",
+      "description": "Your registration is saved, but your MetaMask wallet is no longer connected.",
+      "instruction": "Please reconnect your wallet to view your registration details and participate in the NFT mint.",
+      "reconnectButton": "Reconnect MetaMask",
+      "resetButton": "Reset Registration",
+      "resetConfirm": "Are you sure you want to reset your registration? This action cannot be undone.",
+      "helpText": "If you reconnect the same wallet, your registration will be automatically restored from the backend."
+    },
+    "walletDisconnectedWarning": "Your wallet is disconnected. Please reconnect to ensure you can participate in the mint.",
+    "goToMyAccount": "Go to My Account to Reconnect",
+    "info": {
+      "title": "Registration Info",
+      "allowlistBatch": "Allowlist Batch",
+      "wallet": "Wallet Address",
+      "username": "X Account",
+      "registeredAt": "Registered At",
+      "item1": "You will receive an email notification when minting starts",
+      "item2": "You can mint NFT with your registered wallet address",
+      "item3": "Minting price: Free (gas fees only)",
+      "dataPreserved": "Your Registration is Saved",
+      "registrationSaved": "Your allowlist registration is saved in our backend",
+      "xAccountSaved": "Your X account verification is preserved",
+      "walletNeeded": "You need to reconnect your wallet to participate in the mint"
+    }
+  },
+  "stepper": {
+    "step1": "Introduction",
+    "step2": "Connect X",
+    "step3": "Verify Tasks",
+    "step4": "Connect Wallet",
+    "step5": "Register",
+    "step6": "Complete",
+    "statusCurrent": "In Progress",
+    "statusCompleted": "Completed"
+  },
+  "reset": {
+    "confirm": "Are you sure you want to start over? All progress will be lost.",
+    "button": "🔄 Reset Progress (Dev Only)"
+  }
+}

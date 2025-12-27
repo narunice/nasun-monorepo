@@ -1,0 +1,170 @@
+{
+  "title": "AWARDS",
+  "heading1": "Vetted by South Korea Govt",
+  "heading2": "Validated by Industry Leaders and Experts",
+  "paragraph1": "Before launching the project we vetted Nasun's concept/business model by winning over 10 grants and finishing as a finalist in XX competing with the most promising content startups in South Korea. Experts and leaders in the content/entertainment/gaming/business world have recognized the potential of Nasun.",
+  "paragraph2": "We are proud of winning these # awards and grants. It took a lot of resources for our small team to win these contests competing against many established professionals in both the content and tech industries. What made these accomplishments even more meaningful was that we were always the only Web3 project. We had to convince leaders and experts in their respective industries that we were not interlopers or a crypto scam but offering a real, worthwhile vision for the future of content and gaming.",
+  "paragraph3": "Even though it took energy and time we couldn't spare to apply for these grants, filling out extensive forms, getting vetted by government officials with office visits and interviews, prepping for pitches, going to pitch, and then waiting for results, we believe it was worth it to validate not only the quality of our narrative content and game but also the business model of Nasun.",
+  "paragraph4": "Now for 2025, we made a conscious decision to focus on Nasun's public launch and not apply for any grants or awards this year. But we will resume full steam ahead for even bigger ones after our launch.",
+  "list": "RECOGNITION",
+  "grants": {
+    "list": [
+      {
+        "date": "September 2025",
+        "event_name": "2025 Web3 Game Audition",
+        "prize": "Selected and granted 7 million KRW",
+        "amount": "",
+        "project": "GEN SOL: Spectra on Nasun, the L1 network for community-driven, financially sustainable IP creation and management",
+        "host": [
+          "Partnered with Solana, Metis, PG Labs, GSR",
+          "Organized by Busan IT Industry Promotion Agency and Busan Contents Enterprise Promotion Center"
+        ],
+        "logos": {
+          "dark": [
+            "Metis-Blue-White-Horizontal-A.png",
+            "GSRlogo.svg",
+            "PGLabs-dark.png",
+            "solanaLogo.png",
+            "BusanITAgency.png"
+          ]
+        }
+      },
+      {
+        "date": "November 2024",
+        "event_name": "Busan Content Company Accelerating Program Demo Day",
+        "prize": "Grand Prize (1st Place), awarded 5 million KRW",
+        "amount": "",
+        "project": "GEN SOL, a web3 community-driven, financially sustainable IP creation and management",
+        "host": [
+          "Hosted by Korea Creative Content Agency",
+          "Organized by Busan IT Industry Promotion Agency and Busan Contents Enterprise Promotion Center",
+          "Operated by Zephyrus Lab"
+        ],
+        "logos": {
+          "dark": ["kocca_dark.jpg", "BIPA-negative.jpg", "BusanContentCenter.png", "zephyrus.png"]
+        }
+      },
+      {
+        "date": "September 2024",
+        "event_name": "Game Content Multiboosting Support Program",
+        "prize": "Selected and granted 13 million KRW",
+        "amount": "",
+        "project": "Spectra, a multiplayer 3rd person shooter with web3 features, powered by GEN SOL IP",
+        "host": [
+          "Hosted by Busan IT Industry Promotion Agency",
+          "Operated by BeAble Lab",
+          "Partnered with Visual Dart"
+        ],
+        "logos": {
+          "dark": ["BIPA-negative.jpg", "BeAbleLab-logo.png", "VisualDart.png"]
+        }
+      },
+      {
+        "date": "August 2024",
+        "event_name": "Busan Content Company Accelerating Program",
+        "prize": "Selected and received support including business diagnosis, customized consulting, IR pitch training, demo day networking, and post-progran assistance.",
+        "amount": "",
+        "project": "GEN SOL, a web3 community-driven, financially sustainable IP creation and management",
+        "host": [
+          "Hosted by Korea Creative Content Agency",
+          "Organized by Busan IT Industry Promotion Agency, and Busan Contents Enterprise Promotion Center",
+          "Operated by Zephyrus Lab"
+        ],
+        "logos": {
+          "dark": ["kocca_dark.jpg", "BIPA-negative.jpg", "BusanContentCenter.png", "zephyrus.png"]
+        }
+      },
+      {
+        "date": "July 2024",
+        "event_name": "Content Company Global Marketing Program",
+        "prize": "Selected and granted 10 million KRW.",
+        "amount": "",
+        "project": "GEN SOL, a web3 community-driven, financially sustainable IP creation and management",
+        "host": [
+          "Hosted by Ministry of Culture, Sports and Tourism and Korea Creative Content Agency",
+          "Organized by Busan IT Industry Promotion Agency"
+        ],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "BIPA-negative.jpg"]
+        }
+      },
+      {
+        "date": "July 2024",
+        "event_name": "B-CON Startup Commercialization Support Program",
+        "prize": "Selected and granted 12.5 million KRW",
+        "amount": "",
+        "project": "The Spectra Heist, an animated series powered by a Web3 creative content IP, GEN SOL.",
+        "host": [
+          "Hosted by Ministry of Culture, Sports and Tourism, Korea Creative Content Agency, and Busan Metropolitan City",
+          "Organized by Busan IT Industry Promotion Agency"
+        ],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+        }
+      },
+      {
+        "date": "May 2024",
+        "event_name": "Business IP Empowerment Program",
+        "prize": "Selected and received support for one trademark application.",
+        "amount": "",
+        "project": "Digital content product, GEN SOL",
+        "host": [
+          "Hosted by Korea Invention Promotion Association",
+          "Organized by Regional Intellectual Property Center",
+          "Partnered with Bridge Patent & Law Firm"
+        ],
+        "logos": {
+          "dark": ["kipa_logo.png", "ripc_dark.jpg", "Bridge-logo.png"]
+        }
+      },
+      {
+        "date": "October 2023",
+        "event_name": "The 4th ICT Business Model Idea Contest",
+        "prize": "Excellence Award (Co-2nd Place), awarded 2 million KRW",
+        "amount": "",
+        "project": "Spectra (working title), a web3 community-driven, financially sustainable IP creation and management",
+        "host": [
+          "Hosted by National IT Industry Promotion Agency",
+          "Organized by Busan IT Industry Promotion Agency, Ulsan IT Industry Promotion Agency, Kyungnam Techno Park, and Korea Association for ICT Promotion"
+        ],
+        "logos": {
+          "dark": [
+            "nipaLogo.png",
+            "BIPA-negative.jpg",
+            "uipa_logo.png",
+            "kntechno-ci-dark.png",
+            "kait-logo-dark.png"
+          ]
+        }
+      },
+      {
+        "date": "September 2023",
+        "event_name": "B-CON Startup Commercialization Support Program",
+        "prize": "Selected and granted 9 million KRW",
+        "amount": "",
+        "project": "The Spectra Heist, an animated series powered by a Web3 creative content IP, GEN SOL.",
+        "host": [
+          "Hosted by Ministry of Culture, Sports and Tourism, Korea Creative Content Agency, and Busan Metropolitan City",
+          "Organized by Busan IT Industry Promotion Agency"
+        ],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+        }
+      },
+      {
+        "date": "August 2023",
+        "event_name": "K-Content Innovation Growth Guarantee Financial Support Program",
+        "prize": "Selected and received a financial support",
+        "amount": "",
+        "project": "GEN SOL, a web3 community-driven, financially sustainable IP creation and management",
+        "host": [
+          "Hosted by Ministry of Culture, Sports and Tourism",
+          "Organized by Korea Creative Content Agency"
+        ],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+        }
+      }
+    ]
+  }
+}

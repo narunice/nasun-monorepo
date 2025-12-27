@@ -1,0 +1,9 @@
+/* override.css */
+
+/* Connect Wallet 버튼을 대상으로 패딩 변경 */
+/* data-dapp-kit 어트리뷰트를 사용하거나, dApp Kit에서 사용 중인 특정 클래스 이름을 활용 */
+button[data-dapp-kit] {
+  padding-top: 3px !important; /* 기존보다 상단 패딩 줄이기 */
+  padding-bottom: 3px !important; /* 기존보다 하단 패딩 줄이기 */
+  color: #ffffff;
+}
