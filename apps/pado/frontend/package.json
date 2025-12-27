@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@nasun/wallet": "workspace:*",
+    "@nasun/wallet-ui": "workspace:*",
     "@mysten/sui": "^1.45.2",
     "@scure/bip39": "^2.0.1",
     "@tanstack/react-query": "^5.90.12",
