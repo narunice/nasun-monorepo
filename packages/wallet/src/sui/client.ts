@@ -9,6 +9,9 @@ import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
 // NASUN token decimals (same as SUI: 9)
 const NASUN_DECIMALS = 9;
 
+// Session storage key for password persistence
+const SESSION_KEY = 'nasun_wallet_session';
+
 // Default configuration
 let walletConfig: WalletConfig = {
   rpcUrl: 'https://rpc.devnet.nasun.io',
@@ -219,5 +222,58 @@ export async function getTokenBalance(address: string, tokenType: string): Promi
   } catch (error) {
     console.error(`Failed to get token balance for ${tokenType}:`, error);
     return null;
+  }
+}
+
+// ============================================
+// Session Persistence Functions
+// ============================================
+
+/**
+ * Check if session persistence is enabled
+ */
+export function isSessionPersistEnabled(): boolean {
+  return walletConfig.sessionPersist === true;
+}
+
+/**
+ * Save password to session storage (for auto-unlock on page refresh)
+ * Only works when sessionPersist is enabled
+ */
+export function saveSessionPassword(password: string): void {
+  if (!isSessionPersistEnabled()) return;
+  try {
+    // Base64 encode for minimal obfuscation (not security - sessionStorage clears on tab close)
+    const encoded = btoa(password);
+    sessionStorage.setItem(SESSION_KEY, encoded);
+  } catch (error) {
+    console.warn('Failed to save session:', error);
+  }
+}
+
+/**
+ * Get password from session storage
+ * Returns null if not available or session persistence is disabled
+ */
+export function getSessionPassword(): string | null {
+  if (!isSessionPersistEnabled()) return null;
+  try {
+    const encoded = sessionStorage.getItem(SESSION_KEY);
+    if (!encoded) return null;
+    return atob(encoded);
+  } catch (error) {
+    console.warn('Failed to get session:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear session password
+ */
+export function clearSessionPassword(): void {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch (error) {
+    console.warn('Failed to clear session:', error);
   }
 }

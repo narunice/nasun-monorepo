@@ -17,6 +17,7 @@ import {
   getStoredAddress,
 } from '../core/keystore';
 import { getPublicKeyFromKeypair, getAddressFromKeypair, getSecretKeyFromKeypair } from '../core/crypto';
+import { saveSessionPassword, getSessionPassword, clearSessionPassword } from '../sui/client';
 
 // Internal state (keypair is not stored in the store)
 let currentKeypair: Ed25519Keypair | null = null;
@@ -36,10 +37,27 @@ export const useWallet = create<WalletStore>((set) => ({
   error: null,
 
   // Initialize (called at app start)
-  _initialize: () => {
+  _initialize: async () => {
     if (hasKeystore()) {
       const address = getStoredAddress();
       if (address) {
+        // Try auto-unlock from session
+        const sessionPassword = getSessionPassword();
+        if (sessionPassword) {
+          try {
+            const keypair = await unlockKeystore(sessionPassword);
+            currentKeypair = keypair;
+            const account: WalletAccount = {
+              address: getAddressFromKeypair(keypair),
+              publicKey: getPublicKeyFromKeypair(keypair),
+            };
+            set({ status: 'unlocked', account });
+            return;
+          } catch {
+            // Session password invalid, clear it
+            clearSessionPassword();
+          }
+        }
         set({ status: 'locked', account: null });
       }
     } else {
@@ -56,6 +74,9 @@ export const useWallet = create<WalletStore>((set) => ({
       // Auto-unlock after creation
       const keypair = await unlockKeystore(password);
       currentKeypair = keypair;
+
+      // Save to session for auto-unlock on page refresh
+      saveSessionPassword(password);
 
       const account: WalletAccount = {
         address,
@@ -83,6 +104,9 @@ export const useWallet = create<WalletStore>((set) => ({
       const keypair = await unlockKeystore(password);
       currentKeypair = keypair;
 
+      // Save to session for auto-unlock on page refresh
+      saveSessionPassword(password);
+
       const account: WalletAccount = {
         address: getAddressFromKeypair(keypair),
         publicKey: getPublicKeyFromKeypair(keypair),
@@ -103,6 +127,7 @@ export const useWallet = create<WalletStore>((set) => ({
   // Lock wallet
   lockWallet: () => {
     currentKeypair = null;
+    clearSessionPassword();
     const address = getStoredAddress();
     set({
       status: address ? 'locked' : 'disconnected',
@@ -114,6 +139,7 @@ export const useWallet = create<WalletStore>((set) => ({
   // Delete wallet
   deleteWallet: () => {
     currentKeypair = null;
+    clearSessionPassword();
     deleteKeystore();
     set({
       status: 'disconnected',
@@ -130,6 +156,9 @@ export const useWallet = create<WalletStore>((set) => ({
 
       const keypair = await unlockKeystore(password);
       currentKeypair = keypair;
+
+      // Save to session for auto-unlock on page refresh
+      saveSessionPassword(password);
 
       const account: WalletAccount = {
         address,
@@ -156,6 +185,9 @@ export const useWallet = create<WalletStore>((set) => ({
       const keypair = await unlockKeystore(password);
       currentKeypair = keypair;
 
+      // Save to session for auto-unlock on page refresh
+      saveSessionPassword(password);
+
       const account: WalletAccount = {
         address,
         publicKey: getPublicKeyFromKeypair(keypair),
@@ -180,6 +212,9 @@ export const useWallet = create<WalletStore>((set) => ({
       const keypair = await unlockKeystore(password);
       currentKeypair = keypair;
 
+      // Save to session for auto-unlock on page refresh
+      saveSessionPassword(password);
+
       const account: WalletAccount = {
         address,
         publicKey: getPublicKeyFromKeypair(keypair),
@@ -203,6 +238,9 @@ export const useWallet = create<WalletStore>((set) => ({
 
       const keypair = await unlockKeystore(password);
       currentKeypair = keypair;
+
+      // Save to session for auto-unlock on page refresh
+      saveSessionPassword(password);
 
       const account: WalletAccount = {
         address,

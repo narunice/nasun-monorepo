@@ -20,7 +20,12 @@ type ViewMode =
   | 'export'         // Export private key
   | 'send';          // Token transfer
 
-export function WalletConnect() {
+interface WalletConnectProps {
+  /** Dropdown position relative to button */
+  dropdownPosition?: 'top' | 'bottom';
+}
+
+export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProps) {
   const {
     status,
     account,
@@ -426,7 +431,11 @@ export function WalletConnect() {
 
       {/* Dropdown */}
       {showDropdown && (
-        <div className="absolute right-0 mt-2 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg overflow-hidden z-50">
+        <div
+          className={`absolute right-0 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[100] ${
+            dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+          }`}
+        >
           {renderDropdownContent()}
         </div>
       )}

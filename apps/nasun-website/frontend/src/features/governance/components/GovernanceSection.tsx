@@ -1,4 +1,4 @@
-import { useSuiClientQuery, useCurrentAccount } from "@mysten/dapp-kit";
+import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
 import { ProposalItem } from "./ProposalItem";
@@ -9,6 +9,8 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
+import { useWallet } from "@nasun/wallet";
+import { WalletConnect } from "@nasun/wallet-ui";
 
 /**
  * GovernanceSection
@@ -18,12 +20,32 @@ import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
  */
 const GovernanceSection = () => {
   const { t } = useTranslation(["proposals", "common"]);
+  const { status, account } = useWallet();
+  const isConnected = status === "unlocked" && account;
 
   return (
     <SectionLayout className="!max-w-6xl gap-6 md:gap-8">
       <PageTitle as="h2" align="center">
         {t("proposals:title")}
       </PageTitle>
+
+      {/* Wallet Connection Status */}
+      {isConnected ? (
+        <div className="flex items-center justify-end gap-4 mb-4">
+          <WalletConnect />
+        </div>
+      ) : status === "locked" ? (
+        <div className="flex items-center justify-end gap-4 mb-4">
+          <span className="text-nasun-white/70">{t("proposals:wallet.connect_required")}</span>
+          <span className="text-yellow-400 text-sm">{t("proposals:wallet.locked")}</span>
+          <WalletConnect />
+        </div>
+      ) : (
+        <div className="flex items-center justify-end gap-4 mb-4">
+          <span className="text-nasun-white/70">{t("proposals:wallet.connect_required")}</span>
+          <WalletConnect />
+        </div>
+      )}
 
       <div>
         <ErrorBoundary fallback={<div>{t("common:error.generic")}</div>}>
@@ -42,7 +64,7 @@ export default GovernanceSection;
 const ProposalList = () => {
   const { t } = useTranslation("common");
   const dashboardId = useNetworkVariable("dashboardId");
-  const account = useCurrentAccount();
+  const { account } = useWallet();
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
 
   const {
