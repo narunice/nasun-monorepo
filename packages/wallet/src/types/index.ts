@@ -96,3 +96,31 @@ export interface WalletConfig {
   faucetUrl?: string;
   networkName?: string;
 }
+
+// ============================================
+// Multi-Token Support Types
+// ============================================
+
+// Token configuration
+export interface TokenConfig {
+  symbol: string;
+  name: string;
+  decimals: number;
+  type: string; // Coin type (e.g., '0x2::sui::SUI')
+  icon?: string;
+}
+
+// Individual token balance
+export interface TokenBalance {
+  symbol: string;
+  balance: bigint;
+  formatted: string;
+  decimals: number;
+  type: string;
+}
+
+// Multi-token balance info
+export interface MultiTokenBalanceInfo {
+  native: TokenBalance; // NASUN (native token)
+  tokens: Record<string, TokenBalance>; // Additional tokens (symbol -> balance)
+}

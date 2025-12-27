@@ -13,6 +13,8 @@
     "convert:dark": "tsx scripts/convert-dark-classes.ts"
   },
   "dependencies": {
+    "@nasun/wallet": "workspace:*",
+    "@nasun/wallet-ui": "workspace:*",
     "@aws-amplify/core": "^6.13.3",
     "@aws-sdk/client-cognito-identity": "^3.879.0",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",

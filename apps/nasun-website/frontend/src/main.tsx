@@ -13,8 +13,17 @@ import { NasunProvider } from "./providers/NasunProvider";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
 import AuthProvider from "./providers/auth/AuthContext";
 import { validateEnv } from "./utils/envValidation";
+import { configureWallet } from "@nasun/wallet";
+import { WalletProvider } from "@nasun/wallet-ui";
 import "./index.css";
 import App from "./App";
+
+// Configure Nasun Wallet
+configureWallet({
+  rpcUrl: import.meta.env.VITE_NASUN_RPC_URL || "https://rpc.devnet.nasun.io",
+  faucetUrl: import.meta.env.VITE_NASUN_FAUCET_URL || "https://faucet.devnet.nasun.io",
+  networkName: "Nasun Devnet",
+});
 
 // 1. QueryClient 인스턴스 생성 (가장 먼저 실행)
 const queryClient = new QueryClient({
@@ -90,9 +99,11 @@ createRoot(container).render(
         <ThemeProvider>
           <AuthProvider>
             <QueryClientProvider client={queryClient}>
-              <NasunProvider>
-                <App />
-              </NasunProvider>
+              <WalletProvider>
+                <NasunProvider>
+                  <App />
+                </NasunProvider>
+              </WalletProvider>
             </QueryClientProvider>
             <ToastContainer
               position="top-right"
