@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { networkConfig } from '../lib/sui-client';
-import { WalletConnect, BalanceDisplay, FaucetButton } from '@nasun/wallet-ui';
-import { useWalletStatus } from '@nasun/wallet';
+import { WalletConnect, BalanceDisplay, FaucetButton, useWalletStatus } from '../wallet';
 
 interface HeaderProps {
   showNetworkName?: boolean;

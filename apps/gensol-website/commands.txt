@@ -1,0 +1,30 @@
+//프로포절 등록 명령어
+sui client ptb \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::proposal::create \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa \
+'"Proposal 0001"' '"This is a description for the proposal 1. If you own some sui, you can vote. Let us make this idea bigger. Details of the proposal."' 1748735999000 \
+--assign proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::dashboard::register_proposal \
+@0xdf46d8c2cd9430bbf66e46306d6289f4da87d4343096434a81e1e6ab19764ee6 \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::proposal::create \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa \
+'"Proposal 0001"' '"This is a description for the proposal 1. If you own some sui, you can vote. Let us make this idea bigger. Details of the proposal."' 1748735999000 \
+--assign proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::dashboard::register_proposal \
+@0xdf46d8c2cd9430bbf66e46306d6289f4da87d4343096434a81e1e6ab19764ee6 \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::proposal::create \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa \
+'"GEN SOL Proposal 352355"' '"This is a description for the proposal 5."' 1748735999000 \
+--assign proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::dashboard::register_proposal \
+@0xdf46d8c2cd9430bbf66e46306d6289f4da87d4343096434a81e1e6ab19764ee6 \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::proposal::create \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa \
+'"Another Proposal is Listed 346547648"' '"This is a description for the proposal 8. If you own some sui, you can vote. placeholder. Longer description. Let us make this idea bigger."' 1748735999000 \
+--assign proposal_id \
+--move-call 0xe14beed97c10360f0026aa12e2cc72cef0de2fc4ce6a065e7e7bbba4c0f467d3::dashboard::register_proposal \
+@0xdf46d8c2cd9430bbf66e46306d6289f4da87d4343096434a81e1e6ab19764ee6 \
+@0x9e07731ba3c0eff38f5bf216deb75591a45301187c29bde69ae3c7707d2722fa proposal_id \
