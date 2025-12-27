@@ -156,7 +156,7 @@ export function ImportWallet({
               onChange={(e) => setMnemonic(e.target.value)}
               placeholder="Enter your recovery phrase, separated by spaces..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none font-mono text-sm resize-none"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm resize-none"
               disabled={isLoading}
             />
           </div>
@@ -170,7 +170,7 @@ export function ImportWallet({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isLoading}
             />
           </div>
@@ -184,7 +184,7 @@ export function ImportWallet({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm password"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isLoading}
             />
           </div>
@@ -204,7 +204,7 @@ export function ImportWallet({
             <button
               onClick={handleImportMnemonic}
               disabled={isLoading || !mnemonic.trim() || !password || !confirmPassword}
-              className="flex-1 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:bg-zinc-600 disabled:text-zinc-400 text-black font-medium rounded transition-colors"
+              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
             >
               {isLoading ? 'Importing...' : 'Import'}
             </button>
@@ -246,7 +246,7 @@ export function ImportWallet({
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
             placeholder="suiprivkey1..."
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none font-mono text-sm"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"
             disabled={isLoading}
           />
         </div>
@@ -260,7 +260,7 @@ export function ImportWallet({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
           />
         </div>
@@ -274,7 +274,7 @@ export function ImportWallet({
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm password"
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
           />
         </div>
@@ -294,7 +294,7 @@ export function ImportWallet({
           <button
             onClick={handleImportPrivateKey}
             disabled={isLoading || !privateKey.trim() || !password || !confirmPassword}
-            className="flex-1 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:bg-zinc-600 disabled:text-zinc-400 text-black font-medium rounded transition-colors"
+            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
           >
             {isLoading ? 'Importing...' : 'Import'}
           </button>

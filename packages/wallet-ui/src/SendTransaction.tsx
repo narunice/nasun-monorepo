@@ -67,7 +67,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
                   clearResult();
                   onClose();
                 }}
-                className="flex-1 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-medium rounded text-sm transition-colors"
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
               >
                 Close
               </button>
@@ -93,7 +93,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
           <div className="bg-zinc-700 rounded p-3">
             <p className="text-xs text-zinc-400">Amount</p>
             <p className="text-lg text-white font-medium mt-1">
-              {amount} <span className="text-yellow-500 text-sm">NASUN</span>
+              {amount} <span className="text-blue-400 text-sm">NASUN</span>
             </p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
           <p className="text-xs text-zinc-400">Available Balance</p>
           <p className="text-lg text-white font-medium mt-1">
             {balance?.formattedBalance ?? '0'}{' '}
-            <span className="text-yellow-500 text-sm">NASUN</span>
+            <span className="text-blue-400 text-sm">NASUN</span>
           </p>
         </div>
 
@@ -178,7 +178,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
             className={`w-full px-3 py-2 bg-zinc-700 border rounded text-white text-sm font-mono focus:outline-none transition-colors ${
               !isValidRecipient
                 ? 'border-red-500 focus:border-red-500'
-                : 'border-zinc-600 focus:border-yellow-500'
+                : 'border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
           {!isValidRecipient && (
@@ -199,7 +199,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
             className={`w-full px-3 py-2 bg-zinc-700 border rounded text-white text-sm focus:outline-none transition-colors ${
               !isValidAmount
                 ? 'border-red-500 focus:border-red-500'
-                : 'border-zinc-600 focus:border-yellow-500'
+                : 'border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
           {!isValidAmount && (
