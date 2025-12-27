@@ -114,7 +114,7 @@ export function TokenSelector({
                 className={`
                   flex items-center justify-between w-full px-3 py-2
                   text-sm text-left
-                  ${isSelected ? 'bg-zinc-700 text-yellow-500' : 'text-white hover:bg-zinc-700/50'}
+                  ${isSelected ? 'bg-zinc-700 text-blue-400' : 'text-white hover:bg-zinc-700/50'}
                   transition-colors
                 `}
               >

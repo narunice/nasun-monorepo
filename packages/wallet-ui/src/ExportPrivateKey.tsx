@@ -173,7 +173,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Your wallet password"
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:border-yellow-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
             onKeyDown={(e) => e.key === 'Enter' && handleExport()}
           />
@@ -194,7 +194,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
           <button
             onClick={handleExport}
             disabled={isLoading || !password}
-            className="flex-1 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:bg-zinc-600 disabled:text-zinc-400 text-black font-medium rounded transition-colors"
+            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
           >
             {isLoading ? 'Verifying...' : 'Export'}
           </button>

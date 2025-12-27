@@ -39,7 +39,7 @@ export function MultiBalanceDisplay({
   if (isLoading && !balances) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
-        <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         {!compact && <span className="text-sm text-zinc-400">Loading balances...</span>}
       </div>
     );
@@ -96,7 +96,7 @@ export function MultiBalanceDisplay({
         {tokensToShow.map((token) => (
           <div key={token.symbol} className="flex items-center gap-1">
             <span className="text-sm font-medium text-white">{token.formatted}</span>
-            <span className="text-xs text-yellow-500">{token.symbol}</span>
+            <span className="text-xs text-blue-400">{token.symbol}</span>
           </div>
         ))}
       </div>
@@ -110,7 +110,7 @@ export function MultiBalanceDisplay({
         <div key={token.symbol} className="flex flex-col gap-1">
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-bold text-white">{token.formatted}</span>
-            <span className="text-sm text-yellow-500 font-medium">{token.symbol}</span>
+            <span className="text-sm text-blue-400 font-medium">{token.symbol}</span>
           </div>
         </div>
       ))}

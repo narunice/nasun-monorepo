@@ -28,7 +28,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
 
   return (
     <div className="p-4 bg-zinc-800 rounded-lg">
-      <h3 className="text-lg font-bold text-yellow-500 mb-4 flex items-center gap-2">
+      <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
@@ -100,7 +100,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
           type="checkbox"
           checked={confirmed}
           onChange={(e) => setConfirmed(e.target.checked)}
-          className="w-4 h-4 mt-0.5 rounded border-zinc-600 bg-zinc-700 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-zinc-800"
+          className="w-4 h-4 mt-0.5 rounded border-zinc-600 bg-zinc-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-zinc-800"
         />
         <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">
           I have saved my recovery phrase securely and understand that losing it means losing access to my wallet forever
@@ -120,7 +120,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         <button
           onClick={onConfirm}
           disabled={!confirmed}
-          className="flex-1 py-2 bg-yellow-500 disabled:bg-zinc-600 disabled:text-zinc-400 text-black font-medium rounded transition-colors hover:bg-yellow-400 disabled:cursor-not-allowed"
+          className="flex-1 py-2 bg-blue-600 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors hover:bg-blue-700 disabled:cursor-not-allowed"
         >
           I've Saved It
         </button>

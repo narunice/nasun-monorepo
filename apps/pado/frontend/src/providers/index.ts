@@ -1,5 +1,8 @@
 /**
  * Providers
+ *
+ * Note: WalletModalProvider was removed in favor of @nasun/wallet-ui's WalletProvider
  */
 
-export { WalletModalProvider, useWalletModal } from './WalletModalProvider';
+// Placeholder for future providers
+export {};

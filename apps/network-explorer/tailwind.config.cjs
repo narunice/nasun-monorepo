@@ -6,6 +6,7 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "../../packages/wallet-ui/src/**/*.{js,ts,jsx,tsx}",
   ],
   plugins: [],
 };
