@@ -1,15 +1,15 @@
 import { FC, useRef } from "react";
-import { Proposal } from "../../../../types/voting";
+import { Proposal } from "../types/voting";
 import {
   ConnectButton,
   useCurrentWallet,
   useSignAndExecuteTransaction,
   useSuiClient,
 } from "@mysten/dapp-kit";
-import { useNetworkVariable } from "../../../../config/suiNetworkConfig";
+import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "react-toastify";
-import { Button } from "../../../ui";
+import { Button } from "@/components/ui";
 
 interface VoteModalProps {
   proposal: Proposal;
