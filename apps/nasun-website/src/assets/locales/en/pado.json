@@ -1,0 +1,184 @@
+{
+  "hero": {
+    "tagline": "The Next Wave"
+  },
+  "main": {
+    "title": "Pado: Unified Onchain Finance",
+    "subtitle": "Built on the Nasun Network",
+    "tagline": "Unified, non-custodial spot, derivatives, lending, staking, prediction markets, and payments through a single smart account on the Nasun Network.",
+    "overview": {
+      "title": "1. Overview",
+      "content": "Pado is a non-custodial, unified trading and financial application built on Nasun, a high-performance blockchain forked from Sui. It provides seamless access to spot trading, derivatives, prediction markets, lending, staking, tokenized assets, and on-chain transfers through a single smart account.",
+      "p2": "Today's onchain financial landscape is fragmented — each DeFi vertical (DEXs, perpetuals, lending protocols, staking) operates in isolation, forcing users to bridge liquidity, manage multiple wallets, and accept inconsistent custody and risk assumptions. Pado addresses this fragmentation by consolidating core market functions into one coherent, verifiable architecture that behaves with centralized-exchange efficiency but remains transparently on-chain.",
+      "p3": "Built upon Nasun's object-based state model, parallel execution engine, and programmable transactions, Pado enables capital-efficient financial activity across multiple market types under a unified risk and margin framework."
+    },
+    "accountModel": {
+      "title": "2. Account Model and User Access",
+      "subtitle": "Nasun Account Abstraction",
+      "content": "Pado leverages Nasun's native account abstraction framework, combining zkLogin and passkey-based authentication for seedless, secure user onboarding.",
+      "features": [
+        "Users operate through a single Nasun smart account.",
+        "Authentication is enforced via zero-knowledge proofs linked to device credentials or identity providers.",
+        "Private keys are never exposed, and all actions require explicit cryptographic authorization.",
+        "Every interaction — trading, lending, staking, and payments — routes through this account."
+      ],
+      "conclusion": "The result is a one-account architecture that provides both exchange-grade convenience and non-custodial control."
+    },
+    "crossChain": {
+      "title": "3. Cross-Chain Asset Access",
+      "subtitle": "Vault-Based External Asset Integration",
+      "content": "Pado integrates external assets (e.g., BTC, ETH) via programmable vaults that lock underlying assets and issue 1:1 Nasun-native representations.",
+      "features": [
+        "Users deposit to verified chain-specific vaults.",
+        "Deposits are validated through protocol-defined verification mechanisms.",
+        "Vaults mint Nasun-native representations usable across all Pado products.",
+        "Assets remain redeemable under auditable, transparent rules."
+      ],
+      "conclusion": "This model preserves trust-minimized cross-chain linkage while enabling high-performance execution in Nasun's native environment."
+    },
+    "stablecoins": {
+      "title": "4. Stablecoins",
+      "subtitle": "Role of Stable-Valued Assets in Pado",
+      "content": "Stablecoins form the operational backbone of Pado's multi-market system, serving as a unit of account and settlement medium for trading, lending, margin, and payments. They simplify valuation, collateral management, and risk accounting across diverse market activities.",
+      "p2": "Stablecoins within Pado may originate natively on Nasun or be vault-integrated from external chains. All stablecoin interactions — settlement, collateralization, and payment — follow unified execution and risk logic, ensuring transparent and deterministic outcomes.",
+      "p3": "Risk parameters and eligible asset types are defined at the protocol level and subject to decentralized governance."
+    },
+    "trading": {
+      "title": "5. Trading and Market Structure",
+      "subtitle": "Unified Onchain Markets",
+      "content": "All markets — spot, perpetuals, fixed-expiry futures, derivatives, and prediction — execute natively on Nasun once assets are represented on-chain. Nasun's parallel execution allows:",
+      "features": [
+        "Sub-second confirmations and high throughput under load.",
+        "Atomic interactions between markets (e.g., hedging a futures position with a spot transfer).",
+        "Deterministic liquidation and real-time settlement."
+      ],
+      "example": "Example: A trader holding BTC collateral in a unified account may simultaneously open a perpetual long and deposit idle margin into a lending pool — all managed through a single capital base."
+    },
+    "capitalEfficiency": {
+      "title": "6. Capital Efficiency and Risk Management",
+      "subtitle": "Unified Margin and Risk Engine",
+      "content": "Pado's shared risk engine governs all supported products under a portfolio-level margin system:",
+      "features": [
+        "Assets serve as cross-product collateral per defined risk weights.",
+        "Margin is shared dynamically across spot, futures, lending, and prediction markets.",
+        "Profit and loss update in real time with deterministic evaluation."
+      ],
+      "conclusion": "This structure eliminates capital silos and allows every asset to contribute to composable yield, liquidity, and market efficiency."
+    },
+    "lending": {
+      "title": "7. Lending, Borrowing, and Staking",
+      "content": "Pado integrates lending, borrowing, and staking as modular components within the same margin framework:",
+      "features": [
+        "Users supply assets to earn yield directly in-account.",
+        "Borrowed funds integrate seamlessly with trading activity.",
+        "Interest rates follow protocol-defined curves.",
+        "Staked assets (e.g., NAS token) secure network operations while remaining visible in collateral modeling."
+      ],
+      "conclusion": "Each position interacts programmatically with trading and risk systems, enabling compound financial strategies with minimal friction."
+    },
+    "payments": {
+      "title": "8. Payments and Transfers",
+      "subtitle": "Integrated Payments Layer",
+      "content": "Transfers are natively supported and execute through Nasun's core layer:",
+      "features": [
+        "Near-zero fees and instant confirmation.",
+        "Compatible with both stable and volatile assets.",
+        "Transfers update directly in account state — interoperable with margin, lending, and trading balances."
+      ],
+      "conclusion": "Pado treats payments not as a separate module, but as a first-class financial primitive woven into its unified system."
+    },
+    "objectBased": {
+      "title": "9. Object-Based Financial Architecture",
+      "subtitle": "Programmable Financial Objects",
+      "content": "Nasun's object-oriented state model represents all assets and positions as dynamic, composable objects:",
+      "objects": {
+        "collateral": "Collateral objects transition between idle, margin, or lending states.",
+        "position": "Position objects embed liquidation, oracle, and settlement behavior.",
+        "market": "Market objects facilitate cross-product composability and atomic operations."
+      },
+      "conclusion": "This allows the system to model complex financial interactions natively onchain — without offchain sequencing or opaque intermediaries."
+    },
+    "trustModel": {
+      "title": "10. Trust Model, Governance, and Security",
+      "vaultGovernance": {
+        "title": "Vault Governance",
+        "content": "Pado vaults employ MPC and threshold signature schemes to eliminate unilateral control and enforce multi-party authorization.",
+        "features": [
+          "Withdrawals follow deterministic onchain conditions.",
+          "Vault states, issuance, and collateral are transparently auditable.",
+          "Parameters evolve under governance oversight as decentralization progresses."
+        ]
+      },
+      "governancePath": {
+        "title": "Governance and Decentralization Path",
+        "content": "Decentralization begins with onchain vault management and risk parameter governance, progressing toward DAO-controlled system configuration, oracle selection, and product listing. Each stage expands community ownership and protocol resilience while maintaining safety and transparency."
+      },
+      "accountRecovery": {
+        "title": "Account Recovery",
+        "content": "Nasun's account abstraction allows non-custodial recovery mechanisms, ensuring user safety without seed phrases or intermediaries. Recovery does not alter asset custody or protocol logic."
+      }
+    },
+    "comparative": {
+      "title": "11. Comparative Positioning",
+      "content": "Unlike siloed DeFi protocols or centralized exchange replicas deployed on appchains, Pado operates as a composable financial OS — unifying diverse market primitives within one account, one margin system, and one execution layer. It shares the non-custodial strengths of protocols like dYdX v4 or Injective but extends their design into a broader, object-based architecture encompassing spot, derivatives, lending, and payment rails under a single state model."
+    },
+    "summary": {
+      "title": "12. Summary",
+      "content": "Pado delivers a CEX-grade trading experience with onchain verifiability by merging high-speed parallel execution, unified margin accounting, object-based composability, and trust-minimized cross-chain vaults.",
+      "p2": "It positions Nasun as a foundation for capital-efficient, transparent, and programmable finance — an ecosystem where all market types can interoperate natively, and where users control a single, cryptographically secure account spanning the entire financial stack."
+    }
+  },
+  "compliance": {
+    "title": "Our Approach to Global Compliance & Governance",
+    "intro": "At Nasun and Pado, we believe that decentralized systems reach their full potential only when they are built for durability, transparency, and responsible participation at global scale. As regulatory frameworks mature, we view alignment not as a constraint on decentralization, but as a prerequisite for long-term trust and adoption across both institutional and retail users.",
+    "philosophy": "Our approach is to design systems that are compliance-ready by architecture, while preserving non-custodial control, user sovereignty, and open participation.",
+    "regulatoryLandscape": {
+      "title": "1. Operating in a Maturing Global Regulatory Landscape",
+      "content": "As we move into 2026, digital asset regulation has shifted from ambiguity toward clearer, jurisdiction-specific frameworks. Pado is designed to operate within this evolving environment by embedding transparency, auditability, and risk controls directly into its onchain infrastructure.",
+      "privacy": {
+        "title": "Privacy-Preserving Compliance",
+        "content": "Nasun supports onchain identity primitives and zero-knowledge techniques that enable regulatory requirements—such as identity verification or access controls—to be satisfied without exposing user data or compromising non-custodial custody models."
+      },
+      "riskAligned": {
+        "title": "Risk-Aligned Architecture",
+        "content": "We recognize the emerging global principle of \"same activity, same risk, same standard.\" Products involving leverage, lending, or derivatives are designed with deterministic risk engines, transparent margining, and protocol-enforced safeguards consistent with institutional-grade expectations."
+      },
+      "conclusion": "This approach allows compliance obligations to be met through code and cryptography rather than discretionary intermediaries."
+    },
+    "jurisdictional": {
+      "title": "2. Jurisdictional Strategy and Foundation Alignment",
+      "content": "Nasun is evaluating jurisdictions that provide clear, rules-based environments for decentralized protocols to operate responsibly at scale. Our objective is to establish a foundation in a region that offers legal clarity, regulatory engagement, and long-term policy stability.",
+      "singapore": {
+        "title": "Singapore (MAS) and UAE (VARA)",
+        "content": "We are actively evaluating Singapore and Dubai as potential foundation jurisdictions. Both have established comprehensive digital asset frameworks that emphasize licensing clarity, market integrity, and innovation within defined regulatory boundaries."
+      },
+      "unitedStates": {
+        "title": "United States",
+        "content": "We are closely monitoring the implementation of the enacted GENIUS Act and the progress of the Digital Asset Market Clarity Act currently before the U.S. Senate. As federal rulemakings from the Treasury and FDIC evolve, we intend to support compliant access pathways for U.S.-based participants while maintaining protocol-level neutrality and asset sovereignty."
+      },
+      "conclusion": "Jurisdictional decisions will be made with the goal of enabling global participation while respecting local regulatory requirements."
+    },
+    "protocolLevel": {
+      "title": "3. Protocol-Level Standards and Self-Governance",
+      "content": "In addition to regulatory alignment, Nasun and Pado adopt internal standards designed to exceed baseline compliance expectations and promote long-term system integrity.",
+      "verifiability": {
+        "title": "Onchain Verifiability",
+        "content": "Vault-integrated assets, issuance mechanisms, and collateral states are designed to be auditable onchain, providing continuous transparency without reliance on offchain attestations."
+      },
+      "riskEnforcement": {
+        "title": "Deterministic Risk Enforcement",
+        "content": "Margining, liquidation, and settlement processes are enforced through deterministic, publicly verifiable code, reducing operational discretion and systemic opacity."
+      },
+      "decentralization": {
+        "title": "Progressive Decentralization",
+        "content": "Governance authority is intended to transition over time—from foundation stewardship toward DAO-based control—as the ecosystem matures and risk assumptions stabilize."
+      },
+      "conclusion": "This phased approach balances safety, accountability, and decentralization throughout the protocol's lifecycle."
+    },
+    "objective": {
+      "title": "Our Objective",
+      "content": "Our goal is to build a decentralized financial system that is resilient, transparent, and credible at global scale. By aligning with clear regulatory frameworks while maintaining cryptographic guarantees and non-custodial design, Nasun and Pado aim to demonstrate that decentralized systems can be both open and responsible.",
+      "closing": "We believe this balance is essential to protecting the long-term integrity—and the underlying values—of the Nasun ecosystem."
+    }
+  }
+}

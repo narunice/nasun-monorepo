@@ -1,0 +1,244 @@
+{
+  "title": "COMMUNITY LEADERBOARD",
+  "periods": {
+    "cumulative": "Overall Cumulative",
+    "event1": "Season 1",
+    "event2": "Season 2",
+    "event3": "Season 3"
+  },
+  "snapshot": {
+    "title": "Snapshot Viewer",
+    "description": "Check past rankings or manage data by selecting a specific date.",
+    "datePlaceholder": "Select a date",
+    "deselectDate": "Deselect date"
+  },
+  "viewLatest": "View Latest Rankings",
+  "refresh": "Refresh",
+  "clearCache": "Clear Cache",
+  "metadata": {
+    "totalUsers": "Total Users",
+    "lastUpdated": "Last Updated",
+    "dataDate": "Data Date"
+  },
+  "scoringSystem": {
+    "title": "Point System (v2.0)",
+    "rules": {
+      "replies": "points (encourages active communication)",
+      "likes": "points (basic participation)",
+      "reposts": "points (content amplification)",
+      "quotes": "points (creative engagement)"
+    },
+    "categories": {
+      "replies": "Replies",
+      "likes": "Likes",
+      "reposts": "Reposts",
+      "quotes": "Quotes"
+    },
+    "note": "Each engagement is calculated individually. Bonus system has been removed."
+  },
+  "community": {
+    "legend": {
+      "title": "Community Classification",
+      "subtitle": "Weighting System",
+      "description": "Different weights are applied by community. Korean community receives additional bonuses based on follower count.",
+      "note": "Flag icons represent each user's primary activity language."
+    },
+    "tooltip": {
+      "text": "Flags indicate the user's primary activity language"
+    },
+    "languages": {
+      "KR": "Korea",
+      "EN": "Global",
+      "JP": "Japan",
+      "CN": "China",
+      "UNKNOWN": "Other"
+    }
+  },
+  "table": {
+    "headers": {
+      "rank": "Rank",
+      "change": "Change",
+      "user": "User",
+      "communityMember": "Community Member",
+      "language": "Language",
+      "followers": "Followers",
+      "totalScore": "Points",
+      "finalScore": "Points",
+      "replies": "Replies",
+      "likes": "Likes",
+      "reposts": "Reposts",
+      "quotes": "Quotes",
+      "mentions": "Mentions",
+      "scoreBreakdown": "Point Breakdown"
+    }
+  },
+  "scoreBreakdown": {
+    "total": "Points"
+  },
+  "pagination": {
+    "pageOf": "Page {{current}} of {{total}} ({{totalEntries}} total entries)",
+    "first": "First",
+    "prev": "Prev",
+    "next": "Next",
+    "last": "Last",
+    "go": "Go"
+  },
+  "states": {
+    "loading": "Loading...",
+    "errorLoading": "Error loading leaderboard:",
+    "retry": "Retry",
+    "noDataTitle": "No Data to Display",
+    "noDataDescription": "There is no data to display. Try selecting a different period."
+  },
+  "displayDate": {
+    "format": "Rankings for {{day}} {{month}}, {{year}}",
+    "latest": "Latest Rankings",
+    "latestSuffix": "(Latest)",
+    "snapshotSuffix": "(Snapshot)",
+    "snapshotCreated": "(Snapshot created: {{timestamp}})",
+    "lastUpdated": "(Last updated: {{timestamp}})",
+    "finalRanking": "Final Rankings",
+    "eventEnded": "Event Ended"
+  },
+  "myRank": {
+    "title": "My Rank",
+    "rank": "Rank #{{rank}}",
+    "score": "{{score}} Points",
+    "rankChange": {
+      "up": "↑ {{amount}} from yesterday",
+      "down": "↓ {{amount}} from yesterday",
+      "same": "No change",
+      "new": "NEW"
+    },
+    "scoreChange": "{{change}} pts",
+    "noTwitter": {
+      "title": "Please log in with your X account to participate in the leaderboard.",
+      "linkButton": "Login with X Account"
+    },
+    "notRanked": {
+      "title": "Not ranked yet",
+      "description": "Engage with NASUN's target tweets to enter the leaderboard!",
+      "findTargetTweets": "Find Target Tweets"
+    },
+    "loading": "Loading your rank...",
+    "error": "Failed to load rank",
+    "snapshotMode": {
+      "message": "Viewing historical rankings",
+      "backButton": "Back to Latest Rankings"
+    },
+    "viewRankButton": "View My Rank",
+    "shareButton": "Share",
+    "shareOptions": {
+      "twitter": "Share on X",
+      "copyLink": "Copy Link",
+      "downloadImage": "Download Image"
+    }
+  },
+  "rankHistory": {
+    "chart": {
+      "score": "Points"
+    }
+  },
+  "search": {
+    "placeholder": "Search handle (e.g., @handle)",
+    "searchButton": "Search",
+    "clearButton": "Clear",
+    "noResults": "No results found",
+    "exactMatch": "Exact match",
+    "partialMatches": "Partial matches ({{count}})",
+    "goToRank": "Go to Rank #{{rank}}",
+    "viewProfile": "View Profile",
+    "autocomplete": {
+      "title": "Suggested searches",
+      "loading": "Searching...",
+      "noSuggestions": "No suggestions"
+    },
+    "errors": {
+      "tooShort": "Please enter at least 1 character",
+      "searchFailed": "Search failed: {{error}}"
+    }
+  },
+  "share": {
+    "button": "Share",
+    "shareToTwitter": "Share on X",
+    "copyLink": "Copy Link",
+    "downloadImage": "Download Image",
+    "generatingImage": "Generating image...",
+    "message": {
+      "live": "🏆 Ranked #{{rank}} on NASUN Leaderboard! ({{score}} pts) @{{targetAccount}}\n\n#Web3 #Leaderboard",
+      "snapshot": "🏆 NASUN Leaderboard ({{date}}) - Ranked #{{rank}} @{{targetAccount}}\n\n@{{username}} - {{score}} pts\n\n#Web3 #Leaderboard"
+    },
+    "toast": {
+      "twitterOpened": "X share window opened",
+      "linkCopied": "Link copied to clipboard",
+      "linkCopyFailed": "Failed to copy link",
+      "imageGenerating": "Generating image...",
+      "imageDownloaded": "Image downloaded successfully",
+      "imageGenerateFailed": "Failed to generate image",
+      "imageCaptureFailed": "Unable to capture image",
+      "imageClipboardCopied": "Image copied to clipboard! Paste with Ctrl+V on X.",
+      "clipboardFailed": "Clipboard copy failed. Please use the download image button."
+    }
+  },
+  "topClimbers": {
+    "title": "Top Climbers Spotlight",
+    "description": "Users with the most rank improvement",
+    "rankChange": "Rank Change",
+    "ranks": "ranks",
+    "scoreIncrease": "Point Increase",
+    "percentageIncrease": "Percentage",
+    "currentScore": "Current Points",
+    "errorLoading": "Failed to load Top Climbers",
+    "noClimbers": "No rank improvements found in this period",
+    "tryDifferentPeriod": "Try selecting a different time range",
+    "totalClimbers": "climbers",
+    "averageImprovement": "Average rank improvement"
+  },
+  "info": {
+    "pageTitle": "LEADERBOARD INFO",
+    "intro": {
+      "title": "Join the Nasun community and earn exclusive rewards before launch!",
+      "description": "To participate, simply follow our official X account"
+    },
+    "rewardsBreakdown": "Rewards Breakdown",
+    "howToEarnPoints": "How to Earn Points",
+    "tiers": {
+      "platinum": {
+        "rank": "RANK 1-20",
+        "name": "PLATINUM"
+      },
+      "gold": {
+        "rank": "RANK 21-50",
+        "name": "GOLD"
+      },
+      "silver": {
+        "rank": "RANK 51-200",
+        "name": "SILVER"
+      },
+      "beyond": {
+        "rank": "RANK 201+",
+        "name": "BEYOND"
+      }
+    },
+    "rewards": {
+      "topPercentageShare": "Top Percentage Share of Total Pre-Allocated Launch Marketing Budget (TBA)",
+      "percentageShare": "Percentage Share of the Total Pre-Allocated Launch Marketing Budget (TBA)",
+      "freeMint": "1 Free Mint of the Nasun Founders Membership NFT",
+      "discountedMint": "1 Discounted Mint of the Nasun Founders Membership NFT",
+      "battalionNft": "Wave 1 Battalion NFT",
+      "allowlistAccess": "Allowlist Access for 4 additional Founders Membership NFT mints / GTD",
+      "randomDrawings": "Eligible for Random Drawings",
+      "beyondRewards": "Additional participation rewards and community perks will be announced soon."
+    },
+    "engagementScoring": {
+      "title": "ENGAGEMENT SCORING",
+      "description": "Engage with Nasun's X account to accumulate points and climb the ranks of our leaderboard. All real and organic engagement with Nasun (follow, likes, replies, reposts, bookmarks) will win points but posting quality content like informative or creative posts",
+      "descriptionSuffix": "will be scored the highest."
+    },
+    "rulesGuidelines": {
+      "title": "⚠️ RULES & GUIDELINES",
+      "description": "Following the rules and guidelines of X, any accounts involved in bot activity, spamming or inorganic manipulation of the rules to game the leaderboard will either be blacklisted or reset."
+    },
+    "goToLeaderboard": "Go to Leaderboard"
+  }
+}

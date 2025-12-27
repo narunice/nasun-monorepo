@@ -1,0 +1,152 @@
+{
+  "title": "STRATEGY",
+  "hero": {
+    "title": "STRATEGY"
+  },
+  "metrics": {
+    "title": "What Problem Is Nasun Solving?",
+    "intro": "By 2026, crypto will no longer be niche.",
+    "table": {
+      "headers": ["Metric (End of 2025)", "Data Point"],
+      "rows": [
+        ["Total Global Crypto Holders", "~861 million"],
+        ["Monthly Active On-Chain Users", "~70 million"],
+        ["U.S. Ownership Rate", "~28% of adults (~65M)"],
+        ["Global Adoption Rate", "~10% of the internet population"]
+      ]
+    },
+    "conclusion1": "Hundreds of millions of people touch crypto, but only a small minority experience it as something more than speculation.",
+    "conclusion2": "The problem Nasun addresses is not awareness — it is relevance."
+  },
+  "coreProblem": {
+    "title": "The Core Problem:\nFragmented Coordination at Global Scale",
+    "excelAt": {
+      "title": "Today's crypto systems excel at:",
+      "items": [
+        "Asset transfer",
+        "Financial speculation",
+        "Governance by vote"
+      ]
+    },
+    "struggleWith": {
+      "title": "They struggle with:",
+      "items": [
+        "Coordinating large, diverse groups for shared creative or economic output",
+        "Building long-term alignment beyond token incentives",
+        "Turning decentralized participation into meaningful collective action"
+      ]
+    },
+    "conclusion": "As a result, communities form quickly but dissolve just as fast. Participants often feel disconnected from purpose, direction, or shared ownership of outcomes."
+  },
+  "whyNow": {
+    "title": "Why This Matters Now",
+    "centralizes": {
+      "intro": "As crypto grows, power centralizes elsewhere:",
+      "items": [
+        "Corporations consolidate platforms and attention",
+        "Governments centralize through opaque systems",
+        "AI concentrates knowledge and influence"
+      ]
+    },
+    "mustDeliver": {
+      "intro": "In this environment, decentralization cannot mean just \"having a vote.\" It must deliver:",
+      "items": [
+        "Transparent information flow",
+        "Open participation in creation",
+        "Continuous, constructive consensus-building",
+        "Shared understanding of goals and values"
+      ]
+    },
+    "conclusion": "Without these elements, decentralization risks becoming symbolic rather than functional."
+  },
+  "thesis": {
+    "title": "Nasun's Thesis:\nConsensus Through Shared Creation",
+    "intro": "The strongest communities in history formed not by incentives alone, but by shared stories. Stories align individuals, give meaning to participation, and create cultural gravity that retains contributors.",
+    "enables": {
+      "intro": "Nasun enables communities to collaborate transparently using Web3, AI, and social platforms to build products people care about:",
+      "items": [
+        "Entertainment that communities are proud to support and share",
+        "Financial products that expand real economic autonomy",
+        "Games prioritizing creativity and fun over extraction"
+      ]
+    },
+    "goal": "The goal is not to maximize engagement metrics, but to cultivate authentic participation driven by shared purpose."
+  },
+  "whyNetwork": {
+    "title": "Why a New Network Is Required",
+    "intro": "Existing platforms are not designed for this form of coordination. Nasun is purpose-built for this coordination:",
+    "features": [
+      {
+        "title": "Transparent collaboration at scale",
+        "description": "Object-based state tracking every contribution (code, design, liquidity position) as an onchain object with clear ownership and attribution"
+      },
+      {
+        "title": "Composable ownership",
+        "description": "Across creative and financial artifacts"
+      },
+      {
+        "title": "Fast, low-friction execution",
+        "description": "Via parallel processing and programmable transactions"
+      },
+      {
+        "title": "From discussion → creation → consensus",
+        "description": "All in public"
+      }
+    ],
+    "conclusion": "By combining high-performance execution with object-based state and programmable interactions, Nasun provides a trust-minimized execution layer that enables communities to progress from open discussion and collaborative creation to verifiable, onchain consensus."
+  },
+  "pipeline": {
+    "title": "Coordination Pipeline",
+    "intro": "Nasun treats onchain consensus as the final step in a broader coordination process rather than the starting point.",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Information & Signal Aggregation",
+        "description": "AI systems and open data sources assist in aggregating information and identifying discussion themes that demonstrate sustained engagement or relevance across social and community channels."
+      },
+      {
+        "number": 2,
+        "title": "Open Collaboration",
+        "description": "Discussion and creative development occur across public platforms, with ideas evolving through community participation and feedback."
+      },
+      {
+        "number": 3,
+        "title": "Proposal Formation",
+        "description": "High-signal discussion outcomes are summarized, refined, and structured into actionable proposals, with AI-assisted tooling supporting synthesis while preserving human authorship and review."
+      },
+      {
+        "number": 4,
+        "title": "Onchain Execution",
+        "description": "Final decisions are expressed through Nasun's execution layer, where outcomes become verifiable, enforceable, and transparent."
+      }
+    ],
+    "conclusion": "By separating signal discovery, collaboration, and execution, Nasun enables scalable coordination while maintaining decentralized control and accountability."
+  },
+  "soul": {
+    "title": "The Soul of Nasun",
+    "p1": "Nasun's ambition is to shape how large groups collaborate in the future—exemplifying decentralized consensus that reflects humanity's best impulses to learn, create, and decide together.",
+    "p2": "This isn't about chasing adoption numbers. It's about building enduring communities united by shared stories, transparency, and purpose."
+  },
+  "theWay": {
+    "title": "THE WAY",
+    "intro": "Our vision for Nasun is global adoption through embodying the best of life — collaboration, the act of creation, and sharing with the world. Here's how we will achieve this:",
+    "items": [
+      "Build an inspired global community — creators and fans who create/acquire and develop IPs together, unlocking their full potential through shared vision and collaboration.",
+      "Forge strategic partnerships — collaborating with market leaders in gaming, entertainment, finance, software, hardware, AI, and Web3/Crypto to expand our reach and capabilities.",
+      "Combine the strengths of tradition and innovation — integrating proven methods of production, marketing, and distribution with new technologies, grounded in quality, scalability, and efficiency for global adoption.",
+      "Develop a robust DeFi infrastructure — leveraging the latest advancements to meet the rapidly growing crossover between traditional finance and decentralized systems, ensuring a sustainable and dynamic ecosystem.",
+      "Foster a culture of reflection and growth — acknowledging mistakes, learning from them, and growing stronger and wiser with every step forward.",
+      "Attract world-class talent — from filmmakers, game developers, writers, and artists to engineers and designers in DLT/Web3, gaming, VR/AR, AI, software, and beyond.",
+      "Champion great storytelling — making narrative excellence central to everything we create.",
+      "Innovate through technology — tailoring software, hardware, and AI to exponentially scale creativity and productivity.",
+      "Use Web3 intelligently — empowering the core community to manage IPs through decentralized systems, while offering end users a seamless experience where Web3 features are optional and intuitive. This allows enthusiasts to unlock its full potential while ensuring mass-market accessibility and appeal.",
+      "Leverage our South Korean foundation — building on partnerships across entertainment, gaming, government, and Web3/Crypto industries to establish strong momentum.",
+      "Expand globally — using our success and recognition in South Korea as a launchpad to grow across the world, with a focused push into the U.S. market."
+    ],
+    "closing": "Last but not least, recognize that this is a human endeavour, and we all deserve respect and kindness and to live a life of self-autonomy and dignity. If you want to build a strong community based on these ideals, then welcome to Nasun.",
+    "buttons": {
+      "roadmap": "Explore Roadmap",
+      "discord": "Join Discord"
+    }
+  }
+}
