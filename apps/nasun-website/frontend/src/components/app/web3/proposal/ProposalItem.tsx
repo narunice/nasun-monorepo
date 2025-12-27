@@ -43,38 +43,48 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
     <>
       <div
         onClick={() => !isExpired && setIsModalOpen(true)}
-        className={`${isExpired ? "cursor-not-allowed border-gray-600" : "hover:border-red-800"}
-          p-4 border rounded-lg shadow-sm bg-gray-800 cursor-pointer`}
+        className={`p-4 md:p-5 border rounded-lg backdrop-blur-md transition-colors duration-200
+          ${
+            isExpired
+              ? "cursor-not-allowed border-nasun-white/30 bg-nasun-c6/30"
+              : "cursor-pointer border-nasun-c5/50 bg-nasun-c6/50 hover:border-nasun-c4 hover:bg-nasun-c4/10"
+          }`}
       >
-        <div className="flex justify-between">
+        <div className="flex justify-between items-start">
           <p
-            className={`${
-              isExpired ? "text-gray-600" : "text-gray-300"
-            } text-xl font-semibold mb-2`}
+            className={`text-xl font-medium mb-2 ${
+              isExpired ? "text-nasun-white/50" : "text-nasun-white"
+            }`}
           >
             {proposal.title}
           </p>
-          {!!voteNft && <img className="w-8 h-8 rounded-lg-full" src={voteNft?.url} />}
+          {!!voteNft && (
+            <img
+              className="w-8 h-8 rounded-full flex-shrink-0 ml-2"
+              src={voteNft?.url}
+              alt="Vote NFT"
+            />
+          )}
         </div>
-        <p className={`${isExpired ? "text-gray-600" : "text-gray-300"} `}>
+        <p className={`mb-4 ${isExpired ? "text-nasun-white/50" : "text-nasun-white/85"}`}>
           {proposal.description}
         </p>
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between">
           <div className="flex space-x-4">
-            <div className={`${isExpired ? "text-green-800" : "text-green-600"} flex items-center`}>
+            <div
+              className={`flex items-center ${isExpired ? "text-green-700" : "text-green-500"}`}
+            >
               <span className="mr-1">👍</span>
               {proposal.yesVotes}
             </div>
-            <div className={`${isExpired ? "text-red-800" : "text-red-600"} flex items-center`}>
+            <div className={`flex items-center ${isExpired ? "text-red-700" : "text-red-500"}`}>
               <span className="mr-1">👎</span>
               {proposal.noVotes}
             </div>
           </div>
-          <div>
-            <p className={`${isExpired ? "text-gray-600" : "text-gray-400"} text-sm`}>
-              {isDelisted ? "Delisted" : formatUnixTime(expiration)}
-            </p>
-          </div>
+          <p className={`text-sm ${isExpired ? "text-nasun-white/50" : "text-nasun-white/70"}`}>
+            {isDelisted ? "Delisted" : formatUnixTime(expiration)}
+          </p>
         </div>
       </div>
       <VoteModal

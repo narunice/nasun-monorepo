@@ -36,7 +36,9 @@ export const PageTitle: React.FC<PageTitleProps> = ({
 
   return (
     <div className="flex flex-col gap-3 mt-12 mb-6 md:mb-8 lg:mb-10 xl:mb-12">
-      <Component className={`${alignmentClass} font-medium ${textColor} ${className}`.trim()}>
+      <Component
+        className={`${alignmentClass} uppercase font-medium ${textColor} ${className}`.trim()}
+      >
         {children}
       </Component>
     </div>

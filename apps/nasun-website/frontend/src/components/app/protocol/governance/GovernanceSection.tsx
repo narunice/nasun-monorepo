@@ -1,0 +1,141 @@
+import { useSuiClientQuery, useCurrentAccount } from "@mysten/dapp-kit";
+import { useNetworkVariable } from "../../../../config/suiNetworkConfig";
+import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
+import { ProposalItem } from "../../web3/proposal/ProposalItem";
+import { useVoteNfts } from "../../../../hooks/votingSystem/useVoteNfts";
+import { VoteNft } from "../../../../types/voting";
+import { SectionLayout } from "../../../layout/SectionLayout";
+import ErrorBoundary from "../../../layout/ErrorBoundary";
+import { Suspense } from "react";
+import { useTranslation } from "react-i18next";
+import { SectionLoading, InlineLoading, PageTitle } from "../../../ui";
+
+/**
+ * GovernanceSection
+ *
+ * Governance 페이지의 메인 섹션 컴포넌트
+ * 블록체인에서 제안 목록을 조회하고 투표 UI를 제공합니다.
+ */
+const GovernanceSection = () => {
+  const { t } = useTranslation(["proposals", "common"]);
+
+  return (
+    <SectionLayout className="!max-w-6xl gap-6 md:gap-8">
+      <PageTitle as="h2" align="center">
+        {t("proposals:title")}
+      </PageTitle>
+
+      <div>
+        <ErrorBoundary fallback={<div>{t("common:error.generic")}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <ProposalList />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
+    </SectionLayout>
+  );
+};
+
+export default GovernanceSection;
+
+// Internal component for proposal list rendering
+const ProposalList = () => {
+  const { t } = useTranslation("common");
+  const dashboardId = useNetworkVariable("dashboardId");
+  const account = useCurrentAccount();
+  const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
+
+  const {
+    data: dataResponse,
+    isPending: isDashboardPending,
+    error: dashboardError,
+  } = useSuiClientQuery("getObject", {
+    id: dashboardId,
+    options: {
+      showContent: true,
+    },
+  });
+
+  // Dashboard 로딩만 기다림 (Vote NFTs는 지갑 연결 시에만 로딩)
+  if (isDashboardPending) {
+    return <SectionLoading showLayout={false} />;
+  }
+
+  // 에러 처리 (Vote NFTs 에러는 지갑 연결 시에만)
+  if (dashboardError || (account && nftsError)) {
+    const error = dashboardError || nftsError;
+    return (
+      <div className="text-red-500">
+        {t("error.generic")}: {error?.message}
+      </div>
+    );
+  }
+
+  if (!dataResponse?.data) {
+    return <div className="text-red-500">{t("error.generic")}</div>;
+  }
+
+  const voteNfts = extractVoteNfts(voteNftsRes);
+  const proposalIds = getDashboardFields(dataResponse.data)?.proposals_ids || [];
+
+  if (proposalIds.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="text-5xl mb-4">📋</div>
+        <p className="text-lg text-nasun-white/70">{t("none_found", { ns: "proposals" })}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      {proposalIds.map((id) => (
+        <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
+          <Suspense fallback={<InlineLoading size="sm" />}>
+            <ProposalItem
+              id={id}
+              onVoteTxSuccess={() => refetchNfts()}
+              voteNft={voteNfts.find((nft) => nft.proposalId === id)}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      ))}
+    </div>
+  );
+};
+
+// Helper functions
+function getDashboardFields(data: SuiObjectData) {
+  if (data.content?.dataType !== "moveObject") return null;
+
+  return data.content.fields as {
+    id: { id: string };
+    proposals_ids: string[];
+  };
+}
+
+function extractVoteNfts(nftRes: PaginatedObjectsResponse | undefined) {
+  if (!nftRes?.data) return [];
+
+  return nftRes.data.map((nftObject) => getVoteNft(nftObject.data));
+}
+
+type VoteNftFields = {
+  proposal_id: string;
+  url: string;
+  id: { id: string };
+};
+
+function getVoteNft(nftData: SuiObjectData | undefined | null): VoteNft {
+  if (nftData?.content?.dataType !== "moveObject") {
+    return { id: { id: "" }, url: "", proposalId: "" };
+  }
+
+  const { proposal_id: proposalId, url, id } = nftData.content.fields as VoteNftFields;
+
+  return {
+    proposalId,
+    id,
+    url,
+  };
+}
