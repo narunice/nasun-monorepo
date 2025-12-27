@@ -114,7 +114,7 @@ if [ ! -d "$APP_DIR" ]; then
 fi
 log_success "앱 디렉토리 확인됨"
 
-if [ ! -f "$APP_DIR/.env.production" ]; then
+if [ ! -f "$APP_DIR/frontend/.env.production" ]; then
   log_warning ".env.production 파일이 없습니다."
 fi
 
@@ -161,18 +161,18 @@ if ! pnpm build:nasun-website 2>&1; then
   log_error "빌드 실패!"
 fi
 
-if [ ! -d "$APP_DIR/dist" ] || [ ! -f "$APP_DIR/dist/index.html" ]; then
+if [ ! -d "$APP_DIR/frontend/dist" ] || [ ! -f "$APP_DIR/frontend/dist/index.html" ]; then
   log_error "빌드 결과물을 찾을 수 없습니다"
 fi
 
-BUILD_SIZE=$(du -sh "$APP_DIR/dist" | cut -f1)
+BUILD_SIZE=$(du -sh "$APP_DIR/frontend/dist" | cut -f1)
 log_success "빌드 완료 (크기: $BUILD_SIZE)"
 
 # 드라이런 모드면 종료
 if [ "$DRY_RUN" = true ]; then
   echo ""
   log_success "드라이런 완료!"
-  log_info "빌드 결과물: $APP_DIR/dist"
+  log_info "빌드 결과물: $APP_DIR/frontend/dist"
   exit 0
 fi
 
@@ -201,7 +201,7 @@ log_step 5 7 "파일 배포"
 log_info "rsync로 파일 동기화 중..."
 rsync -avz --progress -e "ssh -i $PEM_KEY_EXPANDED" \
   --delete \
-  "$APP_DIR/dist/" "${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}/"
+  "$APP_DIR/frontend/dist/" "${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}/"
 
 log_success "파일 동기화 완료"
 
