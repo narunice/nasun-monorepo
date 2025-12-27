@@ -11,15 +11,25 @@
 | 1 | **Pado** | ✅ 완료 | `pre-phase-1-pado`, `phase-1-complete` | `@nasun/wallet` 의존성 추가, 호환성 레이어 생성 |
 | 2 | **Gensol Website** | ✅ 완료 | `pre-phase-2-gensol`, `phase-2-complete` | `features/mypage`, `features/auth` 구조 생성 |
 | 3 | **Network Explorer** | ✅ 완료 | `pre-phase-3-explorer`, `phase-3-complete` | 2,734줄 삭제, 공유 패키지로 완전 교체 |
-| 4 | **Nasun Website** | ⏳ 대기 | - | 가장 복잡, 도메인별 분리 필요 |
+| 4 | **Nasun Website** | 🔄 진행 중 | `pre-phase-4-nasun`, `phase-4-governance-complete` | Governance 완료, 나머지 도메인 진행 중 |
+
+### Phase 4 세부 진행 현황
+
+| 도메인 | 상태 | 포함 내용 |
+|--------|------|-----------|
+| governance | ✅ 완료 | ProposalItem, VoteModal, GovernanceSection, useVoteNfts, voting types |
+| finance | ⏳ 대기 | wave1, pado 연동 |
+| content | ⏳ 대기 | posts, updates |
+| wallet | ⏳ 대기 | @nasun/wallet 교체 |
+| protocol | ⏳ 대기 | network 관련 |
 
 ### 정량적 성과
 
-| 지표 | Phase 1 이전 | Phase 3 완료 후 | 변화 |
+| 지표 | Phase 1 이전 | Phase 4 진행 중 | 변화 |
 |------|-------------|-----------------|------|
 | 중복 지갑 코드 | 4개 위치 | 1개 (`packages/wallet`) | **-75%** |
 | Network Explorer 지갑 코드 | 2,734줄 | 61줄 (호환성 레이어) | **-97.8%** |
-| features/ 채택 앱 | 1개 (Pado) | 3개 | **+200%** |
+| features/ 채택 앱 | 1개 (Pado) | 4개 (전체) | **+300%** |
 
 ### 생성된 Git 태그
 
@@ -35,6 +45,10 @@ git tag phase-2-complete     # 완료
 # Phase 3
 git tag pre-phase-3-explorer # 롤백 포인트
 git tag phase-3-complete     # 완료
+
+# Phase 4
+git tag pre-phase-4-nasun           # 롤백 포인트
+git tag phase-4-governance-complete # Governance 도메인 완료
 ```
 
 ---
@@ -496,30 +510,30 @@ chore(pado): remove deprecated wallet components
 
 ---
 
-### Phase 4: Nasun Website 마이그레이션
+### Phase 4: Nasun Website 마이그레이션 🔄 진행 중
 
-#### 4.1 사전 준비
-- [ ] 현재 상태 빌드 확인: `pnpm build:nasun-website`
-- [ ] 롤백 태그 생성: `git tag -a pre-phase-4-nasun -m "Before Nasun Website migration"`
-- [ ] 작업 브랜치 생성: `git checkout -b phase-4-nasun`
-- [ ] 현재 기능 스크린샷/영상 기록
-- [ ] 도메인별 코드 분석 및 매핑 문서 작성
+#### 4.1 사전 준비 ✅ 완료
+- [x] 현재 상태 빌드 확인: `pnpm build:nasun-website`
+- [x] 롤백 태그 생성: `git tag -a pre-phase-4-nasun -m "Before Nasun Website migration"`
+- [x] 도메인별 코드 분석 및 매핑 문서 작성
 
-#### 4.2 Features 구조 생성
-- [ ] `src/features/` 폴더 생성
-- [ ] 도메인 목록 확정: governance, finance, content, wallet
-- [ ] 빌드 확인: `pnpm build:nasun-website`
-- [ ] **커밋**: `refactor(nasun): create features directory`
+#### 4.2 Features 구조 생성 ✅ 완료
+- [x] `src/features/` 폴더 생성
+- [x] 도메인 목록 확정: governance, finance, content, wallet, protocol
 
-#### 4.3 Governance 기능 이동
-- [ ] `src/features/governance/` 생성
-- [ ] `src/components/app/web3/proposal/` 이동
-- [ ] `src/components/app/protocol/governance/` 이동
-- [ ] `src/hooks/votingSystem/` 이동
-- [ ] import 경로 업데이트
-- [ ] 빌드 확인: `pnpm build:nasun-website`
-- [ ] **검증**: 투표/제안 기능 테스트
-- [ ] **커밋**: `refactor(nasun): migrate governance to features`
+#### 4.3 Governance 기능 이동 ✅ 완료
+- [x] `src/features/governance/` 생성
+- [x] `src/components/app/web3/proposal/ProposalItem.tsx` → `features/governance/components/`
+- [x] `src/components/app/web3/proposal/VoteModal.tsx` → `features/governance/components/`
+- [x] `src/components/app/protocol/governance/GovernanceSection.tsx` → `features/governance/components/`
+- [x] `src/hooks/votingSystem/useVoteNfts.tsx` → `features/governance/hooks/`
+- [x] `src/types/voting.d.ts` → `features/governance/types/voting.ts`
+- [x] `features/governance/index.ts` 생성 (Public API)
+- [x] 호환성 레이어 생성 (기존 경로 @deprecated)
+- [x] import 경로 업데이트 (ProposalPage.tsx)
+- [x] 빌드 확인: `pnpm build:nasun-website`
+- [x] **커밋**: `refactor(nasun): migrate governance to features structure`
+- [x] **태그**: `git tag -a phase-4-governance-complete`
 
 #### 4.4 Finance 기능 이동
 - [ ] `src/features/finance/` 생성
