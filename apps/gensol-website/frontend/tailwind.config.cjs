@@ -3,7 +3,11 @@ const baseConfig = require("@nasun/tailwind-config");
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   presets: [baseConfig],
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/wallet-ui/src/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     fontFamily: {
       // Gensol-specific fonts (override base)
