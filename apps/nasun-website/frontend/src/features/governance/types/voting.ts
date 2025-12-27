@@ -1,4 +1,8 @@
-// voting.d.ts
+// Governance types
+
+export type SuiID = {
+  id: string;
+};
 
 export type ProposalStatus = {
   variant: "Active" | "Delisted";
@@ -22,7 +26,7 @@ export interface VoteNft {
   url: string;
 }
 
-// Proposal 필드 타입 정의 (Move 컨트랙트와 일치하도록 수정)
+// Proposal field types (matching Move contract)
 export interface ProposalFields {
   voted_yes_count: string | number;
   voted_no_count: string | number;

@@ -1,20 +1,20 @@
 import { useSuiClientQuery, useCurrentAccount } from "@mysten/dapp-kit";
-import { useNetworkVariable } from "../../../../config/suiNetworkConfig";
+import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
-import { ProposalItem } from "../../web3/proposal/ProposalItem";
-import { useVoteNfts } from "../../../../hooks/votingSystem/useVoteNfts";
-import { VoteNft } from "../../../../types/voting";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import ErrorBoundary from "../../../layout/ErrorBoundary";
+import { ProposalItem } from "./ProposalItem";
+import { useVoteNfts } from "../hooks/useVoteNfts";
+import { VoteNft } from "../types/voting";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { SectionLoading, InlineLoading, PageTitle } from "../../../ui";
+import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
 
 /**
  * GovernanceSection
  *
- * Governance 페이지의 메인 섹션 컴포넌트
- * 블록체인에서 제안 목록을 조회하고 투표 UI를 제공합니다.
+ * Main section component for the Governance page.
+ * Queries proposals from the blockchain and provides voting UI.
  */
 const GovernanceSection = () => {
   const { t } = useTranslation(["proposals", "common"]);
@@ -56,12 +56,12 @@ const ProposalList = () => {
     },
   });
 
-  // Dashboard 로딩만 기다림 (Vote NFTs는 지갑 연결 시에만 로딩)
+  // Only wait for Dashboard loading (Vote NFTs only load when wallet is connected)
   if (isDashboardPending) {
     return <SectionLoading showLayout={false} />;
   }
 
-  // 에러 처리 (Vote NFTs 에러는 지갑 연결 시에만)
+  // Error handling (Vote NFTs errors only when wallet is connected)
   if (dashboardError || (account && nftsError)) {
     const error = dashboardError || nftsError;
     return (

@@ -1,5 +1,5 @@
 import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
-import { useNetworkVariable } from "../../config/suiNetworkConfig";
+import { useNetworkVariable } from "@/config/suiNetworkConfig";
 
 export const useVoteNfts = () => {
   const account = useCurrentAccount();

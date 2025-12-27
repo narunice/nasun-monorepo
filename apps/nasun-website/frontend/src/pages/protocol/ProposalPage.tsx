@@ -1,10 +1,10 @@
 import { Suspense, lazy } from "react";
-import { PageLayout } from "../../components/layout/PageLayout";
-import ErrorBoundary from "../../components/layout/ErrorBoundary";
-import { SectionLoading } from "../../components/ui";
+import { PageLayout } from "@/components/layout/PageLayout";
+import ErrorBoundary from "@/components/layout/ErrorBoundary";
+import { SectionLoading } from "@/components/ui";
 
 const GovernanceSection = lazy(
-  () => import("../../components/app/protocol/governance/GovernanceSection")
+  () => import("@/features/governance/components/GovernanceSection")
 );
 
 const ProposalPage = () => {
