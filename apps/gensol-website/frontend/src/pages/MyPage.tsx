@@ -1,8 +1,6 @@
 import { Flex, Text } from "@radix-ui/themes"
 import { ConnectButton } from "@mysten/dapp-kit"
-import { useUserWallet } from "../hooks/useUserWallet"
-import UserInfo from "../components/mypage/UserInfo"
-import { MyAssets } from "@/components/mypage/MyAssets"
+import { useUserWallet, UserInfo, MyAssets } from "@/features/mypage"
 
 const MyPage = () => {
   const {

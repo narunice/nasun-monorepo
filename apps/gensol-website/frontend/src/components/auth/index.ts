@@ -1,4 +1,9 @@
-export { default as LoginModal } from './LoginModal'
-export { default as GoogleLoginButton } from './GoogleLoginButton'
-export { default as TwitterLoginButton } from './TwitterLoginButton'
-export { default as MetaMaskLoginButton } from './MetaMaskLoginButton'
+/**
+ * @deprecated Import from '@/features/auth' instead
+ */
+export {
+  LoginModal,
+  GoogleLoginButton,
+  TwitterLoginButton,
+  MetaMaskLoginButton,
+} from '@/features/auth'

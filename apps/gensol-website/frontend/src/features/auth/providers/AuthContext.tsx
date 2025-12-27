@@ -2,10 +2,10 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { Amplify } from 'aws-amplify'
 import { fetchAuthSession } from 'aws-amplify/auth'
 import { CognitoIdentityClient, GetIdCommand } from '@aws-sdk/client-cognito-identity'
-import awsConfig from '../../config/awsConfig'
-import { useUserStore } from '../../stores/userStore'
-import type { UserData } from '../../stores/userStore'
-import { generateCodeVerifier, parseJwt } from '../../utils/authUtils'
+import awsConfig from '@/config/awsConfig'
+import { useUserStore } from '@/stores/userStore'
+import type { UserData } from '@/stores/userStore'
+import { generateCodeVerifier, parseJwt } from '@/utils/authUtils'
 
 interface AuthContextType {
   user: UserData | null

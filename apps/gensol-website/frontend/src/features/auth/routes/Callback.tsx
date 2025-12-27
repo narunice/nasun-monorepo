@@ -1,7 +1,6 @@
-// src/components/features/auth/Callback.tsx
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '@/providers/auth'
+import { useAuth } from '../providers/AuthContext'
 
 export default function Callback() {
   const navigate = useNavigate()

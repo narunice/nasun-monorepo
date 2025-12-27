@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Flex } from '@radix-ui/themes'
-import { useAuth } from '@/providers/auth'
+import { useAuth } from '../providers/AuthContext'
 import MetaMaskFox from '@assets/logo_images/MetaMask_Fox.png'
 import {
   isMetaMaskInstalled,
