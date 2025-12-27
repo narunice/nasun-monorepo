@@ -1,0 +1,110 @@
+#!/bin/bash
+# ==============================================================================
+# 공통 유틸리티 함수 (배포 스크립트용)
+# ==============================================================================
+
+# 색상 코드
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# 로깅 함수
+log_info() {
+  echo -e "${BLUE}ℹ️  $1${NC}"
+}
+
+log_success() {
+  echo -e "${GREEN}✅ $1${NC}"
+}
+
+log_warning() {
+  echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+log_error() {
+  echo -e "${RED}❌ $1${NC}"
+  exit 1
+}
+
+log_step() {
+  local step=$1
+  local total=$2
+  local msg=$3
+  echo -e "\n${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}📍 [${step}/${total}] $msg${NC}"
+  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# 시간 측정
+get_elapsed_time() {
+  local start=$1
+  local end=$(date +%s)
+  local elapsed=$((end - start))
+  echo "${elapsed}초"
+}
+
+# SSH 키 검증
+verify_ssh_key() {
+  local key_path=$1
+  local expanded_path="${key_path/#\~/$HOME}"
+
+  if [ ! -f "$expanded_path" ]; then
+    log_error "SSH 키 파일을 찾을 수 없습니다: $key_path"
+  fi
+
+  local perm=$(stat -c %a "$expanded_path" 2>/dev/null || stat -f %A "$expanded_path" 2>/dev/null)
+  if [ "$perm" != "400" ] && [ "$perm" != "600" ]; then
+    log_warning "SSH 키 권한 수정 중 ($perm → 400)"
+    chmod 400 "$expanded_path"
+  fi
+
+  log_success "SSH 키 확인됨: $key_path"
+  echo "$expanded_path"
+}
+
+# EC2 연결 테스트
+test_ec2_connection() {
+  local key_path=$1
+  local user=$2
+  local host=$3
+
+  log_info "EC2 연결 테스트 중..."
+  if ! ssh -i "$key_path" -o ConnectTimeout=10 -o BatchMode=yes "${user}@${host}" "echo 'SSH OK'" > /dev/null 2>&1; then
+    log_error "EC2 서버에 연결할 수 없습니다: ${user}@${host}"
+  fi
+  log_success "EC2 연결 성공"
+}
+
+# 헬스 체크
+health_check() {
+  local url=$1
+  local user=${2:-}
+  local pass=${3:-}
+
+  log_info "헬스 체크 중: $url"
+  sleep 3
+
+  local curl_opts="--max-time 30 -s -o /dev/null -w %{http_code}"
+  if [ -n "$user" ] && [ -n "$pass" ]; then
+    curl_opts="$curl_opts -u ${user}:${pass}"
+  fi
+
+  local status=$(curl $curl_opts "$url" 2>/dev/null || echo "000")
+
+  if [ "$status" -eq 200 ]; then
+    log_success "헬스 체크 성공 (HTTP $status)"
+    return 0
+  elif [ "$status" -eq 000 ]; then
+    log_warning "헬스 체크: 연결 실패 (타임아웃)"
+    return 1
+  else
+    log_warning "헬스 체크: HTTP $status"
+    return 1
+  fi
+}
+
+# 모노레포 루트 경로
+MONOREPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
