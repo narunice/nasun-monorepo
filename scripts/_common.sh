@@ -61,7 +61,7 @@ verify_ssh_key() {
     chmod 400 "$expanded_path"
   fi
 
-  log_success "SSH 키 확인됨: $key_path"
+  log_success "SSH 키 확인됨: $key_path" >&2
   echo "$expanded_path"
 }
 
