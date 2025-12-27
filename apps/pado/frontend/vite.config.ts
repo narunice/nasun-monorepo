@@ -11,6 +11,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['@scure/bip39', '@scure/bip39/wordlists/english.js'],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+  },
   server: {
     port: 5176,
     strictPort: true,

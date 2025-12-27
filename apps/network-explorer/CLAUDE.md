@@ -1,34 +1,6 @@
-# CLAUDE.md
+# CLAUDE.md (apps/network-explorer)
 
-이 파일은 Claude Code가 이 저장소에서 작업할 때 필요한 지침을 제공합니다.
-
-## 언어 설정
-
-**모든 응답과 사고는 한국어로 진행합니다.**
-
-## UI 언어 규칙
-
-**중요: Explorer의 모든 UI 텍스트는 반드시 영어로 작성해야 합니다.**
-
-- 버튼, 레이블, 플레이스홀더, 에러 메시지 등 사용자에게 표시되는 모든 텍스트는 영어로 작성
-- 코드 주석과 문서(CLAUDE.md 등)는 한국어 허용
-- 새로운 UI 컴포넌트 추가 시 영어 텍스트만 사용할 것
-
-예시:
-- ✅ `"Create Wallet"` (영어)
-- ❌ `"지갑 생성"` (한글 - 사용 금지)
-
-### 날짜/시간 표시
-
-모든 날짜와 시간은 영어 형식으로 표시합니다:
-```typescript
-// ✅ 올바른 방법
-date.toLocaleString('en-US');
-date.toLocaleTimeString('en-US', { hour12: true });
-
-// ❌ 사용 금지
-date.toLocaleString('ko-KR');  // "오후 9:51:19" 형식 - 사용 금지
-```
+> 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
 ## UI 컴포넌트 (nasun 브랜딩)
 
@@ -95,30 +67,12 @@ src/components/ui/
 | Epoch Duration | 60초 |
 | Validators | 2노드 (nasun-node-1, nasun-node-2) |
 
-### 나선 프로젝트 전체 구성
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Nasun Project                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  nasun-website             nasun-devnet           nasun-explorer    │
-│  ─────────────────        ─────────────────      ─────────────────  │
-│  공식 웹사이트              블록체인 노드           블록 탐색기        │
-│  • 리더보드                 • SUI 포크             • TX/Block 조회    │
-│  • NFT 이벤트               • 2노드 Validator      • 주소/객체 조회   │
-│  • OAuth 인증               • Faucet 서비스        • 네트워크 상태    │
-│  • MetaMask 연동            • 스마트 컨트랙트      • 검색 기능        │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
 ## 기술 스택
 
-- **빌드 도구**: Vite 6.x
-- **프레임워크**: React 18.x + TypeScript 5.x
+- **빌드 도구**: Vite 7.x
+- **프레임워크**: React 19.x + TypeScript 5.9.x
 - **라우팅**: React Router DOM
-- **UI**: Tailwind CSS 3.4.x + Radix UI
+- **UI**: Tailwind CSS 3.4.x
 - **SUI SDK**: @mysten/sui
 - **상태 관리**: Zustand (UI) + TanStack Query (서버 상태)
 - **Package Manager**: pnpm
@@ -126,7 +80,7 @@ src/components/ui/
 ## 프로젝트 구조
 
 ```
-nasun-explorer/
+apps/network-explorer/
 ├── src/
 │   ├── main.tsx              # 엔트리 포인트
 │   ├── App.tsx               # 라우터 설정
@@ -142,9 +96,6 @@ nasun-explorer/
 │   │   └── Checkpoint.tsx    # 체크포인트 상세
 │   ├── components/
 │   │   ├── ui/               # nasun 브랜딩 UI 컴포넌트
-│   │   │   ├── Card.tsx
-│   │   │   ├── SectionBox.tsx
-│   │   │   └── index.ts
 │   │   ├── Header.tsx
 │   │   ├── InfoRow.tsx
 │   │   ├── NFTMedia.tsx      # NFT 미디어 렌더링
@@ -163,17 +114,13 @@ nasun-explorer/
 ## 개발 명령어
 
 ```bash
-# 의존성 설치
-pnpm install
+# 모노레포 루트에서
+pnpm dev:network-explorer     # 개발 서버 시작
+pnpm build:network-explorer   # 프로덕션 빌드
 
-# 개발 서버 시작
+# 또는 이 폴더에서
 pnpm dev
-
-# 프로덕션 빌드
 pnpm build
-
-# 빌드 결과 미리보기
-pnpm preview
 ```
 
 ## 환경변수
@@ -213,7 +160,7 @@ VITE_FAUCET_URL=http://3.38.127.23:5003
 
 ## 지갑 모듈 (src/wallet/)
 
-Explorer에 내장된 지갑 기능으로, 격리된 모듈 구조로 설계되어 향후 독립적인 패키지로 분리 가능합니다.
+Explorer에 내장된 지갑 기능으로, 격리된 모듈 구조로 설계되었습니다.
 
 ### 구조
 
@@ -239,31 +186,6 @@ src/wallet/
 └── index.ts                  # Public API exports
 ```
 
-### 사용법
-
-```tsx
-// App에서 Provider 추가
-import { WalletProvider } from './wallet';
-
-<WalletProvider>
-  <App />
-</WalletProvider>
-
-// 컴포넌트에서 사용
-import { WalletConnect, BalanceDisplay, useWallet } from './wallet';
-
-const { status, account, lockWallet } = useWallet();
-
-<WalletConnect />
-<BalanceDisplay compact />
-```
-
-### 보안
-
-- **암호화**: Web Crypto API (AES-256-GCM + PBKDF2 100,000 iterations)
-- **키 저장**: localStorage에 암호화된 상태로 저장
-- **메모리 관리**: 개인키 사용 후 메모리에서 제거
-
 ## 배포된 스마트 컨트랙트
 
 > **참고**: 2025-12-25 V3 리셋으로 이전 컨트랙트는 무효화되었습니다.
@@ -286,33 +208,10 @@ curl -X POST http://3.38.127.23:9000 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"sui_getLatestCheckpointSequenceNumber","params":[]}'
 
-# 총 트랜잭션 수
-curl -X POST http://3.38.127.23:9000 \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"sui_getTotalTransactionBlocks","params":[]}'
-
 # Faucet 토큰 요청
 curl -X POST http://3.38.127.23:5003/gas \
   -H "Content-Type: application/json" \
   -d '{"FixedAmountRequest":{"recipient":"<YOUR_ADDRESS>"}}'
-```
-
-## CLI 사용법 (nasun alias)
-
-로컬에서 Nasun Devnet CLI를 사용하려면:
-
-```bash
-# ~/.bashrc에 alias가 설정된 경우
-nasun client gas          # 잔액 확인
-nasun client objects      # 소유 객체 확인
-nasun client tx-block <TX_DIGEST>  # 트랜잭션 조회
-
-# 환경 전환
-nasun client switch --env nasun-devnet
-
-# Chain ID 확인
-nasun client chain-identifier
-# 출력: 6681cdfd
 ```
 
 ## 배포 정보
@@ -322,7 +221,7 @@ nasun client chain-identifier
 | 호스팅 | AWS Amplify |
 | AWS 계정 | Nasun Devnet (150674276464) |
 | App ID | `dhfb0bozwjtqj` |
-| GitHub | https://github.com/narunice/nasun-explorer |
+| GitHub | https://github.com/narunice/nasun-monorepo |
 | 자동 배포 | main 브랜치 push 시 자동 빌드/배포 |
 
 ### 배포 명령어
@@ -332,17 +231,5 @@ nasun client chain-identifier
 git push origin main
 
 # 수동 배포 (AWS CLI)
-aws amplify start-job --app-id dhfb0bozwjtqj --branch-name main --job-type RELEASE --profile nasun-devnet
+aws amplify start-job --app-id dhfb0bozwjtqj --branch-name main --job-type RELEASE --profile nasun-dlt
 ```
-
-## 관련 프로젝트
-
-| 프로젝트 | 경로 | 설명 |
-|---------|------|------|
-| nasun-devnet | `../nasun-devnet` | Nasun Devnet 블록체인 노드 |
-| nasun-website | `../nasun-apps/nasun-website` | Nasun 공식 웹사이트 |
-
-### 주요 문서 참조
-
-- [NASUN_DEVNET_SETUP_PLAN.md](../nasun-devnet/doc/NASUN_DEVNET_SETUP_PLAN.md) - Devnet 구축 계획서
-- [NASUN_DEVNET_NEXT_STEPS.md](../nasun-devnet/doc/NASUN_DEVNET_NEXT_STEPS.md) - 다음 단계 계획서 (Phase 7-11)

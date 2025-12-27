@@ -18,9 +18,18 @@ module.exports = {
     },
     extend: {
       colors,
+      backdropBlur: {
+        sm: "4px",
+        DEFAULT: "6px",
+        md: "8px",
+      },
+      backdropBrightness: {
+        80: ".8",
+      },
       animation: {
         fadeInUp: "fadeInUp 1s ease-out forwards",
         "fade-in": "fadeIn 0.8s ease-out forwards",
+        fadeIn: "fadeIn 0.8s ease-out forwards",
       },
       keyframes: {
         fadeInUp: {
@@ -32,9 +41,28 @@ module.exports = {
           "100%": { opacity: "1" },
         },
       },
+      borderWidth: {
+        1: "1px",
+        2: "2px",
+        3: "3px",
+        4: "4px",
+        5: "5px",
+      },
       borderRadius: {
         "4xl": "2rem",
         "5xl": "2.5rem",
+      },
+      fontWeight: {
+        light: 300,
+        normal: 400,
+        medium: 500,
+        semibold: 600,
+        bold: 700,
+        extrabold: 800,
+      },
+      filter: {
+        "saturate-80": "saturate(80%)",
+        "saturate-100": "saturate(100%)",
       },
       maxWidth: {
         "8xl": "1440px",

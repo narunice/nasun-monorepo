@@ -1,12 +1,6 @@
-# CLAUDE.md
+# CLAUDE.md (apps/pado)
 
-이 파일은 Claude Code가 이 저장소에서 작업할 때 필요한 지침을 제공합니다.
-
-## 언어 설정
-
-**모든 응답과 사고는 한국어로 진행합니다.** 코드 주석, 문서 작성 시에도 한국어를 사용합니다.
-
-**커밋 메시지는 영어로 작성합니다.**
+> 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
 ---
 
@@ -133,7 +127,6 @@
 
 ```bash
 # 1. DeepBook V3를 Submodule로 추가
-cd <MONOREPO>/pado
 git submodule add https://github.com/MystenLabs/deepbookv3.git deepbookv3
 
 # 2. Move 패키지 빌드
@@ -188,14 +181,12 @@ const tx = deepBookClient.createPool({
 
 ## 기술 스택 (Frontend)
 
-> nasun-explorer, nasun-website와 동일한 스택 사용
-
 | 항목 | 기술 |
 |------|------|
-| 빌드 도구 | Vite |
-| 프레임워크 | React 18/19 |
-| 언어 | TypeScript |
-| 스타일링 | Tailwind CSS |
+| 빌드 도구 | Vite 7 |
+| 프레임워크 | React 19 |
+| 언어 | TypeScript 5.9 |
+| 스타일링 | Tailwind CSS 3.4 |
 | 상태 관리 | Zustand |
 | 라우팅 | react-router-dom |
 | 데이터 페칭 | @tanstack/react-query |
@@ -206,7 +197,7 @@ const tx = deepBookClient.createPool({
 ## 프로젝트 구조
 
 ```
-pado/
+apps/pado/
 ├── CLAUDE.md                     # 이 파일
 ├── README.md                     # 프로젝트 소개
 ├── doc/
@@ -364,17 +355,22 @@ useQuery({
 
 | 프로젝트 | 경로 | 설명 |
 |---------|------|------|
-| nasun-devnet | `<NASUN_DEVNET>` | 블록체인 노드 |
-| nasun-explorer | `<HOME>/my_apps/nasun-explorer` | 블록 탐색기 (지갑 모듈 원본) |
-| nasun-website | `<MONOREPO>/nasun-website` | 공식 웹사이트 |
+| nasun-devnet | 별도 레포 | 블록체인 노드 |
+| network-explorer | `../network-explorer` | 블록 탐색기 (지갑 모듈 원본) |
+| nasun-website | `../nasun-website` | 공식 웹사이트 |
 
 ---
 
 ## 개발 명령어
 
 ```bash
-# 프론트엔드 개발 서버
+# 모노레포 루트에서
+pnpm dev:pado
+pnpm build:pado
+
+# 또는 frontend/ 폴더에서
 pnpm dev
+pnpm build
 
 # Move 컨트랙트 빌드
 cd contracts && sui move build
@@ -391,7 +387,6 @@ cd deepbook-v3 && nasun client publish --gas-budget 500000000
 ## 주요 문서
 
 - [PADO_IMPLEMENTATION_PLAN.md](doc/PADO_IMPLEMENTATION_PLAN.md) - 상세 구현 계획서
-- [nasun-devnet CLAUDE.md](<NASUN_DEVNET>/CLAUDE.md) - Devnet 인프라 정보
 
 ---
 
