@@ -126,9 +126,10 @@ export default defineConfig(({ mode }) => {
       },
       fs: {
         allow: [
-          "<MONOREPO>/nasun-website/frontend",
-          "<MONOREPO>/nasun-website/public",
-          "<MONOREPO>/nasun-website/frontend/node_modules",
+          // 모노레포 루트와 현재 프로젝트 경로 허용
+          path.resolve(__dirname, ".."),
+          path.resolve(__dirname, "../.."),
+          path.resolve(__dirname, "../../.."),
         ],
       },
     },
