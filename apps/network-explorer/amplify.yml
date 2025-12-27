@@ -4,14 +4,17 @@ frontend:
     preBuild:
       commands:
         - npm install -g pnpm
-        - pnpm install
+        # 모노레포 루트로 이동하여 전체 의존성 설치
+        - cd ../.. && pnpm install
     build:
       commands:
-        - pnpm build
+        # 모노레포 루트에서 network-explorer만 빌드
+        - cd ../.. && pnpm build:network-explorer
   artifacts:
     baseDirectory: dist
     files:
       - '**/*'
   cache:
     paths:
+      - ../../node_modules/**/*
       - node_modules/**/*

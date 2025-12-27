@@ -126,9 +126,8 @@ export default defineConfig(({ mode }) => {
       },
       fs: {
         allow: [
-          "<MONOREPO>/nasun-website/frontend",
-          "<MONOREPO>/nasun-website/public",
-          "<MONOREPO>/nasun-website/frontend/node_modules",
+          path.resolve(__dirname, "."),
+          path.resolve(__dirname, "../../node_modules"),
         ],
       },
     },
