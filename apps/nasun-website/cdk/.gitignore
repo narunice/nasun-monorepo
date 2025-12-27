@@ -1,0 +1,31 @@
+*.js
+!jest.config.js
+!build.js
+!*.config.js
+!scripts/*.js
+*.d.ts
+node_modules
+
+# Lambda 빌드 출력
+**/dist/
+**/src/**/*.js
+**/src/**/*.d.ts
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# Backup files
+*.backup
+*.backup.*
+.env.backup*
+
+.env
+.env.development
+.env.production
+.env.test
+.env.*
+!.env.example
+.env.local
+.env.*.local
+.vscode

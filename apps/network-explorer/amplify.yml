@@ -7,13 +7,11 @@ frontend:
         - pnpm install
     build:
       commands:
-        - pnpm build:network-explorer
+        - pnpm build
   artifacts:
-    baseDirectory: apps/network-explorer/dist
+    baseDirectory: dist
     files:
       - '**/*'
   cache:
     paths:
       - node_modules/**/*
-      - apps/*/node_modules/**/*
-      - packages/*/node_modules/**/*

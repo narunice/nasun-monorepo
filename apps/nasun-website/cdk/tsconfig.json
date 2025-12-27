@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "es2022"
+    ],
+    "declaration": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": false,
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
+  },
+  "include": [
+    "lib/**/*",
+    "bin/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "cdk.out",
+    "lambda-src/**/dist/**",
+    "lambda-src/**/src/**/*.js",
+    "lambda-src/**/src/**/*.d.ts",
+    "lambda-src/x-leaderboard/test/**",
+    "lambda-src/x-leaderboard/src/tests/**",
+    "lambda-src/x-leaderboard/src/utils/real-time-monitoring-cli.ts",
+    "lambda-src/x-leaderboard/scripts/**",
+    "lambda-src/PriceAPI/**",
+    "lambda-src/auth-twitter/**",
+    "lambda-src/get-aws-credentials/**",
+    "lambda-src/getSupplyCount/**",
+    "lambda-src/update-backup-prices/**",
+    "exchange-oauth-code.ts",
+    "generate-oauth-url.ts",
+    "init-oauth-token.ts",
+    "setup-oauth2-auto.ts",
+    "refresh-token-now.ts"
+  ]
+}

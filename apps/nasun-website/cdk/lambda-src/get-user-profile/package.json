@@ -1,0 +1,17 @@
+{
+  "name": "get-user-profile-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to get user profile with linked accounts.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.523.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.134"
+  }
+}

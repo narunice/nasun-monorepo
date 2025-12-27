@@ -1,0 +1,248 @@
+
+//place item 명령어
+sui client call \
+  --package 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b \
+  --module marketplace \
+  --function place_item \
+  --type-args 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b::ark_nft::PhaseOneNFT \
+  --args 0xdfdd406f5893c66a182a3ede06026501db7a73e50916d0482a4f94b9d9861577 \
+0xad13588e24e89d4238248bc008f2ef53c59035d81ab264440c4ec0c657638da7 \
+0x33f77d26cc5f5b21e9b03d46c2ee85d7eed57ec51319d4093de09f44f961aaea \
+
+sui client call \
+  --package 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b \
+  --module marketplace \
+  --function place_item \
+  --type-args 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b::ark_nft::PhaseOneNFT \
+  --args 0xdfdd406f5893c66a182a3ede06026501db7a73e50916d0482a4f94b9d9861577 \
+0xad13588e24e89d4238248bc008f2ef53c59035d81ab264440c4ec0c657638da7 \
+0x3f9f265f6c81e795842bee1c35e6df11c7f71828259ae03e8653f6c1e676512d \
+
+sui client call \
+  --package 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b \
+  --module marketplace \
+  --function place_item \
+  --type-args 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b::ark_nft::PhaseOneNFT \
+  --args 0xdfdd406f5893c66a182a3ede06026501db7a73e50916d0482a4f94b9d9861577 \
+0xad13588e24e89d4238248bc008f2ef53c59035d81ab264440c4ec0c657638da7 \
+0xbafc08a7189e29e18d332b06abb704a85e96da249bb3fbcbbc2aa84570b53d6c \
+
+
+
+place and list item 명령어
+sui client call \
+  --package 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b \
+  --module marketplace \
+  --function place_and_list_item \
+  --type-args 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b::ark_nft::PhaseOneNFT \
+  --args 0xdfdd406f5893c66a182a3ede06026501db7a73e50916d0482a4f94b9d9861577 \
+0xad13588e24e89d4238248bc008f2ef53c59035d81ab264440c4ec0c657638da7 \
+0x3aabb09024e9f9591cb4c9083b935b922db4c853f22a9657c14bf65b6621032f \
+1800 \
+
+sui client call \
+  --package 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b \
+  --module marketplace \
+  --function place_and_list_item \
+  --type-args 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b::ark_nft::PhaseOneNFT \
+  --args 0xdfdd406f5893c66a182a3ede06026501db7a73e50916d0482a4f94b9d9861577 \
+0xad13588e24e89d4238248bc008f2ef53c59035d81ab264440c4ec0c657638da7 \
+0x80a5be6fe790936db101fe962929a4be6020fea3a03436dd492a133c9e23d716 \
+2600 \
+
+sui client call \
+  --package 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b \
+  --module marketplace \
+  --function place_and_list_item \
+  --type-args 0xe609230b3bbb3f8cb5102cd3d86d1067c59aebd408bee29e66b89760dc18086b::ark_nft::PhaseOneNFT \
+  --args 0xdfdd406f5893c66a182a3ede06026501db7a73e50916d0482a4f94b9d9861577 \
+0xad13588e24e89d4238248bc008f2ef53c59035d81ab264440c4ec0c657638da7 \
+0xdd8c436dcdf1629ccdcece9be291adc9f2f7cfb49b1addad33a8ff6f5258c90a \
+10300 \
+
+
+
+list nft 명령어
+sui client call \
+  --package 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8 \
+  --module marketplace \
+  --function list_nft \
+  --type-args 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8::ark_nft::GenSolNFT \
+  --args 0x7e5cb92caf0b2d16073a918a77468632cb29dba614b3baf437d0e61321e077b4 \
+0x9da62ba0f4fa38736884496faa2613f7ef33bdc2c93ed0a8109306c351f9893b \
+0x5b9c2b76bcd2aa138d7e4ed7f35231b1fcf1b0e4d80179832e1f650ff5352299 \
+10 \
+
+
+delist nft 명령어
+sui client call \
+  --package 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8 \
+  --module marketplace \
+  --function delist_nft \
+  --type-args 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8::ark_nft::GenSolNFT \
+  --args 0x7e5cb92caf0b2d16073a918a77468632cb29dba614b3baf437d0e61321e077b4 \
+0x9da62ba0f4fa38736884496faa2613f7ef33bdc2c93ed0a8109306c351f9893b \
+0x5b9c2b76bcd2aa138d7e4ed7f35231b1fcf1b0e4d80179832e1f650ff5352299 \
+
+
+
+purchase nft 명령어
+sui client call \
+  --package 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8 \
+  --module marketplace \
+  --function purchase_nft \
+  --type-args 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8::ark_nft::GenSolNFT \
+  --args 0x7e5cb92caf0b2d16073a918a77468632cb29dba614b3baf437d0e61321e077b4 \
+  0x4fcea90c59cf05c7251f4ace0b377ac3e591f0a4c36b284ed8dab44252c7704f \
+  0x345cb72c51a8b3c4150426176c1884d2a99ee5cf7535cdc497f6810af5eb1822 \
+
+
+
+
+
+unplace nft 명령어 *실패패
+sui client call \
+  --package 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8 \
+  --module marketplace \
+  --function unplace_nft \
+  --type-args 0x51fd31174464fc9732794ea6f5c2a5be808489220fc22e08ef3d3b52f7bfd1f8::ark_nft::GenSolNFT \
+  --args 0x7e5cb92caf0b2d16073a918a77468632cb29dba614b3baf437d0e61321e077b4 \
+0x9da62ba0f4fa38736884496faa2613f7ef33bdc2c93ed0a8109306c351f9893b \
+0x5b9c2b76bcd2aa138d7e4ed7f35231b1fcf1b0e4d80179832e1f650ff5352299 \
+
+
+
+
+
+
+
+
+purchase item 명령어
+sui client call \
+  --package 0x8d865923aa19530e8a671812bed74eb3f729116edad01b22c1f88c81b8854777 \
+  --module marketplace \
+  --function purchase_item \
+  --args 0x8eeb4e97b5bd9165bfe04cbd929e387d696a4b2c36599424847a3678ca6f9264 \
+ 0x3af3b4c8058ae42b16dea6a5a7b76a191e46e649048a693162563d55b14d2dab \
+ 0xe306a8c189d0c1df821abdc729016fac80b20be3257cf67b4a6be2172730e139 \
+    --gas-budget 1000000000
+
+
+
+
+
+nft민팅 기능능
+    sui client ptb \
+--move-call 0x8d865923aa19530e8a671812bed74eb3f729116edad01b22c1f88c81b8854777::ark_nft::mint_tier2_nft \
+@0xa2fb0d284d7f8d30e75cc12d9659690693635107556a40159b785906c36ee693 \
+"'https://as2.ftcdn.net/v2/jpg/06/02/79/09/1000_F_602790997_MTmwbMhwOiRsp5xgKSYUuQ8Em9M3das0.jpg'" \
+"'https://i.pinimg.com/736x/2a/34/d1/2a34d183392f1a79f53f04f5bfe530fd.jpg'" \
+@0x411ba7df39705b1e5bd843d258297430b2f02cc97475a0ce104a4a1b037d8b3e \
+
+
+
+place and list item 명령어
+sui client call \
+  --package 0x8d865923aa19530e8a671812bed74eb3f729116edad01b22c1f88c81b8854777 \
+  --module marketplace \
+  --function place_and_list_item \
+  --type-args 0x8d865923aa19530e8a671812bed74eb3f729116edad01b22c1f88c81b8854777::ark_nft::PhaseOneNFT \
+  --args 0x8eeb4e97b5bd9165bfe04cbd929e387d696a4b2c36599424847a3678ca6f9264 \
+0x2a4251306ac3c9481f6c04966d80fa3bffb3486fc0a4d7ae23f6369d9f7d054e \
+0xdc5fc6dad1d7a228345d9f2e235c434a81baa456ff39093f83fdfa3769bd9974 \
+145600 \
+
+
+
+
+
+
+
+
+
+
+
+//프로포절 등록 명령어
+sui client ptb \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::proposal::create \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+'"Proposal 14"' '"This is a description for the proposal 4. If you own some sui, you can vote. Let us make this idea bigger."' 1748735999000 \
+--assign proposal_id \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::dashboard::register_proposal \
+@0x8ce676a7fb7e614dfc8a9801010a0cdfd7d05187c45e31b42f2a458fa5aeb154 \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b proposal_id \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::proposal::create \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+'"Proposal 352355"' '"This is a description for the proposal 5."' 1748735999000 \
+--assign proposal_id \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::dashboard::register_proposal \
+@0x8ce676a7fb7e614dfc8a9801010a0cdfd7d05187c45e31b42f2a458fa5aeb154 \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b proposal_id \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::proposal::create \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+'"Proposal 346547648"' '"This is a description for the proposal 8. If you own some sui, you can vote. placeholder. Longer description. Let us make this idea bigger."' 1748735999000 \
+--assign proposal_id \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::dashboard::register_proposal \
+@0x8ce676a7fb7e614dfc8a9801010a0cdfd7d05187c45e31b42f2a458fa5aeb154 \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b proposal_id \
+
+
+//tier1 nft 민팅 명령어
+sui client ptb \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier1_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://yadolee.com/data/file/wallpaper/f2c24e8cc8c903917c3d7a61fb41cb66_yht5jEH3_83ba4ca1dfbc9f445b29d6c9f1e21c47374c9613.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier1_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://yadolee.com/data/file/wallpaper/f2c24e8cc8c903917c3d7a61fb41cb66_yht5jEH3_83ba4ca1dfbc9f445b29d6c9f1e21c47374c9613.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier1_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://yadolee.com/data/file/wallpaper/f2c24e8cc8c903917c3d7a61fb41cb66_yht5jEH3_83ba4ca1dfbc9f445b29d6c9f1e21c47374c9613.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+
+
+
+tier2 nft 민팅 명령어
+sui client ptb \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier2_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://t1.daumcdn.net/news/202002/07/PPOMPPU/20200207133332857ohsh.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier2_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://t1.daumcdn.net/news/202002/07/PPOMPPU/20200207133332857ohsh.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier2_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://t1.daumcdn.net/news/202002/07/PPOMPPU/20200207133332857ohsh.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+--move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::ark_nft::mint_tier2_nft \
+@0xd00a0b889b29a78068dad534210da9503d72d59f6b80543cb5f4bd11ba552a4b \
+" 'https://emerald-academic-mosquito-170.mypinata.cloud/ipfs/bafybeigjz5c6ir42uhph3rackobiby4rjj62tmzcvhhszo3nrxgwcqztoe' " \
+" 'https://t1.daumcdn.net/news/202002/07/PPOMPPU/20200207133332857ohsh.jpg' " \
+@0xe742ed1d73c4c83968f40233275b333a576ee568543acff6c0b0ae41556ea8e6 \
+
+
+
+nft 리스팅 명령어
+sui client ptb \
+  --assign kiosk @0x845857824359b3490b8e785d3f7744764854d7046ae16b4e227927abd25ec69d \
+  --assign cap @0xbd1662f2908d40ea88f16526117707c16839d2214cf2a02214055722c9de32e5 \
+  --assign nft1 @0xcc6ba7d505615adf85cf86038ab795538f8081a9119a99b4071ee86865a6611e \
+  --assign nft2 @0x823346702b45d51e6735bec61117d95da9fd040084aaf17498d1cf0982ba8995 \
+  --assign nft3 @0x65f833cbd9641622bc38ef20ab7a3a477c0caa86904a1d314138a9d3b754516f \
+  --assign nft4 @0x0fa0f1a223799dde703c61b33786c84359127d499d2da92a2106fe7ee190f10a \
+  --assign price 145600 \
+  --move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::marketplace::place_and_list_ark_nft kiosk cap nft1 price \
+  --move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::marketplace::place_and_list_ark_nft kiosk cap nft2 price \
+  --move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::marketplace::place_and_list_ark_nft kiosk cap nft3 price \
+  --move-call 0x5a6932792f28c810f9333bd3b8093f2599c4ec3810df3abdeda0781a4b18d4a0::marketplace::place_and_list_ark_nft kiosk cap nft4 price \
+  --gas-budget 30000000  # 여러 작업이므로 가스 예산 증가

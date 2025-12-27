@@ -1,12 +1,15 @@
-# Node dependencies
+# Node modules
 node_modules/
+.pnpm/
+*.local
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
 
-# Build outputs
-build/
+# Build output
 dist/
+dist-ssr/
+build/
 out/
 
 # Temporary files
@@ -15,49 +18,53 @@ tmp/
 *.tmp
 
 # Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 logs/
 *.log
-
-# Environment variables
-.env
-.env.*
 
 # OS-specific files
 .DS_Store
 Thumbs.db
 
-# Editor directories and settings
+# IDEs and editors
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.*
+.env.*.local
+!.env.example
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Local coverage reports
+coverage/
+.nyc_output/
+
+# Optional: Lint cache
+.eslintcache
+
+# Optional: Mac system files
+*.DS_Store
+
+# Optional: Testing output
+test-results/
+
+# Vite 캐시
+.cache/
+.temp/
 
 .secret
-
-# amplify
-.amplify
-amplify_outputs*
-amplifyconfiguration*
-
-#amplify-do-not-edit-begin
-amplify/\#current-cloud-backend
-amplify/.config/local-*
-amplify/logs
-amplify/mock-data
-amplify/mock-api-resources
-amplify/backend/amplify-meta.json
-amplify/backend/.temp
-build/
-dist/
-node_modules/
-aws-exports.js
-awsconfiguration.json
-amplifyconfiguration.json
-amplifyconfiguration.dart
-amplify-build-config.json
-amplify-gradle-config.json
-amplifytools.xcconfig
-.secret-*
-**.sample
-#amplify-do-not-edit-end
 
 
 aws-exports.js
