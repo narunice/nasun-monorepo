@@ -1,5 +1,5 @@
 import { Button, Flex } from '@radix-ui/themes'
-import { useAuth } from '@/providers/auth'
+import { useAuth } from '../providers/AuthContext'
 
 interface GoogleLoginButtonProps {
   onSuccess?: () => void
