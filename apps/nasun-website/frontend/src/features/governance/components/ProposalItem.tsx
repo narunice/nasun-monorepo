@@ -1,8 +1,8 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { FC, useState } from "react";
-import { EcText } from "../../../ui/Shared";
+import { EcText } from "@/components/ui/Shared";
 import { SuiObjectData } from "@mysten/sui/client";
-import { Proposal, VoteNft, ProposalFields } from "../../../../types/voting";
+import { Proposal, VoteNft, ProposalFields } from "../types/voting";
 import { VoteModal } from "./VoteModal";
 
 interface ProposalItemsProps {
@@ -108,7 +108,7 @@ function parseProposal(data: SuiObjectData): Proposal | null {
 
   const fields = data.content.fields as ProposalFields;
 
-  // 필수 필드 검증 (Move 컨트랙트 필드명 사용)
+  // Required field validation (using Move contract field names)
   if (
     !fields.title ||
     !fields.description ||
@@ -121,7 +121,7 @@ function parseProposal(data: SuiObjectData): Proposal | null {
   }
 
   return {
-    id: { id: data.objectId }, // SuiObjectData의 objectId 사용
+    id: { id: data.objectId }, // Use objectId from SuiObjectData
     title: fields.title,
     description: fields.description,
     status: fields.status,
