@@ -79,7 +79,7 @@ git tag phase-4-complete            # 전체 완료
 | network-explorer | `@nasun/wallet` + 호환성 레이어 | ❌ | ✅ 완료 | 2,734줄 → 61줄 |
 | pado | `@nasun/wallet` + 호환성 레이어 | ✅ (orderbook, trading) | ✅ 완료 | 앱 특화 useBalance 유지 |
 | gensol-website | 없음 | ✅ (mypage, auth) | ✅ 완료 | features 구조 도입 |
-| nasun-website | `/hooks/wallet/` | ❌ (파편화) | ⏳ 대기 | 가장 복잡 |
+| nasun-website | 호환성 레이어 | ✅ (5개 도메인) | ✅ 완료 | 14,680줄 features 구조화 |
 
 ---
 
@@ -619,5 +619,113 @@ chore(pado): remove deprecated wallet components
 
 ### 회귀 테스트
 
-- [ ] 이전 Phase 앱들 빌드 재확인
-- [ ] 이전 Phase 앱들 기본 기능 재확인
+- [x] 이전 Phase 앱들 빌드 재확인
+- [ ] 이전 Phase 앱들 기본 기능 재확인 (수동 테스트 필요)
+
+---
+
+## 14. 남은 작업 (Post-Migration Tasks)
+
+마이그레이션이 완료되었지만, 아래 작업들이 추후 진행되어야 합니다.
+
+### 14.1 호환성 레이어 정리 (1개월 후)
+
+현재 기존 import 경로를 유지하기 위해 `@deprecated` 호환성 레이어가 생성되어 있습니다.
+1개월 후 아래 파일들을 삭제하고 직접 import로 전환해야 합니다.
+
+**삭제 대상 호환성 레이어:**
+
+```
+# Pado
+apps/pado/frontend/src/wallet/index.ts
+
+# Gensol Website
+apps/gensol-website/frontend/src/providers/auth/index.ts
+apps/gensol-website/frontend/src/components/auth/index.ts
+
+# Network Explorer
+apps/network-explorer/src/wallet/index.ts
+
+# Nasun Website
+apps/nasun-website/frontend/src/hooks/votingSystem/index.ts
+apps/nasun-website/frontend/src/hooks/wordpress/index.ts
+apps/nasun-website/frontend/src/hooks/PayAndMintNFT/index.ts
+apps/nasun-website/frontend/src/hooks/NFTMintedEvents/index.ts
+apps/nasun-website/frontend/src/components/app/wave1/index.ts
+apps/nasun-website/frontend/src/components/app/posts/index.ts
+apps/nasun-website/frontend/src/components/app/updates/index.ts
+apps/nasun-website/frontend/src/components/app/protocol/network/index.ts
+apps/nasun-website/frontend/src/components/app/protocol/governance/index.ts
+apps/nasun-website/frontend/src/components/app/Leaderboard/index.ts
+apps/nasun-website/frontend/src/components/app/web3/proposal/index.ts
+```
+
+### 14.2 중복 파일 정리 (선택사항)
+
+features로 복사된 파일들의 원본이 아직 남아있습니다. 호환성 기간 후 삭제를 권장합니다.
+
+```bash
+# 예시: Nasun Website 원본 파일 삭제
+rm -rf apps/nasun-website/frontend/src/components/app/wave1/battalion-nft/
+rm -rf apps/nasun-website/frontend/src/components/app/wave1/early-contributors/
+rm -rf apps/nasun-website/frontend/src/components/app/wave1/leaderboard-info/
+rm -rf apps/nasun-website/frontend/src/components/app/Leaderboard/components/
+rm -rf apps/nasun-website/frontend/src/components/app/Leaderboard/hooks/
+# ... 기타 중복 폴더들
+```
+
+### 14.3 수동 테스트 체크리스트
+
+자동화된 빌드/타입 검증은 완료되었습니다. 아래 항목들은 브라우저에서 수동 테스트가 필요합니다.
+
+**지갑 기능 (Network Explorer, Pado):**
+- [ ] 지갑 생성 (새 니모닉)
+- [ ] 지갑 잠금/해제
+- [ ] 잔액 조회
+- [ ] 토큰 전송
+- [ ] Faucet 요청
+- [ ] 니모닉 백업/복구
+
+**Nasun Website 도메인별 기능:**
+- [ ] Governance: 제안 목록 표시, 투표 기능
+- [ ] Wave1: Battalion NFT 등록 플로우
+- [ ] Content: 뉴스/포스트 표시, 로드맵
+- [ ] Leaderboard: 순위표 표시, 검색, 페이지네이션
+- [ ] Protocol: 네트워크 정보, 토큰 분배 차트
+
+**Gensol Website:**
+- [ ] 로그인/로그아웃
+- [ ] 마이페이지 접근
+
+### 14.4 향후 개선 사항
+
+1. **Network Explorer features 구조화**: 현재 features 폴더 없음, 필요시 추가
+2. **@nasun/sui-utils 구현**: 2개 이상 앱에서 공통 SUI 유틸리티 발견 시
+3. **@nasun/ui 구현**: 공통 UI 컴포넌트 추출 시
+4. **Nasun Website @nasun/wallet 통합**: 현재 hooks/wallet/ 레거시 유지 중
+
+---
+
+## 15. 검증 결과 요약 (2024-12-27)
+
+### 자동화 테스트 결과
+
+| 테스트 항목 | 결과 |
+|------------|------|
+| 전체 빌드 (`pnpm build`) | ✅ 성공 |
+| Nasun Website 빌드 | ✅ 성공 (~12s) |
+| Gensol Website 빌드 | ✅ 성공 (~6.7s) |
+| Network Explorer 빌드 | ✅ 성공 (~2.2s) |
+| Pado 빌드 | ✅ 성공 (~2.6s) |
+| TypeScript 타입 체크 (전체) | ✅ 에러 없음 |
+
+### 코드 통계
+
+| 항목 | 수량 |
+|------|------|
+| 마이그레이션된 앱 | 4개 |
+| 생성된 features 도메인 | 11개 |
+| 호환성 레이어 | 15개 |
+| Nasun Website features 코드 | 14,680줄 |
+| 삭제된 중복 코드 (Explorer) | 2,734줄 (-97.8%) |
+| Git 태그 | 5개 |
