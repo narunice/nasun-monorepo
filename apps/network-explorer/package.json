@@ -1,5 +1,5 @@
 {
-  "name": "@nasun/explorer",
+  "name": "@nasun/network-explorer",
   "private": true,
   "version": "0.1.0",
   "type": "module",
