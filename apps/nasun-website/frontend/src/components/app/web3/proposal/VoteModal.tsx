@@ -9,6 +9,7 @@ import {
 import { useNetworkVariable } from "../../../../config/suiNetworkConfig";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "react-toastify";
+import { Button } from "../../../ui";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -88,59 +89,58 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const votingDisable = hasVoted || isPending || isSuccess;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full">
-        <div className="flex items-start justify-between">
-          <h2 className="text-2xl font-bold mb-4">{proposal.title}</h2>
+    <div className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-nasun-c6 border border-nasun-c5/50 p-6 md:p-8 rounded-xl max-w-md w-full shadow-lg">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h2 className="text-2xl font-medium text-nasun-white">{proposal.title}</h2>
           {hasVoted || isSuccess ? (
-            <div className="w-fit text-sm p-1 font-medium rounded-lg-full bg-green-200 text-gray-800 text-center">
-              <p className="px-2">Already voted</p>
+            <div className="flex-shrink-0 text-sm px-3 py-1 font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+              Already voted
             </div>
           ) : (
-            <div className="w-fit text-sm p-1 font-medium rounded-lg-full bg-red-200 text-gray-800 text-center">
-              <p className="px-2">Not voted yet</p>
+            <div className="flex-shrink-0 text-sm px-3 py-1 font-medium rounded-full bg-red-500/20 text-red-400 border border-red-500/50">
+              Not voted yet
             </div>
           )}
         </div>
 
-        <p className="mb-6 text-gray-300">{proposal.description}</p>
+        <p className="mb-6 text-nasun-white/85">{proposal.description}</p>
         <div className="flex flex-col gap-4">
-          <div className="flex justify-between text-sm text-gray-400">
-            <span>👍Yes votes: {proposal.yesVotes}</span>
-            <span>👎No votes: {proposal.noVotes}</span>
+          <div className="flex justify-between text-sm text-nasun-white/70">
+            <span>👍 Yes votes: {proposal.yesVotes}</span>
+            <span>👎 No votes: {proposal.noVotes}</span>
           </div>
           <div className="flex justify-between gap-4">
             {connectionStatus === "connected" ? (
               <>
-                <button
+                <Button
+                  variant="green"
+                  size="lg"
                   disabled={votingDisable}
                   onClick={() => vote(true)}
-                  className="flex-1 bg-green-500 text-white px-6 
-                  py-2 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="flex-1"
                 >
                   Vote Yes
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="lg"
                   disabled={votingDisable}
                   onClick={() => vote(false)}
-                  className="flex-1 bg-red-500 text-white px-6 
-                  py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="flex-1"
                 >
                   Vote No
-                </button>
+                </Button>
               </>
             ) : (
-              <div>
+              <div className="w-full">
                 <ConnectButton connectText="Connect your wallet to vote" />
               </div>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="w-full bg-blue-300 px-4 py-2 rounded-lg hover:bg-blue-400"
-          >
+          <Button variant="c5" size="lg" onClick={onClose} className="w-full">
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

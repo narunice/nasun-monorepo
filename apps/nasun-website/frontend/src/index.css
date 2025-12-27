@@ -109,11 +109,8 @@
   /* CSS 변수를 통한 전역 색상 관리 (다크 모드 기본) */
   :root {
     --background: #000000;
-    --text: theme("colors.nasun.white");
     --button-bg: transparent;
-    --button-text: theme("colors.nasun.white");
     --button-background-hover: #000000;
-    --button-border: theme("colors.nasun.c4");
 
     /* 투명도 일관성을 위한 CSS 변수 */
     --opacity-light: 0.8;
@@ -276,7 +273,9 @@
   .dropdown-enter-active {
     opacity: 1;
     transform: translateY(0);
-    transition: opacity 200ms, transform 200ms;
+    transition:
+      opacity 200ms,
+      transform 200ms;
   }
   .dropdown-exit {
     opacity: 1;
@@ -284,7 +283,9 @@
   .dropdown-exit-active {
     opacity: 0;
     transform: translateY(-10px);
-    transition: opacity 200ms, transform 200ms;
+    transition:
+      opacity 200ms,
+      transform 200ms;
   }
 }
 

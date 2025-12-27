@@ -26,7 +26,7 @@ export const Pages = {
   Grants: lazy(() => import("../pages/AwardsPage")),
   Founders: lazy(() => import("../pages/about/FoundersPage")),
   FoundersNft: lazy(() => import("../pages/FoundersNftPage")),
-  Web3: lazy(() => import("../pages/ProposalPage")),
+  Web3: lazy(() => import("../pages/protocol/ProposalPage")),
   MyAccountPage: lazy(() => import("../pages/MyAccountPage")),
   PrivacyPolicy: lazy(() => import("../pages/PrivacyPolicyPage")),
   TermsOfUse: lazy(() => import("../pages/TermsOfUsePage")),
@@ -511,22 +511,38 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
       subMenu: route.navItem!.subMenu?.map((subItem) => ({
         ...subItem,
         name: t(subItem.name as never),
-        path: subItem.path.startsWith("/") || subItem.path.startsWith("http") ? subItem.path : `${route.path}/${subItem.path}`,
+        path:
+          subItem.path.startsWith("/") || subItem.path.startsWith("http")
+            ? subItem.path
+            : `${route.path}/${subItem.path}`,
         parentPath: route.path,
         // 재귀적으로 중첩 서브메뉴 처리 (3단계 중첩 지원)
         subMenu: subItem.subMenu?.map((nestedItem) => ({
           ...nestedItem,
           name: t(nestedItem.name as never),
-          path: nestedItem.path.startsWith("/") || nestedItem.path.startsWith("http") ? nestedItem.path : `${subItem.path}/${nestedItem.path}`,
+          path:
+            nestedItem.path.startsWith("/") || nestedItem.path.startsWith("http")
+              ? nestedItem.path
+              : `${subItem.path}/${nestedItem.path}`,
           parentPath: subItem.path,
         })),
       })),
     }))
     .sort((a, b) => {
       // 정렬 순서: protocol, ips, finance, updates, about, team, wave1, leaderboard, founders-nft
-      const order = ['protocol', 'ips', 'finance', 'updates', 'about', 'team', 'wave1', 'leaderboard', 'founders-nft'];
-      const aIndex = order.findIndex(item => a.path.includes(item));
-      const bIndex = order.findIndex(item => b.path.includes(item));
+      const order = [
+        "protocol",
+        "ips",
+        "finance",
+        "updates",
+        "about",
+        "team",
+        "wave1",
+        "leaderboard",
+        "founders-nft",
+      ];
+      const aIndex = order.findIndex((item) => a.path.includes(item));
+      const bIndex = order.findIndex((item) => b.path.includes(item));
       return aIndex - bIndex;
     });
 };
