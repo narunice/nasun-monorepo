@@ -3,7 +3,8 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
-import type { BalanceInfo, WalletConfig } from '../types';
+import type { BalanceInfo, WalletConfig, TokenBalance, MultiTokenBalanceInfo } from '../types';
+import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
 
 // NASUN token decimals (same as SUI: 9)
 const NASUN_DECIMALS = 9;
@@ -70,22 +71,25 @@ export async function getBalance(address: string): Promise<BalanceInfo> {
 }
 
 /**
- * Convert SOE (minimum unit) to NASUN
+ * Convert minimum unit to display unit
+ * @param amount Amount in minimum unit
+ * @param decimals Token decimals (default: 9 for NASUN)
  */
-export function formatBalance(soe: string | bigint): string {
-  const value = BigInt(soe);
-  const divisor = BigInt(10 ** NASUN_DECIMALS);
+export function formatBalance(amount: string | bigint, decimals: number = NASUN_DECIMALS): string {
+  const value = BigInt(amount);
+  if (value === 0n) return '0';
 
+  const divisor = BigInt(10 ** decimals);
   const integerPart = value / divisor;
   const fractionalPart = value % divisor;
 
-  if (fractionalPart === BigInt(0)) {
+  if (fractionalPart === 0n) {
     return integerPart.toString();
   }
 
-  // Show only significant digits (max 4)
-  const fractionalStr = fractionalPart.toString().padStart(NASUN_DECIMALS, '0');
-  const trimmed = fractionalStr.slice(0, 4).replace(/0+$/, '');
+  // Show only significant digits (max 6)
+  const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
+  const trimmed = fractionalStr.slice(0, 6).replace(/0+$/, '');
 
   if (trimmed === '') {
     return integerPart.toString();
@@ -122,4 +126,98 @@ export function isValidAddress(address: string): boolean {
 export function shortenAddress(address: string, chars = 6): string {
   if (!address) return '';
   return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
+}
+
+// ============================================
+// Multi-Token Support Functions
+// ============================================
+
+/**
+ * Get all token balances for an address
+ * Returns balances for native token and all registered tokens
+ */
+export async function getAllBalances(address: string): Promise<MultiTokenBalanceInfo> {
+  try {
+    const client = getSuiClient();
+    const balances = await client.getAllBalances({ owner: address });
+
+    // Initialize native token balance
+    const nativeBalance: TokenBalance = {
+      symbol: NATIVE_TOKEN.symbol,
+      balance: 0n,
+      formatted: '0',
+      decimals: NATIVE_TOKEN.decimals,
+      type: NATIVE_TOKEN.type,
+    };
+
+    // Map for additional tokens
+    const tokens: Record<string, TokenBalance> = {};
+
+    // Process all balances
+    for (const balance of balances) {
+      const tokenConfig = getTokenByType(balance.coinType);
+      const balanceValue = BigInt(balance.totalBalance);
+
+      if (balance.coinType === NATIVE_TOKEN.type) {
+        // Native token (NASUN)
+        nativeBalance.balance = balanceValue;
+        nativeBalance.formatted = formatBalance(balanceValue, NATIVE_TOKEN.decimals);
+      } else if (tokenConfig) {
+        // Registered token
+        tokens[tokenConfig.symbol] = {
+          symbol: tokenConfig.symbol,
+          balance: balanceValue,
+          formatted: formatBalance(balanceValue, tokenConfig.decimals),
+          decimals: tokenConfig.decimals,
+          type: balance.coinType,
+        };
+      }
+      // Ignore unregistered tokens
+    }
+
+    return {
+      native: nativeBalance,
+      tokens,
+    };
+  } catch (error) {
+    console.error('Failed to get all balances:', error);
+    return {
+      native: {
+        symbol: NATIVE_TOKEN.symbol,
+        balance: 0n,
+        formatted: '0',
+        decimals: NATIVE_TOKEN.decimals,
+        type: NATIVE_TOKEN.type,
+      },
+      tokens: {},
+    };
+  }
+}
+
+/**
+ * Get balance for a specific token type
+ */
+export async function getTokenBalance(address: string, tokenType: string): Promise<TokenBalance | null> {
+  try {
+    const client = getSuiClient();
+    const balance = await client.getBalance({ owner: address, coinType: tokenType });
+    const tokenConfig = getTokenByType(tokenType);
+
+    if (!tokenConfig) {
+      console.warn(`Token type not registered: ${tokenType}`);
+      return null;
+    }
+
+    const balanceValue = BigInt(balance.totalBalance);
+    return {
+      symbol: tokenConfig.symbol,
+      balance: balanceValue,
+      formatted: formatBalance(balanceValue, tokenConfig.decimals),
+      decimals: tokenConfig.decimals,
+      type: tokenType,
+    };
+  } catch (error) {
+    console.error(`Failed to get token balance for ${tokenType}:`, error);
+    return null;
+  }
 }

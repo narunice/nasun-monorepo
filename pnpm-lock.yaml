@@ -53,6 +53,12 @@ importers:
       '@mysten/sui':
         specifier: 1.22.0
         version: 1.22.0(typescript@5.9.3)
+      '@nasun/wallet':
+        specifier: workspace:*
+        version: link:../../../packages/wallet
+      '@nasun/wallet-ui':
+        specifier: workspace:*
+        version: link:../../../packages/wallet-ui
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -237,6 +243,12 @@ importers:
       '@mysten/sui':
         specifier: 1.22.0
         version: 1.22.0(typescript@5.9.3)
+      '@nasun/wallet':
+        specifier: workspace:*
+        version: link:../../../packages/wallet
+      '@nasun/wallet-ui':
+        specifier: workspace:*
+        version: link:../../../packages/wallet-ui
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

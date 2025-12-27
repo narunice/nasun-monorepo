@@ -13,6 +13,12 @@
  * // Header.tsx
  * <WalletConnect />
  * <BalanceDisplay compact />
+ *
+ * // Multi-token support
+ * import { MultiBalanceDisplay, TokenSelector } from '@nasun/wallet-ui';
+ *
+ * <MultiBalanceDisplay tokens={['NASUN', 'NBTC']} />
+ * <TokenSelector value={token} onChange={setToken} />
  * ```
  */
 
@@ -24,3 +30,7 @@ export { FaucetButton } from './FaucetButton';
 export { MnemonicBackup } from './MnemonicBackup';
 export { ImportWallet } from './ImportWallet';
 export { ExportPrivateKey } from './ExportPrivateKey';
+
+// Multi-token components
+export { MultiBalanceDisplay } from './MultiBalanceDisplay';
+export { TokenSelector } from './TokenSelector';
