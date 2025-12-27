@@ -1,0 +1,380 @@
+import React, { useEffect, useCallback, useMemo, useState } from "react";
+import {
+  CumulativeLeaderboardTable,
+  CumulativePeriodSelector,
+  VersionSwitcher,
+  DatePicker,
+  CommunityLanguageLegend,
+} from "./";
+import { PaginationControls, LoadingState, ErrorState } from "../";
+import { useCumulativeLeaderboard, usePagination, useLeaderboardSnapshot } from "../../hooks";
+import { CUMULATIVE_LEADERBOARD_CONFIG } from "../../constants";
+import { CumulativePeriod } from "../../types";
+import { SectionLayout } from "../../../../layout/SectionLayout";
+import { FadeInOnScroll } from "../../../../common/FadeInOnScroll";
+import { useTranslation } from "react-i18next";
+
+interface CumulativeLeaderboardProps {
+  showVersionSwitcher?: boolean;
+  initialPeriod?: CumulativePeriod;
+  showAdvancedFeatures?: boolean;
+}
+
+const CumulativeLeaderboard: React.FC<CumulativeLeaderboardProps> = ({
+  showVersionSwitcher = false,
+  initialPeriod = CumulativePeriod.CUMULATIVE,
+  showAdvancedFeatures = true,
+}) => {
+  const { t } = useTranslation("leaderboard");
+  const itemsPerPage = CUMULATIVE_LEADERBOARD_CONFIG.DEFAULT_ITEMS_PER_PAGE;
+
+  // 날짜 선택 상태 관리
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isSnapshotMode, setIsSnapshotMode] = useState(false);
+
+  // 현재 리더보드 데이터 훅
+  const {
+    leaderboardData: currentLeaderboardData,
+    loading: currentLoading,
+    error: currentError,
+    currentPeriod,
+    fetchLeaderboard,
+    clearCache,
+    refreshLeaderboard,
+  } = useCumulativeLeaderboard(itemsPerPage, initialPeriod);
+
+  // 스냅샷 데이터 훅
+  const {
+    data: snapshotData,
+    isLoading: snapshotLoading,
+    error: snapshotError,
+    refetch: refetchSnapshot,
+  } = useLeaderboardSnapshot({
+    period: currentPeriod,
+    selectedDate: selectedDate || "",
+    page: 1,
+    limit: itemsPerPage,
+    enabled: isSnapshotMode && !!selectedDate,
+  });
+
+  // 현재 사용할 데이터 결정
+  const leaderboardData = isSnapshotMode ? snapshotData : currentLeaderboardData;
+  const loading = isSnapshotMode ? snapshotLoading : currentLoading;
+  const error = isSnapshotMode ? snapshotError?.message || null : currentError;
+
+  const {
+    currentPage,
+    totalPages,
+    pageInput,
+    paginationRange,
+    handlePageChange: onPageChange,
+    handlePageInputSubmit,
+    handlePageInputChange,
+    setCurrentPage,
+  } = usePagination(
+    leaderboardData?.pagination.total || 0,
+    itemsPerPage,
+    leaderboardData?.pagination.hasNext,
+    leaderboardData?.pagination.hasPrev
+  );
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchLeaderboard(1, currentPeriod);
+  }, [fetchLeaderboard, currentPeriod]);
+
+  // 페이지 변경 시 데이터 재로드
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (onPageChange(newPage)) {
+        fetchLeaderboard(newPage, currentPeriod, () => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
+    },
+    [onPageChange, fetchLeaderboard, currentPeriod]
+  );
+
+  // 기간 변경 핸들러
+  const handlePeriodChange = useCallback(
+    (newPeriod: CumulativePeriod) => {
+      setCurrentPage(1);
+
+      // 리더보드 period 변경 시 항상 스냅샷 모드 해제하고 오늘자 데이터 로드
+      setSelectedDate(null);
+      setIsSnapshotMode(false);
+
+      fetchLeaderboard(1, newPeriod, () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      console.log(`📊 리더보드 기간 변경: ${newPeriod} (스냅샷 모드 해제)`);
+    },
+    [fetchLeaderboard, setCurrentPage]
+  );
+
+  // 리트라이 핸들러
+  const handleRetry = useCallback(() => {
+    if (isSnapshotMode && selectedDate) {
+      refetchSnapshot();
+    } else {
+      fetchLeaderboard(currentPage, currentPeriod);
+    }
+  }, [fetchLeaderboard, currentPage, currentPeriod, isSnapshotMode, selectedDate, refetchSnapshot]);
+
+  // 고급 기능 핸들러들
+  const handleClearCache = useCallback(() => {
+    clearCache();
+    console.log("🧹 리더보드 캐시가 클리어되었습니다");
+  }, [clearCache]);
+
+  const handleRefreshData = useCallback(() => {
+    if (isSnapshotMode && selectedDate) {
+      refetchSnapshot();
+      console.log("🔄 리더보드 스냅샷 데이터를 새로고침했습니다");
+    } else {
+      refreshLeaderboard();
+      console.log("🔄 리더보드 데이터를 새로고침했습니다");
+    }
+  }, [refreshLeaderboard, isSnapshotMode, selectedDate, refetchSnapshot]);
+
+  // 날짜 선택 핸들러
+  const handleDateChange = useCallback(
+    (date: string | null) => {
+      const today = new Date().toISOString().split("T")[0];
+      setSelectedDate(date);
+
+      // 오늘 날짜를 선택한 경우 스냅샷 모드가 아닌 현재 리더보드 표시
+      if (date === today) {
+        setIsSnapshotMode(false);
+        setCurrentPage(1);
+        // 현재 리더보드 데이터 새로고침
+        fetchLeaderboard(1, currentPeriod, () => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+        console.log(`📅 오늘 날짜 선택 - 현재 리더보드로 표시: ${date}`);
+      } else if (date) {
+        setIsSnapshotMode(true);
+        setCurrentPage(1);
+        console.log(`📅 스냅샷 모드로 전환: ${date}`);
+      } else {
+        setIsSnapshotMode(false);
+        setCurrentPage(1);
+        console.log("📅 최신 리더보드 모드로 전환");
+      }
+    },
+    [setCurrentPage, fetchLeaderboard, currentPeriod]
+  );
+
+  // 최신 리더보드 보기 핸들러
+  const handleViewLatest = useCallback(() => {
+    setSelectedDate(null);
+    setIsSnapshotMode(false);
+    setCurrentPage(1);
+
+    // 최신 데이터 강제 새로고침
+    fetchLeaderboard(1, currentPeriod, () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    console.log("📅 최신 리더보드로 이동");
+  }, [fetchLeaderboard, currentPeriod, setCurrentPage]);
+
+  // 페이지네이션 데이터 메모이제이션
+  const paginationData = useMemo(
+    () => ({
+      totalEntries: leaderboardData?.pagination.total || 0,
+      hasNext: leaderboardData?.pagination.hasNext || false,
+      hasPrev: leaderboardData?.pagination.hasPrev || false,
+    }),
+    [leaderboardData?.pagination]
+  );
+
+  // [UI 개선] 표시될 날짜 텍스트를 계산하는 로직
+  const displayDate = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+
+    if (selectedDate) {
+      const [year, month, day] = selectedDate.split("-");
+      const dateStr = `${year}년 ${month}월 ${day}일자 순위`;
+
+      // 오늘 날짜를 선택한 경우 현재 리더보드임을 표시
+      if (selectedDate === today) {
+        return `${dateStr} (최신)`;
+      } else if (isSnapshotMode) {
+        return `${dateStr} (스냅샷)`;
+      } else {
+        return dateStr;
+      }
+    }
+    return "최신 순위";
+  }, [isSnapshotMode, selectedDate]);
+
+  // 로딩 상태
+  if (loading && !leaderboardData) {
+    return (
+      <div className="space-y-6">
+        {showVersionSwitcher && (
+          <FadeInOnScroll>
+            <VersionSwitcher />
+          </FadeInOnScroll>
+        )}
+        <LoadingState />
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="space-y-6">
+        {showVersionSwitcher && (
+          <FadeInOnScroll>
+            <VersionSwitcher />
+          </FadeInOnScroll>
+        )}
+        <ErrorState error={error} onRetry={handleRetry} />
+      </div>
+    );
+  }
+
+  // 데이터 없음
+  if (!leaderboardData) {
+    return (
+      <div className="space-y-6">
+        {showVersionSwitcher && (
+          <FadeInOnScroll>
+            <VersionSwitcher />
+          </FadeInOnScroll>
+        )}
+        <ErrorState error={t("states.noData")} onRetry={handleRetry} />
+      </div>
+    );
+  }
+
+  return (
+    <SectionLayout>
+      <FadeInOnScroll>
+        <div className="mb-4">
+          <CumulativePeriodSelector
+            currentPeriod={currentPeriod}
+            onPeriodChange={handlePeriodChange}
+            loading={loading}
+            showDescription={false}
+            compact={false}
+          />
+        </div>
+      </FadeInOnScroll>
+
+      <div className="mb-8">
+        <FadeInOnScroll>
+          <div className="bg-nasun-light-var/50 dark:bg-nasun-dark-var/50 border border-nasun-light dark:border-nasun-medium rounded-lg p-6">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="flex-1 mb-4 lg:mb-0">
+                <h3 className="text-lg font-semibold text-nasun-dark dark:text-nasun-light mb-1">
+                  스냅샷 조회
+                </h3>
+                <p className="text-sm text-nasun-medium dark:text-nasun-light">
+                  특정 날짜를 선택하여 과거 순위를 확인하거나 데이터를 관리할 수 있습니다.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-start lg:justify-end gap-3 w-full lg:w-auto">
+                <DatePicker
+                  selectedDate={selectedDate}
+                  onDateChange={handleDateChange}
+                  placeholder="날짜 선택"
+                  disabled={loading}
+                  className="w-full sm:w-auto"
+                />
+
+                {showAdvancedFeatures && (
+                  <>
+                    <button
+                      onClick={handleRefreshData}
+                      disabled={loading}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-nasun-dark/80 hover:bg-nasun-dark disabled:bg-nasun-light text-nasun-light rounded-lg font-medium text-sm transition-all  "
+                    >
+                      {loading ? "새로고침 중..." : "새로고침"}
+                    </button>
+
+                    <button
+                      onClick={handleClearCache}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-nasun-medium/80 hover:bg-nasun-medium text-nasun-light rounded-lg font-medium text-sm transition-all  "
+                    >
+                      캐시 클리어
+                    </button>
+                  </>
+                )}
+
+                {/* 스냅샷 모드이거나 오늘이 아닌 날짜가 선택된 경우에만 오늘자 순위 보기 버튼 표시 */}
+                {(isSnapshotMode ||
+                  (selectedDate && selectedDate !== new Date().toISOString().split("T")[0])) && (
+                  <button
+                    onClick={handleViewLatest}
+                    disabled={loading}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-nasun-primary hover:bg-nasun-medium disabled:bg-nasun-light text-nasun-light rounded-lg font-medium text-sm transition-all   whitespace-nowrap"
+                  >
+                    오늘자 순위 보기
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </FadeInOnScroll>
+      </div>
+
+      {/* [UI 개선] 순위 기준 날짜 표시 */}
+      <div className="text-right text-sm text-nasun-medium dark:text-nasun-light mb-2">
+        {displayDate}
+      </div>
+
+      <div>
+        {loading ? (
+          <div className="opacity-50">
+            <CumulativeLeaderboardTable entries={leaderboardData?.entries || []} />
+          </div>
+        ) : leaderboardData?.entries?.length === 0 ? (
+          <div className="text-center py-16 text-nasun-medium dark:text-nasun-light bg-nasun-light-var/50 dark:bg-nasun-dark-var/50 rounded-lg">
+            <div className="text-lg font-medium mb-2">
+              {t("states.noMoreEntries", "표시할 데이터가 없습니다.")}
+            </div>
+            <div className="text-sm">
+              선택하신 기간에 해당하는 데이터가 없습니다. 다른 기간을 선택해보세요.
+            </div>
+          </div>
+        ) : (
+          <CumulativeLeaderboardTable entries={leaderboardData?.entries || []} showXUrl={true} />
+        )}
+      </div>
+
+      {/* 🆕 Phase 5: 커뮤니티 언어 구분 범례 */}
+      <FadeInOnScroll>
+        <div className="mt-6">
+          <CommunityLanguageLegend 
+            show={true}
+            compact={true}
+            className="mx-auto max-w-2xl"
+          />
+        </div>
+      </FadeInOnScroll>
+
+      <FadeInOnScroll>
+        <div className="mt-8">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            {...paginationData}
+            pageInput={pageInput}
+            paginationRange={paginationRange}
+            onPageChange={handlePageChange}
+            onPageInputChange={handlePageInputChange}
+            onPageInputSubmit={handlePageInputSubmit}
+          />
+        </div>
+      </FadeInOnScroll>
+    </SectionLayout>
+  );
+};
+
+export default CumulativeLeaderboard;
