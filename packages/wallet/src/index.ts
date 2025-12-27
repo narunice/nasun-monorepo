@@ -81,6 +81,11 @@ export {
   // Multi-token utilities
   getAllBalances,
   getTokenBalance,
+  // Session persistence utilities
+  isSessionPersistEnabled,
+  saveSessionPassword,
+  getSessionPassword,
+  clearSessionPassword,
 } from './sui/client';
 
 export {

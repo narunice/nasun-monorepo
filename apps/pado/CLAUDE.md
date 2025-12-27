@@ -4,79 +4,187 @@
 
 ---
 
-## Project Overview
+## Vision: Unified Onchain Finance
 
-**Pado**는 Nasun Network(Sui 포크) 위에서 동작하는 통합 금융 앱입니다.
+**Pado**는 Nasun Network 위에서 동작하는 **비수탁형(non-custodial) 통합 금융 애플리케이션**입니다.
+
+> *"Unified, non-custodial spot, derivatives, lending, staking, prediction markets, and payments through a single smart account on the Nasun Network."*
+
+### 핵심 철학
+
+| 원칙 | 설명 |
+|------|------|
+| **Single Smart Account** | 모든 금융 활동(거래, 대출, 스테이킹, 결제)을 하나의 계정으로 통합 관리 |
+| **Unified Margin System** | 포트폴리오 레벨의 통합 마진 - 자산이 모든 상품에 걸쳐 담보로 기능 |
+| **Non-Custodial Control** | 사용자가 자산에 대한 완전한 통제권 유지, 개인키 노출 없음 |
+| **Object-Based Architecture** | Nasun의 객체 기반 상태 모델로 복잡한 금융 상호작용을 온체인에서 네이티브하게 모델링 |
+| **CEX-Grade UX, DEX-Level Transparency** | 중앙화 거래소 수준의 사용자 경험 + 온체인 검증 가능성 |
+
+### 왜 Pado인가?
+
+현재 온체인 금융은 분절되어 있습니다:
+- DEX, 무기한 선물, 대출 프로토콜이 각각 분리되어 운영
+- 사용자는 유동성 브릿징, 다중 지갑 관리, 일관성 없는 리스크 가정을 감수해야 함
+
+Pado는 이 분절을 해결합니다:
+- 핵심 시장 기능을 하나의 일관된, 검증 가능한 아키텍처로 통합
+- 중앙화 거래소의 효율성 + 온체인의 투명성
+
+---
+
+## Product Roadmap
+
+### 완료된 단계
+
+| Phase | 상태 | 제품 | 설명 |
+|-------|------|------|------|
+| Phase 0 | ✅ 완료 | Infrastructure | Nasun Devnet V3 (Sui mainnet v1.63.0 fork) |
+| Phase 1 | ✅ 완료 | Spot DEX Core | DeepBook V3 CLOB 배포 + 테스트 토큰 |
+| Phase 2 | ✅ 완료 | Trading UI MVP | 오더북, 주문폼, 잔고관리 |
+| Phase 3 | ✅ 완료 | Trading UX | 가격 클릭 연동, 주문 상태 피드백 |
+| Phase 4 | ✅ 완료 | Multi-Pool | NASUN/NUSDC 풀 추가, MarketSelector |
+| Phase 5 | ✅ 완료 | Native Token | NASUN 입금/출금 지원 (가스비 예약) |
+
+### 진행 중 및 예정
+
+| Phase | 상태 | 제품 | 설명 |
+|-------|------|------|------|
+| Phase 6 | 🔜 다음 | Trading UX Pro | 고급 주문 유형, 슬리피지 설정, 가격 제안 |
+| Phase 7 | 📋 계획 | Smart Account v2 | zkLogin + Passkey 인증, 시드리스 온보딩 |
+| Phase 8 | 📋 계획 | Cross-Chain Vaults | BTC, ETH 등 외부 자산 Vault 통합 |
+| Phase 9 | 📋 계획 | Perpetuals | 무기한 선물 거래 |
+| Phase 10 | 📋 계획 | Lending & Borrowing | 통합 대출 프로토콜 |
+| Phase 11 | 📋 계획 | Staking | NAS 토큰 스테이킹 |
+| Phase 12 | 📋 계획 | Prediction Markets | 예측 시장 |
+| Phase 13 | 📋 계획 | Payments | 즉시 결제 및 전송 |
+| Phase 14 | 📋 계획 | Unified Margin | 크로스-프로덕트 통합 마진 시스템 |
+
+---
+
+## Core Architecture
+
+### 1. Account Model: Smart Account
+
+Pado는 Nasun의 네이티브 계정 추상화를 활용합니다:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Nasun Smart Account                       │
+├─────────────────────────────────────────────────────────────┤
+│  Authentication                                              │
+│  ├── zkLogin (ZK proof + Identity Provider)                 │
+│  ├── Passkey (Device credentials)                           │
+│  └── Embedded Wallet (Current implementation)               │
+├─────────────────────────────────────────────────────────────┤
+│  Single Account → All Products                               │
+│  ├── Spot Trading                                           │
+│  ├── Derivatives                                            │
+│  ├── Lending/Borrowing                                      │
+│  ├── Staking                                                │
+│  └── Payments                                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**현재 구현**: Embedded Wallet (AES-256-GCM 암호화, PBKDF2)
+**향후 확장**: zkLogin, Passkey 기반 시드리스 인증
+
+### 2. Object-Based Financial Architecture
+
+Nasun의 객체 지향 상태 모델로 모든 자산과 포지션을 동적, 조합 가능한 객체로 표현:
+
+| 객체 유형 | 설명 |
+|-----------|------|
+| **Collateral Objects** | idle ↔ margin ↔ lending 상태 간 전환 |
+| **Position Objects** | 청산, 오라클, 결제 로직 내장 |
+| **Market Objects** | 크로스-프로덕트 조합성, 원자적 연산 지원 |
+
+### 3. Unified Margin & Risk Engine (향후)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Unified Risk Engine                        │
+├─────────────────────────────────────────────────────────────┤
+│  Portfolio-Level Margin                                      │
+│  ├── 자산별 리스크 가중치 적용                               │
+│  ├── Spot, Futures, Lending, Prediction 간 마진 공유        │
+│  └── 실시간 손익 계산 및 결정론적 청산                       │
+├─────────────────────────────────────────────────────────────┤
+│  Benefits                                                    │
+│  ├── 자본 사일로 제거                                       │
+│  ├── 조합 가능한 수익률                                     │
+│  └── 향상된 자본 효율성                                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4. Cross-Chain Asset Integration (향후)
+
+Vault 기반 외부 자산 통합:
+
+```
+External Chain (BTC, ETH)
+        │
+        ▼
+┌───────────────────┐
+│   Verified Vault   │  ← MPC / Threshold Signatures
+│   (Lock Assets)    │
+└─────────┬─────────┘
+          │ 1:1 Mint
+          ▼
+┌───────────────────┐
+│  Nasun-Native     │
+│  Representation   │  → 모든 Pado 제품에서 사용 가능
+└───────────────────┘
+```
+
+---
+
+## Security & Governance
+
+### Trust Model
+
+| 항목 | 설명 |
+|------|------|
+| **Non-Custodial** | 사용자가 자산에 대한 완전한 통제권 유지 |
+| **Vault Governance** | MPC + Threshold Signature로 단독 통제 제거 |
+| **Onchain Verifiability** | Vault 상태, 발행량, 담보 투명하게 감사 가능 |
+| **Deterministic Execution** | 마진, 청산, 결제 로직이 공개 검증 가능한 코드로 강제 |
+
+### Progressive Decentralization
+
+```
+Phase 1: Foundation Stewardship
+    ↓
+Phase 2: Onchain Vault Management + Risk Parameter Governance
+    ↓
+Phase 3: DAO-controlled System Configuration
+    ↓
+Phase 4: Community-owned Protocol
+```
+
+### Compliance-Ready Architecture
+
+| 원칙 | 구현 |
+|------|------|
+| **Privacy-Preserving** | ZK 기반 신원 증명으로 데이터 노출 없이 규제 요건 충족 |
+| **Risk-Aligned** | "same activity, same risk, same standard" 원칙 |
+| **Deterministic Risk** | 기관 수준의 리스크 엔진, 투명한 마진, 프로토콜 강제 안전장치 |
+
+---
+
+## Technical Specifications
+
+### Network Configuration
 
 | Spec | Value |
 |------|-------|
-| App Name | Pado |
 | Network | Nasun Devnet |
 | Chain ID | `6681cdfd` (2025-12-25 V3 리셋) |
 | Fork Source | Sui mainnet v1.63.0 |
+| RPC Endpoint | http://3.38.127.23:9000 |
+| Faucet | http://3.38.127.23:5003/gas |
 | Base Technology | DeepBook V3 CLOB |
-| Core Philosophy | Smart Account, Unified Margin, Object-based Architecture |
 
-### 핵심 목표
-
-1. **Spot DEX** (Phase 1) - DeepBook V3 기반 CLOB 거래소
-2. **Perps** (Phase 2) - 무기한 선물 거래
-3. **Prediction Markets** (Phase 3) - 예측 시장
-4. **Lending** (Phase 4) - 대출 프로토콜
-
----
-
-## 현재 상태 (2025-12-26)
-
-### Nasun Devnet 인프라
-
-| 항목 | 상태 | 값 |
-|------|------|-----|
-| Validators | ✅ 운영중 | 2노드 (3.38.127.23, 3.38.76.85) |
-| Fullnode RPC | ✅ 운영중 | http://3.38.127.23:9000 |
-| Faucet | ✅ 운영중 | http://3.38.127.23:5003/gas (100 NASUN/요청) |
-| Fork Source | ✅ 완료 | Sui mainnet v1.63.0 |
-| DeepBook V3 | ✅ 배포 완료 | `0xceaeca5...` |
-| Test Tokens | ✅ 배포 완료 | NBTC, NUSDC, NASUN |
-
-### 개발 진행 상황
-
-| Phase | 상태 | 설명 |
-|-------|------|------|
-| Phase 0 | ✅ 완료 | Nasun Devnet V3 리셋 (Sui mainnet v1.63.0 fork) |
-| Phase 1 | ✅ 완료 | DeepBook V3 배포 + 테스트 토큰 + NBTC/NUSDC Pool 생성 |
-| Phase 2 | ✅ 완료 | Frontend MVP (오더북, 주문폼, 잔고관리) |
-| Phase 3 | ✅ 완료 | Trading UX 개선 (가격 클릭 연동, 주문 상태 피드백) |
-| Phase 4 | ✅ 완료 | NASUN/NUSDC 거래 풀 생성 |
-| Phase 5 | ✅ 완료 | 멀티 풀 지원 (MarketContext, MarketSelector) |
-| Phase 6 | ✅ 완료 | NASUN 입금/출금 지원 (네이티브 토큰 가스비 예약) |
-| Phase 7 | 🔜 다음 | Trading UX 고급화 (주문 유형, 슬리피지, 가격 제안) |
-
----
-
-## DeepBook V3 vs V2
-
-### 왜 V3인가?
-
-| 항목 | V2 | V3 |
-|------|----|----|
-| 상태 | ❌ deprecated (`abort 1337`) | ✅ 활성 개발중 |
-| Flash Loan | ❌ | ✅ |
-| Oracle Integration | ❌ | ✅ |
-| Governance | ❌ | ✅ |
-| Deep Token | ❌ | ✅ |
-| 타입 | System Package (`0xdee9`) | User Package (별도 배포) |
-
-### DeepBook V3 소스
-
-| 항목 | 값 |
-|------|-----|
-| Repository | https://github.com/MystenLabs/deepbookv3 |
-| Move 패키지 | `deepbookv3/packages/deepbook` |
-| License | Apache 2.0 |
-| SDK | `@mysten/deepbookv3-sdk` |
-
-### 배포된 컨트랙트 (2025-12-25)
+### Deployed Contracts
 
 **DeepBook V3**:
 | 항목 | 값 |
@@ -91,95 +199,23 @@
 | Package | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976` |
 | NBTC Type | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nbtc::NBTC` |
 | NUSDC Type | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nusdc::NUSDC` |
-| NBTC TreasuryCap | `0xe45f798115f60b04ae8c7c56202f8b7c218c4ad0e3f24bea840f91e8476d2b01` |
-| NUSDC TreasuryCap | `0x038d9ecce1c57ddb61ca2351b39a1dbb52c73b48fb0d454c3ed036f93d425a46` |
 
 **Trading Pools**:
 
-**NBTC/NUSDC Pool** (2025-12-25):
-| 항목 | 값 |
-|------|-----|
-| Pool ID | `0xf1f6ee99616774ab0861348f5e3cf4285cea2fa0a5a7e91cee13f4ec554bcc63` |
-| tick_size | 10,000 ($0.01) |
-| lot_size | 10,000 (0.0001 BTC) |
-| maker_fee | 0.05% |
-| taker_fee | 0.1% |
-
-**NASUN/NUSDC Pool** (2025-12-26):
-| 항목 | 값 |
-|------|-----|
-| Pool ID | `0x2662e8818e9f5f7c97362e50c33854c4b8e8af1a0cd0e53b1e9677cd66ee8f61` |
-| tick_size | 1,000 ($0.001) |
-| lot_size | 10,000,000 (0.01 NASUN) |
-| maker_fee | 0.05% |
-| taker_fee | 0.1% |
+| Pool | Pool ID | tick_size | lot_size | maker_fee | taker_fee |
+|------|---------|-----------|----------|-----------|-----------|
+| NBTC/NUSDC | `0xf1f6ee99616774ab0861348f5e3cf4285cea2fa0a5a7e91cee13f4ec554bcc63` | 10,000 ($0.01) | 10,000 (0.0001 BTC) | 0.05% | 0.1% |
+| NASUN/NUSDC | `0x2662e8818e9f5f7c97362e50c33854c4b8e8af1a0cd0e53b1e9677cd66ee8f61` | 1,000 ($0.001) | 10,000,000 (0.01 NASUN) | 0.05% | 0.1% |
 
 **Token Faucet**:
 | 항목 | 값 |
 |------|-----|
-| Package | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976` |
 | Faucet Object | `0xcc9a3c29c42ac6cfb02a5d9b25be8b1c8f70c6f3ea6e48e0bb9a58e8ef01f36f` |
 | 지급량 | 1 NBTC + 100,000 NUSDC per request |
 
-### V3 배포 절차
-
-> **Gemini 제안 반영**: Git Submodule로 관리
-
-```bash
-# 1. DeepBook V3를 Submodule로 추가
-git submodule add https://github.com/MystenLabs/deepbookv3.git deepbookv3
-
-# 2. Move 패키지 빌드
-cd deepbookv3/packages/deepbook
-sui move build
-
-# 3. Nasun Devnet에 배포
-nasun client test-publish . --gas-budget 5000000000 --build-env nasun-devnet --with-unpublished-dependencies --force
-
-# 4. 환경변수에 기록
-echo "VITE_DEEPBOOK_PACKAGE=<PackageID>" >> ../../.env.local
-```
-
-### V3 SDK 사용법
-
-```typescript
-// src/config/network.ts (환경변수 사용)
-export const NETWORK_CONFIG = {
-  rpcUrl: import.meta.env.VITE_RPC_URL,
-  faucetUrl: import.meta.env.VITE_FAUCET_URL,
-  chainId: import.meta.env.VITE_CHAIN_ID,
-  deepbookPackage: import.meta.env.VITE_DEEPBOOK_PACKAGE,
-  nbtcType: import.meta.env.VITE_NBTC_TYPE,
-  nusdcType: import.meta.env.VITE_NUSDC_TYPE,
-};
-```
-
-```typescript
-// V3 SDK 사용 예시
-import { SuiClient } from '@mysten/sui/client';
-import { DeepBookClient } from '@mysten/deepbookv3-sdk';
-
-const suiClient = new SuiClient({
-  url: 'http://3.38.127.23:9000'
-});
-
-const deepBookClient = new DeepBookClient({
-  address: '0xceaeca5c1a5f31e1282c47000b442289b2aa454f007c1e1e316110414e020757',
-  client: suiClient,
-});
-
-// Pool 생성
-const tx = deepBookClient.createPool({
-  baseCoinType: '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nbtc::NBTC',
-  quoteCoinType: '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nusdc::NUSDC',
-  tickSize: 100_000_000n,  // 8 decimals
-  lotSize: 1_000_000n,     // 6 decimals
-});
-```
-
 ---
 
-## 기술 스택 (Frontend)
+## Tech Stack
 
 | 항목 | 기술 |
 |------|------|
@@ -191,10 +227,11 @@ const tx = deepBookClient.createPool({
 | 라우팅 | react-router-dom |
 | 데이터 페칭 | @tanstack/react-query |
 | Sui SDK | @mysten/sui |
+| Wallet | @nasun/wallet, @nasun/wallet-ui |
 
 ---
 
-## 프로젝트 구조
+## Project Structure
 
 ```
 apps/pado/
@@ -215,28 +252,24 @@ apps/pado/
         │   └── network.ts       # RPC, Package IDs, Pools
         ├── lib/
         │   ├── sui-client.ts    # Sui 클라이언트
-        │   └── deepbook.ts      # DeepBook V3 유틸 (오더북, 잔고 조회)
-        ├── wallet/              # 임베디드 지갑 모듈
-        │   ├── lib/crypto.ts
-        │   ├── lib/keystore.ts
-        │   └── hooks/useWallet.ts
+        │   └── deepbook.ts      # DeepBook V3 유틸
         ├── features/
         │   └── trading/         # 거래 기능 모듈
         │       ├── components/
-        │       │   ├── OrderForm.tsx        # 주문 폼
-        │       │   ├── OrderbookView.tsx    # 오더북 UI
-        │       │   ├── OpenOrdersCard.tsx   # 미체결 주문
-        │       │   ├── BalanceManagerCard.tsx # 잔고 관리
-        │       │   └── MarketSelector.tsx   # 마켓 선택 드롭다운
+        │       │   ├── OrderForm.tsx
+        │       │   ├── OrderbookView.tsx
+        │       │   ├── OpenOrdersCard.tsx
+        │       │   ├── BalanceManagerCard.tsx
+        │       │   └── MarketSelector.tsx
         │       ├── context/
-        │       │   ├── OrderFormContext.tsx # 주문 폼 상태
-        │       │   └── MarketContext.tsx    # 현재 선택된 마켓/풀
+        │       │   ├── OrderFormContext.tsx
+        │       │   └── MarketContext.tsx
         │       ├── hooks/
-        │       │   ├── useOrderbook.ts      # 오더북 데이터
-        │       │   └── useOpenOrders.ts     # 미체결 주문 데이터
-        │       ├── transactions.ts          # DeepBook 트랜잭션 빌더
-        │       ├── useTrading.ts            # 거래 액션 훅
-        │       └── types.ts                 # 타입 정의
+        │       │   ├── useOrderbook.ts
+        │       │   └── useOpenOrders.ts
+        │       ├── transactions.ts
+        │       ├── useTrading.ts
+        │       └── types.ts
         ├── pages/
         │   └── TradePage.tsx    # 메인 거래 페이지
         └── components/          # 공통 UI 컴포넌트
@@ -244,162 +277,86 @@ apps/pado/
 
 ---
 
-## 네트워크 설정
-
-### Nasun Devnet 연결
-
-```typescript
-// src/config/network.ts
-export const NETWORK_CONFIG = {
-  rpcUrl: 'http://3.38.127.23:9000',
-  faucetUrl: 'http://3.38.127.23:5003/gas',
-  chainId: '6681cdfd',
-
-  // DeepBook V3 (배포 후 업데이트)
-  DEEPBOOK_V3_PACKAGE: '<DEPLOYED_PACKAGE_ID>',
-
-  // System packages
-  SUI_SYSTEM: '0x2',
-  SUI_FRAMEWORK: '0x1',
-};
-```
-
-### Faucet 사용
-
-```bash
-# 100 NASUN 요청 (20 NASUN × 5개 코인)
-curl -X POST http://3.38.127.23:5003/gas \
-  -H "Content-Type: application/json" \
-  -d '{"FixedAmountRequest":{"recipient":"<YOUR_ADDRESS>"}}'
-```
-
----
-
-## Smart Account 아키텍처
-
-### 인터페이스 설계
-
-```typescript
-// smart-account/types/account.ts
-export interface ISmartAccount {
-  readonly address: string | null;
-  readonly isConnected: boolean;
-
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  signTransaction(tx: Transaction): Promise<SignedTransaction>;
-
-  // DeepBook V3 BalanceManager 관리
-  getBalanceManager(poolId: string): Promise<string | null>;
-  createBalanceManager(): Promise<string>;
-}
-
-export type AccountType = 'browser' | 'embedded' | 'zklogin' | 'passkey';
-```
-
-### 확장 계획
-
-| Adapter | 현재 | 향후 |
-|---------|------|------|
-| BrowserWalletAdapter | ✅ 구현 예정 | - |
-| EmbeddedWalletAdapter | ✅ 구현 예정 | - |
-| ZkLoginAdapter | - | Phase 3 |
-| PasskeyAdapter | - | Phase 4 |
-
----
-
-## 멀티 풀 아키텍처 (Phase 5)
-
-### MarketContext
-
-```typescript
-// 현재 선택된 마켓/풀을 전역으로 관리
-interface MarketContextType {
-  currentMarket: MarketKey;     // 'NBTC_NUSDC' | 'NASUN_NUSDC'
-  currentPool: PoolConfig;      // 풀 설정 (id, baseToken, quoteToken, tickSize, lotSize)
-  setMarket: (market: MarketKey) => void;
-  markets: MarketInfo[];        // 사용 가능한 마켓 목록
-  getBaseToken: () => TokenConfig;
-  getQuoteToken: () => TokenConfig;
-}
-```
-
-### 동적 토큰 소수점 처리
-
-```typescript
-// 토큰별 소수점 자릿수
-const TOKEN_DECIMALS = {
-  NBTC: 8,      // 0.00000001 BTC
-  NASUN: 9,     // 0.000000001 NASUN (SOE 단위)
-  NUSDC: 6,     // 0.000001 USDC
-};
-
-// 가격/수량 변환 시 currentPool 기준으로 처리
-const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals);
-const rawQuantity = quantityToRaw(amount, currentPool.baseToken.decimals);
-```
-
-### React Query 캐시 키
-
-```typescript
-// 마켓별로 별도 캐시 유지
-useQuery({
-  queryKey: ['orderbook', currentMarket],  // 'NBTC_NUSDC' 또는 'NASUN_NUSDC'
-  queryFn: () => getOrderbook(currentPool),
-});
-```
-
----
-
-## 관련 프로젝트
-
-| 프로젝트 | 경로 | 설명 |
-|---------|------|------|
-| nasun-devnet | 별도 레포 | 블록체인 노드 |
-| network-explorer | `../network-explorer` | 블록 탐색기 (지갑 모듈 원본) |
-| nasun-website | `../nasun-website` | 공식 웹사이트 |
-
----
-
-## 개발 명령어
+## Development Commands
 
 ```bash
 # 모노레포 루트에서
-pnpm dev:pado
-pnpm build:pado
-
-# 또는 frontend/ 폴더에서
-pnpm dev
-pnpm build
-
-# Move 컨트랙트 빌드
-cd contracts && sui move build
+pnpm dev:pado          # 개발 서버 (포트 5176)
+pnpm build:pado        # 프로덕션 빌드
 
 # Move 컨트랙트 배포
-nasun client publish --gas-budget 100000000 ./contracts
+cd contracts && nasun client publish --gas-budget 100000000
 
 # DeepBook V3 배포
-cd deepbook-v3 && nasun client publish --gas-budget 500000000
+cd deepbookv3 && nasun client publish --gas-budget 500000000
 ```
 
 ---
 
-## 주요 문서
+## Future Product Modules
 
-- [PADO_IMPLEMENTATION_PLAN.md](doc/PADO_IMPLEMENTATION_PLAN.md) - 상세 구현 계획서
+### Perpetuals (Phase 9)
+- 무기한 선물 거래
+- 펀딩 레이트 메커니즘
+- 교차/격리 마진
+
+### Lending & Borrowing (Phase 10)
+- 공급/대출 프로토콜
+- 동적 금리 곡선
+- 통합 마진과 연동
+
+### Staking (Phase 11)
+- NAS 토큰 스테이킹
+- 네트워크 보안 참여
+- 담보 모델링에 반영
+
+### Prediction Markets (Phase 12)
+- 이벤트 기반 예측 시장
+- 결과 오라클 통합
+- 통합 마진 시스템과 연동
+
+### Payments (Phase 13)
+- Near-zero 수수료 즉시 전송
+- 스테이블/변동성 자산 모두 지원
+- 마진, 대출, 거래 잔고와 연동
 
 ---
 
-## 주의사항
+## Comparative Positioning
 
-1. **DeepBook V3 배포 필수**: V3는 시스템 패키지가 아니므로 별도 배포 필요
+| 특성 | 기존 DeFi | CEX | Pado |
+|------|----------|-----|------|
+| 수탁 모델 | Non-custodial | Custodial | **Non-custodial** |
+| 마진 시스템 | 분리됨 | 통합 | **통합 (온체인)** |
+| 실행 속도 | 느림 | 빠름 | **빠름 (병렬 실행)** |
+| 투명성 | 높음 | 낮음 | **높음** |
+| 자본 효율성 | 낮음 | 높음 | **높음** |
+| 크로스체인 | 브릿지 필요 | 중앙화 | **Vault 통합** |
+
+---
+
+## Related Projects
+
+| 프로젝트 | 경로 | 설명 |
+|---------|------|------|
+| nasun-devnet | 별도 레포 | 블록체인 노드 (Rust) |
+| network-explorer | `../network-explorer` | 블록 탐색기 |
+| nasun-website | `../nasun-website` | 공식 웹사이트 |
+| @nasun/wallet | `../../packages/wallet` | 지갑 핵심 로직 |
+| @nasun/wallet-ui | `../../packages/wallet-ui` | 지갑 UI 컴포넌트 |
+
+---
+
+## Important Notes
+
+1. **DeepBook V3 필수**: V3는 시스템 패키지가 아니므로 별도 배포 필요
 2. **BalanceManager**: V3에서 AccountCap 대신 BalanceManager 사용
-3. **Pool 생성 비용**: 예상 100+ NASUN
-4. **SOE 단위**: 1 NASUN = 10^9 SOE (NASUN의 최소 단위)
+3. **SOE 단위**: 1 NASUN = 10^9 SOE (NASUN의 최소 단위)
+4. **비전 정렬**: 모든 새로운 기능은 "Unified Onchain Finance" 비전에 부합해야 함
 
 ---
 
-## EC2 SSH 접속
+## EC2 SSH Access
 
 ```bash
 # Node 1 (Validator + Fullnode + Faucet)

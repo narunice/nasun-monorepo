@@ -88,7 +88,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.governance",
           path: "/protocol/governance",
           element: Pages.Web3, // ProposalPage - Nasun Devnet Voting System
-          disabled: true, // Coming Soon
         },
         {
           name: "navigation.protocolOverview",

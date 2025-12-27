@@ -25,6 +25,7 @@ logEnvSummary();
 configureWallet({
   rpcUrl: NETWORK_CONFIG.rpcUrl,
   faucetUrl: NETWORK_CONFIG.faucetUrl,
+  sessionPersist: true, // Keep wallet unlocked during browser session
 });
 
 // Register tokens for multi-token balance support
