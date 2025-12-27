@@ -5,7 +5,7 @@
 
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { generateMnemonic, validateMnemonic } from '@scure/bip39';
-import { wordlist } from '@scure/bip39/wordlists/english.js';
+import { wordlist } from '@scure/bip39/wordlists/english';
 
 // PBKDF2 설정
 const PBKDF2_ITERATIONS = 100000;

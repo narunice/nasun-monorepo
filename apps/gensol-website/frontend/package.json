@@ -1,5 +1,5 @@
 {
-  "name": "react-quickstart",
+  "name": "@nasun/gensol-website",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -81,13 +81,5 @@
     "typescript-eslint": "^8.18.2",
     "vite": "^7.3.0",
     "vitest": "^3.2.4"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "overrides": {
-      "@mysten/sui": "1.22.0"
-    }
   }
 }
