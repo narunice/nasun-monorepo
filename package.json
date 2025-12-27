@@ -1,0 +1,25 @@
+{
+  "name": "nasun-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter './apps/*' dev",
+    "dev:explorer": "pnpm --filter @nasun/explorer dev",
+    "dev:website": "pnpm --filter @nasun/website dev",
+    "dev:gensol": "pnpm --filter @nasun/gensol dev",
+    "dev:pado": "pnpm --filter @nasun/pado dev",
+    "build": "pnpm -r build",
+    "build:packages": "pnpm --filter './packages/*' build",
+    "build:explorer": "pnpm --filter @nasun/explorer build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
