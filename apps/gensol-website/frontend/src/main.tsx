@@ -23,6 +23,7 @@ configureWallet({
   rpcUrl: import.meta.env.VITE_NASUN_RPC_URL || "https://rpc.devnet.nasun.io",
   faucetUrl: import.meta.env.VITE_NASUN_FAUCET_URL || "https://faucet.devnet.nasun.io",
   networkName: "Nasun Devnet",
+  sessionPersist: true, // Keep wallet unlocked during browser session
 })
 
 const queryClient = new QueryClient()

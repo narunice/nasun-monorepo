@@ -95,6 +95,8 @@ export interface WalletConfig {
   rpcUrl: string;
   faucetUrl?: string;
   networkName?: string;
+  /** Persist session across page refreshes (stores password in sessionStorage) */
+  sessionPersist?: boolean;
 }
 
 // ============================================

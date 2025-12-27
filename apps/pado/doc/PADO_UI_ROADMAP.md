@@ -1,182 +1,281 @@
 # Pado UI/UX 개선 로드맵
 
 > 작성일: 2025-12-26
-> 상태: Phase 2 완료, Phase 3 예정
+> 최종 업데이트: 2025-12-27
+> 비전: CEX-Grade UX, DEX-Level Transparency
 
-## 현재 상태 요약
+---
 
-**구현 완료:**
-- ✅ 핵심 거래 (지정가/시장가 주문, 취소)
-- ✅ 오더북 실시간 표시
-- ✅ BalanceManager 관리
-- ✅ 미체결 주문 관리
-- ✅ 지갑 연결 모달 (Header 이동 완료)
-- ✅ **주문 확인 모달** (Phase 1.1)
-- ✅ **Toast 알림 시스템** (Phase 1.2)
-- ✅ **Limit/Market 주문 탭** (Phase 1.3)
-- ✅ **캔들스틱 차트** (Phase 2.1) - TradingView Lightweight Charts
-- ✅ **거래 히스토리** (Phase 2.2) - 실시간 거래 목록
-- ✅ **오더북 가격 클릭** (Phase 2.3) - 주문 폼 자동 입력
-- ✅ **Depth Chart** (Phase 2.3) - 누적 물량 시각화
-- ✅ **호가 갯수 조절** (Phase 2.3) - 5/10/20 선택
+## 현재 상태 요약 (2025-12-27)
 
-**미구현:**
-- ❌ 슬리피지/고급 주문 옵션 UI
-- ❌ 토큰 선택 UI (현재 NBTC/NUSDC 고정)
+### 구현 완료 ✅
+
+**거래 UI (Trading UI)**
+- ✅ 지정가/시장가 주문 (Limit/Market 탭)
+- ✅ 고급 주문 옵션 (GTC, IOC, FOK, POST_ONLY)
+- ✅ 오더북 실시간 표시 (5/10/20 depth)
+- ✅ 오더북 가격 클릭 → 주문폼 자동 입력
+- ✅ Depth Bar (누적 물량 시각화)
+- ✅ 캔들스틱 차트 (Lightweight Charts)
+- ✅ 거래 히스토리 (최근 거래 목록)
+
+**주문 UX (Order UX)**
+- ✅ 주문 확인 모달
+- ✅ Toast 알림 시스템
+- ✅ 가격 제안 버튼 (Mid, Best Bid, Best Ask)
+- ✅ 슬리피지 설정 UI
+
+**잔고 관리 (Balance Management)**
+- ✅ BalanceManager 생성/관리
+- ✅ 토큰 입금/출금 (NBTC, NUSDC, NASUN)
+- ✅ 다중 토큰 잔고 표시
+
+**마켓 선택 (Market Selection)**
+- ✅ 마켓 선택 드롭다운
+- ✅ NBTC/NUSDC, NASUN/NUSDC 풀 지원
+
+**지갑 (Wallet)**
+- ✅ Header에 WalletConnect 통합
+- ✅ Faucet 버튼 (NASUN + Token)
+
+### 미구현 ❌
+
+- ❌ 실시간 블록체인 이벤트 구독
+- ❌ 차트 기술 지표 (MA, Volume, RSI)
+- ❌ 포트폴리오 대시보드
+- ❌ 모바일 반응형 최적화
+- ❌ 다크/라이트 테마 전환
+
+---
+
+## UI 컴포넌트 현황
+
+### 구현된 컴포넌트 (11개)
+
+| 컴포넌트 | 파일 | 상태 | 설명 |
+|---------|------|------|------|
+| OrderForm | `OrderForm.tsx` | ✅ 완료 | 주문 입력 폼 (Limit/Market) |
+| Orderbook | `Orderbook.tsx` | ✅ 완료 | 호가창 + Depth Bar |
+| PriceChart | `PriceChart.tsx` | ✅ 완료 | 캔들스틱 차트 |
+| TradeHistory | `TradeHistory.tsx` | ✅ 완료 | 거래 내역 |
+| OpenOrders | `OpenOrders.tsx` | ✅ 완료 | 미체결 주문 |
+| BalanceManagerCard | `BalanceManagerCard.tsx` | ✅ 완료 | BM 상태 + 입출금 |
+| MarketSelector | `MarketSelector.tsx` | ✅ 완료 | 마켓 선택 |
+| OrderConfirmModal | `OrderConfirmModal.tsx` | ✅ 완료 | 주문 확인 |
+| PriceSuggestions | `PriceSuggestions.tsx` | ✅ 완료 | 빠른 가격 선택 |
+| SlippageSettings | `SlippageSettings.tsx` | ✅ 완료 | 슬리피지 설정 |
+| PoolInfo | `PoolInfo.tsx` | ✅ 완료 | 풀 정보 표시 |
+
+### 공통 컴포넌트 (3개)
+
+| 컴포넌트 | 파일 | 상태 | 설명 |
+|---------|------|------|------|
+| Toast | `Toast.tsx` | ✅ 완료 | 알림 메시지 |
+| Button | `Button.tsx` | ✅ 완료 | 공통 버튼 |
+| Input | `Input.tsx` | ✅ 완료 | 공통 입력 필드 |
 
 ---
 
 ## CEX vs DEX 분석
 
-### CEX 장점 (Pado에 적용할 것)
+### CEX 장점 (Pado에 적용 완료)
 
-| 거래소 | 장점 | Pado 적용 |
-|--------|------|----------|
-| **Upbit** | 실시간 오더북, 캔들스틱 차트, 저지연 | 차트 추가, 오더북 개선 |
-| **Binance** | Lite/Pro 모드, 거래 히스토리, 통계 | 심플/프로 모드 고려 |
-| **Coinbase** | 깔끔한 UX, 초보자 친화적 | 직관적인 폼 디자인 |
+| 거래소 | 장점 | Pado 적용 | 상태 |
+|--------|------|----------|------|
+| **Upbit** | 실시간 오더북, 캔들스틱 차트 | 차트 + 오더북 | ✅ |
+| **Binance** | Lite/Pro 모드, 거래 히스토리 | 거래 내역 | ✅ |
+| **Coinbase** | 깔끔한 UX, 초보자 친화적 | 직관적 폼 | ✅ |
 
-### DEX 장점 (Pado 강화할 것)
+### DEX 장점 (Pado 강화 완료)
 
-| 거래소 | 장점 | Pado 적용 |
-|--------|------|----------|
-| **Uniswap** | 원클릭 스왑, 심플 | 시장가 주문 간편화 |
-| **SushiSwap** | DCA/Limit, 수수료 표시 | 주문 유형 선택 UI |
-| **1inch** | 가격 비교, 슬리피지 설정 | 슬리피지 설정 추가 |
+| 거래소 | 장점 | Pado 적용 | 상태 |
+|--------|------|----------|------|
+| **Uniswap** | 원클릭 스왑 | 시장가 주문 | ✅ |
+| **SushiSwap** | 수수료 표시 | 풀 정보 | ✅ |
+| **1inch** | 슬리피지 설정 | 슬리피지 UI | ✅ |
 
-### 각각의 단점과 Pado 해결책
+### Pado 차별화 포인트
 
-| 플랫폼 | 단점 | Pado 해결책 |
-|--------|------|------------|
-| **CEX** | 커스터디, 출금 제한 | Self-custody 지갑 (임베디드) |
-| **CEX** | 복잡한 KYC | 지갑만으로 즉시 거래 |
-| **DEX** | 복잡한 온보딩 | 임베디드 지갑 (패스워드만) |
-| **DEX** | 느린 체결 | Nasun Network + CLOB |
-| **DEX** | 슬리피지 불확실 | 지정가 주문 기본 |
-
----
-
-## 구현 우선순위
-
-### Phase 1: 필수 UX 개선 (즉시)
-
-**1.1 주문 확인 모달** ⭐ 최우선
-- 사용자 실수 방지
-- 주문 요약: 방향, 가격, 수량, 예상 비용
-- "확인" 버튼으로 최종 실행
-- CEX 수준의 안전장치
-
-**1.2 거래 결과 Toast/Notification**
-- 현재: 폼 아래 메시지 표시
-- 개선: 화면 우측 상단 Toast
-- 자동 사라짐 (5초)
-- 성공/실패 색상 구분
-
-**1.3 시장가 주문 간편화**
-- 현재: 가격 입력 필수
-- 개선: "Market" 탭 추가
-- 금액만 입력하면 즉시 체결
-- Uniswap 스타일 간편 UX
-
-### Phase 2: 정보 강화 (1주 내)
-
-**2.1 캔들스틱 차트** ⭐ 핵심
-- TradingView Lightweight Charts 사용
-- OHLC 데이터 구성 (오더북 기반)
-- 시간 간격 선택: 1m, 5m, 15m, 1h, 1d
-- CEX 수준의 차트 제공
-
-**2.2 거래 히스토리**
-- 최근 거래 목록 (Pool 이벤트)
-- 내 거래 내역 (BalanceManager 기준)
-- 시간, 가격, 수량, 방향 표시
-
-**2.3 오더북 개선**
-- Depth Chart 추가 (누적 물량 시각화)
-- 가격 레벨 클릭 → 주문 폼 자동 입력
-- 호가 갯수 조절 (5/10/20)
-
-### Phase 3: 고급 기능 (2주 내)
-
-**3.1 주문 유형 선택**
-- Limit (기본)
-- Market (즉시 체결)
-- IOC (Immediate or Cancel)
-- FOK (Fill or Kill)
-- POST_ONLY (Maker only)
-
-**3.2 슬리피지 설정**
-- 시장가 주문 시 활성화
-- 0.1%, 0.5%, 1%, Custom
-- 예상 체결 범위 표시
-
-**3.3 가격 제안 기능**
-- Mid Price 원클릭 입력
-- Best Bid/Ask 버튼
-- ±1%, ±5% 조절 버튼
-
-### Phase 4: 프로 기능 (향후)
-
-**4.1 레이아웃 커스터마이징**
-- Binance 스타일 드래그앤드롭
-- 차트/오더북/폼 배치 변경
-- 설정 저장
-
-**4.2 다중 풀 지원**
-- 토큰 선택 드롭다운
-- 풀 목록 표시
-- 풀 별 통계
-
-**4.3 포트폴리오 대시보드**
-- 전체 자산 현황
-- 손익 계산
-- 거래 통계
+| 기존 문제 | Pado 해결책 | 상태 |
+|----------|------------|------|
+| CEX: 커스터디 위험 | Self-custody 지갑 | ✅ |
+| CEX: 복잡한 KYC | 지갑만으로 즉시 거래 | ✅ |
+| DEX: 복잡한 온보딩 | Embedded Wallet (패스워드만) | ✅ |
+| DEX: 느린 체결 | Nasun Network + CLOB | ✅ |
+| DEX: 슬리피지 불확실 | 지정가 주문 기본 | ✅ |
 
 ---
 
-## 구현 순서 (권장)
+## UI 개선 로드맵
+
+### Phase 3: 고급 기능 (현재)
+
+**3.1 실시간 데이터** ⭐ 다음 단계
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 블록체인 이벤트 구독 | WebSocket 실시간 업데이트 | 중 | 📋 |
+| 실시간 차트 업데이트 | 시뮬레이션 → 실제 데이터 | 중 | 📋 |
+| 실시간 거래 내역 | 시뮬레이션 → 실제 이벤트 | 중 | 📋 |
+
+**3.2 차트 고급화**
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 이동평균선 (MA) | 5, 20, 60 MA | 저 | 📋 |
+| 거래량 표시 | Volume Bar | 저 | 📋 |
+| 기술 지표 | RSI, MACD | 중 | 📋 |
+
+**3.3 가격 제안 고급화**
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| ±1%, ±5% 버튼 | 가격 조절 버튼 | 저 | 📋 |
+| 최근 체결가 | 마지막 거래 가격 | 저 | 📋 |
+
+---
+
+### Phase 4: 프로 기능 (예정)
+
+**4.1 포트폴리오 대시보드** ⭐
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 전체 자산 현황 | 토큰별 잔고 + USD 환산 | 중 | 📋 |
+| 손익 계산 (P&L) | 포지션별 수익률 | 중 | 📋 |
+| 거래 통계 | 총 거래량, 평균 체결가 | 중 | 📋 |
+| 거래 내역 조회 | 필터링, 페이지네이션 | 중 | 📋 |
+
+**4.2 레이아웃 커스터마이징**
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 드래그앤드롭 | 패널 배치 변경 | 고 | 📋 |
+| 설정 저장 | localStorage 저장 | 저 | 📋 |
+| 프리셋 | 기본/Pro 레이아웃 | 중 | 📋 |
+
+**4.3 다중 마켓 뷰**
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 마켓 목록 | 전체 풀 목록 | 저 | 📋 |
+| 24h 변동률 | 가격 변화 표시 | 중 | 📋 |
+| 거래량 순위 | 인기 마켓 정렬 | 중 | 📋 |
+
+---
+
+### Phase 5: 모바일 & 테마 (예정)
+
+**5.1 모바일 반응형**
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 반응형 레이아웃 | 768px 이하 최적화 | 중 | 📋 |
+| 터치 최적화 | 탭/스와이프 제스처 | 중 | 📋 |
+| 모바일 내비게이션 | 바텀 탭바 | 저 | 📋 |
+
+**5.2 테마 시스템**
+
+| 작업 | 설명 | 난이도 | 상태 |
+|------|------|--------|------|
+| 다크 테마 | 기본 테마 | ✅ | 완료 |
+| 라이트 테마 | 밝은 테마 옵션 | 저 | 📋 |
+| 테마 전환 | 토글 스위치 | 저 | 📋 |
+| 시스템 설정 연동 | prefers-color-scheme | 저 | 📋 |
+
+---
+
+## 핵심 파일 목록
+
+### 현재 구현된 파일
 
 ```
-Week 1
-├── 1. 주문 확인 모달 (OrderConfirmModal.tsx)
-├── 2. Toast 알림 시스템 (Toast.tsx, useToast.ts)
-└── 3. 시장가 주문 탭 (OrderForm 확장)
-
-Week 2
-├── 4. 캔들스틱 차트 (PriceChart.tsx)
-├── 5. 거래 히스토리 (TradeHistory.tsx)
-└── 6. 오더북 클릭 입력 (Orderbook 개선)
-
-Week 3+
-├── 7. 주문 유형 선택 UI
-├── 8. 슬리피지 설정
-└── 9. 가격 제안 버튼
+frontend/src/
+├── features/trading/
+│   ├── components/
+│   │   ├── OrderForm.tsx          # 주문 폼 (~200줄)
+│   │   ├── Orderbook.tsx          # 오더북 (~150줄)
+│   │   ├── PriceChart.tsx         # 차트 (~200줄)
+│   │   ├── TradeHistory.tsx       # 거래 내역 (~100줄)
+│   │   ├── OpenOrders.tsx         # 미체결 주문 (~100줄)
+│   │   ├── BalanceManagerCard.tsx # BM 관리 (~150줄)
+│   │   ├── MarketSelector.tsx     # 마켓 선택 (~80줄)
+│   │   ├── OrderConfirmModal.tsx  # 주문 확인 (~100줄)
+│   │   ├── PriceSuggestions.tsx   # 가격 제안 (~60줄)
+│   │   ├── SlippageSettings.tsx   # 슬리피지 (~80줄)
+│   │   └── PoolInfo.tsx           # 풀 정보 (~50줄)
+│   ├── containers/
+│   │   ├── BalancePanel.tsx       # 상단 잔고
+│   │   ├── MarketPanel.tsx        # 차트+오더북
+│   │   └── TradingPanel.tsx       # 주문+BM
+│   ├── context/
+│   │   ├── MarketContext.tsx      # 마켓 상태
+│   │   └── OrderFormContext.tsx   # 주문폼 상태
+│   └── hooks/
+│       ├── useOrderbook.ts        # 오더북 데이터
+│       ├── useOrderActions.ts     # 주문 액션
+│       ├── useFaucet.ts           # Faucet 로직
+│       └── useOpenOrders.ts       # 미체결 주문
+├── components/
+│   ├── common/
+│   │   ├── Toast.tsx              # 토스트
+│   │   ├── Button.tsx             # 버튼
+│   │   └── Input.tsx              # 입력 필드
+│   └── layout/
+│       ├── Header.tsx             # 헤더
+│       └── ErrorBoundary.tsx      # 에러 처리
+└── pages/
+    └── TradePage.tsx              # 메인 페이지
 ```
 
----
+### 향후 추가 예상 파일
 
-## 핵심 파일 (수정 예상)
-
-| 파일 | 변경 내용 |
-|------|----------|
-| `App.tsx` | Toast Provider 추가, 레이아웃 조정 |
-| `features/trading/components/OrderForm.tsx` | Market 탭, 확인 모달 연동 |
-| `features/trading/components/Orderbook.tsx` | 클릭 이벤트, Depth Chart |
-| `features/trading/components/OrderConfirmModal.tsx` | **신규 생성** |
-| `features/trading/components/PriceChart.tsx` | **신규 생성** |
-| `features/trading/components/TradeHistory.tsx` | **신규 생성** |
-| `components/common/Toast.tsx` | **신규 생성** |
-| `lib/deepbook.ts` | 차트 데이터 조회 함수 추가 |
+```
+frontend/src/
+├── features/
+│   ├── trading/
+│   │   └── components/
+│   │       ├── TechnicalIndicators.tsx  # 기술 지표
+│   │       └── VolumeChart.tsx          # 거래량 차트
+│   └── portfolio/                       # Phase 4
+│       ├── components/
+│       │   ├── AssetOverview.tsx
+│       │   ├── PnLChart.tsx
+│       │   └── TradeHistory.tsx
+│       └── PortfolioPage.tsx
+├── hooks/
+│   └── useTheme.ts                      # 테마 훅
+└── pages/
+    └── PortfolioPage.tsx
+```
 
 ---
 
 ## 디자인 원칙
 
-1. **CEX 수준의 정보 밀도** + **DEX의 간편한 온보딩**
-2. **기본값은 간단하게**, 고급 옵션은 숨김
-3. **실수 방지**: 확인 모달, 슬리피지 경고
-4. **실시간 피드백**: 체결 알림, 잔고 업데이트
-5. **모바일 고려**: 반응형 레이아웃
+### 1. CEX 수준의 정보 밀도 + DEX의 간편한 온보딩
+- 전문 트레이더를 위한 풍부한 정보
+- 초보자도 쉽게 시작할 수 있는 간편 모드
+
+### 2. 기본값은 간단하게, 고급 옵션은 숨김
+- 시장가 주문: 수량만 입력
+- 지정가 주문: 가격 + 수량
+- 고급 옵션: 접힌 상태로 제공
+
+### 3. 실수 방지
+- 주문 확인 모달
+- 슬리피지 경고
+- 잔고 부족 사전 알림
+
+### 4. 실시간 피드백
+- 체결 알림 (Toast)
+- 잔고 즉시 업데이트
+- 오더북 실시간 갱신
+
+### 5. 모바일 고려
+- 반응형 레이아웃
+- 터치 친화적 UI
+- 핵심 기능 우선 표시
 
 ---
 
@@ -185,6 +284,7 @@ Week 3+
 | 날짜 | 변경 내용 |
 |------|----------|
 | 2025-12-26 | 초안 작성 (Phase 1~4 계획) |
-| 2025-12-26 | Phase 1 완료: 주문 확인 모달, Toast 알림, Limit/Market 탭 |
+| 2025-12-26 | Phase 1 완료: 주문 확인 모달, Toast, Limit/Market 탭 |
 | 2025-12-26 | Phase 2 완료: 캔들스틱 차트, 거래 히스토리, 오더북 가격 클릭 |
-| 2025-12-26 | Phase 2.3 보완: Depth Chart, 호가 갯수 조절 추가 |
+| 2025-12-26 | Phase 2.3 보완: Depth Chart, 호가 갯수 조절 |
+| 2025-12-27 | 문서 전면 개편: 현재 구현 현황 반영, UI 로드맵 재정렬 |
