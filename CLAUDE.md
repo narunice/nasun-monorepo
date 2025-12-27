@@ -15,42 +15,60 @@
 - 코드 주석과 문서(CLAUDE.md 등)는 한국어 허용
 - 날짜/시간은 영어 형식 사용: `date.toLocaleString('en-US')`
 
-**다국어 지원: 현재는 Nasun Website만 영어/한국어를 지원합니다. 다른 앱들은 영어만 지원하고 있습니다. 추후 다국어지원을 확대해나갈 계획입니다.**
+**다국어 지원: 현재는 Nasun Website만 영어/한국어를 지원합니다. 다른 앱들은 영어만 지원하고 있습니다.**
 
 ## Monorepo 개요
 
-**nasun-monorepo**는 Nasun 프로젝트들의 공유 패키지를 관리하는 pnpm 모노레포입니다.
+**nasun-monorepo**는 Nasun 프로젝트들을 통합 관리하는 pnpm 모노레포입니다.
 
 ### 목적
 
-- **핵심 프로젝트: nasun-website** (공식 웹사이트)
-- 지갑 모듈(@nasun/wallet)을 여러 프로젝트에서 재사용
-- 공통 설정(tsconfig, tailwind) 통합 관리
+- 여러 Nasun 프로젝트를 하나의 저장소에서 관리
+- 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
+- 일관된 개발 환경과 빌드 설정
 
 ### 현재 상태 (2025-12-27)
 
-| 앱              | 상태    | 설명                                     |
-| --------------- | ------- | ---------------------------------------- |
-| `apps/explorer` | ✅ 완료 | Nasun Explorer (블록 탐색기)             |
-| `apps/website`  | 📋 예정 | nasun-website (공식 웹사이트) - **핵심** |
-| `apps/gensol`   | 📋 예정 | gensol-website                           |
-| `apps/pado`     | 📋 예정 | pado                                     |
+| 앱                     | 패키지명               | 상태    | 배포 방식        | 설명                   |
+| ---------------------- | ---------------------- | ------- | ---------------- | ---------------------- |
+| `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | AWS Amplify      | Nasun Explorer (블록 탐색기) |
+| `apps/nasun-website`   | @nasun/nasun-website   | ✅ 완료 | EC2 스크립트     | 공식 웹사이트          |
+| `apps/gensol-website`  | @nasun/gensol-website  | ✅ 완료 | EC2 스크립트     | GenSol 웹사이트        |
+| `apps/pado`            | @nasun/pado            | ✅ 완료 | -                | Pado 앱                |
 
 ## 프로젝트 구조
 
 ```
 nasun-monorepo/
 ├── apps/
-│   └── explorer/              # @nasun/explorer - 블록 탐색기
+│   ├── network-explorer/          # @nasun/network-explorer - 블록 탐색기
+│   ├── nasun-website/             # @nasun/nasun-website - 공식 웹사이트
+│   │   └── frontend/              # Vite React 앱
+│   ├── gensol-website/            # @nasun/gensol-website - GenSol 웹사이트
+│   │   └── frontend/              # Vite React 앱
+│   └── pado/                      # @nasun/pado - Pado 앱
+│       └── frontend/              # Vite React 앱
 ├── packages/
-│   ├── wallet/                # @nasun/wallet - 지갑 핵심 로직 + hooks
-│   ├── wallet-ui/             # @nasun/wallet-ui - React UI 컴포넌트
-│   ├── tsconfig/              # @nasun/tsconfig - 공유 TypeScript 설정
-│   └── tailwind-config/       # @nasun/tailwind-config - Nasun 브랜드 색상
+│   ├── wallet/                    # @nasun/wallet - 지갑 핵심 로직 + hooks
+│   ├── wallet-ui/                 # @nasun/wallet-ui - React UI 컴포넌트
+│   ├── tsconfig/                  # @nasun/tsconfig - 공유 TypeScript 설정
+│   └── tailwind-config/           # @nasun/tailwind-config - Nasun 브랜드 색상
+├── scripts/                       # 배포 스크립트
 ├── pnpm-workspace.yaml
 ├── package.json
 └── CLAUDE.md
 ```
+
+**참고**: `packages/sui-utils/`, `packages/ui/`는 예약된 빈 폴더입니다.
+
+## 앱별 구조 차이
+
+| 앱               | 구조                   | package.json 위치 |
+| ---------------- | ---------------------- | ----------------- |
+| network-explorer | 단일 레벨              | `apps/network-explorer/package.json` |
+| nasun-website    | frontend 서브폴더      | `apps/nasun-website/frontend/package.json` |
+| gensol-website   | frontend 서브폴더      | `apps/gensol-website/frontend/package.json` |
+| pado             | frontend 서브폴더      | `apps/pado/frontend/package.json` |
 
 ## 패키지 설명
 
@@ -136,15 +154,46 @@ Nasun 브랜드 색상 팔레트:
 # 의존성 설치
 pnpm install
 
-# Explorer 개발 서버
-pnpm dev:explorer
+# 개발 서버 (개별)
+pnpm dev:network-explorer    # 포트 5175
+pnpm dev:nasun-website       # 포트 5174
+pnpm dev:gensol-website      # 포트 5173
+pnpm dev:pado                # 포트 5176
 
 # 전체 빌드
 pnpm build
 
 # 특정 앱 빌드
-pnpm build:explorer
+pnpm build:network-explorer
+pnpm build:nasun-website
+pnpm build:gensol-website
+pnpm build:pado
+
+# 배포
+pnpm deploy:nasun-website:staging
+pnpm deploy:nasun-website:prod
+pnpm deploy:gensol-website:staging
 ```
+
+## 배포 방식
+
+| 앱               | 배포 방식        | 트리거        | 대상 URL                          |
+| ---------------- | ---------------- | ------------- | --------------------------------- |
+| network-explorer | AWS Amplify      | git push main | https://explorer.devnet.nasun.io  |
+| nasun-website    | EC2 스크립트     | 수동 실행     | https://nasun.io                  |
+| gensol-website   | EC2 스크립트     | 수동 실행     | https://gensol.nasun.io           |
+| pado             | -                | -             | -                                 |
+
+## 기술 스택
+
+| 항목        | 버전     |
+| ----------- | -------- |
+| React       | 19.x     |
+| Vite        | 7.x      |
+| TypeScript  | 5.9.x    |
+| TailwindCSS | 3.4.x    |
+| pnpm        | 9.x      |
+| Node.js     | 20+      |
 
 ## 네트워크 정보
 
@@ -157,38 +206,20 @@ pnpm build:explorer
 | Chain ID       | `6681cdfd`                       |
 | Native Token   | NASUN (최소단위: SOE)            |
 
-## 새 앱 추가 방법
-
-1. `apps/` 폴더에 앱 복사
-2. `package.json`에 workspace 의존성 추가:
-   ```json
-   "dependencies": {
-     "@nasun/wallet": "workspace:*",
-     "@nasun/wallet-ui": "workspace:*"
-   }
-   ```
-3. 기존 지갑 코드를 패키지 import로 교체
-4. `pnpm install` 실행
-
 ## 보안
 
 - **암호화**: Web Crypto API (AES-256-GCM + PBKDF2 100,000 iterations)
 - **키 저장**: localStorage에 암호화된 상태로 저장
 - **메모리 관리**: 개인키 사용 후 메모리에서 제거
 
-## 관련 프로젝트
+## 관련 외부 프로젝트
 
-| 프로젝트       | 설명            | Monorepo 상태                     |
-| -------------- | --------------- | --------------------------------- |
-| nasun-website  | 공식 웹사이트   | 📋 마이그레이션 예정 (우선순위 1) |
-| nasun-explorer | 블록 탐색기     | ✅ 완료                           |
-| gensol-website | GenSol 웹사이트 | 📋 마이그레이션 예정              |
-| pado           | Pado 앱         | 📋 마이그레이션 예정              |
-| nasun-devnet   | 블록체인 노드   | ❌ 별도 유지 (Rust)               |
+| 프로젝트     | 설명          | 비고                 |
+| ------------ | ------------- | -------------------- |
+| nasun-devnet | 블록체인 노드 | 별도 유지 (Rust)     |
 
 ## 향후 계획
 
-1. **nasun-website 마이그레이션** (우선순위 1)
-2. gensol-website, pado 마이그레이션
-3. 다중 토큰 지원 (NUSDC, NBTC)
-4. dApp 연결 (Wallet Standard)
+1. @nasun/wallet 패키지를 앱들에 통합 (현재 각 앱이 자체 지갑 코드 사용)
+2. 다중 토큰 지원 (NUSDC, NBTC)
+3. dApp 연결 (Wallet Standard)
