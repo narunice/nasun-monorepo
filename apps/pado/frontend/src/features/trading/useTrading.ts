@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '../../lib/sui-client';
-import { useWallet } from '../../wallet';
+import { useWallet } from '@nasun/wallet';
 import {
   buildPlaceLimitOrder,
   buildPlaceMarketOrder,
