@@ -3,7 +3,7 @@
  * 주문 폼 + BalanceManager 카드 + 오픈 오더 (lg:col-span-1)
  */
 
-import { useWallet } from '../../../wallet';
+import { useWallet } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions } from '../hooks';
 import { useOrderForm } from '../context';
 import {
