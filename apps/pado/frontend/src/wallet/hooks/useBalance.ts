@@ -1,12 +1,13 @@
 /**
  * Balance Hook
  * Fetch and manage wallet balances
+ *
+ * Pado-specific: Multi-token balance support (NASUN, NBTC, NUSDC)
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getSuiClient } from '../../lib/sui-client';
+import { getSuiClient, useWalletAccount } from '@nasun/wallet';
 import { TOKENS } from '../../config/network';
-import { useWalletAccount } from './useWallet';
 
 // 1 NASUN = 10^9 SOE
 const NASUN_DECIMALS = 9;
