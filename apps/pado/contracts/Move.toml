@@ -1,0 +1,12 @@
+[package]
+name = "pado_tokens"
+edition = "2024.beta"
+version = "0.0.1"
+
+[dependencies]
+
+[addresses]
+pado = "0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976"
+
+[environments]
+nasun-devnet = "6681cdfd"

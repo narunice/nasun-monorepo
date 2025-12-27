@@ -1,0 +1,104 @@
+{
+    "Stacks": [
+        {
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "StackName": "CdkStack",
+            "ChangeSetId": "arn:aws:cloudformation:ap-northeast-2:135808943968:changeSet/cdk-deploy-change-set/5d39a65c-d480-4150-9149-daf6871959b5",
+            "Parameters": [
+                {
+                    "ParameterKey": "BootstrapVersion",
+                    "ParameterValue": "/cdk-bootstrap/hnb659fds/version",
+                    "ResolvedValue": "29"
+                }
+            ],
+            "CreationTime": "2025-10-07T03:31:52.817000+00:00",
+            "LastUpdatedTime": "2025-10-21T00:32:25.482000+00:00",
+            "RollbackConfiguration": {},
+            "StackStatus": "UPDATE_COMPLETE",
+            "DisableRollback": false,
+            "NotificationARNs": [],
+            "Capabilities": [
+                "CAPABILITY_IAM",
+                "CAPABILITY_NAMED_IAM",
+                "CAPABILITY_AUTO_EXPAND"
+            ],
+            "Outputs": [
+                {
+                    "OutputKey": "CollectRetweetsV3Name",
+                    "OutputValue": "nasun-collect-retweets"
+                },
+                {
+                    "OutputKey": "CumulativeTableName",
+                    "OutputValue": "nasun-leaderboard-data"
+                },
+                {
+                    "OutputKey": "ApiKeyId",
+                    "OutputValue": "t21jye7517"
+                },
+                {
+                    "OutputKey": "CollectQuotesV3Name",
+                    "OutputValue": "nasun-collect-quotes"
+                },
+                {
+                    "OutputKey": "DataCollectionTopicArn",
+                    "OutputValue": "arn:aws:sns:ap-northeast-2:135808943968:nasun-data-collection-alerts"
+                },
+                {
+                    "OutputKey": "ExportsOutputRefLeaderboardDataTableC9C416C59AA7138E",
+                    "OutputValue": "nasun-leaderboard-data",
+                    "ExportName": "CdkStack:ExportsOutputRefLeaderboardDataTableC9C416C59AA7138E"
+                },
+                {
+                    "OutputKey": "NasunApiEndpoint5351723F",
+                    "OutputValue": "https://bb4zdy0rwe.execute-api.ap-northeast-2.amazonaws.com/prod/"
+                },
+                {
+                    "OutputKey": "ApiEndpoint",
+                    "OutputValue": "https://bb4zdy0rwe.execute-api.ap-northeast-2.amazonaws.com/prod/"
+                },
+                {
+                    "OutputKey": "CollectLikesV3Name",
+                    "OutputValue": "nasun-collect-likes"
+                },
+                {
+                    "OutputKey": "ExportsOutputRefGetCumulativeLeaderboardFunctionCE4DD99E8BA08C10",
+                    "OutputValue": "nasun-get-leaderboard",
+                    "ExportName": "CdkStack:ExportsOutputRefGetCumulativeLeaderboardFunctionCE4DD99E8BA08C10"
+                },
+                {
+                    "OutputKey": "ExportsOutputRefCumulativeScoreCalculatorFunction7BD23E76498CF7D7",
+                    "OutputValue": "nasun-score-calculator",
+                    "ExportName": "CdkStack:ExportsOutputRefCumulativeScoreCalculatorFunction7BD23E76498CF7D7"
+                },
+                {
+                    "OutputKey": "TweetBatchSplitterV3Name",
+                    "OutputValue": "nasun-tweet-batch-splitter"
+                },
+                {
+                    "OutputKey": "V3PipelineWithScoringArn",
+                    "OutputValue": "arn:aws:states:ap-northeast-2:135808943968:stateMachine:nasun-leaderboard-pipeline"
+                },
+                {
+                    "OutputKey": "ExportsOutputRefCumulativeLeaderboardGeneratorFunction909296053077EC08",
+                    "OutputValue": "nasun-leaderboard-generator",
+                    "ExportName": "CdkStack:ExportsOutputRefCumulativeLeaderboardGeneratorFunction909296053077EC08"
+                },
+                {
+                    "OutputKey": "ExportsOutputRefGetBookmarkStatsFunction767157D79AAE784F",
+                    "OutputValue": "nasun-get-bookmark-stats",
+                    "ExportName": "CdkStack:ExportsOutputRefGetBookmarkStatsFunction767157D79AAE784F"
+                },
+                {
+                    "OutputKey": "V3DailyScheduleRuleName",
+                    "OutputValue": "nasun-daily-data-collection"
+                }
+            ],
+            "RoleARN": "arn:aws:iam::135808943968:role/cdk-hnb659fds-cfn-exec-role-135808943968-ap-northeast-2",
+            "Tags": [],
+            "EnableTerminationProtection": false,
+            "DriftInformation": {
+                "StackDriftStatus": "NOT_CHECKED"
+            }
+        }
+    ]
+}

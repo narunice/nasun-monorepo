@@ -1,0 +1,11 @@
+{
+  "name": "get-aws-credentials",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.50.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119"
+  }
+}

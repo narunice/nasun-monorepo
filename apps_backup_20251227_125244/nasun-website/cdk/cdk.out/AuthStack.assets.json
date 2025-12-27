@@ -1,0 +1,48 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "84edcc545cdbc4162d167cba6cf81120f5ea4df48bb980b19d5e392bab082fd7": {
+      "displayName": "TwitterLoginFunction/Code",
+      "source": {
+        "path": "asset.84edcc545cdbc4162d167cba6cf81120f5ea4df48bb980b19d5e392bab082fd7",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "current_account-current_region-cce515c2": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "84edcc545cdbc4162d167cba6cf81120f5ea4df48bb980b19d5e392bab082fd7.zip",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    },
+    "b9f8af5d9082d42632c7641a60f00f85140e097f00edeb9a9971cc38b70da36e": {
+      "displayName": "MetaMaskAuthFunction/Code",
+      "source": {
+        "path": "asset.b9f8af5d9082d42632c7641a60f00f85140e097f00edeb9a9971cc38b70da36e",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "current_account-current_region-0bf6cc0d": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "b9f8af5d9082d42632c7641a60f00f85140e097f00edeb9a9971cc38b70da36e.zip",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    },
+    "3f6aa5879175fed01403c872a5f6666c0259a3c058fb4ae3e83c5a2e08a6aa34": {
+      "displayName": "AuthStack Template",
+      "source": {
+        "path": "AuthStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region-532c9bbf": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "3f6aa5879175fed01403c872a5f6666c0259a3c058fb4ae3e83c5a2e08a6aa34.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

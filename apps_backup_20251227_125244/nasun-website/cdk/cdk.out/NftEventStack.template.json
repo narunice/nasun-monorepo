@@ -1,0 +1,2477 @@
+{
+ "Resources": {
+  "NftWhitelistTableD9527944": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "walletAddress",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "xUserId",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "status",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "allowlistBatchId",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "verifiedAt",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "xUserId-index",
+      "KeySchema": [
+       {
+        "AttributeName": "xUserId",
+        "KeyType": "HASH"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "status-index",
+      "KeySchema": [
+       {
+        "AttributeName": "status",
+        "KeyType": "HASH"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "batch-index",
+      "KeySchema": [
+       {
+        "AttributeName": "allowlistBatchId",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "verifiedAt",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "walletAddress",
+      "KeyType": "HASH"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "nasun-nft-whitelist"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftWhitelistTable/Resource"
+   }
+  },
+  "EventTasksTable313DC961": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "walletAddress",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "taskType",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "walletAddress",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "taskType",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true
+    },
+    "TableName": "nasun-nft-event-tasks"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/EventTasksTable/Resource"
+   }
+  },
+  "VerifyEligibilityLogGroupD5CAE8A6": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/lambda/nasun-nft-verify-eligibility",
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/VerifyEligibilityLogGroup/Resource"
+   }
+  },
+  "RegisterUserLogGroupAF3538CA": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/lambda/nasun-nft-register-user",
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/RegisterUserLogGroup/Resource"
+   }
+  },
+  "ExportCsvLogGroup5CFE17FD": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/lambda/nasun-nft-export-csv",
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/ExportCsvLogGroup/Resource"
+   }
+  },
+  "WithdrawUserLogGroupCAC94745": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/lambda/nasun-nft-withdraw-user",
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/WithdrawUserLogGroup/Resource"
+   }
+  },
+  "CheckStatusLogGroupB20C1985": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/aws/lambda/nasun-nft-check-status",
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/CheckStatusLogGroup/Resource"
+   }
+  },
+  "WhitelistExportBucket0F95168A": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": {
+     "Fn::Join": [
+      "",
+      [
+       "nasun-whitelist-exports-",
+       {
+        "Ref": "AWS::AccountId"
+       }
+      ]
+     ]
+    },
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "GET"
+       ],
+       "AllowedOrigins": [
+        "*"
+       ],
+       "MaxAge": 3000
+      }
+     ]
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/WhitelistExportBucket/Resource"
+   }
+  },
+  "VerifyEligibilityLambdaServiceRoleDF9B699D": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/VerifyEligibilityLambda/ServiceRole/Resource"
+   }
+  },
+  "VerifyEligibilityLambdaServiceRoleDefaultPolicy3F9B96F0": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EventTasksTable313DC961",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "NftWhitelistTableD9527944",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "NftWhitelistTableD9527944",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Ref": "AWS::NoValue"
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "VerifyEligibilityLambdaServiceRoleDefaultPolicy3F9B96F0",
+    "Roles": [
+     {
+      "Ref": "VerifyEligibilityLambdaServiceRoleDF9B699D"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/VerifyEligibilityLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "VerifyEligibilityLambda17550BD9": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-ap-northeast-2"
+     },
+     "S3Key": "8c87fa7c739f5c39b3b713c515e2d3cb897dbb65f6678b6bee85a7573c9d4fa4.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "WHITELIST_TABLE_NAME": {
+       "Ref": "NftWhitelistTableD9527944"
+      },
+      "TASKS_TABLE_NAME": {
+       "Ref": "EventTasksTable313DC961"
+      },
+      "X_API_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+      "X_TARGET_USERNAME": "Naru010110",
+      "X_TARGET_USER_ID": "1863020068785004544",
+      "X_TARGET_TWEET_ID": "1981609250695840045",
+      "ENABLE_RATE_LIMIT_CACHE": "true",
+      "CACHE_TTL_MINUTES": "15"
+     }
+    },
+    "FunctionName": "nasun-nft-verify-eligibility",
+    "Handler": "dist/index.handler",
+    "LoggingConfig": {
+     "LogGroup": {
+      "Ref": "VerifyEligibilityLogGroupD5CAE8A6"
+     }
+    },
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "VerifyEligibilityLambdaServiceRoleDF9B699D",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "VerifyEligibilityLambdaServiceRoleDefaultPolicy3F9B96F0",
+    "VerifyEligibilityLambdaServiceRoleDF9B699D"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/VerifyEligibilityLambda/Resource",
+    "aws:asset:path": "asset.8c87fa7c739f5c39b3b713c515e2d3cb897dbb65f6678b6bee85a7573c9d4fa4",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "RegisterUserLambdaServiceRole3F6DEB8E": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/RegisterUserLambda/ServiceRole/Resource"
+   }
+  },
+  "RegisterUserLambdaServiceRoleDefaultPolicy56491F2D": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EventTasksTable313DC961",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "NftWhitelistTableD9527944",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "NftWhitelistTableD9527944",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Ref": "AWS::NoValue"
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "RegisterUserLambdaServiceRoleDefaultPolicy56491F2D",
+    "Roles": [
+     {
+      "Ref": "RegisterUserLambdaServiceRole3F6DEB8E"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/RegisterUserLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "RegisterUserLambda8E982A69": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-ap-northeast-2"
+     },
+     "S3Key": "6e9a501081a08328025e6c1285438d5cd65c9897c6bb17ceadd0ef2c8cd768db.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "WHITELIST_TABLE_NAME": {
+       "Ref": "NftWhitelistTableD9527944"
+      },
+      "TASKS_TABLE_NAME": {
+       "Ref": "EventTasksTable313DC961"
+      },
+      "X_API_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+      "X_TARGET_USERNAME": "Naru010110",
+      "X_TARGET_TWEET_ID": "1981609250695840045",
+      "ENABLE_RATE_LIMIT_CACHE": "true",
+      "CACHE_TTL_MINUTES": "15",
+      "CURRENT_BATCH_ID": "1"
+     }
+    },
+    "FunctionName": "nasun-nft-register-user",
+    "Handler": "dist/index.handler",
+    "LoggingConfig": {
+     "LogGroup": {
+      "Ref": "RegisterUserLogGroupAF3538CA"
+     }
+    },
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "RegisterUserLambdaServiceRole3F6DEB8E",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 15
+   },
+   "DependsOn": [
+    "RegisterUserLambdaServiceRoleDefaultPolicy56491F2D",
+    "RegisterUserLambdaServiceRole3F6DEB8E"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/RegisterUserLambda/Resource",
+    "aws:asset:path": "asset.6e9a501081a08328025e6c1285438d5cd65c9897c6bb17ceadd0ef2c8cd768db",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "WithdrawUserLambdaServiceRoleB3FC6A2B": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/WithdrawUserLambda/ServiceRole/Resource"
+   }
+  },
+  "WithdrawUserLambdaServiceRoleDefaultPolicy2D1DC6DD": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "NftWhitelistTableD9527944",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "NftWhitelistTableD9527944",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "WithdrawUserLambdaServiceRoleDefaultPolicy2D1DC6DD",
+    "Roles": [
+     {
+      "Ref": "WithdrawUserLambdaServiceRoleB3FC6A2B"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/WithdrawUserLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "WithdrawUserLambdaEF0CE50F": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-ap-northeast-2"
+     },
+     "S3Key": "3f6318bdda959efbc055fa4a0405b2e5c6f4eae0d197e4055b25c579c48b3186.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "WHITELIST_TABLE_NAME": {
+       "Ref": "NftWhitelistTableD9527944"
+      }
+     }
+    },
+    "FunctionName": "nasun-nft-withdraw-user",
+    "Handler": "dist/index.handler",
+    "LoggingConfig": {
+     "LogGroup": {
+      "Ref": "WithdrawUserLogGroupCAC94745"
+     }
+    },
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "WithdrawUserLambdaServiceRoleB3FC6A2B",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 15
+   },
+   "DependsOn": [
+    "WithdrawUserLambdaServiceRoleDefaultPolicy2D1DC6DD",
+    "WithdrawUserLambdaServiceRoleB3FC6A2B"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/WithdrawUserLambda/Resource",
+    "aws:asset:path": "asset.3f6318bdda959efbc055fa4a0405b2e5c6f4eae0d197e4055b25c579c48b3186",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "ExportCsvLambdaServiceRole1F6D1D73": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/ExportCsvLambda/ServiceRole/Resource"
+   }
+  },
+  "ExportCsvLambdaServiceRoleDefaultPolicyC964EAC2": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "NftWhitelistTableD9527944",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "NftWhitelistTableD9527944",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:Abort*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "WhitelistExportBucket0F95168A",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "WhitelistExportBucket0F95168A",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "WhitelistExportBucket0F95168A",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ExportCsvLambdaServiceRoleDefaultPolicyC964EAC2",
+    "Roles": [
+     {
+      "Ref": "ExportCsvLambdaServiceRole1F6D1D73"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/ExportCsvLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "ExportCsvLambdaA1D728E9": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-ap-northeast-2"
+     },
+     "S3Key": "c82c80493d9654176bc22c45faa116b1da2a5d6a653c88a637061ad9dab3cc8c.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "WHITELIST_TABLE_NAME": {
+       "Ref": "NftWhitelistTableD9527944"
+      },
+      "TASKS_TABLE_NAME": {
+       "Ref": "EventTasksTable313DC961"
+      },
+      "X_API_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+      "X_TARGET_USERNAME": "Naru010110",
+      "X_TARGET_TWEET_ID": "1981609250695840045",
+      "ENABLE_RATE_LIMIT_CACHE": "true",
+      "CACHE_TTL_MINUTES": "15",
+      "EXPORT_BUCKET_NAME": {
+       "Ref": "WhitelistExportBucket0F95168A"
+      }
+     }
+    },
+    "FunctionName": "nasun-nft-export-csv",
+    "Handler": "dist/index.handler",
+    "LoggingConfig": {
+     "LogGroup": {
+      "Ref": "ExportCsvLogGroup5CFE17FD"
+     }
+    },
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "ExportCsvLambdaServiceRole1F6D1D73",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 300
+   },
+   "DependsOn": [
+    "ExportCsvLambdaServiceRoleDefaultPolicyC964EAC2",
+    "ExportCsvLambdaServiceRole1F6D1D73"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/ExportCsvLambda/Resource",
+    "aws:asset:path": "asset.c82c80493d9654176bc22c45faa116b1da2a5d6a653c88a637061ad9dab3cc8c",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "CheckStatusLambdaServiceRole6A6681FD": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/CheckStatusLambda/ServiceRole/Resource"
+   }
+  },
+  "CheckStatusLambdaServiceRoleDefaultPolicyFC90F5DB": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "NftWhitelistTableD9527944",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "NftWhitelistTableD9527944",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CheckStatusLambdaServiceRoleDefaultPolicyFC90F5DB",
+    "Roles": [
+     {
+      "Ref": "CheckStatusLambdaServiceRole6A6681FD"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/CheckStatusLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "CheckStatusLambda66E1DC5D": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-ap-northeast-2"
+     },
+     "S3Key": "b01cc24e29789542abd7eb5ec76a96e402c1c2fcc23159c9ec34b31aa846ff24.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "WHITELIST_TABLE_NAME": {
+       "Ref": "NftWhitelistTableD9527944"
+      }
+     }
+    },
+    "FunctionName": "nasun-nft-check-status",
+    "Handler": "dist/index.handler",
+    "LoggingConfig": {
+     "LogGroup": {
+      "Ref": "CheckStatusLogGroupB20C1985"
+     }
+    },
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "CheckStatusLambdaServiceRole6A6681FD",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "CheckStatusLambdaServiceRoleDefaultPolicyFC90F5DB",
+    "CheckStatusLambdaServiceRole6A6681FD"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/CheckStatusLambda/Resource",
+    "aws:asset:path": "asset.b01cc24e29789542abd7eb5ec76a96e402c1c2fcc23159c9ec34b31aa846ff24",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "NftEventApi50B9856D": {
+   "Type": "AWS::ApiGateway::RestApi",
+   "Properties": {
+    "Description": "Wave 1 Battalion NFT Free Mint Event API",
+    "Name": "NASUN NFT Event API"
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Resource"
+   }
+  },
+  "NftEventApiDeployment5DACD4642c7f3f8e245054b82a13f3e59f7f419e": {
+   "Type": "AWS::ApiGateway::Deployment",
+   "Properties": {
+    "Description": "Wave 1 Battalion NFT Free Mint Event API",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "DependsOn": [
+    "NftEventApiadminexportcsvGET312E70EF",
+    "NftEventApiadminexportcsvOPTIONS36279A82",
+    "NftEventApiadminexportcsv94599071",
+    "NftEventApiadminOPTIONS36E3BF2B",
+    "NftEventApiadminE862A049",
+    "NftEventApieventOPTIONS8371727C",
+    "NftEventApieventregisterOPTIONS94D04CDA",
+    "NftEventApieventregisterPOST520441E3",
+    "NftEventApieventregister61FF9965",
+    "NftEventApieventFDE06441",
+    "NftEventApieventstatusGET82289DF7",
+    "NftEventApieventstatusOPTIONS14F5D3A7",
+    "NftEventApieventstatus44F9AD4B",
+    "NftEventApieventverifyOPTIONSBDD93ACA",
+    "NftEventApieventverifyPOST2ED50B59",
+    "NftEventApieventverify03968070",
+    "NftEventApieventwithdrawOPTIONS9AE1BAED",
+    "NftEventApieventwithdrawPOSTF5F61D25",
+    "NftEventApieventwithdraw23EA98CB",
+    "NftEventApiOPTIONSD7C12E4C"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Deployment/Resource",
+    "aws:cdk:do-not-refactor": true
+   }
+  },
+  "NftEventApiDeploymentStageprod7ADC8741": {
+   "Type": "AWS::ApiGateway::Stage",
+   "Properties": {
+    "DeploymentId": {
+     "Ref": "NftEventApiDeployment5DACD4642c7f3f8e245054b82a13f3e59f7f419e"
+    },
+    "MethodSettings": [
+     {
+      "DataTraceEnabled": true,
+      "HttpMethod": "*",
+      "LoggingLevel": "INFO",
+      "ResourcePath": "/*",
+      "ThrottlingBurstLimit": 200,
+      "ThrottlingRateLimit": 100
+     }
+    ],
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    },
+    "StageName": "prod",
+    "TracingEnabled": true
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/DeploymentStage.prod/Resource"
+   }
+  },
+  "NftEventApiOPTIONSD7C12E4C": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Fn::GetAtt": [
+      "NftEventApi50B9856D",
+      "RootResourceId"
+     ]
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/OPTIONS/Resource"
+   }
+  },
+  "NftEventApieventFDE06441": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "NftEventApi50B9856D",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "event",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/Resource"
+   }
+  },
+  "NftEventApieventOPTIONS8371727C": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventFDE06441"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/OPTIONS/Resource"
+   }
+  },
+  "NftEventApieventverify03968070": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Ref": "NftEventApieventFDE06441"
+    },
+    "PathPart": "verify",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/verify/Resource"
+   }
+  },
+  "NftEventApieventverifyOPTIONSBDD93ACA": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventverify03968070"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/verify/OPTIONS/Resource"
+   }
+  },
+  "NftEventApieventverifyPOSTApiPermissionNftEventStackNftEventApi401BFACCPOSTeventverify0D06A50C": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "VerifyEligibilityLambda17550BD9",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/",
+       {
+        "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+       },
+       "/POST/event/verify"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/verify/POST/ApiPermission.NftEventStackNftEventApi401BFACC.POST..event.verify"
+   }
+  },
+  "NftEventApieventverifyPOSTApiPermissionTestNftEventStackNftEventApi401BFACCPOSTeventverify8DC43704": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "VerifyEligibilityLambda17550BD9",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/test-invoke-stage/POST/event/verify"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/verify/POST/ApiPermission.Test.NftEventStackNftEventApi401BFACC.POST..event.verify"
+   }
+  },
+  "NftEventApieventverifyPOST2ED50B59": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "StatusCode": "200"
+      }
+     ],
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:ap-northeast-2:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "VerifyEligibilityLambda17550BD9",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Origin": true
+      },
+      "StatusCode": "200"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventverify03968070"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/verify/POST/Resource"
+   }
+  },
+  "NftEventApieventregister61FF9965": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Ref": "NftEventApieventFDE06441"
+    },
+    "PathPart": "register",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/register/Resource"
+   }
+  },
+  "NftEventApieventregisterOPTIONS94D04CDA": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventregister61FF9965"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/register/OPTIONS/Resource"
+   }
+  },
+  "NftEventApieventregisterPOSTApiPermissionNftEventStackNftEventApi401BFACCPOSTeventregister30EEDBA6": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "RegisterUserLambda8E982A69",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/",
+       {
+        "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+       },
+       "/POST/event/register"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/register/POST/ApiPermission.NftEventStackNftEventApi401BFACC.POST..event.register"
+   }
+  },
+  "NftEventApieventregisterPOSTApiPermissionTestNftEventStackNftEventApi401BFACCPOSTeventregister59FB1667": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "RegisterUserLambda8E982A69",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/test-invoke-stage/POST/event/register"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/register/POST/ApiPermission.Test.NftEventStackNftEventApi401BFACC.POST..event.register"
+   }
+  },
+  "NftEventApieventregisterPOST520441E3": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "StatusCode": "200"
+      }
+     ],
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:ap-northeast-2:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "RegisterUserLambda8E982A69",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Origin": true
+      },
+      "StatusCode": "200"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventregister61FF9965"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/register/POST/Resource"
+   }
+  },
+  "NftEventApieventwithdraw23EA98CB": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Ref": "NftEventApieventFDE06441"
+    },
+    "PathPart": "withdraw",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/withdraw/Resource"
+   }
+  },
+  "NftEventApieventwithdrawOPTIONS9AE1BAED": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventwithdraw23EA98CB"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/withdraw/OPTIONS/Resource"
+   }
+  },
+  "NftEventApieventwithdrawPOSTApiPermissionNftEventStackNftEventApi401BFACCPOSTeventwithdrawC555D50E": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "WithdrawUserLambdaEF0CE50F",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/",
+       {
+        "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+       },
+       "/POST/event/withdraw"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/withdraw/POST/ApiPermission.NftEventStackNftEventApi401BFACC.POST..event.withdraw"
+   }
+  },
+  "NftEventApieventwithdrawPOSTApiPermissionTestNftEventStackNftEventApi401BFACCPOSTeventwithdraw63EE7EE4": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "WithdrawUserLambdaEF0CE50F",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/test-invoke-stage/POST/event/withdraw"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/withdraw/POST/ApiPermission.Test.NftEventStackNftEventApi401BFACC.POST..event.withdraw"
+   }
+  },
+  "NftEventApieventwithdrawPOSTF5F61D25": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "StatusCode": "200"
+      }
+     ],
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:ap-northeast-2:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "WithdrawUserLambdaEF0CE50F",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Origin": true
+      },
+      "StatusCode": "200"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventwithdraw23EA98CB"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/withdraw/POST/Resource"
+   }
+  },
+  "NftEventApieventstatus44F9AD4B": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Ref": "NftEventApieventFDE06441"
+    },
+    "PathPart": "status",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/status/Resource"
+   }
+  },
+  "NftEventApieventstatusOPTIONS14F5D3A7": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApieventstatus44F9AD4B"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/status/OPTIONS/Resource"
+   }
+  },
+  "NftEventApieventstatusGETApiPermissionNftEventStackNftEventApi401BFACCGETeventstatus0E135E8A": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "CheckStatusLambda66E1DC5D",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/",
+       {
+        "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+       },
+       "/GET/event/status"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/status/GET/ApiPermission.NftEventStackNftEventApi401BFACC.GET..event.status"
+   }
+  },
+  "NftEventApieventstatusGETApiPermissionTestNftEventStackNftEventApi401BFACCGETeventstatus170B67D6": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "CheckStatusLambda66E1DC5D",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/test-invoke-stage/GET/event/status"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/status/GET/ApiPermission.Test.NftEventStackNftEventApi401BFACC.GET..event.status"
+   }
+  },
+  "NftEventApieventstatusGET82289DF7": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "GET",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "StatusCode": "200"
+      }
+     ],
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:ap-northeast-2:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "CheckStatusLambda66E1DC5D",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Origin": true
+      },
+      "StatusCode": "200"
+     }
+    ],
+    "RequestParameters": {
+     "method.request.querystring.walletAddress": true
+    },
+    "ResourceId": {
+     "Ref": "NftEventApieventstatus44F9AD4B"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/event/status/GET/Resource"
+   }
+  },
+  "NftEventApiadminE862A049": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "NftEventApi50B9856D",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "admin",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/Resource"
+   }
+  },
+  "NftEventApiadminOPTIONS36E3BF2B": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApiadminE862A049"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/OPTIONS/Resource"
+   }
+  },
+  "NftEventApiadminexportcsv94599071": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Ref": "NftEventApiadminE862A049"
+    },
+    "PathPart": "export-csv",
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/export-csv/Resource"
+   }
+  },
+  "NftEventApiadminexportcsvOPTIONS36279A82": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Api-Key'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApiadminexportcsv94599071"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/export-csv/OPTIONS/Resource"
+   }
+  },
+  "NftEventApiadminexportcsvGETApiPermissionNftEventStackNftEventApi401BFACCGETadminexportcsv98FBC61A": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "ExportCsvLambdaA1D728E9",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/",
+       {
+        "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+       },
+       "/GET/admin/export-csv"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/export-csv/GET/ApiPermission.NftEventStackNftEventApi401BFACC.GET..admin.export-csv"
+   }
+  },
+  "NftEventApiadminexportcsvGETApiPermissionTestNftEventStackNftEventApi401BFACCGETadminexportcsv4254A229": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "ExportCsvLambdaA1D728E9",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:ap-northeast-2:",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":",
+       {
+        "Ref": "NftEventApi50B9856D"
+       },
+       "/test-invoke-stage/GET/admin/export-csv"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/export-csv/GET/ApiPermission.Test.NftEventStackNftEventApi401BFACC.GET..admin.export-csv"
+   }
+  },
+  "NftEventApiadminexportcsvGET312E70EF": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": true,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "GET",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "StatusCode": "200"
+      }
+     ],
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:ap-northeast-2:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "ExportCsvLambdaA1D728E9",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Origin": true
+      },
+      "StatusCode": "200"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "NftEventApiadminexportcsv94599071"
+    },
+    "RestApiId": {
+     "Ref": "NftEventApi50B9856D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/Default/admin/export-csv/GET/Resource"
+   }
+  },
+  "NftEventApiNftEventAdminApiKey783D0246": {
+   "Type": "AWS::ApiGateway::ApiKey",
+   "Properties": {
+    "Description": "Admin API Key for NFT Event CSV Export",
+    "Enabled": true,
+    "Name": "nft-event-admin-key",
+    "StageKeys": [
+     {
+      "RestApiId": {
+       "Ref": "NftEventApi50B9856D"
+      },
+      "StageName": {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      }
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/NftEventAdminApiKey/Resource"
+   }
+  },
+  "NftEventApiNftEventUsagePlan1E394072": {
+   "Type": "AWS::ApiGateway::UsagePlan",
+   "Properties": {
+    "ApiStages": [
+     {
+      "ApiId": {
+       "Ref": "NftEventApi50B9856D"
+      },
+      "Stage": {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "Throttle": {}
+     }
+    ],
+    "Quota": {
+     "Limit": 1000,
+     "Period": "DAY"
+    },
+    "Throttle": {
+     "BurstLimit": 20,
+     "RateLimit": 10
+    },
+    "UsagePlanName": "NFT Event Admin Usage Plan"
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/NftEventUsagePlan/Resource"
+   }
+  },
+  "NftEventApiNftEventUsagePlanUsagePlanKeyResourceNftEventStackNftEventApiNftEventAdminApiKeyF2378A61186EB71A": {
+   "Type": "AWS::ApiGateway::UsagePlanKey",
+   "Properties": {
+    "KeyId": {
+     "Ref": "NftEventApiNftEventAdminApiKey783D0246"
+    },
+    "KeyType": "API_KEY",
+    "UsagePlanId": {
+     "Ref": "NftEventApiNftEventUsagePlan1E394072"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/NftEventApi/NftEventUsagePlan/UsagePlanKeyResource:NftEventStackNftEventApiNftEventAdminApiKeyF2378A61"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/+1a/2/aOBT/W+YfJze3diedxG9pYT1UWjhgmiaE0CN+DW4dO7MduizK/36yk0AoXaWd1FPL+AHFec95ed/tj8NZcHZ6Gnx4Bw/mJGL3J4Ivg2JiIbqn8GAWBcslJIotg2IKS4Gzglh3vYEESYe8J5SkoC23XMkrzEmnIHLLsnnqhhNSUrLkQnAZXyvmSKPw62LUGy/GvX8+9yZTQonGRK1BjJTgUU46RKMFLp18xaXtyylPcIyRWqPOScfqDCkxViMkpENuel8W4U13MRx0F/3r8LI3IZSgjHSeOs1Ih4RfJovr8Ca87HVJSQsCjF0KtQQxwUhJBjrvS4bfSWdWEO5Gv25hqtUdRm7etKKGgwEp54f+tv+YD0Zp+/9nzM9zYk4vbqXP8ZIKFZugGKj4UqssnRVE1MOWmRotykrQX/u6MDRWq9yn2m/3sHdl472Smo9BcZ5F92hnBVn6wY7Mn0QRMqu6KNDicOlyz5DOLQiDlKxRG64ksiejOvm4CSolkdLG5z0IoR6QXaNdKeZI5LI3JXPaMIaax1yaWqma+DcCQ90QE/gexpXamzq7UNqMM4Ev8Q7qKe/JvHJo5UJaXc7B4GxeUgHJkkFQfMqkr85ZQW7rYdvHmbR8c7cCyQTq+i6qyssXH09QZbZRBROl8wn/0bCbhKhvUa65VjJBaWt9vUd6bfJsY8JhMY8+/o19/GoVOyDm6/Sx78NNq3XjEeqEG7cYlZRDEhRj5ffIYEyWIDv325tUcxnxFEQYRSqTjWrVHPdAGNVLl2/6CUiIkfkFkWO1erVpeajl7iI0VaPmFc0yOitqrrUQrfpScIkb3iYCzzKfl3s08PUbeAAmPC/3oCPom41TjVZ034aaB6bKcfbk7JMZm1iw6DqZ2fHcPvnNyH9pRV/4tT6wVUwdOFqAMWhNELoLhZTHYPEB8qAYo7FhymcF0dWotRoyNJHm6SZpHSUVKh96knE5byzEbWBuV1pZ6yD1GCwOeMLtHuc808busDREXMY96ZDxBnAxsDDVEOEjulBxzGU8wDUK0iH9m09DV04MbyET1oGlkcZbweOVbSnqkdAT4GgDpLakXbTkSRcamUOlIBqEWNa1UzmNdr1jXARmxRN+g5Rv4S1wuZ1u2luCqRqomEcg+uxRBzrS3zbdJ8s26nTi6sanSkOq8+O1FJRX2GtJx2hUpiP05wGu6dCqaKqe4VnNhtnatOLVBC4txhpalaBaJZnZldL8h9tht+/6zdMNCVpngn7phJRfYT7GbxnXzo76zObp+W6D7lQao0mVNPVKayzYzFxs9/S6Zo9AQ4K2aQDlvKyDer0j5VeF0KOzjs56lc46BBuOAT8G/BjwY8CPAffO0vgtQ2MfCT4M246JcHTWCznrkckVOnoNlnkwVonYoLFZ4f4FsQWOKdjVCPT2E8Ob4zYHKt48GvpozOojJlOfdzWJ+cwpVSWnepx+NhDjSID7aC33UDX6ZvkIVy930XRJybdMWXBTRWtaipr7vOqGX0kT5jDlHjO3Uf9GhZ2bK8zLchvM+vPPU7859ad2Ti6XsRMyzGya2ZJKxTC4M3+sz86C0z+DD+/uDOcn9TesYFxd/wXwrJTJfSUAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "NftEventStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "NftEventApiEndpoint71EEADD3": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/"
+     ]
+    ]
+   }
+  },
+  "WhitelistTableName": {
+   "Description": "NFT Whitelist DynamoDB Table Name",
+   "Value": {
+    "Ref": "NftWhitelistTableD9527944"
+   },
+   "Export": {
+    "Name": "NftWhitelistTableName"
+   }
+  },
+  "WhitelistTableArn": {
+   "Description": "NFT Whitelist DynamoDB Table ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "NftWhitelistTableD9527944",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "NftWhitelistTableArn"
+   }
+  },
+  "TasksTableName": {
+   "Description": "NFT Event Tasks DynamoDB Table Name",
+   "Value": {
+    "Ref": "EventTasksTable313DC961"
+   },
+   "Export": {
+    "Name": "NftEventTasksTableName"
+   }
+  },
+  "TasksTableArn": {
+   "Description": "NFT Event Tasks DynamoDB Table ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "EventTasksTable313DC961",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "NftEventTasksTableArn"
+   }
+  },
+  "ExportBucketName": {
+   "Description": "S3 Bucket for CSV Export",
+   "Value": {
+    "Ref": "WhitelistExportBucket0F95168A"
+   },
+   "Export": {
+    "Name": "NftEventExportBucketName"
+   }
+  },
+  "ApiGatewayUrl": {
+   "Description": "NFT Event API Gateway URL",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/"
+     ]
+    ]
+   },
+   "Export": {
+    "Name": "NftEventApiUrl"
+   }
+  },
+  "ApiKeyId": {
+   "Description": "Admin API Key ID (use AWS CLI to get value)",
+   "Value": {
+    "Ref": "NftEventApiNftEventAdminApiKey783D0246"
+   }
+  },
+  "VerifyEndpoint": {
+   "Description": "POST /event/verify - 참여 자격 검증",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/event/verify"
+     ]
+    ]
+   }
+  },
+  "RegisterEndpoint": {
+   "Description": "POST /event/register - 화이트리스트 등록",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/event/register"
+     ]
+    ]
+   }
+  },
+  "WithdrawEndpoint": {
+   "Description": "POST /event/withdraw - 화이트리스트 참여 취소",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/event/withdraw"
+     ]
+    ]
+   }
+  },
+  "StatusEndpoint": {
+   "Description": "GET /event/status?walletAddress=0x... - 등록 상태 조회",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/event/status"
+     ]
+    ]
+   }
+  },
+  "ExportEndpoint": {
+   "Description": "GET /admin/export-csv - OpenSea CSV Export (API Key required)",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "NftEventApi50B9856D"
+      },
+      ".execute-api.ap-northeast-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "NftEventApiDeploymentStageprod7ADC8741"
+      },
+      "/admin/export-csv"
+     ]
+    ]
+   }
+  },
+  "FeatureFlag": {
+   "Description": "NFT Event Feature Flag (default: disabled)",
+   "Value": "VITE_ENABLE_NFT_EVENT=false"
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

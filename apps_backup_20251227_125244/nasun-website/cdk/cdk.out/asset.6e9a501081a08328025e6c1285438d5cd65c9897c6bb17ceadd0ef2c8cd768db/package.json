@@ -1,0 +1,26 @@
+{
+  "name": "register-user",
+  "version": "1.0.0",
+  "description": "화이트리스트 등록 Lambda - 검증 완료된 사용자를 NFT 화이트리스트에 등록",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "keywords": ["nft", "whitelist", "registration"],
+  "author": "NASUN",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.670.0",
+    "@aws-sdk/lib-dynamodb": "^3.670.0",
+    "@aws-sdk/util-dynamodb": "^3.670.0",
+    "ethers": "^6.15.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.6.3"
+  }
+}

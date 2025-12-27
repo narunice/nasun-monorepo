@@ -1,25 +1,35 @@
-# 의존성 디렉터리
+# Node modules
 node_modules/
 .pnpm/
+*.local
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build output
 dist/
 dist-ssr/
-*.local
+build/
+out/
 
-# 로그 파일
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+logs/
+*.log
 
-# 환경 변수 파일
-.env
-.env.*
-!.env.example
-!.env.staging
-!.env.production
-!.env.development
+# OS-specific files
+.DS_Store
+Thumbs.db
 
-# IDE/에디터 설정
+# IDEs and editors
 .vscode/
 .idea/
 *.suo
@@ -28,16 +38,47 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-# 테스트 캐시
+# Environment variables
+.env
+.env.*
+.env.*.local
+.env.local
+!.env.production
+!.env.development
+!.env.test
+!.env.example
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Local coverage reports
 coverage/
 .nyc_output/
 
-# 시스템 파일
-.DS_Store
-Thumbs.db
+# Optional: Lint cache
+.eslintcache
+
+# Optional: Mac system files
+*.DS_Store
+
+# Optional: Testing output
+test-results/
+
+# CSV export output
+output/
 
 # Vite 캐시
 .cache/
 .temp/
 
-.secret/
+.secret
+
+
+aws-exports.js
+amplifyconfiguration.jsonkey.json
+response.json
+ip_data.txt
+
+# Move/Sui smart contract build artifacts
+contracts/*/build/
+contracts/*/.gitignore

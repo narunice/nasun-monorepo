@@ -1,3 +1,6 @@
 packages:
   - 'apps/*'
+  - 'apps/*/frontend'
   - 'packages/*'
+  # deepbookv3는 별도 관리 (외부 라이브러리)
+  - '!apps/pado/deepbookv3'

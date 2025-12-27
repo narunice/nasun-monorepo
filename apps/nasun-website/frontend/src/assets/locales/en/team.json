@@ -1,0 +1,30 @@
+{
+  "team": "TEAM",
+  "founders": "FOUNDERS",
+  "naru": {
+    "name": "Naru",
+    "position": ["Founder", "Nasun Lead"],
+    "description": [
+      "Naru is a professional filmmaker who has worked on critically acclaimed, seminal South Korean films as the head editor and producer. With over a decade of experience in the film industry, she has been one of the key creative influences on more than 12 Korean feature films, many of which premiered at top international film festivals such as Cannes, Berlin, and Venice. Notably, she has collaborated with some of Korea's most renowned auteurs including Kim Ki-duk, Jung Ji-woo, Jang Hoon, Bae Chang-ho, and Min Yong-geun, contributing to modern classics like 3-Iron",
+      "Naru also holds a Master's degree in Education from Korea University and a Bachelor's degree in Film from Dongguk University. As a researcher at Hallym University Medical Center, her first-author publications appeared in top-tier international peer-reviewed SCI-indexed journals of mental health and psychiatry research worldwide. She is also a certified Level-2 clinical psychology practitioner and has treated hundreds of patients recovering from trauma.",
+      "In recent years, the potential of Web3, AI and social media has captured Naru's imagination to combine her passions for storytelling, technology and building better communities. She has become a firm believer that these emerging technologies will be the key tools in improving communication and forming valuable relationships as we collaborate on creative projects together. By creating and sharing our work with the world, we can set a powerful example on how to move forward, forming stronger, healthier and more prosperous communities."
+    ]
+  },
+  "overclocked": {
+    "name": "Overclocked",
+    "position": ["Founder", "Nasun Creative"],
+    "description": [
+      "Overclocked has over 20 years of experience as a writer, editor, director, and producer in the media and entertainment industry — spanning theatrically released films and award-winning national TV campaigns for some of the most recognizable corporate brands in the U.S. market.",
+      "He has extensive, hands-on experience in every stage of production, from concept development to final delivery, consistently ensuring the highest standards of quality.",
+      "His new creative focus is game development, having built the first Gen Sol multiplayer prototype in Unreal Engine 5 using C++, creating 3D assets in Blender, and setting up dedicated AWS servers. He has also implemented Web3 integrations and leveraged AI-driven tools to improve productivity, particularly in rapid prototyping.",
+      "Beyond development, he has practical experience in growing and managing Web3 communities, fostering environments that are collaborative, constructive, and creatively driven.",
+      "Overclocked graduated from the University of Michigan, where he earned a Bachelor of Arts in English Literature and made the Dean's Honor List. His passions include building things to the best of his ability and empowering others to do the same.",
+      "His past clients include Microsoft, Schering-Plough, Nike, IBM, the U.S. Army, Claritin, MSNBC, Jeep, Def Jam, Hasbro, Revlon, Citic Group Advertising, PBS, Bravo, and IFC."
+    ]
+  },
+  "joinUs": {
+    "title": "JOIN OUR TEAM",
+    "buttonText": "Check Out Open Positions",
+    "description": "Join us and build the future of creativity, entertainment, and finance. We are looking for advisors, founding members, collaborators, and partners. Remote work is available for all positions."
+  }
+}

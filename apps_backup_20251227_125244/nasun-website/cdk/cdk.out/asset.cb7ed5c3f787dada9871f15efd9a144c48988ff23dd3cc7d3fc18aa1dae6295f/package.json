@@ -1,0 +1,21 @@
+{
+  "name": "auth-metamask",
+  "version": "1.0.0",
+  "description": "MetaMask authentication Lambda for NASUN",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.x",
+    "@aws-sdk/client-dynamodb": "^3.x",
+    "@aws-sdk/lib-dynamodb": "^3.x",
+    "ethers": "^6.11.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.x",
+    "@types/node": "^20.x",
+    "typescript": "^5.x"
+  }
+}

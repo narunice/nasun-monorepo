@@ -5,6 +5,7 @@
 ## 언어 설정
 
 **모든 응답과 사고는 한국어로 진행합니다.**
+**코드 파일 내 주석은 영어로 작성합니다.**
 
 ## UI 언어 규칙
 
@@ -14,23 +15,26 @@
 - 코드 주석과 문서(CLAUDE.md 등)는 한국어 허용
 - 날짜/시간은 영어 형식 사용: `date.toLocaleString('en-US')`
 
+**다국어 지원: 현재는 Nasun Website만 영어/한국어를 지원합니다. 다른 앱들은 영어만 지원하고 있습니다. 추후 다국어지원을 확대해나갈 계획입니다.**
+
 ## Monorepo 개요
 
 **nasun-monorepo**는 Nasun 프로젝트들의 공유 패키지를 관리하는 pnpm 모노레포입니다.
 
 ### 목적
+
 - **핵심 프로젝트: nasun-website** (공식 웹사이트)
 - 지갑 모듈(@nasun/wallet)을 여러 프로젝트에서 재사용
 - 공통 설정(tsconfig, tailwind) 통합 관리
 
 ### 현재 상태 (2025-12-27)
 
-| 앱 | 상태 | 설명 |
-|-----|------|------|
-| `apps/explorer` | ✅ 완료 | Nasun Explorer (블록 탐색기) |
-| `apps/website` | 📋 예정 | nasun-website (공식 웹사이트) - **핵심** |
-| `apps/gensol` | 📋 예정 | gensol-website |
-| `apps/pado` | 📋 예정 | pado |
+| 앱              | 상태    | 설명                                     |
+| --------------- | ------- | ---------------------------------------- |
+| `apps/explorer` | ✅ 완료 | Nasun Explorer (블록 탐색기)             |
+| `apps/website`  | 📋 예정 | nasun-website (공식 웹사이트) - **핵심** |
+| `apps/gensol`   | 📋 예정 | gensol-website                           |
+| `apps/pado`     | 📋 예정 | pado                                     |
 
 ## 프로젝트 구조
 
@@ -55,6 +59,7 @@ nasun-monorepo/
 지갑 핵심 로직과 React hooks를 제공합니다.
 
 **주요 exports:**
+
 - `useWallet()` - 지갑 상태 관리 (Zustand)
 - `useBalance()` - 잔액 조회 (TanStack Query)
 - `useTransaction()` - 트랜잭션 전송
@@ -63,13 +68,14 @@ nasun-monorepo/
 - `requestFaucet()` - Faucet 토큰 요청
 
 **사용법:**
+
 ```typescript
-import { useWallet, useBalance, configureWallet } from '@nasun/wallet';
+import { useWallet, useBalance, configureWallet } from "@nasun/wallet";
 
 // RPC URL 설정 (앱 시작 시)
 configureWallet({
-  rpcUrl: 'https://rpc.devnet.nasun.io',
-  faucetUrl: 'https://faucet.devnet.nasun.io',
+  rpcUrl: "https://rpc.devnet.nasun.io",
+  faucetUrl: "https://faucet.devnet.nasun.io",
 });
 
 // 컴포넌트에서 사용
@@ -82,6 +88,7 @@ const { data: balance } = useBalance();
 React UI 컴포넌트를 제공합니다.
 
 **주요 exports:**
+
 - `WalletProvider` - 지갑 초기화 Provider
 - `WalletConnect` - 연결/생성/잠금해제 UI
 - `BalanceDisplay` - 잔액 표시
@@ -92,6 +99,7 @@ React UI 컴포넌트를 제공합니다.
 - `ExportPrivateKey` - 개인키 내보내기 UI
 
 **사용법:**
+
 ```tsx
 import { WalletProvider, WalletConnect, BalanceDisplay } from '@nasun/wallet-ui';
 
@@ -108,6 +116,7 @@ import { WalletProvider, WalletConnect, BalanceDisplay } from '@nasun/wallet-ui'
 ### @nasun/tsconfig
 
 공유 TypeScript 설정:
+
 - `base.json` - 기본 설정
 - `react.json` - React 앱용
 - `node.json` - Node.js용
@@ -115,6 +124,7 @@ import { WalletProvider, WalletConnect, BalanceDisplay } from '@nasun/wallet-ui'
 ### @nasun/tailwind-config
 
 Nasun 브랜드 색상 팔레트:
+
 - `nasun-c3` - 성공, 긍정 (청록)
 - `nasun-c4` - 기본 인터랙티브 (파랑)
 - `nasun-c5` - 보조 인터랙티브 (진파랑)
@@ -138,14 +148,14 @@ pnpm build:explorer
 
 ## 네트워크 정보
 
-| Spec | Value |
-|------|-------|
-| Target Network | Nasun Devnet |
-| RPC Endpoint | https://rpc.devnet.nasun.io |
-| Faucet | https://faucet.devnet.nasun.io |
-| Explorer | https://explorer.devnet.nasun.io |
-| Chain ID | `6681cdfd` |
-| Native Token | NASUN (최소단위: SOE) |
+| Spec           | Value                            |
+| -------------- | -------------------------------- |
+| Target Network | Nasun Devnet                     |
+| RPC Endpoint   | https://rpc.devnet.nasun.io      |
+| Faucet         | https://faucet.devnet.nasun.io   |
+| Explorer       | https://explorer.devnet.nasun.io |
+| Chain ID       | `6681cdfd`                       |
+| Native Token   | NASUN (최소단위: SOE)            |
 
 ## 새 앱 추가 방법
 
@@ -168,13 +178,13 @@ pnpm build:explorer
 
 ## 관련 프로젝트
 
-| 프로젝트 | 설명 | Monorepo 상태 |
-|---------|------|--------------|
-| nasun-website | 공식 웹사이트 | 📋 마이그레이션 예정 (우선순위 1) |
-| nasun-explorer | 블록 탐색기 | ✅ 완료 |
-| gensol-website | GenSol 웹사이트 | 📋 마이그레이션 예정 |
-| pado | Pado 앱 | 📋 마이그레이션 예정 |
-| nasun-devnet | 블록체인 노드 | ❌ 별도 유지 (Rust) |
+| 프로젝트       | 설명            | Monorepo 상태                     |
+| -------------- | --------------- | --------------------------------- |
+| nasun-website  | 공식 웹사이트   | 📋 마이그레이션 예정 (우선순위 1) |
+| nasun-explorer | 블록 탐색기     | ✅ 완료                           |
+| gensol-website | GenSol 웹사이트 | 📋 마이그레이션 예정              |
+| pado           | Pado 앱         | 📋 마이그레이션 예정              |
+| nasun-devnet   | 블록체인 노드   | ❌ 별도 유지 (Rust)               |
 
 ## 향후 계획
 

@@ -1,0 +1,57 @@
+{
+  "name": "cdk",
+  "version": "0.1.0",
+  "bin": {
+    "cdk": "bin/cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:check": "tsc --noEmit",
+    "build:lambdas": "./scripts/build-all-lambdas.sh",
+    "build:all": "pnpm run build:lambdas && pnpm run build",
+    "watch": "tsc -w",
+    "test": "jest",
+    "clean": "./cleanup-build-files.sh",
+    "verify-handlers": "node scripts/verify-handlers.js",
+    "predeploy": "bash scripts/pre-deploy.sh",
+    "deploy": "echo '\n❌ 배포 환경을 명시적으로 지정해주세요:\n\n  📦 개발 환경 배포:\n    pnpm deploy:dev\n\n  🚀 프로덕션 환경 배포:\n    pnpm deploy:prod\n' && exit 1",
+    "deploy:dev": "bash scripts/deploy-safe-env.sh development",
+    "deploy:prod": "bash scripts/deploy-safe-env.sh production",
+    "deploy:quick": "pnpm cdk deploy CdkStack --require-approval never",
+    "deploy:all": "echo '\n❌ 배포 환경을 명시적으로 지정해주세요:\n\n  📦 개발 환경 전체 배포:\n    pnpm deploy:all:dev\n\n  🚀 프로덕션 환경 전체 배포:\n    pnpm deploy:all:prod\n' && exit 1",
+    "deploy:all:dev": "bash scripts/deploy-all-with-sync-env.sh development",
+    "deploy:all:prod": "bash scripts/deploy-all-with-sync-env.sh production",
+    "deploy:all:dev:dry": "bash scripts/deploy-all-with-sync-env.sh development --dry-run",
+    "deploy:all:prod:dry": "bash scripts/deploy-all-with-sync-env.sh production --dry-run",
+    "sync:endpoints": "node scripts/sync-api-endpoints.js development",
+    "sync:endpoints:prod": "node scripts/sync-api-endpoints.js production",
+    "sync:endpoints:dry": "node scripts/sync-api-endpoints.js development --dry-run",
+    "sync:endpoints:prod:dry": "node scripts/sync-api-endpoints.js production --dry-run",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-cloudformation": "^3.917.0",
+    "@aws-sdk/client-dynamodb": "^3.888.0",
+    "@aws-sdk/lib-dynamodb": "^3.888.0",
+    "@types/aws-lambda": "^8.10.152",
+    "@types/jest": "^29.5.14",
+    "@types/node": "22.7.9",
+    "aws-cdk": "2.1026.0",
+    "esbuild": "^0.25.9",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.6.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.906.0",
+    "@aws-sdk/client-secrets-manager": "^3.906.0",
+    "@aws-sdk/client-sns": "^3.894.0",
+    "@types/node-cron": "^3.0.11",
+    "aws-cdk-lib": "2.211.0",
+    "constructs": "^10.0.0",
+    "dotenv": "^17.2.2",
+    "node-cron": "^4.2.1",
+    "twitter-api-v2": "^1.27.0"
+  }
+}

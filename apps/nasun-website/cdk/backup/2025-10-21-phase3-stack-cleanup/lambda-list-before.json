@@ -1,0 +1,2309 @@
+{
+    "Functions": [
+        {
+            "FunctionName": "randomImageHandler",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:randomImageHandler",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/randomImageHandler-role-ns7qluyu",
+            "Handler": "index.handler",
+            "CodeSize": 14398158,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-07-11T02:46:21.000+0000",
+            "CodeSha256": "OMtW/j0ppZkcjTB2UcCM8ZUk4VFRUfJ61fhQYF4JbE0=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages",
+                    "MAX_MINT_COUNTS": "{\"TIER1\":1, \"TIER2\":2, \"TIER3\":3, \"TIER4\":4, \"TIER5\":100}"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "5c1f5313-a1ba-415d-b1c0-c8deda0a675a",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/randomImageHandler"
+            }
+        },
+        {
+            "FunctionName": "nasun-aggregate-results",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-aggregate-results",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-AggregateResultsFunctionServiceRole67E6D49-2YdRg2M9yptG",
+            "Handler": "batch/aggregate-results.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 900,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "1.0",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "ENABLE_OAUTH_AUTHENTICATION": "false"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "642194d6-0ba2-43e2-b6cc-7ff3d118b668",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-aggregate-results"
+            }
+        },
+        {
+            "FunctionName": "getSupplyCount",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:getSupplyCount",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/getSupplyCount-role-l7lr0yh4",
+            "Handler": "index.handler",
+            "CodeSize": 1860561,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-07-12T03:29:18.000+0000",
+            "CodeSha256": "4p5/n8Q+GYJcaeb/elZYICYLSh/c4y35Z6yJPcpfY+M=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "73c12ee3-2b0f-4786-b3c4-6602261dd546",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/getSupplyCount"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-update-backup-prices",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-update-backup-prices",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-UpdateBackupPricesLambdaServiceRole7226-Il1JbKbiiizd",
+            "Handler": "index.handler",
+            "CodeSize": 954,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:31.355+0000",
+            "CodeSha256": "f3dL+dQ/z3mcxIuZUnYfOlFO9lyYeSTGyfQ3oCujxbM=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "CMC_API_KEY": "431dfcca-f63d-4e1c-8c94-3d2598cecf87",
+                    "TABLE_NAME": "CryptoBackupPrices"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "eb61907f-ddbc-4994-96b3-029deb71405d",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-update-backup-prices"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-purge-deactivated-accounts",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-purge-deactivated-accounts",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-PurgeDeactivatedAccountsLambdaServiceRo-Ovic5PH50l1t",
+            "Handler": "index.handler",
+            "CodeSize": 3645,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T03:43:05.000+0000",
+            "CodeSha256": "sqtgI9L0Zobpskb7FVj9YeoaDPrsf/Wpqfa4Wsrfjps=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "COGNITO_IDENTITY_POOL_ID": "ap-northeast-2:cea43281-b7c1-4473-8cbf-cf5ccaa33c0a",
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "f90f7ec4-c682-40c0-a860-ce02ec33bc90",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-purge-deactivated-accounts"
+            }
+        },
+        {
+            "FunctionName": "nasun-refresh-oauth2-token",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-refresh-oauth2-token",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-RefreshOAuth2TokenFunctionServiceRole7E7E9-5qPsibr5Ooh3",
+            "Handler": "system/refresh-oauth2-token.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 60,
+            "MemorySize": 256,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "b4f60071-7ee4-46ae-b346-50bc2b96ed4a",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-refresh-oauth2-token"
+            }
+        },
+        {
+            "FunctionName": "nasun-auth-twitter-login",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-auth-twitter-login",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/AuthStack-TwitterLoginFunctionServiceRole871DD265-KsbuIuRuZwQQ",
+            "Handler": "index.handler",
+            "CodeSize": 10655569,
+            "Description": "",
+            "Timeout": 30,
+            "MemorySize": 128,
+            "LastModified": "2025-10-19T02:24:31.000+0000",
+            "CodeSha256": "WDE8BRsTTwh69iqXJY3I1isH6W2SOMNqJCdaf+QX/I0=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "COGNITO_IDENTITY_POOL_ID": "ap-northeast-2:cea43281-b7c1-4473-8cbf-cf5ccaa33c0a",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "SECRET_NAME": "nasun-twitter-tokens",
+                    "COGNITO_DEVELOPER_PROVIDER_NAME": "nasun.io",
+                    "SESSIONS_TABLE_NAME": "TwitterOAuthSessions",
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "0d0e32d8-d9fe-4d8b-bf6d-3eb4357248a1",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "AuthStack-TwitterAuthLambdaLogGroup6211DDBA-YJEuP3tjQPex"
+            }
+        },
+        {
+            "FunctionName": "nasun-get-bookmark-stats",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-get-bookmark-stats",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-ApiReadOnlyRoleB2B2A0AB-J4gPpNuzJOCm",
+            "Handler": "api/get-bookmark-stats.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 30,
+            "MemorySize": 256,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "ADMIN_USERNAMES": "Naru010110",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "EXCLUDED_USERNAMES": "spam_account,bot_account",
+                    "SYSTEM_VERSION": "1.0",
+                    "EXCLUDED_USER_IDS": ""
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "8cdfdfda-a4bc-4a18-b768-66a3a58872db",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-get-bookmark-stats"
+            }
+        },
+        {
+            "FunctionName": "nasun-collect-retweets",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-collect-retweets",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CollectRetweetsFunctionServiceRoleF9D42F3C-v5zkbwuwTNTf",
+            "Handler": "batch/collect-retweets.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "v3",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "RATE_LIMIT_MAX_CALLS": "5",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "OAUTH2_USER_ACCESS_TOKEN": "b3U5bUpZQ2gwMFpOZkNfWTVpSDZqZU1lQV9ZMkhwZ1pIX3dBWTFlcDV2bTRLOjE3NTg5Nzg5MDgzMzY6MToxOmF0OjE",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "RATE_LIMIT_WINDOW_MINUTES": "15",
+                    "TARGET_USERNAME": "Naru010110",
+                    "OAUTH2_REFRESH_TOKEN": "WG9mbVBwc0Z6X0hWOUV6dDhGaHVNelZhUFMyTVUtNXFCRXNWUGNlY1VGWDhNOjE3NTg5Nzg5MDgzMzY6MTowOnJ0OjE",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "da69b1db-be31-4195-bc49-ca1816bd74d5",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-collect-retweets"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-get-aws-credentials",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-get-aws-credentials",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-GetAwsCredentialsLambdaServiceRole415DC-PhP51aFY7csk",
+            "Handler": "index.handler",
+            "CodeSize": 23091,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:36.394+0000",
+            "CodeSha256": "oDcGQz+yliLngYq6q98V3hqJ5T9evap4OE0MEDgMnOc=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "f1bb4c8f-d724-4d20-bd57-a524fa1a0011",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-get-aws-credentials"
+            }
+        },
+        {
+            "FunctionName": "nasun-sync-community-members",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-sync-community-members",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-SyncCommunityMembersFunctionServiceRole410-QBZxutxM2Xtg",
+            "Handler": "index.handler",
+            "CodeSize": 5739,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 512,
+            "LastModified": "2025-10-13T23:59:40.714+0000",
+            "CodeSha256": "sdjXvIy1cgTgyLKETTewVHT+sCFWJqot+hoZH8CksGo=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "a56febbe-74cb-4246-80cc-ee06e8eb6a80",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-sync-community-members"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-GetAllSupplyCountsLambdaE5F4E157-RuqaOx5SamNB",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-GetAllSupplyCountsLambdaE5F4E157-RuqaOx5SamNB",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-GetAllSupplyCountsLambdaServiceRole6669FA7-vBB5ML5sdZ2v",
+            "Handler": "index.handler",
+            "CodeSize": 5322,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:50.763+0000",
+            "CodeSha256": "FK6iAtLAj/Se+8bzrlIPGR9N7/bAYFAkPhro6LoIkAg=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "5653bc2c-ef83-407f-aed7-61376b615132",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-GetAllSupplyCountsLambdaLogGroup43CAF729-7bcEDlQSlafR"
+            }
+        },
+        {
+            "FunctionName": "nasun-get-excluded-accounts-status",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-get-excluded-accounts-status",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-ApiReadOnlyRoleB2B2A0AB-J4gPpNuzJOCm",
+            "Handler": "api/excluded-accounts-status.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 30,
+            "MemorySize": 256,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "ADMIN_USERNAMES": "Naru010110",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "EXCLUDED_USERNAMES": "spam_account,bot_account",
+                    "SYSTEM_VERSION": "1.0",
+                    "EXCLUDED_USER_IDS": ""
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "ba248b93-ddea-47b7-9c3b-a8ff9ff09f21",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-get-excluded-accounts-status"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-GetBackupPricesLambda68DF46D6-DwKPDzk8FSk1",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-GetBackupPricesLambda68DF46D6-DwKPDzk8FSk1",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-GetBackupPricesLambdaServiceRoleC69E5BAB-eDFEBPxgPeKN",
+            "Handler": "index.handler",
+            "CodeSize": 640,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:53.356+0000",
+            "CodeSha256": "Uan+eJKk0eTA28SFmpfZSm3PpQD7IpKOwGU+Z61S12s=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "CryptoBackupPrices"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "bc67ac2a-d727-458f-821b-8260aa7bb346",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-GetBackupPricesLambdaLogGroupC3B283A3-NhTd8Zt6O1wX"
+            }
+        },
+        {
+            "FunctionName": "saveWalletAddress",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:saveWalletAddress",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/saveWalletAddress-role-wd6w3mz9",
+            "Handler": "index.handler",
+            "CodeSize": 683,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-05-12T12:31:59.000+0000",
+            "CodeSha256": "13LGOXyzv8yLLIM9P0jd4JXMrltEeZjilIiVRJnV3/o=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "1cdf7b8d-a827-4699-8e53-e358adca0f65",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/saveWalletAddress"
+            }
+        },
+        {
+            "FunctionName": "nasun-collect-mentions-search",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-collect-mentions-search",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-MentionCollectorFunctionServiceRoleD81CD89-ObklT5Ba6ori",
+            "Handler": "batch/collect-mentions-search.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "v3",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "OAUTH2_USER_ACCESS_TOKEN": "b3U5bUpZQ2gwMFpOZkNfWTVpSDZqZU1lQV9ZMkhwZ1pIX3dBWTFlcDV2bTRLOjE3NTg5Nzg5MDgzMzY6MToxOmF0OjE",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "TARGET_USERNAME": "Naru010110",
+                    "OAUTH2_REFRESH_TOKEN": "WG9mbVBwc0Z6X0hWOUV6dDhGaHVNelZhUFMyTVUtNXFCRXNWUGNlY1VGWDhNOjE3NTg5Nzg5MDgzMzY6MTowOnJ0OjE",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "c3797b61-b007-4a63-826e-769cc10bab3a",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-collect-mentions-search"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-price-api",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-price-api",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-PriceApiLambdaServiceRole3068CE4A-7FvJkxSiYMkZ",
+            "Handler": "lambda-handler.handler",
+            "CodeSize": 875795,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:31.557+0000",
+            "CodeSha256": "J1ZDVuoc8hVD1Eb6SPUQ/VxMGil7qVORAzGo4rRmMAw=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "7e82b2be-26fd-4605-a9bc-5acda8262046",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-price-api"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-link-account",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-link-account",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-LinkAccountLambdaServiceRole922151F6-605CnsaXVppu",
+            "Handler": "index.handler",
+            "CodeSize": 9185940,
+            "Description": "",
+            "Timeout": 10,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:32.346+0000",
+            "CodeSha256": "ZxheJ2jirrJD8cEqldzOb12aJbfSHMJKKHnJwLtpK1I=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "f5e268c5-d597-4efd-8667-acdb0b4d7acd",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-link-account"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-deactivate-user-account",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-deactivate-user-account",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-DeactivateUserAccountLambdaServiceRole1-AmU7PHXG6bp9",
+            "Handler": "index.handler",
+            "CodeSize": 3699,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T03:58:16.000+0000",
+            "CodeSha256": "erXinDH6P21O2VYipjZNYaUeCBnyFmJUBrzT1Cxn5cA=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "c7b5b675-5cdb-4f26-bba0-e2fae176f1bf",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-deactivate-user-account"
+            }
+        },
+        {
+            "FunctionName": "nasun-community-classifier-batch",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-community-classifier-batch",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CommunityClassifierBatchFunctionServiceRol-vhMtaVpLXczS",
+            "Handler": "batch/community-classifier-batch.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 900,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "PROCESSING_TIMEOUT_MS": "840000",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "COMMUNITY_WEIGHT_ENABLED": "true",
+                    "KOREAN_MAX_CAP": "5.0",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "DRY_RUN": "false",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "GLOBAL_LOG_BASE": "30",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "BATCH_SIZE": "5",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "KOREAN_LOG_BASE": "8",
+                    "MAX_USERS_PER_RUN": "100",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "GLOBAL_LANGUAGE_MULTIPLIER": "1.0",
+                    "KOREAN_LANGUAGE_MULTIPLIER": "1.2",
+                    "GLOBAL_MAX_CAP": "4.0",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "bb0e8a1e-cd7a-485e-a6c7-c6537a2e7c7c",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-community-classifier-batch"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-RandomImageHandlerLambdaDA457C57-9DxZEptBymf2",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-RandomImageHandlerLambdaDA457C57-9DxZEptBymf2",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-RandomImageHandlerLambdaServiceRole36B3A4D-G5X1LdLtYpwt",
+            "Handler": "index.handler",
+            "CodeSize": 12651,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:52.766+0000",
+            "CodeSha256": "MbhurCFih8VvxW2cqK9ZWIYhbAkUr5b8XlA/YIH/7Oc=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages",
+                    "MAX_MINT_COUNTS": "{\"TIER1\":1,\"TIER2\":2,\"TIER3\":3,\"TIER4\":4,\"TIER5\":100}"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "9980dca8-19af-4196-acae-c5f95e2a4631",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-RandomImageHandlerLambdaLogGroupFEB12F98-VZvZoTvBQVQr"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-GetAwsCredentialsLambda04A6C94E-eNvfbbXu4z6m",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-GetAwsCredentialsLambda04A6C94E-eNvfbbXu4z6m",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-GetAwsCredentialsLambdaServiceRole415DC7A5-XM192NKBxTbx",
+            "Handler": "index.handler",
+            "CodeSize": 23091,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:50.386+0000",
+            "CodeSha256": "oDcGQz+yliLngYq6q98V3hqJ5T9evap4OE0MEDgMnOc=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "bb89a9ca-2e4f-4ea3-894f-e3c27b124472",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-GetAwsCredentialsLambdaLogGroup7CD5D844-JKSUE7Jkts9P"
+            }
+        },
+        {
+            "FunctionName": "nasun-collect-mentions",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-collect-mentions",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CollectMentionsFunctionServiceRoleF670A927-Kl8Al2QPHFOy",
+            "Handler": "batch/collect-mentions.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 900,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "MENTION_TTL_DAYS": "365",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "1.0",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "TARGET_USERNAME": "Naru010110",
+                    "EAGER_USER_VIEW_SAVE": "true",
+                    "REPLY_COUNTER_TTL_DAYS": "365",
+                    "ENABLE_OAUTH_AUTHENTICATION": "false"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "26d840ce-e234-476c-bd9c-e4587f86ea7d",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-collect-mentions"
+            }
+        },
+        {
+            "FunctionName": "PriceAPI",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:PriceAPI",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/PriceAPI-role-z4z33p07",
+            "Handler": "lambda/getPrices.handler",
+            "CodeSize": 25497188,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-06-22T02:53:22.000+0000",
+            "CodeSha256": "Saakq4xdOyQZdfO626ELrLxrzU8Llk/i41FQZDK+1Wc=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "cd8a53c5-e14b-4cc8-9024-0aaddd6835ac",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/PriceAPI"
+            }
+        },
+        {
+            "FunctionName": "nasun-get-leaderboard-snapshot",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-get-leaderboard-snapshot",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-ApiReadOnlyRoleB2B2A0AB-J4gPpNuzJOCm",
+            "Handler": "api/get-leaderboard-snapshot.handler",
+            "CodeSize": 3433969,
+            "Description": "",
+            "Timeout": 30,
+            "MemorySize": 256,
+            "LastModified": "2025-10-20T06:06:50.000+0000",
+            "CodeSha256": "bVa1QJalDP5l3k/bmMJJ+aWpKgAsVtNzrsczASxoRQM=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "EVENT2_END_DATE": "2025-10-24",
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "EVENT2_START_DATE": "2025-10-22",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "SCORE_WEIGHT_QUOTES": "1.6",
+                    "COMMUNITY_WEIGHT_ENABLED": "true",
+                    "KOREAN_MAX_CAP": "5.0",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "DAILY_SNAPSHOT_TTL_DAYS": "365",
+                    "ADMIN_USERNAMES": "Naru010110,overclocksalmon",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "GLOBAL_LANGUAGE_MULTIPLIER": "1.0",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "1.0",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "EVENT1_END_DATE": "2025-10-21",
+                    "SYSTEM_START_DATE": "2025-09-02",
+                    "EVENT1_START_DATE": "2025-10-19",
+                    "RECENT_ACTIVITY_TTL_DAYS": "365",
+                    "MENTION_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_REPOSTS": "1.0",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "GLOBAL_LOG_BASE": "3",
+                    "EXCLUDED_USERNAMES": "spam_account,bot_account",
+                    "SCORE_WEIGHT_LIKES": "0.5",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "KOREAN_LOG_BASE": "8",
+                    "LEADERBOARD_DATA_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_MENTIONS": "2",
+                    "KOREAN_LANGUAGE_MULTIPLIER": "1.1",
+                    "SCORE_WEIGHT_REPLIES": "1.0",
+                    "EXCLUDED_USER_IDS": "",
+                    "REPLY_COUNTER_TTL_DAYS": "365",
+                    "GLOBAL_MAX_CAP": "4.0",
+                    "PROFILE_CACHE_TTL_DAYS": "7",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "ae0a3438-f55c-4c08-917c-ca05a8953ce0",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-get-leaderboard-snapshot"
+            }
+        },
+        {
+            "FunctionName": "PriceFetcher",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:PriceFetcher",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/PriceFetcher-role-7mbxu81v",
+            "Handler": "lambda/updatePrices.handler",
+            "CodeSize": 25497248,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-06-22T03:14:22.000+0000",
+            "CodeSha256": "674HZhbj/VZ/JentTYnJlcSqgxh1v0FJRBP0FUaIG6g=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "d05380d2-07c5-45ac-8080-0fa7e70e30cd",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/PriceFetcher"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-PriceUpdaterLambdaBE20DD32-ux3Usv4v2EVh",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-PriceUpdaterLambdaBE20DD32-ux3Usv4v2EVh",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-PriceUpdaterLambdaServiceRole1E0131BF-7OeKIkCWlvAz",
+            "Handler": "price-updater-handler.handler",
+            "CodeSize": 19596334,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T07:22:10.000+0000",
+            "CodeSha256": "YQuxXS9zZLjObWam1UZo1BWqni4ncynMsXFueQGz6+o=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "ebf45dbd-da91-48fc-b347-50c75359a49b",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-PriceUpdaterLambdaLogGroup2FD62D49-9eV8FjD9Xxkd"
+            }
+        },
+        {
+            "FunctionName": "getWalletAddress",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:getWalletAddress",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/getWalletAddress-role-xm4i60a3",
+            "Handler": "index.handler",
+            "CodeSize": 583,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-05-12T12:32:26.000+0000",
+            "CodeSha256": "2BZ4gmb56fpONCnObR5WM9t8350elY04cBwNxs1tEQI=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "872f4886-70fd-4d5a-823e-1ca80fbf3559",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/getWalletAddress"
+            }
+        },
+        {
+            "FunctionName": "nasun-collect-quotes",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-collect-quotes",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CollectQuotesFunctionServiceRoleEEBDFA6E-tchbJcZfTibZ",
+            "Handler": "batch/collect-quotes.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "v3",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "RATE_LIMIT_MAX_CALLS": "5",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "OAUTH2_USER_ACCESS_TOKEN": "b3U5bUpZQ2gwMFpOZkNfWTVpSDZqZU1lQV9ZMkhwZ1pIX3dBWTFlcDV2bTRLOjE3NTg5Nzg5MDgzMzY6MToxOmF0OjE",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "RATE_LIMIT_WINDOW_MINUTES": "15",
+                    "TARGET_USERNAME": "Naru010110",
+                    "OAUTH2_REFRESH_TOKEN": "WG9mbVBwc0Z6X0hWOUV6dDhGaHVNelZhUFMyTVUtNXFCRXNWUGNlY1VGWDhNOjE3NTg5Nzg5MDgzMzY6MTowOnJ0OjE",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "123c0851-f67d-407d-8626-76ee7c83a6d5",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-collect-quotes"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-GetSupplyCountLambda695A780D-82FztPlqheZI",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-GetSupplyCountLambda695A780D-82FztPlqheZI",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-GetSupplyCountLambdaServiceRoleE6B70DA4-CMg0WG8D7y3f",
+            "Handler": "index.handler",
+            "CodeSize": 1163,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:52.853+0000",
+            "CodeSha256": "yM2cpGfUilQYDsgGjIen5vTQHVUENi07BFocvQ0CtUs=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "c10dcc83-c8ef-4177-bbb3-5eeb35a74127",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-GetSupplyCountLambdaLogGroup5DD4E5A1-ECJHOnLPiHqe"
+            }
+        },
+        {
+            "FunctionName": "nasun-get-target-tweets",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-get-target-tweets",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-GetTargetTweetsFunctionServiceRoleB23501D6-jV5vPndVuNV1",
+            "Handler": "batch/get-target-tweets.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 256,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "TARGET_USERNAME": "Naru010110",
+                    "SYSTEM_START_DATE": "2025-09-02",
+                    "ENABLE_OAUTH_AUTHENTICATION": "false"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "b22f03c3-1095-468f-982e-bea3b2b69fcf",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-get-target-tweets"
+            }
+        },
+        {
+            "FunctionName": "nasun-tweet-batch-splitter",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-tweet-batch-splitter",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-TweetBatchSplitterFunctionServiceRoleF0108-vvju9yD4LOvp",
+            "Handler": "batch/tweet-batch-splitter.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 30,
+            "MemorySize": 256,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "SYSTEM_VERSION": "v3",
+                    "BATCH_SIZE": "5"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "0690cbc3-4d7d-4894-9858-a55cc9b14860",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-tweet-batch-splitter"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-WalletApiLambdaCFA6C360-20wa6RhEtkdI",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-WalletApiLambdaCFA6C360-20wa6RhEtkdI",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-WalletApiLambdaServiceRoleAEB9B63E-4x56gvNcklFE",
+            "Handler": "index.handler",
+            "CodeSize": 5359,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-10T14:57:33.000+0000",
+            "CodeSha256": "9FwSInqCKWFL662IDxGvjlbGcnXVRQpVmHdgFzJaF/k=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "fa86ba70-6c69-4fe8-9663-ce55ea4b5270",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-WalletApiLambdaLogGroup011A99CE-ouPZHjiXohsE"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-get-supply-count",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-get-supply-count",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-GetSupplyCountLambdaServiceRoleE6B70DA4-HSUtpVbYqBPw",
+            "Handler": "index.handler",
+            "CodeSize": 1163,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:32.493+0000",
+            "CodeSha256": "yM2cpGfUilQYDsgGjIen5vTQHVUENi07BFocvQ0CtUs=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "2d11012c-a7fb-467b-a015-8fe60365d27a",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-get-supply-count"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-LinkAccountLambdaE030D163-GVaSGthcLbu8",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-LinkAccountLambdaE030D163-GVaSGthcLbu8",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-LinkAccountLambdaServiceRole922151F6-c9oMrCmmjXfr",
+            "Handler": "index.handler",
+            "CodeSize": 9185940,
+            "Description": "",
+            "Timeout": 10,
+            "MemorySize": 128,
+            "LastModified": "2025-10-13T04:35:38.000+0000",
+            "CodeSha256": "ZxheJ2jirrJD8cEqldzOb12aJbfSHMJKKHnJwLtpK1I=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "46dac5bd-5bd1-47a8-996f-53374c263125",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-LinkAccountLambdaLogGroupE5684BBE-v1AMVYrKnWWD"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-get-all-supply-counts",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-get-all-supply-counts",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-GetAllSupplyCountsLambdaServiceRole6669-PTRpsnvJDCMB",
+            "Handler": "index.handler",
+            "CodeSize": 5322,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:32.606+0000",
+            "CodeSha256": "FK6iAtLAj/Se+8bzrlIPGR9N7/bAYFAkPhro6LoIkAg=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "e1cee47c-1c89-4329-92a7-5b0331138979",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-get-all-supply-counts"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-PriceApiLambda14C9EBC2-FF30dBsNkZLQ",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-PriceApiLambda14C9EBC2-FF30dBsNkZLQ",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-PriceApiLambdaServiceRole3068CE4A-kwHQxOxOdW58",
+            "Handler": "lambda-handler.handler",
+            "CodeSize": 875795,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T13:36:46.000+0000",
+            "CodeSha256": "J1ZDVuoc8hVD1Eb6SPUQ/VxMGil7qVORAzGo4rRmMAw=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "db03ecd5-18b5-4f16-80dd-31b627b17163",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-PriceApiLambdaLogGroupD4570453-2ONr2yaDV6RG"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-UpdateBackupPricesLambda59DE3371-AIs2lbLJyUXm",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-UpdateBackupPricesLambda59DE3371-AIs2lbLJyUXm",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-UpdateBackupPricesLambdaServiceRole72266FC-ODXDIgVO1uNa",
+            "Handler": "index.handler",
+            "CodeSize": 954,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:52.975+0000",
+            "CodeSha256": "f3dL+dQ/z3mcxIuZUnYfOlFO9lyYeSTGyfQ3oCujxbM=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "CMC_API_KEY": "431dfcca-f63d-4e1c-8c94-3d2598cecf87",
+                    "TABLE_NAME": "CryptoBackupPrices"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "9eca1494-df0b-4ec3-9918-ba1c145471d3",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-UpdateBackupPricesLambdaLogGroup3F1A7770-cIT1HScuHOf8"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-get-user-profile",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-get-user-profile",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-GetUserProfileLambdaServiceRole8F0CC087-kEmrdd5XDO7O",
+            "Handler": "index.handler",
+            "CodeSize": 32554,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:32.217+0000",
+            "CodeSha256": "X4G13NxirYgODHydj4tCNQwTnzbUxtdpmpsawez/nMU=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "USER_IDENTITY_MAP_TABLE": "UserIdentityMap",
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "2cc12312-703b-4d41-a797-e28cfa72423f",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-get-user-profile"
+            }
+        },
+        {
+            "FunctionName": "nasun-get-leaderboard",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-get-leaderboard",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-ApiReadOnlyRoleB2B2A0AB-J4gPpNuzJOCm",
+            "Handler": "api/get-cumulative-leaderboard.handler",
+            "CodeSize": 3433969,
+            "Description": "",
+            "Timeout": 30,
+            "MemorySize": 256,
+            "LastModified": "2025-10-20T06:06:50.000+0000",
+            "CodeSha256": "bVa1QJalDP5l3k/bmMJJ+aWpKgAsVtNzrsczASxoRQM=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "EVENT2_END_DATE": "2025-10-24",
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "EVENT2_START_DATE": "2025-10-22",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "SCORE_WEIGHT_QUOTES": "1.6",
+                    "COMMUNITY_WEIGHT_ENABLED": "true",
+                    "KOREAN_MAX_CAP": "5.0",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "DAILY_SNAPSHOT_TTL_DAYS": "365",
+                    "ADMIN_USERNAMES": "Naru010110,overclocksalmon",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "GLOBAL_LANGUAGE_MULTIPLIER": "1.0",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "1.0",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "EVENT1_END_DATE": "2025-10-21",
+                    "SYSTEM_START_DATE": "2025-09-02",
+                    "EVENT1_START_DATE": "2025-10-19",
+                    "RECENT_ACTIVITY_TTL_DAYS": "365",
+                    "MENTION_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_REPOSTS": "1.0",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "GLOBAL_LOG_BASE": "3",
+                    "EXCLUDED_USERNAMES": "spam_account,bot_account",
+                    "SCORE_WEIGHT_LIKES": "0.5",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "KOREAN_LOG_BASE": "8",
+                    "LEADERBOARD_DATA_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_MENTIONS": "2",
+                    "KOREAN_LANGUAGE_MULTIPLIER": "1.1",
+                    "SCORE_WEIGHT_REPLIES": "1.0",
+                    "EXCLUDED_USER_IDS": "",
+                    "REPLY_COUNTER_TTL_DAYS": "365",
+                    "GLOBAL_MAX_CAP": "4.0",
+                    "PROFILE_CACHE_TTL_DAYS": "7",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "2aefd3aa-fa28-4110-9a33-709d884663bc",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-get-leaderboard"
+            }
+        },
+        {
+            "FunctionName": "getBackupPrices",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:getBackupPrices",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/getBackupPrices-role-nc00y0ke",
+            "Handler": "index.handler",
+            "CodeSize": 8733898,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-06-22T03:27:22.000+0000",
+            "CodeSha256": "nAax4e8Xo7mtW1jtedeMlZiBhn/yljAi0WARh4DT8Lk=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "637fee7e-b4b6-490d-84ae-da8c1f77d148",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/getBackupPrices"
+            }
+        },
+        {
+            "FunctionName": "CdkStack-GetUserProfileLambdaEC25BE44-trLAY6T4GhIv",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:CdkStack-GetUserProfileLambdaEC25BE44-trLAY6T4GhIv",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-GetUserProfileLambdaServiceRole8F0CC087-ri8o08YzRudq",
+            "Handler": "index.handler",
+            "CodeSize": 32554,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-07T03:32:50.280+0000",
+            "CodeSha256": "X4G13NxirYgODHydj4tCNQwTnzbUxtdpmpsawez/nMU=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "USER_IDENTITY_MAP_TABLE": "UserIdentityMap",
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "70f4fa6f-2848-4d10-be1e-49cc690ea9d3",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "CdkStack-GetUserProfileLambdaLogGroup9AACF3F8-VpbN4Z40imtU"
+            }
+        },
+        {
+            "FunctionName": "updateBackupPrices",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:updateBackupPrices",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/updateBackupPrices-role-fyvt5oyo",
+            "Handler": "index.handler",
+            "CodeSize": 9005808,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-06-22T02:02:14.000+0000",
+            "CodeSha256": "YOJ7QPCqcJsN7T8ZF3RQZjcJ+SPy8qQi1Q+0PJ4a38U=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "CMC_API_KEY": "431dfcca-f63d-4e1c-8c94-3d2598cecf87"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "324d09b7-56f9-4d42-9445-317de7a79f25",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/updateBackupPrices"
+            }
+        },
+        {
+            "FunctionName": "nasun-handle-failure",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-handle-failure",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-HandleFailureFunctionServiceRoleCE97665E-1MwfUaGBGKQk",
+            "Handler": "batch/handle-failure.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 256,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SNS_TOPIC_ARN": "arn:aws:sns:ap-northeast-2:135808943968:nasun-data-collection-alerts",
+                    "SYSTEM_VERSION": "1.0"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "ef2dacfe-9841-42d6-ba30-bea6d41acda5",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-handle-failure"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-price-updater",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-price-updater",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-PriceUpdaterLambdaServiceRole1E0131BF-clMbHIlvOn9o",
+            "Handler": "price-updater-handler.handler",
+            "CodeSize": 19596334,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:33.173+0000",
+            "CodeSha256": "YQuxXS9zZLjObWam1UZo1BWqni4ncynMsXFueQGz6+o=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "efbbcc2b-08fb-44d8-b9c1-a7f6e5a2f4d4",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-price-updater"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-random-image-handler",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-random-image-handler",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-RandomImageHandlerLambdaServiceRole36B3-HEsqnY5ysuL2",
+            "Handler": "index.handler",
+            "CodeSize": 18300674,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T02:46:15.000+0000",
+            "CodeSha256": "EpujmjOEz5rmnOP8LLHbsJAUB9s5HoXR2uCJNaS/fwA=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "NftImages",
+                    "MAX_MINT_COUNTS": "{\"TIER1\":1,\"TIER2\":2,\"TIER3\":3,\"TIER4\":4,\"TIER5\":100}"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "52750a80-8d38-4883-b7ab-c48b36af8fcf",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-random-image-handler"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-wallet-api",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-wallet-api",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-WalletApiLambdaServiceRoleAEB9B63E-Cj71etVv2Q9e",
+            "Handler": "index.handler",
+            "CodeSize": 5359,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:31.396+0000",
+            "CodeSha256": "9FwSInqCKWFL662IDxGvjlbGcnXVRQpVmHdgFzJaF/k=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "USER_PROFILES_TABLE": "UserProfiles"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "9bb46ccb-3213-40da-89f3-e700de919221",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-wallet-api"
+            }
+        },
+        {
+            "FunctionName": "nasun-common-get-backup-prices",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-common-get-backup-prices",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CommonStack-GetBackupPricesLambdaServiceRoleC69E5BA-P1RCcsRp8vEH",
+            "Handler": "index.handler",
+            "CodeSize": 640,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-10-18T01:39:32.215+0000",
+            "CodeSha256": "Uan+eJKk0eTA28SFmpfZSm3PpQD7IpKOwGU+Z61S12s=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TABLE_NAME": "CryptoBackupPrices"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "d079294f-15b0-4fb6-9185-d1e229a12822",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-common-get-backup-prices"
+            }
+        },
+        {
+            "FunctionName": "nasun-collect-mention-details",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-collect-mention-details",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-MentionDetailsCollectorFunctionServiceRole-oTXgpKv62r5Z",
+            "Handler": "batch/collect-mention-details.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 600,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:01.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "v3",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "OAUTH2_USER_ACCESS_TOKEN": "b3U5bUpZQ2gwMFpOZkNfWTVpSDZqZU1lQV9ZMkhwZ1pIX3dBWTFlcDV2bTRLOjE3NTg5Nzg5MDgzMzY6MToxOmF0OjE",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "TARGET_USERNAME": "Naru010110",
+                    "OAUTH2_REFRESH_TOKEN": "WG9mbVBwc0Z6X0hWOUV6dDhGaHVNelZhUFMyTVUtNXFCRXNWUGNlY1VGWDhNOjE3NTg5Nzg5MDgzMzY6MTowOnJ0OjE",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "45cdb2b9-5090-4a9c-9eff-6f4f27bb1b68",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-collect-mention-details"
+            }
+        },
+        {
+            "FunctionName": "nasun-collect-likes",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-collect-likes",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CollectLikesFunctionServiceRole7F9B545F-KElCyvFspuSL",
+            "Handler": "batch/collect-likes.handler",
+            "CodeSize": 4245392,
+            "Description": "",
+            "Timeout": 300,
+            "MemorySize": 512,
+            "LastModified": "2025-10-17T14:21:02.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "Environment": {
+                "Variables": {
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "v3",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "RATE_LIMIT_MAX_CALLS": "5",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "OAUTH2_USER_ACCESS_TOKEN": "b3U5bUpZQ2gwMFpOZkNfWTVpSDZqZU1lQV9ZMkhwZ1pIX3dBWTFlcDV2bTRLOjE3NTg5Nzg5MDgzMzY6MToxOmF0OjE",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "TARGET_USER_ID": "1863020068785004544",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "RATE_LIMIT_WINDOW_MINUTES": "15",
+                    "TARGET_USERNAME": "Naru010110",
+                    "OAUTH2_REFRESH_TOKEN": "WG9mbVBwc0Z6X0hWOUV6dDhGaHVNelZhUFMyTVUtNXFCRXNWUGNlY1VGWDhNOjE3NTg5Nzg5MDgzMzY6MTowOnJ0OjE",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "ae3d9070-b67a-478f-a6e0-e04210ee7a19",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-collect-likes"
+            }
+        },
+        {
+            "FunctionName": "nasun-leaderboard-generator",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-leaderboard-generator",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CumulativeLeaderboardGeneratorFunctionServ-zdxOAkcp6rJt",
+            "Handler": "batch/cumulative-leaderboard-generator.handler",
+            "CodeSize": 3436320,
+            "Description": "",
+            "Timeout": 900,
+            "MemorySize": 512,
+            "LastModified": "2025-10-20T06:06:49.000+0000",
+            "CodeSha256": "RPEGVi2QZZl+f8J5Ju3BVdPGqeEoCOASCc8vPdH2Zu4=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "EVENT2_END_DATE": "2025-10-24",
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "EVENT2_START_DATE": "2025-10-22",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "SCORE_WEIGHT_QUOTES": "1.6",
+                    "COMMUNITY_WEIGHT_ENABLED": "true",
+                    "KOREAN_MAX_CAP": "5.0",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "DAILY_SNAPSHOT_TTL_DAYS": "365",
+                    "ADMIN_USERNAMES": "Naru010110,overclocksalmon",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "GLOBAL_LANGUAGE_MULTIPLIER": "1.0",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "1.0",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "EVENT1_END_DATE": "2025-10-21",
+                    "SYSTEM_START_DATE": "2025-09-02",
+                    "EVENT1_START_DATE": "2025-10-19",
+                    "RECENT_ACTIVITY_TTL_DAYS": "365",
+                    "MENTION_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_REPOSTS": "1.0",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "GLOBAL_LOG_BASE": "3",
+                    "EXCLUDED_USERNAMES": "spam_account,bot_account",
+                    "SCORE_WEIGHT_LIKES": "0.5",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "KOREAN_LOG_BASE": "8",
+                    "LEADERBOARD_DATA_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_MENTIONS": "2",
+                    "KOREAN_LANGUAGE_MULTIPLIER": "1.1",
+                    "SCORE_WEIGHT_REPLIES": "1.0",
+                    "EXCLUDED_USER_IDS": "",
+                    "REPLY_COUNTER_TTL_DAYS": "365",
+                    "GLOBAL_MAX_CAP": "4.0",
+                    "PROFILE_CACHE_TTL_DAYS": "7",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "b2563a07-0323-4434-9e89-82a250ec41ba",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-leaderboard-generator"
+            }
+        },
+        {
+            "FunctionName": "deleteWalletAddress",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:deleteWalletAddress",
+            "Runtime": "nodejs22.x",
+            "Role": "arn:aws:iam::135808943968:role/service-role/deleteWalletAddress-role-627wgp5u",
+            "Handler": "index.handler",
+            "CodeSize": 746,
+            "Description": "",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "LastModified": "2025-05-12T12:30:47.000+0000",
+            "CodeSha256": "OE2Wxnq9Kxq/TYD5d/31RV+GcjcPBi/iFS4W72XZo/k=",
+            "Version": "$LATEST",
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "a3ed386a-1527-4180-ae69-1e05ae2f7400",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/deleteWalletAddress"
+            }
+        },
+        {
+            "FunctionName": "nasun-score-calculator",
+            "FunctionArn": "arn:aws:lambda:ap-northeast-2:135808943968:function:nasun-score-calculator",
+            "Runtime": "nodejs18.x",
+            "Role": "arn:aws:iam::135808943968:role/CdkStack-CumulativeScoreCalculatorFunctionServiceRo-i6sg5GQNlhJD",
+            "Handler": "batch/cumulative-score-calculator.handler",
+            "CodeSize": 4245392,
+            "Description": "Forced update at 2025-10-17T14:20:01.767Z",
+            "Timeout": 600,
+            "MemorySize": 256,
+            "LastModified": "2025-10-20T06:06:48.000+0000",
+            "CodeSha256": "gNqK4x0hvl1Znjkw9Ck+QNsJSmIhU0ze+EJ33rpPbPE=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+                "SubnetIds": [],
+                "SecurityGroupIds": [],
+                "VpcId": "",
+                "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+                "Variables": {
+                    "EVENT2_END_DATE": "2025-10-24",
+                    "TWITTER_ACCESS_TOKEN": "1847130998087340032-oqeMeKZW4yTx5muPgyHUoXs0g08jvT",
+                    "EVENT2_START_DATE": "2025-10-22",
+                    "TWITTER_API_SECRET": "WXtBZU7v8lsljwg2CHWgIKBNvDspi69jylAQ7gFWRnzzxSh30H",
+                    "SCORE_WEIGHT_QUOTES": "1.6",
+                    "COMMUNITY_WEIGHT_ENABLED": "true",
+                    "KOREAN_MAX_CAP": "5.0",
+                    "TWITTER_ACCESS_TOKEN_SECRET": "4dNvfNcbMkwSqhcGWNB1BnN2EYUUkR1uSyLBNQokEjJEZ",
+                    "TWITTER_API_KEY": "xd0KfqZw5oZCfdEKzKpYVVFXq",
+                    "DAILY_SNAPSHOT_TTL_DAYS": "365",
+                    "ADMIN_USERNAMES": "Naru010110,overclocksalmon",
+                    "OAUTH2_CLIENT_SECRET": "Oq20HBByjOS-catnc7AwFfqAmps5VWqvb--AX5rIaAd-a__oEw",
+                    "ENABLE_OAUTH2_AUTHENTICATION": "true",
+                    "GLOBAL_LANGUAGE_MULTIPLIER": "1.0",
+                    "CUMULATIVE_TABLE_NAME": "nasun-leaderboard-data",
+                    "SYSTEM_VERSION": "1.0",
+                    "OAUTH2_REDIRECT_URI": "http://localhost:5174/callback",
+                    "EVENT1_END_DATE": "2025-10-21",
+                    "SYSTEM_START_DATE": "2025-09-02",
+                    "EVENT1_START_DATE": "2025-10-19",
+                    "RECENT_ACTIVITY_TTL_DAYS": "365",
+                    "MENTION_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_REPOSTS": "1.0",
+                    "FALLBACK_TO_BEARER_TOKEN": "true",
+                    "GLOBAL_LOG_BASE": "3",
+                    "EXCLUDED_USERNAMES": "spam_account,bot_account",
+                    "SCORE_WEIGHT_LIKES": "0.5",
+                    "TWITTER_BEARER_TOKEN": "AAAAAAAAAAAAAAAAAAAAAFKU4QEAAAAANSV%2FLTgNWqqvZkpYPyzl7zjWSpY%3DwQQ8htZKza62zQCbxgJMTGPDRbCJcGYF82zKD2L8XZQhBJglgi",
+                    "OAUTH2_CLIENT_ID": "S1g0aW9HcDZsbDgzSDBDNnFCREI6MTpjaQ",
+                    "KOREAN_LOG_BASE": "8",
+                    "LEADERBOARD_DATA_TTL_DAYS": "365",
+                    "SCORE_WEIGHT_MENTIONS": "2",
+                    "KOREAN_LANGUAGE_MULTIPLIER": "1.1",
+                    "SCORE_WEIGHT_REPLIES": "1.0",
+                    "EXCLUDED_USER_IDS": "",
+                    "REPLY_COUNTER_TTL_DAYS": "365",
+                    "GLOBAL_MAX_CAP": "4.0",
+                    "PROFILE_CACHE_TTL_DAYS": "7",
+                    "ENABLE_OAUTH_AUTHENTICATION": "true"
+                }
+            },
+            "TracingConfig": {
+                "Mode": "PassThrough"
+            },
+            "RevisionId": "a8e7897e-5cb0-446b-a521-07c5455f60f2",
+            "PackageType": "Zip",
+            "Architectures": [
+                "x86_64"
+            ],
+            "EphemeralStorage": {
+                "Size": 512
+            },
+            "SnapStart": {
+                "ApplyOn": "None",
+                "OptimizationStatus": "Off"
+            },
+            "LoggingConfig": {
+                "LogFormat": "Text",
+                "LogGroup": "/aws/lambda/nasun-score-calculator"
+            }
+        }
+    ]
+}

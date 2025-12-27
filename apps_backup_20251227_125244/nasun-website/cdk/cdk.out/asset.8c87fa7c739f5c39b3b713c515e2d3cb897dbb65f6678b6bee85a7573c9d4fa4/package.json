@@ -1,0 +1,26 @@
+{
+  "name": "verify-eligibility",
+  "version": "1.0.0",
+  "description": "X API 검증 Lambda - 팔로우/좋아요/리트윗 완료 여부 확인",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "keywords": ["nft", "event", "x-api", "verification"],
+  "author": "NASUN",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.670.0",
+    "@aws-sdk/lib-dynamodb": "^3.670.0",
+    "@aws-sdk/util-dynamodb": "^3.670.0",
+    "twitter-api-v2": "^1.17.2"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.6.3"
+  }
+}

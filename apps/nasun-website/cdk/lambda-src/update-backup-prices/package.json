@@ -1,0 +1,19 @@
+{
+  "name": "update-backup-prices",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "zip": "rm -f ../build/update-backup-prices.zip && cd dist && zip -r ../build/update-backup-prices.zip . && cd .. && zip -ur ../build/update-backup-prices.zip node_modules/"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.830.0",
+    "@aws-sdk/lib-dynamodb": "^3.830.0",
+    "axios": "^1.10.0",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^24.0.3"
+  }
+}

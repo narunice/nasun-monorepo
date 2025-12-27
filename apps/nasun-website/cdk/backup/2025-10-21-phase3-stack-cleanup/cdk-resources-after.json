@@ -1,0 +1,1204 @@
+{
+    "StackResources": [
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "AggregateResultsFunction6D331BCC",
+            "PhysicalResourceId": "nasun-aggregate-results",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.716000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "AggregateResultsFunctionLogGroup7FE4A663",
+            "PhysicalResourceId": "/aws/lambda/nasun-aggregate-results",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:24.960000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "AggregateResultsFunctionServiceRole67E6D49B",
+            "PhysicalResourceId": "CdkStack-AggregateResultsFunctionServiceRole67E6D49-2YdRg2M9yptG",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.492000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "AggregateResultsFunctionServiceRoleDefaultPolicy1A2D62B0",
+            "PhysicalResourceId": "CdkSt-Aggre-u7tKHYA6wijw",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:00.772000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "ApiReadOnlyRoleB2B2A0AB",
+            "PhysicalResourceId": "CdkStack-ApiReadOnlyRoleB2B2A0AB-J4gPpNuzJOCm",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:30.149000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "ApiReadOnlyRoleDefaultPolicyF94E7FFE",
+            "PhysicalResourceId": "CdkSt-ApiRe-Gf5VpNh7YwJa",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:01.353000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CDKMetadata",
+            "PhysicalResourceId": "2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "ResourceType": "AWS::CDK::Metadata",
+            "Timestamp": "2025-10-21T00:22:11.200000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectLikesFunction5CD6B557",
+            "PhysicalResourceId": "nasun-collect-likes",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.763000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectLikesFunctionServiceRole7F9B545F",
+            "PhysicalResourceId": "CdkStack-CollectLikesFunctionServiceRole7F9B545F-KElCyvFspuSL",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.930000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectLikesFunctionServiceRoleDefaultPolicyF2EFD4BD",
+            "PhysicalResourceId": "CdkSt-Colle-EMjFNd9oNhYN",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:06.314000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectLikesV3LogGroup74AB79EC",
+            "PhysicalResourceId": "/aws/lambda/nasun-collect-likes",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:21.349000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectMentionsFunction1DB9EC50",
+            "PhysicalResourceId": "nasun-collect-mentions",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.715000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectMentionsFunctionLogGroup6F806F19",
+            "PhysicalResourceId": "/aws/lambda/nasun-collect-mentions",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:21.452000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectMentionsFunctionServiceRoleDefaultPolicy9476AD97",
+            "PhysicalResourceId": "CdkSt-Colle-xtrHjrSM9V2S",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-14T04:03:25.748000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectMentionsFunctionServiceRoleF670A927",
+            "PhysicalResourceId": "CdkStack-CollectMentionsFunctionServiceRoleF670A927-Kl8Al2QPHFOy",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.735000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectQuotesFunction15807E26",
+            "PhysicalResourceId": "nasun-collect-quotes",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.783000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectQuotesFunctionServiceRoleDefaultPolicy9DFDA8E1",
+            "PhysicalResourceId": "CdkSt-Colle-GPHiV1eIiD6X",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:06.493000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectQuotesFunctionServiceRoleEEBDFA6E",
+            "PhysicalResourceId": "CdkStack-CollectQuotesFunctionServiceRoleEEBDFA6E-tchbJcZfTibZ",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:34.142000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectQuotesV3LogGroup48B46B0F",
+            "PhysicalResourceId": "/aws/lambda/nasun-collect-quotes",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:21.417000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectRetweetsFunction4C01F9A2",
+            "PhysicalResourceId": "nasun-collect-retweets",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.736000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectRetweetsFunctionServiceRoleDefaultPolicy2439CBC8",
+            "PhysicalResourceId": "CdkSt-Colle-9bXQzcfTCdNG",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:05.981000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectRetweetsFunctionServiceRoleF9D42F3C",
+            "PhysicalResourceId": "CdkStack-CollectRetweetsFunctionServiceRoleF9D42F3C-v5zkbwuwTNTf",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.628000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CollectRetweetsV3LogGroupDD8711C0",
+            "PhysicalResourceId": "/aws/lambda/nasun-collect-retweets",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:21.437000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CommunityClassificationSchedule482318C5",
+            "PhysicalResourceId": "nasun-community-classification-weekly",
+            "ResourceType": "AWS::Events::Rule",
+            "Timestamp": "2025-10-07T03:34:06.524000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CommunityClassificationScheduleAllowEventRuleCdkStackCommunityClassifierBatchFunction4F4D78540400379E",
+            "PhysicalResourceId": "CdkStack-CommunityClassificationScheduleAllowEventRuleCdkStackCommunityClassifierBatchF-09VWoBNl2Wt9",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:57.443000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CommunityClassifierBatchFunctionD9BCFAAC",
+            "PhysicalResourceId": "nasun-community-classifier-batch",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.766000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CommunityClassifierBatchFunctionLogGroup2FA5BBEF",
+            "PhysicalResourceId": "/aws/lambda/nasun-community-classifier-batch",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:33:14.768000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CommunityClassifierBatchFunctionServiceRole71933701",
+            "PhysicalResourceId": "CdkStack-CommunityClassifierBatchFunctionServiceRol-vhMtaVpLXczS",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.660000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CommunityClassifierBatchFunctionServiceRoleDefaultPolicy8EF8E5B0",
+            "PhysicalResourceId": "CdkSt-Commu-PnHY2obU6aIW",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:00.955000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeLeaderboardGeneratorFunction90929605",
+            "PhysicalResourceId": "nasun-leaderboard-generator",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:25.733000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeLeaderboardGeneratorFunctionLogGroup3A086448",
+            "PhysicalResourceId": "/aws/lambda/nasun-leaderboard-generator",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:22.097000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeLeaderboardGeneratorFunctionServiceRole0E038CB0",
+            "PhysicalResourceId": "CdkStack-CumulativeLeaderboardGeneratorFunctionServ-zdxOAkcp6rJt",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.657000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeLeaderboardGeneratorFunctionServiceRoleDefaultPolicy270165B9",
+            "PhysicalResourceId": "CdkSt-Cumul-H9C5YMGSkubb",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-12T12:48:22.638000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeScoreCalculatorFunction7BD23E76",
+            "PhysicalResourceId": "nasun-score-calculator",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:32:40.443000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeScoreCalculatorFunctionLogGroup9A8F3AC6",
+            "PhysicalResourceId": "/aws/lambda/nasun-score-calculator",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:24.860000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeScoreCalculatorFunctionServiceRoleBC9B1506",
+            "PhysicalResourceId": "CdkStack-CumulativeScoreCalculatorFunctionServiceRo-i6sg5GQNlhJD",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.793000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "CumulativeScoreCalculatorFunctionServiceRoleDefaultPolicy0BB60AE3",
+            "PhysicalResourceId": "CdkSt-Cumul-UPwDuaatGXdm",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:20.310000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "DailyDataCollectionRuleV38B796C3D",
+            "PhysicalResourceId": "nasun-daily-data-collection",
+            "ResourceType": "AWS::Events::Rule",
+            "Timestamp": "2025-10-14T23:58:28.136000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "DataCollectionTopic3480283A",
+            "PhysicalResourceId": "arn:aws:sns:ap-northeast-2:135808943968:nasun-data-collection-alerts",
+            "ResourceType": "AWS::SNS::Topic",
+            "Timestamp": "2025-10-07T03:32:12.978000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "DataProcessorRole3AF7AF75",
+            "PhysicalResourceId": "CdkStack-DataProcessorRole3AF7AF75-klkurkXbhBi6",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.490000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetBookmarkStatsFunction767157D7",
+            "PhysicalResourceId": "nasun-get-bookmark-stats",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:25.377000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetBookmarkStatsFunctionLogGroup4550D757",
+            "PhysicalResourceId": "/aws/lambda/nasun-get-bookmark-stats",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:21.258000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetCumulativeLeaderboardFunctionCE4DD99E",
+            "PhysicalResourceId": "nasun-get-leaderboard",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:25.346000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetCumulativeLeaderboardFunctionLogGroup05FFE90B",
+            "PhysicalResourceId": "/aws/lambda/nasun-get-leaderboard",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:23.223000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetExcludedAccountsStatusFunction3759F8CC",
+            "PhysicalResourceId": "nasun-get-excluded-accounts-status",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:25.054000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetExcludedAccountsStatusFunctionLogGroupEA0937BE",
+            "PhysicalResourceId": "/aws/lambda/nasun-get-excluded-accounts-status",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:21.351000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetLeaderboardSnapshotFunctionB717D468",
+            "PhysicalResourceId": "nasun-get-leaderboard-snapshot",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:25.540000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetLeaderboardSnapshotFunctionLogGroupA2A5852D",
+            "PhysicalResourceId": "/aws/lambda/nasun-get-leaderboard-snapshot",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:24.891000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetTargetTweetsFunction458998F7",
+            "PhysicalResourceId": "nasun-get-target-tweets",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.668000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetTargetTweetsFunctionLogGroupB4859D6E",
+            "PhysicalResourceId": "/aws/lambda/nasun-get-target-tweets",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:24.959000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetTargetTweetsFunctionServiceRoleB23501D6",
+            "PhysicalResourceId": "CdkStack-GetTargetTweetsFunctionServiceRoleB23501D6-jV5vPndVuNV1",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:35.510000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "GetTargetTweetsFunctionServiceRoleDefaultPolicy4D0C2C55",
+            "PhysicalResourceId": "CdkSt-GetTa-CGj1hg0ZtROZ",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-14T04:03:25.655000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "HandleFailureFunctionF9E1B767",
+            "PhysicalResourceId": "nasun-handle-failure",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:20.100000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "HandleFailureFunctionLogGroupE76362C6",
+            "PhysicalResourceId": "/aws/lambda/nasun-handle-failure",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:25.187000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "HandleFailureFunctionServiceRoleCE97665E",
+            "PhysicalResourceId": "CdkStack-HandleFailureFunctionServiceRoleCE97665E-1MwfUaGBGKQk",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:30.031000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "HandleFailureFunctionServiceRoleDefaultPolicy261BD6B2",
+            "PhysicalResourceId": "CdkSt-Handl-TqPfhFubWhJ3",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:00.701000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "InvalidRefreshTokenAlarmFA483329",
+            "PhysicalResourceId": "nasun-oauth2-invalid-refresh-token",
+            "ResourceType": "AWS::CloudWatch::Alarm",
+            "Timestamp": "2025-10-11T13:11:34.464000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "LeaderboardDataTableC9C416C5",
+            "PhysicalResourceId": "nasun-leaderboard-data",
+            "ResourceType": "AWS::DynamoDB::Table",
+            "Timestamp": "2025-10-15T01:10:56.280000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "MODIFIED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionCollectorFunction900E7525",
+            "PhysicalResourceId": "nasun-collect-mentions-search",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.816000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionCollectorFunctionServiceRoleD81CD896",
+            "PhysicalResourceId": "CdkStack-MentionCollectorFunctionServiceRoleD81CD89-ObklT5Ba6ori",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.217000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionCollectorFunctionServiceRoleDefaultPolicy3116702F",
+            "PhysicalResourceId": "CdkSt-Menti-go7pGmqicZue",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:01.111000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionCollectorV3LogGroup214AA188",
+            "PhysicalResourceId": "/aws/lambda/nasun-collect-mentions-search",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:25.555000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionDetailsCollectorFunction097DB626",
+            "PhysicalResourceId": "nasun-collect-mention-details",
+            "ResourceType": "AWS::Lambda::Function",
+            "Timestamp": "2025-10-21T00:22:19.768000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionDetailsCollectorFunctionServiceRole8E2EC76F",
+            "PhysicalResourceId": "CdkStack-MentionDetailsCollectorFunctionServiceRole-oTXgpKv62r5Z",
+            "ResourceType": "AWS::IAM::Role",
+            "Timestamp": "2025-10-07T03:32:29.832000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionDetailsCollectorFunctionServiceRoleDefaultPolicyEEE91B89",
+            "PhysicalResourceId": "CdkSt-Menti-5xcLf13mYnGy",
+            "ResourceType": "AWS::IAM::Policy",
+            "Timestamp": "2025-10-10T01:53:01.123000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "MentionDetailsCollectorV3LogGroupFB60C2A4",
+            "PhysicalResourceId": "/aws/lambda/nasun-collect-mention-details",
+            "ResourceType": "AWS::Logs::LogGroup",
+            "Timestamp": "2025-10-07T03:32:23.002000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApi18624DA7",
+            "PhysicalResourceId": "bb4zdy0rwe",
+            "ResourceType": "AWS::ApiGateway::RestApi",
+            "Timestamp": "2025-10-07T03:32:45.562000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiDeployment1BB550C917dcccff77aa93ad1d2ed071df116bcd",
+            "PhysicalResourceId": "177qt9",
+            "ResourceType": "AWS::ApiGateway::Deployment",
+            "Timestamp": "2025-10-17T14:13:40.381000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiDeploymentStageprod20A0F347",
+            "PhysicalResourceId": "prod",
+            "ResourceType": "AWS::ApiGateway::Stage",
+            "Timestamp": "2025-10-17T14:13:43.119000+00:00",
+            "ResourceStatus": "UPDATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiNasunApiKey49520D48",
+            "PhysicalResourceId": "t21jye7517",
+            "ResourceType": "AWS::ApiGateway::ApiKey",
+            "Timestamp": "2025-10-07T03:33:31.574000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiNasunUsagePlan58856C78",
+            "PhysicalResourceId": "4bh2i9",
+            "ResourceType": "AWS::ApiGateway::UsagePlan",
+            "Timestamp": "2025-10-07T03:33:31.566000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiNasunUsagePlanUsagePlanKeyResourceCdkStackNasunApiNasunApiKeyED3DE503A2AD56B1",
+            "PhysicalResourceId": "t21jye7517:4bh2i9",
+            "ResourceType": "AWS::ApiGateway::UsagePlanKey",
+            "Timestamp": "2025-10-07T03:33:34.091000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiOPTIONS411493C7",
+            "PhysicalResourceId": "bb4zdy0rwe|gc9ugeohib|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:32:49.359000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapiFD611B58",
+            "PhysicalResourceId": "evvee0",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:48.389000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapiOPTIONS0A150279",
+            "PhysicalResourceId": "bb4zdy0rwe|evvee0|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:32:51.960000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboard32091265",
+            "PhysicalResourceId": "t04k7n",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:50.775000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardOPTIONSAFF50046",
+            "PhysicalResourceId": "bb4zdy0rwe|t04k7n|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:32:54.261000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeAEDAF688",
+            "PhysicalResourceId": "lhjlus",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:52.976000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeGETApiPermissionCdkStackNasunApiF6D7BDE0GETapileaderboardcumulative815F0E79",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativeGETApiPermissionCdkStackNasunApiF6D7BDE0GETapi-x2JeHx59Y5EY",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:31.116000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeGETApiPermissionTestCdkStackNasunApiF6D7BDE0GETapileaderboardcumulative846D7319",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativeGETApiPermissionTestCdkStackNasunApiF6D7BDE0GE-FlLw7WONBhfm",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:11.353000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeGETB5C7776B",
+            "PhysicalResourceId": "bb4zdy0rwe|lhjlus|GET",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:12.921000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeOPTIONS7781C58B",
+            "PhysicalResourceId": "bb4zdy0rwe|lhjlus|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:04.109000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativebookmarkstatsEB25D022",
+            "PhysicalResourceId": "04o06w",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:55.147000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativebookmarkstatsGET4911F7B1",
+            "PhysicalResourceId": "bb4zdy0rwe|04o06w|GET",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:12.592000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativebookmarkstatsGETApiPermissionCdkStackNasunApiF6D7BDE0GETapileaderboardcumulativebookmarkstats26DA6986",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativebookmarkstatsGETApiPermissionCdkStackNasunApiF-rHoqd1y6HuwR",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:31.059000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativebookmarkstatsGETApiPermissionTestCdkStackNasunApiF6D7BDE0GETapileaderboardcumulativebookmarkstats8CAA1047",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativebookmarkstatsGETApiPermissionTestCdkStackNasun-k8KqtLrzYykY",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:11.061000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativebookmarkstatsOPTIONSABAC9232",
+            "PhysicalResourceId": "bb4zdy0rwe|04o06w|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:03.987000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeexcludedaccountsstatus674A119B",
+            "PhysicalResourceId": "iezi64",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:58.296000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeexcludedaccountsstatusGET030F4942",
+            "PhysicalResourceId": "bb4zdy0rwe|iezi64|GET",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:13.179000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeexcludedaccountsstatusGETApiPermissionCdkStackNasunApiF6D7BDE0GETapileaderboardcumulativeexcludedaccountsstatus87A7DC43",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativeexcludedaccountsstatusGETApiPermissionCdkStack-5wODwXg0irH6",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:31.258000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeexcludedaccountsstatusGETApiPermissionTestCdkStackNasunApiF6D7BDE0GETapileaderboardcumulativeexcludedaccountsstatus48A314F9",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativeexcludedaccountsstatusGETApiPermissionTestCdkS-QSv61M1vbOkp",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:11.516000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativeexcludedaccountsstatusOPTIONS44201052",
+            "PhysicalResourceId": "bb4zdy0rwe|iezi64|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:02.280000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsA8166884",
+            "PhysicalResourceId": "uohps0",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:54.973000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsOPTIONS3842B66B",
+            "PhysicalResourceId": "bb4zdy0rwe|uohps0|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:32:58.350000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsdate866663EF",
+            "PhysicalResourceId": "i3ulc7",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-07T03:32:56.910000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsdateGET4911F21A",
+            "PhysicalResourceId": "bb4zdy0rwe|i3ulc7|GET",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:13.989000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsdateGETApiPermissionCdkStackNasunApiF6D7BDE0GETapileaderboardcumulativesnapshotsdateBF6CF063",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativesnapshotsdateGETApiPermissionCdkStackNasunApiF-ut4x2bD7zKPh",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:30.949000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsdateGETApiPermissionTestCdkStackNasunApiF6D7BDE0GETapileaderboardcumulativesnapshotsdateFEED9350",
+            "PhysicalResourceId": "CdkStack-NasunApiapileaderboardcumulativesnapshotsdateGETApiPermissionTestCdkStackNasun-zwmaisVXr2QX",
+            "ResourceType": "AWS::Lambda::Permission",
+            "Timestamp": "2025-10-07T03:33:11.166000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardcumulativesnapshotsdateOPTIONS74EB2D9F",
+            "PhysicalResourceId": "bb4zdy0rwe|i3ulc7|OPTIONS",
+            "ResourceType": "AWS::ApiGateway::Method",
+            "Timestamp": "2025-10-07T03:33:00.368000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "IN_SYNC"
+            }
+        },
+        {
+            "StackName": "CdkStack",
+            "StackId": "arn:aws:cloudformation:ap-northeast-2:135808943968:stack/CdkStack/2a64d640-a32e-11f0-bb42-06dc956a4843",
+            "LogicalResourceId": "NasunApiapileaderboardevent1171C9AA9",
+            "PhysicalResourceId": "qbo6xf",
+            "ResourceType": "AWS::ApiGateway::Resource",
+            "Timestamp": "2025-10-17T14:13:23.468000+00:00",
+            "ResourceStatus": "CREATE_COMPLETE",
+            "DriftInformation": {
+                "StackResourceDriftStatus": "NOT_CHECKED"
+            }
+        }
+    ]
+}

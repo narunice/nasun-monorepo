@@ -1,0 +1,176 @@
+{
+  "title": "MY ACCOUNT",
+  "userInfo": {
+    "userInfo": "USER INFOMATION",
+    "email": "Email",
+    "suiWalletAddress": "SUI Wallet Address",
+    "infoWallet": "Connect your SUI wallet and register address to opt in for future airdrops and gift NFTs.",
+    "xHandle": "X Handle",
+    "handle": "Handle",
+    "xHandleOptIn": "Enter your X handle to opt in to the X Leaderboard.",
+    "xHandleOptOut": "Delete your X handle to opt out from the X Leaderboard.",
+    "xHandlePlaceholder": "e.g., @username",
+    "xHandleNotProvided": "Required to Opt in to the X Leaderboard",
+    "notLinked": "Not Linked",
+    "addXHandle": "Add",
+    "update": "Update",
+    "delete": "Delete",
+    "linkAccount": "Link Account",
+    "currentlyLoggedIn": "Currently Logged In",
+    "linked": "Linked",
+    "clickToUnlink": "Unlink",
+    "linkGoogleAccount": "Link Google Account",
+    "linkTwitterAccount": "Link X Account",
+    "linkMetaMaskAccount": "Link MetaMask",
+    "linkMetaMaskSuccess": "MetaMask wallet linked successfully!",
+    "confirmUnlinkGoogle": "Are you sure you want to unlink your Google account?",
+    "confirmUnlinkTwitter": "Are you sure you want to unlink your Twitter account?",
+    "confirmUnlinkMetaMask": "Are you sure you want to unlink your MetaMask wallet? You will need to sign a message to confirm.",
+    "unlinkGoogleSuccess": "Google account unlinked successfully!",
+    "unlinkTwitterSuccess": "Twitter account unlinked successfully!",
+    "unlinkMetaMaskSuccess": "MetaMask wallet unlinked successfully!",
+    "unlinkGoogleError": "Failed to unlink Google account",
+    "unlinkTwitterError": "Failed to unlink Twitter account",
+    "unlinkMetaMaskError": "Failed to unlink MetaMask wallet",
+    "accountLinkingCancelled": "{{provider}} account linking has been cancelled."
+  },
+  "myWalletStatus": {
+    "myWalletStatus": "MY WALLET STATUS",
+    "chains": "Chains",
+    "status": "Status",
+    "connectDisconnect": "Connect/Disconnect",
+    "connected": "Connected",
+    "notConnected": "Not Connected",
+    "notSupported": "Not Supported Yet"
+  },
+  "whitelist": {
+    "title": "FOUNDERS NFT WHITELIST STATUS",
+    "connectWallet": "Please connect your MetaMask wallet to check your whitelist status.",
+    "registered": "Registered",
+    "notRegistered": "You are not on the whitelist yet.",
+    "join": "Join The Whitelist",
+    "withdraw": "Withdraw from Whitelist",
+    "joinedAt": "Joined on: {{date}}",
+    "joinedAtLabel": "Joined At",
+    "statusLabel": "Status",
+    "walletAddress": "Wallet Address",
+    "modal": {
+      "withdrawSuccess": {
+        "message": "You have successfully withdrawn from the whitelist.",
+        "wallet": "Wallet Address"
+      }
+    }
+  },
+  "battalionNftAllowlist": {
+    "title": "BATTALION NFT ALLOWLIST STATUS",
+    "connectWallet": "Please connect your MetaMask wallet to check your Battalion NFT status.",
+    "registered": "Registered",
+    "withdrawn": "Withdrawn",
+    "notRegistered": "You are not registered for the Battalion NFT Allowlist.",
+    "notRegisteredHint": "Visit the Battalion NFT page to register.",
+    "verifiedAt": "Registered on: {{date}}",
+    "verifiedAtLabel": "Registered At",
+    "handle": "Handle",
+    "status": "Status",
+    "walletAddress": "Wallet Address",
+    "withdraw": "Withdraw from Allowlist",
+    "confirmWithdraw": "Are you sure you want to withdraw from the Battalion NFT Allowlist? You can re-register anytime by visiting the event page again.",
+    "withdrawSuccess": "You have successfully withdrawn from the Battalion NFT Allowlist.",
+    "withdrawError": "Failed to withdraw from the Battalion NFT Allowlist. Please try again.",
+    "alreadyWithdrawn": "You have already withdrawn from the Battalion NFT.",
+    "signatureError": "Signature verification failed. Please try again."
+  },
+  "myAssets": {
+    "myAssets": "MY ASSETS",
+    "noObject": "No NASUN objects were found.",
+    "ethereumNFTs": "Ethereum NFTs",
+    "suiObjects": "Sui Objects",
+    "iotaObjects": "IOTA Objects"
+  },
+  "nft": {
+    "tier": "TIER",
+    "name": "NAME",
+    "description": "DESCRIPTION",
+    "network": "NETWORK",
+    "claim_status": "CLAIM STATUS",
+    "claimed": "Claimed",
+    "unclaimed": "Unclaimed",
+    "projectUrl": "PROJECT WEBSITE",
+    "ipUrl": "BRAND WEBSITE",
+    "tokenId": "Token ID",
+    "contract": "Contract",
+    "collection": "Collection",
+    "tokenType": "Token Type",
+    "balance": "Balance",
+    "floorPrice": "Floor Price",
+    "attributes": "Attributes",
+    "viewOnEtherscan": "View on Etherscan",
+    "viewOnOpenSea": "View on OpenSea"
+  },
+  "rankHistory": {
+    "title": "LEADERBOARD HISTORY",
+    "description": "View your daily ranking changes over time",
+    "notConnected": "Please connect your X account to participate the community leaderboard.",
+    "notParticipating": "You haven't participated in the leaderboard yet. Engage with @{{targetAccount}} to start building your rank history.",
+    "notParticipatingInPeriodOngoing": "You haven't participated in {{periodName}} yet. Engage with @{{targetAccount}} to start building your rank history.",
+    "notParticipatingInPeriodEnded": "You didn't participate in {{periodName}}. This event has ended.",
+    "periods": {
+      "cumulative": "Cumulative Leaderboard",
+      "event1": "Season 1",
+      "event2": "Season 2",
+      "event3": "Season 3"
+    },
+    "leaderboardTitles": {
+      "cumulative": "Cumulative Leaderboard",
+      "event1": "Season 1 Leaderboard",
+      "event2": "Season 2 Leaderboard",
+      "event3": "Season 3 Leaderboard"
+    },
+    "dateRange": "Period",
+    "loading": "Loading history data...",
+    "error": "Failed to load history data",
+    "unknownError": "An unknown error occurred.",
+    "noData": "No history data to display",
+    "noDataDescription": "No ranking data available for the selected period.",
+    "chart": {
+      "rank": "Rank",
+      "score": "Points",
+      "yAxisLabel": "Rank",
+      "noData": "No data available"
+    },
+    "stats": {
+      "bestRank": "Best Rank",
+      "averageRank": "Average Rank",
+      "scoreIncrease": "Score Increase",
+      "rankImprovement": "Rank Change",
+      "totalDays": "Total {{days}} days active"
+    },
+    "share": {
+      "button": "Share on X",
+      "processing": "Processing...",
+      "message": "Check out my rank history on NASUN! 📊\n\n#{{hashtag}}",
+      "hashtag": "Web3",
+      "success": "📋 Image copied to clipboard! Opening X...",
+      "instruction": "💡 Paste the image with Ctrl+V (Cmd+V on Mac)",
+      "error": {
+        "noChart": "Chart not found",
+        "clipboardNotSupported": "Clipboard API not supported in this browser",
+        "captureFailed": "Failed to capture chart image",
+        "generic": "Failed to share. Please try again."
+      }
+    }
+  },
+  "accountDeletion": {
+    "title": "DELETE ACCOUNT",
+    "description": "This action cannot be undone. After deactivation, all related data will be permanently deleted after 7 days.",
+    "button": "Request Account Deletion",
+    "confirm": "Are you sure you want to request account deletion?\n\nUpon request, your account will be deactivated immediately and all data will be permanently deleted after 7 days.",
+    "success": "Deletion request has been processed successfully. Your account will be permanently deleted in 7 days.",
+    "error": "An error occurred while deleting the account: {{error}}"
+  },
+  "loading": "Loading...",
+  "loadingSui": "Error loading SUI objects:",
+  "loadingIota": "Error loading IOTA objects:",
+  "loadingEthereum": "Error loading Ethereum NFTs:",
+  "walletNotConnected": "Wallet not connected."
+}

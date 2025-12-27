@@ -1,0 +1,511 @@
+{
+  "timestamp": "2025-10-10T02:18:25.997Z",
+  "totalUsers": 34,
+  "suspectedDoubledUsers": [
+    {
+      "userId": "1551114057125617664",
+      "username": "0xCrocy",
+      "totalScore": 70.32,
+      "totalLikes": 4,
+      "suspectedOriginalScore": 35.16,
+      "reason": "활동당 평균 8.79점 (정상: 2-3점); 통계적 이상치 (점수: 70.32, 상한: 52.72)"
+    },
+    {
+      "userId": "52278924",
+      "username": "AdamsuMus",
+      "totalScore": 64.08,
+      "totalLikes": 4,
+      "suspectedOriginalScore": 32.04,
+      "reason": "활동당 평균 8.01점 (정상: 2-3점); 통계적 이상치 (점수: 64.08, 상한: 52.72)"
+    },
+    {
+      "userId": "1773572216632029184",
+      "username": "Keymong368774",
+      "totalScore": 59.28,
+      "totalLikes": 4,
+      "suspectedOriginalScore": 29.64,
+      "reason": "활동당 평균 7.41점 (정상: 2-3점); 통계적 이상치 (점수: 59.28, 상한: 52.72)"
+    },
+    {
+      "userId": "1715974925985763328",
+      "username": "munchanghw98379",
+      "totalScore": 55.32,
+      "totalLikes": 4,
+      "suspectedOriginalScore": 27.66,
+      "reason": "활동당 평균 6.92점 (정상: 2-3점); 통계적 이상치 (점수: 55.32, 상한: 52.72)"
+    },
+    {
+      "userId": "1873766257327226880",
+      "username": "ichangheon95715",
+      "totalScore": 53.16,
+      "totalLikes": 4,
+      "suspectedOriginalScore": 26.58,
+      "reason": "활동당 평균 6.64점 (정상: 2-3점); 통계적 이상치 (점수: 53.16, 상한: 52.72)"
+    },
+    {
+      "userId": "1759477327560597504",
+      "username": "pizza1q2w3e",
+      "totalScore": 49.32,
+      "totalLikes": 4,
+      "suspectedOriginalScore": 24.66,
+      "reason": "활동당 평균 6.17점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1479083144133619713",
+      "username": "dudrms606",
+      "totalScore": 45.6,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 22.8,
+      "reason": "활동당 평균 11.40점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1466203907609477120",
+      "username": "HenriLee92",
+      "totalScore": 40.16,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 20.08,
+      "reason": "활동당 평균 10.04점 (정상: 2-3점)"
+    },
+    {
+      "userId": "151104119",
+      "username": "Lucky_noda",
+      "totalScore": 40,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 20,
+      "reason": "활동당 평균 10.00점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1809018546674118656",
+      "username": "Mamma2100",
+      "totalScore": 40,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 20,
+      "reason": "활동당 평균 10.00점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1585435877068525569",
+      "username": "Galmeck2nya",
+      "totalScore": 39.44,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 19.72,
+      "reason": "활동당 평균 9.86점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1510122460615970816",
+      "username": "ank129048",
+      "totalScore": 38.88,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 19.44,
+      "reason": "활동당 평균 9.72점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1794622121014136832",
+      "username": "editorIDA",
+      "totalScore": 37.92,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 18.96,
+      "reason": "활동당 평균 9.48점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1762218132767490048",
+      "username": "maming5155",
+      "totalScore": 36.88,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 18.44,
+      "reason": "활동당 평균 9.22점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1547209187280965632",
+      "username": "dopamine_crypto",
+      "totalScore": 36.72,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 18.36,
+      "reason": "활동당 평균 9.18점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1507018924034236416",
+      "username": "shudshud26",
+      "totalScore": 36.64,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 18.32,
+      "reason": "활동당 평균 9.16점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1886226839296966656",
+      "username": "eksoo_kys",
+      "totalScore": 36.48,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 18.24,
+      "reason": "활동당 평균 9.12점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1803387236924411904",
+      "username": "Dalsu112",
+      "totalScore": 35.92,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 17.96,
+      "reason": "활동당 평균 8.98점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1555526553844731905",
+      "username": "popomonkor",
+      "totalScore": 35.44,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 17.72,
+      "reason": "활동당 평균 8.86점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1377899527672197121",
+      "username": "xaexxax",
+      "totalScore": 35.2,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 17.6,
+      "reason": "활동당 평균 8.80점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1670389039680335872",
+      "username": "tarinaka383719",
+      "totalScore": 34.96,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 17.48,
+      "reason": "활동당 평균 8.74점 (정상: 2-3점)"
+    },
+    {
+      "userId": "701404304683339776",
+      "username": "qpzmzm",
+      "totalScore": 34.72,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 17.36,
+      "reason": "활동당 평균 8.68점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1478506393624014851",
+      "username": "kihyeop22",
+      "totalScore": 34.56,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 17.28,
+      "reason": "활동당 평균 8.64점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1473934656483786761",
+      "username": "na_treeum",
+      "totalScore": 32.4,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 16.2,
+      "reason": "활동당 평균 8.10점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1437718545106812940",
+      "username": "acovadododo",
+      "totalScore": 29.6,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 14.8,
+      "reason": "활동당 평균 7.40점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1930805830921932800",
+      "username": "ddadda2527",
+      "totalScore": 29.2,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 14.6,
+      "reason": "활동당 평균 7.30점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1614911484651515905",
+      "username": "imgihwan14",
+      "totalScore": 28.88,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 14.44,
+      "reason": "활동당 평균 7.22점 (정상: 2-3점)"
+    },
+    {
+      "userId": "1370263803217072132",
+      "username": "ptpt4567",
+      "totalScore": 26.32,
+      "totalLikes": 0,
+      "suspectedOriginalScore": 13.16,
+      "reason": "활동당 평균 6.58점 (정상: 2-3점)"
+    }
+  ],
+  "missingDataUsers": [
+    {
+      "userId": "265284922",
+      "username": "Fall2026",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1503536552164556804",
+      "username": "overclocksalmon",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1715974925985763328",
+      "username": "munchanghw98379",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1873766257327226880",
+      "username": "ichangheon95715",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1478903123863568385",
+      "username": "jojinpat",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1886226839296966656",
+      "username": "eksoo_kys",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "52278924",
+      "username": "AdamsuMus",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1794622121014136832",
+      "username": "editorIDA",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1803387236924411904",
+      "username": "Dalsu112",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1437718545106812940",
+      "username": "acovadododo",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1759477327560597504",
+      "username": "pizza1q2w3e",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "151104119",
+      "username": "Lucky_noda",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1510122460615970816",
+      "username": "ank129048",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1551114057125617664",
+      "username": "0xCrocy",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1466203907609477120",
+      "username": "HenriLee92",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1809018546674118656",
+      "username": "Mamma2100",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1773572216632029184",
+      "username": "Keymong368774",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1547209187280965632",
+      "username": "dopamine_crypto",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1555526553844731905",
+      "username": "popomonkor",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1370263803217072132",
+      "username": "ptpt4567",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1377899527672197121",
+      "username": "xaexxax",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "701404304683339776",
+      "username": "qpzmzm",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1585435877068525569",
+      "username": "Galmeck2nya",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1930805830921932800",
+      "username": "ddadda2527",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1479083144133619713",
+      "username": "dudrms606",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1478506393624014851",
+      "username": "kihyeop22",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1507018924034236416",
+      "username": "shudshud26",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1965889383032303623",
+      "username": "crypto_pig11",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1473934656483786761",
+      "username": "na_treeum",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1614911484651515905",
+      "username": "imgihwan14",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1431115132721979392",
+      "username": "jochef1995",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1670389039680335872",
+      "username": "tarinaka383719",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1762218132767490048",
+      "username": "maming5155",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    },
+    {
+      "userId": "1463668371862417410",
+      "username": "baegseondong",
+      "missingFields": [
+        "targetBookmarkCount",
+        "targetRetweetCount"
+      ]
+    }
+  ],
+  "statistics": {
+    "averageScore": 37.49764705882352,
+    "medianScore": 36.72,
+    "maxScore": 70.32,
+    "minScore": 7.56,
+    "totalScoreSum": 1274.9199999999996
+  }
+}

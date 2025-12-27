@@ -1,0 +1,111 @@
+import { Suspense, lazy, useState, useCallback, useEffect } from "react";
+import ErrorBoundary from "../components/layout/ErrorBoundary";
+import { SectionLayout } from "../components/layout/SectionLayout";
+import { ScrollSnapContainer } from "../components/layout/ScrollSnapContainer";
+import { ScrollSnapSection } from "../components/layout/ScrollSnapSection";
+import { useHomePageLoading } from "../contexts/PageLoadingContext";
+
+// Lazy load all sections
+const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
+const VisionSection = lazy(() => import("../components/app/home/VisionSection"));
+const Wave1Section = lazy(() => import("../components/app/home/Wave1Section"));
+const NftSaleSection = lazy(() => import("../components/app/home/NftSaleSection"));
+const AwardsGrantsSection = lazy(() => import("../components/app/home/AwardsGrantsSection"));
+const NewsEventsSection = lazy(() => import("../components/app/home/NewsEventsSection"));
+
+export default function HomePage() {
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const { setIsPageReady } = useHomePageLoading();
+
+  // 홈페이지 마운트 시 페이지 준비 상태가 false임을 보장 (Context에서 자동 처리되지만 명시적 설정)
+  useEffect(() => {
+    setIsPageReady(false);
+  }, [setIsPageReady]);
+
+  const handleVideoReady = useCallback(async () => {
+    setIsVideoReady(true);
+
+    // Preload critical above-the-fold sections before showing footer
+    // This prevents layout shift when sections load after footer appears
+    await Promise.all([
+      import("../components/app/home/VisionSection"),
+      import("../components/app/home/AwardsGrantsSection"),
+    ]);
+
+    setIsPageReady(true); // Context 업데이트
+  }, [setIsPageReady]);
+
+  // 비디오 로딩 중에는 body 스크롤 방지
+  useEffect(() => {
+    if (!isVideoReady) {
+      // 스크롤 방지
+      document.body.style.overflow = "hidden";
+    } else {
+      // 스크롤 허용
+      document.body.style.overflow = "auto";
+    }
+
+    return () => {
+      // 컴포넌트 언마운트 시 스크롤 복원
+      document.body.style.overflow = "auto";
+    };
+  }, [isVideoReady]);
+
+  // Suspense fallback: null to prevent unnecessary loading spinners
+  // HeroSection uses CSS-based positioning to avoid re-mounting
+  const suspenseFallback = null;
+
+  const errorFallback = (
+    <SectionLayout>
+      <p className="text-nasun-latte">Failed to load section</p>
+    </SectionLayout>
+  );
+
+  // HeroSection is always rendered, using CSS-based positioning
+  // This prevents re-mounting and state reset issues
+  return (
+    <>
+      {/* Snap Scroll 섹션들 (Hero ~ NFT Sale) */}
+      <ScrollSnapContainer>
+        <ErrorBoundary fallback={errorFallback}>
+          <Suspense fallback={suspenseFallback}>
+            {/* HeroSection: 첫 번째 섹션 (CSS 기반 위치 제어) */}
+            <ScrollSnapSection>
+              <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
+            </ScrollSnapSection>
+
+            {/* VisionSection */}
+            <ScrollSnapSection>
+              <VisionSection />
+            </ScrollSnapSection>
+
+            {/* AwardsGrantsSection - 긴 컨텐츠 허용 */}
+            <ScrollSnapSection allowTallContent={true}>
+              <AwardsGrantsSection />
+            </ScrollSnapSection>
+
+            {/* Wave1Section - 긴 컨텐츠 허용 */}
+            <ScrollSnapSection allowTallContent={true}>
+              <Wave1Section />
+            </ScrollSnapSection>
+
+            {/* NftSaleSection - 스냅 스크롤 */}
+            <ScrollSnapSection>
+              <NftSaleSection />
+            </ScrollSnapSection>
+          </Suspense>
+        </ErrorBoundary>
+      </ScrollSnapContainer>
+
+      {/* 일반 스크롤 섹션 */}
+      <ErrorBoundary fallback={errorFallback}>
+        <Suspense fallback={suspenseFallback}>
+          {/* NewsEventsSection - 긴 컨텐츠 허용 */}
+          <ScrollSnapSection allowTallContent={true}>
+            <NewsEventsSection />
+          </ScrollSnapSection>
+        </Suspense>
+      </ErrorBoundary>
+    </>
+  );
+}
