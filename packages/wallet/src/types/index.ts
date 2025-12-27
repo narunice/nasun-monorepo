@@ -1,0 +1,98 @@
+/**
+ * Nasun Wallet Type Definitions
+ */
+
+// Wallet status
+export type WalletStatus = 'disconnected' | 'locked' | 'unlocked';
+
+// Encrypted keystore
+export interface EncryptedKeystore {
+  // Encrypted private key (base64)
+  encryptedPrivateKey: string;
+  // AES-GCM IV (base64)
+  iv: string;
+  // PBKDF2 salt (base64)
+  salt: string;
+  // Public address
+  address: string;
+  // Creation time
+  createdAt: number;
+}
+
+// Wallet account
+export interface WalletAccount {
+  address: string;
+  publicKey: string;
+}
+
+// Wallet context state
+export interface WalletState {
+  status: WalletStatus;
+  account: WalletAccount | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+// Wallet context actions
+export interface WalletActions {
+  // Create new wallet (random)
+  createWallet: (password: string) => Promise<string>;
+  // Create new wallet (with mnemonic backup)
+  createWalletWithBackup: (password: string) => Promise<{ address: string; mnemonic: string }>;
+  // Unlock existing wallet
+  unlockWallet: (password: string) => Promise<void>;
+  // Lock wallet
+  lockWallet: () => void;
+  // Delete wallet
+  deleteWallet: () => void;
+  // Import from mnemonic
+  importWallet: (mnemonic: string, password: string) => Promise<string>;
+  // Import from mnemonic (explicit method)
+  importFromMnemonic: (mnemonic: string, password: string) => Promise<string>;
+  // Import from private key
+  importFromPrivateKey: (privateKey: string, password: string) => Promise<string>;
+  // Export private key (requires password)
+  exportPrivateKey: (password: string) => Promise<string>;
+  // Clear error
+  clearError: () => void;
+}
+
+// Full wallet context
+export interface WalletContextType extends WalletState, WalletActions {}
+
+// Transaction request
+export interface TransactionRequest {
+  to: string;
+  amount: string; // NASUN unit
+}
+
+// Transaction result
+export interface TransactionResult {
+  digest: string;
+  status: 'success' | 'failure';
+  gasUsed?: string;
+  error?: string;
+}
+
+// Faucet response
+export interface FaucetResponse {
+  transferredGasObjects: Array<{
+    id: string;
+    amount: number;
+  }>;
+  error?: string;
+}
+
+// Balance info
+export interface BalanceInfo {
+  totalBalance: string; // SOE unit (minimum unit)
+  formattedBalance: string; // NASUN unit (display)
+  coinCount: number;
+}
+
+// Wallet configuration
+export interface WalletConfig {
+  rpcUrl: string;
+  faucetUrl?: string;
+  networkName?: string;
+}

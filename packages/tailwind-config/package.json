@@ -1,0 +1,13 @@
+{
+  "name": "@nasun/tailwind-config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "base.js",
+  "files": [
+    "base.js",
+    "colors.js"
+  ],
+  "peerDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
