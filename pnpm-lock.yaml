@@ -494,6 +494,12 @@ importers:
       '@mysten/sui':
         specifier: 1.22.0
         version: 1.22.0(typescript@5.9.3)
+      '@nasun/wallet':
+        specifier: workspace:*
+        version: link:../../../packages/wallet
+      '@nasun/wallet-ui':
+        specifier: workspace:*
+        version: link:../../../packages/wallet-ui
       '@scure/bip39':
         specifier: ^2.0.1
         version: 2.0.1
