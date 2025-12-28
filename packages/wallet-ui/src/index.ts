@@ -49,3 +49,6 @@ export { StakingPanel } from './StakingPanel';
 // Utility components
 export { CopyableAddress } from './CopyableAddress';
 export type { CopyableAddressProps } from './CopyableAddress';
+
+// Security components
+export { SecuritySettings } from './SecuritySettings';
