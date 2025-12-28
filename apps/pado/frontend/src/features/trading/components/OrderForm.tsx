@@ -266,14 +266,14 @@ export function OrderForm({
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={handleBuy}
-          className="py-2 bg-green-600 hover:bg-green-700 rounded font-medium disabled:opacity-50 transition-colors"
+          className="py-2 bg-green-600 hover:bg-green-700 rounded font-medium disabled:opacity-50 transition-colors text-white"
           disabled={isButtonDisabled}
         >
           {isLoading ? '...' : `${isMarket ? 'Market ' : ''}Buy`}
         </button>
         <button
           onClick={handleSell}
-          className="py-2 bg-red-600 hover:bg-red-700 rounded font-medium disabled:opacity-50 transition-colors"
+          className="py-2 bg-red-600 hover:bg-red-700 rounded font-medium disabled:opacity-50 transition-colors text-white"
           disabled={isButtonDisabled}
         >
           {isLoading ? '...' : `${isMarket ? 'Market ' : ''}Sell`}
