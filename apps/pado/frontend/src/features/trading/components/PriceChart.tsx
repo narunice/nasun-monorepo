@@ -2,6 +2,23 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, CandlestickData, Time, LineData, HistogramData } from 'lightweight-charts';
 import { useMarket } from '../context/MarketContext';
+import { useTheme } from '../../../providers/theme';
+
+// Theme-aware chart colors
+const CHART_COLORS = {
+  dark: {
+    background: '#1a1a2e',
+    text: '#d1d4dc',
+    grid: '#2B2B43',
+    border: '#2B2B43',
+  },
+  light: {
+    background: '#faf7f4',
+    text: '#191615',
+    grid: '#e5e2de',
+    border: '#d4d1cd',
+  },
+};
 
 export type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w';
 
@@ -85,6 +102,7 @@ const VOLUME_HEIGHT = 80;
 
 export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartProps) {
   const { currentPool } = useMarket();
+  const { theme } = useTheme();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const volumeContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -97,6 +115,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const [showMA, setShowMA] = useState(true);
   const [lastPrice, setLastPrice] = useState<{ value: number; change: number } | null>(null);
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
+  const colors = CHART_COLORS[theme];
 
   // Memoized candle data
   const candleData = useMemo(() => {
@@ -111,12 +130,12 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     // Main chart (candlestick + MA)
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { color: '#1a1a2e' },
-        textColor: '#d1d4dc',
+        background: { color: colors.background },
+        textColor: colors.text,
       },
       grid: {
-        vertLines: { color: '#2B2B43' },
-        horzLines: { color: '#2B2B43' },
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
       },
       width: chartContainerRef.current.clientWidth,
       height: CHART_HEIGHT,
@@ -126,7 +145,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         barSpacing: 4,
       },
       rightPriceScale: {
-        borderColor: '#2B2B43',
+        borderColor: colors.border,
       },
       crosshair: {
         mode: 1,
@@ -148,11 +167,11 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     // Volume chart
     const volumeChart = createChart(volumeContainerRef.current, {
       layout: {
-        background: { color: '#1a1a2e' },
-        textColor: '#d1d4dc',
+        background: { color: colors.background },
+        textColor: colors.text,
       },
       grid: {
-        vertLines: { color: '#2B2B43' },
+        vertLines: { color: colors.grid },
         horzLines: { visible: false },
       },
       width: volumeContainerRef.current.clientWidth,
@@ -162,7 +181,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         barSpacing: 4,
       },
       rightPriceScale: {
-        borderColor: '#2B2B43',
+        borderColor: colors.border,
         scaleMargins: {
           top: 0.1,
           bottom: 0,
@@ -296,6 +315,39 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     ma20SeriesRef.current.applyOptions({ visible: showMA });
   }, [showMA]);
 
+  // Update chart colors when theme changes
+  useEffect(() => {
+    if (!chartRef.current || !volumeChartRef.current) return;
+
+    const chartColors = CHART_COLORS[theme];
+    chartRef.current.applyOptions({
+      layout: {
+        background: { color: chartColors.background },
+        textColor: chartColors.text,
+      },
+      grid: {
+        vertLines: { color: chartColors.grid },
+        horzLines: { color: chartColors.grid },
+      },
+      rightPriceScale: {
+        borderColor: chartColors.border,
+      },
+    });
+
+    volumeChartRef.current.applyOptions({
+      layout: {
+        background: { color: chartColors.background },
+        textColor: chartColors.text,
+      },
+      grid: {
+        vertLines: { color: chartColors.grid },
+      },
+      rightPriceScale: {
+        borderColor: chartColors.border,
+      },
+    });
+  }, [theme]);
+
   // Real-time simulation
   useEffect(() => {
     if (!candleSeriesRef.current || !chartRef.current || !volumeSeriesRef.current) return;
@@ -350,9 +402,9 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   }, [interval, currentPrice, lastPrice]);
 
   return (
-    <div className={`bg-gray-800 rounded-lg overflow-hidden ${className}`}>
+    <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-700">
+      <div className="flex items-center justify-between p-3 border-b border-theme-border">
         <div className="flex items-center gap-4">
           <span className="font-semibold">{currentPool.baseToken.symbol}/{currentPool.quoteToken.symbol}</span>
           {lastPrice && (
@@ -374,7 +426,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
             className={`px-2 py-1 text-xs rounded transition-colors ${
               showMA
                 ? 'bg-yellow-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
             }`}
             title="Toggle Moving Averages"
           >
@@ -390,7 +442,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
                 className={`px-2 py-1 text-xs rounded transition-colors ${
                   interval === key
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
                 }`}
               >
                 {key}
@@ -402,14 +454,14 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
 
       {/* MA Legend */}
       {showMA && (
-        <div className="flex items-center gap-4 px-3 py-1 text-xs border-b border-gray-700/50">
+        <div className="flex items-center gap-4 px-3 py-1 text-xs border-b border-theme-border/50">
           <span className="flex items-center gap-1">
             <span className="w-3 h-0.5 bg-yellow-400"></span>
-            <span className="text-gray-400">MA5</span>
+            <span className="text-theme-text-muted">MA5</span>
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-0.5 bg-blue-400"></span>
-            <span className="text-gray-400">MA20</span>
+            <span className="text-theme-text-muted">MA20</span>
           </span>
         </div>
       )}
@@ -418,7 +470,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       <div ref={chartContainerRef} className="w-full" />
 
       {/* Volume Chart */}
-      <div ref={volumeContainerRef} className="w-full border-t border-gray-700" />
+      <div ref={volumeContainerRef} className="w-full border-t border-theme-border" />
     </div>
   );
 }

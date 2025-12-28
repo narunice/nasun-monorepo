@@ -48,9 +48,9 @@ export function BalanceManagerCard({
       <p className="text-xs text-green-400 font-mono truncate mb-1">
         BM: {balanceManagerId.slice(0, 16)}...
       </p>
-      <div className="flex justify-between text-xs mb-2 py-1 px-2 bg-gray-800/50 rounded">
-        <span className="text-gray-400">BM Balance:</span>
-        <span className="text-white">
+      <div className="flex justify-between text-xs mb-2 py-1 px-2 bg-theme-bg-secondary/50 rounded">
+        <span className="text-theme-text-secondary">BM Balance:</span>
+        <span className="text-theme-text-primary">
           {balance.base.toFixed(baseDecimals)} {baseSymbol} / {balance.quote.toFixed(quoteDecimals)} {quoteSymbol}
         </span>
       </div>
@@ -70,7 +70,7 @@ export function BalanceManagerCard({
           {isLoading ? '...' : 'Withdraw'}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mt-1 text-center">
+      <p className="text-xs text-theme-text-secondary mt-1 text-center">
         Deposit to trade, Withdraw to wallet
       </p>
     </div>

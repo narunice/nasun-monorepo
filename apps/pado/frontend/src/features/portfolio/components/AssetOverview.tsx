@@ -12,14 +12,14 @@ export function AssetOverview() {
 
   const isConnected = status === 'unlocked';
   const isPositive = totalChange24h >= 0;
-  const changeColor = totalChange24h === 0 ? 'text-gray-400' : isPositive ? 'text-green-400' : 'text-red-400';
+  const changeColor = totalChange24h === 0 ? 'text-theme-text-secondary' : isPositive ? 'text-green-400' : 'text-red-400';
 
   if (!isConnected) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6">
-        <div className="text-sm text-gray-400">Total Asset Value</div>
-        <div className="text-3xl font-bold mt-2 text-gray-500">--</div>
-        <div className="text-sm text-gray-500 mt-2">
+      <div className="bg-theme-bg-secondary rounded-lg p-6">
+        <div className="text-sm text-theme-text-secondary">Total Asset Value</div>
+        <div className="text-3xl font-bold mt-2 text-theme-text-muted">--</div>
+        <div className="text-sm text-theme-text-muted mt-2">
           Connect wallet to view your portfolio
         </div>
       </div>
@@ -27,11 +27,11 @@ export function AssetOverview() {
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <div className="text-sm text-gray-400">Total Asset Value</div>
+    <div className="bg-theme-bg-secondary rounded-lg p-6">
+      <div className="text-sm text-theme-text-secondary">Total Asset Value</div>
       <div className="text-3xl font-bold mt-2">
         {isLoading ? (
-          <span className="text-gray-500">Loading...</span>
+          <span className="text-theme-text-muted">Loading...</span>
         ) : (
           `$${totalValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,
