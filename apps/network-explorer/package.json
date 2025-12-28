@@ -10,19 +10,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mysten/sui": "^1.45.2",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
-    "@mysten/sui": "^1.45.2",
     "@scure/bip39": "^2.0.1",
     "@tanstack/react-query": "^5.90.12",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.10.1",
+    "recharts": "^3.0.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@nasun/tailwind-config": "workspace:*",
     "@eslint/js": "^9.39.1",
+    "@nasun/tailwind-config": "workspace:*",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
