@@ -252,19 +252,19 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     };
   }, []);
 
-  // Update data when interval or price changes
+  // Update data when candleData changes (NOT when showMA changes)
   useEffect(() => {
     if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
 
     // Set candle data
     candleSeriesRef.current.setData(candleData);
 
-    // Set MA data
+    // Set MA data (always set data, visibility controlled separately)
     if (ma5SeriesRef.current && ma20SeriesRef.current) {
       const ma5Data = calculateMA(candleData, 5);
       const ma20Data = calculateMA(candleData, 20);
-      ma5SeriesRef.current.setData(showMA ? ma5Data : []);
-      ma20SeriesRef.current.setData(showMA ? ma20Data : []);
+      ma5SeriesRef.current.setData(ma5Data);
+      ma20SeriesRef.current.setData(ma20Data);
     }
 
     // Set volume data
@@ -286,7 +286,15 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     if (volumeChartRef.current) {
       volumeChartRef.current.timeScale().fitContent();
     }
-  }, [candleData, showMA]);
+  }, [candleData]);
+
+  // Toggle MA visibility (separate from data updates)
+  useEffect(() => {
+    if (!ma5SeriesRef.current || !ma20SeriesRef.current) return;
+
+    ma5SeriesRef.current.applyOptions({ visible: showMA });
+    ma20SeriesRef.current.applyOptions({ visible: showMA });
+  }, [showMA]);
 
   // Real-time simulation
   useEffect(() => {
