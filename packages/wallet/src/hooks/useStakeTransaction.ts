@@ -11,6 +11,57 @@ import { getSuiClient, parseAmount, isValidAddress } from '../sui/client';
 import { buildStakeTransaction, buildUnstakeTransaction } from '../sui/staking';
 import type { StakeRequest, UnstakeRequest, StakeTransactionResult } from '../types/staking';
 
+// Minimum stake amount in NASUN
+const MIN_STAKE_NASUN = 1;
+const MIN_STAKE_MIST = BigInt(MIN_STAKE_NASUN) * BigInt(1_000_000_000);
+
+// Parse blockchain error messages to user-friendly messages
+function parseStakeError(error: string): string {
+  // MoveAbort error parsing
+  // Format: MoveAbort(..., 10) - abort code is the last number
+  const moveAbortMatch = error.match(/MoveAbort\([^)]+,\s*(\d+)\)/);
+  if (moveAbortMatch) {
+    const abortCode = parseInt(moveAbortMatch[1], 10);
+
+    // validator_set abort codes
+    switch (abortCode) {
+      case 10:
+        return `Minimum stake is ${MIN_STAKE_NASUN} NASUN`;
+      case 1:
+        return 'Validator not found';
+      case 2:
+        return 'Insufficient stake balance';
+      case 3:
+        return 'Stake is still pending activation';
+      default:
+        return `Staking failed (code: ${abortCode})`;
+    }
+  }
+
+  // Dry run budget error
+  if (error.includes('Dry run failed') && error.includes('MoveAbort')) {
+    const innerMatch = error.match(/MoveAbort\([^)]+,\s*(\d+)\)/);
+    if (innerMatch) {
+      const code = parseInt(innerMatch[1], 10);
+      if (code === 10) {
+        return `Minimum stake is ${MIN_STAKE_NASUN} NASUN`;
+      }
+    }
+  }
+
+  // Insufficient gas
+  if (error.includes('InsufficientGas') || error.includes('insufficient gas')) {
+    return 'Insufficient NASUN for gas fees';
+  }
+
+  // Insufficient balance
+  if (error.includes('InsufficientCoinBalance') || error.includes('insufficient balance')) {
+    return 'Insufficient balance';
+  }
+
+  return error;
+}
+
 interface UseStakeTransactionReturn {
   // State
   isPending: boolean;
@@ -53,6 +104,13 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
       const amountInMist = parseAmount(request.amount);
       if (amountInMist <= 0n) {
         const err = 'Invalid amount';
+        setError(err);
+        throw new Error(err);
+      }
+
+      // Check minimum stake amount
+      if (amountInMist < MIN_STAKE_MIST) {
+        const err = `Minimum stake is ${MIN_STAKE_NASUN} NASUN`;
         setError(err);
         throw new Error(err);
       }
@@ -101,7 +159,8 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
 
         return txResult;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Stake transaction failed';
+        const rawMessage = err instanceof Error ? err.message : 'Stake transaction failed';
+        const message = parseStakeError(rawMessage);
         setError(message);
         setIsPending(false);
 
@@ -113,7 +172,7 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         };
         setLastResult(failedResult);
 
-        throw err;
+        throw new Error(message);
       }
     },
     [status, account, getKeypair, refreshStaking, refreshBalance]
