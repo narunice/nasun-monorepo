@@ -27,6 +27,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const [price, setPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Calculate current probability
   const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
@@ -72,8 +73,10 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       if (result.success) {
         setSuccess(`Order placed! Tx: ${result.digest?.slice(0, 8)}...`);
         setAmount('');
-        // Delay to allow blockchain state to update
+        // Show syncing state while blockchain updates
+        setIsSyncing(true);
         setTimeout(() => {
+          setIsSyncing(false);
           onSuccess?.(result.digest!);
         }, 1500);
       } else {
@@ -99,8 +102,10 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     if (result.success) {
       setSuccess(`Minted ${amountNum} YES + ${amountNum} NO tokens! Tx: ${result.digest?.slice(0, 8)}...`);
       setAmount('');
-      // Delay to allow blockchain state to update
+      // Show syncing state while blockchain updates
+      setIsSyncing(true);
       setTimeout(() => {
+        setIsSyncing(false);
         onSuccess?.(result.digest!);
       }, 1500);
     } else {
@@ -225,7 +230,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </div>
         )}
 
-        {/* Error/Success Messages */}
+        {/* Error/Success/Syncing Messages */}
         {error && (
           <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2">
             {error}
@@ -234,6 +239,15 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
         {success && (
           <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2">
             {success}
+          </div>
+        )}
+        {isSyncing && (
+          <div className="text-blue-400 text-sm bg-blue-500/10 rounded-lg p-2 flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Syncing with blockchain...
           </div>
         )}
 
