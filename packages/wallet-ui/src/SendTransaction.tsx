@@ -60,8 +60,8 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   // Wallet not connected
   if (status !== 'unlocked' || !account) {
     return (
-      <div className="p-4 bg-zinc-800 rounded-lg">
-        <p className="text-zinc-400 text-sm">Please connect your wallet first.</p>
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">Please connect your wallet first.</p>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
       : selectedToken;
 
     return (
-      <div className="p-4 bg-zinc-800 rounded-lg min-w-[320px]">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg min-w-[320px]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,13 +83,13 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-white">Transfer Complete</h3>
-            <p className="text-sm text-zinc-400 mt-1">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
               {lastResult.amount} {successToken} sent successfully
             </p>
           </div>
 
-          <div className="w-full bg-zinc-700 rounded p-3">
+          <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded p-3">
             <CopyableAddress
               value={lastResult.digest}
               label="Transaction Digest"
@@ -108,7 +108,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
                 setAmount('');
                 setShowConfirm(false);
               }}
-              className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm transition-colors"
+              className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded text-sm transition-colors"
             >
               New Transfer
             </button>
@@ -132,11 +132,11 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   // Confirmation screen
   if (showConfirm) {
     return (
-      <div className="p-4 bg-zinc-800 rounded-lg min-w-[320px]">
-        <h3 className="text-lg font-medium text-white mb-4">Confirm Transfer</h3>
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg min-w-[320px]">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Confirm Transfer</h3>
 
         <div className="space-y-3 mb-4">
-          <div className="bg-zinc-700 rounded p-3">
+          <div className="bg-gray-200 dark:bg-zinc-700 rounded p-3">
             <CopyableAddress
               value={recipient}
               label="Recipient Address"
@@ -148,23 +148,23 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
             />
           </div>
 
-          <div className="bg-zinc-700 rounded p-3">
-            <p className="text-xs text-zinc-400">Amount</p>
-            <p className="text-lg text-white font-medium mt-1">
+          <div className="bg-gray-200 dark:bg-zinc-700 rounded p-3">
+            <p className="text-xs text-gray-500 dark:text-zinc-400">Amount</p>
+            <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
               {amount} <span className="text-blue-400 text-sm">{selectedToken}</span>
             </p>
           </div>
 
           {/* Gas fee estimation */}
-          <div className="bg-zinc-700/50 rounded p-3 border border-zinc-600">
-            <p className="text-xs text-zinc-400">
+          <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3 border border-gray-300 dark:border-zinc-600">
+            <p className="text-xs text-gray-500 dark:text-zinc-400">
               Estimated Gas Fee
             </p>
-            <p className="text-sm text-white mt-1">
+            <p className="text-sm text-gray-900 dark:text-white mt-1">
               ≈ 0.003 <span className="text-blue-400">NASUN</span>
             </p>
             {selectedToken !== 'NASUN' && (
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
                 Available for gas: {getNativeBalance().toFixed(4)} NASUN
               </p>
             )}
@@ -184,7 +184,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
               clearError();
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white rounded text-sm transition-colors"
+            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-gray-900 dark:text-white rounded text-sm transition-colors"
           >
             Cancel
           </button>
@@ -204,7 +204,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
               }
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
+            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-zinc-600 disabled:text-gray-200 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
           >
             {isPending ? 'Sending...' : 'Confirm'}
           </button>
@@ -219,13 +219,13 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas;
 
   return (
-    <div className="p-4 bg-zinc-800 rounded-lg min-w-[320px]">
+    <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg min-w-[320px]">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-white">Send Token</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Send Token</h3>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -237,7 +237,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
       <div className="space-y-4">
         {/* Token selector */}
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Token</label>
+          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Token</label>
           <TokenSelector
             value={selectedToken}
             onChange={setSelectedToken}
@@ -246,9 +246,9 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
         </div>
 
         {/* Balance display */}
-        <div className="bg-zinc-700/50 rounded p-3">
-          <p className="text-xs text-zinc-400">Available Balance</p>
-          <p className="text-lg text-white font-medium mt-1">
+        <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
+          <p className="text-xs text-gray-500 dark:text-zinc-400">Available Balance</p>
+          <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
             {getSelectedBalance()}{' '}
             <span className="text-blue-400 text-sm">{selectedToken}</span>
           </p>
@@ -257,7 +257,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
         {/* Gas warning */}
         {!hasEnoughGas && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
-            <p className="text-sm text-yellow-400">
+            <p className="text-sm text-yellow-600 dark:text-yellow-400">
               Insufficient NASUN for gas fees. You need at least {MIN_GAS_BALANCE} NASUN.
             </p>
           </div>
@@ -265,16 +265,16 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
 
         {/* Recipient address */}
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Recipient Address</label>
+          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
           <input
             type="text"
             placeholder="0x..."
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
-            className={`w-full px-3 py-2 bg-zinc-700 border rounded text-white text-sm font-mono focus:outline-none transition-colors ${
+            className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm font-mono focus:outline-none transition-colors ${
               !isValidRecipient
                 ? 'border-red-500 focus:border-red-500'
-                : 'border-zinc-600 focus:ring-2 focus:ring-blue-500'
+                : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
           {!isValidRecipient && (
@@ -284,7 +284,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
 
         {/* Amount */}
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Amount ({selectedToken})</label>
+          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Amount ({selectedToken})</label>
           <input
             type="number"
             placeholder="0.0"
@@ -292,10 +292,10 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
             onChange={(e) => setAmount(e.target.value)}
             step="0.0001"
             min="0"
-            className={`w-full px-3 py-2 bg-zinc-700 border rounded text-white text-sm focus:outline-none transition-colors ${
+            className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm focus:outline-none transition-colors ${
               !isValidAmount
                 ? 'border-red-500 focus:border-red-500'
-                : 'border-zinc-600 focus:ring-2 focus:ring-blue-500'
+                : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
           {!isValidAmount && (
@@ -307,7 +307,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
         <button
           onClick={() => setShowConfirm(true)}
           disabled={!canSubmit}
-          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
+          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-zinc-600 disabled:text-gray-200 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors"
         >
           Send {selectedToken}
         </button>
