@@ -54,11 +54,11 @@
 - ✅ PaymentQRCode 컴포넌트
 - ✅ Send/Receive 탭 UI
 - ✅ wallet-ui 패키지 라이트 테마 지원 (SendTransaction, TokenSelector, CopyableAddress)
+- ✅ Volume 차트 (거래량 히스토그램)
 
 ### 미구현 ❌
 
 - ❌ 모바일 반응형 최적화
-- ❌ 거래량 차트 (Volume)
 - ❌ 추가 기술 지표 (RSI, MACD)
 
 ---
@@ -476,3 +476,4 @@ function MyChart() {
 | 2025-12-28 | 라이트모드 가독성 개선: 기능적 색상(Success/Error) 컨벤션 추가 |
 | 2025-12-28 | Orderbook/Buy/Sell 버튼 가독성 개선, 컬러 버튼 text-white 규칙 추가 |
 | 2025-12-28 | wallet-ui 라이트 테마 지원 추가 (SendTransaction, TokenSelector, CopyableAddress) |
+| 2025-12-28 | Volume 차트 문서화 (이미 구현됨) |
