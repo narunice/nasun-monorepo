@@ -216,13 +216,19 @@ Unified Finance 비전을 향한 핵심 확장
 
 ---
 
-#### Phase 15: Payments
+#### Phase 15: Payments ⭐
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 15.1 | 즉시 전송 | 📋 | 저 |
+| 15.1 | 즉시 전송 | ✅ 완료 | 저 |
 | 15.2 | 정기 결제 | 📋 | 중 |
 | 15.3 | QR 코드 결제 | 📋 | 저 |
+
+**구현 완료 (15.1)**:
+- PaymentPage with @nasun/wallet-ui SendTransaction
+- 라우팅: /send
+- 헤더 네비게이션 추가
+- NASUN, NBTC, NUSDC 전송 지원
 
 ---
 
@@ -334,3 +340,4 @@ frontend/src/
 | 2025-12-26 | 초안 작성 (Phase 6-10 계획) |
 | 2025-12-26 | Phase 6 완료: NASUN 입금/출금 멀티풀 지원 |
 | 2025-12-27 | 문서 전면 개편: Unified Onchain Finance 비전 기반 우선순위 재정렬 |
+| 2025-12-28 | Phase 15.1 완료: 즉시 전송 (Immediate Transfer) |
