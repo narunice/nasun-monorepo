@@ -74,11 +74,11 @@ export function CopyableAddress({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <p className="text-xs text-zinc-500 uppercase tracking-wide">{label}</p>
+        <p className="text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wide">{label}</p>
       )}
       <div className="flex items-center">
         <span
-          className={`${textSize} text-zinc-300 font-mono break-all ${className}`}
+          className={`${textSize} text-gray-700 dark:text-zinc-300 font-mono break-all ${className}`}
           title={value}
         >
           {displayValue}
@@ -88,13 +88,13 @@ export function CopyableAddress({
         {showCopy && (
           <button
             onClick={handleCopy}
-            className="p-0.5 ml-1 text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+            className="p-0.5 ml-1 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors shrink-0"
             title={copied ? 'Copied!' : 'Copy to clipboard'}
             type="button"
           >
             {copied ? (
               <svg
-                className="w-3.5 h-3.5 text-green-400"
+                className="w-3.5 h-3.5 text-green-500 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -130,7 +130,7 @@ export function CopyableAddress({
             href={getExplorerUrl(value, explorerType)}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-0.5 text-zinc-500 hover:text-blue-400 transition-colors shrink-0"
+            className="p-0.5 text-gray-400 dark:text-zinc-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors shrink-0"
             title="View in Explorer"
           >
             <svg
