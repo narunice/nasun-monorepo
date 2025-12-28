@@ -250,6 +250,8 @@ export async function getEpochInfo() {
     const epochDuration = Number(systemState.epochDurationMs);
     const epochEnd = epochStart + epochDuration;
     const remainingMs = Math.max(0, epochEnd - now);
+    const elapsed = now - epochStart;
+    const progress = Math.min(100, Math.max(0, (elapsed / epochDuration) * 100));
 
     return {
       epoch: systemState.epoch,
@@ -257,6 +259,10 @@ export async function getEpochInfo() {
       epochDurationMs: systemState.epochDurationMs,
       remainingMs,
       totalStake: systemState.totalStake,
+      // New fields for charts
+      progress,
+      startTimestamp: epochStart,
+      endTimestamp: epochEnd,
     };
   } catch (error) {
     console.error('Failed to get epoch info:', error);
