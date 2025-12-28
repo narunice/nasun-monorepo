@@ -97,7 +97,7 @@ export function TradingPanel() {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-theme-bg-secondary rounded-lg p-6">
       <h3 className="text-lg font-semibold mb-4">Place Order</h3>
 
       {/* Connect wallet banner when not connected */}

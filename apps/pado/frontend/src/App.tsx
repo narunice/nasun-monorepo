@@ -9,7 +9,7 @@ import { NETWORK_CONFIG } from './config/network';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-theme-bg-primary text-theme-text-primary">
       <Header />
 
       {/* Main Content */}
@@ -17,7 +17,7 @@ export default function App() {
         <AppRoutes />
 
         {/* Network Info */}
-        <div className="mt-8 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-sm text-theme-text-muted">
           <p>Connected to Nasun Devnet</p>
           <p className="font-mono text-xs">{NETWORK_CONFIG.rpcUrl}</p>
         </div>

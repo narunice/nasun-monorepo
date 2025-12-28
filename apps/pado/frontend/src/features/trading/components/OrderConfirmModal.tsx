@@ -44,7 +44,7 @@ export function OrderConfirmModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-gray-800 rounded-lg w-full max-w-sm mx-4 overflow-hidden">
+      <div className="relative bg-theme-bg-secondary rounded-lg w-full max-w-sm mx-4 overflow-hidden">
         {/* Header */}
         <div className={`p-4 ${isBuy ? 'bg-green-900/30' : 'bg-red-900/30'}`}>
           <h2 className={`text-lg font-semibold ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
@@ -57,35 +57,35 @@ export function OrderConfirmModal({
           {/* Order Summary */}
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-400">Type</span>
+              <span className="text-theme-text-secondary">Type</span>
               <span className={`font-medium ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
                 {isBuy ? 'Buy' : 'Sell'} {baseToken}
               </span>
             </div>
 
             <div className="flex justify-between">
-              <span className="text-gray-400">Price</span>
+              <span className="text-theme-text-secondary">Price</span>
               <span className="font-mono">${priceNum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </div>
 
             <div className="flex justify-between">
-              <span className="text-gray-400">Amount</span>
+              <span className="text-theme-text-secondary">Amount</span>
               <span className="font-mono">{amountNum.toFixed(4)} {baseToken}</span>
             </div>
 
-            <div className="border-t border-gray-700 my-2" />
+            <div className="border-t border-theme-border my-2" />
 
             <div className="flex justify-between">
-              <span className="text-gray-400">Subtotal</span>
+              <span className="text-theme-text-secondary">Subtotal</span>
               <span className="font-mono">{total.toFixed(2)} {quoteToken}</span>
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Est. Fee (0.1%)</span>
-              <span className="text-gray-500 font-mono">~{fee.toFixed(2)} {quoteToken}</span>
+              <span className="text-theme-text-muted">Est. Fee (0.1%)</span>
+              <span className="text-theme-text-muted font-mono">~{fee.toFixed(2)} {quoteToken}</span>
             </div>
 
-            <div className="border-t border-gray-700 my-2" />
+            <div className="border-t border-theme-border my-2" />
 
             <div className="flex justify-between text-lg font-semibold">
               <span>{isBuy ? 'You Pay' : 'You Receive'}</span>
@@ -107,7 +107,7 @@ export function OrderConfirmModal({
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={onClose}
-              className="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+              className="py-3 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg font-medium transition-colors"
               disabled={isLoading}
             >
               Cancel
