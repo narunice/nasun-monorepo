@@ -29,6 +29,9 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               <Link to="/checkpoints" className="text-sm text-slate-400 hover:text-white transition-colors">
                 Checkpoints
               </Link>
+              <Link to="/package/0x2" className="text-sm text-slate-400 hover:text-white transition-colors">
+                Packages
+              </Link>
             </nav>
           </div>
 

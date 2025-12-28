@@ -16,6 +16,13 @@ function isCoinType(type: string | null | undefined): boolean {
   return type.startsWith('0x2::coin::Coin<');
 }
 
+// 타입에서 패키지 ID 추출 (e.g., "0x2::coin::Coin" -> "0x2")
+function extractPackageId(type: string | null | undefined): string | null {
+  if (!type) return null;
+  const match = type.match(/^(0x[a-fA-F0-9]+)::/);
+  return match ? match[1] : null;
+}
+
 // Parse content to get fields for NFT check
 function parseContent(
   content: unknown
@@ -92,7 +99,20 @@ export default function ObjectPage() {
                   <CoinSymbol type={obj.data?.type || ''} showFullType />
                 </div>
               ) : (
-                <InfoRow label="Type" value={formatObjectType(obj.data?.type ?? undefined)} />
+                <div className="grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-nasun-c4/20">
+                  <span className="text-nasun-white/60 text-sm uppercase tracking-wider">Type</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-nasun-white text-sm">{formatObjectType(obj.data?.type ?? undefined)}</span>
+                    {extractPackageId(obj.data?.type) && (
+                      <Link
+                        to={`/package/${extractPackageId(obj.data?.type)}`}
+                        className="text-xs text-nasun-c4 hover:underline"
+                      >
+                        View Package →
+                      </Link>
+                    )}
+                  </div>
+                </div>
               )}
               <InfoRow
                 label="Owner"

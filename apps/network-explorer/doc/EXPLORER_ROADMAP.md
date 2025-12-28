@@ -1,79 +1,74 @@
 # Nasun Explorer Roadmap
 
-> Version: v0.5.0+
-> Date: 2025-12-15
-> Current Version: v0.4.2-nft-display
+> Version: v0.7.0
+> Date: 2025-12-28
+> Current Version: v0.6.0-package-explorer
 
 ---
 
-## Current Features (v0.4.x)
+## Current Features (v0.6.x)
 
-| Page | Features |
-|------|----------|
-| Home | Network status (5s auto-refresh), Recent TX (10s auto-refresh), Search |
-| Transactions | TX list with pagination |
-| Transaction | TX details (gas, events, object changes, raw data) |
-| Object | Object details + NFT media display |
-| Address | Balance, NFTs grid, Objects table, TX history |
-| Wallet | Create/Unlock, Send NASUN, Faucet |
+| Page | Features | Status |
+|------|----------|--------|
+| Home | Network status (5s auto-refresh), Recent TX (10s auto-refresh), Search | ✅ |
+| Transactions | TX list with pagination | ✅ |
+| Transaction | TX details (gas, events, object changes, raw data) | ✅ |
+| Object | Object details + NFT media display + Package link | ✅ |
+| Address | Balance, NFTs grid, Objects table, TX history | ✅ |
+| Validators | Validator list, APY, Commission, Staking summary | ✅ |
+| Validator | Validator details, staking info | ✅ |
+| Checkpoints | Checkpoint list with pagination | ✅ |
+| Checkpoint | Checkpoint details, TX list, gas summary | ✅ |
+| Package | Module list, functions, structs | ✅ NEW |
+| Wallet | Create/Unlock, Send NASUN, Faucet | ✅ |
 
 ---
 
 ## Enhancement Roadmap
 
-### P0 - Critical (v0.5.0)
+### ✅ Completed (v0.5.0 - v0.6.0)
 
-#### 1. Validators/Staking Page
+#### 1. Validators/Staking Page ✅
 
 **Route**: `/validators`, `/validator/:address`
+**Completed**: 2025-12-27
 
-**Features**:
-- Validator list table
-  - Name, Address, APY, Commission
-  - Total stake, Delegators count
-  - Status (Active/Inactive)
-- Network staking summary
-  - Total staked amount
-  - Average APY
-  - Validator count
-- Individual validator details
-  - Delegation history
-  - Rewards info
-
-**Reference**: [SuiVision Validators](https://suivision.xyz/validators), [Suiscan Validators](https://suiscan.xyz/mainnet/validators)
-
-**Sui SDK Methods**:
-```typescript
-suiClient.getLatestSuiSystemState()
-suiClient.getValidatorsApy()
-```
+**Implemented Features**:
+- Validator list table (Name, Address, APY, Commission, Stake, Voting Power)
+- Network staking summary (Epoch, Total Stake, Validator Count, Avg APY)
+- Individual validator details with staking info
 
 ---
 
-#### 2. Checkpoints Page
+#### 2. Checkpoints Page ✅
 
 **Route**: `/checkpoints`, `/checkpoint/:sequence`
+**Completed**: 2025-12-27
 
-**Features**:
-- Recent checkpoints list
-  - Sequence number, Timestamp
-  - TX count, Gas usage
-  - Digest
-- Checkpoint details
-  - Included transactions
-  - Epoch info
-
-**Sui SDK Methods**:
-```typescript
-suiClient.getCheckpoint({ id: sequenceNumber })
-suiClient.getCheckpoints({ descendingOrder: true, limit: 20 })
-```
+**Implemented Features**:
+- Recent checkpoints list with pagination
+- Checkpoint details (TX list, gas summary)
 
 ---
 
-### P1 - Important (v0.6.0)
+#### 3. Package/Module Explorer ✅
 
-#### 3. Gas Tracker
+**Route**: `/package/:id`
+**Completed**: 2025-12-28
+
+**Implemented Features**:
+- Package overview (ID, module count, function count, struct count)
+- Module list with expandable details
+- Function signatures with visibility and entry markers
+- Struct definitions with abilities and fields
+- Object.tsx에서 Type → Package 링크 연결
+- Header에 Packages 메뉴 추가
+
+---
+
+### P1 - Next (v0.7.0)
+
+#### 4. Gas Tracker
 
 **Location**: Home page widget or dedicated page
 
@@ -85,26 +80,20 @@ suiClient.getCheckpoints({ descendingOrder: true, limit: 20 })
 
 ---
 
-#### 4. Package/Module Explorer
+#### 5. Network Charts (Recharts)
 
-**Route**: `/package/:id`
+**Location**: Home page or `/stats`
 
 **Features**:
-- Package info (ID, version, modules)
-- Module list
-- Function signatures
-- Source code display (if available)
-
-**Sui SDK Methods**:
-```typescript
-suiClient.getNormalizedMoveModulesByPackage({ package: packageId })
-```
+- TPS trend chart
+- Checkpoint TX count chart
+- Epoch progress visualization
 
 ---
 
-### P2 - Nice to Have (v0.7.0)
+### P2 - Nice to Have (v0.8.0)
 
-#### 5. Token List
+#### 6. Token List
 
 **Route**: `/tokens`
 
@@ -115,19 +104,7 @@ suiClient.getNormalizedMoveModulesByPackage({ package: packageId })
 
 ---
 
-#### 6. Statistics/Charts
-
-**Route**: `/stats`
-
-**Features**:
-- Daily TX count chart
-- Active addresses chart
-- TPS metrics
-- Network growth visualization
-
----
-
-### P3 - Future (v0.8.0+)
+### P3 - Future (v0.9.0+)
 
 #### 7. Coins Page
 
@@ -145,31 +122,36 @@ suiClient.getNormalizedMoveModulesByPackage({ package: packageId })
 ## Implementation Order
 
 ```
-Phase 1 (v0.5.0)
-├── [ ] Validators page
-│   ├── [ ] sui-client.ts: getValidators(), getValidatorDetails()
-│   ├── [ ] pages/Validators.tsx
-│   ├── [ ] pages/Validator.tsx
-│   └── [ ] App.tsx: routes
-├── [ ] Checkpoints page
-│   ├── [ ] sui-client.ts: getCheckpoints(), getCheckpoint()
-│   ├── [ ] pages/Checkpoints.tsx
-│   ├── [ ] pages/Checkpoint.tsx
-│   └── [ ] App.tsx: routes
-└── [ ] Header navigation update
+Phase 1 (v0.5.0) ✅ COMPLETED
+├── [x] Validators page
+│   ├── [x] sui-client.ts: getValidators(), getValidatorByAddress()
+│   ├── [x] pages/Validators.tsx
+│   ├── [x] pages/Validator.tsx
+│   └── [x] App.tsx: routes
+├── [x] Checkpoints page
+│   ├── [x] sui-client.ts: getCheckpoints(), getCheckpoint()
+│   ├── [x] pages/Checkpoints.tsx
+│   ├── [x] pages/Checkpoint.tsx
+│   └── [x] App.tsx: routes
+└── [x] Header navigation update
 
-Phase 2 (v0.6.0)
+Phase 2 (v0.6.0) ✅ COMPLETED
+├── [x] Package Explorer
+│   ├── [x] sui-client.ts: getPackageModules(), getModuleDetail()
+│   ├── [x] pages/Package.tsx
+│   ├── [x] Object.tsx: Package link
+│   └── [x] Header: Packages menu
+└── [ ] Gas Tracker widget (moved to v0.7.0)
+
+Phase 3 (v0.7.0) - NEXT
 ├── [ ] Gas Tracker widget
-└── [ ] Package Explorer
-
-Phase 3 (v0.7.0)
-├── [ ] Token List
-└── [ ] Statistics page
+├── [ ] Network Charts (Recharts)
+└── [ ] Token List
 ```
 
 ---
 
-## File Structure (After v0.5.0)
+## File Structure (v0.6.0)
 
 ```
 src/
@@ -177,18 +159,22 @@ src/
 │   ├── Home.tsx
 │   ├── Transactions.tsx
 │   ├── Transaction.tsx
-│   ├── Object.tsx
+│   ├── Object.tsx           # Package link added
 │   ├── Address.tsx
-│   ├── Validators.tsx      # NEW
-│   ├── Validator.tsx       # NEW
-│   ├── Checkpoints.tsx     # NEW
-│   └── Checkpoint.tsx      # NEW
+│   ├── Validators.tsx
+│   ├── Validator.tsx
+│   ├── Checkpoints.tsx
+│   ├── Checkpoint.tsx
+│   └── Package.tsx          # NEW (v0.6.0)
 ├── lib/
-│   ├── sui-client.ts       # Add validator/checkpoint methods
+│   ├── sui-client.ts        # getPackageModules(), getModuleDetail()
 │   ├── format.ts
-│   └── media.ts
+│   ├── media.ts
+│   └── nft.ts
 └── components/
-    ├── Header.tsx          # Update navigation
+    ├── Header.tsx           # Packages menu added
+    ├── CopyableId.tsx
+    ├── NFTDetailView.tsx
     └── ...
 ```
 
@@ -212,10 +198,12 @@ src/
 
 ## Version History
 
-| Version | Features |
-|---------|----------|
-| v0.4.2 | NFT display (Object/Address pages) |
-| v0.4.1 | UI branding, English locale |
-| v0.4.0 | Transactions page, Address TX history, Auto-refresh |
-| v0.3.0 | Wallet module (create, send, faucet) |
-| v0.2.0 | Basic explorer (Home, TX, Object, Address) |
+| Version | Date | Features |
+|---------|------|----------|
+| v0.6.0 | 2025-12-28 | Package Explorer, Object→Package link, Header menu |
+| v0.5.0 | 2025-12-27 | Validators, Checkpoints pages |
+| v0.4.2 | 2025-12-15 | NFT display (Object/Address pages) |
+| v0.4.1 | - | UI branding, English locale |
+| v0.4.0 | - | Transactions page, Address TX history, Auto-refresh |
+| v0.3.0 | - | Wallet module (create, send, faucet) |
+| v0.2.0 | - | Basic explorer (Home, TX, Object, Address) |
