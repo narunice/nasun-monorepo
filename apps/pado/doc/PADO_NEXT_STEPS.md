@@ -230,13 +230,16 @@ Unified Finance 비전을 향한 핵심 확장
 |------|------|------|--------|
 | 15.1 | 즉시 전송 | ✅ 완료 | 저 |
 | 15.2 | 정기 결제 | 📋 | 중 |
-| 15.3 | QR 코드 결제 | 📋 | 저 |
+| 15.3 | QR 코드 결제 | ✅ 완료 | 저 |
 
-**구현 완료 (15.1)**:
+**구현 완료 (15.1, 15.3)**:
 - PaymentPage with @nasun/wallet-ui SendTransaction
 - 라우팅: /send
 - 헤더 네비게이션 추가
 - NASUN, NBTC, NUSDC 전송 지원
+- PaymentQRCode 컴포넌트 (qrcode.react)
+- Send/Receive 탭 UI
+- QR 코드로 결제 링크 공유
 
 ---
 
@@ -351,3 +354,4 @@ frontend/src/
 | 2025-12-28 | Phase 15.1 완료: 즉시 전송 (Immediate Transfer) |
 | 2025-12-28 | Phase 6 완료 (실시간 거래, MA, P&L), Phase 7 완료 (포트폴리오, 자산현황) |
 | 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환 |
+| 2025-12-28 | Phase 15.3 완료: QR 코드 결제 (PaymentQRCode, Send/Receive 탭) |
