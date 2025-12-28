@@ -289,3 +289,32 @@ export async function getTPS() {
     return null;
   }
 }
+
+// ============================================
+// Package/Module Functions
+// ============================================
+
+export async function getPackageModules(packageId: string) {
+  try {
+    const modules = await suiClient.getNormalizedMoveModulesByPackage({
+      package: packageId,
+    });
+    return modules;
+  } catch (error) {
+    console.error('Failed to get package modules:', error);
+    return null;
+  }
+}
+
+export async function getModuleDetail(packageId: string, moduleName: string) {
+  try {
+    const module = await suiClient.getNormalizedMoveModule({
+      package: packageId,
+      module: moduleName,
+    });
+    return module;
+  } catch (error) {
+    console.error('Failed to get module detail:', error);
+    return null;
+  }
+}

@@ -9,6 +9,7 @@ import Validators from './pages/Validators';
 import Validator from './pages/Validator';
 import Checkpoints from './pages/Checkpoints';
 import Checkpoint from './pages/Checkpoint';
+import Package from './pages/Package';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/validator/:address" element={<Validator />} />
           <Route path="/checkpoints" element={<Checkpoints />} />
           <Route path="/checkpoint/:sequence" element={<Checkpoint />} />
+          <Route path="/package/:id" element={<Package />} />
         </Route>
       </Routes>
     </ErrorBoundary>
