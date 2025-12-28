@@ -92,6 +92,51 @@
 
 ---
 
+#### Wallet Security Phases ⭐
+
+**목표**: 웹3 지갑 보안 강화로 사용자 자산 보호
+
+**완료된 보안 기능 (Phase 1-2)**
+
+| Phase | 기능 | 상태 | 완료일 |
+|-------|------|------|--------|
+| Security 1.1 | 세션 타임아웃 (자동 잠금) | ✅ 완료 | 2025-12-28 |
+| Security 1.2 | 메모리 보안 (secureZero) | ✅ 완료 | 2025-12-28 |
+| Security 1.3 | SecuritySettings UI | ✅ 완료 | 2025-12-28 |
+| Security 2.1 | 주소록 시스템 | ✅ 완료 | 2025-12-28 |
+| Security 2.2 | 첫 거래 주소 경고 | ✅ 완료 | 2025-12-28 |
+| Security 2.3 | 트랜잭션 시뮬레이션 API | ✅ 완료 | 2025-12-28 |
+
+**남은 보안 작업 (Phase 3-4)**
+
+##### Security Phase 3: 저장소 보안 강화
+
+| 순서 | 작업 | 상태 | 난이도 | 설명 |
+|------|------|------|--------|------|
+| 3.1 | IndexedDB 마이그레이션 | 📋 | 중 | localStorage → IndexedDB (더 안전) |
+| 3.2 | 암호화 키 저장소 개선 | 📋 | 고 | 키 파생 알고리즘 강화 (Argon2) |
+| 3.3 | 세션 스토리지 보안 | 📋 | 중 | 민감 데이터 암호화 저장 |
+
+##### Security Phase 4: 고급 보안 기능
+
+| 순서 | 작업 | 상태 | 난이도 | 설명 |
+|------|------|------|--------|------|
+| 4.1 | 스캠 주소 DB 연동 | 📋 | 중 | 외부 API로 스캠 주소 체크 |
+| 4.2 | 하드웨어 지갑 연동 | 📋 | 고 | Ledger/Trezor 지원 |
+| 4.3 | dApp 권한 관리 | 📋 | 고 | 연결된 dApp 권한 제어 |
+| 4.4 | 트랜잭션 화이트리스트 | 📋 | 중 | 신뢰할 수 있는 컨트랙트만 허용 |
+
+**구현된 보안 기능 파일 위치**:
+- `packages/wallet/src/types/index.ts` - SecuritySettings, AddressBook 타입
+- `packages/wallet/src/hooks/useWallet.ts` - 자동 잠금 로직
+- `packages/wallet/src/hooks/useAddressBook.ts` - 주소록 관리
+- `packages/wallet/src/core/crypto.ts` - secureZero 함수
+- `packages/wallet/src/sui/client.ts` - simulateTransaction 함수
+- `packages/wallet-ui/src/SecuritySettings.tsx` - 보안 설정 UI
+- `packages/wallet-ui/src/SendTransaction.tsx` - 주소 경고 UI
+
+---
+
 #### Phase 9: Smart Account v2 ⭐
 
 **목표**: 시드리스 온보딩으로 사용자 진입 장벽 낮춤
