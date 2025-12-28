@@ -14,7 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Send', path: '/send', enabled: true },
   { label: 'Perps', path: '/perps', enabled: false },
   { label: 'Lend', path: '/lend', enabled: false },
-  { label: 'Predict', path: '/predict', enabled: false },
+  { label: 'Predict', path: '/predict', enabled: true },
   { label: 'Stake', path: '/stake', enabled: false },
   { label: 'Portfolio', path: '/portfolio', enabled: true },
 ];
