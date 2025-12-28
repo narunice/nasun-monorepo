@@ -50,6 +50,80 @@ function calculateMA(data: CandlestickData[], period: number): LineData[] {
   return result;
 }
 
+// Calculate EMA (Exponential Moving Average)
+function calculateEMA(data: number[], period: number): number[] {
+  if (data.length === 0) return [];
+  const k = 2 / (period + 1);
+  const result: number[] = [data[0]];
+  for (let i = 1; i < data.length; i++) {
+    result.push(data[i] * k + result[i - 1] * (1 - k));
+  }
+  return result;
+}
+
+// Calculate RSI (Relative Strength Index)
+function calculateRSI(data: CandlestickData[], period: number = 14): LineData[] {
+  if (data.length < period + 1) return [];
+  const result: LineData[] = [];
+  let avgGain = 0;
+  let avgLoss = 0;
+
+  // Initial average calculation
+  for (let i = 1; i <= period; i++) {
+    const change = data[i].close - data[i - 1].close;
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+
+  // RSI calculation
+  for (let i = period; i < data.length; i++) {
+    if (i > period) {
+      const change = data[i].close - data[i - 1].close;
+      avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+      avgLoss = (avgLoss * (period - 1) + (change < 0 ? Math.abs(change) : 0)) / period;
+    }
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    const rsi = 100 - 100 / (1 + rs);
+    result.push({ time: data[i].time, value: rsi });
+  }
+  return result;
+}
+
+// Calculate MACD (Moving Average Convergence Divergence)
+function calculateMACD(data: CandlestickData[]): {
+  macd: LineData[];
+  signal: LineData[];
+  histogram: HistogramData[];
+} {
+  if (data.length < 26) return { macd: [], signal: [], histogram: [] };
+
+  const closes = data.map((d) => d.close);
+  const ema12 = calculateEMA(closes, 12);
+  const ema26 = calculateEMA(closes, 26);
+
+  const macdLine = ema12.map((v, i) => v - ema26[i]).slice(25);
+  const signalLine = calculateEMA(macdLine, 9);
+
+  const result: { macd: LineData[]; signal: LineData[]; histogram: HistogramData[] } = {
+    macd: [],
+    signal: [],
+    histogram: [],
+  };
+
+  for (let i = 8; i < macdLine.length; i++) {
+    const time = data[i + 25].time;
+    const macdVal = macdLine[i];
+    const signalVal = signalLine[i - 8];
+    const histVal = macdVal - signalVal;
+    result.macd.push({ time, value: macdVal });
+    result.signal.push({ time, value: signalVal });
+    result.histogram.push({ time, value: histVal, color: histVal >= 0 ? '#22c55e' : '#ef4444' });
+  }
+  return result;
+}
+
 // Generate simulated OHLCV data
 function generateCandleData(basePrice: number, count: number, intervalMs: number): CandleWithVolume[] {
   const data: CandleWithVolume[] = [];
@@ -99,20 +173,30 @@ const INTERVAL_CONFIG: Record<TimeInterval, { label: string; ms: number; count: 
 
 const CHART_HEIGHT = 280;
 const VOLUME_HEIGHT = 80;
+const RSI_HEIGHT = 80;
+const MACD_HEIGHT = 100;
 
 export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartProps) {
   const { currentPool } = useMarket();
   const { theme } = useTheme();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const volumeContainerRef = useRef<HTMLDivElement>(null);
+  const rsiContainerRef = useRef<HTMLDivElement>(null);
+  const macdContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const volumeChartRef = useRef<IChartApi | null>(null);
+  const rsiChartRef = useRef<IChartApi | null>(null);
+  const macdChartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const ma5SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const ma20SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const signalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdHistSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const [interval, setInterval] = useState<TimeInterval>('15m');
-  const [showMA, setShowMA] = useState(true);
+  const [indicators, setIndicators] = useState({ ma: true, rsi: false, macd: false });
   const [lastPrice, setLastPrice] = useState<{ value: number; change: number } | null>(null);
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
   const colors = CHART_COLORS[theme];
@@ -311,9 +395,166 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   useEffect(() => {
     if (!ma5SeriesRef.current || !ma20SeriesRef.current) return;
 
-    ma5SeriesRef.current.applyOptions({ visible: showMA });
-    ma20SeriesRef.current.applyOptions({ visible: showMA });
-  }, [showMA]);
+    ma5SeriesRef.current.applyOptions({ visible: indicators.ma });
+    ma20SeriesRef.current.applyOptions({ visible: indicators.ma });
+  }, [indicators.ma]);
+
+  // RSI Chart initialization and updates
+  useEffect(() => {
+    if (!indicators.rsi || !rsiContainerRef.current) {
+      // Clean up if RSI is disabled
+      if (rsiChartRef.current) {
+        rsiChartRef.current.remove();
+        rsiChartRef.current = null;
+        rsiSeriesRef.current = null;
+      }
+      return;
+    }
+
+    // Create RSI chart
+    const rsiChart = createChart(rsiContainerRef.current, {
+      layout: {
+        background: { color: colors.background },
+        textColor: colors.text,
+      },
+      grid: {
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
+      },
+      width: rsiContainerRef.current.clientWidth,
+      height: RSI_HEIGHT,
+      timeScale: {
+        visible: false,
+        barSpacing: 4,
+      },
+      rightPriceScale: {
+        borderColor: colors.border,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      crosshair: { mode: 1 },
+    });
+
+    // RSI series
+    const rsiSeries = rsiChart.addSeries(LineSeries, {
+      color: '#a855f7',
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+    });
+
+    // Set RSI data
+    const rsiData = calculateRSI(candleData);
+    rsiSeries.setData(rsiData);
+
+    // Add overbought/oversold lines (70/30)
+    rsiSeries.createPriceLine({ price: 70, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+    rsiSeries.createPriceLine({ price: 30, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+
+    rsiChartRef.current = rsiChart;
+    rsiSeriesRef.current = rsiSeries;
+
+    // Sync with main chart timescale
+    if (chartRef.current) {
+      chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        if (range && rsiChartRef.current) {
+          rsiChartRef.current.timeScale().setVisibleLogicalRange(range);
+        }
+      });
+    }
+
+    rsiChart.timeScale().fitContent();
+
+    return () => {
+      rsiChart.remove();
+    };
+  }, [indicators.rsi, candleData, colors]);
+
+  // MACD Chart initialization and updates
+  useEffect(() => {
+    if (!indicators.macd || !macdContainerRef.current) {
+      // Clean up if MACD is disabled
+      if (macdChartRef.current) {
+        macdChartRef.current.remove();
+        macdChartRef.current = null;
+        macdSeriesRef.current = null;
+        signalSeriesRef.current = null;
+        macdHistSeriesRef.current = null;
+      }
+      return;
+    }
+
+    // Create MACD chart
+    const macdChart = createChart(macdContainerRef.current, {
+      layout: {
+        background: { color: colors.background },
+        textColor: colors.text,
+      },
+      grid: {
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
+      },
+      width: macdContainerRef.current.clientWidth,
+      height: MACD_HEIGHT,
+      timeScale: {
+        visible: false,
+        barSpacing: 4,
+      },
+      rightPriceScale: {
+        borderColor: colors.border,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      crosshair: { mode: 1 },
+    });
+
+    // MACD Histogram
+    const macdHistSeries = macdChart.addSeries(HistogramSeries, {
+      priceFormat: { type: 'price', precision: 2 },
+      priceLineVisible: false,
+    });
+
+    // MACD Line
+    const macdSeries = macdChart.addSeries(LineSeries, {
+      color: '#22d3ee',
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    });
+
+    // Signal Line
+    const signalSeries = macdChart.addSeries(LineSeries, {
+      color: '#fb923c',
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    });
+
+    // Set MACD data
+    const macdData = calculateMACD(candleData);
+    macdHistSeries.setData(macdData.histogram);
+    macdSeries.setData(macdData.macd);
+    signalSeries.setData(macdData.signal);
+
+    macdChartRef.current = macdChart;
+    macdSeriesRef.current = macdSeries;
+    signalSeriesRef.current = signalSeries;
+    macdHistSeriesRef.current = macdHistSeries;
+
+    // Sync with main chart timescale
+    if (chartRef.current) {
+      chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        if (range && macdChartRef.current) {
+          macdChartRef.current.timeScale().setVisibleLogicalRange(range);
+        }
+      });
+    }
+
+    macdChart.timeScale().fitContent();
+
+    return () => {
+      macdChart.remove();
+    };
+  }, [indicators.macd, candleData, colors]);
 
   // Update chart colors when theme changes
   useEffect(() => {
@@ -420,18 +661,42 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         </div>
 
         <div className="flex items-center gap-2">
-          {/* MA Toggle */}
-          <button
-            onClick={() => setShowMA(!showMA)}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              showMA
-                ? 'bg-yellow-600 text-white'
-                : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
-            }`}
-            title="Toggle Moving Averages"
-          >
-            MA
-          </button>
+          {/* Indicator Toggles */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => setIndicators((prev) => ({ ...prev, ma: !prev.ma }))}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                indicators.ma
+                  ? 'bg-yellow-600 text-white'
+                  : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
+              }`}
+              title="Toggle Moving Averages"
+            >
+              MA
+            </button>
+            <button
+              onClick={() => setIndicators((prev) => ({ ...prev, rsi: !prev.rsi }))}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                indicators.rsi
+                  ? 'bg-purple-600 text-white'
+                  : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
+              }`}
+              title="Toggle RSI (Relative Strength Index)"
+            >
+              RSI
+            </button>
+            <button
+              onClick={() => setIndicators((prev) => ({ ...prev, macd: !prev.macd }))}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                indicators.macd
+                  ? 'bg-cyan-600 text-white'
+                  : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
+              }`}
+              title="Toggle MACD"
+            >
+              MACD
+            </button>
+          </div>
 
           {/* Interval Selector */}
           <div className="flex gap-1">
@@ -452,22 +717,64 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         </div>
       </div>
 
-      {/* MA Legend */}
-      {showMA && (
+      {/* Indicator Legends */}
+      {(indicators.ma || indicators.rsi || indicators.macd) && (
         <div className="flex items-center gap-4 px-3 py-1 text-xs border-b border-theme-border/50">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-0.5 bg-yellow-400"></span>
-            <span className="text-theme-text-muted">MA5</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-0.5 bg-blue-400"></span>
-            <span className="text-theme-text-muted">MA20</span>
-          </span>
+          {indicators.ma && (
+            <>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-yellow-400"></span>
+                <span className="text-theme-text-muted">MA5</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-blue-400"></span>
+                <span className="text-theme-text-muted">MA20</span>
+              </span>
+            </>
+          )}
+          {indicators.rsi && (
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-0.5 bg-purple-400"></span>
+              <span className="text-theme-text-muted">RSI(14)</span>
+            </span>
+          )}
+          {indicators.macd && (
+            <>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-cyan-400"></span>
+                <span className="text-theme-text-muted">MACD</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-orange-400"></span>
+                <span className="text-theme-text-muted">Signal</span>
+              </span>
+            </>
+          )}
         </div>
       )}
 
       {/* Candlestick Chart */}
       <div ref={chartContainerRef} className="w-full" />
+
+      {/* RSI Chart */}
+      {indicators.rsi && (
+        <div className="border-t border-theme-border">
+          <div className="px-3 py-1 text-xs text-theme-text-muted bg-theme-bg-tertiary/30">
+            RSI (14)
+          </div>
+          <div ref={rsiContainerRef} className="w-full" />
+        </div>
+      )}
+
+      {/* MACD Chart */}
+      {indicators.macd && (
+        <div className="border-t border-theme-border">
+          <div className="px-3 py-1 text-xs text-theme-text-muted bg-theme-bg-tertiary/30">
+            MACD (12, 26, 9)
+          </div>
+          <div ref={macdContainerRef} className="w-full" />
+        </div>
+      )}
 
       {/* Volume Chart */}
       <div ref={volumeContainerRef} className="w-full border-t border-theme-border" />
