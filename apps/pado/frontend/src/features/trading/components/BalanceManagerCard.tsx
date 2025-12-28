@@ -28,14 +28,14 @@ export function BalanceManagerCard({
 
   if (!balanceManagerId) {
     return (
-      <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded">
-        <p className="text-sm text-yellow-400 mb-2">
+      <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded">
+        <p className="text-sm text-blue-400 mb-2">
           BalanceManager required. Create one to place orders.
         </p>
         <button
           onClick={onCreate}
           disabled={isLoading}
-          className="w-full py-2 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 rounded font-medium text-sm"
+          className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm"
         >
           {isLoading ? 'Creating...' : 'Create BalanceManager'}
         </button>
