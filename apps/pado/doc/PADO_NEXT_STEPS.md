@@ -79,13 +79,16 @@
 | 7.1 | 포트폴리오 페이지 | ✅ 완료 | 중 |
 | 7.2 | 전체 자산 현황 | ✅ 완료 | 저 |
 | 7.3 | 24h P&L 표시 | ✅ 완료 | 저 |
-| 7.4 | 거래 통계/내역 | 📋 | 중 |
+| 7.4 | 거래 통계/내역 | ✅ 완료 | 중 |
 
 **구현 완료 (2025-12-28)**:
 - PortfolioPage + /portfolio 라우팅
 - AssetOverview 전체 자산 USD 환산
 - TokenBalanceList 24h P&L 색상 표시
 - Header 네비게이션 Portfolio 메뉴 활성화
+- useTradeHistory hook (사용자 거래 내역 조회)
+- TradeStats 컴포넌트 (거래 통계: 총 거래 수, 거래량, 매수/매도 비율)
+- RecentTrades 컴포넌트 (최근 거래 목록 테이블)
 
 ---
 
@@ -355,3 +358,4 @@ frontend/src/
 | 2025-12-28 | Phase 6 완료 (실시간 거래, MA, P&L), Phase 7 완료 (포트폴리오, 자산현황) |
 | 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환 |
 | 2025-12-28 | Phase 15.3 완료: QR 코드 결제 (PaymentQRCode, Send/Receive 탭) |
+| 2025-12-28 | Phase 7.4 완료: 거래 통계/내역 (TradeStats, RecentTrades, useTradeHistory) |
