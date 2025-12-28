@@ -33,7 +33,12 @@ const VisionNetworkPage = () => {
       import("../../components/app/protocol/network/NasunTokenSection"),
     ]);
 
-    setIsPageReady(true); // Footer 표시
+    // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsPageReady(true);
+      });
+    });
   }, [setIsPageReady]);
 
   // 비디오 로딩 중에는 body 스크롤 방지
@@ -64,11 +69,15 @@ const VisionNetworkPage = () => {
         {/* Hero Section - NSN NETWORK (CSS 기반 위치 제어) */}
         <NetworkHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
 
-        {/* NEW DESIGN - 새로운 디자인 섹션들 */}
-        <NasunNetworkSection />
-        <NasunTokenSection />
-        <MoveTogetherSection />
-        <TokenDistributionSection />
+        {/* NEW DESIGN - 새로운 디자인 섹션들 (비디오 준비 후 렌더링하여 레이아웃 시프트 방지) */}
+        {isVideoReady && (
+          <>
+            <NasunNetworkSection />
+            <NasunTokenSection />
+            <MoveTogetherSection />
+            <TokenDistributionSection />
+          </>
+        )}
       </Suspense>
     </ErrorBoundary>
   );

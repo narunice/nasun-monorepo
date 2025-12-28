@@ -39,7 +39,12 @@ export default function PadoPage() {
       import("../../components/app/finance/pado/PadoComplianceSection"),
     ]);
 
-    setIsPageReady(true); // Show footer
+    // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsPageReady(true);
+      });
+    });
   }, [setIsPageReady]);
 
   // Prevent scroll during video loading
@@ -60,9 +65,14 @@ export default function PadoPage() {
     >
       <Suspense fallback={null}>
         <PadoHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
-        <PadoOverviewSection />
-        <PadoFeaturesArchitectureSection />
-        <PadoComplianceSection />
+        {/* 비디오 준비 후 렌더링하여 레이아웃 시프트 방지 */}
+        {isVideoReady && (
+          <>
+            <PadoOverviewSection />
+            <PadoFeaturesArchitectureSection />
+            <PadoComplianceSection />
+          </>
+        )}
       </Suspense>
     </ErrorBoundary>
   );
