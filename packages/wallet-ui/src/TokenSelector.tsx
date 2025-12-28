@@ -67,9 +67,9 @@ export function TokenSelector({
         disabled={disabled}
         className={`
           flex items-center justify-between gap-2 w-full px-3 py-2
-          bg-zinc-800 border border-zinc-700 rounded-lg
-          text-white text-sm font-medium
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-zinc-600 cursor-pointer'}
+          bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg
+          text-gray-900 dark:text-white text-sm font-medium
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-zinc-600 cursor-pointer'}
           transition-colors
         `}
       >
@@ -79,7 +79,7 @@ export function TokenSelector({
           )}
           <span>{selectedToken?.symbol || 'Select token'}</span>
           {showBalance && selectedToken && (
-            <span className="text-zinc-400 text-xs">
+            <span className="text-gray-500 dark:text-zinc-400 text-xs">
               ({getBalance(selectedToken.symbol) || '0'})
             </span>
           )}
@@ -87,7 +87,7 @@ export function TokenSelector({
 
         {/* Chevron */}
         <svg
-          className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-gray-500 dark:text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -98,7 +98,7 @@ export function TokenSelector({
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 py-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 py-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg">
           {availableTokens.map((token) => {
             const balance = getBalance(token.symbol);
             const isSelected = token.symbol === value;
@@ -114,7 +114,7 @@ export function TokenSelector({
                 className={`
                   flex items-center justify-between w-full px-3 py-2
                   text-sm text-left
-                  ${isSelected ? 'bg-zinc-700 text-blue-400' : 'text-white hover:bg-zinc-700/50'}
+                  ${isSelected ? 'bg-gray-100 dark:bg-zinc-700 text-blue-500 dark:text-blue-400' : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-700/50'}
                   transition-colors
                 `}
               >
@@ -124,12 +124,12 @@ export function TokenSelector({
                   )}
                   <div className="flex flex-col">
                     <span className="font-medium">{token.symbol}</span>
-                    <span className="text-xs text-zinc-400">{token.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-zinc-400">{token.name}</span>
                   </div>
                 </div>
 
                 {showBalance && balance && (
-                  <span className="text-xs text-zinc-400">{balance}</span>
+                  <span className="text-xs text-gray-500 dark:text-zinc-400">{balance}</span>
                 )}
               </button>
             );
