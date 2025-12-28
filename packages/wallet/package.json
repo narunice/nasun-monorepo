@@ -17,7 +17,10 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "peerDependencies": {
     "@mysten/sui": "^1.22.0",
@@ -29,6 +32,9 @@
   "devDependencies": {
     "@nasun/tsconfig": "workspace:*",
     "@types/react": "^19.0.0",
-    "typescript": "^5.9.3"
+    "@vitest/coverage-v8": "^2.1.8",
+    "happy-dom": "^15.11.7",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
   }
 }
