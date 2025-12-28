@@ -90,6 +90,7 @@ export {
   // Explorer URL utilities
   getExplorerTxUrl,
   getExplorerAddressUrl,
+  getExplorerObjectUrl,
 } from './sui/client';
 
 export {
@@ -144,3 +145,44 @@ export {
   getNFTImageUrl,
   buildDisplayFromContent,
 } from './sui/nft';
+
+// Staking Hooks
+export {
+  useValidators,
+  useValidator,
+  useRefreshValidators,
+} from './hooks/useValidators';
+export type { UseValidatorsOptions, UseValidatorsResult } from './hooks/useValidators';
+
+export {
+  useStaking,
+  useRefreshStaking,
+  useInvalidateStaking,
+} from './hooks/useStaking';
+export type { UseStakingOptions, UseStakingResult } from './hooks/useStaking';
+
+export { useStakeTransaction } from './hooks/useStakeTransaction';
+
+// Staking Types
+export type {
+  ValidatorInfo,
+  StakeStatus,
+  StakeInfo,
+  DelegatedStake,
+  StakingSummary,
+  StakeRequest,
+  UnstakeRequest,
+  StakeTransactionResult,
+} from './types/staking';
+
+// Staking Utilities
+export {
+  getValidators,
+  getValidator,
+  getStakes,
+  calculateStakingSummary,
+  buildStakeTransaction,
+  buildUnstakeTransaction,
+  formatApy,
+  formatStakedAmount,
+} from './sui/staking';

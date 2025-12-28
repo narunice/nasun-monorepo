@@ -97,71 +97,77 @@ export function TradingPanel() {
   };
 
   return (
-    <div className="bg-theme-bg-secondary rounded-lg p-6">
-      <h3 className="text-lg font-semibold mb-4">Place Order</h3>
-
-      {/* Connect wallet banner when not connected */}
-      {!isConnected && (
-        <div className="mb-4 p-3 rounded text-sm bg-blue-900/30 text-blue-400 border border-blue-700 text-center">
-          Connect wallet to start trading
+    <div className="space-y-4">
+      {/* Balance Manager Card - 독립 카드 */}
+      {isConnected && (
+        <div className="bg-theme-bg-secondary rounded-lg p-4">
+          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Balance Manager</h3>
+          <BalanceManagerCard
+            balanceManagerId={balanceManagerId}
+            balance={bmBalance}
+            isLoading={isLoading}
+            onCreate={handleCreateBalanceManager}
+            onDeposit={handleDeposit}
+            onWithdraw={handleWithdraw}
+          />
         </div>
       )}
 
-      {/* BalanceManager Card */}
-      {isConnected && (
-        <BalanceManagerCard
-          balanceManagerId={balanceManagerId}
-          balance={bmBalance}
+      {/* Place Order Card */}
+      <div className="bg-theme-bg-secondary rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4 text-theme-text-primary">Place Order</h3>
+
+        {/* Connect wallet banner when not connected */}
+        {!isConnected && (
+          <div className="mb-4 p-3 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
+            Connect wallet to start trading
+          </div>
+        )}
+
+        {/* Order Form */}
+        <OrderForm
+          price={price}
+          amount={amount}
+          onPriceChange={setPrice}
+          onAmountChange={setAmount}
+          onBuy={() => openConfirmModal('buy')}
+          onSell={() => openConfirmModal('sell')}
+          onMarketBuy={handleMarketBuy}
+          onMarketSell={handleMarketSell}
+          disabled={!isConnected || !balanceManagerId}
           isLoading={isLoading}
-          onCreate={handleCreateBalanceManager}
-          onDeposit={handleDeposit}
-          onWithdraw={handleWithdraw}
+          midPrice={midPrice}
+          bestBid={bestBid}
+          bestAsk={bestAsk}
+          executionOption={executionOption}
+          onExecutionOptionChange={setExecutionOption}
+          slippage={slippage}
+          onSlippageChange={setSlippage}
         />
-      )}
 
-      {/* Order Form */}
-      <OrderForm
-        price={price}
-        amount={amount}
-        onPriceChange={setPrice}
-        onAmountChange={setAmount}
-        onBuy={() => openConfirmModal('buy')}
-        onSell={() => openConfirmModal('sell')}
-        onMarketBuy={handleMarketBuy}
-        onMarketSell={handleMarketSell}
-        disabled={!isConnected || !balanceManagerId}
-        isLoading={isLoading}
-        midPrice={midPrice}
-        bestBid={bestBid}
-        bestAsk={bestAsk}
-        executionOption={executionOption}
-        onExecutionOptionChange={setExecutionOption}
-        slippage={slippage}
-        onSlippageChange={setSlippage}
-      />
-
-      {/* Order Confirmation Modal */}
-      <OrderConfirmModal
-        isOpen={isConfirmModalOpen}
-        onClose={closeConfirmModal}
-        onConfirm={handleConfirmOrder}
-        orderType={pendingOrderType}
-        price={price}
-        amount={amount}
-        isLoading={isLoading}
-      />
-
-      {/* Pool Info */}
-      <PoolInfo />
-
-      {/* Open Orders */}
-      {isConnected && balanceManagerId && (
-        <OpenOrders
-          orders={orders}
+        {/* Order Confirmation Modal */}
+        <OrderConfirmModal
+          isOpen={isConfirmModalOpen}
+          onClose={closeConfirmModal}
+          onConfirm={handleConfirmOrder}
+          orderType={pendingOrderType}
+          price={price}
+          amount={amount}
           isLoading={isLoading}
-          onCancel={handleCancelOrder}
         />
-      )}
+
+        {/* Pool Info */}
+        <PoolInfo />
+
+        {/* Open Orders */}
+        {isConnected && balanceManagerId && (
+          <OpenOrders
+            orders={orders}
+            isLoading={isLoading}
+            onCancel={handleCancelOrder}
+          />
+        )}
+      </div>
     </div>
   );
 }
