@@ -1,0 +1,1 @@
+export { PaymentQRCode } from './PaymentQRCode';
