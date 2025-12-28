@@ -63,7 +63,7 @@ export function BalancePanel() {
           disabled={isNbtcLoading}
           className="mt-2 text-xs px-2 py-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded text-white"
         >
-          {isNbtcLoading ? 'Getting...' : 'Get NBTC'}
+          {isNbtcLoading ? 'Requesting...' : 'Get from Faucet'}
         </button>
       </div>
 
@@ -76,7 +76,7 @@ export function BalancePanel() {
           disabled={isNusdcLoading}
           className="mt-2 text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white"
         >
-          {isNusdcLoading ? 'Getting...' : 'Get NUSDC'}
+          {isNusdcLoading ? 'Requesting...' : 'Get from Faucet'}
         </button>
       </div>
 
