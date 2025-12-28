@@ -40,7 +40,7 @@ export function BalancePanel() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
       {/* NASUN */}
       <div className="bg-theme-bg-secondary rounded-lg p-4">
         <div className="text-sm text-theme-text-muted">NASUN</div>
