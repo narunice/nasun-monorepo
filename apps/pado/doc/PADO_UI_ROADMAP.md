@@ -55,11 +55,12 @@
 - ✅ Send/Receive 탭 UI
 - ✅ wallet-ui 패키지 라이트 테마 지원 (SendTransaction, TokenSelector, CopyableAddress)
 - ✅ Volume 차트 (거래량 히스토그램)
+- ✅ RSI (Relative Strength Index) 지표 (14일 기준, 70/30 과매수/과매도 라인)
+- ✅ MACD (Moving Average Convergence Divergence) 지표 (12, 26, 9)
 
 ### 미구현 ❌
 
 - ❌ 모바일 반응형 최적화
-- ❌ 추가 기술 지표 (RSI, MACD)
 
 ---
 
@@ -138,9 +139,10 @@
 
 | 작업 | 설명 | 난이도 | 상태 |
 |------|------|--------|------|
-| 이동평균선 (MA) | 5, 20, 60 MA | 저 | 📋 |
-| 거래량 표시 | Volume Bar | 저 | 📋 |
-| 기술 지표 | RSI, MACD | 중 | 📋 |
+| 이동평균선 (MA) | 5, 20 MA | 저 | ✅ |
+| 거래량 표시 | Volume Bar | 저 | ✅ |
+| RSI | RSI(14) + 과매수/과매도 라인 | 중 | ✅ |
+| MACD | MACD(12,26,9) + Signal + Histogram | 중 | ✅ |
 
 **3.3 가격 제안 고급화**
 
@@ -477,3 +479,4 @@ function MyChart() {
 | 2025-12-28 | Orderbook/Buy/Sell 버튼 가독성 개선, 컬러 버튼 text-white 규칙 추가 |
 | 2025-12-28 | wallet-ui 라이트 테마 지원 추가 (SendTransaction, TokenSelector, CopyableAddress) |
 | 2025-12-28 | Volume 차트 문서화 (이미 구현됨) |
+| 2025-12-28 | RSI/MACD 기술 지표 추가 (PriceChart.tsx에 통합, 토글 버튼) |
