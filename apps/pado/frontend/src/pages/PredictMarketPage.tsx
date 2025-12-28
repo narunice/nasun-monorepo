@@ -4,7 +4,7 @@
  */
 
 import { useParams, Link } from 'react-router-dom';
-import { useMarket, MarketHeader, OutcomeOrderbook, generateSimulatedOrderbook, calculateProbability } from '../features/prediction';
+import { useMarket, MarketHeader, OutcomeOrderbook, OutcomeOrderForm, generateSimulatedOrderbook, calculateProbability } from '../features/prediction';
 import { Spinner } from '../components/common';
 
 export function PredictMarketPage() {
@@ -44,7 +44,12 @@ export function PredictMarketPage() {
 
   const handlePriceClick = (isYes: boolean, price: number) => {
     console.log(`Clicked ${isYes ? 'YES' : 'NO'} price: ${price / 100}%`);
-    // Will be used in Phase 14.4 for order form autofill
+    // TODO: Auto-fill order form with clicked price
+  };
+
+  const handleTradeSuccess = (digest: string) => {
+    console.log('Trade successful:', digest);
+    // Could trigger a refetch of market data here
   };
 
   return (
@@ -74,16 +79,8 @@ export function PredictMarketPage() {
           />
         </div>
 
-        {/* Order Form Placeholder - 1 column */}
-        <div className="bg-theme-bg-secondary rounded-xl p-4">
-          <h3 className="text-lg font-semibold text-theme-text-primary mb-4">
-            Place Order
-          </h3>
-          <div className="text-center py-8 text-theme-text-muted">
-            <p className="mb-2">Trading coming soon</p>
-            <p className="text-sm">Phase 14.4</p>
-          </div>
-        </div>
+        {/* Order Form - 1 column */}
+        <OutcomeOrderForm market={market} onSuccess={handleTradeSuccess} />
       </div>
 
       {/* Market Info */}
