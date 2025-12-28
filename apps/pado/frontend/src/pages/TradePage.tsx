@@ -11,7 +11,7 @@ export function TradePage() {
   return (
     <MarketProvider>
       <OrderFormProvider>
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {/* Market Selector */}
           <div className="flex items-center justify-between">
             <MarketSelector />
@@ -21,7 +21,7 @@ export function TradePage() {
           <BalancePanel />
 
           {/* Main Trading Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* Market Panel: Chart + Orderbook + Trade History */}
             <MarketPanel />
 

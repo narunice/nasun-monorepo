@@ -57,10 +57,13 @@
 - ✅ Volume 차트 (거래량 히스토그램)
 - ✅ RSI (Relative Strength Index) 지표 (14일 기준, 70/30 과매수/과매도 라인)
 - ✅ MACD (Moving Average Convergence Divergence) 지표 (12, 26, 9)
+- ✅ 모바일 반응형 최적화 (Phase 8.1)
+  - 모바일 햄버거 메뉴 (Header)
+  - 그리드 반응형 개선 (TradePage, Orderbook, BalancePanel)
 
 ### 미구현 ❌
 
-- ❌ 모바일 반응형 최적화
+- (모든 주요 기능 구현 완료)
 
 ---
 
@@ -480,3 +483,4 @@ function MyChart() {
 | 2025-12-28 | wallet-ui 라이트 테마 지원 추가 (SendTransaction, TokenSelector, CopyableAddress) |
 | 2025-12-28 | Volume 차트 문서화 (이미 구현됨) |
 | 2025-12-28 | RSI/MACD 기술 지표 추가 (PriceChart.tsx에 통합, 토글 버튼) |
+| 2025-12-28 | Phase 8.1 모바일 반응형 최적화 (Header 햄버거 메뉴, 그리드 반응형) |
