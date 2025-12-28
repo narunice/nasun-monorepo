@@ -158,7 +158,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
               Estimated Gas Fee
             </p>
             <p className="text-sm text-white mt-1">
-              ~0.001 - 0.005 <span className="text-blue-400">NASUN</span>
+              ≈ 0.003 <span className="text-blue-400">NASUN</span>
             </p>
             {selectedToken !== 'NASUN' && (
               <p className="text-xs text-zinc-500 mt-1">
