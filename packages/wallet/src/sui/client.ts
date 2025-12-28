@@ -300,3 +300,12 @@ export function getExplorerAddressUrl(address: string): string {
   const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
   return `${baseUrl}/address/${address}`;
 }
+
+/**
+ * Get Explorer URL for an object
+ * @param objectId Object ID
+ */
+export function getExplorerObjectUrl(objectId: string): string {
+  const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
+  return `${baseUrl}/object/${objectId}`;
+}
