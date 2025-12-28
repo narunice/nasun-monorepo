@@ -71,13 +71,13 @@ function generateVolumeData(candleData: CandleWithVolume[]): HistogramData[] {
 }
 
 const INTERVAL_CONFIG: Record<TimeInterval, { label: string; ms: number; count: number }> = {
-  '1m': { label: '1분', ms: 60 * 1000, count: 60 },
-  '5m': { label: '5분', ms: 5 * 60 * 1000, count: 48 },
-  '15m': { label: '15분', ms: 15 * 60 * 1000, count: 32 },
-  '1h': { label: '1시간', ms: 60 * 60 * 1000, count: 24 },
-  '4h': { label: '4시간', ms: 4 * 60 * 60 * 1000, count: 42 },
-  '1d': { label: '1일', ms: 24 * 60 * 60 * 1000, count: 30 },
-  '1w': { label: '1주', ms: 7 * 24 * 60 * 60 * 1000, count: 52 },
+  '1m': { label: '1분', ms: 60 * 1000, count: 120 },
+  '5m': { label: '5분', ms: 5 * 60 * 1000, count: 96 },
+  '15m': { label: '15분', ms: 15 * 60 * 1000, count: 96 },
+  '1h': { label: '1시간', ms: 60 * 60 * 1000, count: 72 },
+  '4h': { label: '4시간', ms: 4 * 60 * 60 * 1000, count: 90 },
+  '1d': { label: '1일', ms: 24 * 60 * 60 * 1000, count: 90 },
+  '1w': { label: '1주', ms: 7 * 24 * 60 * 60 * 1000, count: 104 },
 };
 
 const CHART_HEIGHT = 280;
