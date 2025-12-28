@@ -1,16 +1,16 @@
 # Nasun Explorer Roadmap
 
-> Version: v0.7.0
+> Version: v0.8.0
 > Date: 2025-12-28
-> Current Version: v0.6.0-package-explorer
+> Current Version: v0.7.0-network-charts
 
 ---
 
-## Current Features (v0.6.x)
+## Current Features (v0.7.x)
 
 | Page | Features | Status |
 |------|----------|--------|
-| Home | Network status (5s auto-refresh), Recent TX (10s auto-refresh), Search | ✅ |
+| Home | Network status, TPS Trend Chart, Epoch Progress, Search, Recent TX | ✅ UPDATED |
 | Transactions | TX list with pagination | ✅ |
 | Transaction | TX details (gas, events, object changes, raw data) | ✅ |
 | Object | Object details + NFT media display + Package link | ✅ |
@@ -66,32 +66,20 @@
 
 ---
 
-### P1 - Next (v0.7.0)
+#### 4. Network Charts (Recharts) ✅
 
-#### 4. Gas Tracker
+**Location**: Home page
+**Completed**: 2025-12-28
 
-**Location**: Home page widget or dedicated page
-
-**Features**:
-- Real-time gas price (Reference Gas Price)
-- Gas price history chart (optional)
-
-**Reference**: [Etherscan Gas Tracker](https://etherscan.io/gastracker)
-
----
-
-#### 5. Network Charts (Recharts)
-
-**Location**: Home page or `/stats`
-
-**Features**:
-- TPS trend chart
-- Checkpoint TX count chart
-- Epoch progress visualization
+**Implemented Features**:
+- TPS Trend Chart (AreaChart with 30-point history)
+- Epoch Progress visualization with progress bar
+- Epoch start/end time display
+- Real-time updates (10s interval)
 
 ---
 
-### P2 - Nice to Have (v0.8.0)
+### P1 - Next (v0.8.0)
 
 #### 6. Token List
 
@@ -141,22 +129,27 @@ Phase 2 (v0.6.0) ✅ COMPLETED
 │   ├── [x] pages/Package.tsx
 │   ├── [x] Object.tsx: Package link
 │   └── [x] Header: Packages menu
-└── [ ] Gas Tracker widget (moved to v0.7.0)
 
-Phase 3 (v0.7.0) - NEXT
-├── [ ] Gas Tracker widget
-├── [ ] Network Charts (Recharts)
-└── [ ] Token List
+Phase 3 (v0.7.0) ✅ COMPLETED
+├── [x] Network Charts (Recharts)
+│   ├── [x] pnpm add recharts
+│   ├── [x] Home.tsx: TPS Trend AreaChart
+│   ├── [x] Home.tsx: Epoch Progress bar
+│   └── [x] sui-client.ts: getEpochInfo() progress/timestamps
+
+Phase 4 (v0.8.0) - NEXT
+├── [ ] Token List page
+└── [ ] Gas price history chart
 ```
 
 ---
 
-## File Structure (v0.6.0)
+## File Structure (v0.7.0)
 
 ```
 src/
 ├── pages/
-│   ├── Home.tsx
+│   ├── Home.tsx               # TPS Chart, Epoch Progress added
 │   ├── Transactions.tsx
 │   ├── Transaction.tsx
 │   ├── Object.tsx           # Package link added
@@ -200,6 +193,7 @@ src/
 
 | Version | Date | Features |
 |---------|------|----------|
+| v0.7.0 | 2025-12-28 | Network Charts (TPS Trend, Epoch Progress), Recharts |
 | v0.6.0 | 2025-12-28 | Package Explorer, Object→Package link, Header menu |
 | v0.5.0 | 2025-12-27 | Validators, Checkpoints pages |
 | v0.4.2 | 2025-12-15 | NFT display (Object/Address pages) |
