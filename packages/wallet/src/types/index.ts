@@ -162,3 +162,61 @@ export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   confirmLargeTransactions: true,
   largeTransactionThreshold: 100, // 100 NASUN
 };
+
+// ============================================
+// Address Book Types
+// ============================================
+
+/** Address book entry with optional label and metadata */
+export interface AddressBookEntry {
+  /** Wallet address (0x...) */
+  address: string;
+  /** User-defined label/name */
+  label?: string;
+  /** First transaction timestamp */
+  firstTransactionAt: number;
+  /** Last transaction timestamp */
+  lastTransactionAt: number;
+  /** Total number of transactions to this address */
+  transactionCount: number;
+  /** Is this address trusted/verified by user */
+  isTrusted: boolean;
+}
+
+/** Address book storage */
+export interface AddressBook {
+  /** Map of address -> entry */
+  entries: Record<string, AddressBookEntry>;
+  /** Last updated timestamp */
+  updatedAt: number;
+}
+
+// ============================================
+// Transaction Simulation Types
+// ============================================
+
+/** Balance change from transaction simulation */
+export interface BalanceChange {
+  /** Owner address */
+  owner: string;
+  /** Coin type */
+  coinType: string;
+  /** Amount change (negative for outgoing) */
+  amount: string;
+  /** Token symbol (if known) */
+  symbol?: string;
+}
+
+/** Transaction simulation result */
+export interface TransactionSimulation {
+  /** Whether the transaction would succeed */
+  success: boolean;
+  /** Error message if failed */
+  error?: string;
+  /** Estimated gas cost in minimum units */
+  gasEstimate: string;
+  /** Balance changes that would occur */
+  balanceChanges: BalanceChange[];
+  /** Raw effects from simulation */
+  effects?: unknown;
+}
