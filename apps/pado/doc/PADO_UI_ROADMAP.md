@@ -449,8 +449,13 @@ function MyChart() {
 1. **기능적 텍스트 색상**: 라이트모드에서 `*-600`, 다크모드에서 `*-400` 사용
 2. **기능적 배경 색상**: 라이트모드에서 `*-100~200`, 다크모드에서 `*-900/30` 사용
 3. **Primary 버튼**: `bg-blue-600 text-white`는 테마 불변
-4. **fallback 색상**: 토큰별 색상 외에는 `bg-theme-bg-tertiary` 사용
-5. **투명도 사용 가능**: `border-theme-border/50` (50% 투명도)
+4. **컬러 버튼 (Buy/Sell, Deposit/Withdraw)**: 반드시 `text-white` 포함 필수
+   - `bg-green-600 text-white` (Buy 버튼)
+   - `bg-red-600 text-white` (Sell 버튼)
+   - `bg-blue-600 text-white` (Primary 버튼)
+   - `bg-orange-600 text-white` (Withdraw 버튼)
+5. **fallback 색상**: 토큰별 색상 외에는 `bg-theme-bg-tertiary` 사용
+6. **투명도 사용 가능**: `border-theme-border/50` (50% 투명도)
 
 ---
 
@@ -468,3 +473,4 @@ function MyChart() {
 | 2025-12-28 | Phase 15.3 완료: QR 코드 결제, Send/Receive 탭 |
 | 2025-12-28 | 테마 디자인 컨벤션 추가: CSS 변수, Tailwind 매핑, 사용 예시 |
 | 2025-12-28 | 라이트모드 가독성 개선: 기능적 색상(Success/Error) 컨벤션 추가 |
+| 2025-12-28 | Orderbook/Buy/Sell 버튼 가독성 개선, 컬러 버튼 text-white 규칙 추가 |

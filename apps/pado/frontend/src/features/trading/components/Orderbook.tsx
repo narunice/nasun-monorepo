@@ -69,7 +69,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
       <div className="grid grid-cols-2 gap-4">
         {/* Bids */}
         <div>
-          <h3 className="text-sm font-medium text-green-400 mb-2">Bids (Buy)</h3>
+          <h3 className="text-sm font-medium text-green-600 dark:text-green-400 mb-2">Bids (Buy)</h3>
           <div className="bg-theme-bg-tertiary rounded p-3 h-64 overflow-y-auto">
             <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
               <span>Price</span>
@@ -85,7 +85,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
                   return (
                     <div
                       key={i}
-                      className={`relative text-xs flex justify-between text-green-400 py-0.5 ${
+                      className={`relative text-xs flex justify-between text-green-600 dark:text-green-400 py-0.5 ${
                         onPriceClick ? 'cursor-pointer hover:brightness-125' : ''
                       }`}
                       onClick={() => handlePriceClick(level.price)}
@@ -112,7 +112,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
 
         {/* Asks */}
         <div>
-          <h3 className="text-sm font-medium text-red-400 mb-2">Asks (Sell)</h3>
+          <h3 className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">Asks (Sell)</h3>
           <div className="bg-theme-bg-tertiary rounded p-3 h-64 overflow-y-auto">
             <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
               <span>Price</span>
@@ -128,7 +128,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
                   return (
                     <div
                       key={i}
-                      className={`relative text-xs flex justify-between text-red-400 py-0.5 ${
+                      className={`relative text-xs flex justify-between text-red-600 dark:text-red-400 py-0.5 ${
                         onPriceClick ? 'cursor-pointer hover:brightness-125' : ''
                       }`}
                       onClick={() => handlePriceClick(level.price)}
