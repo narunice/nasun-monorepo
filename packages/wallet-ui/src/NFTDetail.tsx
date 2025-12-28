@@ -8,10 +8,10 @@ import {
   type NFTInfo,
   getNFTImageUrl,
   getCollectionFromType,
-  shortenAddress,
-  getExplorerTxUrl,
+  getExplorerObjectUrl,
 } from '@nasun/wallet';
 import { NFTTransfer } from './NFTTransfer';
+import { CopyableAddress } from './CopyableAddress';
 
 interface NFTDetailProps {
   /** NFT data */
@@ -31,7 +31,6 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
   const description = nft.display.description;
   const collection = getCollectionFromType(nft.type);
   const creator = nft.display.creator;
-  const projectUrl = nft.display.project_url;
 
   // Close on Escape key
   useEffect(() => {
@@ -81,7 +80,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-zinc-900 rounded-xl max-w-lg w-full">
+      <div className="bg-zinc-900 rounded-xl max-w-lg w-full overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <h2 className="text-lg font-medium text-white truncate">{name}</h2>
@@ -97,32 +96,32 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
 
         {/* Image */}
         <div className="bg-zinc-800 h-[280px] flex items-center justify-center">
-            {imageUrl && !imageError ? (
-              <img
-                src={imageUrl}
-                alt={name}
-                className="max-w-full max-h-full object-contain"
-                onError={() => setImageError(true)}
+          {imageUrl && !imageError ? (
+            <img
+              src={imageUrl}
+              alt={name}
+              className="max-w-full max-h-full object-contain"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <svg
+              className="w-20 h-20 text-zinc-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
-            ) : (
-              <svg
-                className="w-20 h-20 text-zinc-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            )}
-          </div>
+            </svg>
+          )}
+        </div>
 
-          {/* Details */}
-          <div className="p-4 space-y-4">
+        {/* Details */}
+        <div className="p-4 space-y-3">
           {/* Collection */}
           <div>
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Collection</p>
@@ -133,7 +132,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
           {description && (
             <div>
               <p className="text-xs text-zinc-500 uppercase tracking-wide">Description</p>
-              <p className="text-sm text-zinc-300 mt-1">{description}</p>
+              <p className="text-sm text-zinc-300 mt-1 line-clamp-2">{description}</p>
             </div>
           )}
 
@@ -146,27 +145,14 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
           )}
 
           {/* Object ID */}
-          <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Object ID</p>
-            <p className="text-sm text-zinc-400 font-mono mt-1 break-all">
-              {shortenAddress(nft.objectId, 10)}
-            </p>
-          </div>
-
-          {/* Project URL */}
-          {projectUrl && (
-            <a
-              href={projectUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
-            >
-              Visit Project
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          )}
+          <CopyableAddress
+            value={nft.objectId}
+            label="Object ID"
+            shorten={10}
+            showCopy
+            showExplorer
+            explorerType="object"
+          />
         </div>
 
         {/* Actions */}
@@ -181,7 +167,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
             Transfer
           </button>
           <a
-            href={getExplorerTxUrl(nft.objectId).replace('/tx/', '/object/')}
+            href={getExplorerObjectUrl(nft.objectId)}
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
