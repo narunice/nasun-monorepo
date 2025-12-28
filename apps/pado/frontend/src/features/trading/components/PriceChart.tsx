@@ -75,6 +75,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
+        barSpacing: 4, // Narrower candles for a sleeker look
       },
       rightPriceScale: {
         borderColor: '#2B2B43',
