@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import NFTMedia from './NFTMedia';
-import { getDisplayMediaUrl } from '../lib/media';
+import { getDisplayMediaUrl, getNFTName } from '../lib/media';
 import { formatObjectType } from '../lib/format';
 
 interface NFTCardProps {
@@ -13,6 +13,8 @@ interface NFTCardProps {
     animation_url?: string;
     [key: string]: string | undefined;
   } | null;
+  /** Object content for fallback (Display<T> 미지원 NFT 지원) */
+  content?: { fields?: Record<string, unknown> } | null;
 }
 
 /**
@@ -22,10 +24,11 @@ interface NFTCardProps {
  * - name 표시
  * - Object 상세 페이지 링크
  * - 호버 효과
+ * - Display<T> 미등록 NFT는 content.fields에서 폴백
  */
-export default function NFTCard({ objectId, type, display }: NFTCardProps) {
-  const mediaUrl = getDisplayMediaUrl(display);
-  const name = display?.name || formatObjectType(type) || 'Unnamed NFT';
+export default function NFTCard({ objectId, type, display, content }: NFTCardProps) {
+  const mediaUrl = getDisplayMediaUrl(display, content);
+  const name = getNFTName(display, content) || formatObjectType(type) || 'Unnamed NFT';
 
   return (
     <Link

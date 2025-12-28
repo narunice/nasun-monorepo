@@ -2,9 +2,10 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getObject } from '../lib/sui-client';
 import { formatObjectType, formatSoe } from '../lib/format';
-import { getDisplayMediaUrl } from '../lib/media';
+import { getDisplayMediaUrl, isNFTObject } from '../lib/media';
 import InfoRow from '../components/InfoRow';
 import NFTMedia from '../components/NFTMedia';
+import NFTDetailView from '../components/NFTDetailView';
 import { CoinSymbol } from '../components/CoinSymbol';
 import { SectionBox } from '../components/ui/SectionBox';
 import { Card } from '../components/ui/Card';
@@ -13,6 +14,16 @@ import { Card } from '../components/ui/Card';
 function isCoinType(type: string | null | undefined): boolean {
   if (!type) return false;
   return type.startsWith('0x2::coin::Coin<');
+}
+
+// Parse content to get fields for NFT check
+function parseContent(
+  content: unknown
+): { fields?: Record<string, unknown> } | null {
+  if (!content || typeof content !== 'object') return null;
+  const c = content as { dataType?: string; fields?: unknown };
+  if (c.dataType !== 'moveObject') return null;
+  return { fields: c.fields as Record<string, unknown> };
 }
 
 export default function ObjectPage() {
@@ -24,15 +35,24 @@ export default function ObjectPage() {
     enabled: !!id,
   });
 
+  // Check if this is an NFT (for conditional header rendering)
+  const content = obj?.data?.content ? parseContent(obj.data.content) : null;
+  const isNFT = obj?.data && !obj.error && isNFTObject(obj.data.display?.data, content) && !isCoinType(obj.data.type);
+
   return (
     <>
-      <div className="mb-6">
-        <Link to="/" className="text-nasun-c4 hover:underline">
-          &larr; Back to Home
-        </Link>
-      </div>
+      {/* Show header only for non-NFT objects */}
+      {!isNFT && (
+        <>
+          <div className="mb-6">
+            <Link to="/" className="text-nasun-c4 hover:underline">
+              &larr; Back to Home
+            </Link>
+          </div>
 
-      <h1 className="text-2xl font-bold mb-6">Object Details</h1>
+          <h1 className="text-2xl font-bold mb-6">Object Details</h1>
+        </>
+      )}
 
       {isLoading ? (
         <div className="text-nasun-white/60">Loading...</div>
@@ -55,6 +75,9 @@ export default function ObjectPage() {
             </div>
           )}
         </Card>
+      ) : isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content)) && !isCoinType(obj.data?.type) ? (
+        // NFT View - specialized layout for NFT objects
+        <NFTDetailView object={obj} />
       ) : (
         <div className="space-y-6">
           {/* Overview */}
@@ -93,10 +116,10 @@ export default function ObjectPage() {
           {obj.data?.display?.data && Object.keys(obj.data.display.data).length > 0 && (
             <SectionBox title="Display" color="c5">
               {/* NFT 미디어 렌더링 */}
-              {getDisplayMediaUrl(obj.data.display.data) && (
+              {getDisplayMediaUrl(obj.data.display.data, parseContent(obj.data?.content)) && (
                 <div className="mb-4">
                   <NFTMedia
-                    url={getDisplayMediaUrl(obj.data.display.data)!}
+                    url={getDisplayMediaUrl(obj.data.display.data, parseContent(obj.data?.content))!}
                     name={obj.data.display.data.name}
                     className="max-w-md rounded-lg"
                   />

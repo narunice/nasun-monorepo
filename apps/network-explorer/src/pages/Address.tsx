@@ -123,11 +123,19 @@ export default function Address() {
 
             {/* NFTs */}
             {(() => {
+              // Helper to parse content for NFT check
+              const parseContent = (content: unknown): { fields?: Record<string, unknown> } | null => {
+                if (!content || typeof content !== 'object') return null;
+                const c = content as { dataType?: string; fields?: unknown };
+                if (c.dataType !== 'moveObject') return null;
+                return { fields: c.fields as Record<string, unknown> };
+              };
+
               const nftObjects = addressInfo.ownedObjects?.filter(obj =>
-                isNFTObject(obj.data?.display?.data)
+                isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content))
               ) || [];
               const otherObjects = addressInfo.ownedObjects?.filter(obj =>
-                !isNFTObject(obj.data?.display?.data)
+                !isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content))
               ) || [];
 
               return (
@@ -142,6 +150,7 @@ export default function Address() {
                             objectId={obj.data?.objectId ?? ''}
                             type={obj.data?.type ?? undefined}
                             display={obj.data?.display?.data}
+                            content={parseContent(obj.data?.content)}
                           />
                         ))}
                       </div>
