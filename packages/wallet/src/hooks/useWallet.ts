@@ -5,7 +5,8 @@
 
 import { create } from 'zustand';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import type { WalletState, WalletActions, WalletAccount } from '../types';
+import type { WalletState, WalletActions, WalletAccount, SecuritySettings } from '../types';
+import { DEFAULT_SECURITY_SETTINGS } from '../types';
 import {
   hasKeystore,
   createAndSaveWallet,
@@ -22,19 +23,49 @@ import { saveSessionPassword, getSessionPassword, clearSessionPassword } from '.
 // Internal state (keypair is not stored in the store)
 let currentKeypair: Ed25519Keypair | null = null;
 
+// Auto-lock interval ID
+let autoLockIntervalId: ReturnType<typeof setInterval> | null = null;
+
 interface WalletStore extends WalletState, WalletActions {
   // Internal methods
   _initialize: () => void;
   // Keypair accessor (needed for signing)
   getKeypair: () => Ed25519Keypair | null;
+  // Security settings
+  security: SecuritySettings;
+  updateSecuritySettings: (settings: Partial<SecuritySettings>) => void;
+  updateLastActivity: () => void;
 }
 
-export const useWallet = create<WalletStore>((set) => ({
+export const useWallet = create<WalletStore>((set, get) => ({
   // Initial state
   status: 'disconnected',
   account: null,
   isLoading: false,
   error: null,
+
+  // Security settings (persisted separately in localStorage)
+  security: loadSecuritySettings(),
+
+  // Update security settings
+  updateSecuritySettings: (settings: Partial<SecuritySettings>) => {
+    set((state) => {
+      const newSecurity = { ...state.security, ...settings };
+      saveSecuritySettings(newSecurity);
+      // Restart auto-lock timer with new settings
+      setupAutoLock(get, newSecurity.autoLockMinutes);
+      return { security: newSecurity };
+    });
+  },
+
+  // Update last activity timestamp
+  updateLastActivity: () => {
+    set((state) => {
+      const newSecurity = { ...state.security, lastActivityAt: Date.now() };
+      saveSecuritySettings(newSecurity);
+      return { security: newSecurity };
+    });
+  },
 
   // Initialize (called at app start)
   _initialize: async () => {
@@ -296,4 +327,96 @@ export function useWalletLoading() {
     isLoading: state.isLoading,
     error: state.error,
   }));
+}
+
+// Convenience function: security settings only
+export function useSecuritySettings() {
+  return useWallet((state) => ({
+    security: state.security,
+    updateSecuritySettings: state.updateSecuritySettings,
+    updateLastActivity: state.updateLastActivity,
+  }));
+}
+
+// ============================================
+// Security Settings Persistence
+// ============================================
+
+const SECURITY_SETTINGS_KEY = 'nasun_wallet_security';
+
+function loadSecuritySettings(): SecuritySettings {
+  try {
+    const stored = localStorage.getItem(SECURITY_SETTINGS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { ...DEFAULT_SECURITY_SETTINGS, ...parsed };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { ...DEFAULT_SECURITY_SETTINGS };
+}
+
+function saveSecuritySettings(settings: SecuritySettings): void {
+  try {
+    localStorage.setItem(SECURITY_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+// ============================================
+// Auto-Lock Timer
+// ============================================
+
+/**
+ * Set up auto-lock timer that checks for inactivity
+ * @param getState - Zustand get function
+ * @param autoLockMinutes - Minutes until auto-lock (0 = disabled)
+ */
+function setupAutoLock(getState: () => WalletStore, autoLockMinutes: number): void {
+  // Clear existing timer
+  if (autoLockIntervalId) {
+    clearInterval(autoLockIntervalId);
+    autoLockIntervalId = null;
+  }
+
+  // If disabled, don't set up timer
+  if (autoLockMinutes <= 0) return;
+
+  // Check every 30 seconds
+  autoLockIntervalId = setInterval(() => {
+    const state = getState();
+
+    // Only check if wallet is unlocked
+    if (state.status !== 'unlocked') return;
+
+    const now = Date.now();
+    const timeoutMs = autoLockMinutes * 60 * 1000;
+    const lastActivity = state.security.lastActivityAt;
+
+    if (now - lastActivity > timeoutMs) {
+      // Auto-lock due to inactivity
+      state.lockWallet();
+      console.log('[Security] Wallet auto-locked due to inactivity');
+    }
+  }, 30000); // Check every 30 seconds
+}
+
+/**
+ * Initialize auto-lock timer (call after store is created)
+ */
+export function initializeAutoLock(): void {
+  const state = useWallet.getState();
+  setupAutoLock(useWallet.getState, state.security.autoLockMinutes);
+}
+
+/**
+ * Clean up auto-lock timer (call on app unmount)
+ */
+export function cleanupAutoLock(): void {
+  if (autoLockIntervalId) {
+    clearInterval(autoLockIntervalId);
+    autoLockIntervalId = null;
+  }
 }

@@ -29,6 +29,10 @@ export {
   useWalletStatus,
   useWalletAccount,
   useWalletLoading,
+  // Security hooks
+  useSecuritySettings,
+  initializeAutoLock,
+  cleanupAutoLock,
 } from './hooks/useWallet';
 
 export {
@@ -67,7 +71,12 @@ export type {
   TokenConfig,
   TokenBalance,
   MultiTokenBalanceInfo,
+  // Security types
+  SecuritySettings,
 } from './types';
+
+// Security defaults
+export { DEFAULT_SECURITY_SETTINGS } from './types';
 
 // SUI Utilities
 export {
@@ -115,6 +124,9 @@ export {
 export {
   generateMnemonicPhrase,
   isValidMnemonic,
+  // Security utilities
+  secureZero,
+  secureZeroString,
 } from './core/crypto';
 
 // NFT Hooks

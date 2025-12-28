@@ -158,7 +158,41 @@ export function getSecretKeyFromKeypair(keypair: Ed25519Keypair): string {
   return keypair.getSecretKey();
 }
 
+// ============================================
+// Memory Security
+// ============================================
+
+/**
+ * Securely zero out a buffer to prevent memory extraction attacks.
+ * First fills with random data, then zeros, to prevent optimization skip.
+ * @param buffer - The buffer to clear
+ */
+export function secureZero(buffer: Uint8Array): void {
+  if (buffer.length === 0) return;
+  // First overwrite with random data (prevents compiler optimization from skipping)
+  crypto.getRandomValues(buffer);
+  // Then fill with zeros
+  buffer.fill(0);
+}
+
+/**
+ * Securely zero out a string by converting to buffer and clearing.
+ * Note: JavaScript strings are immutable, so this only clears the buffer copy.
+ * The original string may still exist in memory until garbage collected.
+ * @param str - The string to attempt to clear
+ * @returns An empty buffer (for assignment to clear reference)
+ */
+export function secureZeroString(str: string): Uint8Array {
+  const encoder = new TextEncoder();
+  const buffer = encoder.encode(str);
+  secureZero(buffer);
+  return buffer;
+}
+
+// ============================================
 // Utility functions
+// ============================================
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
