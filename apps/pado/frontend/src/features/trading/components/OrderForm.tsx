@@ -114,7 +114,7 @@ export function OrderForm({
           onClick={() => setOrderMode('limit')}
           className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
             orderMode === 'limit'
-              ? 'bg-theme-bg-secondary text-white'
+              ? 'bg-theme-bg-primary text-theme-text-primary shadow-sm'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
@@ -124,7 +124,7 @@ export function OrderForm({
           onClick={() => setOrderMode('market')}
           className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
             orderMode === 'market'
-              ? 'bg-theme-bg-secondary text-white'
+              ? 'bg-theme-bg-primary text-theme-text-primary shadow-sm'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >

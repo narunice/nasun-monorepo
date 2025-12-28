@@ -58,14 +58,14 @@ export function BalanceManagerCard({
         <button
           onClick={onDeposit}
           disabled={isLoading}
-          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm"
+          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm text-white"
         >
           {isLoading ? '...' : 'Deposit'}
         </button>
         <button
           onClick={onWithdraw}
           disabled={isLoading}
-          className="flex-1 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded font-medium text-sm"
+          className="flex-1 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded font-medium text-sm text-white"
         >
           {isLoading ? '...' : 'Withdraw'}
         </button>

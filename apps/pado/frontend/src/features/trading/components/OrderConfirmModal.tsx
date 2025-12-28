@@ -99,7 +99,7 @@ export function OrderConfirmModal({
           </div>
 
           {/* Warning */}
-          <div className="p-3 bg-yellow-900/20 border border-yellow-700/50 rounded text-sm text-yellow-400">
+          <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700/50 rounded text-sm text-yellow-700 dark:text-yellow-400">
             This is a limit order. It will be placed in the order book and may not execute immediately.
           </div>
 
