@@ -15,3 +15,20 @@ export {
   useInvalidateMultiBalance,
 } from './useMultiBalance';
 export type { UseMultiBalanceOptions } from './useMultiBalance';
+
+// Staking support
+export {
+  useValidators,
+  useValidator,
+  useRefreshValidators,
+} from './useValidators';
+export type { UseValidatorsOptions, UseValidatorsResult } from './useValidators';
+
+export {
+  useStaking,
+  useRefreshStaking,
+  useInvalidateStaking,
+} from './useStaking';
+export type { UseStakingOptions, UseStakingResult } from './useStaking';
+
+export { useStakeTransaction } from './useStakeTransaction';

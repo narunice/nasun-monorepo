@@ -6,12 +6,14 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useWallet, useNFTs, shortenAddress, type NFTInfo } from '@nasun/wallet';
+import { CopyableAddress } from './CopyableAddress';
 import { MnemonicBackup } from './MnemonicBackup';
 import { ImportWallet } from './ImportWallet';
 import { ExportPrivateKey } from './ExportPrivateKey';
 import { SendTransaction } from './SendTransaction';
 import { NFTCard } from './NFTCard';
 import { NFTDetail } from './NFTDetail';
+import { StakingPanel } from './StakingPanel';
 
 type ViewMode =
   | 'main'
@@ -21,7 +23,8 @@ type ViewMode =
   | 'import'         // Recovery screen
   | 'export'         // Export private key
   | 'send'           // Token transfer
-  | 'nfts';          // NFT gallery
+  | 'nfts'           // NFT gallery
+  | 'staking';       // Staking panel
 
 type TabMode = 'tokens' | 'nfts';
 
@@ -274,6 +277,18 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
       );
     }
 
+    // Staking panel view
+    if (viewMode === 'staking') {
+      return (
+        <div className="min-w-[360px]">
+          <StakingPanel
+            onClose={() => setViewMode('main')}
+            compact
+          />
+        </div>
+      );
+    }
+
     // Disconnected state - show create and import options
     if (status === 'disconnected') {
       return (
@@ -355,8 +370,15 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
         <div className="min-w-[280px]">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-zinc-700">
-            <p className="text-xs text-zinc-400">Connected Address</p>
-            <p className="text-xs text-white font-mono break-all mt-1">{account.address}</p>
+            <CopyableAddress
+              value={account.address}
+              label="Connected Address"
+              shorten={8}
+              showCopy
+              showExplorer
+              explorerType="address"
+              size="xs"
+            />
           </div>
 
           {/* Tab navigation */}
@@ -407,6 +429,16 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
                 Send Token
+              </button>
+
+              <button
+                onClick={() => setViewMode('staking')}
+                className="w-full px-3 py-2 text-left text-sm text-green-400 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Staking
               </button>
 
               <button
