@@ -4,12 +4,29 @@
  */
 
 import { useParams, Link } from 'react-router-dom';
-import { useMarket, MarketHeader, OutcomeOrderbook, OutcomeOrderForm, generateSimulatedOrderbook, calculateProbability } from '../features/prediction';
+import { useCallback } from 'react';
+import {
+  useMarket,
+  usePredictionPositions,
+  MarketHeader,
+  OutcomeOrderbook,
+  OutcomeOrderForm,
+  PositionList,
+  generateSimulatedOrderbook,
+  calculateProbability,
+} from '../features/prediction';
 import { Spinner } from '../components/common';
 
 export function PredictMarketPage() {
   const { marketId } = useParams<{ marketId: string }>();
-  const { market, isLoading, error } = useMarket(marketId);
+  const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
+  const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
+
+  // Refetch both market and positions on trade success
+  const handleRefetch = useCallback(() => {
+    refetchMarket();
+    refetchPositions();
+  }, [refetchMarket, refetchPositions]);
 
   if (isLoading) {
     return (
@@ -49,7 +66,7 @@ export function PredictMarketPage() {
 
   const handleTradeSuccess = (digest: string) => {
     console.log('Trade successful:', digest);
-    // Could trigger a refetch of market data here
+    handleRefetch();
   };
 
   return (
@@ -79,8 +96,15 @@ export function PredictMarketPage() {
           />
         </div>
 
-        {/* Order Form - 1 column */}
-        <OutcomeOrderForm market={market} onSuccess={handleTradeSuccess} />
+        {/* Order Form + Positions - 1 column */}
+        <div className="space-y-4">
+          <OutcomeOrderForm market={market} onSuccess={handleTradeSuccess} />
+          <PositionList
+            market={market}
+            positions={positions}
+            onSuccess={handleRefetch}
+          />
+        </div>
       </div>
 
       {/* Market Info */}
