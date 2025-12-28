@@ -1,10 +1,13 @@
 /**
  * RecentTrades Component
- * Display user's recent trading history
+ * Display user's recent trading history with Load More pagination
  */
 
+import { useState } from 'react';
 import { useWallet } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
+
+const ITEMS_PER_PAGE = 10;
 
 interface TradeRowProps {
   trade: UserTrade;
@@ -71,8 +74,16 @@ function TradeRow({ trade }: TradeRowProps) {
 export function RecentTrades() {
   const { status } = useWallet();
   const { trades, isLoading, error, refetch } = useTradeHistory();
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
   const isConnected = status === 'unlocked';
+  const displayedTrades = trades.slice(0, displayCount);
+  const hasMore = displayCount < trades.length;
+  const remaining = trades.length - displayCount;
+
+  const handleLoadMore = () => {
+    setDisplayCount((prev) => Math.min(prev + ITEMS_PER_PAGE, trades.length));
+  };
 
   if (!isConnected) {
     return (
@@ -136,7 +147,9 @@ export function RecentTrades() {
     <div className="bg-theme-bg-secondary rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-theme-border flex justify-between items-center">
         <h2 className="font-semibold">Trade History</h2>
-        <span className="text-xs text-theme-text-muted">{trades.length} trades</span>
+        <span className="text-xs text-theme-text-muted">
+          {displayedTrades.length} of {trades.length} trades
+        </span>
       </div>
 
       <div className="overflow-x-auto">
@@ -151,12 +164,25 @@ export function RecentTrades() {
             </tr>
           </thead>
           <tbody className="divide-y divide-theme-border">
-            {trades.map((trade) => (
+            {displayedTrades.map((trade) => (
               <TradeRow key={trade.id} trade={trade} />
             ))}
           </tbody>
         </table>
       </div>
+
+      {hasMore && (
+        <div className="p-4 border-t border-theme-border">
+          <button
+            onClick={handleLoadMore}
+            className="w-full py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400
+                       bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30
+                       rounded-lg transition-colors"
+          >
+            Load More ({remaining} more)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

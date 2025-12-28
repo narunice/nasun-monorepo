@@ -134,7 +134,7 @@ function generateSimulatedTrades(accountAddress: string): UserTrade[] {
 
   const trades: UserTrade[] = [];
   const now = Date.now();
-  const tradeCount = 5 + (seedNum % 10); // 5-14 trades
+  const tradeCount = 30 + (seedNum % 20); // 30-49 trades for pagination testing
 
   for (let i = 0; i < tradeCount; i++) {
     const pool = pools[i % 2];
