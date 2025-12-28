@@ -48,7 +48,12 @@ const BattalionNftPage: React.FC = () => {
     // 메인 컴포넌트 프리로드
     await import("../../components/app/wave1/battalion-nft/BattalionNftPage");
 
-    setIsPageReady(true); // Footer 표시
+    // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsPageReady(true);
+      });
+    });
   }, [setIsPageReady]);
 
   // 비디오 로딩 중에는 body 스크롤 방지 (Step 1에서만)
