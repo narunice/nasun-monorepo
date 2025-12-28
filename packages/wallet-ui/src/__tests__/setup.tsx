@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom/vitest';
 import { vi, beforeEach, afterEach } from 'vitest';
-import React from 'react';
 
 // Mock @nasun/wallet module
 vi.mock('@nasun/wallet', () => ({
