@@ -87,6 +87,9 @@ export {
   saveSessionPassword,
   getSessionPassword,
   clearSessionPassword,
+  // Explorer URL utilities
+  getExplorerTxUrl,
+  getExplorerAddressUrl,
 } from './sui/client';
 
 export {
@@ -97,6 +100,7 @@ export {
 // Token Registry
 export {
   NATIVE_TOKEN,
+  DEVNET_TOKENS,
   registerToken,
   registerTokens,
   getToken,
@@ -111,3 +115,32 @@ export {
   generateMnemonicPhrase,
   isValidMnemonic,
 } from './core/crypto';
+
+// NFT Hooks
+export {
+  useNFTs,
+  useRefreshNFTs,
+  useInvalidateNFTs,
+} from './hooks/useNFTs';
+export type { UseNFTsOptions, UseNFTsResult } from './hooks/useNFTs';
+
+export { useNFTTransfer } from './hooks/useNFTTransfer';
+
+// NFT Types
+export type {
+  NFTDisplay,
+  NFTInfo,
+  NFTQueryOptions,
+  NFTQueryResult,
+  NFTTransferRequest,
+} from './types/nft';
+
+// NFT Utilities
+export {
+  getOwnedNFTs,
+  getNFT,
+  buildNFTTransferTransaction,
+  getCollectionFromType,
+  getNFTImageUrl,
+  buildDisplayFromContent,
+} from './sui/nft';

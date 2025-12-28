@@ -34,3 +34,9 @@ export { ExportPrivateKey } from './ExportPrivateKey';
 // Multi-token components
 export { MultiBalanceDisplay } from './MultiBalanceDisplay';
 export { TokenSelector } from './TokenSelector';
+
+// NFT components
+export { NFTCard } from './NFTCard';
+export { NFTGallery } from './NFTGallery';
+export { NFTDetail } from './NFTDetail';
+export { NFTTransfer } from './NFTTransfer';
