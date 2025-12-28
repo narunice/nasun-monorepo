@@ -53,6 +53,7 @@
 - ✅ QR 코드 결제 (Phase 15.3)
 - ✅ PaymentQRCode 컴포넌트
 - ✅ Send/Receive 탭 UI
+- ✅ wallet-ui 패키지 라이트 테마 지원 (SendTransaction, TokenSelector, CopyableAddress)
 
 ### 미구현 ❌
 
@@ -474,3 +475,4 @@ function MyChart() {
 | 2025-12-28 | 테마 디자인 컨벤션 추가: CSS 변수, Tailwind 매핑, 사용 예시 |
 | 2025-12-28 | 라이트모드 가독성 개선: 기능적 색상(Success/Error) 컨벤션 추가 |
 | 2025-12-28 | Orderbook/Buy/Sell 버튼 가독성 개선, 컬러 버튼 text-white 규칙 추가 |
+| 2025-12-28 | wallet-ui 라이트 테마 지원 추가 (SendTransaction, TokenSelector, CopyableAddress) |
