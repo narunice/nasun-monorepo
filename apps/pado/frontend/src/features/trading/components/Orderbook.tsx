@@ -58,7 +58,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
             className={`px-2 py-0.5 text-xs rounded transition-colors ${
               depthLevel === level
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-border'
             }`}
           >
             {level}
@@ -70,8 +70,8 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
         {/* Bids */}
         <div>
           <h3 className="text-sm font-medium text-green-400 mb-2">Bids (Buy)</h3>
-          <div className="bg-gray-900 rounded p-3 h-64 overflow-y-auto">
-            <div className="text-xs text-gray-500 flex justify-between mb-2 border-b border-gray-700 pb-1">
+          <div className="bg-theme-bg-tertiary rounded p-3 h-64 overflow-y-auto">
+            <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
               <span>Price</span>
               <span>Amount</span>
             </div>
@@ -103,7 +103,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
                 })}
               </div>
             ) : (
-              <div className="text-center text-gray-500 mt-20">
+              <div className="text-center text-theme-text-muted mt-20">
                 No bids yet
               </div>
             )}
@@ -113,8 +113,8 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
         {/* Asks */}
         <div>
           <h3 className="text-sm font-medium text-red-400 mb-2">Asks (Sell)</h3>
-          <div className="bg-gray-900 rounded p-3 h-64 overflow-y-auto">
-            <div className="text-xs text-gray-500 flex justify-between mb-2 border-b border-gray-700 pb-1">
+          <div className="bg-theme-bg-tertiary rounded p-3 h-64 overflow-y-auto">
+            <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
               <span>Price</span>
               <span>Amount</span>
             </div>
@@ -146,7 +146,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
                 })}
               </div>
             ) : (
-              <div className="text-center text-gray-500 mt-20">
+              <div className="text-center text-theme-text-muted mt-20">
                 No asks yet
               </div>
             )}

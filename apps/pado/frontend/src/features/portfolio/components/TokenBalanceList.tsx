@@ -30,17 +30,17 @@ function TokenRow({ token }: TokenRowProps) {
   };
 
   const isPositive = token.change24h >= 0;
-  const changeColor = token.change24h === 0 ? 'text-gray-400' : isPositive ? 'text-green-400' : 'text-red-400';
+  const changeColor = token.change24h === 0 ? 'text-theme-text-secondary' : isPositive ? 'text-green-400' : 'text-red-400';
 
   return (
     <div className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-gray-700'} flex items-center justify-center text-xs font-bold text-white`}>
+        <div className={`w-8 h-8 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs font-bold text-white`}>
           {token.symbol.charAt(0)}
         </div>
         <div>
           <div className="font-medium">{token.symbol}</div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-theme-text-secondary">
             @${token.price.toLocaleString('en-US')}
           </div>
         </div>
@@ -50,7 +50,7 @@ function TokenRow({ token }: TokenRowProps) {
           {formatBalance(token.symbol, token.balance)} {token.symbol}
         </div>
         <div className="flex items-center justify-end gap-2">
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-theme-text-secondary">
             ${token.value.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
@@ -75,11 +75,11 @@ export function TokenBalanceList() {
 
   if (!isConnected) {
     return (
-      <div className="bg-gray-800 rounded-lg">
-        <div className="px-4 py-3 border-b border-gray-700">
+      <div className="bg-theme-bg-secondary rounded-lg">
+        <div className="px-4 py-3 border-b border-theme-border">
           <h2 className="font-semibold">Assets</h2>
         </div>
-        <div className="p-8 text-center text-gray-500">
+        <div className="p-8 text-center text-theme-text-muted">
           Connect wallet to view your assets
         </div>
       </div>
@@ -88,11 +88,11 @@ export function TokenBalanceList() {
 
   if (isLoading) {
     return (
-      <div className="bg-gray-800 rounded-lg">
-        <div className="px-4 py-3 border-b border-gray-700">
+      <div className="bg-theme-bg-secondary rounded-lg">
+        <div className="px-4 py-3 border-b border-theme-border">
           <h2 className="font-semibold">Assets</h2>
         </div>
-        <div className="p-8 text-center text-gray-500">
+        <div className="p-8 text-center text-theme-text-muted">
           Loading...
         </div>
       </div>
@@ -100,11 +100,11 @@ export function TokenBalanceList() {
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg">
-      <div className="px-4 py-3 border-b border-gray-700">
+    <div className="bg-theme-bg-secondary rounded-lg">
+      <div className="px-4 py-3 border-b border-theme-border">
         <h2 className="font-semibold">Assets</h2>
       </div>
-      <div className="divide-y divide-gray-700">
+      <div className="divide-y divide-theme-border">
         {tokens.map((token) => (
           <TokenRow key={token.symbol} token={token} />
         ))}

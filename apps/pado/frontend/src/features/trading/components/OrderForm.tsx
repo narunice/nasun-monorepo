@@ -109,13 +109,13 @@ export function OrderForm({
   return (
     <div className="space-y-4">
       {/* Order Type Tabs */}
-      <div className="flex bg-gray-700 rounded-lg p-1">
+      <div className="flex bg-theme-bg-tertiary rounded-lg p-1">
         <button
           onClick={() => setOrderMode('limit')}
           className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
             orderMode === 'limit'
-              ? 'bg-gray-600 text-white'
-              : 'text-gray-400 hover:text-gray-300'
+              ? 'bg-theme-bg-secondary text-white'
+              : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
           Limit
@@ -124,8 +124,8 @@ export function OrderForm({
           onClick={() => setOrderMode('market')}
           className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
             orderMode === 'market'
-              ? 'bg-gray-600 text-white'
-              : 'text-gray-400 hover:text-gray-300'
+              ? 'bg-theme-bg-secondary text-white'
+              : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
           Market
@@ -136,8 +136,8 @@ export function OrderForm({
       {!isMarket && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm text-gray-400">Price ({quoteSymbol})</label>
-            <span className="text-xs text-gray-500">min: ${minPrice}</span>
+            <label className="text-sm text-theme-text-secondary">Price ({quoteSymbol})</label>
+            <span className="text-xs text-theme-text-muted">min: ${minPrice}</span>
           </div>
           <PriceSuggestions
             midPrice={midPrice || 0}
@@ -150,7 +150,7 @@ export function OrderForm({
             placeholder="0.00"
             value={price}
             onChange={(e) => onPriceChange(e.target.value)}
-            className={`w-full px-4 py-2 bg-gray-700 rounded focus:outline-none focus:ring-2 ${
+            className={`w-full px-4 py-2 bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
               effectivePrice > 0 && !priceValidation.valid
                 ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
                 : 'focus:ring-blue-500'
@@ -164,14 +164,14 @@ export function OrderForm({
 
       {/* Market Price Info */}
       {isMarket && midPrice && midPrice > 0 && (
-        <div className="p-3 bg-gray-700/50 rounded text-sm">
-          <div className="flex justify-between text-gray-400">
+        <div className="p-3 bg-theme-bg-tertiary/50 rounded text-sm">
+          <div className="flex justify-between text-theme-text-secondary">
             <span>Market Price</span>
             <span className="text-green-400 font-mono">
               ~${midPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-theme-text-muted mt-1">
             Executes immediately at best available price
           </p>
         </div>
@@ -185,15 +185,15 @@ export function OrderForm({
       {/* Amount Input */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="text-sm text-gray-400">Amount ({baseSymbol})</label>
-          <span className="text-xs text-gray-500">min: {minQuantity} {baseSymbol}</span>
+          <label className="text-sm text-theme-text-secondary">Amount ({baseSymbol})</label>
+          <span className="text-xs text-theme-text-muted">min: {minQuantity} {baseSymbol}</span>
         </div>
         <input
           type="number"
           placeholder="0.0000"
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
-          className={`w-full px-4 py-2 bg-gray-700 rounded focus:outline-none focus:ring-2 ${
+          className={`w-full px-4 py-2 bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
             amountNum > 0 && !quantityValidation.valid
               ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
               : 'focus:ring-blue-500'
@@ -206,7 +206,7 @@ export function OrderForm({
 
       {/* Total Estimate */}
       {total > 0 && (
-        <div className="text-sm text-gray-400">
+        <div className="text-sm text-theme-text-secondary">
           {isMarket ? 'Est. Total: ' : 'Total: '}
           <span className="font-mono">{total.toFixed(2)}</span> {quoteSymbol}
         </div>
@@ -217,7 +217,7 @@ export function OrderForm({
         <div>
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+            className="flex items-center gap-1 text-xs text-theme-text-secondary hover:text-theme-text-primary transition-colors"
           >
             <svg
               className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
@@ -236,8 +236,8 @@ export function OrderForm({
           </button>
 
           {showAdvanced && (
-            <div className="mt-2 p-3 bg-gray-700/50 rounded">
-              <div className="text-xs text-gray-400 mb-2">Execution Option</div>
+            <div className="mt-2 p-3 bg-theme-bg-tertiary/50 rounded">
+              <div className="text-xs text-theme-text-secondary mb-2">Execution Option</div>
               <div className="grid grid-cols-4 gap-1">
                 {EXECUTION_OPTIONS.map((opt) => (
                   <button
@@ -246,7 +246,7 @@ export function OrderForm({
                     className={`py-1.5 px-2 text-xs font-medium rounded transition-colors ${
                       executionOption === opt.value
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                        : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
                     }`}
                     title={opt.description}
                   >
@@ -254,7 +254,7 @@ export function OrderForm({
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-[10px] text-gray-500">
+              <p className="mt-2 text-[10px] text-theme-text-muted">
                 {EXECUTION_OPTIONS.find((o) => o.value === executionOption)?.description}
               </p>
             </div>

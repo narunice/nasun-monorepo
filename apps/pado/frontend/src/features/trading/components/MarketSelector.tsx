@@ -35,7 +35,7 @@ export function MarketSelector() {
       {/* 선택 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg transition-colors"
       >
         {/* 토큰 아이콘 */}
         <div className="flex -space-x-2">
@@ -48,7 +48,7 @@ export function MarketSelector() {
 
         {/* 드롭다운 화살표 */}
         <svg
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-theme-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -59,9 +59,9 @@ export function MarketSelector() {
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+        <div className="absolute top-full left-0 mt-2 w-64 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-xl z-50">
           <div className="p-2">
-            <div className="text-xs text-gray-500 px-3 py-1 mb-1">Select Market</div>
+            <div className="text-xs text-theme-text-muted px-3 py-1 mb-1">Select Market</div>
             {markets.map(market => (
               <button
                 key={market.key}
@@ -69,7 +69,7 @@ export function MarketSelector() {
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   market.key === currentMarket
                     ? 'bg-blue-600/20 text-blue-400'
-                    : 'hover:bg-gray-700 text-white'
+                    : 'hover:bg-theme-bg-tertiary text-white'
                 }`}
               >
                 {/* 토큰 아이콘 */}
@@ -81,7 +81,7 @@ export function MarketSelector() {
                 {/* 마켓 정보 */}
                 <div className="flex-1 text-left">
                   <div className="font-medium">{market.label}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-theme-text-muted">
                     {market.pool.baseToken.name} / {market.pool.quoteToken.name}
                   </div>
                 </div>
@@ -116,7 +116,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
 
   return (
     <div
-      className={`w-6 h-6 rounded-full ${bgColors[symbol] ?? 'bg-gray-500'} flex items-center justify-center text-xs font-bold text-white border-2 border-gray-800`}
+      className={`w-6 h-6 rounded-full ${bgColors[symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs font-bold text-white border-2 border-theme-bg-primary`}
     >
       {symbol.charAt(0)}
     </div>

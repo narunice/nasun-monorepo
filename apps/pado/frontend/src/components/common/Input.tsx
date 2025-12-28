@@ -11,14 +11,14 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: string;
 }
 
-const baseInputStyles = 'w-full px-4 py-2 bg-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400';
+const baseInputStyles = 'w-full px-4 py-2 bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-theme-text-primary placeholder-theme-text-muted';
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = '', ...props }, ref) => {
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm text-gray-400 mb-1">{label}</label>
+          <label className="block text-sm text-theme-text-muted mb-1">{label}</label>
         )}
         <input
           ref={ref}
@@ -40,7 +40,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm text-gray-400 mb-1">{label}</label>
+          <label className="block text-sm text-theme-text-muted mb-1">{label}</label>
         )}
         <textarea
           ref={ref}

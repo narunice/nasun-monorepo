@@ -294,6 +294,132 @@ frontend/src/
 
 ---
 
+## 테마 디자인 컨벤션
+
+> **중요**: 새로운 컴포넌트나 페이지를 구현할 때 반드시 이 컨벤션을 따라야 합니다.
+
+### CSS 변수 (index.css)
+
+| 변수 | 다크 모드 | 라이트 모드 | 용도 |
+|------|----------|------------|------|
+| `--color-bg-primary` | #111111 | #faf7f4 | 페이지 배경 |
+| `--color-bg-secondary` | #1f1f1f | #f0ede9 | 카드, 패널 배경 |
+| `--color-bg-tertiary` | #2d2d2d | #e5e2de | 입력 필드, 호버 상태 |
+| `--color-text-primary` | #ffffff | #191615 | 주요 텍스트 |
+| `--color-text-secondary` | #a1a1a1 | #5a5754 | 보조 텍스트 |
+| `--color-text-muted` | #6b6b6b | #8a8784 | 비활성 텍스트, 라벨 |
+| `--color-border` | #3d3d3d | #d4d1cd | 테두리 |
+| `--color-accent` | #448BBB | #448BBB | 액센트 (테마 불변) |
+
+### Tailwind 클래스 매핑
+
+**절대 사용 금지** (하드코딩된 gray 색상):
+```
+❌ bg-gray-900, bg-gray-800, bg-gray-700, bg-gray-600, bg-gray-500
+❌ text-gray-400, text-gray-300, text-gray-500
+❌ border-gray-700, border-gray-800
+❌ placeholder-gray-400
+```
+
+**대신 사용해야 하는 테마 클래스**:
+```
+✅ bg-theme-bg-primary      (페이지 배경)
+✅ bg-theme-bg-secondary    (카드, 패널)
+✅ bg-theme-bg-tertiary     (입력 필드, 호버)
+✅ text-theme-text-primary  (주요 텍스트)
+✅ text-theme-text-secondary (보조 텍스트)
+✅ text-theme-text-muted    (라벨, 비활성)
+✅ border-theme-border      (테두리)
+✅ placeholder-theme-text-muted (플레이스홀더)
+```
+
+### 사용 예시
+
+**배경 + 텍스트**:
+```tsx
+// ❌ 잘못된 예
+<div className="bg-gray-800 text-white">
+
+// ✅ 올바른 예
+<div className="bg-theme-bg-secondary text-theme-text-primary">
+```
+
+**버튼 (비활성 상태)**:
+```tsx
+// ❌ 잘못된 예
+<button className="text-gray-400 hover:text-white hover:bg-gray-700">
+
+// ✅ 올바른 예
+<button className="text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary">
+```
+
+**입력 필드**:
+```tsx
+// ❌ 잘못된 예
+<input className="bg-gray-700 text-white placeholder-gray-400" />
+
+// ✅ 올바른 예
+<input className="bg-theme-bg-tertiary text-theme-text-primary placeholder-theme-text-muted" />
+```
+
+### 외부 라이브러리 테마 적용 (lightweight-charts 등)
+
+CSS 변수를 직접 사용할 수 없는 라이브러리는 useTheme 훅을 사용:
+
+```tsx
+import { useTheme } from '../../../providers/theme';
+
+const CHART_COLORS = {
+  dark: {
+    background: '#1a1a2e',
+    text: '#d1d4dc',
+    grid: '#2B2B43',
+    border: '#2B2B43',
+  },
+  light: {
+    background: '#faf7f4',
+    text: '#191615',
+    grid: '#e5e2de',
+    border: '#d4d1cd',
+  },
+};
+
+function MyChart() {
+  const { theme } = useTheme();
+  const colors = CHART_COLORS[theme];
+
+  // 차트 생성 시 colors 사용
+  const chart = createChart(container, {
+    layout: {
+      background: { color: colors.background },
+      textColor: colors.text,
+    },
+    grid: {
+      vertLines: { color: colors.grid },
+      horzLines: { color: colors.grid },
+    },
+  });
+
+  // 테마 변경 감지 시 업데이트
+  useEffect(() => {
+    chart.applyOptions({
+      layout: {
+        background: { color: colors.background },
+        textColor: colors.text,
+      },
+    });
+  }, [theme]);
+}
+```
+
+### 색상 사용 시 주의사항
+
+1. **기능적 색상은 테마 불변**: `text-green-400` (성공), `text-red-400` (에러), `bg-blue-600` (primary 버튼)
+2. **fallback 색상**: 토큰별 색상 외에는 `bg-theme-bg-tertiary` 사용
+3. **투명도 사용 가능**: `border-theme-border/50` (50% 투명도)
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
@@ -306,3 +432,4 @@ frontend/src/
 | 2025-12-28 | Phase 6, 7 완료 반영, Spinner 컴포넌트 추가, 토큰 전송 페이지 추가 |
 | 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환, 시스템 테마 감지 |
 | 2025-12-28 | Phase 15.3 완료: QR 코드 결제, Send/Receive 탭 |
+| 2025-12-28 | 테마 디자인 컨벤션 추가: CSS 변수, Tailwind 매핑, 사용 예시 |

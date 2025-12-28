@@ -36,41 +36,41 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   return (
-    <div className={`bg-gray-800 rounded-lg overflow-hidden ${className}`}>
-      <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+    <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
+      <div className="p-3 border-b border-theme-border flex justify-between items-center">
         <h3 className="font-semibold text-sm">Recent Trades</h3>
         {isSimulating && (
-          <span className="text-xs text-gray-500">Simulated</span>
+          <span className="text-xs text-theme-text-muted">Simulated</span>
         )}
       </div>
 
       <div className="max-h-[300px] overflow-y-auto">
         {isLoading ? (
-          <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
+          <div className="p-4 text-center text-theme-text-muted text-sm">Loading...</div>
         ) : trades.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 text-sm">No trades yet</div>
+          <div className="p-4 text-center text-theme-text-muted text-sm">No trades yet</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="text-gray-400 sticky top-0 bg-gray-800">
+            <thead className="text-theme-text-secondary sticky top-0 bg-theme-bg-secondary">
               <tr>
                 <th className="py-2 px-3 text-left font-medium">Price ({quoteSymbol})</th>
                 <th className="py-2 px-3 text-right font-medium">Amount ({baseSymbol})</th>
                 <th className="py-2 px-3 text-right font-medium">Time</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700/50">
+            <tbody className="divide-y divide-theme-border/50">
               {trades.map((trade) => (
                 <tr
                   key={trade.id}
-                  className="hover:bg-gray-700/30 transition-colors"
+                  className="hover:bg-theme-bg-tertiary/30 transition-colors"
                 >
                   <td className={`py-1.5 px-3 font-mono ${trade.isBuy ? 'text-green-400' : 'text-red-400'}`}>
                     ${trade.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="py-1.5 px-3 text-right font-mono text-gray-300">
+                  <td className="py-1.5 px-3 text-right font-mono text-theme-text-primary">
                     {trade.quantity.toFixed(4)}
                   </td>
-                  <td className="py-1.5 px-3 text-right text-gray-500">
+                  <td className="py-1.5 px-3 text-right text-theme-text-muted">
                     {formatTime(trade.timestamp)}
                   </td>
                 </tr>

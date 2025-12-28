@@ -25,14 +25,14 @@ export function BalancePanel() {
 
   if (!isConnected) {
     return (
-      <div className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+      <div className="bg-theme-bg-secondary rounded-lg p-4 flex items-center justify-between">
         <div>
-          <div className="text-sm text-gray-400">Pool Mid Price</div>
+          <div className="text-sm text-theme-text-muted">Pool Mid Price</div>
           <div className="text-xl font-semibold text-green-400">
             ${midPrice > 0 ? midPrice.toFixed(2) : '--'}
           </div>
         </div>
-        <div className="text-sm text-gray-400">
+        <div className="text-sm text-theme-text-muted">
           Connect wallet to view balances and trade
         </div>
       </div>
@@ -42,47 +42,47 @@ export function BalancePanel() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {/* NASUN */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="text-sm text-gray-400">NASUN</div>
-        <div className="text-xl font-semibold">{balances?.nasun.formatted || '0'}</div>
+      <div className="bg-theme-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-theme-text-muted">NASUN</div>
+        <div className="text-xl font-semibold text-theme-text-primary">{balances?.nasun.formatted || '0'}</div>
         <button
           onClick={handleNasunFaucet}
           disabled={isNasunLoading}
-          className="mt-2 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded"
+          className="mt-2 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-white"
         >
           {isNasunLoading ? 'Requesting...' : 'Get from Faucet'}
         </button>
       </div>
 
       {/* NBTC */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="text-sm text-gray-400">NBTC</div>
-        <div className="text-xl font-semibold">{balances?.nbtc.formatted || '0'}</div>
+      <div className="bg-theme-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-theme-text-muted">NBTC</div>
+        <div className="text-xl font-semibold text-theme-text-primary">{balances?.nbtc.formatted || '0'}</div>
         <button
           onClick={handleNbtcFaucet}
           disabled={isNbtcLoading}
-          className="mt-2 text-xs px-2 py-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded"
+          className="mt-2 text-xs px-2 py-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded text-white"
         >
           {isNbtcLoading ? 'Getting...' : 'Get NBTC'}
         </button>
       </div>
 
       {/* NUSDC */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="text-sm text-gray-400">NUSDC</div>
-        <div className="text-xl font-semibold">{balances?.nusdc.formatted || '0'}</div>
+      <div className="bg-theme-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-theme-text-muted">NUSDC</div>
+        <div className="text-xl font-semibold text-theme-text-primary">{balances?.nusdc.formatted || '0'}</div>
         <button
           onClick={handleNusdcFaucet}
           disabled={isNusdcLoading}
-          className="mt-2 text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded"
+          className="mt-2 text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white"
         >
           {isNusdcLoading ? 'Getting...' : 'Get NUSDC'}
         </button>
       </div>
 
       {/* Mid Price */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="text-sm text-gray-400">Pool Mid Price</div>
+      <div className="bg-theme-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-theme-text-muted">Pool Mid Price</div>
         <div className="text-xl font-semibold text-green-400">
           ${midPrice > 0 ? midPrice.toFixed(2) : '--'}
         </div>

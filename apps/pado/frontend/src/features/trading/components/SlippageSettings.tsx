@@ -37,9 +37,9 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
   const isPresetSelected = (preset: number) => !isCustom && value === preset;
 
   return (
-    <div className="p-3 bg-gray-700/50 rounded">
+    <div className="p-3 bg-theme-bg-tertiary/50 rounded">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400">Slippage Tolerance</span>
+        <span className="text-xs text-theme-text-secondary">Slippage Tolerance</span>
         <span className="text-xs font-mono text-blue-400">{value}%</span>
       </div>
 
@@ -51,7 +51,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
             className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${
               isPresetSelected(preset)
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
             }`}
           >
             {preset}%
@@ -67,7 +67,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
             className={`w-full py-1.5 px-2 text-xs font-medium rounded text-center transition-colors ${
               isCustom
                 ? 'bg-blue-600 text-white placeholder-blue-200'
-                : 'bg-gray-600 text-gray-300 placeholder-gray-400'
+                : 'bg-theme-bg-secondary text-theme-text-primary placeholder-gray-400'
             } focus:outline-none`}
             min="0.01"
             max="50"
