@@ -138,3 +138,27 @@ export interface MultiTokenBalanceInfo {
   native: TokenBalance; // NASUN (native token)
   tokens: Record<string, TokenBalance>; // Additional tokens (symbol -> balance)
 }
+
+// ============================================
+// Security Settings Types
+// ============================================
+
+/** Security configuration for wallet auto-lock and protection */
+export interface SecuritySettings {
+  /** Auto-lock timeout in minutes (0 = disabled, default: 15) */
+  autoLockMinutes: number;
+  /** Last user activity timestamp (Date.now()) */
+  lastActivityAt: number;
+  /** Require password confirmation for large transactions */
+  confirmLargeTransactions: boolean;
+  /** Large transaction threshold in display units */
+  largeTransactionThreshold: number;
+}
+
+/** Default security settings */
+export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
+  autoLockMinutes: 15,
+  lastActivityAt: Date.now(),
+  confirmLargeTransactions: true,
+  largeTransactionThreshold: 100, // 100 NASUN
+};
