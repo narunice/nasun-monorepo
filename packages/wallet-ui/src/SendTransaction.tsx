@@ -1,24 +1,61 @@
 /**
  * Nasun Wallet Token Transfer UI
+ * Supports multi-token transfers (NASUN, NBTC, NUSDC, etc.)
  */
 
 import { useState } from 'react';
-import { useTransaction, useBalance, useWallet, isValidAddress, shortenAddress } from '@nasun/wallet';
+import {
+  useTokenTransaction,
+  useMultiBalance,
+  useWallet,
+  isValidAddress,
+  shortenAddress,
+  getAllTokens,
+  getTokenByType,
+  NATIVE_TOKEN,
+} from '@nasun/wallet';
+import { TokenSelector } from './TokenSelector';
 
 interface SendTransactionProps {
   onClose?: () => void;
   onSuccess?: (digest: string) => void;
+  // Initial token symbol (defaults to NASUN)
+  defaultToken?: string;
 }
 
-export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
+// Minimum gas balance required for non-native token transfers
+const MIN_GAS_BALANCE = 0.01;
+
+export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: SendTransactionProps) {
   const { status, account } = useWallet();
-  const { data: balance } = useBalance();
-  const { sendTransaction, isPending, error, lastResult, clearError, clearResult } =
-    useTransaction();
+  const { data: balances } = useMultiBalance();
+  const { sendTokenTransaction, isPending, error, lastResult, clearError, clearResult } =
+    useTokenTransaction();
 
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
+  const [selectedToken, setSelectedToken] = useState(defaultToken);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // Get selected token config
+  const tokens = getAllTokens();
+  const tokenConfig = tokens.find((t) => t.symbol === selectedToken) || NATIVE_TOKEN;
+
+  // Get balance for selected token
+  const getSelectedBalance = (): string => {
+    if (!balances) return '0';
+    if (selectedToken === 'NASUN') return balances.native.formatted;
+    return balances.tokens[selectedToken]?.formatted || '0';
+  };
+
+  // Get native balance for gas check
+  const getNativeBalance = (): number => {
+    if (!balances) return 0;
+    return parseFloat(balances.native.formatted);
+  };
+
+  // Check if we have enough gas for non-native token transfers
+  const hasEnoughGas = selectedToken === 'NASUN' || getNativeBalance() >= MIN_GAS_BALANCE;
 
   // Wallet not connected
   if (status !== 'unlocked' || !account) {
@@ -31,6 +68,11 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
 
   // Success result display
   if (lastResult?.status === 'success') {
+    // Get token info from result if available
+    const successToken = lastResult.tokenType
+      ? getTokenByType(lastResult.tokenType)?.symbol || selectedToken
+      : selectedToken;
+
     return (
       <div className="p-4 bg-zinc-800 rounded-lg min-w-[320px]">
         <div className="flex flex-col items-center gap-4">
@@ -42,12 +84,23 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
 
           <div className="text-center">
             <h3 className="text-lg font-medium text-white">Transfer Complete</h3>
-            <p className="text-sm text-zinc-400 mt-1">Transaction was processed successfully.</p>
+            <p className="text-sm text-zinc-400 mt-1">
+              {lastResult.amount} {successToken} sent successfully
+            </p>
           </div>
 
           <div className="w-full bg-zinc-700 rounded p-3">
             <p className="text-xs text-zinc-400">Transaction Digest</p>
             <p className="text-sm text-white font-mono break-all mt-1">{lastResult.digest}</p>
+            {/* Explorer link */}
+            <a
+              href={`https://explorer.devnet.nasun.io/txblock/${lastResult.digest}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-block"
+            >
+              View in Explorer →
+            </a>
           </div>
 
           <div className="flex gap-2 w-full">
@@ -93,9 +146,21 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
           <div className="bg-zinc-700 rounded p-3">
             <p className="text-xs text-zinc-400">Amount</p>
             <p className="text-lg text-white font-medium mt-1">
-              {amount} <span className="text-blue-400 text-sm">NASUN</span>
+              {amount} <span className="text-blue-400 text-sm">{selectedToken}</span>
             </p>
           </div>
+
+          {/* Gas warning for non-native tokens */}
+          {selectedToken !== 'NASUN' && (
+            <div className="bg-zinc-700/50 rounded p-3 border border-zinc-600">
+              <p className="text-xs text-zinc-400">
+                Gas Fee: paid in <span className="text-blue-400">NASUN</span>
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                Available: {getNativeBalance().toFixed(4)} NASUN
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -118,7 +183,11 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
           <button
             onClick={async () => {
               try {
-                const result = await sendTransaction({ to: recipient, amount });
+                const result = await sendTokenTransaction({
+                  to: recipient,
+                  amount,
+                  tokenType: tokenConfig.type,
+                });
                 if (result.status === 'success') {
                   onSuccess?.(result.digest);
                 }
@@ -127,7 +196,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
               }
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-zinc-600 disabled:text-zinc-400 text-black font-medium rounded text-sm transition-colors"
+            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
           >
             {isPending ? 'Sending...' : 'Confirm'}
           </button>
@@ -139,12 +208,12 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
   // Input form
   const isValidRecipient = recipient.length === 0 || isValidAddress(recipient);
   const isValidAmount = amount.length === 0 || (parseFloat(amount) > 0 && !isNaN(parseFloat(amount)));
-  const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0;
+  const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas;
 
   return (
     <div className="p-4 bg-zinc-800 rounded-lg min-w-[320px]">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-white">Send NASUN</h3>
+        <h3 className="text-lg font-medium text-white">Send Token</h3>
         {onClose && (
           <button
             onClick={onClose}
@@ -158,14 +227,33 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
       </div>
 
       <div className="space-y-4">
+        {/* Token selector */}
+        <div>
+          <label className="block text-sm text-zinc-400 mb-1">Token</label>
+          <TokenSelector
+            value={selectedToken}
+            onChange={setSelectedToken}
+            showBalance={true}
+          />
+        </div>
+
         {/* Balance display */}
         <div className="bg-zinc-700/50 rounded p-3">
           <p className="text-xs text-zinc-400">Available Balance</p>
           <p className="text-lg text-white font-medium mt-1">
-            {balance?.formattedBalance ?? '0'}{' '}
-            <span className="text-blue-400 text-sm">NASUN</span>
+            {getSelectedBalance()}{' '}
+            <span className="text-blue-400 text-sm">{selectedToken}</span>
           </p>
         </div>
+
+        {/* Gas warning */}
+        {!hasEnoughGas && (
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
+            <p className="text-sm text-yellow-400">
+              Insufficient NASUN for gas fees. You need at least {MIN_GAS_BALANCE} NASUN.
+            </p>
+          </div>
+        )}
 
         {/* Recipient address */}
         <div>
@@ -188,7 +276,7 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
 
         {/* Amount */}
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">Amount (NASUN)</label>
+          <label className="block text-sm text-zinc-400 mb-1">Amount ({selectedToken})</label>
           <input
             type="number"
             placeholder="0.0"
@@ -211,9 +299,9 @@ export function SendTransaction({ onClose, onSuccess }: SendTransactionProps) {
         <button
           onClick={() => setShowConfirm(true)}
           disabled={!canSubmit}
-          className="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-zinc-600 disabled:text-zinc-400 text-black font-medium rounded transition-colors"
+          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
         >
-          Send
+          Send {selectedToken}
         </button>
       </div>
     </div>

@@ -179,7 +179,7 @@ describe('Keystore', () => {
     it('should import wallet from valid private key', async () => {
       const { importWalletFromPrivateKey, createAndSaveWallet, deleteKeystore, unlockKeystore } =
         await import('../core/keystore');
-      const { getSecretKeyFromKeypair, getAddressFromKeypair } = await import('../core/crypto');
+      const { getSecretKeyFromKeypair } = await import('../core/crypto');
 
       // Create a wallet and get its private key
       const originalAddress = await createAndSaveWallet('password1');
