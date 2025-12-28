@@ -18,7 +18,7 @@ export function BalancePanel() {
     nbtc: multiBalance.tokens['NBTC'] || { symbol: 'NBTC', balance: 0n, formatted: '0', decimals: TOKENS.NBTC.decimals, type: TOKENS.NBTC.type },
     nusdc: multiBalance.tokens['NUSDC'] || { symbol: 'NUSDC', balance: 0n, formatted: '0', decimals: TOKENS.NUSDC.decimals, type: TOKENS.NUSDC.type },
   } : undefined;
-  const { isNasunLoading, isTokenLoading, handleNasunFaucet, handleTokenFaucet } = useFaucet();
+  const { isNasunLoading, isNbtcLoading, isNusdcLoading, handleNasunFaucet, handleNbtcFaucet, handleNusdcFaucet } = useFaucet();
 
   const isConnected = status === 'unlocked' && account;
   const midPrice = orderbookData?.midPrice ?? 0;
@@ -58,6 +58,13 @@ export function BalancePanel() {
       <div className="bg-gray-800 rounded-lg p-4">
         <div className="text-sm text-gray-400">NBTC</div>
         <div className="text-xl font-semibold">{balances?.nbtc.formatted || '0'}</div>
+        <button
+          onClick={handleNbtcFaucet}
+          disabled={isNbtcLoading}
+          className="mt-2 text-xs px-2 py-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded"
+        >
+          {isNbtcLoading ? 'Getting...' : 'Get NBTC'}
+        </button>
       </div>
 
       {/* NUSDC */}
@@ -65,11 +72,11 @@ export function BalancePanel() {
         <div className="text-sm text-gray-400">NUSDC</div>
         <div className="text-xl font-semibold">{balances?.nusdc.formatted || '0'}</div>
         <button
-          onClick={handleTokenFaucet}
-          disabled={isTokenLoading}
+          onClick={handleNusdcFaucet}
+          disabled={isNusdcLoading}
           className="mt-2 text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded"
         >
-          {isTokenLoading ? 'Getting...' : 'Get NBTC + NUSDC'}
+          {isNusdcLoading ? 'Getting...' : 'Get NUSDC'}
         </button>
       </div>
 
