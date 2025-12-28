@@ -21,6 +21,9 @@ type TabType = 'stake' | 'unstake' | 'positions';
 type StakeStep = 'select' | 'amount' | 'confirm' | 'result';
 type UnstakeStep = 'select' | 'confirm' | 'result';
 
+// Minimum stake amount
+const MIN_STAKE_NASUN = 1;
+
 interface StakingPanelProps {
   // Called when close button is clicked
   onClose?: () => void;
@@ -232,7 +235,9 @@ function StakeTab({ compact }: StakeTabProps) {
     const availableBalance = balance?.formattedBalance || '0';
     const numericBalance = parseFloat(availableBalance);
     const numericAmount = parseFloat(amount) || 0;
-    const isValidAmount = numericAmount > 0 && numericAmount <= numericBalance;
+    const isBelowMinimum = numericAmount > 0 && numericAmount < MIN_STAKE_NASUN;
+    const isAboveBalance = numericAmount > numericBalance;
+    const isValidAmount = numericAmount >= MIN_STAKE_NASUN && numericAmount <= numericBalance;
     // Keep some for gas
     const maxStake = Math.max(0, numericBalance - 0.01).toFixed(4);
 
@@ -276,7 +281,10 @@ function StakeTab({ compact }: StakeTabProps) {
             min="0"
             className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          {numericAmount > numericBalance && (
+          {isBelowMinimum && (
+            <p className="text-xs text-red-400 mt-1">Minimum stake is {MIN_STAKE_NASUN} NASUN</p>
+          )}
+          {isAboveBalance && (
             <p className="text-xs text-red-400 mt-1">Insufficient balance</p>
           )}
         </div>
