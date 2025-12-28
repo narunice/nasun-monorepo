@@ -4,7 +4,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { TradePage } from '../pages';
+import { TradePage, PortfolioPage } from '../pages';
 
 export function AppRoutes() {
   return (
@@ -13,10 +13,14 @@ export function AppRoutes() {
       <Route path="/" element={<TradePage />} />
       <Route path="/trade" element={<TradePage />} />
 
+      {/* Portfolio */}
+      <Route path="/portfolio" element={<PortfolioPage />} />
+
       {/* 향후 추가 예정 */}
-      {/* <Route path="/predict" element={<PredictPage />} /> */}
+      {/* <Route path="/perps" element={<PerpsPage />} /> */}
       {/* <Route path="/lend" element={<LendPage />} /> */}
-      {/* <Route path="/portfolio" element={<PortfolioPage />} /> */}
+      {/* <Route path="/predict" element={<PredictPage />} /> */}
+      {/* <Route path="/stake" element={<StakePage />} /> */}
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
