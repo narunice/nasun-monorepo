@@ -12,6 +12,7 @@ import {
   shortenAddress,
   getAllTokens,
   getTokenByType,
+  getExplorerTxUrl,
   NATIVE_TOKEN,
 } from '@nasun/wallet';
 import { TokenSelector } from './TokenSelector';
@@ -94,7 +95,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
             <p className="text-sm text-white font-mono break-all mt-1">{lastResult.digest}</p>
             {/* Explorer link */}
             <a
-              href={`https://explorer.devnet.nasun.io/txblock/${lastResult.digest}`}
+              href={getExplorerTxUrl(lastResult.digest)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-block"
@@ -109,6 +110,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
                 clearResult();
                 setRecipient('');
                 setAmount('');
+                setShowConfirm(false);
               }}
               className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm transition-colors"
             >
@@ -150,17 +152,20 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
             </p>
           </div>
 
-          {/* Gas warning for non-native tokens */}
-          {selectedToken !== 'NASUN' && (
-            <div className="bg-zinc-700/50 rounded p-3 border border-zinc-600">
-              <p className="text-xs text-zinc-400">
-                Gas Fee: paid in <span className="text-blue-400">NASUN</span>
-              </p>
+          {/* Gas fee estimation */}
+          <div className="bg-zinc-700/50 rounded p-3 border border-zinc-600">
+            <p className="text-xs text-zinc-400">
+              Estimated Gas Fee
+            </p>
+            <p className="text-sm text-white mt-1">
+              ~0.001 - 0.005 <span className="text-blue-400">NASUN</span>
+            </p>
+            {selectedToken !== 'NASUN' && (
               <p className="text-xs text-zinc-500 mt-1">
-                Available: {getNativeBalance().toFixed(4)} NASUN
+                Available for gas: {getNativeBalance().toFixed(4)} NASUN
               </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {error && (
