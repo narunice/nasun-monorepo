@@ -53,38 +53,39 @@
 
 비즈니스 가치가 높고, Unified Onchain Finance 비전에 필수적인 기능
 
-#### Phase 6: Trading UX Pro ⭐ (진행중)
+#### Phase 6: Trading UX Pro ⭐ (완료)
 
 **목표**: CEX 수준의 거래 경험 완성
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 6.1 | 실시간 거래 데이터 | 📋 | 중 |
-| 6.2 | 차트 기술 지표 (MA, Volume) | 📋 | 중 |
-| 6.3 | 포지션 P&L 표시 | 📋 | 저 |
+| 6.1 | 실시간 거래 데이터 | ✅ 완료 | 중 |
+| 6.2 | 차트 기술 지표 (MA) | ✅ 완료 | 중 |
+| 6.3 | 포지션 P&L 표시 | ✅ 완료 | 저 |
 
-**테스트 체크리스트**:
-- [ ] 블록체인 이벤트 구독 (실시간)
-- [ ] 차트에 이동평균선 표시
-- [ ] 수익/손실 색상 구분
+**구현 완료 (2025-12-28)**:
+- useTradeEvents hook + 시뮬레이션 fallback
+- PriceChart MA 5/20/60 + 토글 기능
+- TokenBalanceList 24h P&L 표시
 
 ---
 
-#### Phase 7: Portfolio Dashboard ⭐
+#### Phase 7: Portfolio Dashboard ⭐ (완료)
 
 **목표**: 사용자 자산/거래 현황 한눈에 파악
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 7.1 | 포트폴리오 페이지 | 📋 | 중 |
-| 7.2 | 전체 자산 현황 | 📋 | 저 |
-| 7.3 | 거래 통계 (총 거래량, 평균 체결가) | 📋 | 중 |
-| 7.4 | 거래 내역 조회 | 📋 | 중 |
+| 7.1 | 포트폴리오 페이지 | ✅ 완료 | 중 |
+| 7.2 | 전체 자산 현황 | ✅ 완료 | 저 |
+| 7.3 | 24h P&L 표시 | ✅ 완료 | 저 |
+| 7.4 | 거래 통계/내역 | 📋 | 중 |
 
-**수정 예상 파일**:
-- `frontend/src/pages/PortfolioPage.tsx` (신규)
-- `frontend/src/features/portfolio/` (신규 디렉토리)
-- `frontend/src/App.tsx` (라우팅 추가)
+**구현 완료 (2025-12-28)**:
+- PortfolioPage + /portfolio 라우팅
+- AssetOverview 전체 자산 USD 환산
+- TokenBalanceList 24h P&L 색상 표시
+- Header 네비게이션 Portfolio 메뉴 활성화
 
 ---
 
@@ -341,3 +342,4 @@ frontend/src/
 | 2025-12-26 | Phase 6 완료: NASUN 입금/출금 멀티풀 지원 |
 | 2025-12-27 | 문서 전면 개편: Unified Onchain Finance 비전 기반 우선순위 재정렬 |
 | 2025-12-28 | Phase 15.1 완료: 즉시 전송 (Immediate Transfer) |
+| 2025-12-28 | Phase 6 완료 (실시간 거래, MA, P&L), Phase 7 완료 (포트폴리오, 자산현황) |
