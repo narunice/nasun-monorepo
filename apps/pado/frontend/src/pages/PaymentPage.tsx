@@ -5,10 +5,15 @@
 
 import { SendTransaction } from '@nasun/wallet-ui';
 import { useWallet } from '@nasun/wallet';
+import { useLocation } from 'react-router-dom';
 
 export function PaymentPage() {
   const { status } = useWallet();
+  const location = useLocation();
   const isConnected = status === 'unlocked';
+
+  // Use location state key to remount SendTransaction when nav clicked again
+  const stateKey = (location.state as { key?: number } | null)?.key || 'default';
 
   return (
     <div className="space-y-6">
@@ -20,7 +25,7 @@ export function PaymentPage() {
         </div>
       ) : (
         <div className="bg-gray-800 rounded-lg p-6">
-          <SendTransaction />
+          <SendTransaction key={stateKey} />
         </div>
       )}
     </div>
