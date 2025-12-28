@@ -309,3 +309,67 @@ export function getExplorerObjectUrl(objectId: string): string {
   const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
   return `${baseUrl}/object/${objectId}`;
 }
+
+// ============================================
+// Transaction Simulation Functions
+// ============================================
+
+import type { TransactionSimulation, BalanceChange } from '../types';
+import type { Transaction } from '@mysten/sui/transactions';
+
+/**
+ * Simulate a transaction to preview its effects
+ * Uses devInspectTransactionBlock to dry-run without signing
+ * @param transaction The transaction to simulate
+ * @param sender The sender address
+ */
+export async function simulateTransaction(
+  transaction: Transaction,
+  sender: string
+): Promise<TransactionSimulation> {
+  try {
+    const client = getSuiClient();
+
+    // Use devInspectTransactionBlock for dry-run simulation
+    const result = await client.devInspectTransactionBlock({
+      transactionBlock: transaction,
+      sender,
+    });
+
+    // Check if simulation succeeded
+    const success = result.effects?.status?.status === 'success';
+    const error = result.effects?.status?.error;
+
+    // Calculate gas estimate
+    const gasUsed = result.effects?.gasUsed;
+    const gasEstimate = gasUsed
+      ? (
+          BigInt(gasUsed.computationCost) +
+          BigInt(gasUsed.storageCost) -
+          BigInt(gasUsed.storageRebate)
+        ).toString()
+      : '0';
+
+    // Parse balance changes from effects
+    // Note: DevInspectResults doesn't include balanceChanges directly,
+    // so we provide an empty array. For actual balance changes,
+    // users should compare balances before/after or use dryRunTransactionBlock.
+    const balanceChanges: BalanceChange[] = [];
+
+    return {
+      success,
+      error,
+      gasEstimate,
+      balanceChanges,
+      effects: result.effects,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Simulation failed';
+    return {
+      success: false,
+      error: message,
+      gasEstimate: '0',
+      balanceChanges: [],
+    };
+  }
+}

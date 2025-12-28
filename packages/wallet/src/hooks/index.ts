@@ -32,3 +32,6 @@ export {
 export type { UseStakingOptions, UseStakingResult } from './useStaking';
 
 export { useStakeTransaction } from './useStakeTransaction';
+
+// Address book (Security Phase 2)
+export { useAddressBook, useAddressStatus } from './useAddressBook';

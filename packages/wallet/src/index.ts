@@ -78,6 +78,15 @@ export type {
 // Security defaults
 export { DEFAULT_SECURITY_SETTINGS } from './types';
 
+// Address Book (Security Phase 2)
+export { useAddressBook, useAddressStatus } from './hooks/useAddressBook';
+
+// Address Book Types
+export type { AddressBookEntry, AddressBook } from './types';
+
+// Transaction Simulation Types
+export type { TransactionSimulation, BalanceChange } from './types';
+
 // SUI Utilities
 export {
   configureWallet,
@@ -100,6 +109,8 @@ export {
   getExplorerTxUrl,
   getExplorerAddressUrl,
   getExplorerObjectUrl,
+  // Transaction simulation
+  simulateTransaction,
 } from './sui/client';
 
 export {
