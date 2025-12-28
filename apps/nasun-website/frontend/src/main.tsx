@@ -13,29 +13,19 @@ import { NasunProvider } from "./providers/NasunProvider";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
 import AuthProvider from "./providers/auth/AuthContext";
 import { validateEnv } from "./utils/envValidation";
-import { configureWallet, registerTokens } from "@nasun/wallet";
+import { configureWallet } from "@nasun/wallet";
 import { WalletProvider } from "@nasun/wallet-ui";
 import "./index.css";
 import App from "./App";
 
 // Configure Nasun Wallet
+// Note: NBTC and NUSDC are automatically registered by @nasun/wallet (DEVNET_TOKENS)
 configureWallet({
   rpcUrl: import.meta.env.VITE_NASUN_RPC_URL || "https://rpc.devnet.nasun.io",
   faucetUrl: import.meta.env.VITE_NASUN_FAUCET_URL || "https://faucet.devnet.nasun.io",
   networkName: "Nasun Devnet",
   sessionPersist: true, // Keep wallet unlocked during browser session
 });
-
-// Register tokens for multi-token support
-const nbtcType = import.meta.env.VITE_NBTC_TYPE;
-const nusdcType = import.meta.env.VITE_NUSDC_TYPE;
-
-if (nbtcType && nusdcType) {
-  registerTokens([
-    { symbol: "NBTC", name: "Nasun BTC", decimals: 8, type: nbtcType },
-    { symbol: "NUSDC", name: "Nasun USDC", decimals: 6, type: nusdcType },
-  ]);
-}
 
 // 1. QueryClient 인스턴스 생성 (가장 먼저 실행)
 const queryClient = new QueryClient({

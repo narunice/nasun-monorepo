@@ -5,11 +5,13 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useWallet, shortenAddress } from '@nasun/wallet';
+import { useWallet, useNFTs, shortenAddress, type NFTInfo } from '@nasun/wallet';
 import { MnemonicBackup } from './MnemonicBackup';
 import { ImportWallet } from './ImportWallet';
 import { ExportPrivateKey } from './ExportPrivateKey';
 import { SendTransaction } from './SendTransaction';
+import { NFTCard } from './NFTCard';
+import { NFTDetail } from './NFTDetail';
 
 type ViewMode =
   | 'main'
@@ -18,7 +20,10 @@ type ViewMode =
   | 'unlock'
   | 'import'         // Recovery screen
   | 'export'         // Export private key
-  | 'send';          // Token transfer
+  | 'send'           // Token transfer
+  | 'nfts';          // NFT gallery
+
+type TabMode = 'tokens' | 'nfts';
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -46,7 +51,12 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [mnemonic, setMnemonic] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabMode>('tokens');
+  const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch NFTs when unlocked (only active tab uses the data)
+  const { data: nfts = [], isLoading: nftsLoading } = useNFTs({ limit: 20 });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -339,70 +349,152 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
       );
     }
 
-    // Unlocked state - show wallet menu
+    // Unlocked state - show wallet menu with tabs
     if (status === 'unlocked' && account) {
       return (
-        <div className="py-1 min-w-[200px]">
+        <div className="min-w-[280px]">
+          {/* Address header */}
           <div className="px-3 py-2 border-b border-zinc-700">
             <p className="text-xs text-zinc-400">Connected Address</p>
             <p className="text-xs text-white font-mono break-all mt-1">{account.address}</p>
           </div>
 
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(account.address);
-              setShowDropdown(false);
-            }}
-            className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Copy Address
-          </button>
+          {/* Tab navigation */}
+          <div className="flex border-b border-zinc-700">
+            <button
+              onClick={() => setActiveTab('tokens')}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'tokens'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Tokens
+            </button>
+            <button
+              onClick={() => setActiveTab('nfts')}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'nfts'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
+            </button>
+          </div>
 
-          <button
-            onClick={() => setViewMode('send')}
-            className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-zinc-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-            Send Token
-          </button>
+          {/* Tokens tab content */}
+          {activeTab === 'tokens' && (
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(account.address);
+                  setShowDropdown(false);
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy Address
+              </button>
 
-          <button
-            onClick={() => setViewMode('export')}
-            className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-            Export Private Key
-          </button>
+              <button
+                onClick={() => setViewMode('send')}
+                className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send Token
+              </button>
 
-          <button
-            onClick={() => {
-              lockWallet();
-              setShowDropdown(false);
-            }}
-            className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Lock
-          </button>
+              <button
+                onClick={() => setViewMode('export')}
+                className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                Export Private Key
+              </button>
 
-          <button
-            onClick={handleDelete}
-            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-zinc-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete Wallet
-          </button>
+              <button
+                onClick={() => {
+                  lockWallet();
+                  setShowDropdown(false);
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Lock
+              </button>
+
+              <button
+                onClick={handleDelete}
+                className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Wallet
+              </button>
+            </div>
+          )}
+
+          {/* NFTs tab content */}
+          {activeTab === 'nfts' && (
+            <div className="p-3">
+              {nftsLoading ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-zinc-700 rounded animate-pulse" />
+                  ))}
+                </div>
+              ) : nfts.length === 0 ? (
+                <div className="text-center py-6">
+                  <svg
+                    className="w-10 h-10 text-zinc-600 mx-auto mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-sm text-zinc-400">No NFTs found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
+                  {nfts.map((nft) => (
+                    <NFTCard
+                      key={nft.objectId}
+                      nft={nft}
+                      compact
+                      onClick={setSelectedNFT}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* NFT Detail Modal */}
+          {selectedNFT && (
+            <NFTDetail
+              nft={selectedNFT}
+              onClose={() => setSelectedNFT(null)}
+              onTransferSuccess={() => {
+                setSelectedNFT(null);
+              }}
+            />
+          )}
         </div>
       );
     }
