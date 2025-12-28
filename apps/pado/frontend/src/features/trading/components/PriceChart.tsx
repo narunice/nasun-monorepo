@@ -288,21 +288,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     }
   }, [candleData, showMA]);
 
-  // Toggle MA visibility
-  useEffect(() => {
-    if (!ma5SeriesRef.current || !ma20SeriesRef.current) return;
-
-    if (showMA) {
-      const ma5Data = calculateMA(candleData, 5);
-      const ma20Data = calculateMA(candleData, 20);
-      ma5SeriesRef.current.setData(ma5Data);
-      ma20SeriesRef.current.setData(ma20Data);
-    } else {
-      ma5SeriesRef.current.setData([]);
-      ma20SeriesRef.current.setData([]);
-    }
-  }, [showMA, candleData]);
-
   // Real-time simulation
   useEffect(() => {
     if (!candleSeriesRef.current || !chartRef.current || !volumeSeriesRef.current) return;
