@@ -139,7 +139,10 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     if (result.success) {
       setSellModalPosition(null);
       setSellPrice('');
-      onSuccess?.();
+      // Delay refetch to allow blockchain state to update
+      setTimeout(() => {
+        onSuccess?.();
+      }, 1500);
     } else {
       setError(result.error || 'Failed to place sell order');
     }
@@ -149,7 +152,10 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     setError(null);
     const result = await claimWinnings(market.id, positionId);
     if (result.success) {
-      onSuccess?.();
+      // Delay refetch to allow blockchain state to update
+      setTimeout(() => {
+        onSuccess?.();
+      }, 1500);
     } else {
       setError(result.error || 'Failed to claim winnings');
     }

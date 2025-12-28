@@ -72,7 +72,10 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       if (result.success) {
         setSuccess(`Order placed! Tx: ${result.digest?.slice(0, 8)}...`);
         setAmount('');
-        onSuccess?.(result.digest!);
+        // Delay to allow blockchain state to update
+        setTimeout(() => {
+          onSuccess?.(result.digest!);
+        }, 1500);
       } else {
         setError(result.error || 'Failed to place order');
       }
@@ -96,7 +99,10 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     if (result.success) {
       setSuccess(`Minted ${amountNum} YES + ${amountNum} NO tokens! Tx: ${result.digest?.slice(0, 8)}...`);
       setAmount('');
-      onSuccess?.(result.digest!);
+      // Delay to allow blockchain state to update
+      setTimeout(() => {
+        onSuccess?.(result.digest!);
+      }, 1500);
     } else {
       setError(result.error || 'Failed to mint tokens');
     }
