@@ -82,12 +82,11 @@ describe('Crypto Utilities', () => {
       const { encryptPrivateKey } = await import('../core/crypto');
 
       const result1 = await encryptPrivateKey('suiprivkey1test', 'password');
-      const result2 = await encryptPrivateKey('suiprivkey1test', 'password');
 
-      // Salt and IV should be different each time
-      // Note: With mock, they use Math.random() so might differ
+      // Salt and IV should be defined
       expect(result1.salt).toBeDefined();
       expect(result1.iv).toBeDefined();
+      expect(result1.encrypted).toBeDefined();
     });
 
     it('should call crypto.subtle.decrypt', async () => {

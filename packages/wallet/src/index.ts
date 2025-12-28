@@ -38,6 +38,7 @@ export {
 } from './hooks/useBalance';
 
 export { useTransaction } from './hooks/useTransaction';
+export { useTokenTransaction } from './hooks/useTokenTransaction';
 
 // Multi-token hooks
 export {

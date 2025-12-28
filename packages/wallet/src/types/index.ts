@@ -60,10 +60,17 @@ export interface WalletActions {
 // Full wallet context
 export interface WalletContextType extends WalletState, WalletActions {}
 
-// Transaction request
+// Transaction request (native token only)
 export interface TransactionRequest {
   to: string;
   amount: string; // NASUN unit
+}
+
+// Token transaction request (any token)
+export interface TokenTransactionRequest {
+  to: string;
+  amount: string; // Display unit (will be converted based on decimals)
+  tokenType: string; // Coin type (e.g., '0x2::sui::SUI', '0xabc::nbtc::NBTC')
 }
 
 // Transaction result
@@ -72,6 +79,9 @@ export interface TransactionResult {
   status: 'success' | 'failure';
   gasUsed?: string;
   error?: string;
+  // For token transactions
+  tokenType?: string;
+  amount?: string;
 }
 
 // Faucet response
