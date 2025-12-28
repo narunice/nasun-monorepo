@@ -22,6 +22,9 @@ function TokenRow({ token }: TokenRowProps) {
     return num.toFixed(2);
   };
 
+  const isPositive = token.change24h >= 0;
+  const changeColor = token.change24h === 0 ? 'text-gray-400' : isPositive ? 'text-green-400' : 'text-red-400';
+
   return (
     <div className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
@@ -39,11 +42,18 @@ function TokenRow({ token }: TokenRowProps) {
         <div className="font-mono">
           {formatBalance(token.symbol, token.balance)} {token.symbol}
         </div>
-        <div className="text-sm text-gray-400">
-          ${token.value.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-sm text-gray-400">
+            ${token.value.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+          {token.change24h !== 0 && (
+            <span className={`text-xs ${changeColor}`}>
+              {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
+            </span>
+          )}
         </div>
       </div>
     </div>
