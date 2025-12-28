@@ -9,6 +9,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Trade', path: '/trade', enabled: true },
+  { label: 'Send', path: '/send', enabled: true },
   { label: 'Perps', path: '/perps', enabled: false },
   { label: 'Lend', path: '/lend', enabled: false },
   { label: 'Predict', path: '/predict', enabled: false },
