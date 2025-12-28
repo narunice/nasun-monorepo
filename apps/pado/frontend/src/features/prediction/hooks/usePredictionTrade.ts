@@ -15,6 +15,80 @@ import {
 } from '../transactions';
 import { NUSDC_TYPE, NUSDC_DECIMALS } from '../constants';
 
+/**
+ * Parse blockchain error into user-friendly message
+ */
+function parseTradeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+
+  // Object deleted (already used or transferred)
+  if (message.includes('"code":"deleted"') || message.includes('ObjectDeleted')) {
+    return 'This position has already been used or sold. Please refresh the page.';
+  }
+
+  // Object not found
+  if (message.includes('ObjectNotFound') || message.includes('not found')) {
+    return 'Position not found. It may have been transferred or used.';
+  }
+
+  // Insufficient gas
+  if (message.includes('InsufficientGas') || message.includes('insufficient gas')) {
+    return 'Not enough NASUN for transaction fees. Please get some from the faucet.';
+  }
+
+  // Insufficient balance
+  if (message.includes('InsufficientCoinBalance') || message.includes('Insufficient')) {
+    return 'Insufficient balance. Please check your NUSDC balance.';
+  }
+
+  // Market closed
+  if (message.includes('market_closed') || message.includes('EMarketClosed')) {
+    return 'This market is closed and no longer accepting orders.';
+  }
+
+  // Market not resolved
+  if (message.includes('not_resolved') || message.includes('EMarketNotResolved')) {
+    return 'Market has not been resolved yet. Please wait for the outcome.';
+  }
+
+  // Invalid price
+  if (message.includes('invalid_price') || message.includes('EInvalidPrice')) {
+    return 'Invalid price. Price must be between 0% and 100%.';
+  }
+
+  // Wrong outcome (trying to claim losing position)
+  if (message.includes('wrong_outcome') || message.includes('EWrongOutcome')) {
+    return 'This position did not win. Only winning positions can be claimed.';
+  }
+
+  // MoveAbort with code
+  const moveAbortMatch = message.match(/MoveAbort.*?(\d+)/);
+  if (moveAbortMatch) {
+    const code = parseInt(moveAbortMatch[1]);
+    switch (code) {
+      case 1: return 'Market not found or invalid.';
+      case 2: return 'Market is closed.';
+      case 3: return 'Market has not been resolved yet.';
+      case 4: return 'Invalid position for this market.';
+      case 5: return 'This position did not win.';
+      case 6: return 'Invalid price range.';
+      default: return `Transaction failed (code: ${code}). Please try again.`;
+    }
+  }
+
+  // Generic transaction failure
+  if (message.includes('Transaction failed')) {
+    return 'Transaction failed. Please try again.';
+  }
+
+  // Return original if no match (but truncate if too long)
+  if (message.length > 100) {
+    return 'Transaction failed. Please refresh and try again.';
+  }
+
+  return message;
+}
+
 interface TradeResult {
   success: boolean;
   digest?: string;
@@ -119,7 +193,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
 
       return { success: true, digest: result.digest };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to mint tokens';
+      const message = parseTradeError(err);
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -162,7 +236,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
 
       return { success: true, digest: result.digest };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to place order';
+      const message = parseTradeError(err);
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -196,7 +270,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
 
       return { success: true, digest: result.digest };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to place sell order';
+      const message = parseTradeError(err);
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -224,7 +298,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
 
       return { success: true, digest: result.digest };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to claim winnings';
+      const message = parseTradeError(err);
       setError(message);
       return { success: false, error: message };
     } finally {
