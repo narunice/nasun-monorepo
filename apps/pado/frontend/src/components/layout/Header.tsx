@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
 
 interface NavItem {
@@ -19,12 +19,22 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path: string) => {
     if (path === '/trade') {
       return location.pathname === '/' || location.pathname === '/trade';
     }
     return location.pathname === path;
+  };
+
+  // Handle nav click - refresh state if same route
+  const handleNavClick = (e: React.MouseEvent, path: string) => {
+    if (isActive(path)) {
+      e.preventDefault();
+      // Navigate with new state to trigger remount
+      navigate(path, { state: { key: Date.now() }, replace: true });
+    }
   };
 
   return (
@@ -43,6 +53,7 @@ export function Header() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => handleNavClick(e, item.path)}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   isActive(item.path)
                     ? 'text-blue-400 bg-blue-400/10'
