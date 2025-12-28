@@ -44,14 +44,14 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
         )}
       </div>
 
-      <div className="max-h-[300px] overflow-y-auto">
+      <div>
         {isLoading ? (
           <div className="p-4 text-center text-theme-text-muted text-sm">Loading...</div>
         ) : trades.length === 0 ? (
           <div className="p-4 text-center text-theme-text-muted text-sm">No trades yet</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="text-theme-text-secondary sticky top-0 bg-theme-bg-secondary">
+            <thead className="text-theme-text-secondary">
               <tr>
                 <th className="py-2 px-3 text-left font-medium">Price ({quoteSymbol})</th>
                 <th className="py-2 px-3 text-right font-medium">Amount ({baseSymbol})</th>
@@ -59,7 +59,7 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {trades.map((trade) => (
+              {trades.slice(0, 12).map((trade) => (
                 <tr
                   key={trade.id}
                   className="hover:bg-theme-bg-tertiary/30 transition-colors"
