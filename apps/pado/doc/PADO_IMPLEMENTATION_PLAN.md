@@ -51,7 +51,7 @@ Pado는 Nasun Network 위에서 동작하는 **비수탁형(non-custodial) 통�
 | Phase 5 | Native Token Support | ✅ 완료 | 2025-12-26 |
 | Phase 6 | Trading UX Pro | ✅ 완료 | 2025-12-28 |
 | Phase 7 | Portfolio Dashboard | ✅ 완료 | 2025-12-28 |
-| Phase 15 | Payments | 🔄 진행중 | - |
+| Phase 15 | Payments | ✅ 완료 | 2025-12-28 |
 
 ### 구현 완료 기능
 
@@ -102,6 +102,8 @@ Pado는 Nasun Network 위에서 동작하는 **비수탁형(non-custodial) 통�
 **Payments (Phase 15)**
 - ✅ 토큰 전송 페이지 (/send)
 - ✅ NASUN, NBTC, NUSDC 전송 지원
+- ✅ QR 코드 결제 (/send, Receive 탭)
+- ✅ PaymentQRCode 컴포넌트 (qrcode.react)
 
 ---
 
@@ -214,7 +216,7 @@ apps/pado/
 | Phase 12 | Lending & Borrowing | 📋 계획 | ⭐⭐⭐ |
 | Phase 13 | Staking | 📋 계획 | ⭐⭐ |
 | Phase 14 | Prediction Markets | 📋 계획 | ⭐⭐ |
-| Phase 15 | Payments | 🔄 진행중 | ⭐ |
+| Phase 15 | Payments | ✅ 완료 | ⭐ |
 | Phase 16 | Unified Margin | 📋 계획 | ⭐⭐⭐ |
 
 ---
@@ -327,3 +329,4 @@ VITE_POOL_NASUN_NUSDC=0x2662e8818e9f5f7c97362e50c33854c4b8e8af1a0cd0e53b1e9677cd
 | 2025-12-26 | Phase 2-5 완료: Frontend MVP + Multi-Pool + NASUN 지원 |
 | 2025-12-27 | 문서 전면 개편: Unified Onchain Finance 비전 반영, 현황 업데이트 |
 | 2025-12-28 | Phase 6, 7 완료, Phase 15.1 구현, UI 개선 |
+| 2025-12-28 | Phase 15 완료, wallet-ui 라이트 테마 지원 |
