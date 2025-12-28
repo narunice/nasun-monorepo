@@ -13,7 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Lend', path: '/lend', enabled: false },
   { label: 'Predict', path: '/predict', enabled: false },
   { label: 'Stake', path: '/stake', enabled: false },
-  { label: 'Portfolio', path: '/portfolio', enabled: false },
+  { label: 'Portfolio', path: '/portfolio', enabled: true },
 ];
 
 export function Header() {
