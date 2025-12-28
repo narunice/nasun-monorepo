@@ -20,9 +20,35 @@ export const NATIVE_TOKEN: TokenConfig = {
   type: '0x2::sui::SUI',
 };
 
+/**
+ * Devnet default tokens
+ * These tokens are registered by default for Nasun Devnet
+ * Token contract addresses are stable during devnet phase
+ */
+export const DEVNET_TOKENS: TokenConfig[] = [
+  {
+    symbol: 'NBTC',
+    name: 'Nasun BTC',
+    decimals: 8,
+    type: '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nbtc::NBTC',
+  },
+  {
+    symbol: 'NUSDC',
+    name: 'Nasun USDC',
+    decimals: 6,
+    type: '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nusdc::NUSDC',
+  },
+];
+
 // Register native token by default
 tokenRegistry.set(NATIVE_TOKEN.symbol, NATIVE_TOKEN);
 tokensByType.set(NATIVE_TOKEN.type, NATIVE_TOKEN);
+
+// Register devnet tokens by default
+for (const token of DEVNET_TOKENS) {
+  tokenRegistry.set(token.symbol, token);
+  tokensByType.set(token.type, token);
+}
 
 /**
  * Register a new token

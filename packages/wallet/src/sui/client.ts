@@ -17,6 +17,7 @@ let walletConfig: WalletConfig = {
   rpcUrl: 'https://rpc.devnet.nasun.io',
   faucetUrl: 'https://faucet.devnet.nasun.io',
   networkName: 'Nasun Devnet',
+  explorerUrl: 'https://explorer.devnet.nasun.io',
 };
 
 // Cached SUI client
@@ -276,4 +277,26 @@ export function clearSessionPassword(): void {
   } catch (error) {
     console.warn('Failed to clear session:', error);
   }
+}
+
+// ============================================
+// Explorer URL Functions
+// ============================================
+
+/**
+ * Get Explorer URL for a transaction
+ * @param digest Transaction digest
+ */
+export function getExplorerTxUrl(digest: string): string {
+  const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
+  return `${baseUrl}/tx/${digest}`;
+}
+
+/**
+ * Get Explorer URL for an address
+ * @param address Wallet address
+ */
+export function getExplorerAddressUrl(address: string): string {
+  const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
+  return `${baseUrl}/address/${address}`;
 }
