@@ -10,6 +10,13 @@ interface TokenRowProps {
   token: TokenValue;
 }
 
+// Token icon background colors
+const TOKEN_COLORS: Record<string, string> = {
+  NBTC: 'bg-orange-500',
+  NUSDC: 'bg-blue-500',
+  NASUN: 'bg-purple-500',
+};
+
 function TokenRow({ token }: TokenRowProps) {
   // Format balance based on token
   const formatBalance = (symbol: string, balance: string) => {
@@ -28,7 +35,7 @@ function TokenRow({ token }: TokenRowProps) {
   return (
     <div className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">
+        <div className={`w-8 h-8 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-gray-700'} flex items-center justify-center text-xs font-bold text-white`}>
           {token.symbol.charAt(0)}
         </div>
         <div>
