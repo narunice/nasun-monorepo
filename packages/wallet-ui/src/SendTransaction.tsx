@@ -9,13 +9,12 @@ import {
   useMultiBalance,
   useWallet,
   isValidAddress,
-  shortenAddress,
   getAllTokens,
   getTokenByType,
-  getExplorerTxUrl,
   NATIVE_TOKEN,
 } from '@nasun/wallet';
 import { TokenSelector } from './TokenSelector';
+import { CopyableAddress } from './CopyableAddress';
 
 interface SendTransactionProps {
   onClose?: () => void;
@@ -91,17 +90,14 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
           </div>
 
           <div className="w-full bg-zinc-700 rounded p-3">
-            <p className="text-xs text-zinc-400">Transaction Digest</p>
-            <p className="text-sm text-white font-mono break-all mt-1">{lastResult.digest}</p>
-            {/* Explorer link */}
-            <a
-              href={getExplorerTxUrl(lastResult.digest)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-block"
-            >
-              View in Explorer →
-            </a>
+            <CopyableAddress
+              value={lastResult.digest}
+              label="Transaction Digest"
+              shorten={12}
+              showCopy
+              showExplorer
+              explorerType="tx"
+            />
           </div>
 
           <div className="flex gap-2 w-full">
@@ -141,8 +137,15 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
 
         <div className="space-y-3 mb-4">
           <div className="bg-zinc-700 rounded p-3">
-            <p className="text-xs text-zinc-400">Recipient Address</p>
-            <p className="text-sm text-white font-mono mt-1">{shortenAddress(recipient, 8)}</p>
+            <CopyableAddress
+              value={recipient}
+              label="Recipient Address"
+              shorten={8}
+              showCopy
+              showExplorer
+              explorerType="address"
+              size="xs"
+            />
           </div>
 
           <div className="bg-zinc-700 rounded p-3">

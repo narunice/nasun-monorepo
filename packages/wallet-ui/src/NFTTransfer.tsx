@@ -10,8 +10,8 @@ import {
   isValidAddress,
   shortenAddress,
   getNFTImageUrl,
-  getExplorerTxUrl,
 } from '@nasun/wallet';
+import { CopyableAddress } from './CopyableAddress';
 
 interface NFTTransferProps {
   /** NFT to transfer */
@@ -68,18 +68,14 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
           </div>
 
           <div className="w-full bg-zinc-700 rounded p-3">
-            <p className="text-xs text-zinc-400">Transaction Digest</p>
-            <p className="text-sm text-white font-mono break-all mt-1">
-              {lastResult.digest}
-            </p>
-            <a
-              href={getExplorerTxUrl(lastResult.digest)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-block"
-            >
-              View in Explorer →
-            </a>
+            <CopyableAddress
+              value={lastResult.digest}
+              label="Transaction Digest"
+              shorten={12}
+              showCopy
+              showExplorer
+              explorerType="tx"
+            />
           </div>
 
           <button
@@ -136,10 +132,15 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
 
         {/* Recipient */}
         <div className="bg-zinc-800 rounded-lg p-3 mb-4">
-          <p className="text-xs text-zinc-400">Sending to</p>
-          <p className="text-sm text-white font-mono mt-1 break-all">
-            {shortenAddress(recipient, 10)}
-          </p>
+          <CopyableAddress
+            value={recipient}
+            label="Sending to"
+            shorten={10}
+            showCopy
+            showExplorer
+            explorerType="address"
+            size="xs"
+          />
         </div>
 
         {/* Gas Fee */}
