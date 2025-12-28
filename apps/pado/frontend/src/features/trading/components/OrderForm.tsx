@@ -220,7 +220,7 @@ export function OrderForm({
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
           >
             <svg
-              className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
