@@ -44,7 +44,7 @@ export function MarketSelector() {
         </div>
 
         {/* 마켓 라벨 */}
-        <span className="font-semibold text-white">{getMarketLabel()}</span>
+        <span className="font-semibold text-theme-text-primary">{getMarketLabel()}</span>
 
         {/* 드롭다운 화살표 */}
         <svg
@@ -68,8 +68,8 @@ export function MarketSelector() {
                 onClick={() => handleSelect(market.key)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   market.key === currentMarket
-                    ? 'bg-blue-600/20 text-blue-400'
-                    : 'hover:bg-theme-bg-tertiary text-white'
+                    ? 'bg-blue-600/20 text-blue-600 dark:text-blue-400'
+                    : 'hover:bg-theme-bg-tertiary text-theme-text-primary'
                 }`}
               >
                 {/* 토큰 아이콘 */}
