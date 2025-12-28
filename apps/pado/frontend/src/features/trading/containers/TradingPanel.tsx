@@ -102,7 +102,7 @@ export function TradingPanel() {
 
       {/* Connect wallet banner when not connected */}
       {!isConnected && (
-        <div className="mb-4 p-3 rounded text-sm bg-yellow-900/30 text-yellow-400 border border-yellow-700 text-center">
+        <div className="mb-4 p-3 rounded text-sm bg-blue-900/30 text-blue-400 border border-blue-700 text-center">
           Connect wallet to start trading
         </div>
       )}
