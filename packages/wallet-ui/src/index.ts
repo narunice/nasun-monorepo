@@ -40,3 +40,12 @@ export { NFTCard } from './NFTCard';
 export { NFTGallery } from './NFTGallery';
 export { NFTDetail } from './NFTDetail';
 export { NFTTransfer } from './NFTTransfer';
+
+// Staking components
+export { ValidatorList } from './ValidatorList';
+export { StakingStatus } from './StakingStatus';
+export { StakingPanel } from './StakingPanel';
+
+// Utility components
+export { CopyableAddress } from './CopyableAddress';
+export type { CopyableAddressProps } from './CopyableAddress';

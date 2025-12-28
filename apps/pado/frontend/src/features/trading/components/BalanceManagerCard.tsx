@@ -28,7 +28,7 @@ export function BalanceManagerCard({
 
   if (!balanceManagerId) {
     return (
-      <div className="mb-4 p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded">
+      <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded">
         <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
           BalanceManager required. Create one to place orders.
         </p>
@@ -44,7 +44,7 @@ export function BalanceManagerCard({
   }
 
   return (
-    <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded">
+    <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded">
       <p className="text-xs text-green-700 dark:text-green-400 font-mono truncate mb-1">
         BM: {balanceManagerId.slice(0, 16)}...
       </p>
