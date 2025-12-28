@@ -17,6 +17,10 @@
 5. [적용 시나리오](#적용-시나리오)
 6. [주의사항](#주의사항)
 7. [관련 문서](#관련-문서)
+8. [추가 이슈: Footer 타이밍 문제](#추가-이슈-footer-타이밍-문제-2025-12-28-추가) ⭐ NEW
+9. [새로운 비디오 Hero 페이지 추가 체크리스트](#새로운-비디오-hero-페이지-추가-체크리스트) ⭐ NEW
+10. [현재 비디오 Hero 페이지 목록](#현재-비디오-hero-페이지-목록)
+11. [디버깅 팁](#디버깅-팁)
 
 ---
 
@@ -491,6 +495,281 @@ const containerClassName = !isReady
 
 ---
 
+## 추가 이슈: Footer 타이밍 문제 (2025-12-28 추가)
+
+### 문제 현상
+
+다른 페이지에서 비디오 hero 페이지로 이동할 때:
+1. 이전 페이지의 `isPageReady = true` 상태가 유지됨
+2. Footer가 잠깐 보였다가 사라짐
+3. 그 후에 비디오 로딩 스피너가 표시됨
+
+### 원인
+
+React의 `useEffect`는 **비동기**로 실행됩니다:
+- 경로 변경 → 렌더링 → useEffect 실행 (타이밍 갭 존재)
+- 이 갭 동안 이전 상태(`isPageReady = true`)가 유지됨
+
+### 해결: useLayoutEffect 사용
+
+`useLayoutEffect`는 브라우저가 화면을 그리기 **전**에 동기적으로 실행됩니다.
+
+**파일**: `frontend/src/contexts/PageLoadingContext.tsx`
+
+```tsx
+import { useLayoutEffect } from "react";
+
+// useEffect 대신 useLayoutEffect 사용
+useLayoutEffect(() => {
+  const isPageWithVideoHero =
+    location.pathname === "/" ||
+    location.pathname === "/home" ||
+    location.pathname === "/protocol/network" ||
+    location.pathname.startsWith("/finance/pado") ||  // 하위 경로 포함
+    location.pathname === "/wave1/battalion-nft";
+
+  if (isPageWithVideoHero) {
+    clearTimer();
+    setIsPageReady(false);  // 즉시 Footer 숨김
+  } else {
+    // 다른 페이지: 1000ms 후 Footer 표시
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      setIsPageReady(true);
+    }, 1000);
+  }
+}, [location.pathname, clearTimer]);
+```
+
+### 해결: requestAnimationFrame 이중 호출
+
+비디오 로딩 완료 후 Footer를 표시할 때, DOM이 완전히 렌더링될 때까지 대기:
+
+```tsx
+const handleVideoReady = useCallback(async () => {
+  setIsVideoReady(true);
+
+  // 섹션 프리로드
+  await Promise.all([
+    import("../../components/app/finance/pado/PadoOverviewSection"),
+    // ...
+  ]);
+
+  // ✅ requestAnimationFrame 이중 호출로 DOM 렌더링 완료 보장
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      setIsPageReady(true);  // Footer 표시
+    });
+  });
+}, [setIsPageReady]);
+```
+
+**이유**: 첫 번째 rAF는 현재 프레임 완료를, 두 번째 rAF는 다음 프레임 시작을 기다립니다.
+
+---
+
+## 새로운 비디오 Hero 페이지 추가 체크리스트
+
+### Step 1: PageLoadingContext에 경로 추가
+
+**파일**: `frontend/src/contexts/PageLoadingContext.tsx`
+
+```tsx
+const isPageWithVideoHero =
+  location.pathname === "/" ||
+  location.pathname === "/home" ||
+  location.pathname === "/protocol/network" ||
+  location.pathname.startsWith("/finance/pado") ||
+  location.pathname === "/wave1/battalion-nft" ||
+  location.pathname === "/your/new/path";  // ← 추가
+```
+
+> 하위 경로가 있는 경우 `startsWith()` 사용
+
+### Step 2: 페이지 컴포넌트 구현
+
+```tsx
+import { Suspense, lazy, useState, useCallback, useEffect } from "react";
+import { usePageLoading } from "../../contexts/PageLoadingContext";
+
+const MyHeroSection = lazy(() => import("../../components/app/MyHeroSection"));
+const ContentSection = lazy(() => import("../../components/app/ContentSection"));
+
+export default function MyPage() {
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const { setIsPageReady } = usePageLoading();
+
+  // 1. 페이지 마운트 시 Footer 숨김
+  useEffect(() => {
+    setIsPageReady(false);
+  }, [setIsPageReady]);
+
+  // 2. 비디오 로딩 완료 핸들러
+  const handleVideoReady = useCallback(async () => {
+    setIsVideoReady(true);
+
+    // 3. 다음 섹션 프리로드
+    await Promise.all([
+      import("../../components/app/ContentSection"),
+    ]);
+
+    // 4. requestAnimationFrame 이중 호출
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsPageReady(true);
+      });
+    });
+  }, [setIsPageReady]);
+
+  // 5. 비디오 로딩 중 스크롤 방지
+  useEffect(() => {
+    document.body.style.overflow = isVideoReady ? "auto" : "hidden";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isVideoReady]);
+
+  return (
+    <ErrorBoundary fallback={<p>Failed to load</p>}>
+      <Suspense fallback={null}>
+        {/* Hero Section - CSS 기반 위치 제어 */}
+        <MyHeroSection
+          onVideoReady={handleVideoReady}
+          isVideoReady={isVideoReady}
+        />
+
+        {/* 6. 조건부 렌더링으로 레이아웃 시프트 방지 */}
+        {isVideoReady && (
+          <>
+            <ContentSection />
+          </>
+        )}
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+### Step 3: Hero Section 컴포넌트 구현
+
+```tsx
+interface MyHeroSectionProps {
+  onVideoReady?: () => void;
+  isVideoReady?: boolean;
+}
+
+function MyHeroSection({ onVideoReady, isVideoReady }: MyHeroSectionProps) {
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  // 1. onCanPlay - 비디오 재생 가능
+  const handleVideoCanPlay = () => {
+    setIsVideoLoaded(true);
+    onVideoReady?.();
+  };
+
+  // 2. onPlaying - 비디오 재생 시작 (fallback)
+  const handleVideoPlaying = () => {
+    setIsVideoPlaying(true);
+    // onCanPlay가 실패해도 onPlaying에서 처리
+    if (!isVideoLoaded) {
+      setIsVideoLoaded(true);
+      onVideoReady?.();
+    }
+  };
+
+  // 3. Timeout fallback - 5초 후 강제 표시
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isVideoLoaded) {
+        setIsVideoLoaded(true);
+        setIsVideoPlaying(true);
+        onVideoReady?.();
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [isVideoLoaded, onVideoReady]);
+
+  // 4. CSS 기반 위치 제어
+  const containerClassName = !isVideoReady
+    ? "fixed inset-0 z-40 bg-nasun-black h-screen"
+    : "relative !p-0";
+
+  return (
+    <SectionLayout className={containerClassName}>
+      {/* 로딩 스피너 */}
+      {!isVideoPlaying && (
+        <div className="absolute inset-0 bg-nasun-black flex items-center justify-center z-20">
+          <InlineLoading message="Loading..." size="lg" />
+        </div>
+      )}
+
+      {/* 비디오 - poster 이미지 필수 */}
+      <video
+        poster={posterImage}
+        autoPlay
+        loop
+        muted
+        playsInline
+        onCanPlay={handleVideoCanPlay}
+        onPlaying={handleVideoPlaying}
+        className={`w-full h-full ${!isVideoPlaying ? "opacity-0" : "opacity-100"} transition-opacity duration-500`}
+      >
+        <source src={videoSource} type="video/mp4" />
+      </video>
+    </SectionLayout>
+  );
+}
+
+export default React.memo(MyHeroSection);
+```
+
+### Step 4: 포스터 이미지 생성 (권장)
+
+비디오 첫 프레임을 포스터로 추출:
+
+```bash
+# 데스크톱 포스터
+ffmpeg -i your-video.mp4 -vframes 1 -q:v 2 your-video-poster.jpg
+
+# 모바일 포스터 (별도 비디오가 있는 경우)
+ffmpeg -i your-video-mobile.mp4 -vframes 1 -q:v 2 your-video-poster-mobile.jpg
+```
+
+---
+
+## 현재 비디오 Hero 페이지 목록
+
+| 페이지 | 경로 | 체크 방식 | 파일 |
+|--------|------|-----------|------|
+| HomePage | `/`, `/home` | 정확히 일치 | `pages/HomePage.tsx` |
+| NetworkPage | `/protocol/network` | 정확히 일치 | `pages/protocol/NetworkPage.tsx` |
+| PadoPage | `/finance/pado/*` | startsWith | `pages/finance/PadoPage.tsx` |
+| BattalionNftPage | `/wave1/battalion-nft` | 정확히 일치 | `pages/wave1/BattalionNftPage.tsx` |
+
+---
+
+## 디버깅 팁
+
+### 문제: Footer가 잠깐 보임
+- PageLoadingContext에 경로가 등록되어 있는지 확인
+- 하위 경로인 경우 `startsWith()` 사용했는지 확인
+
+### 문제: 비디오가 재생되지만 스크롤 안 됨
+- `handleVideoPlaying()`에서 `onVideoReady()` 호출하는지 확인
+- Timeout fallback이 있는지 확인
+
+### 문제: 레이아웃 시프트 (섹션이 깜빡임)
+- `{isVideoReady && (<>...</>)}` 조건부 렌더링 적용했는지 확인
+- 프리로드 import가 있는지 확인
+
+### 문제: 두 개의 로딩 스피너
+- `Suspense fallback={null}` 설정했는지 확인
+- PageLoading 컴포넌트가 검은 배경인지 확인
+
+---
+
 **작성일**: 2025-11-08
-**버전**: 1.0.0
+**최종 수정**: 2025-12-28 (Footer 타이밍 문제 해결, 체크리스트 추가)
+**버전**: 1.1.0
 **다음 업데이트**: 추가 시나리오 발견 시

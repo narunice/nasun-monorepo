@@ -3,6 +3,8 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "../../../ui/InlineLoading";
 import nsnNetworkVideo from "../../../../assets/videos/Nsn-Network-Section-rf29.mp4";
 import nsnNetworkVideoMobile from "../../../../assets/videos/Nsn-Network-Section-Mobile-rf27.mp4";
+import networkPosterDesktop from "../../../../assets/images/network-hero-poster-desktop.jpg";
+import networkPosterMobile from "../../../../assets/images/network-hero-poster-mobile.jpg";
 
 interface NetworkHeroSectionProps {
   onVideoReady?: () => void;
@@ -46,11 +48,16 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
   };
 
   // 비디오 playing 핸들러 - 비디오 재생 시작
+  // onPlaying이 발생하면 비디오가 재생 가능한 상태이므로 isVideoReady도 true로 설정
   const handleVideoPlaying = () => {
     setIsVideoPlaying(true);
+    if (!isVideoLoaded) {
+      setIsVideoLoaded(true);
+      onVideoReady?.();
+    }
   };
 
-  // Timeout fallback - 10초 후에도 비디오가 로드되지 않으면 강제로 표시
+  // Timeout fallback - 5초 후에도 비디오가 로드되지 않으면 강제로 표시
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!isVideoLoaded) {
@@ -58,7 +65,7 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 10000);
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
@@ -81,6 +88,7 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
       {/* 배경 동영상 - 반응형 (모바일/데스크탑) */}
       <video
         key={isMobile ? "mobile" : "desktop"}
+        poster={isMobile ? networkPosterMobile : networkPosterDesktop}
         autoPlay
         loop
         muted

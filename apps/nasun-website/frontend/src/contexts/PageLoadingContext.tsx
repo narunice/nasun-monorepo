@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useRef, useCallback } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 
 interface PageLoadingContextType {
@@ -23,13 +23,17 @@ export const PageLoadingProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   // 경로 변경 감지 - 비디오 hero 페이지로 이동 시 즉시 Footer 숨김
-  useEffect(() => {
+  // useLayoutEffect를 사용하여 브라우저가 화면을 그리기 전에 동기적으로 실행
+  // 이렇게 하면 이전 페이지의 isPageReady=true 상태가 잠시 보이는 현상 방지
+  useLayoutEffect(() => {
     // 비디오 hero 섹션이 있는 페이지들: Footer를 비디오 로딩 완료 후에만 표시
+    // /finance/pado는 하위 경로가 있으므로 startsWith 사용 (main, spot-perps, prediction 등)
     const isPageWithVideoHero =
       location.pathname === "/" ||
       location.pathname === "/home" ||
       location.pathname === "/protocol/network" ||
-      location.pathname === "/finance/pado";
+      location.pathname.startsWith("/finance/pado") ||
+      location.pathname === "/wave1/battalion-nft";
 
     if (isPageWithVideoHero) {
       // 비디오 hero 페이지: 즉시 false로 설정, 타이머 중단
