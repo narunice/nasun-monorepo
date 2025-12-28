@@ -1,12 +1,13 @@
 [package]
-name = "pado_tokens"
+name = "pado_prediction"
 edition = "2024.beta"
 version = "0.0.1"
-published-at = "0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976"
 
 [dependencies]
+pado_tokens = { local = "../contracts" }
 
 [addresses]
+prediction = "0xc585b0b99bc4552de542a465c4b42575fa9ee2f1d56895260efc4a7c65baea89"
 pado = "0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976"
 
 [environments]
