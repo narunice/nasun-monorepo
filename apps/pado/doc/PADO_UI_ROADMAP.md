@@ -412,11 +412,45 @@ function MyChart() {
 }
 ```
 
+### 기능적 색상 (Success/Error)
+
+기능적 색상(녹색/빨간색)은 라이트 모드에서 더 진한 색을 사용해야 가독성이 높아집니다.
+
+**텍스트 (가격, 상태 표시)**:
+```tsx
+// ❌ 잘못된 예 - 라이트모드에서 가독성 떨어짐
+<span className="text-green-400">+1.5%</span>
+<span className="text-red-400">-2.3%</span>
+
+// ✅ 올바른 예 - 라이트모드에서 진한 색, 다크모드에서 밝은 색
+<span className="text-green-600 dark:text-green-400">+1.5%</span>
+<span className="text-red-600 dark:text-red-400">-2.3%</span>
+```
+
+**배경 (버튼, 카드)**:
+```tsx
+// ❌ 잘못된 예 - 라이트모드에서 안 보임
+<div className="bg-blue-900/30 border-blue-700">
+<button className="bg-green-700/50 text-green-300">
+
+// ✅ 올바른 예 - 라이트모드용 밝은 배경 추가
+<div className="bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700">
+<button className="bg-green-200 dark:bg-green-700/50 text-green-700 dark:text-green-300">
+```
+
+**일반 버튼 (Primary)**:
+```tsx
+// Primary 버튼은 테마 불변 (양쪽 모두 동일)
+<button className="bg-blue-600 hover:bg-blue-700 text-white">
+```
+
 ### 색상 사용 시 주의사항
 
-1. **기능적 색상은 테마 불변**: `text-green-400` (성공), `text-red-400` (에러), `bg-blue-600` (primary 버튼)
-2. **fallback 색상**: 토큰별 색상 외에는 `bg-theme-bg-tertiary` 사용
-3. **투명도 사용 가능**: `border-theme-border/50` (50% 투명도)
+1. **기능적 텍스트 색상**: 라이트모드에서 `*-600`, 다크모드에서 `*-400` 사용
+2. **기능적 배경 색상**: 라이트모드에서 `*-100~200`, 다크모드에서 `*-900/30` 사용
+3. **Primary 버튼**: `bg-blue-600 text-white`는 테마 불변
+4. **fallback 색상**: 토큰별 색상 외에는 `bg-theme-bg-tertiary` 사용
+5. **투명도 사용 가능**: `border-theme-border/50` (50% 투명도)
 
 ---
 
@@ -433,3 +467,4 @@ function MyChart() {
 | 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환, 시스템 테마 감지 |
 | 2025-12-28 | Phase 15.3 완료: QR 코드 결제, Send/Receive 탭 |
 | 2025-12-28 | 테마 디자인 컨벤션 추가: CSS 변수, Tailwind 매핑, 사용 예시 |
+| 2025-12-28 | 라이트모드 가독성 개선: 기능적 색상(Success/Error) 컨벤션 추가 |
