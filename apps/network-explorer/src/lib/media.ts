@@ -48,25 +48,83 @@ export function getMediaType(url: string): 'image' | 'video' | 'unknown' {
 /**
  * Display 객체에서 표시할 미디어 URL 결정 (우선순위 적용)
  * 우선순위: animation_url → image_url → url
+ * Display 표준 미지원 NFT의 경우 content.fields에서 폴백
  * @param display - Sui Object Display 데이터
+ * @param content - Object content (content.fields 폴백용)
  * @returns 표시할 미디어 URL
  */
 export function getDisplayMediaUrl(
-  display: Record<string, string | undefined> | null | undefined
+  display: Record<string, string | undefined> | null | undefined,
+  content?: { fields?: Record<string, unknown> } | null
 ): string | undefined {
-  if (!display) return undefined;
-  return display.animation_url || display.image_url || display.url;
+  // 1. Display 표준 우선
+  if (display) {
+    const url = display.animation_url || display.image_url || display.url;
+    if (url) return url;
+  }
+
+  // 2. content.fields 폴백 (Display<T> 미등록 NFT 지원)
+  if (content?.fields) {
+    const fields = content.fields;
+    return (
+      (fields.image_url as string) ||
+      (fields.url as string) ||
+      (fields.image as string) ||
+      (fields.animation_url as string)
+    );
+  }
+
+  return undefined;
+}
+
+/**
+ * NFT 이름 추출 (Display 또는 content.fields)
+ * @param display - Sui Object Display 데이터
+ * @param content - Object content (폴백용)
+ * @returns NFT 이름
+ */
+export function getNFTName(
+  display: Record<string, string | undefined> | null | undefined,
+  content?: { fields?: Record<string, unknown> } | null
+): string | undefined {
+  return display?.name || (content?.fields?.name as string);
+}
+
+/**
+ * NFT 설명 추출 (Display 또는 content.fields)
+ * @param display - Sui Object Display 데이터
+ * @param content - Object content (폴백용)
+ * @returns NFT 설명
+ */
+export function getNFTDescription(
+  display: Record<string, string | undefined> | null | undefined,
+  content?: { fields?: Record<string, unknown> } | null
+): string | undefined {
+  return display?.description || (content?.fields?.description as string);
 }
 
 /**
  * Display 데이터가 있는 NFT인지 판단
  * image_url 또는 animation_url이 있으면 NFT로 간주
+ * Display 표준 미지원 NFT의 경우 content.fields에서 폴백
  * @param display - Sui Object Display 데이터
+ * @param content - Object content (폴백용)
  * @returns NFT 여부
  */
 export function isNFTObject(
-  display: Record<string, string | undefined> | null | undefined
+  display: Record<string, string | undefined> | null | undefined,
+  content?: { fields?: Record<string, unknown> } | null
 ): boolean {
-  if (!display) return false;
-  return !!(display.image_url || display.animation_url);
+  // Display 표준 체크
+  if (display?.image_url || display?.animation_url) {
+    return true;
+  }
+
+  // content.fields 폴백 체크
+  if (content?.fields) {
+    const fields = content.fields;
+    return !!(fields.image_url || fields.url || fields.image || fields.animation_url);
+  }
+
+  return false;
 }
