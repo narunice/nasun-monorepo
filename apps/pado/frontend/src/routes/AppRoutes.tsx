@@ -4,7 +4,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { TradePage, PortfolioPage } from '../pages';
+import { TradePage, PortfolioPage, PaymentPage } from '../pages';
 
 export function AppRoutes() {
   return (
@@ -15,6 +15,9 @@ export function AppRoutes() {
 
       {/* Portfolio */}
       <Route path="/portfolio" element={<PortfolioPage />} />
+
+      {/* Send (Payment) */}
+      <Route path="/send" element={<PaymentPage />} />
 
       {/* 향후 추가 예정 */}
       {/* <Route path="/perps" element={<PerpsPage />} /> */}
