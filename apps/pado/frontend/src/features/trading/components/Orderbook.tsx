@@ -66,11 +66,11 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
         {/* Bids */}
         <div>
           <h3 className="text-sm font-medium text-green-600 dark:text-green-400 mb-2">Bids (Buy)</h3>
-          <div className="bg-theme-bg-tertiary rounded p-3 h-64 overflow-y-auto">
+          <div className="bg-theme-bg-tertiary rounded p-2 sm:p-3 h-48 sm:h-64 overflow-y-auto">
             <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
               <span>Price</span>
               <span>Amount</span>
@@ -113,7 +113,7 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
         {/* Asks */}
         <div>
           <h3 className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">Asks (Sell)</h3>
-          <div className="bg-theme-bg-tertiary rounded p-3 h-64 overflow-y-auto">
+          <div className="bg-theme-bg-tertiary rounded p-2 sm:p-3 h-48 sm:h-64 overflow-y-auto">
             <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
               <span>Price</span>
               <span>Amount</span>
