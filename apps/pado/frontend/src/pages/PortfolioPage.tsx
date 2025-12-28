@@ -1,9 +1,14 @@
 /**
  * PortfolioPage
- * Portfolio dashboard showing total assets and token balances
+ * Portfolio dashboard showing total assets, token balances, and trade history
  */
 
-import { AssetOverview, TokenBalanceList } from '../features/portfolio/components';
+import {
+  AssetOverview,
+  TokenBalanceList,
+  TradeStats,
+  RecentTrades,
+} from '../features/portfolio/components';
 
 export function PortfolioPage() {
   return (
@@ -15,6 +20,12 @@ export function PortfolioPage() {
 
       {/* Token Balance List */}
       <TokenBalanceList />
+
+      {/* Trading Statistics */}
+      <TradeStats />
+
+      {/* Recent Trade History */}
+      <RecentTrades />
     </div>
   );
 }
