@@ -12,19 +12,22 @@ import { useWalletAccount } from '@nasun/wallet';
 
 export interface UseFaucetResult {
   isNasunLoading: boolean;
-  isTokenLoading: boolean;
+  isNbtcLoading: boolean;
+  isNusdcLoading: boolean;
   handleNasunFaucet: () => Promise<void>;
-  handleTokenFaucet: () => Promise<void>;
+  handleNbtcFaucet: () => Promise<void>;
+  handleNusdcFaucet: () => Promise<void>;
 }
 
 export function useFaucet(): UseFaucetResult {
   const account = useWalletAccount();
   const { showToast } = useToast();
-  const { requestTokens, isLoading: isTradeLoading } = useTrading();
+  const { requestNbtc, requestNusdc, isLoading: isTradeLoading } = useTrading();
   const queryClient = useQueryClient();
 
   const [isNasunLoading, setIsNasunLoading] = useState(false);
-  const [isTokenLoading, setIsTokenLoading] = useState(false);
+  const [isNbtcLoading, setIsNbtcLoading] = useState(false);
+  const [isNusdcLoading, setIsNusdcLoading] = useState(false);
 
   // NASUN Faucet 요청
   const handleNasunFaucet = useCallback(async () => {
@@ -52,34 +55,60 @@ export function useFaucet(): UseFaucetResult {
     }
   }, [account?.address, showToast, queryClient]);
 
-  // Token Faucet 요청 (NBTC + NUSDC)
-  const handleTokenFaucet = useCallback(async () => {
-    setIsTokenLoading(true);
+  // NBTC Faucet 요청
+  const handleNbtcFaucet = useCallback(async () => {
+    setIsNbtcLoading(true);
     try {
-      const result = await requestTokens();
+      const result = await requestNbtc();
       if (result.success) {
-        showToast('Tokens received! 1 NBTC + 100,000 NUSDC', 'success');
+        showToast('1 NBTC received!', 'success');
         // 잔고 갱신 (2초 후)
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['balances'] });
         }, 2000);
       } else {
-        showToast(`Token faucet error: ${result.error}`, 'error');
+        showToast(`NBTC faucet error: ${result.error}`, 'error');
       }
     } catch (error) {
       showToast(
-        `Token faucet error: ${error instanceof Error ? error.message : 'Unknown'}`,
+        `NBTC faucet error: ${error instanceof Error ? error.message : 'Unknown'}`,
         'error',
       );
     } finally {
-      setIsTokenLoading(false);
+      setIsNbtcLoading(false);
     }
-  }, [requestTokens, showToast, queryClient]);
+  }, [requestNbtc, showToast, queryClient]);
+
+  // NUSDC Faucet 요청
+  const handleNusdcFaucet = useCallback(async () => {
+    setIsNusdcLoading(true);
+    try {
+      const result = await requestNusdc();
+      if (result.success) {
+        showToast('100,000 NUSDC received!', 'success');
+        // 잔고 갱신 (2초 후)
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['balances'] });
+        }, 2000);
+      } else {
+        showToast(`NUSDC faucet error: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      showToast(
+        `NUSDC faucet error: ${error instanceof Error ? error.message : 'Unknown'}`,
+        'error',
+      );
+    } finally {
+      setIsNusdcLoading(false);
+    }
+  }, [requestNusdc, showToast, queryClient]);
 
   return {
     isNasunLoading,
-    isTokenLoading: isTokenLoading || isTradeLoading,
+    isNbtcLoading: isNbtcLoading || isTradeLoading,
+    isNusdcLoading: isNusdcLoading || isTradeLoading,
     handleNasunFaucet,
-    handleTokenFaucet,
+    handleNbtcFaucet,
+    handleNusdcFaucet,
   };
 }

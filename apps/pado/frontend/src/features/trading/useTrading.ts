@@ -14,6 +14,8 @@ import {
   buildCreateBalanceManager,
   buildDeposit,
   buildRequestTokens,
+  buildRequestNbtc,
+  buildRequestNusdc,
   buildDepositAll,
   buildWithdrawAll,
 } from './transactions';
@@ -42,6 +44,8 @@ interface UseTrading {
 
   // Token Faucet
   requestTokens: () => Promise<TradeResult>;
+  requestNbtc: () => Promise<TradeResult>;
+  requestNusdc: () => Promise<TradeResult>;
 
   // Deposit
   depositAllTokens: () => Promise<TradeResult>;
@@ -410,6 +414,22 @@ export function useTrading(): UseTrading {
   }, [executeTransaction]);
 
   /**
+   * NBTC만 요청 (1 NBTC)
+   */
+  const requestNbtc = useCallback(async (): Promise<TradeResult> => {
+    const tx = buildRequestNbtc();
+    return executeTransaction(tx);
+  }, [executeTransaction]);
+
+  /**
+   * NUSDC만 요청 (100,000 NUSDC)
+   */
+  const requestNusdc = useCallback(async (): Promise<TradeResult> => {
+    const tx = buildRequestNusdc();
+    return executeTransaction(tx);
+  }, [executeTransaction]);
+
+  /**
    * 현재 풀의 Base/Quote 토큰을 BalanceManager에 입금
    * NASUN (네이티브 토큰)의 경우 가스비를 위해 0.1 NASUN 남김
    */
@@ -476,6 +496,8 @@ export function useTrading(): UseTrading {
     placeBuyOrder,
     placeSellOrder,
     requestTokens,
+    requestNbtc,
+    requestNusdc,
     depositAllTokens,
     withdrawAllTokens,
   };
