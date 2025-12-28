@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme CSS Variables */
+:root {
+  /* Light Theme (default in :root, but we use dark as default via .dark class) */
+  --color-bg-primary: #faf7f4;
+  --color-bg-secondary: #f0ede9;
+  --color-bg-tertiary: #e5e2de;
+  --color-text-primary: #191615;
+  --color-text-secondary: #5a5754;
+  --color-text-muted: #8a8784;
+  --color-border: #d4d1cd;
+  --color-accent: #448BBB;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+}
+
+.dark {
+  /* Dark Theme */
+  --color-bg-primary: #111111;
+  --color-bg-secondary: #1f1f1f;
+  --color-bg-tertiary: #2d2d2d;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1a1;
+  --color-text-muted: #6b6b6b;
+  --color-border: #3d3d3d;
+  --color-accent: #448BBB;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+}
+
 :root {
   font-family: 'Rubik', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
@@ -16,6 +47,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Toast animations */
