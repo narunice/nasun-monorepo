@@ -50,6 +50,9 @@
 - ✅ 다크/라이트 테마 전환 (Phase 8.2)
 - ✅ 시스템 테마 감지 (prefers-color-scheme)
 - ✅ localStorage 테마 저장
+- ✅ QR 코드 결제 (Phase 15.3)
+- ✅ PaymentQRCode 컴포넌트
+- ✅ Send/Receive 탭 UI
 
 ### 미구현 ❌
 
@@ -302,3 +305,4 @@ frontend/src/
 | 2025-12-27 | 문서 전면 개편: 현재 구현 현황 반영, UI 로드맵 재정렬 |
 | 2025-12-28 | Phase 6, 7 완료 반영, Spinner 컴포넌트 추가, 토큰 전송 페이지 추가 |
 | 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환, 시스템 테마 감지 |
+| 2025-12-28 | Phase 15.3 완료: QR 코드 결제, Send/Receive 탭 |
