@@ -4,30 +4,85 @@
  */
 
 import { useParams, Link } from 'react-router-dom';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   useMarket,
+  useMarketOrderbook,
   usePredictionPositions,
   MarketHeader,
   OutcomeOrderbook,
   OutcomeOrderForm,
   PositionList,
   generateSimulatedOrderbook,
-  calculateProbability,
 } from '../features/prediction';
 import { Spinner } from '../components/common';
 
 export function PredictMarketPage() {
   const { marketId } = useParams<{ marketId: string }>();
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
+  const { yesOrderbook: realYesOrderbook, noOrderbook: realNoOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);
   const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
 
-  // Refetch both market and positions on trade success
+  // Use real orderbook data, with simulated fallback for empty orderbooks
+  // NOTE: All hooks must be called before any conditional returns
+  const yesOrderbook = useMemo(() => {
+    const hasRealData = realYesOrderbook.bids.length > 0 || realYesOrderbook.asks.length > 0;
+    if (hasRealData) {
+      // Use real data, optionally merge with simulated for visual depth
+      const basePrice = realYesOrderbook.asks.length > 0
+        ? realYesOrderbook.asks.sort((a, b) => a.price - b.price)[0].price
+        : 5000;
+      const simulated = generateSimulatedOrderbook(basePrice);
+      return {
+        bids: [...realYesOrderbook.bids, ...simulated.bids.filter(s =>
+          !realYesOrderbook.bids.some(r => r.price === s.price)
+        )].sort((a, b) => b.price - a.price).slice(0, 10),
+        asks: [...realYesOrderbook.asks, ...simulated.asks.filter(s =>
+          !realYesOrderbook.asks.some(r => r.price === s.price)
+        )].sort((a, b) => a.price - b.price).slice(0, 10),
+      };
+    }
+    // Fallback to pure simulation at 50%
+    return generateSimulatedOrderbook(5000);
+  }, [realYesOrderbook]);
+
+  const noOrderbook = useMemo(() => {
+    const hasRealData = realNoOrderbook.bids.length > 0 || realNoOrderbook.asks.length > 0;
+    if (hasRealData) {
+      const basePrice = realNoOrderbook.asks.length > 0
+        ? realNoOrderbook.asks.sort((a, b) => a.price - b.price)[0].price
+        : 5000;
+      const simulated = generateSimulatedOrderbook(basePrice);
+      return {
+        bids: [...realNoOrderbook.bids, ...simulated.bids.filter(s =>
+          !realNoOrderbook.bids.some(r => r.price === s.price)
+        )].sort((a, b) => b.price - a.price).slice(0, 10),
+        asks: [...realNoOrderbook.asks, ...simulated.asks.filter(s =>
+          !realNoOrderbook.asks.some(r => r.price === s.price)
+        )].sort((a, b) => a.price - b.price).slice(0, 10),
+      };
+    }
+    return generateSimulatedOrderbook(5000);
+  }, [realNoOrderbook]);
+
+  // Refetch all data on trade success
   const handleRefetch = useCallback(() => {
     refetchMarket();
+    refetchOrderbook();
     refetchPositions();
-  }, [refetchMarket, refetchPositions]);
+  }, [refetchMarket, refetchOrderbook, refetchPositions]);
 
+  const handlePriceClick = useCallback((isYes: boolean, price: number) => {
+    console.log(`Clicked ${isYes ? 'YES' : 'NO'} price: ${price / 100}%`);
+    // TODO: Auto-fill order form with clicked price
+  }, []);
+
+  const handleTradeSuccess = useCallback((digest: string) => {
+    console.log('Trade successful:', digest);
+    handleRefetch();
+  }, [handleRefetch]);
+
+  // Conditional returns after all hooks
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -50,25 +105,6 @@ export function PredictMarketPage() {
     );
   }
 
-  // Calculate probability for simulated orderbook
-  const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
-  const yesBasePrice = yesProbability * 100; // Convert to basis points (50% -> 5000)
-  const noBasePrice = (100 - yesProbability) * 100;
-
-  // Generate simulated orderbooks
-  const yesOrderbook = generateSimulatedOrderbook(yesBasePrice);
-  const noOrderbook = generateSimulatedOrderbook(noBasePrice);
-
-  const handlePriceClick = (isYes: boolean, price: number) => {
-    console.log(`Clicked ${isYes ? 'YES' : 'NO'} price: ${price / 100}%`);
-    // TODO: Auto-fill order form with clicked price
-  };
-
-  const handleTradeSuccess = (digest: string) => {
-    console.log('Trade successful:', digest);
-    handleRefetch();
-  };
-
   return (
     <div className="space-y-6">
       {/* Back Button */}
@@ -83,7 +119,7 @@ export function PredictMarketPage() {
       </Link>
 
       {/* Market Header */}
-      <MarketHeader market={market} />
+      <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} />
 
       {/* Trading Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

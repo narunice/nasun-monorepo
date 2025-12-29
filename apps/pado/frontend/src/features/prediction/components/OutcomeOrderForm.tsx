@@ -195,9 +195,9 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder={defaultPrice.toFixed(1)}
-            min="0.1"
-            max="99.9"
-            step="0.1"
+            min="0.01"
+            max="99.99"
+            step="0.01"
             disabled={isDisabled}
             className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
