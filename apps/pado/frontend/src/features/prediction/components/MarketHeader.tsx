@@ -15,7 +15,7 @@ interface MarketHeaderProps {
 
 export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeaderProps) {
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining(market.closeTime));
-  const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
+  const { yesProbability, noProbability, hasRealOrders } = calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
     noOrderbook ?? null
   );
@@ -66,6 +66,13 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
           <div className="text-sm text-red-600 dark:text-red-400">NO</div>
         </div>
       </div>
+
+      {/* No orders indicator */}
+      {!hasRealOrders && (
+        <div className="text-center text-sm text-yellow-600 dark:text-yellow-400 mb-4">
+          No orders yet — showing default 50/50
+        </div>
+      )}
 
       {/* Probability Bar */}
       <div className="mb-4">
