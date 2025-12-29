@@ -2,10 +2,11 @@
  * WalletItem Component
  *
  * Individual wallet card for displaying connection status.
- * Shows connected address or connect button.
+ * Shows connected address with disconnect button, or connect button.
  */
 
 import React from "react";
+import { Button } from "../../ui/button";
 
 interface WalletItemProps {
   icon: React.ReactNode;
@@ -14,8 +15,11 @@ interface WalletItemProps {
   isConnected: boolean;
   description: string;
   onConnect?: () => void;
+  onDisconnect?: () => void;
   renderConnect?: React.ReactNode;
+  renderDisconnect?: React.ReactNode;
   isConnecting?: boolean;
+  isDisconnecting?: boolean;
 }
 
 /**
@@ -33,8 +37,11 @@ export const WalletItem: React.FC<WalletItemProps> = ({
   isConnected,
   description,
   onConnect,
+  onDisconnect,
   renderConnect,
+  renderDisconnect,
   isConnecting = false,
+  isDisconnecting = false,
 }) => {
   return (
     <div className="bg-nasun-c6/30 rounded-lg p-4 border border-nasun-c5/20">
@@ -48,34 +55,53 @@ export const WalletItem: React.FC<WalletItemProps> = ({
               <span className="text-green-400">✓</span>
             )}
           </div>
-          <p className="text-nasun-white/50">{description}</p>
+          <p className="text-nasun-white/50 text-sm">{description}</p>
         </div>
       </div>
 
       {/* Connection Status / Address */}
       <div className="mt-3">
         {isConnected && address ? (
-          <div className="flex items-center justify-between">
-            <code className="text-nasun-white/80">
-              {truncateAddress(address)}
-            </code>
-            <button
-              className="text-nasun-c4 hover:underline"
-              onClick={() => navigator.clipboard.writeText(address)}
-            >
-              Copy
-            </button>
+          <div className="space-y-2">
+            {/* Address with Copy */}
+            <div className="flex items-center justify-between">
+              <code className="text-nasun-white/80 text-sm">
+                {truncateAddress(address)}
+              </code>
+              <button
+                className="text-nasun-c4 hover:underline text-sm"
+                onClick={() => navigator.clipboard.writeText(address)}
+              >
+                Copy
+              </button>
+            </div>
+            {/* Disconnect button */}
+            {renderDisconnect ? (
+              <div className="w-full">{renderDisconnect}</div>
+            ) : onDisconnect ? (
+              <Button
+                variant="filledOutlineScarlet"
+                size="xs"
+                onClick={onDisconnect}
+                disabled={isDisconnecting}
+                className="w-full"
+              >
+                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            ) : null}
           </div>
         ) : renderConnect ? (
           <div className="w-full">{renderConnect}</div>
         ) : onConnect ? (
-          <button
+          <Button
+            variant="filledOutlineC4"
+            size="sm"
             onClick={onConnect}
             disabled={isConnecting}
-            className="w-full py-2 px-4 bg-nasun-c4 hover:bg-nasun-c4/80 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full"
           >
             {isConnecting ? "Connecting..." : "Connect"}
-          </button>
+          </Button>
         ) : (
           <p className="text-nasun-white/50">Not connected</p>
         )}
