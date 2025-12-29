@@ -31,5 +31,8 @@ export const CLOCK_ID = '0x6';
 
 // Test markets (for development)
 export const TEST_MARKETS = [
-  '0x739cf64abf2ef089027fbf20bd6b5b8ad1ccfa1236a6d8f2aa7e73c4fb1439e8',
+  '0x739cf64abf2ef089027fbf20bd6b5b8ad1ccfa1236a6d8f2aa7e73c4fb1439e8', // BTC $150k
+  '0x9fe47195b3d8898175ceb5d6b84f4274b74cf6ac4f6bbc3ba7724ee8a55f2bc8', // TikTok Ban (Politics)
+  '0x4ec3822a8644372da192260e4e6784c31c39f63f7025aff1190850153067267b', // HUNTR/X Grammy (Entertainment)
+  '0x48d89468066cc41b353094345c38c2e92d7377c3658ab968f27a52d49fe72721', // Russia-Ukraine Ceasefire (Geopolitics)
 ];
