@@ -4,7 +4,7 @@
 
 import { getSuiClient } from '../../../lib/sui-client';
 import { MARKET_TYPE, TEST_MARKETS } from '../constants';
-import type { PredictionMarket } from '../types';
+import type { PredictionMarket, OrderbookLevel } from '../types';
 import { parseMarketStatus } from '../types';
 
 /**
@@ -102,6 +102,134 @@ function parseOutcomeField(field: unknown): boolean | undefined {
     return Boolean(optionObj.vec[0]);
   }
   return undefined;
+}
+
+/**
+ * Fetch market orderbook from on-chain Table data
+ * Note: This fetches the asks (sell orders) which determine market price
+ */
+export async function fetchMarketOrderbook(
+  marketId: string,
+  isYes: boolean
+): Promise<{ bids: OrderbookLevel[]; asks: OrderbookLevel[] }> {
+  const client = getSuiClient();
+
+  try {
+    // Fetch dynamic fields from the market's orderbook tables
+    const tableFieldName = isYes ? 'yes_asks' : 'no_asks';
+    const bidTableFieldName = isYes ? 'yes_bids' : 'no_bids';
+
+    // First, get the market object to find table IDs
+    const marketObj = await client.getObject({
+      id: marketId,
+      options: { showContent: true },
+    });
+
+    if (!marketObj.data?.content || marketObj.data.content.dataType !== 'moveObject') {
+      return { bids: [], asks: [] };
+    }
+
+    const fields = marketObj.data.content.fields as Record<string, unknown>;
+
+    // Extract table IDs
+    const asksTable = fields[tableFieldName] as { fields?: { id?: { id?: string } } } | undefined;
+    const bidsTable = fields[bidTableFieldName] as { fields?: { id?: { id?: string } } } | undefined;
+
+    const asksTableId = asksTable?.fields?.id?.id;
+    const bidsTableId = bidsTable?.fields?.id?.id;
+
+    const asks: OrderbookLevel[] = [];
+    const bids: OrderbookLevel[] = [];
+
+    // Fetch asks (sell orders)
+    if (asksTableId) {
+      const dynamicFields = await client.getDynamicFields({
+        parentId: asksTableId,
+        limit: 50,
+      });
+
+      for (const field of dynamicFields.data) {
+        const fieldObj = await client.getDynamicFieldObject({
+          parentId: asksTableId,
+          name: field.name,
+        });
+
+        if (fieldObj.data?.content && fieldObj.data.content.dataType === 'moveObject') {
+          const value = fieldObj.data.content.fields as Record<string, unknown>;
+          const price = Number(field.name.value);
+          const orders = value.value as Array<Record<string, unknown>> | undefined;
+
+          if (orders && orders.length > 0) {
+            const totalAmount = orders.reduce(
+              (sum, order) => sum + BigInt(String(order.amount || 0)),
+              0n
+            );
+            asks.push({
+              price,
+              amount: totalAmount,
+              orders: orders.map((o) => ({
+                orderId: Number(o.order_id || 0),
+                owner: String(o.owner || ''),
+                price,
+                amount: BigInt(String(o.amount || 0)),
+                timestamp: Number(o.timestamp || 0),
+              })),
+              isSimulated: false,
+            });
+          }
+        }
+      }
+    }
+
+    // Fetch bids (buy orders)
+    if (bidsTableId) {
+      const dynamicFields = await client.getDynamicFields({
+        parentId: bidsTableId,
+        limit: 50,
+      });
+
+      for (const field of dynamicFields.data) {
+        const fieldObj = await client.getDynamicFieldObject({
+          parentId: bidsTableId,
+          name: field.name,
+        });
+
+        if (fieldObj.data?.content && fieldObj.data.content.dataType === 'moveObject') {
+          const value = fieldObj.data.content.fields as Record<string, unknown>;
+          const price = Number(field.name.value);
+          const orders = value.value as Array<Record<string, unknown>> | undefined;
+
+          if (orders && orders.length > 0) {
+            const totalAmount = orders.reduce(
+              (sum, order) => sum + BigInt(String(order.amount || 0)),
+              0n
+            );
+            bids.push({
+              price,
+              amount: totalAmount,
+              orders: orders.map((o) => ({
+                orderId: Number(o.order_id || 0),
+                owner: String(o.owner || ''),
+                price,
+                amount: BigInt(String(o.amount || 0)),
+                timestamp: Number(o.timestamp || 0),
+              })),
+              isSimulated: false,
+            });
+          }
+        }
+      }
+    }
+
+    // Sort: bids descending, asks ascending
+    bids.sort((a, b) => b.price - a.price);
+    asks.sort((a, b) => a.price - b.price);
+
+    return { bids, asks };
+  } catch (error) {
+    console.error('Failed to fetch orderbook:', error);
+    return { bids: [], asks: [] };
+  }
 }
 
 /**
