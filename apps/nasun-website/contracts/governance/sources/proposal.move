@@ -10,22 +10,36 @@ use governance::dashboard::AdminCap;
 const EDuplicateVote: u64 = 0;
 const EProposalDelisted: u64 = 1;
 const EProposalExpired: u64 = 2;
+const EInvalidVotingPower: u64 = 3;
 
 public enum ProposalStatus has store, drop {
     Active,
     Delisted,
 }
 
+/// Vote record storing the voter's choice and voting power
+public struct VoteRecord has store, drop {
+    vote_yes: bool,
+    voting_power: u64,
+}
+
 public struct Proposal has key {
     id: UID,
     title: String,
     description: String,
-    voted_yes_count: u64,
-    voted_no_count: u64,
+    /// Total voting power for Yes votes
+    total_power_yes: u64,
+    /// Total voting power for No votes
+    total_power_no: u64,
+    /// Number of Yes voters (for reference)
+    vote_count_yes: u64,
+    /// Number of No voters (for reference)
+    vote_count_no: u64,
     expiration: u64,
     creator: address,
     status: ProposalStatus,
-    voters: Table<address, bool>,
+    /// Voter address -> VoteRecord (choice + power)
+    voters: Table<address, VoteRecord>,
 }
 
 public struct VoteProofNFT has key {
@@ -40,28 +54,41 @@ public struct VoteRegistered has copy, drop {
     proposal_id: ID,
     voter: address,
     vote_yes: bool,
+    voting_power: u64,
 }
 
 // === Public Functions ===
 
-public fun vote(self: &mut Proposal, vote_yes: bool, clock: &Clock, ctx: &mut TxContext) {
+/// Vote on a proposal with voting power
+/// voting_power: The voter's voting power (calculated by backend from leaderboard, NFT, tokens)
+public fun vote(
+    self: &mut Proposal,
+    vote_yes: bool,
+    voting_power: u64,
+    clock: &Clock,
+    ctx: &mut TxContext
+) {
     assert!(self.expiration > clock.timestamp_ms(), EProposalExpired);
     assert!(self.is_active(), EProposalDelisted);
     assert!(!self.voters.contains(ctx.sender()), EDuplicateVote);
+    assert!(voting_power > 0, EInvalidVotingPower);
 
     if (vote_yes) {
-        self.voted_yes_count = self.voted_yes_count + 1;
+        self.total_power_yes = self.total_power_yes + voting_power;
+        self.vote_count_yes = self.vote_count_yes + 1;
     } else {
-        self.voted_no_count = self.voted_no_count + 1;
+        self.total_power_no = self.total_power_no + voting_power;
+        self.vote_count_no = self.vote_count_no + 1;
     };
 
-    self.voters.add(ctx.sender(), vote_yes);
+    self.voters.add(ctx.sender(), VoteRecord { vote_yes, voting_power });
     issue_vote_proof(self, vote_yes, ctx);
 
     event::emit(VoteRegistered {
         proposal_id: self.id.to_inner(),
         voter: ctx.sender(),
-        vote_yes
+        vote_yes,
+        voting_power
     });
 }
 
@@ -92,12 +119,20 @@ public fun description(self: &Proposal): String {
     self.description
 }
 
-public fun voted_yes_count(self: &Proposal): u64 {
-    self.voted_yes_count
+public fun total_power_yes(self: &Proposal): u64 {
+    self.total_power_yes
 }
 
-public fun voted_no_count(self: &Proposal): u64 {
-    self.voted_no_count
+public fun total_power_no(self: &Proposal): u64 {
+    self.total_power_no
+}
+
+public fun vote_count_yes(self: &Proposal): u64 {
+    self.vote_count_yes
+}
+
+public fun vote_count_no(self: &Proposal): u64 {
+    self.vote_count_no
 }
 
 public fun expiration(self: &Proposal): u64 {
@@ -108,7 +143,7 @@ public fun creator(self: &Proposal): address {
     self.creator
 }
 
-public fun voters(self: &Proposal): &Table<address, bool> {
+public fun voters(self: &Proposal): &Table<address, VoteRecord> {
     &self.voters
 }
 
@@ -125,8 +160,10 @@ public fun create(
         id: object::new(ctx),
         title,
         description,
-        voted_yes_count: 0,
-        voted_no_count: 0,
+        total_power_yes: 0,
+        total_power_no: 0,
+        vote_count_yes: 0,
+        vote_count_no: 0,
         expiration,
         creator: ctx.sender(),
         status: ProposalStatus::Active,
@@ -144,8 +181,10 @@ public fun remove(self: Proposal, _admin_cap: &AdminCap) {
         id,
         title: _,
         description: _,
-        voted_yes_count: _,
-        voted_no_count: _,
+        total_power_yes: _,
+        total_power_no: _,
+        vote_count_yes: _,
+        vote_count_no: _,
         expiration: _,
         status: _,
         voters,

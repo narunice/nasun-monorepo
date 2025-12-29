@@ -125,8 +125,9 @@ function parseProposal(data: SuiObjectData): Proposal | null {
     title: fields.title,
     description: fields.description,
     status: fields.status,
-    yesVotes: Number(fields.voted_yes_count).toString(),
-    noVotes: Number(fields.voted_no_count).toString(),
+    // Use total voting power instead of vote count
+    yesVotes: (Number(fields.total_power_yes) || 0).toString(),
+    noVotes: (Number(fields.total_power_no) || 0).toString(),
     expiration: Number(fields.expiration),
     creator: fields.creator,
     voters: fields.voters?.fields?.id?.id || "",

@@ -19,6 +19,7 @@ export class CommonStack extends cdk.Stack {
   public readonly priceApiGateway: apigw.LambdaRestApi;
   public readonly priceUpdaterLambda: lambda.Function;
   public readonly userProfilesTable: dynamodb.ITable;
+  public readonly cumulativeLeaderboardTable: dynamodb.ITable;
 
   constructor(scope: Construct, id: string, props?: CommonStackProps) {
     super(scope, id, props);
@@ -26,6 +27,11 @@ export class CommonStack extends cdk.Stack {
     // ========================================
     // DynamoDB 테이블 참조 (기존 테이블 사용)
     // ========================================
+    this.cumulativeLeaderboardTable = dynamodb.Table.fromTableName(
+      this,
+      "CumulativeLeaderboardTable",
+      "nasun-leaderboard-data"
+    );
     const cryptoBackupPricesTable = dynamodb.Table.fromTableName(
       this,
       "CryptoBackupPricesTable",
@@ -235,6 +241,40 @@ export class CommonStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Authorization"]
+      },
+    });
+
+    // 2-4. Governance API
+    const governanceApiLambda = new lambda.Function(this, "GovernanceApiLambda", {
+      functionName: "nasun-common-governance-api",
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: "index.handler",
+      code: lambda.Code.fromAsset("lambda-src/governance-api/dist"),
+      environment: {
+        LEADERBOARD_TABLE: this.cumulativeLeaderboardTable.tableName,
+        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY || "",
+        NASUN_NFT_CONTRACT_ADDRESS: process.env.NASUN_NFT_CONTRACT_ADDRESS || "",
+        NFT_BONUS: process.env.NFT_BONUS || "100",
+        LEADERBOARD_WEIGHT: process.env.LEADERBOARD_WEIGHT || "1",
+        TOKEN_WEIGHT: process.env.TOKEN_WEIGHT || "0",
+      },
+      logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
+        logGroupName: "/aws/lambda/nasun-common-governance-api",
+        removalPolicy: cdk.RemovalPolicy.DESTROY
+      }),
+    });
+    this.cumulativeLeaderboardTable.grantReadData(governanceApiLambda);
+    this.userProfilesTable.grantReadData(governanceApiLambda);
+
+    const governanceApi = new apigw.LambdaRestApi(this, "GovernanceApi", {
+      handler: governanceApiLambda,
+      restApiName: "NASUN Governance API (Common)",
+      proxy: true,
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowMethods: ["GET", "POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
     });
@@ -552,6 +592,11 @@ export class CommonStack extends cdk.Stack {
     new cdk.CfnOutput(this, "WalletApiUrl", {
       value: walletApi.url,
       description: "Wallet API URL (CommonStack)",
+    });
+
+    new cdk.CfnOutput(this, "GovernanceApiUrl", {
+      value: governanceApi.url,
+      description: "Governance API URL (CommonStack)",
     });
 
     new cdk.CfnOutput(this, "GetAwsCredentialsApiUrl", {

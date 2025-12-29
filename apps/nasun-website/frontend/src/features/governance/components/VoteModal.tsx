@@ -1,4 +1,4 @@
-import { FC, useRef, useState } from "react";
+import { FC, useRef, useState, useEffect } from "react";
 import { Proposal } from "../types/voting";
 import { useWallet, getSuiClient } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
@@ -7,6 +7,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui";
 import { useTranslation } from "react-i18next";
+import { useVotingPower } from "../hooks/useVotingPower";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -26,6 +27,32 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const [isPending, setIsPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // Voting Power state
+  const {
+    votingPower,
+    nftVerification,
+    isLoading: isLoadingPower,
+    verifyNftOwnership,
+    clearNftVerification,
+  } = useVotingPower();
+  const [showNftOption, setShowNftOption] = useState(false);
+
+  // Check if MetaMask is available
+  const hasMetaMask = typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
+
+  // Calculate total voting power
+  const baseVotingPower = votingPower?.totalVotingPower || 1;
+  const nftBonus = nftVerification?.nftBonus || 0;
+  const totalVotingPower = baseVotingPower + nftBonus;
+
+  // Reset NFT verification when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      clearNftVerification();
+      setShowNftOption(false);
+    }
+  }, [isOpen, clearNftVerification]);
+
   if (!isOpen) return null;
 
   const showToast = (message: string) => (toastId.current = toast(message, { autoClose: false }));
@@ -33,6 +60,16 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const dismissToast = (message: string) => {
     toast.dismiss(toastId.current);
     toast(message, { autoClose: 2400 });
+  };
+
+  // Handle NFT verification
+  const handleNftVerification = async () => {
+    const result = await verifyNftOwnership(proposal.id.id);
+    if (result?.hasNasunNft) {
+      toast.success("NFT verified! +100 Voting Power");
+    } else if (result) {
+      toast.info("No Nasun NFT found in your wallet");
+    }
   };
 
   const vote = async (voteYes: boolean) => {
@@ -43,8 +80,14 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
     }
 
     const tx = new Transaction();
+    // Pass voting power as the third argument (before clock)
     tx.moveCall({
-      arguments: [tx.object(proposal.id.id), tx.pure.bool(voteYes), tx.object("0x6")],
+      arguments: [
+        tx.object(proposal.id.id),
+        tx.pure.bool(voteYes),
+        tx.pure.u64(totalVotingPower),
+        tx.object("0x6"),
+      ],
       target: `${packageId}::proposal::vote`,
     });
 
@@ -91,9 +134,19 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
       setIsSuccess(true);
       dismissToast(t("vote.success"));
       onVote(voteYes);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Vote transaction failed:", error);
-      dismissToast(t("vote.error"));
+      // Parse error message
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("MoveAbort") && errorMessage.includes(", 0)")) {
+        dismissToast("You have already voted on this proposal");
+      } else if (errorMessage.includes("MoveAbort") && errorMessage.includes(", 2)")) {
+        dismissToast("This proposal has expired");
+      } else if (errorMessage.includes("MoveAbort") && errorMessage.includes(", 3)")) {
+        dismissToast("Invalid voting power");
+      } else {
+        dismissToast(t("vote.error"));
+      }
     } finally {
       setIsPending(false);
     }
@@ -119,10 +172,77 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
         <p className="mb-6 text-nasun-white/85">{proposal.description}</p>
         <div className="flex flex-col gap-4">
+          {/* Current Vote Counts */}
           <div className="flex justify-between text-sm text-nasun-white/70">
             <span>👍 {t("proposal.yes_votes")}: {proposal.yesVotes}</span>
             <span>👎 {t("proposal.no_votes")}: {proposal.noVotes}</span>
           </div>
+
+          {/* Voting Power Display */}
+          {isConnected && !hasVoted && !isSuccess && (
+            <div className="bg-nasun-black/30 rounded-lg p-4 border border-nasun-c5/30">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-nasun-white/70">Your Voting Power</span>
+                <span className="text-lg font-semibold text-nasun-c3">
+                  {totalVotingPower}
+                </span>
+              </div>
+
+              {/* Voting Power Breakdown */}
+              <div className="text-xs text-nasun-white/50 space-y-1">
+                <div className="flex justify-between">
+                  <span>Base Power</span>
+                  <span>{baseVotingPower}</span>
+                </div>
+                {nftBonus > 0 && (
+                  <div className="flex justify-between text-nasun-c3">
+                    <span>NFT Bonus</span>
+                    <span>+{nftBonus}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* NFT Verification Option */}
+              {hasMetaMask && !nftVerification && (
+                <div className="mt-3 pt-3 border-t border-nasun-c5/20">
+                  <button
+                    onClick={handleNftVerification}
+                    disabled={isLoadingPower}
+                    className="w-full text-sm text-nasun-c4 hover:text-nasun-c3 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isLoadingPower ? (
+                      "Verifying..."
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                        Add NFT Voting Power (MetaMask)
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* NFT Verified Badge */}
+              {nftVerification?.hasNasunNft && (
+                <div className="mt-3 pt-3 border-t border-nasun-c5/20">
+                  <div className="flex items-center gap-2 text-sm text-green-400">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    NFT Verified
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Vote Buttons */}
           <div className="flex justify-between gap-4">
             {isConnected ? (
               <>
