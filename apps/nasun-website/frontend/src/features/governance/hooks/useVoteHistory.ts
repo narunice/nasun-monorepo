@@ -7,9 +7,19 @@ import { SuiObjectData } from "@mysten/sui/client";
 interface VoteNftFields {
   proposal_id: string;
   url: string;
-  vote_yes: boolean;
   voting_power: string | number;
   id: { id: string };
+}
+
+/**
+ * Determine vote direction from VoteProofNFT URL
+ * The Move contract encodes vote direction in the NFT image URL:
+ * - vote_yes_nft.jpg = Yes vote
+ * - vote_no_nft.jpg = No vote
+ */
+function isVoteYesFromUrl(url: string | undefined): boolean {
+  if (!url) return true; // fallback
+  return url.includes("vote_yes");
 }
 
 /**
@@ -125,7 +135,7 @@ export function useVoteHistory(limit = 5) {
       return {
         proposalId: voteFields.proposal_id,
         proposalTitle: proposalFields.title,
-        voteYes: voteFields.vote_yes ?? true,
+        voteYes: isVoteYesFromUrl(voteFields.url),
         votingPower: Number(voteFields.voting_power) || 1,
         timestamp: Number(proposalFields.expiration) - 7 * 24 * 60 * 60 * 1000, // Approximate vote time
         proposalStatus,

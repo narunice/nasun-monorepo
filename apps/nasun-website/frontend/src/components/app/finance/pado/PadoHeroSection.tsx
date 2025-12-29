@@ -48,11 +48,16 @@ function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
   };
 
   // 비디오 playing 핸들러 - 비디오 재생 시작
+  // onPlaying이 발생하면 비디오가 재생 가능한 상태이므로 isVideoReady도 true로 설정
   const handleVideoPlaying = () => {
     setIsVideoPlaying(true);
+    if (!isVideoLoaded) {
+      setIsVideoLoaded(true);
+      onVideoReady?.();
+    }
   };
 
-  // Timeout fallback - 10초 후에도 비디오가 로드되지 않으면 강제로 표시
+  // Timeout fallback - 5초 후에도 비디오가 로드되지 않으면 강제로 표시
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!isVideoLoaded) {
@@ -60,7 +65,7 @@ function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 10000);
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);

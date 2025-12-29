@@ -56,7 +56,7 @@ export const Table = ({ variant = "default", children, className = "" }: TablePr
 
   return (
     <div className={`rounded-xl overflow-hidden border ${styles.border} ${styles.bg}`.trim()}>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-none">
         <table className={`w-full ${className}`.trim()}>{children}</table>
       </div>
     </div>

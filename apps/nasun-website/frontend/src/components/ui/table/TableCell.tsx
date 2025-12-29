@@ -6,6 +6,7 @@ export interface TableCellProps {
   children: React.ReactNode;
   className?: string;
   align?: AlignType;
+  colSpan?: number;
 }
 
 /**
@@ -17,13 +18,14 @@ export interface TableCellProps {
  * @example
  * <TableCell align="center">Data Value</TableCell>
  */
-export const TableCell = ({ children, className = "", align = "left" }: TableCellProps) => {
+export const TableCell = ({ children, className = "", align = "left", colSpan }: TableCellProps) => {
   const alignClass =
     align === "left" ? "text-left" : align === "center" ? "text-center" : "text-right";
 
   return (
     <td
       className={`px-6 py-2 md:py-3 align-middle text-nasun-white/80 ${alignClass} ${className}`.trim()}
+      colSpan={colSpan}
     >
       {children}
     </td>
