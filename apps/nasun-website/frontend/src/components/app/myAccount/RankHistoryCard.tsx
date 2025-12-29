@@ -19,7 +19,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({
 }) => {
   return (
     <DashboardCard className={className}>
-      <RankHistorySection username={username} />
+      <RankHistorySection username={username} embedded />
     </DashboardCard>
   );
 };

@@ -118,9 +118,9 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
 
   return (
     <DashboardCard className={className}>
-      <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wide mb-3">
-        Wallet Connections
-      </h3>
+      <h5 className="uppercase text-nasun-white mb-4">
+        WALLET CONNECTIONS
+      </h5>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* MetaMask */}
         <WalletItem
