@@ -52,6 +52,7 @@ export interface OrderbookLevel {
   price: number;
   amount: bigint;
   orders: Order[];
+  isSimulated?: boolean; // true if this level is simulated data
 }
 
 export interface Orderbook {
