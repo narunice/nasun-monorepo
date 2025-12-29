@@ -1,8 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { ExternalLink } from "lucide-react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { PageTitle, DividerBox } from "@/components/ui";
+import { PageTitle, DividerBox, Button } from "@/components/ui";
 import { OuterBox } from "@/components/ui/OuterBox";
 
 function PadoOverviewSection() {
@@ -27,6 +28,17 @@ function PadoOverviewSection() {
           <p className="text-nasun-white/80 max-w-[650px] mx-auto text-base md:text-lg text-center mt-3">
             {t("main.tagline")}
           </p>
+          <Button
+            variant="c1"
+            size="xl"
+            className="flex w-fit items-center gap-2 mt-4 mx-auto"
+            asChild
+          >
+            <a href="https://staging.pado.finance/" target="_blank" rel="noopener noreferrer">
+              Pado Prototype
+              <ExternalLink className="w-4 h-4 ml-1" />
+            </a>
+          </Button>
         </OuterBox>
 
         {/* 1. Overview Section */}
@@ -36,15 +48,9 @@ function PadoOverviewSection() {
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">
-              {t("main.overview.content")}
-            </p>
-            <p className="text-nasun-white/80">
-              {t("main.overview.p2")}
-            </p>
-            <p className="text-nasun-white/80">
-              {t("main.overview.p3")}
-            </p>
+            <p className="text-nasun-white/80">{t("main.overview.content")}</p>
+            <p className="text-nasun-white/80">{t("main.overview.p2")}</p>
+            <p className="text-nasun-white/80">{t("main.overview.p3")}</p>
           </div>
         </div>
 
@@ -54,12 +60,8 @@ function PadoOverviewSection() {
             {t("main.accountModel.title")}
           </SectionTitle>
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c3 font-medium">
-              {t("main.accountModel.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80">
-              {t("main.accountModel.content")}
-            </p>
+            <h5 className="text-nasun-c3 font-medium">{t("main.accountModel.subtitle")}</h5>
+            <p className="text-nasun-white/80">{t("main.accountModel.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -70,9 +72,8 @@ function PadoOverviewSection() {
               ))}
             </div>
 
-            <p className="text-nasun-white/90 font-medium">
-              {t("main.accountModel.conclusion")}
-            </p></div>
+            <p className="text-nasun-white/90 font-medium">{t("main.accountModel.conclusion")}</p>
+          </div>
         </div>
 
         {/* 3. Cross-Chain Asset Access */}
@@ -81,12 +82,8 @@ function PadoOverviewSection() {
             {t("main.crossChain.title")}
           </SectionTitle>
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c4 font-medium">
-              {t("main.crossChain.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80 ">
-              {t("main.crossChain.content")}
-            </p>
+            <h5 className="text-nasun-c4 font-medium">{t("main.crossChain.subtitle")}</h5>
+            <p className="text-nasun-white/80 ">{t("main.crossChain.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -97,9 +94,8 @@ function PadoOverviewSection() {
               ))}
             </div>
 
-            <p className="text-nasun-white/90 font-medium">
-              {t("main.crossChain.conclusion")}
-            </p></div>
+            <p className="text-nasun-white/90 font-medium">{t("main.crossChain.conclusion")}</p>
+          </div>
         </div>
 
         {/* 4. Stablecoins */}
@@ -108,20 +104,11 @@ function PadoOverviewSection() {
             {t("main.stablecoins.title")}
           </SectionTitle>
 
-
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c1 font-medium">
-              {t("main.stablecoins.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80 ">
-              {t("main.stablecoins.content")}
-            </p>
-            <p className="text-nasun-white/80 ">
-              {t("main.stablecoins.p2")}
-            </p>
-            <p className="text-nasun-white/80 ">
-              {t("main.stablecoins.p3")}
-            </p>
+            <h5 className="text-nasun-c1 font-medium">{t("main.stablecoins.subtitle")}</h5>
+            <p className="text-nasun-white/80 ">{t("main.stablecoins.content")}</p>
+            <p className="text-nasun-white/80 ">{t("main.stablecoins.p2")}</p>
+            <p className="text-nasun-white/80 ">{t("main.stablecoins.p3")}</p>
           </div>
         </div>
       </div>
