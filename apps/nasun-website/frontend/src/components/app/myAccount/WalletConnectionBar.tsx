@@ -3,18 +3,20 @@
  *
  * Unified wallet connection management bar for My Account page.
  * Displays MetaMask and Nasun Wallet connection status in a single location.
+ *
+ * IMPORTANT: MetaMask connection here is SESSION-ONLY for NFT verification.
+ * Account linking (DB operations) is handled in ProfileHeroCard.
  */
 
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import { useWallet } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useUserStore } from "../../../store/userStore";
-import { useAuth } from "../../../providers/auth/AuthContext";
-import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
+import { isMetaMaskInstalled } from "../../../utils/metamaskUtils";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { WalletItem } from "./WalletItem";
 import { Button } from "../../ui/button";
-import logger from "../../../lib/logger";
 
 // MetaMask icon (official SVG)
 const MetaMaskIcon = () => (
@@ -34,6 +36,15 @@ const NasunIcon = () => (
   />
 );
 
+// Helper to shorten address
+const shortenAddress = (address: string): string => {
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+// localStorage key for session persistence
+const METAMASK_SESSION_KEY = "nasun_metamask_session";
+
 interface WalletConnectionBarProps {
   className?: string;
 }
@@ -41,28 +52,54 @@ interface WalletConnectionBarProps {
 export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
   className = "",
 }) => {
-  const [isUnlinking, setIsUnlinking] = useState(false);
+  // Session state for MetaMask connection (NOT linked to DB)
+  const [sessionEthAddress, setSessionEthAddress] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  // Auth and user store
-  const { user: authUser } = useAuth();
-  const { user, updateUserProfile } = useUserStore();
-  const ethAddress = user?.linkedAccounts?.metamask?.walletAddress;
-  const isMetaMaskConnected = !!ethAddress;
+  // User store - registered address from User Info (AWS Cognito DB)
+  const { user } = useUserStore();
+  const registeredEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
 
-  // MetaMask connect handler
-  const { handleConnect: handleMetaMaskConnect, isConnecting: isMetaMaskConnecting } =
-    useMetaMaskConnection({ mode: "link" });
+  // MetaMask connection status (session-based)
+  const isMetaMaskConnected = !!sessionEthAddress;
 
   // Nasun Wallet connection state
-  const { status: nasunStatus, account: nasunAccount, lockWallet } = useWallet();
+  const { status: nasunStatus, account: nasunAccount, lockWallet, deleteWallet } = useWallet();
   const isNasunConnected = nasunStatus === "unlocked" && !!nasunAccount;
 
-  // MetaMask disconnect (unlink from account with signature verification)
-  const handleMetaMaskDisconnect = async () => {
+  // Restore session on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem(METAMASK_SESSION_KEY);
+    if (savedSession && registeredEthAddress) {
+      // Only restore if saved session matches registered address
+      if (savedSession.toLowerCase() === registeredEthAddress.toLowerCase()) {
+        setSessionEthAddress(savedSession);
+      } else {
+        // Mismatch - clear invalid session
+        localStorage.removeItem(METAMASK_SESSION_KEY);
+      }
+    }
+  }, [registeredEthAddress]);
+
+  // Clear session if registered address is removed (unlinked from User Info)
+  useEffect(() => {
+    if (!registeredEthAddress && sessionEthAddress) {
+      setSessionEthAddress(null);
+      localStorage.removeItem(METAMASK_SESSION_KEY);
+    }
+  }, [registeredEthAddress, sessionEthAddress]);
+
+  /**
+   * MetaMask Connect Handler (Session Only)
+   *
+   * This only creates a browser session for NFT verification.
+   * It does NOT link the wallet to the user account (that's done in ProfileHeroCard).
+   */
+  const handleMetaMaskConnect = async () => {
     // 1. Check if MetaMask is installed
-    if (typeof window.ethereum === "undefined") {
+    if (!isMetaMaskInstalled()) {
       const installConfirm = confirm(
-        "MetaMask is not installed. Would you like to install it?"
+        "MetaMask is not installed.\n\nWould you like to install it?"
       );
       if (installConfirm) {
         window.open("https://metamask.io/download/", "_blank");
@@ -70,78 +107,84 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
       return;
     }
 
-    // 2. Show signature warning message
-    const proceedWithSignature = confirm(
-      "This signature is only to verify wallet ownership.\n" +
-      "No funds will be transferred.\n\n" +
-      "Do you want to proceed?"
-    );
-    if (!proceedWithSignature) return;
+    // 2. Check if MetaMask is linked in User Info
+    if (!registeredEthAddress) {
+      alert(
+        "Please link MetaMask in your profile or log in with MetaMask first."
+      );
+      return;
+    }
 
-    setIsUnlinking(true);
+    setIsConnecting(true);
     try {
       // 3. Request MetaMask accounts
-      const accounts = await window.ethereum.request({
+      const accounts = await window.ethereum!.request({
         method: "eth_requestAccounts",
       }) as string[];
-      const address = accounts[0];
+      const connectedAddress = accounts[0].toLowerCase();
 
-      // 4. Generate signature message
-      const message = `Unlink MetaMask wallet from Nasun account.\n\nAddress: ${address}\nTimestamp: ${Date.now()}`;
-
-      // 5. Request personal_sign
-      const signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, address],
-      });
-
-      if (!signature) {
-        throw new Error("Signature rejected");
+      // 4. Validate address matches registered address
+      if (connectedAddress !== registeredEthAddress.toLowerCase()) {
+        alert(
+          `The connected wallet (${shortenAddress(connectedAddress)}) does not match ` +
+          `your registered address (${shortenAddress(registeredEthAddress)}).\n\n` +
+          `Please switch to the correct account in MetaMask.`
+        );
+        return;
       }
 
-      // 6. Call Unlink API
-      const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
-      const response = await fetch(`${linkAccountApi}/unlink`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          primaryIdentityId: authUser?.identityId,
-          provider: "metamask",
-        }),
-      });
-      if (!response.ok) throw new Error("Failed to unlink MetaMask wallet");
-
-      // 7. Refresh user profile
-      const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
-      const profileResponse = await fetch(
-        `${userProfileApi}?identityId=${authUser?.identityId}`
-      );
-      if (profileResponse.ok) {
-        const updatedProfile = await profileResponse.json();
-        updateUserProfile(updatedProfile);
-        localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
-      }
-      alert("MetaMask wallet unlinked successfully!");
+      // 5. Save session
+      setSessionEthAddress(connectedAddress);
+      localStorage.setItem(METAMASK_SESSION_KEY, connectedAddress);
     } catch (err: unknown) {
-      logger.error("Failed to unlink MetaMask:", err);
       if (err instanceof Error) {
         if (err.message.includes("rejected") || err.message.includes("denied")) {
-          alert("Signature was rejected. Wallet not unlinked.");
+          // User rejected - do nothing
         } else {
-          alert("Failed to unlink MetaMask wallet: " + err.message);
+          alert("Failed to connect MetaMask: " + err.message);
         }
-      } else {
-        alert("Failed to unlink MetaMask wallet");
       }
     } finally {
-      setIsUnlinking(false);
+      setIsConnecting(false);
     }
   };
 
-  // Nasun Wallet disconnect (lock wallet)
-  const handleNasunDisconnect = () => {
-    if (!confirm("Lock Nasun Wallet?")) return;
+  /**
+   * MetaMask Disconnect Handler (Session Only)
+   *
+   * This only clears the browser session.
+   * It does NOT unlink the wallet from the user account (that's done in ProfileHeroCard).
+   */
+  const handleMetaMaskDisconnect = () => {
+    setSessionEthAddress(null);
+    localStorage.removeItem(METAMASK_SESSION_KEY);
+  };
+
+  // Nasun Wallet lock (preserves encrypted data)
+  const handleLockWallet = () => {
+    if (!confirm("Lock Nasun Wallet?\n\nYou can unlock it later with your password.")) return;
     lockWallet();
+  };
+
+  // Nasun Wallet delete (permanent, requires double confirmation)
+  const handleDeleteWallet = () => {
+    const confirmed = confirm(
+      "⚠️ Delete Nasun Wallet?\n\n" +
+      "This will permanently delete your wallet data.\n" +
+      "Make sure you have backed up your recovery phrase!\n\n" +
+      "This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    const doubleConfirm = prompt(
+      "Type 'DELETE' to confirm wallet deletion:"
+    );
+    if (doubleConfirm === "DELETE") {
+      deleteWallet();
+      alert("Wallet deleted successfully.");
+    } else if (doubleConfirm !== null) {
+      alert("Deletion cancelled. You must type 'DELETE' exactly.");
+    }
   };
 
   return (
@@ -150,17 +193,16 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
         WALLET CONNECTIONS
       </h5>
       <div className="flex flex-col gap-3">
-        {/* MetaMask */}
+        {/* MetaMask - Session connection for NFT verification */}
         <WalletItem
           icon={<MetaMaskIcon />}
           name="MetaMask"
-          address={ethAddress}
+          address={sessionEthAddress || undefined}
           isConnected={isMetaMaskConnected}
           description="For: NFT Status, Ethereum Assets"
           onConnect={handleMetaMaskConnect}
           onDisconnect={handleMetaMaskDisconnect}
-          isConnecting={isMetaMaskConnecting}
-          isDisconnecting={isUnlinking}
+          isConnecting={isConnecting}
         />
 
         {/* Nasun Wallet */}
@@ -172,14 +214,37 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
           description="For: Governance, Nasun Assets"
           renderConnect={<WalletConnect />}
           renderDisconnect={
-            <Button
-              variant="filledOutlineScarlet"
-              size="xs"
-              onClick={handleNasunDisconnect}
-              className="w-full"
-            >
-              Lock Wallet
-            </Button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <Button
+                  variant="filledOutlineScarlet"
+                  size="xs"
+                  className="w-full"
+                >
+                  Manage ▼
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  className="min-w-[180px] bg-nasun-c6 border border-nasun-c5/50 rounded-lg p-1 shadow-lg z-50"
+                  sideOffset={5}
+                >
+                  <DropdownMenu.Item
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-nasun-white rounded cursor-pointer outline-none hover:bg-nasun-c5/30 focus:bg-nasun-c5/30"
+                    onClick={handleLockWallet}
+                  >
+                    🔒 Lock Wallet
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Separator className="h-px bg-nasun-c5/30 my-1" />
+                  <DropdownMenu.Item
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 rounded cursor-pointer outline-none hover:bg-red-950/30 focus:bg-red-950/30"
+                    onClick={handleDeleteWallet}
+                  >
+                    🗑️ Delete Wallet
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           }
         />
       </div>
