@@ -94,6 +94,7 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
    *
    * This only creates a browser session for NFT verification.
    * It does NOT link the wallet to the user account (that's done in ProfileHeroCard).
+   * Requires signature verification to prove wallet ownership.
    */
   const handleMetaMaskConnect = async () => {
     // 1. Check if MetaMask is installed
@@ -133,7 +134,24 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
         return;
       }
 
-      // 5. Save session
+      // 5. Request signature to verify wallet ownership
+      const message = `Nasun Wallet Verification\n\nThis signature verifies that you own this wallet.\nNo funds will be transferred.\n\nAddress: ${connectedAddress}\nTimestamp: ${Date.now()}`;
+
+      // Convert message to hex for personal_sign
+      const messageHex = "0x" + Array.from(new TextEncoder().encode(message))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      const signature = await window.ethereum!.request({
+        method: "personal_sign",
+        params: [messageHex, connectedAddress],
+      }) as string;
+
+      if (!signature) {
+        throw new Error("Signature rejected");
+      }
+
+      // 6. Save session (signature verified)
       setSessionEthAddress(connectedAddress);
       localStorage.setItem(METAMASK_SESSION_KEY, connectedAddress);
     } catch (err: unknown) {
