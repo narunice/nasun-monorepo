@@ -379,7 +379,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   return (
     <DashboardCard variant="hero" className={className}>
       <h5 className="uppercase text-nasun-white mb-4">
-        USER INFORMATION
+        USER PROFILE
       </h5>
 
       {/* Error display */}
