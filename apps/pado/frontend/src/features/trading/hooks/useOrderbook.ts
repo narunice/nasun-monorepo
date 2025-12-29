@@ -1,10 +1,12 @@
 /**
  * useOrderbook Hook
- * React Query를 사용한 오더북 데이터 페칭
+ * React Query based orderbook fetching with realtime event updates
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getOrderbook, getPoolMidPrice, type Orderbook } from '../../../lib/deepbook';
+import { getEventService } from '../../../lib/event-service';
 import { useMarket } from '../context/MarketContext';
 
 export interface OrderbookData {
@@ -13,11 +15,34 @@ export interface OrderbookData {
 }
 
 /**
- * 오더북 및 미드프라이스 페칭
- * @param refetchInterval 갱신 간격 (기본 5초)
+ * Orderbook and mid-price fetching with event-based invalidation
+ * @param refetchInterval Backup polling interval (default 10s, reduced from 5s due to event updates)
  */
-export function useOrderbook(refetchInterval = 5000) {
+export function useOrderbook(refetchInterval = 10000) {
   const { currentPool, currentMarket } = useMarket();
+  const queryClient = useQueryClient();
+
+  // Subscribe to orderbook-affecting events for instant updates
+  useEffect(() => {
+    const eventService = getEventService();
+    const queryKey = ['orderbook', currentMarket];
+
+    // Invalidate orderbook query when relevant events occur
+    const invalidateOrderbook = () => {
+      queryClient.invalidateQueries({ queryKey });
+    };
+
+    // Subscribe to all order-related events
+    const unsubscribes = [
+      eventService.subscribe('OrderFilled', invalidateOrderbook),
+      eventService.subscribe('OrderPlaced', invalidateOrderbook),
+      eventService.subscribe('OrderCanceled', invalidateOrderbook),
+    ];
+
+    return () => {
+      unsubscribes.forEach((unsub) => unsub());
+    };
+  }, [currentMarket, queryClient]);
 
   return useQuery<OrderbookData>({
     queryKey: ['orderbook', currentMarket],
@@ -29,6 +54,6 @@ export function useOrderbook(refetchInterval = 5000) {
       return { orderbook, midPrice };
     },
     refetchInterval,
-    staleTime: 2000,
+    staleTime: 3000, // Increased from 2s since we have event-based updates
   });
 }
