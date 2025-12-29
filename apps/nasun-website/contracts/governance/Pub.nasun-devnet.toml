@@ -7,9 +7,9 @@ chain-id = "6681cdfd"
 
 [[published]]
 source = { root = true }
-published-at = "0xd6bf281276f34f3fd9e267e3faf00518350a0e5daa043d74185bb183a6c788c8"
-original-id = "0xd6bf281276f34f3fd9e267e3faf00518350a0e5daa043d74185bb183a6c788c8"
+published-at = "0xfa3437de2df8faf064c5b77d6be4f0e6cb61f30f9d53df7bd6d838ab36d58e13"
+original-id = "0xfa3437de2df8faf064c5b77d6be4f0e6cb61f30f9d53df7bd6d838ab36d58e13"
 version = 1
 toolchain-version = "1.63.0"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xc2dd5e374a71fb4997aa0738130010be456a6b1bc4c93c355b47af9b65c1797e"
+upgrade-capability = "0xb78f64beee0138fecc9ef8d92eef6bfd41841f0b7869577473b5037f9daefc66"

@@ -1,8 +1,10 @@
-import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
+import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
+import { useWallet } from "@nasun/wallet";
 
 export const useVoteNfts = () => {
-  const account = useCurrentAccount();
+  // Use @nasun/wallet instead of Sui dApp Kit's useCurrentAccount
+  const { account } = useWallet();
   const packageId = useNetworkVariable("packageId");
 
   return useSuiClientQuery(
@@ -17,7 +19,7 @@ export const useVoteNfts = () => {
       },
     },
     {
-      enabled: !!account,
+      enabled: !!account?.address,
     }
   );
 };
