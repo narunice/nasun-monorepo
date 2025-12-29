@@ -21,22 +21,10 @@ import { WalletItem } from "./WalletItem";
 import { Button } from "../../ui/button";
 
 // MetaMask icon (official SVG)
-const MetaMaskIcon = () => (
-  <img
-    src="/MetaMask_Fox.svg"
-    alt="MetaMask"
-    className="w-6 h-6"
-  />
-);
+const MetaMaskIcon = () => <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />;
 
 // Nasun Wallet icon (official SVG)
-const NasunIcon = () => (
-  <img
-    src="/nasun_symbol_white.svg"
-    alt="Nasun"
-    className="w-6 h-6"
-  />
-);
+const NasunIcon = () => <img src="/nasun_symbol_white.svg" alt="Nasun" className="w-6 h-6" />;
 
 // Helper to shorten address
 const shortenAddress = (address: string): string => {
@@ -51,9 +39,7 @@ interface WalletConnectionBarProps {
   className?: string;
 }
 
-export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
-  className = "",
-}) => {
+export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({ className = "" }) => {
   // Session state for MetaMask connection (NOT linked to DB)
   const [sessionEthAddress, setSessionEthAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -101,9 +87,7 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
   const handleMetaMaskConnect = async () => {
     // 1. Check if MetaMask is installed
     if (!isMetaMaskInstalled()) {
-      const installConfirm = confirm(
-        "MetaMask is not installed.\n\nWould you like to install it?"
-      );
+      const installConfirm = confirm("MetaMask is not installed.\n\nWould you like to install it?");
       if (installConfirm) {
         window.open("https://metamask.io/download/", "_blank");
       }
@@ -112,26 +96,24 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
 
     // 2. Check if MetaMask is linked in User Info
     if (!registeredEthAddress) {
-      alert(
-        "Please link MetaMask in your profile or log in with MetaMask first."
-      );
+      alert("Please link MetaMask in your profile or log in with MetaMask first.");
       return;
     }
 
     setIsConnecting(true);
     try {
       // 3. Request MetaMask accounts
-      const accounts = await window.ethereum!.request({
+      const accounts = (await window.ethereum!.request({
         method: "eth_requestAccounts",
-      }) as string[];
+      })) as string[];
       const connectedAddress = accounts[0].toLowerCase();
 
       // 4. Validate address matches registered address
       if (connectedAddress !== registeredEthAddress.toLowerCase()) {
         alert(
           `The connected wallet (${shortenAddress(connectedAddress)}) does not match ` +
-          `your registered address (${shortenAddress(registeredEthAddress)}).\n\n` +
-          `Please switch to the correct account in MetaMask.`
+            `your registered address (${shortenAddress(registeredEthAddress)}).\n\n` +
+            `Please switch to the correct account in MetaMask.`
         );
         return;
       }
@@ -148,14 +130,16 @@ Address: ${connectedAddress}
 Timestamp: ${Date.now()}`;
 
       // Convert message to hex for personal_sign
-      const messageHex = "0x" + Array.from(new TextEncoder().encode(message))
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("");
+      const messageHex =
+        "0x" +
+        Array.from(new TextEncoder().encode(message))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
 
-      const signature = await window.ethereum!.request({
+      const signature = (await window.ethereum!.request({
         method: "personal_sign",
         params: [messageHex, connectedAddress],
-      }) as string;
+      })) as string;
 
       if (!signature) {
         throw new Error("Signature rejected");
@@ -198,15 +182,13 @@ Timestamp: ${Date.now()}`;
   const handleDeleteWallet = () => {
     const confirmed = confirm(
       "⚠️ Delete Nasun Wallet?\n\n" +
-      "This will permanently delete your wallet data.\n" +
-      "Make sure you have backed up your recovery phrase!\n\n" +
-      "This action cannot be undone."
+        "This will permanently delete your wallet data.\n" +
+        "Make sure you have backed up your recovery phrase!\n\n" +
+        "This action cannot be undone."
     );
     if (!confirmed) return;
 
-    const doubleConfirm = prompt(
-      "Type 'DELETE' to confirm wallet deletion:"
-    );
+    const doubleConfirm = prompt("Type 'DELETE' to confirm wallet deletion:");
     if (doubleConfirm === "DELETE") {
       deleteWallet();
       alert("Wallet deleted successfully.");
@@ -217,9 +199,7 @@ Timestamp: ${Date.now()}`;
 
   return (
     <DashboardCard className={className}>
-      <h5 className="uppercase text-nasun-white mb-4">
-        WALLET CONNECTIONS
-      </h5>
+      <h5 className="uppercase text-nasun-white mb-4">WALLET CONNECTIONS</h5>
       <div className="flex flex-col gap-3">
         {/* MetaMask - Session connection for NFT verification */}
         <WalletItem
@@ -239,7 +219,8 @@ Timestamp: ${Date.now()}`;
                     side="top"
                     sideOffset={5}
                   >
-                    MetaMask verification is required to register your address for NFT drop allowlists or to verify membership NFT ownership for voting power bonus.
+                    MetaMask verification is required to register your address for NFT drop
+                    allowlists or to verify membership NFT ownership for voting power bonus.
                     <Tooltip.Arrow className="fill-nasun-black" />
                   </Tooltip.Content>
                 </Tooltip.Portal>
@@ -257,18 +238,34 @@ Timestamp: ${Date.now()}`;
         <WalletItem
           icon={<NasunIcon />}
           name="Nasun Wallet"
+          nameExtra={
+            <Tooltip.Provider delayDuration={200}>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button className="text-nasun-white/50 hover:text-nasun-white/80 transition-colors">
+                    <InfoCircledIcon className="w-4 h-4" />
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    className="max-w-[280px] px-3 py-2 bg-nasun-black text-nasun-white text-xs border border-nasun-white/20 rounded-lg shadow-lg z-50"
+                    side="top"
+                    sideOffset={5}
+                  >
+                    Nasun Wallet is required to participate in governance voting or test the Pado prototype. Nasun is currently on devnet and may be reset without notice.
+                    <Tooltip.Arrow className="fill-nasun-black" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          }
           address={nasunAccount?.address}
           isConnected={isNasunConnected}
-          description="For: Governance, Nasun Assets"
           renderConnect={<WalletConnect />}
           renderDisconnect={
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
-                <Button
-                  variant="filledOutlineScarlet"
-                  size="xs"
-                  className="w-full"
-                >
+                <Button variant="filledOutlineScarlet" size="sm" className="w-full">
                   Manage ▼
                 </Button>
               </DropdownMenu.Trigger>

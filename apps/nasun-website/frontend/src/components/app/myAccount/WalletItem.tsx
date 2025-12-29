@@ -46,21 +46,17 @@ export const WalletItem: React.FC<WalletItemProps> = ({
   isDisconnecting = false,
 }) => {
   return (
-    <div className="bg-nasun-c6/30 rounded-lg p-4 border border-nasun-c5/20">
+    <div className="bg-gray-800/80 rounded-lg p-4 ">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <span className="text-2xl">{icon}</span>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h6 className="font-medium text-nasun-white">{name}</h6>
+            <p className="font-normal text-nasun-white">{name}</p>
             {nameExtra}
-            {isConnected && (
-              <span className="text-green-400">✓</span>
-            )}
+            {isConnected && <span className="text-green-400">✓</span>}
           </div>
-          {description && (
-            <p className="text-nasun-white/50 text-sm">{description}</p>
-          )}
+          {description && <p className="text-nasun-white/50 text-sm">{description}</p>}
         </div>
       </div>
 
@@ -68,25 +64,15 @@ export const WalletItem: React.FC<WalletItemProps> = ({
       <div className="mt-3">
         {isConnected && address ? (
           <div className="space-y-2">
-            {/* Address with Copy */}
-            <div className="flex items-center justify-between">
-              <code className="text-nasun-white/80 text-sm">
-                {truncateAddress(address)}
-              </code>
-              <button
-                className="text-nasun-c4 hover:underline text-sm"
-                onClick={() => navigator.clipboard.writeText(address)}
-              >
-                Copy
-              </button>
-            </div>
+            {/* Address */}
+            <code className="text-nasun-white/80 text-sm block">{truncateAddress(address)}</code>
             {/* Disconnect button */}
             {renderDisconnect ? (
               <div className="w-full">{renderDisconnect}</div>
             ) : onDisconnect ? (
               <Button
                 variant="filledOutlineScarlet"
-                size="xs"
+                size="sm"
                 onClick={onDisconnect}
                 disabled={isDisconnecting}
                 className="w-full"
