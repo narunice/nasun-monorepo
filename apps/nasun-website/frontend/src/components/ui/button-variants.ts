@@ -117,7 +117,7 @@ export const buttonVariants = cva(
         actionDark: "bg-nasun-c4/30 hover:bg-nasun-c5/30 text-black capitalize",
 
         // Destructive: 위험한 동작용 빨간색 버튼 (Unlink, Delete 등)
-        destructive: "ring-inset bg-red-400/15 text-red-500 hover:bg-red-500/50 hover:text-red-100",
+        destructive: "bg-red-500 text-white hover:bg-red-600",
       },
       size: {
         xs: "text-xs px-5 py-1",
