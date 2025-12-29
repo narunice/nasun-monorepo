@@ -1,12 +1,12 @@
 # Pado UI/UX 개선 로드맵
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2025-12-28
+> 최종 업데이트: 2025-12-29
 > 비전: CEX-Grade UX, DEX-Level Transparency
 
 ---
 
-## 현재 상태 요약 (2025-12-27)
+## 현재 상태 요약 (2025-12-29)
 
 ### 구현 완료 ✅
 
@@ -38,7 +38,7 @@
 - ✅ Header에 WalletConnect 통합
 - ✅ Faucet 버튼 (NASUN + Token)
 
-### 최근 구현 ✅ (2025-12-28)
+### 최근 구현 ✅ (2025-12-28 ~ 2025-12-29)
 
 - ✅ 실시간 거래 이벤트 (시뮬레이션)
 - ✅ 차트 이동평균선 (MA 5/20/60)
@@ -60,6 +60,15 @@
 - ✅ 모바일 반응형 최적화 (Phase 8.1)
   - 모바일 햄버거 메뉴 (Header)
   - 그리드 반응형 개선 (TradePage, Orderbook, BalancePanel)
+- ✅ **Prediction Market UI (Phase 14)**
+  - 마켓 목록 페이지 (/predict)
+  - 마켓 상세 페이지 (/predict/:marketId)
+  - MarketCard 컴포넌트 (확률 바, 카운트다운)
+  - MarketHeader 컴포넌트 (시장 정보, 상태)
+  - OutcomeOrderForm 컴포넌트 (YES/NO 선택, 주문)
+  - OutcomeOrderbook 컴포넌트 (호가창)
+  - PositionList 컴포넌트 (포지션 목록, P&L, Sell/Claim)
+  - 블록체인 동기화 피드백 ("Syncing with blockchain...")
 
 ### 미구현 ❌
 
@@ -93,6 +102,16 @@
 | Button | `Button.tsx` | ✅ 완료 | 공통 버튼 |
 | Input | `Input.tsx` | ✅ 완료 | 공통 입력 필드 |
 | Spinner | `Spinner.tsx` | ✅ 완료 | 로딩 상태 표시 |
+
+### Prediction Market 컴포넌트 (5개)
+
+| 컴포넌트 | 파일 | 상태 | 설명 |
+|---------|------|------|------|
+| MarketCard | `MarketCard.tsx` | ✅ 완료 | 마켓 카드 (확률 바) |
+| MarketHeader | `MarketHeader.tsx` | ✅ 완료 | 마켓 헤더 (카운트다운) |
+| OutcomeOrderForm | `OutcomeOrderForm.tsx` | ✅ 완료 | 주문 폼 (YES/NO) |
+| OutcomeOrderbook | `OutcomeOrderbook.tsx` | ✅ 완료 | 호가창 (시뮬레이션) |
+| PositionList | `PositionList.tsx` | ✅ 완료 | 포지션 목록 (P&L) |
 
 ---
 
@@ -484,3 +503,5 @@ function MyChart() {
 | 2025-12-28 | Volume 차트 문서화 (이미 구현됨) |
 | 2025-12-28 | RSI/MACD 기술 지표 추가 (PriceChart.tsx에 통합, 토글 버튼) |
 | 2025-12-28 | Phase 8.1 모바일 반응형 최적화 (Header 햄버거 메뉴, 그리드 반응형) |
+| 2025-12-29 | Phase 14 Prediction Market UI 완료 (5개 컴포넌트) |
+| 2025-12-29 | 블록체인 동기화 피드백 UI 추가 |

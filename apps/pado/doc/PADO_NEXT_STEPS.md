@@ -1,7 +1,7 @@
 # Pado 다음 단계 작업 계획서
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2025-12-28
+> 최종 업데이트: 2025-12-29
 > 비전: Unified Onchain Finance
 
 ---
@@ -16,6 +16,11 @@
 | Phase 3 | ✅ 완료 | Trading UX (차트, 가격 클릭, 피드백) | 2025-12-26 |
 | Phase 4 | ✅ 완료 | Multi-Pool (NASUN/NUSDC 풀, MarketSelector) | 2025-12-26 |
 | Phase 5 | ✅ 완료 | Native Token (NASUN 입금/출금, 가스비 예약) | 2025-12-26 |
+| Phase 6 | ✅ 완료 | Trading UX Pro (MA, Volume, RSI, MACD) | 2025-12-28 |
+| Phase 7 | ✅ 완료 | Portfolio Dashboard | 2025-12-28 |
+| Phase 8 | ✅ 완료 | Mobile & Theme (반응형, 다크/라이트) | 2025-12-28 |
+| Phase 14 | ✅ 완료 | Prediction Markets MVP | 2025-12-29 |
+| Phase 15 | ✅ 완료 | Payments (Send, QR) | 2025-12-28 |
 
 ### 구현 완료 기능 상세
 
@@ -224,15 +229,17 @@ Unified Finance 비전을 향한 핵심 확장
 
 사용자 경험 향상 및 생태계 확장
 
-#### Phase 8: Mobile & Theme
+#### Phase 8: Mobile & Theme ⭐ (완료)
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 8.1 | 모바일 반응형 최적화 | 📋 | 중 |
+| 8.1 | 모바일 반응형 최적화 | ✅ 완료 | 중 |
 | 8.2 | 다크/라이트 테마 | ✅ 완료 | 저 |
 | 8.3 | 레이아웃 커스터마이징 | 📋 | 고 |
 
-**구현 완료 (8.2, 2025-12-28)**:
+**구현 완료 (8.1, 8.2 - 2025-12-28)**:
+- 모바일 햄버거 메뉴 (768px 이하)
+- 그리드 반응형 개선 (TradePage, Orderbook, BalancePanel)
 - ThemeProvider + useTheme hook
 - CSS 변수 기반 테마 시스템
 - Header에 테마 토글 버튼 (해/달 아이콘)
@@ -262,13 +269,31 @@ Unified Finance 비전을 향한 핵심 확장
 
 ---
 
-#### Phase 14: Prediction Markets
+#### Phase 14: Prediction Markets ⭐ (완료)
+
+**목표**: 이진 예측 시장 (YES/NO Outcome)
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 14.1 | 이벤트 기반 마켓 | 📋 | 고 |
-| 14.2 | 결과 오라클 통합 | 📋 | 고 |
-| 14.3 | 포지션 관리 | 📋 | 중 |
+| 14.1 | 스마트 컨트랙트 배포 | ✅ 완료 | 고 |
+| 14.2 | 기본 UI (마켓 목록, 카드) | ✅ 완료 | 중 |
+| 14.3 | 마켓 상세 (오더북, 카운트다운) | ✅ 완료 | 중 |
+| 14.4 | 거래 기능 (Mint, Buy, Sell) | ✅ 완료 | 고 |
+| 14.5 | 포지션 관리 (P&L, Claim) | ✅ 완료 | 중 |
+
+**구현 완료 (2025-12-29)**:
+- 예측 시장 스마트 컨트랙트 (CTF 모델)
+- 마켓 목록/상세 페이지 (/predict, /predict/:marketId)
+- YES/NO 토큰 민트 (1 NUSDC = 1 YES + 1 NO)
+- 주문 기능 (Buy/Sell)
+- 포지션 NFT 관리
+- 블록체인 동기화 UI 피드백
+- 사용자 친화적 에러 메시지
+
+**파일 위치**:
+- `features/prediction/` - hooks, components, types
+- `pages/PredictPage.tsx` - 마켓 목록
+- `pages/PredictMarketPage.tsx` - 마켓 상세
 
 ---
 
@@ -404,3 +429,5 @@ frontend/src/
 | 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환 |
 | 2025-12-28 | Phase 15.3 완료: QR 코드 결제 (PaymentQRCode, Send/Receive 탭) |
 | 2025-12-28 | Phase 7.4 완료: 거래 통계/내역 (TradeStats, RecentTrades, useTradeHistory) |
+| 2025-12-29 | Phase 14 완료: Prediction Market MVP (14.1~14.5) |
+| 2025-12-29 | Phase 8.1 완료: 모바일 반응형 최적화 (햄버거 메뉴, 그리드 반응형) |
