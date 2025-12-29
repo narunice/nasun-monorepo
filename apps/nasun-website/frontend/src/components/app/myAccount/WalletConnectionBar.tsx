@@ -178,7 +178,7 @@ Timestamp: ${Date.now()}`;
     lockWallet();
   };
 
-  // Nasun Wallet delete (permanent, requires double confirmation)
+  // Nasun Wallet delete (permanent)
   const handleDeleteWallet = () => {
     const confirmed = confirm(
       "⚠️ Delete Nasun Wallet?\n\n" +
@@ -188,13 +188,8 @@ Timestamp: ${Date.now()}`;
     );
     if (!confirmed) return;
 
-    const doubleConfirm = prompt("Type 'DELETE' to confirm wallet deletion:");
-    if (doubleConfirm === "DELETE") {
-      deleteWallet();
-      alert("Wallet deleted successfully.");
-    } else if (doubleConfirm !== null) {
-      alert("Deletion cancelled. You must type 'DELETE' exactly.");
-    }
+    deleteWallet();
+    alert("Wallet deleted successfully.");
   };
 
   return (
