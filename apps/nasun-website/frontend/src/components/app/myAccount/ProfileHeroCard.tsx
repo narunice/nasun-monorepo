@@ -15,6 +15,7 @@ import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
 import { useUserRankHistory } from "../Leaderboard/hooks/useUserRankHistory";
 import { CumulativePeriod, DateRangeOption } from "../Leaderboard/types/leaderboard";
 import { DashboardCard } from "../../ui/DashboardCard";
+import { Button } from "../../ui/button";
 import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
 import logger from "../../../lib/logger";
 
@@ -23,7 +24,7 @@ interface ProfileHeroCardProps {
 }
 
 // Social account icons
-const SocialIcons: Record<string, JSX.Element> = {
+const SocialIcons: Record<string, React.ReactNode> = {
   twitter: (
     <img
       src="/X_logo_2023.svg.png"
@@ -52,14 +53,11 @@ const SocialIcons: Record<string, JSX.Element> = {
     </svg>
   ),
   metamask: (
-    <svg className="w-4 h-4" viewBox="0 0 318.6 318.6">
-      <path fill="#E2761B" stroke="#E2761B" d="M274.1,35.5l-99.5,73.9L193,65.8z" />
-      <path
-        fill="#E4761B"
-        stroke="#E4761B"
-        d="M44.4,35.5l98.7,74.6l-17.5-44.3L44.4,35.5z M238.3,206.8l-26.5,40.6l56.7,15.6l16.3-55.3L238.3,206.8z"
-      />
-    </svg>
+    <img
+      src="/MetaMask_Fox.svg"
+      alt="MetaMask"
+      className="w-4 h-4"
+    />
   ),
 };
 
@@ -90,40 +88,45 @@ const SocialAccountItem: FC<SocialAccountItemProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between py-2 px-3 bg-nasun-c6/30 rounded-lg">
-      <div className="flex items-center gap-2">
-        {SocialIcons[provider]}
-        <span className="text-sm text-nasun-white">{labels[provider]}</span>
-        {isConnected && displayValue && (
-          <span className="text-xs text-nasun-white/60 truncate max-w-[120px]">
-            {displayValue}
-          </span>
-        )}
-        {isConnected && <span className="text-green-400 text-xs">✓</span>}
-      </div>
-      <div>
-        {isPrimary ? (
-          <span className="text-xs text-nasun-c3 bg-nasun-c3/20 px-2 py-0.5 rounded">
-            Primary
-          </span>
-        ) : isConnected ? (
-          <button
-            onClick={onUnlink}
-            disabled={isLinking}
-            className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
-          >
-            {isLinking ? "..." : "Unlink"}
-          </button>
-        ) : (
-          <button
-            onClick={onLink}
-            disabled={isLinking}
-            className="text-xs text-nasun-c4 hover:text-nasun-c3 disabled:opacity-50"
-          >
-            {isLinking ? "..." : "Link"}
-          </button>
-        )}
-      </div>
+    <div className="flex items-center gap-2 py-2 px-3 bg-nasun-c6/30 rounded-lg">
+      {/* Icon */}
+      {SocialIcons[provider]}
+      {/* Label */}
+      <span className="text-nasun-white">{labels[provider]}</span>
+      {/* Display value */}
+      {isConnected && displayValue && (
+        <span className="text-nasun-white/60 truncate max-w-[120px]">
+          {displayValue}
+        </span>
+      )}
+      {/* Checkmark */}
+      {isConnected && <span className="text-green-400">✓</span>}
+      {/* Spacer */}
+      <div className="flex-1" />
+      {/* Action button */}
+      {isPrimary ? (
+        <span className="text-sm text-nasun-c3 bg-nasun-c3/20 px-2 py-0.5 rounded whitespace-nowrap">
+          Logged in
+        </span>
+      ) : isConnected ? (
+        <Button
+          variant="filledOutlineScarlet"
+          size="xs"
+          onClick={onUnlink}
+          disabled={isLinking}
+        >
+          {isLinking ? "..." : "Unlink"}
+        </Button>
+      ) : (
+        <Button
+          variant="filledOutlineC4"
+          size="xs"
+          onClick={onLink}
+          disabled={isLinking}
+        >
+          {isLinking ? "..." : "Link"}
+        </Button>
+      )}
     </div>
   );
 };
@@ -375,6 +378,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
 
   return (
     <DashboardCard variant="hero" className={className}>
+      <h5 className="uppercase text-nasun-white mb-4">
+        USER INFORMATION
+      </h5>
+
       {/* Error display */}
       {linkError && (
         <div className="mb-4 p-2 bg-red-900/30 text-red-300 text-sm rounded-lg">
