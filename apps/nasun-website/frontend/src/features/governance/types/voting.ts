@@ -26,10 +26,14 @@ export interface VoteNft {
   url: string;
 }
 
-// Proposal field types (matching Move contract)
+// Proposal field types (matching Move contract v2)
 export interface ProposalFields {
-  voted_yes_count: string | number;
-  voted_no_count: string | number;
+  // Vote counts (number of voters)
+  vote_count_yes: string | number;
+  vote_count_no: string | number;
+  // Voting power totals
+  total_power_yes: string | number;
+  total_power_no: string | number;
   expiration: string | number;
   title: string;
   description: string;
