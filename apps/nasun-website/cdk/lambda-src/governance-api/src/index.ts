@@ -23,7 +23,7 @@ const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
 // Voting Power weights
 const LEADERBOARD_WEIGHT = Number(process.env.LEADERBOARD_WEIGHT) || 1;
 const TOKEN_WEIGHT = Number(process.env.TOKEN_WEIGHT) || 0; // 0 until TGE
-const NFT_BONUS = Number(process.env.NFT_BONUS) || 100;
+const NFT_BONUS = Number(process.env.NFT_BONUS) || 2;
 
 // Ethereum NFT verification
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || "";
