@@ -81,25 +81,48 @@ export function calculateProbability(yesSupply: bigint, noSupply: bigint): numbe
   return Number((noSupply * 10000n) / total) / 100; // YES probability
 }
 
-// Calculate probability from orderbook (best ask = market price)
-// YES probability = YES best ask, NO probability = 100 - YES
+// Calculate probability from orderbook using Polymarket Midpoint method
+// Midpoint = (best_bid + best_ask) / 2
+// Only uses REAL orders (excludes simulated data)
 export function calculateProbabilityFromOrderbook(
   yesOrderbook: Orderbook | null,
   _noOrderbook: Orderbook | null
-): { yesProbability: number; noProbability: number } {
-  // Default 50/50
-  let yesProbability = 50;
+): { yesProbability: number; noProbability: number; hasRealOrders: boolean } {
+  // Filter to only real orders (exclude simulated)
+  const realBids = yesOrderbook?.bids.filter((l) => !l.isSimulated) ?? [];
+  const realAsks = yesOrderbook?.asks.filter((l) => !l.isSimulated) ?? [];
 
-  // YES probability = YES best ask price (lowest price to buy YES)
-  // If someone is selling YES at 35%, that means YES probability ~35%
-  if (yesOrderbook?.asks && yesOrderbook.asks.length > 0) {
-    // Find lowest ask price (sort ascending)
-    const sortedAsks = [...yesOrderbook.asks].sort((a, b) => a.price - b.price);
-    yesProbability = sortedAsks[0].price / 100; // Convert basis points to %
+  // Find best bid (highest) and best ask (lowest)
+  const bestBid =
+    realBids.length > 0 ? Math.max(...realBids.map((l) => l.price)) : null;
+  const bestAsk =
+    realAsks.length > 0 ? Math.min(...realAsks.map((l) => l.price)) : null;
+
+  // Default 50/50 if no real orders
+  let yesProbability = 50;
+  const hasRealOrders = bestBid !== null || bestAsk !== null;
+
+  if (bestBid !== null && bestAsk !== null) {
+    // Both bid and ask exist - calculate midpoint
+    const spread = bestAsk - bestBid;
+    if (spread <= 1000) {
+      // Spread <= 10%: use midpoint
+      yesProbability = (bestBid + bestAsk) / 2 / 100;
+    } else {
+      // Spread > 10%: use best ask (conservative)
+      yesProbability = bestAsk / 100;
+    }
+  } else if (bestAsk !== null) {
+    // Only ask exists
+    yesProbability = bestAsk / 100;
+  } else if (bestBid !== null) {
+    // Only bid exists
+    yesProbability = bestBid / 100;
   }
 
-  // NO probability is always complement of YES
+  // Clamp to valid range
+  yesProbability = Math.max(0.1, Math.min(99.9, yesProbability));
   const noProbability = 100 - yesProbability;
 
-  return { yesProbability, noProbability };
+  return { yesProbability, noProbability, hasRealOrders };
 }
