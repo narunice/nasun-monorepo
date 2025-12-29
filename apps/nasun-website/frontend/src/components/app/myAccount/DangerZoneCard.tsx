@@ -59,10 +59,10 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
     <DashboardCard variant="danger" className={className}>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-medium text-red-400">
+          <h5 className="uppercase text-red-400">
             {t("accountDeletion.title")}
-          </h3>
-          <p className="text-xs text-nasun-white/50 mt-1">
+          </h5>
+          <p className="text-nasun-white/50 mt-1">
             {t("accountDeletion.description")}
           </p>
         </div>

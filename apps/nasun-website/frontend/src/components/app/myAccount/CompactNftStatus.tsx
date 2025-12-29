@@ -35,13 +35,13 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
 }) => (
   <div className="flex items-center justify-between p-3 bg-nasun-c6/30 rounded-lg">
     <div className="flex items-center gap-3">
-      <span className="text-sm font-medium text-nasun-white">{title}</span>
+      <h6 className="font-medium text-nasun-white">{title}</h6>
       {isLoading ? (
         <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c3 border-t-transparent" />
       ) : isRegistered ? (
-        <span className="text-green-400 text-sm">✓ Registered</span>
+        <span className="text-green-400">✓ Registered</span>
       ) : (
-        <span className="text-nasun-white/50 text-sm">Not Registered</span>
+        <span className="text-nasun-white/50">Not Registered</span>
       )}
     </div>
     {!isLoading && !isRegistered && onAction && actionLabel && (
@@ -92,8 +92,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
 
   if (!walletAddress) {
     return (
-      <DashboardCard title="NFT Status" className={className}>
-        <p className="text-nasun-white/50 text-sm">
+      <DashboardCard className={className}>
+        <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
+        <p className="text-nasun-white/50">
           Connect MetaMask above to view NFT status
         </p>
       </DashboardCard>
@@ -101,7 +102,8 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
   }
 
   return (
-    <DashboardCard title="NFT Status" className={className}>
+    <DashboardCard className={className}>
+      <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <NftStatusItem
           title="Battalion NFT"

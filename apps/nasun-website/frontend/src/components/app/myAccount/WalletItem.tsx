@@ -43,12 +43,12 @@ export const WalletItem: React.FC<WalletItemProps> = ({
         <span className="text-2xl">{icon}</span>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-nasun-white">{name}</span>
+            <h6 className="font-medium text-nasun-white">{name}</h6>
             {isConnected && (
-              <span className="text-green-400 text-sm">✓</span>
+              <span className="text-green-400">✓</span>
             )}
           </div>
-          <p className="text-xs text-nasun-white/50">{description}</p>
+          <p className="text-nasun-white/50">{description}</p>
         </div>
       </div>
 
@@ -56,11 +56,11 @@ export const WalletItem: React.FC<WalletItemProps> = ({
       <div className="mt-3">
         {isConnected && address ? (
           <div className="flex items-center justify-between">
-            <span className="text-sm text-nasun-white/80 font-mono">
+            <code className="text-nasun-white/80">
               {truncateAddress(address)}
-            </span>
+            </code>
             <button
-              className="text-xs text-nasun-c4 hover:underline"
+              className="text-nasun-c4 hover:underline"
               onClick={() => navigator.clipboard.writeText(address)}
             >
               Copy
@@ -72,12 +72,12 @@ export const WalletItem: React.FC<WalletItemProps> = ({
           <button
             onClick={onConnect}
             disabled={isConnecting}
-            className="w-full py-2 px-4 bg-nasun-c4 hover:bg-nasun-c4/80 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 px-4 bg-nasun-c4 hover:bg-nasun-c4/80 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isConnecting ? "Connecting..." : "Connect"}
           </button>
         ) : (
-          <span className="text-sm text-nasun-white/50">Not connected</span>
+          <p className="text-nasun-white/50">Not connected</p>
         )}
       </div>
     </div>

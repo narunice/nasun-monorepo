@@ -19,7 +19,8 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   className = "",
 }) => {
   return (
-    <DashboardCard title="My Assets" className={className}>
+    <DashboardCard className={className}>
+      <h5 className="uppercase text-nasun-white mb-4">MY ASSETS</h5>
       <OwnedObjects walletAddress={walletAddress} />
     </DashboardCard>
   );
