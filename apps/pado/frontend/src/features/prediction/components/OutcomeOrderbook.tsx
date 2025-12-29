@@ -93,6 +93,13 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
     };
   }, [orderbook]);
 
+  // Count real vs simulated orders
+  const realBidCount = orderbook.bids.filter(l => !l.isSimulated).length;
+  const simBidCount = orderbook.bids.filter(l => l.isSimulated).length;
+  const realAskCount = orderbook.asks.filter(l => !l.isSimulated).length;
+  const simAskCount = orderbook.asks.filter(l => l.isSimulated).length;
+  const hasRealOrders = realBidCount > 0 || realAskCount > 0;
+
   const handleClick = (price: number) => {
     onPriceClick?.(isYes, price);
   };
@@ -101,9 +108,16 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
     <div className="grid grid-cols-2 gap-4">
       {/* Bids (Buy orders) */}
       <div>
-        <h4 className={`text-sm font-medium text-${color}-600 dark:text-${color}-400 mb-2`}>
-          Bids
-        </h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className={`text-sm font-medium text-${color}-600 dark:text-${color}-400`}>
+            Bids
+          </h4>
+          {simBidCount > 0 && (
+            <span className="text-xs text-yellow-600 dark:text-yellow-500">
+              {realBidCount > 0 ? `${simBidCount}/${orderbook.bids.length} sim` : 'Simulated'}
+            </span>
+          )}
+        </div>
         <div className="bg-theme-bg-tertiary rounded p-2 h-64 overflow-y-auto">
           <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
             <span>Price</span>
@@ -124,6 +138,7 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
                     isBid={true}
                     color={color}
                     onClick={() => handleClick(level.price)}
+                    hasRealOrders={hasRealOrders}
                   />
                 );
               })}
@@ -138,9 +153,16 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
 
       {/* Asks (Sell orders) */}
       <div>
-        <h4 className={`text-sm font-medium text-${color}-600 dark:text-${color}-400 mb-2`}>
-          Asks
-        </h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className={`text-sm font-medium text-${color}-600 dark:text-${color}-400`}>
+            Asks
+          </h4>
+          {simAskCount > 0 && (
+            <span className="text-xs text-yellow-600 dark:text-yellow-500">
+              {realAskCount > 0 ? `${simAskCount}/${orderbook.asks.length} sim` : 'Simulated'}
+            </span>
+          )}
+        </div>
         <div className="bg-theme-bg-tertiary rounded p-2 h-64 overflow-y-auto">
           <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
             <span>Price</span>
@@ -161,6 +183,7 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
                     isBid={false}
                     color={color}
                     onClick={() => handleClick(level.price)}
+                    hasRealOrders={hasRealOrders}
                   />
                 );
               })}
@@ -182,12 +205,14 @@ interface OrderbookRowProps {
   isBid: boolean;
   color: string;
   onClick: () => void;
+  hasRealOrders?: boolean; // true if there are any real orders in the orderbook
 }
 
-function OrderbookRow({ level, depthPercent, isBid, color, onClick }: OrderbookRowProps) {
+function OrderbookRow({ level, depthPercent, isBid, color, onClick, hasRealOrders }: OrderbookRowProps) {
   // Convert price from basis points (0-10000) to percentage (0-100)
   const pricePercent = level.price / 100;
   const shares = Number(level.amount);
+  const isSimulated = level.isSimulated ?? false;
 
   return (
     <div
@@ -195,7 +220,7 @@ function OrderbookRow({ level, depthPercent, isBid, color, onClick }: OrderbookR
         color === 'green'
           ? 'text-green-600 dark:text-green-400'
           : 'text-red-600 dark:text-red-400'
-      }`}
+      } ${isSimulated ? 'opacity-60' : ''}`}
       onClick={onClick}
     >
       {/* Depth Bar */}
@@ -206,7 +231,12 @@ function OrderbookRow({ level, depthPercent, isBid, color, onClick }: OrderbookR
         style={{ width: `${depthPercent}%` }}
       />
       {/* Content */}
-      <span className="relative z-10 font-mono">{pricePercent.toFixed(1)}%</span>
+      <span className="relative z-10 font-mono flex items-center gap-1">
+        {pricePercent.toFixed(1)}%
+        {isSimulated && hasRealOrders && (
+          <span className="text-yellow-600 dark:text-yellow-500 text-[10px]">•</span>
+        )}
+      </span>
       <span className="relative z-10 font-mono">{shares.toLocaleString()}</span>
     </div>
   );
@@ -227,6 +257,7 @@ export function generateSimulatedOrderbook(basePrice: number): Orderbook {
       price,
       amount: BigInt(Math.floor(Math.random() * 5000) + 1000),
       orders: [],
+      isSimulated: true, // Simulated data
     });
   }
 
@@ -237,6 +268,7 @@ export function generateSimulatedOrderbook(basePrice: number): Orderbook {
       price,
       amount: BigInt(Math.floor(Math.random() * 5000) + 1000),
       orders: [],
+      isSimulated: true, // Simulated data
     });
   }
 
