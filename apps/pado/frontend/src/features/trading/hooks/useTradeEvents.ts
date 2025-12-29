@@ -1,23 +1,23 @@
 /**
  * useTradeEvents Hook
- * Subscribe to DeepBook OrderFilled events with simulation fallback
+ * Subscribe to DeepBook OrderFilled events via EventService
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getSuiClient } from '../../../lib/sui-client';
-import { NETWORK_CONFIG } from '../../../config/network';
+import { getEventService } from '../../../lib/event-service';
 import { useMarket } from '../context/MarketContext';
 import type { Trade } from '../components/TradeHistory';
+import type { ConnectionMode, DeepBookEvent, OrderFilledEvent } from '../types/events';
 
 interface UseTradeEventsOptions {
   maxTrades?: number; // Maximum trades to keep (default 50)
-  simulationEnabled?: boolean; // Enable simulation (default true)
+  simulationEnabled?: boolean; // Enable simulation fallback (default true)
   simulationInterval?: number; // Simulation interval ms (default 3000)
 }
 
 interface UseTradeEventsResult {
   trades: Trade[];
-  isSubscribed: boolean;
+  connectionMode: ConnectionMode;
   realTradeCount: number;
   isSimulating: boolean;
 }
@@ -33,9 +33,9 @@ export function useTradeEvents(
 
   const { currentPool } = useMarket();
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [connectionMode, setConnectionMode] = useState<ConnectionMode>('simulation');
   const [realTradeCount, setRealTradeCount] = useState(0);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const isConnectedRef = useRef(false);
 
   // Add trade helper
   const addTrade = useCallback(
@@ -46,72 +46,50 @@ export function useTradeEvents(
     [maxTrades]
   );
 
-  // Subscribe to blockchain events
+  // Convert OrderFilledEvent to Trade
+  const parseOrderFilledToTrade = useCallback(
+    (event: OrderFilledEvent): Trade => {
+      return {
+        id: event.txDigest + event.orderId,
+        price: Number(event.price) / Math.pow(10, currentPool.quoteToken.decimals),
+        quantity: Number(event.quantity) / Math.pow(10, currentPool.baseToken.decimals),
+        isBuy: event.takerIsBid,
+        timestamp: event.timestamp,
+        isSimulated: false,
+      };
+    },
+    [currentPool]
+  );
+
+  // Connect to EventService and subscribe
   useEffect(() => {
-    const client = getSuiClient();
+    const eventService = getEventService();
 
-    const subscribe = async () => {
-      try {
-        const unsubscribe = await client.subscribeEvent({
-          filter: {
-            MoveEventType: `${NETWORK_CONFIG.deepbookPackage}::pool::OrderFilled`,
-          },
-          onMessage: (event) => {
-            // Parse OrderFilled event
-            const parsedJson = event.parsedJson as {
-              price?: string;
-              quantity?: string;
-              base_quantity?: string;
-              is_bid?: boolean;
-              taker_is_bid?: boolean;
-            };
+    const connect = async () => {
+      // Connect with pool filter
+      const mode = await eventService.connect(currentPool?.id);
+      setConnectionMode(mode);
+      isConnectedRef.current = mode !== 'simulation';
 
-            // Handle different field names in DeepBook events
-            const price = parsedJson.price;
-            const quantity = parsedJson.quantity || parsedJson.base_quantity;
-            const isBid =
-              parsedJson.is_bid !== undefined
-                ? parsedJson.is_bid
-                : parsedJson.taker_is_bid;
-
-            if (!price || !quantity) {
-              console.warn('Invalid OrderFilled event:', parsedJson);
-              return;
-            }
-
-            const trade: Trade = {
-              id: event.id.txDigest + event.id.eventSeq,
-              price: Number(price) / Math.pow(10, currentPool.quoteToken.decimals),
-              quantity: Number(quantity) / Math.pow(10, currentPool.baseToken.decimals),
-              isBuy: isBid ?? Math.random() > 0.5,
-              timestamp: Number(event.timestampMs),
-              isSimulated: false, // Real blockchain trade
-            };
-
-            addTrade(trade, true);
-          },
-        });
-
-        unsubscribeRef.current = unsubscribe;
-        setIsSubscribed(true);
-        console.log('Subscribed to OrderFilled events');
-      } catch (error) {
-        console.warn('Event subscription failed, using simulation only:', error);
-        setIsSubscribed(false);
-      }
+      console.log(`[useTradeEvents] Connection mode: ${mode}`);
     };
 
-    subscribe();
+    // Subscribe to OrderFilled events
+    const unsubscribe = eventService.subscribe('OrderFilled', (event: DeepBookEvent) => {
+      if (event.type === 'OrderFilled') {
+        const trade = parseOrderFilledToTrade(event.data);
+        addTrade(trade, true);
+      }
+    });
+
+    connect();
 
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
+      unsubscribe();
     };
-  }, [currentPool, addTrade]);
+  }, [currentPool, addTrade, parseOrderFilledToTrade]);
 
-  // Simulation fallback
+  // Simulation fallback (only when in simulation mode)
   useEffect(() => {
     if (!simulationEnabled) return;
 
@@ -124,18 +102,21 @@ export function useTradeEvents(
 
     // Add new simulated trades periodically
     const interval = setInterval(() => {
-      const trade = generateSimulatedTrade(currentPool.baseToken.symbol);
-      addTrade(trade, false);
+      // Only add simulated trades if not receiving real trades
+      if (!isConnectedRef.current || connectionMode === 'simulation') {
+        const trade = generateSimulatedTrade(currentPool.baseToken.symbol);
+        addTrade(trade, false);
+      }
     }, simulationInterval + Math.random() * 2000);
 
     return () => clearInterval(interval);
-  }, [simulationEnabled, simulationInterval, currentPool, addTrade]);
+  }, [simulationEnabled, simulationInterval, currentPool, addTrade, connectionMode]);
 
   return {
     trades,
-    isSubscribed,
+    connectionMode,
     realTradeCount,
-    isSimulating: trades.length > 0 && realTradeCount === 0,
+    isSimulating: connectionMode === 'simulation' || (trades.length > 0 && realTradeCount === 0),
   };
 }
 
@@ -166,6 +147,6 @@ function generateSimulatedTrade(baseSymbol: string): Trade {
     quantity: 0.001 + Math.random() * 0.1,
     isBuy: Math.random() > 0.5,
     timestamp: Date.now(),
-    isSimulated: true, // Simulated trade
+    isSimulated: true,
   };
 }
