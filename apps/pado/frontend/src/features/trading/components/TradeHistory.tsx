@@ -1,5 +1,6 @@
 import { useMarket } from '../context/MarketContext';
 import { useTradeEvents } from '../hooks/useTradeEvents';
+import { ConnectionStatusBadge } from '../../../components/common/ConnectionStatus';
 
 export interface Trade {
   id: string;
@@ -27,7 +28,7 @@ function formatTime(timestamp: number): string {
 
 export function TradeHistory({ trades: externalTrades, className = '' }: TradeHistoryProps) {
   const { currentPool } = useMarket();
-  const { trades: eventTrades } = useTradeEvents();
+  const { trades: eventTrades, connectionMode } = useTradeEvents();
 
   // Use external trades if provided, otherwise use event trades
   const trades = externalTrades && externalTrades.length > 0 ? externalTrades : eventTrades;
@@ -44,8 +45,11 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
   return (
     <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
       <div className="p-3 border-b border-theme-border flex justify-between items-center">
-        <h3 className="font-semibold text-sm">Recent Trades</h3>
-        {simCount > 0 && (
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-sm">Recent Trades</h3>
+          <ConnectionStatusBadge mode={connectionMode} />
+        </div>
+        {simCount > 0 && connectionMode !== 'simulation' && (
           <span className="text-xs text-yellow-600 dark:text-yellow-500">
             {realCount > 0 ? `${simCount}/${displayedTrades.length} sim` : 'Simulated'}
           </span>
