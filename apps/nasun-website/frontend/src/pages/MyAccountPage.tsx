@@ -12,7 +12,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "../providers/auth/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { SectionLoading } from "../components/ui";
+import { SectionLoading, PageTitle } from "../components/ui";
 
 // Dashboard Card Components
 import { ProfileHeroCard } from "../components/app/myAccount/ProfileHeroCard";
@@ -113,19 +113,22 @@ const MyAccountPage = () => {
         </div>
       )}
 
+      {/* Page Title */}
+      <PageTitle>MY ACCOUNT</PageTitle>
+
       {/* Bento Grid Dashboard Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        {/* Profile Hero Card - Full Width */}
+        {/* Profile Hero Card - Left (2 cols on lg) */}
         <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
           <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-3" />
+            <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-2" />
           </Suspense>
         </ErrorBoundary>
 
-        {/* Wallet Connection Bar - Full Width */}
+        {/* Wallet Connection Bar - Right (1 col on lg) */}
         <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
           <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <WalletConnectionBar className="col-span-1 md:col-span-2 lg:col-span-3" />
+            <WalletConnectionBar className="col-span-1 md:col-span-2 lg:col-span-1" />
           </Suspense>
         </ErrorBoundary>
 
