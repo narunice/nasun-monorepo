@@ -156,7 +156,7 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
   // Get button text based on status
   const getButtonText = () => {
     if (status === 'disconnected') return 'Connect Wallet';
-    if (status === 'locked') return shortenAddress(account?.address || '');
+    if (status === 'locked') return 'Locked';
     if (status === 'unlocked' && account) return shortenAddress(account.address);
     return 'Wallet';
   };
@@ -575,7 +575,7 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
       {/* Dropdown */}
       {showDropdown && (
         <div
-          className={`absolute right-0 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[100] ${
+          className={`absolute right-0 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] ${
             dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
         >
