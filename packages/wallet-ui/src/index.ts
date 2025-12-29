@@ -52,3 +52,4 @@ export type { CopyableAddressProps } from './CopyableAddress';
 
 // Security components
 export { SecuritySettings } from './SecuritySettings';
+export { AddressBookPanel } from './AddressBookPanel';

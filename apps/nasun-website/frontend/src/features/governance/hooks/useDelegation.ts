@@ -53,7 +53,7 @@ export function useDelegation(): UseDelegationReturn {
       },
     },
     {
-      enabled: !!delegationRegistryId && isConnected,
+      enabled: !!delegationRegistryId && !!isConnected,
     }
   );
 

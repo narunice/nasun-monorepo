@@ -29,6 +29,23 @@ vi.mock('@nasun/wallet', () => ({
     isLoading: false,
     error: null,
   })),
+  // Address book hooks
+  useAddressBook: vi.fn(() => ({
+    isKnownAddress: vi.fn(() => false),
+    isTrustedAddress: vi.fn(() => false),
+    getEntry: vi.fn(() => undefined),
+    getAllEntries: vi.fn(() => []),
+    recordTransaction: vi.fn(),
+    updateLabel: vi.fn(),
+    trustAddress: vi.fn(),
+    untrustAddress: vi.fn(),
+    removeAddress: vi.fn(),
+  })),
+  useAddressStatus: vi.fn(() => ({
+    isKnown: false,
+    isTrusted: false,
+    entry: undefined,
+  })),
   isValidAddress: vi.fn((addr: string) => /^0x[a-fA-F0-9]{64}$/.test(addr)),
   shortenAddress: vi.fn((addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`),
   getAllTokens: vi.fn(() => [

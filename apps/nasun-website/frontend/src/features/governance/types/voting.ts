@@ -4,6 +4,23 @@ export type SuiID = {
   id: string;
 };
 
+// Vote history for My Account page
+export interface VoteHistory {
+  proposalId: string;
+  proposalTitle: string;
+  voteYes: boolean;
+  votingPower: number;
+  timestamp: number;
+  proposalStatus: "Active" | "Passed" | "Failed" | "Delisted";
+}
+
+// Governance participation statistics
+export interface GovernanceStats {
+  totalProposals: number;
+  votedProposals: number;
+  participationRate: number;
+}
+
 export type ProposalStatus = {
   variant: "Active" | "Delisted";
 };
