@@ -4,17 +4,21 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { PredictionMarket } from '../types';
-import { calculateProbability } from '../types';
+import type { PredictionMarket, Orderbook } from '../types';
+import { calculateProbabilityFromOrderbook } from '../types';
 
 interface MarketHeaderProps {
   market: PredictionMarket;
+  yesOrderbook?: Orderbook | null;
+  noOrderbook?: Orderbook | null;
 }
 
-export function MarketHeader({ market }: MarketHeaderProps) {
+export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeaderProps) {
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining(market.closeTime));
-  const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
-  const noProbability = 100 - yesProbability;
+  const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
+    yesOrderbook ?? null,
+    noOrderbook ?? null
+  );
 
   // Update countdown every second
   useEffect(() => {
