@@ -1,24 +1,30 @@
+/**
+ * MyAccountPage - Bento Grid Dashboard Layout
+ *
+ * Redesigned My Account page with modern dashboard grid layout.
+ * Features unified wallet management and compact card components.
+ */
+
 import { useTranslation } from "react-i18next";
-import { MyAssets } from "../components/app/myAccount/MyAssets";
-import UserInfo from "../components/app/myAccount/UserInfo";
-import { MyWalletStatus } from "../components/app/myAccount/MyWalletStatus";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { Suspense, useEffect, useState } from "react";
-import { useUserWallet } from "../hooks/wallet/useUserWallet";
 import { useAuth } from "../providers/auth/AuthContext";
 import { useSearchParams } from "react-router-dom";
-import { WhitelistStatus } from "../components/app/myAccount/WhitelistStatus";
-import { BattalionNftAllowlistStatus } from "../components/app/myAccount/BattalionNftAllowlistStatus";
-import { AccountDeletion } from "../components/app/myAccount/AccountDeletion";
 import { Button } from "../components/ui/button";
-import { RankHistorySection } from "../components/app/myAccount/RankHistorySection";
 import { SectionLoading } from "../components/ui";
-import { GovernanceActivitySection } from "../components/app/myAccount/GovernanceActivitySection";
+
+// Dashboard Card Components
+import { ProfileHeroCard } from "../components/app/myAccount/ProfileHeroCard";
+import { WalletConnectionBar } from "../components/app/myAccount/WalletConnectionBar";
+import { RankHistoryCard } from "../components/app/myAccount/RankHistoryCard";
+import { GovernanceCard } from "../components/app/myAccount/GovernanceCard";
+import { CompactNftStatus } from "../components/app/myAccount/CompactNftStatus";
+import { AssetsCard } from "../components/app/myAccount/AssetsCard";
+import { DangerZoneCard } from "../components/app/myAccount/DangerZoneCard";
 
 const MyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);
-  const { user: walletUser, isLoading, error } = useUserWallet();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [notification, setNotification] = useState<{
@@ -39,7 +45,7 @@ const MyAccountPage = () => {
       setNotification({
         message:
           t("userInfo.accountLinkingCancelled", { provider }) ||
-          `${provider} 계정 연결이 취소되었습니다.`,
+          `${provider} account linking was cancelled.`,
         type: "info",
       });
 
@@ -55,6 +61,7 @@ const MyAccountPage = () => {
     }
   }, [searchParams, setSearchParams, t]);
 
+  // Get MetaMask wallet address from user data
   const walletAddress =
     user?.provider === "MetaMask"
       ? user.walletAddress
@@ -106,58 +113,66 @@ const MyAccountPage = () => {
         </div>
       )}
 
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <UserInfo user={walletUser} isLoading={isLoading} error={error} />
-        </Suspense>
-      </ErrorBoundary>
+      {/* Bento Grid Dashboard Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* Profile Hero Card - Full Width */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-3" />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Rank History Section - 항상 표시 */}
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <RankHistorySection username={twitterUsername || null} />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Wallet Connection Bar - Full Width */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <WalletConnectionBar className="col-span-1 md:col-span-2 lg:col-span-3" />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Battalion NFT Allowlist Status */}
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <BattalionNftAllowlistStatus walletAddress={walletAddress} />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Rank History - 2 columns on large screens */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <RankHistoryCard
+              username={twitterUsername || null}
+              className="col-span-1 md:col-span-2 lg:col-span-2"
+            />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Founders NFT Whitelist Status */}
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <WhitelistStatus walletAddress={walletAddress} />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Governance Card - 1 column */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <GovernanceCard className="col-span-1" />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Governance Activity Section */}
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <GovernanceActivitySection />
-        </Suspense>
-      </ErrorBoundary>
+        {/* NFT Status - Full Width, Compact */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <CompactNftStatus
+              walletAddress={walletAddress}
+              className="col-span-1 md:col-span-2 lg:col-span-3"
+            />
+          </Suspense>
+        </ErrorBoundary>
 
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <MyWalletStatus />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Assets Card - Full Width */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <AssetsCard
+              walletAddress={walletAddress}
+              className="col-span-1 md:col-span-2 lg:col-span-3"
+            />
+          </Suspense>
+        </ErrorBoundary>
 
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <MyAssets walletAddress={walletAddress} />
-        </Suspense>
-      </ErrorBoundary>
-
-      {/* Account Deletion Section */}
-      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
-          <AccountDeletion />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Danger Zone - Full Width, Compact */}
+        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <Suspense fallback={<SectionLoading showLayout={false} />}>
+            <DangerZoneCard className="col-span-1 md:col-span-2 lg:col-span-3" />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
     </PageLayout>
   );
 };
