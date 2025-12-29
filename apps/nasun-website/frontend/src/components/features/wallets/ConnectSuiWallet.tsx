@@ -140,7 +140,7 @@ export function ConnectSuiWallet() {
       )}
 
       <ConnectModal
-        trigger={<></>}
+        trigger={<span style={{ display: "none" }} />}
         open={connectModalOpen}
         onOpenChange={(open) => setConnectModalOpen(open)}
       />

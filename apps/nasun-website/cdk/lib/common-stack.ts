@@ -256,7 +256,7 @@ export class CommonStack extends cdk.Stack {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY || "",
         NASUN_NFT_CONTRACT_ADDRESS: process.env.NASUN_NFT_CONTRACT_ADDRESS || "",
-        NFT_BONUS: process.env.NFT_BONUS || "100",
+        NFT_BONUS: process.env.NFT_BONUS || "2",
         LEADERBOARD_WEIGHT: process.env.LEADERBOARD_WEIGHT || "1",
         TOKEN_WEIGHT: process.env.TOKEN_WEIGHT || "0",
       },

@@ -82,6 +82,7 @@ export function useDelegation(): UseDelegationReturn {
   const fetchDelegationState = async () => {
     if (!account || !packageId || !delegationRegistryId) return;
 
+    const userAddress = account.address;
     setIsLoading(true);
     setError(null);
 
@@ -95,12 +96,12 @@ export function useDelegation(): UseDelegationReturn {
         target: `${packageId}::delegation::has_delegated`,
         arguments: [
           hasDelegatedTx.object(delegationRegistryId),
-          hasDelegatedTx.pure.address(account),
+          hasDelegatedTx.pure.address(userAddress),
         ],
       });
 
       const hasDelegatedResult = await suiClient.devInspectTransactionBlock({
-        sender: account,
+        sender: userAddress,
         transactionBlock: hasDelegatedTx,
       });
 
@@ -119,12 +120,12 @@ export function useDelegation(): UseDelegationReturn {
           target: `${packageId}::delegation::get_delegate`,
           arguments: [
             getDelegateTx.object(delegationRegistryId),
-            getDelegateTx.pure.address(account),
+            getDelegateTx.pure.address(userAddress),
           ],
         });
 
         const delegateResult = await suiClient.devInspectTransactionBlock({
-          sender: account,
+          sender: userAddress,
           transactionBlock: getDelegateTx,
         });
 
@@ -145,12 +146,12 @@ export function useDelegation(): UseDelegationReturn {
         target: `${packageId}::delegation::get_delegators`,
         arguments: [
           getDelegatorsTx.object(delegationRegistryId),
-          getDelegatorsTx.pure.address(account),
+          getDelegatorsTx.pure.address(userAddress),
         ],
       });
 
       const delegatorsResult = await suiClient.devInspectTransactionBlock({
-        sender: account,
+        sender: userAddress,
         transactionBlock: getDelegatorsTx,
       });
 
@@ -163,19 +164,24 @@ export function useDelegation(): UseDelegationReturn {
         target: `${packageId}::delegation::delegator_count`,
         arguments: [
           countTx.object(delegationRegistryId),
-          countTx.pure.address(account),
+          countTx.pure.address(userAddress),
         ],
       });
 
       const countResult = await suiClient.devInspectTransactionBlock({
-        sender: account,
+        sender: userAddress,
         transactionBlock: countTx,
       });
 
       if (countResult.results?.[0]?.returnValues?.[0]) {
         const bytes = countResult.results[0].returnValues[0][0];
         // Parse u64 from little-endian bytes
-        delegatorCount = bytes.reduce((acc: number, byte: number, idx: number) => acc + byte * Math.pow(256, idx), 0);
+        // Check if bytes is an array before calling reduce
+        if (Array.isArray(bytes)) {
+          delegatorCount = bytes.reduce((acc: number, byte: number, idx: number) => acc + byte * Math.pow(256, idx), 0);
+        } else if (typeof bytes === "number") {
+          delegatorCount = bytes;
+        }
       }
 
       setDelegationState({
