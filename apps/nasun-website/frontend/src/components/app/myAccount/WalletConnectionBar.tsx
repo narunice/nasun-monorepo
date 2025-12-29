@@ -12,6 +12,8 @@ import { FC, useState, useEffect } from "react";
 import { useWallet } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useUserStore } from "../../../store/userStore";
 import { isMetaMaskInstalled } from "../../../utils/metamaskUtils";
 import { DashboardCard } from "../../ui/DashboardCard";
@@ -223,9 +225,29 @@ Timestamp: ${Date.now()}`;
         <WalletItem
           icon={<MetaMaskIcon />}
           name="MetaMask"
+          nameExtra={
+            <Tooltip.Provider delayDuration={200}>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button className="text-nasun-white/50 hover:text-nasun-white/80 transition-colors">
+                    <InfoCircledIcon className="w-4 h-4" />
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    className="max-w-[280px] px-3 py-2 bg-nasun-black text-nasun-white text-xs border border-nasun-white/20 rounded-lg shadow-lg z-50"
+                    side="top"
+                    sideOffset={5}
+                  >
+                    MetaMask verification is required to register your address for NFT drop allowlists or to verify membership NFT ownership for voting power bonus.
+                    <Tooltip.Arrow className="fill-nasun-black" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          }
           address={sessionEthAddress || undefined}
           isConnected={isMetaMaskConnected}
-          description="For: NFT Status, Ethereum Assets"
           onConnect={handleMetaMaskConnect}
           onDisconnect={handleMetaMaskDisconnect}
           isConnecting={isConnecting}
