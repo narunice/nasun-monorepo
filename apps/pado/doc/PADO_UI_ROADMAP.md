@@ -94,7 +94,7 @@
 | SlippageSettings | `SlippageSettings.tsx` | ✅ 완료 | 슬리피지 설정 |
 | PoolInfo | `PoolInfo.tsx` | ✅ 완료 | 풀 정보 표시 |
 
-### 공통 컴포넌트 (4개)
+### 공통 컴포넌트 (5개)
 
 | 컴포넌트 | 파일 | 상태 | 설명 |
 |---------|------|------|------|
@@ -102,6 +102,7 @@
 | Button | `Button.tsx` | ✅ 완료 | 공통 버튼 |
 | Input | `Input.tsx` | ✅ 완료 | 공통 입력 필드 |
 | Spinner | `Spinner.tsx` | ✅ 완료 | 로딩 상태 표시 |
+| ConnectionStatus | `ConnectionStatus.tsx` | ✅ 완료 | 연결 상태 Badge (Live/Polling/Demo) |
 
 ### Prediction Market 컴포넌트 (5개)
 
@@ -149,13 +150,14 @@
 
 ### Phase 3: 고급 기능 (현재)
 
-**3.1 실시간 데이터** ⭐ 다음 단계
+**3.1 실시간 데이터** ✅ 완료
 
 | 작업 | 설명 | 난이도 | 상태 |
 |------|------|--------|------|
-| 블록체인 이벤트 구독 | WebSocket 실시간 업데이트 | 중 | 📋 |
-| 실시간 차트 업데이트 | 시뮬레이션 → 실제 데이터 | 중 | 📋 |
-| 실시간 거래 내역 | 시뮬레이션 → 실제 이벤트 | 중 | 📋 |
+| 블록체인 이벤트 구독 | EventService (WebSocket/Polling/Simulation) | 중 | ✅ |
+| 실시간 거래 내역 | useTradeEvents + EventService 통합 | 중 | ✅ |
+| 실시간 오더북 | 이벤트 기반 invalidation + 10s 백업 폴링 | 중 | ✅ |
+| 연결 상태 UI | ConnectionStatusBadge (Live/Polling/Demo) | 저 | ✅ |
 
 **3.2 차트 고급화**
 
@@ -505,3 +507,4 @@ function MyChart() {
 | 2025-12-28 | Phase 8.1 모바일 반응형 최적화 (Header 햄버거 메뉴, 그리드 반응형) |
 | 2025-12-29 | Phase 14 Prediction Market UI 완료 (5개 컴포넌트) |
 | 2025-12-29 | 블록체인 동기화 피드백 UI 추가 |
+| 2025-12-29 | Phase 3.1 완료: EventService (WebSocket/Polling/Simulation), 실시간 오더북, ConnectionStatusBadge |
