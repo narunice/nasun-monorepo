@@ -53,8 +53,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
   const isLoading = isLoadingPower || isLoadingDelegation;
 
-  // Check if user has linked X account
-  const hasLinkedX = isAuthenticated && user?.provider === "twitter";
+  // Check if user has linked X account (provider is stored as "Twitter" with capital T)
+  const hasLinkedX = isAuthenticated && user?.provider === "Twitter";
 
   // Calculate voting power components
   const basePower = votingPower?.leaderboardScore || 1;
@@ -70,6 +70,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
   // Handle Link X button click
   const handleLinkX = async () => {
     try {
+      // Save current page to return after OAuth
+      localStorage.setItem("auth_return_url", window.location.pathname);
       await signInWithTwitter();
     } catch (error) {
       console.error("X sign-in failed:", error);
@@ -122,20 +124,20 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
             <div className="flex items-center justify-between py-2 border-b border-nasun-c5/20">
               <div className="flex items-center gap-2">
                 <span className="text-nasun-white/80">Leaderboard Bonus</span>
-                <InfoTooltip content="Link your X account to earn bonus voting power from community engagement on the leaderboard." />
+                <InfoTooltip content="Verify your X account to earn bonus voting power from community engagement on the leaderboard." />
                 {!hasLinkedX ? (
                   <button
                     onClick={handleLinkX}
                     className="text-xs text-nasun-c4 hover:text-nasun-c3 hover:underline transition-colors"
                   >
-                    Link X →
+                    Verify X Account →
                   </button>
-                ) : basePower > 1 ? (
+                ) : (
                   <CheckCircledIcon className="w-4 h-4 text-green-400" />
-                ) : null}
+                )}
               </div>
-              <span className={`font-medium ${basePower > 1 ? "text-nasun-c3" : "text-nasun-white/50"}`}>
-                {basePower > 1 ? `+${(basePower - 1).toLocaleString()}` : "—"}
+              <span className={`font-medium ${hasLinkedX && basePower > 1 ? "text-nasun-c3" : "text-nasun-white/50"}`}>
+                {hasLinkedX ? (basePower > 1 ? `+${(basePower - 1).toLocaleString()}` : "No Bonus") : "—"}
               </span>
             </div>
 
@@ -143,17 +145,25 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
             <div className="flex items-center justify-between py-2 border-b border-nasun-c5/20">
               <div className="flex items-center gap-2">
                 <span className="text-nasun-white/80">NFT Bonus</span>
-                <InfoTooltip content="Verify Battalion NFT ownership with MetaMask to receive +100 voting power bonus." />
+                <InfoTooltip content="Verify Battalion NFT ownership with MetaMask to receive +2 voting power bonus." />
                 {nftBonus > 0 ? (
                   <CheckCircledIcon className="w-4 h-4 text-green-400" />
-                ) : hasMetaMask ? (
+                ) : (
                   <button
-                    onClick={() => {/* NFT verification is done in vote modal */}}
+                    onClick={() => {
+                      if (hasMetaMask) {
+                        // NFT verification is done in vote modal
+                        // Could show a tooltip or scroll to proposals
+                      } else {
+                        // Open MetaMask install page
+                        window.open("https://metamask.io/download/", "_blank");
+                      }
+                    }}
                     className="text-xs text-nasun-c4 hover:text-nasun-c3 hover:underline transition-colors"
                   >
-                    Verify →
+                    Verify Ownership →
                   </button>
-                ) : null}
+                )}
               </div>
               <span className={`font-medium ${nftBonus > 0 ? "text-nasun-c3" : "text-nasun-white/50"}`}>
                 {nftBonus > 0 ? `+${nftBonus.toLocaleString()}` : "—"}
@@ -192,18 +202,22 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
             {showHowItWorks && (
               <div className="mt-3 p-3 bg-nasun-black/30 rounded-lg text-sm text-nasun-white/70 animate-in slide-in-from-top-2 duration-200">
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   <li>
-                    <span className="text-nasun-white">Base:</span> 1 voting power for connecting wallet
+                    <span className="text-nasun-white font-medium">Base (1 power)</span>
+                    <p className="mt-0.5 text-xs">Every wallet holder starts with 1 voting power just by connecting their Nasun wallet.</p>
                   </li>
                   <li>
-                    <span className="text-nasun-white">Leaderboard Bonus:</span> Earn bonus by linking X account and engaging with the community
+                    <span className="text-nasun-white font-medium">Leaderboard Bonus</span>
+                    <p className="mt-0.5 text-xs">Higher rankers on the community leaderboard earn more voting power. Verify your X account and engage with the community to climb the ranks.</p>
                   </li>
                   <li>
-                    <span className="text-nasun-white">NFT Bonus:</span> +100 for Battalion NFT holders (verify with MetaMask)
+                    <span className="text-nasun-white font-medium">NFT Bonus (+2 power)</span>
+                    <p className="mt-0.5 text-xs">Battalion NFT holders receive +2 bonus voting power. Verify ownership by signing with MetaMask when voting.</p>
                   </li>
                   <li>
-                    <span className="text-nasun-white">Delegation:</span> Receive voting power from other users
+                    <span className="text-nasun-white font-medium">Delegation</span>
+                    <p className="mt-0.5 text-xs">Other community members can delegate their voting power to you. When they do, you vote on their behalf with combined power.</p>
                   </li>
                 </ul>
               </div>

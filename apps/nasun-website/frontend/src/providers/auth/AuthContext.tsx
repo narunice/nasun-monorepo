@@ -218,6 +218,13 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       localStorage.removeItem('auth_provider_preference');
       localStorage.removeItem('twitter_oauth_session');
       setIsLoading(false);
+
+      // Redirect to saved return URL if exists
+      const returnUrl = localStorage.getItem('auth_return_url');
+      if (returnUrl) {
+        localStorage.removeItem('auth_return_url');
+        window.location.href = returnUrl;
+      }
     }
     return true;
   }, [setIsLoading, setUser, clearUser]);
