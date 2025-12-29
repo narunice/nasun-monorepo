@@ -135,7 +135,21 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
       }
 
       // 5. Request signature to verify wallet ownership
-      const message = `Nasun Wallet Verification\n\nThis signature verifies that you own this wallet.\nNo funds will be transferred.\n\nAddress: ${connectedAddress}\nTimestamp: ${Date.now()}`;
+      const message = `🔐 Nasun Wallet Verification
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  IMPORTANT - READ CAREFULLY  ⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ This is a SIGNATURE request only
+✅ NO funds will be transferred
+✅ NO transaction will be executed
+✅ This only verifies wallet ownership
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Address: ${connectedAddress}
+Timestamp: ${Date.now()}`;
 
       // Convert message to hex for personal_sign
       const messageHex = "0x" + Array.from(new TextEncoder().encode(message))
