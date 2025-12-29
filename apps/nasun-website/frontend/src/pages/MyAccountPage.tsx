@@ -14,6 +14,7 @@ import { AccountDeletion } from "../components/app/myAccount/AccountDeletion";
 import { Button } from "../components/ui/button";
 import { RankHistorySection } from "../components/app/myAccount/RankHistorySection";
 import { SectionLoading } from "../components/ui";
+import { GovernanceActivitySection } from "../components/app/myAccount/GovernanceActivitySection";
 
 const MyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);
@@ -129,6 +130,13 @@ const MyAccountPage = () => {
       <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
         <Suspense fallback={<SectionLoading showLayout={false} />}>
           <WhitelistStatus walletAddress={walletAddress} />
+        </Suspense>
+      </ErrorBoundary>
+
+      {/* Governance Activity Section */}
+      <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+        <Suspense fallback={<SectionLoading showLayout={false} />}>
+          <GovernanceActivitySection />
         </Suspense>
       </ErrorBoundary>
 
