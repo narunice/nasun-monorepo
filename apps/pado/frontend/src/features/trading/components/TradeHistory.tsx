@@ -7,6 +7,7 @@ export interface Trade {
   quantity: number;
   isBuy: boolean;
   timestamp: number;
+  isSimulated?: boolean; // true if this trade is simulated data
 }
 
 interface TradeHistoryProps {
@@ -26,11 +27,16 @@ function formatTime(timestamp: number): string {
 
 export function TradeHistory({ trades: externalTrades, className = '' }: TradeHistoryProps) {
   const { currentPool } = useMarket();
-  const { trades: eventTrades, isSimulating } = useTradeEvents();
+  const { trades: eventTrades } = useTradeEvents();
 
   // Use external trades if provided, otherwise use event trades
   const trades = externalTrades && externalTrades.length > 0 ? externalTrades : eventTrades;
   const isLoading = trades.length === 0;
+
+  // Count real vs simulated trades
+  const displayedTrades = trades.slice(0, 12);
+  const realCount = displayedTrades.filter(t => !t.isSimulated).length;
+  const simCount = displayedTrades.filter(t => t.isSimulated).length;
 
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
@@ -39,8 +45,10 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
     <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
       <div className="p-3 border-b border-theme-border flex justify-between items-center">
         <h3 className="font-semibold text-sm">Recent Trades</h3>
-        {isSimulating && (
-          <span className="text-xs text-theme-text-muted">Simulated</span>
+        {simCount > 0 && (
+          <span className="text-xs text-yellow-600 dark:text-yellow-500">
+            {realCount > 0 ? `${simCount}/${displayedTrades.length} sim` : 'Simulated'}
+          </span>
         )}
       </div>
 
@@ -59,10 +67,10 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {trades.slice(0, 12).map((trade) => (
+              {displayedTrades.map((trade) => (
                 <tr
                   key={trade.id}
-                  className="hover:bg-theme-bg-tertiary/30 transition-colors"
+                  className={`hover:bg-theme-bg-tertiary/30 transition-colors ${trade.isSimulated ? 'opacity-60' : ''}`}
                 >
                   <td className={`py-1.5 px-3 font-mono ${trade.isBuy ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     ${trade.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -70,8 +78,11 @@ export function TradeHistory({ trades: externalTrades, className = '' }: TradeHi
                   <td className="py-1.5 px-3 text-right font-mono text-theme-text-primary">
                     {trade.quantity.toFixed(4)}
                   </td>
-                  <td className="py-1.5 px-3 text-right text-theme-text-muted">
+                  <td className="py-1.5 px-3 text-right text-theme-text-muted flex items-center justify-end gap-1">
                     {formatTime(trade.timestamp)}
+                    {trade.isSimulated && realCount > 0 && (
+                      <span className="text-yellow-600 dark:text-yellow-500 text-[10px]">•</span>
+                    )}
                   </td>
                 </tr>
               ))}

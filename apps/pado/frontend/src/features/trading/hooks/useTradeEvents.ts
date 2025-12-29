@@ -85,6 +85,7 @@ export function useTradeEvents(
               quantity: Number(quantity) / Math.pow(10, currentPool.baseToken.decimals),
               isBuy: isBid ?? Math.random() > 0.5,
               timestamp: Number(event.timestampMs),
+              isSimulated: false, // Real blockchain trade
             };
 
             addTrade(trade, true);
@@ -165,5 +166,6 @@ function generateSimulatedTrade(baseSymbol: string): Trade {
     quantity: 0.001 + Math.random() * 0.1,
     isBuy: Math.random() > 0.5,
     timestamp: Date.now(),
+    isSimulated: true, // Simulated trade
   };
 }
