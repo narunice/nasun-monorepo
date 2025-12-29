@@ -58,6 +58,25 @@
 
 비즈니스 가치가 높고, Unified Onchain Finance 비전에 필수적인 기능
 
+#### Phase 3.1: Realtime Events ⭐ (완료)
+
+**목표**: 실시간 블록체인 이벤트 구독으로 거래/오더북 즉시 업데이트
+
+| 순서 | 작업 | 상태 | 난이도 |
+|------|------|------|--------|
+| 3.1.1 | EventService 레이어 | ✅ 완료 | 중 |
+| 3.1.2 | useTradeEvents 통합 | ✅ 완료 | 중 |
+| 3.1.3 | 실시간 오더북 | ✅ 완료 | 중 |
+| 3.1.4 | 연결 상태 UI | ✅ 완료 | 저 |
+
+**구현 완료 (2025-12-29)**:
+- EventService 클래스 (WebSocket → Polling → Simulation 폴백)
+- useTradeEvents EventService 통합, connectionMode 반환
+- useOrderbook 이벤트 기반 invalidation + 10s 백업 폴링
+- ConnectionStatusBadge 컴포넌트 (Live/Polling/Demo)
+
+---
+
 #### Phase 6: Trading UX Pro ⭐ (완료)
 
 **목표**: CEX 수준의 거래 경험 완성
@@ -431,3 +450,4 @@ frontend/src/
 | 2025-12-28 | Phase 7.4 완료: 거래 통계/내역 (TradeStats, RecentTrades, useTradeHistory) |
 | 2025-12-29 | Phase 14 완료: Prediction Market MVP (14.1~14.5) |
 | 2025-12-29 | Phase 8.1 완료: 모바일 반응형 최적화 (햄버거 메뉴, 그리드 반응형) |
+| 2025-12-29 | Phase 3.1 완료: EventService, 실시간 오더북, ConnectionStatusBadge |
