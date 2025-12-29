@@ -48,7 +48,7 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
 
   if (!suiAccount && !walletAddress) {
     return (
-      <p className="text-nasun-white/70 !text-sm mb-4">
+      <p className="text-nasun-white/70 mb-4">
         {t("walletNotConnected")}
       </p>
     );
@@ -130,9 +130,9 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
         {/* Ethereum NFT 표시 */}
         {walletAddress && ethObjects.length > 0 && (
           <div className="mb-8">
-            <h4 className="text-lg font-semibold mb-4 text-gray-200">
+            <h6 className="font-semibold mb-4 text-gray-200">
               {t("myAssets.ethereumNFTs", "Ethereum NFTs")}
-            </h4>
+            </h6>
             <div className="space-y-4">
               {ethObjects.map((nft) => (
                 <EthereumNFT
@@ -147,9 +147,9 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
         {/* Sui 오브젝트 표시 */}
         {suiAccount && paginatedSuiObjects.length > 0 && (
           <div className="mb-8">
-            <h4 className="text-lg font-semibold mb-4 text-gray-200">
+            <h6 className="font-semibold mb-4 text-gray-200">
               {t("myAssets.suiObjects", "Sui Objects")}
-            </h4>
+            </h6>
             <div className="space-y-4">
               {paginatedSuiObjects.map((objectRes) => (
                 <SuiObject key={`sui-${objectRes.data?.objectId}`} objectRes={objectRes} />

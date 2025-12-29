@@ -28,6 +28,7 @@ import { useAuth } from "../../../providers/auth/AuthContext";
 
 export interface RankHistorySectionProps {
   username: string | null; // X 사용자명 (null인 경우 미연결 상태)
+  embedded?: boolean; // true when used inside DashboardCard (no SectionLayout)
 }
 
 /**
@@ -42,7 +43,7 @@ export interface RankHistorySectionProps {
  * // 조건부 렌더링
  * {user?.twitterHandle && <RankHistorySection username={user.twitterHandle} />}
  */
-export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username }) => {
+export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username, embedded = false }) => {
   const { t, i18n } = useTranslation(["myAccount", "common"]);
   const isKorean = i18n.language === "ko";
   const { user } = useAuth();
@@ -130,8 +131,26 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
     },
   ];
 
-  return (
-    <SectionLayout title={t("rankHistory.title")} titleAs="h3">
+  const content = (
+    <>
+      {/* Section Title with Share Button (only when embedded) */}
+      {embedded && (
+        <div className="flex items-center justify-between mb-4">
+          <h5 className="uppercase text-nasun-white">
+            {t("rankHistory.title")}
+          </h5>
+          {/* 공유 버튼 (데이터 있을 때만 표시) */}
+          {data && data.history.length > 0 && !isLoading && (
+            <ShareRankHistoryButton
+              chartRef={chartContainerRef}
+              username={username || ""}
+              period={selectedPeriod}
+              days={selectedDays}
+            />
+          )}
+        </div>
+      )}
+
       {/* 컨트롤 영역 (탭 + 날짜 범위) */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         {/* 기간 탭 */}
@@ -158,7 +177,7 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
           </div>
         </div>
 
-        {/* 날짜 범위 선택 + 공유 버튼 */}
+        {/* 날짜 범위 선택 */}
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2">
             <label htmlFor="date-range" className="font-medium text-white">
@@ -178,8 +197,8 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
             </select>
           </div>
 
-          {/* 공유 버튼 (데이터 있을 때만 표시) */}
-          {data && data.history.length > 0 && !isLoading && (
+          {/* 공유 버튼 (embedded가 아닐 때만 여기 표시) */}
+          {!embedded && data && data.history.length > 0 && !isLoading && (
             <ShareRankHistoryButton
               chartRef={chartContainerRef}
               username={username || ""}
@@ -312,6 +331,17 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
           </>
         )}
       </div>
+    </>
+  );
+
+  // When embedded, render without SectionLayout wrapper
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <SectionLayout title={t("rankHistory.title")} titleAs="h3">
+      {content}
     </SectionLayout>
   );
 };

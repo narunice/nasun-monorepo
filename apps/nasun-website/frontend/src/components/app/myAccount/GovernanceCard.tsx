@@ -37,9 +37,10 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (!isConnected) {
     return (
-      <DashboardCard title="Governance" className={className}>
+      <DashboardCard className={className}>
+        <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
-          <p className="text-nasun-white/50 text-sm text-center">
+          <p className="text-nasun-white/50 text-center">
             Connect Nasun Wallet to view governance activity
           </p>
           <WalletConnect />
@@ -50,7 +51,8 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (isLoading) {
     return (
-      <DashboardCard title="Governance" className={className}>
+      <DashboardCard className={className}>
+        <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c3 border-t-transparent" />
         </div>
@@ -59,7 +61,8 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   }
 
   return (
-    <DashboardCard title="Governance" className={className}>
+    <DashboardCard className={className}>
+      <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <StatCard
@@ -76,21 +79,21 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
       {/* Recent Votes */}
       <div className="space-y-2">
-        <h4 className="text-xs font-medium text-nasun-white/60 uppercase">
+        <h6 className="font-medium text-nasun-white/60 uppercase">
           Recent Votes
-        </h4>
+        </h6>
         {history.length > 0 ? (
           <div className="space-y-2">
             {history.map((vote) => (
               <div
                 key={vote.proposalId}
-                className="flex items-center justify-between text-sm"
+                className="flex items-center justify-between"
               >
                 <span className="truncate max-w-[150px] text-nasun-white/80">
                   {vote.proposalTitle}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  className={`px-2 py-0.5 rounded text-sm font-medium ${
                     vote.voteYes
                       ? "bg-green-500/20 text-green-400"
                       : "bg-red-500/20 text-red-400"
@@ -102,14 +105,14 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
             ))}
           </div>
         ) : (
-          <p className="text-nasun-white/50 text-sm">No votes yet</p>
+          <p className="text-nasun-white/50">No votes yet</p>
         )}
       </div>
 
       {/* View All Link */}
       <Link
         to="/protocol/governance"
-        className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-nasun-c5/30 text-sm text-nasun-c3 hover:text-nasun-c4 transition-colors"
+        className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-nasun-c5/30 text-nasun-c3 hover:text-nasun-c4 transition-colors"
       >
         View All
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

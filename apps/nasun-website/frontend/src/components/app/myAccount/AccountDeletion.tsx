@@ -47,7 +47,7 @@ export const AccountDeletion = () => {
   return (
     <SectionLayout className="mt-8">
       <div className="p-4 border border-red-600 rounded-lg bg-red-950/40">
-        <h5 className="!font-medium text-red-400">
+        <h5 className="uppercase text-red-400">
           {t("accountDeletion.title")}
         </h5>
         <p className="mt-2">
