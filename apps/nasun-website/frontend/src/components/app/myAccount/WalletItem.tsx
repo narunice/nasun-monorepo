@@ -11,9 +11,10 @@ import { Button } from "../../ui/button";
 interface WalletItemProps {
   icon: React.ReactNode;
   name: string;
+  nameExtra?: React.ReactNode;
   address?: string;
   isConnected: boolean;
-  description: string;
+  description?: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
   renderConnect?: React.ReactNode;
@@ -33,6 +34,7 @@ function truncateAddress(address: string): string {
 export const WalletItem: React.FC<WalletItemProps> = ({
   icon,
   name,
+  nameExtra,
   address,
   isConnected,
   description,
@@ -51,11 +53,14 @@ export const WalletItem: React.FC<WalletItemProps> = ({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h6 className="font-medium text-nasun-white">{name}</h6>
+            {nameExtra}
             {isConnected && (
               <span className="text-green-400">✓</span>
             )}
           </div>
-          <p className="text-nasun-white/50 text-sm">{description}</p>
+          {description && (
+            <p className="text-nasun-white/50 text-sm">{description}</p>
+          )}
         </div>
       </div>
 
