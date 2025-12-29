@@ -5,95 +5,33 @@
  * Displays MetaMask and Nasun Wallet connection status in a single location.
  */
 
-import { FC } from "react";
+import { FC, useState } from "react";
 import { useWallet } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useUserStore } from "../../../store/userStore";
+import { useAuth } from "../../../providers/auth/AuthContext";
 import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { WalletItem } from "./WalletItem";
+import { Button } from "../../ui/button";
+import logger from "../../../lib/logger";
 
-// MetaMask icon SVG
+// MetaMask icon (official SVG)
 const MetaMaskIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M21.5 4L13.5 10L15 6.5L21.5 4Z"
-      fill="#E2761B"
-      stroke="#E2761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M2.5 4L10.4 10.1L9 6.5L2.5 4Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M18.5 16.5L16.5 19.5L21 20.8L22.4 16.6L18.5 16.5Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M1.6 16.6L3 20.8L7.5 19.5L5.5 16.5L1.6 16.6Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M7.3 10.8L6 12.8L10.4 13L10.2 8.3L7.3 10.8Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M16.7 10.8L13.7 8.2L13.6 13L18 12.8L16.7 10.8Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M7.5 19.5L10.1 18.2L7.8 16.6L7.5 19.5Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M13.9 18.2L16.5 19.5L16.2 16.6L13.9 18.2Z"
-      fill="#E4761B"
-      stroke="#E4761B"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
+  <img
+    src="/MetaMask_Fox.svg"
+    alt="MetaMask"
+    className="w-6 h-6"
+  />
 );
 
-// Nasun Wallet icon (using a simple diamond/gem shape)
+// Nasun Wallet icon (official SVG)
 const NasunIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M12 2L3 9L12 22L21 9L12 2Z"
-      fill="#00D4AA"
-      stroke="#00D4AA"
-      strokeWidth="1"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M3 9H21L12 2L3 9Z"
-      fill="#00B894"
-      stroke="#00B894"
-      strokeWidth="1"
-      strokeLinejoin="round"
-    />
-    <path d="M12 2V22" stroke="#009B7D" strokeWidth="1" />
-  </svg>
+  <img
+    src="/nasun_symbol_white.svg"
+    alt="Nasun"
+    className="w-6 h-6"
+  />
 );
 
 interface WalletConnectionBarProps {
@@ -103,8 +41,11 @@ interface WalletConnectionBarProps {
 export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
   className = "",
 }) => {
-  // MetaMask connection state from userStore
-  const { user } = useUserStore();
+  const [isUnlinking, setIsUnlinking] = useState(false);
+
+  // Auth and user store
+  const { user: authUser } = useAuth();
+  const { user, updateUserProfile } = useUserStore();
   const ethAddress = user?.linkedAccounts?.metamask?.walletAddress;
   const isMetaMaskConnected = !!ethAddress;
 
@@ -113,15 +54,102 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
     useMetaMaskConnection({ mode: "link" });
 
   // Nasun Wallet connection state
-  const { status: nasunStatus, account: nasunAccount } = useWallet();
+  const { status: nasunStatus, account: nasunAccount, lockWallet } = useWallet();
   const isNasunConnected = nasunStatus === "unlocked" && !!nasunAccount;
+
+  // MetaMask disconnect (unlink from account with signature verification)
+  const handleMetaMaskDisconnect = async () => {
+    // 1. Check if MetaMask is installed
+    if (typeof window.ethereum === "undefined") {
+      const installConfirm = confirm(
+        "MetaMask is not installed. Would you like to install it?"
+      );
+      if (installConfirm) {
+        window.open("https://metamask.io/download/", "_blank");
+      }
+      return;
+    }
+
+    // 2. Show signature warning message
+    const proceedWithSignature = confirm(
+      "This signature is only to verify wallet ownership.\n" +
+      "No funds will be transferred.\n\n" +
+      "Do you want to proceed?"
+    );
+    if (!proceedWithSignature) return;
+
+    setIsUnlinking(true);
+    try {
+      // 3. Request MetaMask accounts
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      }) as string[];
+      const address = accounts[0];
+
+      // 4. Generate signature message
+      const message = `Unlink MetaMask wallet from Nasun account.\n\nAddress: ${address}\nTimestamp: ${Date.now()}`;
+
+      // 5. Request personal_sign
+      const signature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [message, address],
+      });
+
+      if (!signature) {
+        throw new Error("Signature rejected");
+      }
+
+      // 6. Call Unlink API
+      const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
+      const response = await fetch(`${linkAccountApi}/unlink`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          primaryIdentityId: authUser?.identityId,
+          provider: "metamask",
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to unlink MetaMask wallet");
+
+      // 7. Refresh user profile
+      const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
+      const profileResponse = await fetch(
+        `${userProfileApi}?identityId=${authUser?.identityId}`
+      );
+      if (profileResponse.ok) {
+        const updatedProfile = await profileResponse.json();
+        updateUserProfile(updatedProfile);
+        localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+      }
+      alert("MetaMask wallet unlinked successfully!");
+    } catch (err: unknown) {
+      logger.error("Failed to unlink MetaMask:", err);
+      if (err instanceof Error) {
+        if (err.message.includes("rejected") || err.message.includes("denied")) {
+          alert("Signature was rejected. Wallet not unlinked.");
+        } else {
+          alert("Failed to unlink MetaMask wallet: " + err.message);
+        }
+      } else {
+        alert("Failed to unlink MetaMask wallet");
+      }
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
+  // Nasun Wallet disconnect (lock wallet)
+  const handleNasunDisconnect = () => {
+    if (!confirm("Lock Nasun Wallet?")) return;
+    lockWallet();
+  };
 
   return (
     <DashboardCard className={className}>
       <h5 className="uppercase text-nasun-white mb-4">
         WALLET CONNECTIONS
       </h5>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="flex flex-col gap-3">
         {/* MetaMask */}
         <WalletItem
           icon={<MetaMaskIcon />}
@@ -130,7 +158,9 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
           isConnected={isMetaMaskConnected}
           description="For: NFT Status, Ethereum Assets"
           onConnect={handleMetaMaskConnect}
+          onDisconnect={handleMetaMaskDisconnect}
           isConnecting={isMetaMaskConnecting}
+          isDisconnecting={isUnlinking}
         />
 
         {/* Nasun Wallet */}
@@ -141,6 +171,16 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
           isConnected={isNasunConnected}
           description="For: Governance, Nasun Assets"
           renderConnect={<WalletConnect />}
+          renderDisconnect={
+            <Button
+              variant="filledOutlineScarlet"
+              size="xs"
+              onClick={handleNasunDisconnect}
+              className="w-full"
+            >
+              Lock Wallet
+            </Button>
+          }
         />
       </div>
     </DashboardCard>
