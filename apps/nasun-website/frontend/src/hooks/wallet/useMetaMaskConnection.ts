@@ -16,6 +16,7 @@ import {
   connectWallet,
   switchNetwork,
   signMessage,
+  isMetaMaskInstalled,
 } from '../../utils/metamaskUtils';
 import { authenticateWithMetaMask } from '../../services/metamaskApi';
 
@@ -62,6 +63,18 @@ export function useMetaMaskConnection(
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {
+    // Check if MetaMask is installed before proceeding
+    if (!isMetaMaskInstalled()) {
+      const installConfirm = confirm(
+        "MetaMask is not installed.\n\n" +
+        "Would you like to install it?"
+      );
+      if (installConfirm) {
+        window.open("https://metamask.io/download/", "_blank");
+      }
+      return;
+    }
+
     try {
       setIsConnecting(true);
 
