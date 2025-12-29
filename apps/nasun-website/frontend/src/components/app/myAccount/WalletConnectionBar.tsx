@@ -135,18 +135,12 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({
       }
 
       // 5. Request signature to verify wallet ownership
-      const message = `🔐 Nasun Wallet Verification
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️  IMPORTANT - READ CAREFULLY  ⚠️
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const message = `Nasun Wallet Verification
 
 ✅ This is a SIGNATURE request only
 ✅ NO funds will be transferred
 ✅ NO transaction will be executed
 ✅ This only verifies wallet ownership
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Address: ${connectedAddress}
 Timestamp: ${Date.now()}`;
