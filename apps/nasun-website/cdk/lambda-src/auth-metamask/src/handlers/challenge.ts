@@ -41,22 +41,22 @@ export async function handleChallenge(
   const acceptLanguage = event.headers['Accept-Language'] || event.headers['accept-language'] || '';
   const isKorean = acceptLanguage.toLowerCase().startsWith('ko');
 
-  // 다국어 메시지 생성
+  // 다국어 메시지 생성 (WalletConnectionBar 스타일과 통일)
   const message = isKorean
-    ? `NASUN 로그인
+    ? `Nasun 지갑 인증
 
-⚠️ 중요 안내:
-• 이 서명으로 돈이 빠져나가지 않습니다
-• 지갑 소유자 본인임을 확인하기 위한 것입니다
-• NASUN 공식 사이트에서만 서명하세요
+✅ 자금이 이체되지 않습니다
+✅ 트랜잭션이 실행되지 않습니다
+✅ 지갑 소유권만 확인합니다
+✅ 서명 요청일 뿐입니다
 
 Nonce: ${nonce}`
-    : `Login to NASUN
+    : `Nasun Wallet Verification
 
-⚠️ Important Notice:
-• This signature does NOT transfer any funds
-• This is only to verify you own this wallet
-• Only sign on the official NASUN website
+✅ NO funds will be transferred
+✅ NO transaction will be executed
+✅ This only verifies wallet ownership
+✅ This is a SIGNATURE request only
 
 Nonce: ${nonce}`;
 
