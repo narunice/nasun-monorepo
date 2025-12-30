@@ -15,7 +15,8 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useUserStore } from "../../../store/userStore";
-import { isMetaMaskInstalled } from "../../../utils/metamaskUtils";
+import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
+import { isMetaMaskInstalled, connectWallet } from "../../../utils/metamaskUtils";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { WalletItem } from "./WalletItem";
 import { Button } from "../../ui/button";
@@ -48,6 +49,22 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({ className = 
   const { user } = useUserStore();
   const registeredEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
 
+  // MetaMask link hook for auto-linking when no wallet is registered
+  const { handleConnect: linkMetaMask, isConnecting: isLinking } = useMetaMaskConnection({
+    mode: "link",
+    onSuccess: (address) => {
+      // After successful link, also set up session
+      setSessionEthAddress(address.toLowerCase());
+      localStorage.setItem(METAMASK_SESSION_KEY, address.toLowerCase());
+      alert("MetaMask wallet has been linked to your profile and connected.");
+    },
+    onError: (error) => {
+      if (!error.message.includes("rejected") && !error.message.includes("denied")) {
+        alert("Failed to link MetaMask: " + error.message);
+      }
+    },
+  });
+
   // MetaMask connection status (session-based)
   const isMetaMaskConnected = !!sessionEthAddress;
 
@@ -78,11 +95,12 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({ className = 
   }, [registeredEthAddress, sessionEthAddress]);
 
   /**
-   * MetaMask Connect Handler (Session Only)
+   * MetaMask Connect Handler
    *
-   * This only creates a browser session for NFT verification.
-   * It does NOT link the wallet to the user account (that's done in ProfileHeroCard).
-   * Requires signature verification to prove wallet ownership.
+   * Flow:
+   * 1. If no wallet registered in profile → auto-link via useMetaMaskConnection hook
+   * 2. If wallet registered but different address connected → show error
+   * 3. If wallet registered and same address connected → session connect with signature
    */
   const handleMetaMaskConnect = async () => {
     // 1. Check if MetaMask is installed
@@ -94,15 +112,43 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({ className = 
       return;
     }
 
-    // 2. Check if MetaMask is linked in User Info
+    // 2. If no wallet registered in profile → auto-link
     if (!registeredEthAddress) {
-      alert("Please link MetaMask in your profile or log in with MetaMask first.");
-      return;
+      // First connect to get the address
+      try {
+        const address = await connectWallet();
+        const normalizedAddress = address.toLowerCase();
+
+        // Ask user if they want to link this wallet
+        const confirmLink = confirm(
+          `No MetaMask wallet is linked to your profile.\n\n` +
+            `Would you like to link wallet ${shortenAddress(normalizedAddress)}?\n\n` +
+            `This will:\n` +
+            `• Link this wallet to your profile\n` +
+            `• Connect it for this session`
+        );
+
+        if (!confirmLink) {
+          return;
+        }
+
+        // Use the link hook to perform Challenge-Response auth and link
+        await linkMetaMask();
+        return;
+      } catch (err) {
+        if (err instanceof Error) {
+          if (!err.message.includes("rejected") && !err.message.includes("denied")) {
+            alert("Failed to connect MetaMask: " + err.message);
+          }
+        }
+        return;
+      }
     }
 
+    // 3. Wallet is registered - proceed with session connection
     setIsConnecting(true);
     try {
-      // 3. Request MetaMask accounts
+      // Request MetaMask accounts
       const accounts = (await window.ethereum!.request({
         method: "eth_requestAccounts",
       })) as string[];
@@ -111,8 +157,9 @@ export const WalletConnectionBar: FC<WalletConnectionBarProps> = ({ className = 
       // 4. Validate address matches registered address
       if (connectedAddress !== registeredEthAddress.toLowerCase()) {
         alert(
-          `The connected wallet (${shortenAddress(connectedAddress)}) does not match ` +
-            `your registered address (${shortenAddress(registeredEthAddress)}).\n\n` +
+          `The connected wallet does not match the wallet linked to your profile.\n\n` +
+            `Profile wallet: ${shortenAddress(registeredEthAddress)}\n` +
+            `Connected wallet: ${shortenAddress(connectedAddress)}\n\n` +
             `Please switch to the correct account in MetaMask.`
         );
         return;
@@ -226,7 +273,7 @@ Timestamp: ${Date.now()}`;
           isConnected={isMetaMaskConnected}
           onConnect={handleMetaMaskConnect}
           onDisconnect={handleMetaMaskDisconnect}
-          isConnecting={isConnecting}
+          isConnecting={isConnecting || isLinking}
         />
 
         {/* Nasun Wallet */}

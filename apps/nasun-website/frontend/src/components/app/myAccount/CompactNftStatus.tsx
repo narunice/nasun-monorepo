@@ -5,7 +5,7 @@
  * For the Bento Grid dashboard.
  */
 
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useBattalionNftStatus } from "../../../hooks/useBattalionNftStatus";
@@ -14,6 +14,7 @@ import { withdrawUserApi } from "../../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../../stores/useBattalionNftStore";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { Button } from "../../ui/button";
+import { JoinWhitelistButton } from "../../whitelist/JoinWhitelistButton";
 
 interface CompactNftStatusProps {
   walletAddress: string | null | undefined;
@@ -26,6 +27,8 @@ interface NftStatusItemProps {
   isLoading: boolean;
   onJoin?: () => void;
   onWithdraw?: () => void;
+  /** Custom join button to render instead of default */
+  renderJoinButton?: ReactNode;
 }
 
 const NftStatusItem: FC<NftStatusItemProps> = ({
@@ -34,6 +37,7 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
   isLoading,
   onJoin,
   onWithdraw,
+  renderJoinButton,
 }) => (
   <div className="flex items-center justify-between p-4 bg-gray-800/80 rounded-lg">
     <div className="flex items-center gap-3">
@@ -54,10 +58,12 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
           </Button>
         )
       ) : (
-        onJoin && (
-          <Button onClick={onJoin} variant="filledOutlineC4" size="sm">
-            Join
-          </Button>
+        renderJoinButton || (
+          onJoin && (
+            <Button onClick={onJoin} variant="filledOutlineC4" size="sm">
+              Join
+            </Button>
+          )
         )
       )
     )}
@@ -199,8 +205,16 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
           title="Founders NFT Whitelist"
           isRegistered={isFoundersRegistered}
           isLoading={isFoundersLoading || isWithdrawing}
-          onJoin={() => navigate("/founders")}
           onWithdraw={handleFoundersWithdraw}
+          renderJoinButton={
+            <JoinWhitelistButton
+              variant="filledOutlineC4"
+              size="sm"
+              onSuccess={() => refetchFounders()}
+            >
+              Join
+            </JoinWhitelistButton>
+          }
         />
       </div>
     </DashboardCard>
