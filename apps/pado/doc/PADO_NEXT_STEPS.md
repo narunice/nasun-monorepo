@@ -451,3 +451,4 @@ frontend/src/
 | 2025-12-29 | Phase 14 완료: Prediction Market MVP (14.1~14.5) |
 | 2025-12-29 | Phase 8.1 완료: 모바일 반응형 최적화 (햄버거 메뉴, 그리드 반응형) |
 | 2025-12-29 | Phase 3.1 완료: EventService, 실시간 오더북, ConnectionStatusBadge |
+| 2025-12-30 | 마켓 목록/상세 확률 표시 통일 (오더북 기반 확률 계산) |
