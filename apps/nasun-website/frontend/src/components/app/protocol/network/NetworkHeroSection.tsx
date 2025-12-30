@@ -68,8 +68,9 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  // 스켈레톤 방식: 항상 공간 확보 (레이아웃 시프트 방지)
-  const containerClassName = "relative !p-0 -mt-14 md:mt-0 bg-nasun-black";
+  // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
+  // 비디오 로딩 후에는 비디오 자체 크기로 표시
+  const containerClassName = `relative !p-0 -mt-14 md:mt-0 bg-nasun-black ${!isVideoPlaying ? 'h-screen' : ''}`;
 
   return (
     <SectionLayout className={containerClassName}>
