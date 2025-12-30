@@ -109,10 +109,11 @@ const LoginButton = () => {
             side="bottom"
             align="center"
             sideOffset={5}
-            className="max-w-[150px] px-2 py-1 bg-nasun-black text-nasun-white text-xs border border-nasun-white/20 rounded-lg"
+            className="max-w-[150px] px-2 py-1 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg"
           >
             {user?.provider && `${user.provider} • `}
             {t("auth.logout")}
+            <Tooltip.Arrow className="fill-gray-300" />
           </Tooltip.Content>
         </Tooltip.Root>
       ) : (

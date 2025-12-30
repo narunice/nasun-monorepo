@@ -210,13 +210,13 @@ Timestamp: ${Date.now()}`;
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content
-                    className="max-w-[280px] px-3 py-2 bg-nasun-black text-nasun-white text-xs border border-nasun-white/20 rounded-lg shadow-lg z-50"
+                    className="max-w-[280px] px-3 py-2 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg shadow-lg z-50"
                     side="top"
                     sideOffset={5}
                   >
                     MetaMask verification is required to register your address for NFT drop
                     allowlists or to verify membership NFT ownership for voting power bonus.
-                    <Tooltip.Arrow className="fill-nasun-black" />
+                    <Tooltip.Arrow className="fill-gray-300" />
                   </Tooltip.Content>
                 </Tooltip.Portal>
               </Tooltip.Root>
@@ -243,12 +243,12 @@ Timestamp: ${Date.now()}`;
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content
-                    className="max-w-[280px] px-3 py-2 bg-nasun-black text-nasun-white text-xs border border-nasun-white/20 rounded-lg shadow-lg z-50"
+                    className="max-w-[280px] px-3 py-2 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg shadow-lg z-50"
                     side="top"
                     sideOffset={5}
                   >
                     Nasun Wallet is required to participate in governance voting or test the Pado prototype. Nasun is currently on devnet and may be reset without notice.
-                    <Tooltip.Arrow className="fill-nasun-black" />
+                    <Tooltip.Arrow className="fill-gray-300" />
                   </Tooltip.Content>
                 </Tooltip.Portal>
               </Tooltip.Root>

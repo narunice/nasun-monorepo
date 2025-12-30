@@ -149,25 +149,19 @@ const MyAccountPage = () => {
           </Suspense>
         </ErrorBoundary>
 
-        {/* NFT Status - Full Width, Compact */}
-        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-          <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <CompactNftStatus
-              walletAddress={walletAddress}
-              className="col-span-1 md:col-span-2 lg:col-span-3"
-            />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Assets Card - Full Width */}
-        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-          <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <AssetsCard
-              walletAddress={walletAddress}
-              className="col-span-1 md:col-span-2 lg:col-span-3"
-            />
-          </Suspense>
-        </ErrorBoundary>
+        {/* NFT Status + Assets - Side by Side (50/50) */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <CompactNftStatus walletAddress={walletAddress} />
+            </Suspense>
+          </ErrorBoundary>
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <AssetsCard walletAddress={walletAddress} />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
 
         {/* Danger Zone - Full Width, Compact */}
         <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
