@@ -3,8 +3,6 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "../../../ui/InlineLoading";
 import nsnNetworkVideo from "../../../../assets/videos/Nsn-Network-Section-rf29.mp4";
 import nsnNetworkVideoMobile from "../../../../assets/videos/Nsn-Network-Section-Mobile-rf27.mp4";
-import networkPosterDesktop from "../../../../assets/images/network-hero-poster-desktop.jpg";
-import networkPosterMobile from "../../../../assets/images/network-hero-poster-mobile.jpg";
 
 interface NetworkHeroSectionProps {
   onVideoReady?: () => void;
@@ -70,11 +68,8 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  // 로딩 중일 때: 전체 화면 오버레이로 다음 섹션 가림
-  // 로딩 완료 후: 정상 섹션으로 전환
-  const containerClassName = !isVideoReady
-    ? "fixed inset-0 z-40 bg-nasun-black h-screen overflow-hidden flex items-center justify-center"
-    : "relative !p-0 -mt-14 md:mt-0";
+  // 스켈레톤 방식: 항상 공간 확보 (레이아웃 시프트 방지)
+  const containerClassName = "relative !p-0 -mt-14 md:mt-0 bg-nasun-black";
 
   return (
     <SectionLayout className={containerClassName}>
@@ -88,7 +83,6 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
       {/* 배경 동영상 - 반응형 (모바일/데스크탑) */}
       <video
         key={isMobile ? "mobile" : "desktop"}
-        poster={isMobile ? networkPosterMobile : networkPosterDesktop}
         autoPlay
         loop
         muted

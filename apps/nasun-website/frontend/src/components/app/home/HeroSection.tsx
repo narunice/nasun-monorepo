@@ -67,29 +67,25 @@ function HeroSection({ onVideoReady, isVideoReady = false }: HeroSectionProps) {
   };
 
   useEffect(() => {
-    // 타임아웃으로 최대 대기 시간 설정 (10초)
+    // 타임아웃으로 최대 대기 시간 설정 (5초)
     const timeout = setTimeout(() => {
       if (!isVideoLoaded) {
         setIsVideoLoaded(true);
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 10000);
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
   // 디바이스에 따라 비디오 소스 선택
   const videoSrc = isMobile ? heroVideoMobileMP4 : heroVideoPcMP4;
-  const posterSrc = isMobile ? "/hero-poster-mobile.jpg" : "/hero-poster-desktop.jpg";
 
-  // CSS 기반 위치 제어: 비디오 로딩 중에는 fixed, 완료 후에는 relative
-  const containerClassName = !isVideoReady
-    ? "fixed inset-0 z-40 bg-nasun-black h-screen overflow-hidden flex items-center justify-center"
-    : "w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-screen overflow-hidden flex items-center justify-center";
-
+  // 스켈레톤 방식: h-screen 공간 항상 확보 (레이아웃 시프트 방지)
   return (
-    <div className={containerClassName}>
+    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-screen overflow-hidden flex items-center justify-center bg-nasun-black">
+      {/* 비디오 - opacity 전환으로 페이드인 */}
       <video
         key={videoSrc}
         autoPlay
@@ -97,8 +93,9 @@ function HeroSection({ onVideoReady, isVideoReady = false }: HeroSectionProps) {
         muted
         playsInline
         preload="auto"
-        poster={posterSrc}
-        className="w-full max-w-none h-full object-cover"
+        className={`w-full max-w-none h-full object-cover transition-opacity duration-500 ${
+          isVideoPlaying ? "opacity-100" : "opacity-0"
+        }`}
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
       >

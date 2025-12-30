@@ -27,9 +27,9 @@ const CustomArrow = ({
     aria-label={direction === "left" ? "Previous awards" : "Next awards"}
   >
     {direction === "left" ? (
-      <ChevronLeftIcon className="w-6 h-6" />
+      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/30" />
     ) : (
-      <ChevronRightIcon className="w-6 h-6" />
+      <ChevronRightIcon className="w-6 h-6 text-nasun-white/30" />
     )}
   </button>
 );
