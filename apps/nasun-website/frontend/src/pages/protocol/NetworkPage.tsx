@@ -41,18 +41,7 @@ const VisionNetworkPage = () => {
     });
   }, [setIsPageReady]);
 
-  // 비디오 로딩 중에는 body 스크롤 방지
-  useEffect(() => {
-    if (!isVideoReady) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
-
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isVideoReady]);
+  // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
   // Suspense fallback: null to prevent unnecessary loading spinners
   const suspenseFallback = null;
