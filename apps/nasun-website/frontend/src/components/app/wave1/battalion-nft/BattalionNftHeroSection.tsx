@@ -56,10 +56,10 @@ function BattalionNftHeroSection({ onVideoReady, isVideoReady }: BattalionNftHer
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  // 스켈레톤 방식: 항상 공간 확보 (레이아웃 시프트 방지)
-  // 모바일: 동영상 크기에 맞춤, 데스크탑: 뷰포트 높이
+  // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
+  // 비디오 로딩 후에는 비디오 자체 크기로 표시
   const containerClassName = isMobile
-    ? "relative bg-nasun-black" // 모바일: 동영상 크기에 맞춤
+    ? `relative bg-nasun-black ${!isVideoPlaying ? 'h-screen' : ''}` // 모바일: 로딩 전 h-screen, 로딩 후 동영상 크기
     : "relative flex items-start justify-center h-screen overflow-hidden bg-nasun-black"; // 데스크탑: 뷰포트 높이, 상단 정렬
 
   // 비디오 클래스: 모바일/데스크탑 완전 분리
