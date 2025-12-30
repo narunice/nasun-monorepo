@@ -159,6 +159,10 @@ export interface WhitelistModalData {
  */
 export interface JoinWhitelistButtonProps extends VariantProps<typeof buttonVariants> {
   className?: string;
+  /** Callback when whitelist registration succeeds */
+  onSuccess?: (walletAddress: string) => void;
+  /** Custom button text (default: "Join the Whitelist") */
+  children?: React.ReactNode;
 }
 
 /**
