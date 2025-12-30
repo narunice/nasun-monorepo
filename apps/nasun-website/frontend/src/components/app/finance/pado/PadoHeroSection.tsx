@@ -3,8 +3,6 @@ import React, { useState, useEffect } from "react";
 import { InlineLoading } from "../../../ui/InlineLoading";
 import waldenVideoDesktop from "../../../../assets/videos/walden-hero-token-desktop.mp4";
 import waldenVideoMobile from "../../../../assets/videos/Walden-Dex-Token-Mobile-rf18.mp4";
-import waldenPosterDesktop from "../../../../assets/images/walden-hero-poster-desktop.jpg";
-import waldenPosterMobile from "../../../../assets/images/walden-hero-poster-mobile.jpg";
 
 interface PadoHeroSectionProps {
   onVideoReady?: () => void;
@@ -70,11 +68,8 @@ function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  // 로딩 중: 전체 화면 오버레이 (모든 것을 가림)
-  // 로딩 완료 후: 정상 섹션으로 전환
-  const containerClassName = !isVideoReady
-    ? "fixed inset-0 z-40 bg-nasun-black h-full  overflow-hidden flex items-center justify-center"
-    : "relative !p-0 -mt-14 md:mt-0 mx-auto flex items-center justify-center";
+  // 스켈레톤 방식: 항상 공간 확보 (레이아웃 시프트 방지)
+  const containerClassName = "relative !p-0 -mt-14 md:mt-0 mx-auto flex items-center justify-center bg-nasun-black";
 
   return (
     <div className={containerClassName}>
@@ -89,7 +84,6 @@ function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
       <video
         key={isMobile ? "mobile" : "desktop"}
         preload="auto"
-        poster={isMobile ? waldenPosterMobile : waldenPosterDesktop}
         autoPlay
         loop
         muted

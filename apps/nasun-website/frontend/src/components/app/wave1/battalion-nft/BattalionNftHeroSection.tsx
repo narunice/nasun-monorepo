@@ -43,7 +43,7 @@ function BattalionNftHeroSection({ onVideoReady, isVideoReady }: BattalionNftHer
     setIsVideoPlaying(true);
   };
 
-  // Timeout fallback - 10초 후에도 비디오가 로드되지 않으면 강제로 표시
+  // Timeout fallback - 5초 후에도 비디오가 로드되지 않으면 강제로 표시
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!isVideoLoaded) {
@@ -51,18 +51,16 @@ function BattalionNftHeroSection({ onVideoReady, isVideoReady }: BattalionNftHer
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 10000);
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  // 로딩 중: 전체 화면 오버레이
-  // 로딩 완료 후: 모바일/데스크탑 분기
-  const containerClassName = !isVideoReady
-    ? "fixed inset-0 z-40 bg-nasun-black h-screen overflow-hidden flex items-center justify-center"
-    : isMobile
-    ? "relative" // 모바일: 동영상 크기에 맞춤
-    : "relative flex items-start justify-center h-screen overflow-hidden"; // 데스크탑: 뷰포트 높이, 상단 정렬
+  // 스켈레톤 방식: 항상 공간 확보 (레이아웃 시프트 방지)
+  // 모바일: 동영상 크기에 맞춤, 데스크탑: 뷰포트 높이
+  const containerClassName = isMobile
+    ? "relative bg-nasun-black" // 모바일: 동영상 크기에 맞춤
+    : "relative flex items-start justify-center h-screen overflow-hidden bg-nasun-black"; // 데스크탑: 뷰포트 높이, 상단 정렬
 
   // 비디오 클래스: 모바일/데스크탑 완전 분리
   const videoClassName = isMobile

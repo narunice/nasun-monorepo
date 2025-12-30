@@ -40,21 +40,7 @@ export default function HomePage() {
     });
   }, [setIsPageReady]);
 
-  // 비디오 로딩 중에는 body 스크롤 방지
-  useEffect(() => {
-    if (!isVideoReady) {
-      // 스크롤 방지
-      document.body.style.overflow = "hidden";
-    } else {
-      // 스크롤 허용
-      document.body.style.overflow = "auto";
-    }
-
-    return () => {
-      // 컴포넌트 언마운트 시 스크롤 복원
-      document.body.style.overflow = "auto";
-    };
-  }, [isVideoReady]);
+  // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
   // Suspense fallback: null to prevent unnecessary loading spinners
   // HeroSection uses CSS-based positioning to avoid re-mounting
@@ -102,15 +88,17 @@ export default function HomePage() {
         </ErrorBoundary>
       </ScrollSnapContainer>
 
-      {/* 일반 스크롤 섹션 */}
-      <ErrorBoundary fallback={errorFallback}>
-        <Suspense fallback={suspenseFallback}>
-          {/* NewsEventsSection - 긴 컨텐츠 허용 */}
-          <ScrollSnapSection allowTallContent={true}>
-            <NewsEventsSection />
-          </ScrollSnapSection>
-        </Suspense>
-      </ErrorBoundary>
+      {/* 일반 스크롤 섹션 - 비디오 준비 후에만 렌더링 (레이아웃 시프트 방지) */}
+      {isVideoReady && (
+        <ErrorBoundary fallback={errorFallback}>
+          <Suspense fallback={suspenseFallback}>
+            {/* NewsEventsSection - 긴 컨텐츠 허용 */}
+            <ScrollSnapSection allowTallContent={true}>
+              <NewsEventsSection />
+            </ScrollSnapSection>
+          </Suspense>
+        </ErrorBoundary>
+      )}
     </>
   );
 }

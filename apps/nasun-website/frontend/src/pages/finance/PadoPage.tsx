@@ -47,13 +47,7 @@ export default function PadoPage() {
     });
   }, [setIsPageReady]);
 
-  // Prevent scroll during video loading
-  useEffect(() => {
-    document.body.style.overflow = isVideoReady ? "auto" : "hidden";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isVideoReady]);
+  // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
   return (
     <ErrorBoundary
