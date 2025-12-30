@@ -233,6 +233,34 @@ export async function fetchMarketOrderbook(
 }
 
 /**
+ * Fetch all markets with their YES orderbooks
+ * Used for displaying accurate probabilities in market list
+ */
+export async function fetchMarketsWithOrderbooks(): Promise<
+  {
+    market: PredictionMarket;
+    yesOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null;
+  }[]
+> {
+  const markets = await fetchMarkets();
+
+  // Fetch orderbooks in parallel for all markets
+  const results = await Promise.all(
+    markets.map(async (market) => {
+      try {
+        const yesOrderbook = await fetchMarketOrderbook(market.id, true);
+        return { market, yesOrderbook };
+      } catch (error) {
+        console.error(`Failed to fetch orderbook for ${market.id}:`, error);
+        return { market, yesOrderbook: null };
+      }
+    })
+  );
+
+  return results;
+}
+
+/**
  * Fetch markets by querying events (for discovery)
  */
 export async function fetchMarketsByEvents(): Promise<string[]> {

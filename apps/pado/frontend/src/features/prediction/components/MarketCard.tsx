@@ -4,17 +4,20 @@
  */
 
 import { Link } from 'react-router-dom';
-import type { PredictionMarket } from '../types';
-import { calculateProbability } from '../types';
+import type { PredictionMarket, Orderbook } from '../types';
+import { calculateProbabilityFromOrderbook } from '../types';
 import { NUSDC_DECIMALS } from '../constants';
 
 interface MarketCardProps {
   market: PredictionMarket;
+  yesOrderbook?: Orderbook | null;
 }
 
-export function MarketCard({ market }: MarketCardProps) {
-  const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
-  const noProbability = 100 - yesProbability;
+export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
+  const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
+    yesOrderbook ?? null,
+    null
+  );
 
   const timeRemaining = getTimeRemaining(market.closeTime);
   const volume = formatVolume(market.totalVolume);
