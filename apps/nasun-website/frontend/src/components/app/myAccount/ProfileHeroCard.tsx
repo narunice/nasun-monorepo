@@ -25,13 +25,7 @@ interface ProfileHeroCardProps {
 
 // Social account icons
 const SocialIcons: Record<string, React.ReactNode> = {
-  twitter: (
-    <img
-      src="/X_logo_2023.svg.png"
-      alt="X"
-      className="w-4 h-4 dark:invert"
-    />
-  ),
+  twitter: <img src="/X_logo_2023.svg.png" alt="X" className="w-4 h-4 dark:invert" />,
   google: (
     <svg className="w-4 h-4" viewBox="0 0 24 24">
       <path
@@ -52,13 +46,7 @@ const SocialIcons: Record<string, React.ReactNode> = {
       />
     </svg>
   ),
-  metamask: (
-    <img
-      src="/MetaMask_Fox.svg"
-      alt="MetaMask"
-      className="w-4 h-4"
-    />
-  ),
+  metamask: <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-4 h-4" />,
 };
 
 // Social account item with Link/Unlink button
@@ -88,16 +76,14 @@ const SocialAccountItem: FC<SocialAccountItemProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 py-2 px-3 bg-nasun-c6/30 rounded-lg">
+    <div className="flex items-center gap-2 py-2 px-3 bg-gray-800/80 rounded-lg">
       {/* Icon */}
       {SocialIcons[provider]}
       {/* Label */}
       <span className="text-nasun-white">{labels[provider]}</span>
       {/* Display value */}
       {isConnected && displayValue && (
-        <span className="text-nasun-white/60 truncate max-w-[120px]">
-          {displayValue}
-        </span>
+        <span className="text-nasun-white/60 truncate max-w-[120px]">{displayValue}</span>
       )}
       {/* Checkmark */}
       {isConnected && <span className="text-green-400">✓</span>}
@@ -109,21 +95,11 @@ const SocialAccountItem: FC<SocialAccountItemProps> = ({
           Logged in
         </span>
       ) : isConnected ? (
-        <Button
-          variant="filledOutlineScarlet"
-          size="xs"
-          onClick={onUnlink}
-          disabled={isLinking}
-        >
+        <Button variant="filledOutlineScarlet" size="xs" onClick={onUnlink} disabled={isLinking}>
           {isLinking ? "..." : "Unlink"}
         </Button>
       ) : (
-        <Button
-          variant="filledOutlineC4"
-          size="xs"
-          onClick={onLink}
-          disabled={isLinking}
-        >
+        <Button variant="filledOutlineC4" size="xs" onClick={onLink} disabled={isLinking}>
           {isLinking ? "..." : "Link"}
         </Button>
       )}
@@ -176,12 +152,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const profileImageUrl = user?.profileImageUrl;
 
   // Determine connected accounts
-  const isTwitterConnected =
-    user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
-  const isGoogleConnected =
-    user?.provider === "Google" || !!user?.linkedAccounts?.google;
-  const isMetaMaskConnected =
-    user?.provider === "MetaMask" || !!user?.linkedAccounts?.metamask;
+  const isTwitterConnected = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
+  const isGoogleConnected = user?.provider === "Google" || !!user?.linkedAccounts?.google;
+  const isMetaMaskConnected = user?.provider === "MetaMask" || !!user?.linkedAccounts?.metamask;
 
   // Primary providers
   const isTwitterPrimary = user?.provider === "Twitter" && !user?.linkedAccounts?.twitter;
@@ -191,19 +164,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   // Calculate stats
   const basePower = votingPower?.leaderboardScore || 1;
   const nftBonus = nftVerification?.nftBonus || 0;
-  const delegatedPower = delegationState?.delegatorCount
-    ? delegationState.delegatorCount * 100
-    : 0;
+  const delegatedPower = delegationState?.delegatorCount ? delegationState.delegatorCount * 100 : 0;
   const totalVotingPower = basePower + nftBonus + delegatedPower;
 
   // Get current rank from API data
-  const currentRank = rankHistory?.history[0]?.rank
-    ? `#${rankHistory.history[0].rank}`
-    : "-";
+  const currentRank = rankHistory?.history[0]?.rank ? `#${rankHistory.history[0].rank}` : "-";
 
   // NFT status
   const hasNft = nftBonus > 0;
-  const nftStatus = hasNft ? "Verified" : "None";
+  const nftStatus = hasNft ? "Verified" : "-";
 
   // Participation rate
   const participationRate = `${stats.participationRate.toFixed(0)}%`;
@@ -217,10 +186,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       const redirectUri = `${window.location.origin}/callback`;
       if (!googleClientId) throw new Error("Google Client ID is not configured");
 
-      sessionStorage.setItem("google_link_session", JSON.stringify({
-        primaryIdentityId: user?.identityId,
-        isLinking: true,
-      }));
+      sessionStorage.setItem(
+        "google_link_session",
+        JSON.stringify({
+          primaryIdentityId: user?.identityId,
+          isLinking: true,
+        })
+      );
       localStorage.setItem("auth_provider_preference", "Google");
 
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -252,11 +224,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       if (!response.ok) throw new Error("Failed to initialize Twitter OAuth");
 
       const data = await response.json();
-      sessionStorage.setItem("twitter_link_session", JSON.stringify({
-        sessionId: data.sessionId,
-        state: data.state,
-        primaryIdentityId: user?.identityId,
-      }));
+      sessionStorage.setItem(
+        "twitter_link_session",
+        JSON.stringify({
+          sessionId: data.sessionId,
+          state: data.state,
+          primaryIdentityId: user?.identityId,
+        })
+      );
       localStorage.setItem("auth_provider_preference", "Twitter");
       window.location.href = data.authUrl;
     } catch (err) {
@@ -358,13 +333,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   // Display values
   const twitterDisplayValue = isTwitterPrimary
     ? user?.twitterHandle && `@${user.twitterHandle}`
-    : user?.linkedAccounts?.twitter?.twitterHandle && `@${user.linkedAccounts.twitter.twitterHandle}`;
-  const googleDisplayValue = isGooglePrimary
-    ? user?.email
-    : user?.linkedAccounts?.google?.email;
+    : user?.linkedAccounts?.twitter?.twitterHandle &&
+      `@${user.linkedAccounts.twitter.twitterHandle}`;
+  const googleDisplayValue = isGooglePrimary ? user?.email : user?.linkedAccounts?.google?.email;
   const metamaskDisplayValue = isMetaMaskPrimary
     ? user?.walletAddress && `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-    : user?.linkedAccounts?.metamask?.walletAddress && `${user.linkedAccounts.metamask.walletAddress.slice(0, 6)}...${user.linkedAccounts.metamask.walletAddress.slice(-4)}`;
+    : user?.linkedAccounts?.metamask?.walletAddress &&
+      `${user.linkedAccounts.metamask.walletAddress.slice(0, 6)}...${user.linkedAccounts.metamask.walletAddress.slice(-4)}`;
 
   if (!user) {
     return (
@@ -378,15 +353,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
 
   return (
     <DashboardCard variant="hero" className={className}>
-      <h5 className="uppercase text-nasun-white mb-4">
-        USER PROFILE
-      </h5>
+      <h5 className="uppercase text-nasun-white mb-4">USER PROFILE</h5>
 
       {/* Error display */}
       {linkError && (
-        <div className="mb-4 p-2 bg-red-900/30 text-red-300 text-sm rounded-lg">
-          {linkError}
-        </div>
+        <div className="mb-4 p-2 bg-red-900/30 text-red-300 text-sm rounded-lg">{linkError}</div>
       )}
 
       <div className="flex flex-col lg:flex-row gap-6">
@@ -407,7 +378,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   <img
                     src={profileImageUrl}
                     alt={displayName}
-                    className={`w-16 h-16 rounded-xl object-cover ${
+                    className={`w-16 h-16 rounded-2xl object-cover ${
                       imageLoaded ? "opacity-100" : "opacity-0"
                     }`}
                     onError={handleImageError}
@@ -425,12 +396,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
 
             {/* Name and Handle */}
             <div className="flex-1">
-              <p className="text-xl font-semibold text-nasun-white">
-                {displayName}
-              </p>
-              {twitterHandle && (
-                <p className="text-nasun-white/60 text-sm">@{twitterHandle}</p>
-              )}
+              <p className="font-semibold text-nasun-white/90">{displayName}</p>
+              {twitterHandle && <p className="text-nasun-white/60 text-sm">@{twitterHandle}</p>}
             </div>
           </div>
 
@@ -470,25 +437,29 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
         <div className="lg:w-64 flex flex-col justify-center">
           <div className="grid grid-cols-2 gap-3">
             {/* Rank */}
-            <div className="bg-nasun-c6/50 rounded-lg p-3 text-center">
-              <p className="text-xs text-nasun-white/60 uppercase tracking-wide">Rank</p>
+            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
+              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">Rank</p>
               <p className="text-lg font-bold text-nasun-white">{currentRank}</p>
             </div>
             {/* Voting Power */}
-            <div className="bg-nasun-c6/50 rounded-lg p-3 text-center">
-              <p className="text-xs text-nasun-white/60 uppercase tracking-wide">Power</p>
-              <p className="text-lg font-bold text-nasun-white">{totalVotingPower.toLocaleString()}</p>
+            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
+              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">Power</p>
+              <p className="text-lg font-bold text-nasun-white">
+                {totalVotingPower.toLocaleString()}
+              </p>
             </div>
             {/* NFT Status */}
-            <div className="bg-nasun-c6/50 rounded-lg p-3 text-center">
-              <p className="text-xs text-nasun-white/60 uppercase tracking-wide">NFT</p>
-              <p className={`text-lg font-bold ${hasNft ? "text-nasun-c3" : "text-nasun-white/50"}`}>
+            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
+              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">NFT</p>
+              <p
+                className={`text-lg font-bold ${hasNft ? "text-nasun-c3" : "text-nasun-white/50"}`}
+              >
                 {nftStatus}
               </p>
             </div>
             {/* Participation */}
-            <div className="bg-nasun-c6/50 rounded-lg p-3 text-center">
-              <p className="text-xs text-nasun-white/60 uppercase tracking-wide">Vote</p>
+            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
+              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">Vote</p>
               <p className="text-lg font-bold text-nasun-white">{participationRate}</p>
             </div>
           </div>

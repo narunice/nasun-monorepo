@@ -9,7 +9,9 @@ import { FC, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useBattalionNftStatus } from "../../../hooks/useBattalionNftStatus";
-import { checkWhitelistStatus } from "../../../services/whitelistApi";
+import { checkWhitelistStatus, withdrawWhitelist } from "../../../services/whitelistApi";
+import { withdrawUserApi } from "../../../services/battalionNftApi";
+import { useBattalionNftStore } from "../../../stores/useBattalionNftStore";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { Button } from "../../ui/button";
 
@@ -22,18 +24,18 @@ interface NftStatusItemProps {
   title: string;
   isRegistered: boolean;
   isLoading: boolean;
-  onAction?: () => void;
-  actionLabel?: string;
+  onJoin?: () => void;
+  onWithdraw?: () => void;
 }
 
 const NftStatusItem: FC<NftStatusItemProps> = ({
   title,
   isRegistered,
   isLoading,
-  onAction,
-  actionLabel,
+  onJoin,
+  onWithdraw,
 }) => (
-  <div className="flex items-center justify-between p-3 bg-nasun-c6/30 rounded-lg">
+  <div className="flex items-center justify-between p-4 bg-gray-800/80 rounded-lg">
     <div className="flex items-center gap-3">
       <h6 className="font-medium text-nasun-white">{title}</h6>
       {isLoading ? (
@@ -44,10 +46,20 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
         <span className="text-nasun-white/50">Not Registered</span>
       )}
     </div>
-    {!isLoading && !isRegistered && onAction && actionLabel && (
-      <Button onClick={onAction} variant="c4" size="sm">
-        {actionLabel}
-      </Button>
+    {!isLoading && (
+      isRegistered ? (
+        onWithdraw && (
+          <Button onClick={onWithdraw} variant="filledOutlineScarlet" size="sm">
+            Withdraw
+          </Button>
+        )
+      ) : (
+        onJoin && (
+          <Button onClick={onJoin} variant="filledOutlineC4" size="sm">
+            Join
+          </Button>
+        )
+      )
     )}
   </div>
 );
@@ -58,11 +70,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
 }) => {
   const { t } = useTranslation(["myAccount", "common"]);
   const navigate = useNavigate();
+  const { reset: resetBattalionStore } = useBattalionNftStore();
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // Battalion NFT Status
   const {
     isRegistered: isBattalionRegistered,
     isLoading: isBattalionLoading,
+    refetch: refetchBattalion,
   } = useBattalionNftStatus(walletAddress);
 
   // Founders WL Status
@@ -90,6 +105,74 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
     fetchFoundersStatus();
   }, [walletAddress]);
 
+  // Refetch Founders status
+  const refetchFounders = async () => {
+    if (!walletAddress) return;
+    try {
+      const response = await checkWhitelistStatus(walletAddress);
+      setIsFoundersRegistered(response.data.registered);
+    } catch {
+      setIsFoundersRegistered(false);
+    }
+  };
+
+  /**
+   * Battalion NFT Withdraw Handler (no signature required)
+   */
+  const handleBattalionWithdraw = async () => {
+    if (!walletAddress || isWithdrawing) return;
+
+    if (!confirm("Are you sure you want to withdraw from Battalion NFT Allowlist?")) {
+      return;
+    }
+
+    try {
+      setIsWithdrawing(true);
+      await withdrawUserApi({
+        walletAddress: walletAddress.toLowerCase(),
+        signature: "",
+        message: "",
+        timestamp: new Date().toISOString(),
+      });
+      resetBattalionStore();
+      refetchBattalion();
+      alert("Successfully withdrawn from Battalion NFT Allowlist.");
+    } catch (err) {
+      console.error("[CompactNftStatus] Battalion withdraw error:", err);
+      alert("Failed to withdraw. Please try again.");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  /**
+   * Founders NFT Withdraw Handler (no signature required)
+   */
+  const handleFoundersWithdraw = async () => {
+    if (!walletAddress || isWithdrawing) return;
+
+    if (!confirm("Are you sure you want to withdraw from Founders NFT Whitelist?")) {
+      return;
+    }
+
+    try {
+      setIsWithdrawing(true);
+      await withdrawWhitelist(
+        walletAddress.toLowerCase(),
+        "",
+        "",
+        new Date().toISOString()
+      );
+      refetchFounders();
+      alert("Successfully withdrawn from Founders NFT Whitelist.");
+    } catch (err) {
+      console.error("[CompactNftStatus] Founders withdraw error:", err);
+      alert("Failed to withdraw. Please try again.");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   if (!walletAddress) {
     return (
       <DashboardCard className={className}>
@@ -104,20 +187,20 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
   return (
     <DashboardCard className={className}>
       <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         <NftStatusItem
-          title="Battalion NFT"
+          title="Battalion NFT Allowlist"
           isRegistered={isBattalionRegistered}
-          isLoading={isBattalionLoading}
-          onAction={() => navigate("/wave1/battalion-nft")}
-          actionLabel="Register"
+          isLoading={isBattalionLoading || isWithdrawing}
+          onJoin={() => navigate("/wave1/battalion-nft")}
+          onWithdraw={handleBattalionWithdraw}
         />
         <NftStatusItem
-          title="Founders Whitelist"
+          title="Founders NFT Whitelist"
           isRegistered={isFoundersRegistered}
-          isLoading={isFoundersLoading}
-          onAction={() => navigate("/founders")}
-          actionLabel="Join"
+          isLoading={isFoundersLoading || isWithdrawing}
+          onJoin={() => navigate("/founders")}
+          onWithdraw={handleFoundersWithdraw}
         />
       </div>
     </DashboardCard>

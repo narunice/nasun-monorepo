@@ -32,10 +32,10 @@ const InfoTooltip: FC<{ content: string }> = ({ content }) => (
         side="top"
         align="center"
         sideOffset={5}
-        className="max-w-[250px] px-3 py-2 bg-nasun-black text-nasun-white text-xs border border-nasun-white/20 rounded-lg z-50"
+        className="max-w-[250px] px-3 py-2 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg z-50"
       >
         {content}
-        <Tooltip.Arrow className="fill-nasun-black" />
+        <Tooltip.Arrow className="fill-gray-300" />
       </Tooltip.Content>
     </Tooltip.Portal>
   </Tooltip.Root>

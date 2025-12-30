@@ -60,7 +60,7 @@ function PriceConverterComponent({ usdPrice }: PriceConverterProps) {
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content
-                className="  px-2 py-1 border-1 rounded-lg text-xs shadow-lg bg-black text-gray-200 border-gray-600"
+                className="px-2 py-1 rounded-lg text-xs shadow-lg bg-gray-300 text-nasun-black/70 border border-gray-500"
                 sideOffset={5}
               >
                 Price converted to token value refreshes automatically every minute.
@@ -69,7 +69,7 @@ function PriceConverterComponent({ usdPrice }: PriceConverterProps) {
                     Using backup data source (CoinMarketCap)
                   </span>
                 )}
-                <Tooltip.Arrow className="fill-black" />
+                <Tooltip.Arrow className="fill-gray-300" />
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip.Root>
