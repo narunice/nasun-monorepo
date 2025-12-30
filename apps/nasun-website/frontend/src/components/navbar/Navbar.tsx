@@ -149,9 +149,10 @@ export default function Navbar() {
                 side="bottom"
                 align="center"
                 sideOffset={5}
-                className="max-w-[150px] px-2 py-1 bg-nasun-white text-nasun-black text-xs border border-nasun-black/20 rounded-3xl"
+                className="max-w-[150px] px-2 py-1 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg"
               >
                 {t("myAccount")}
+                <Tooltip.Arrow className="fill-gray-300" />
               </Tooltip.Content>
             </Tooltip.Root>
           )}

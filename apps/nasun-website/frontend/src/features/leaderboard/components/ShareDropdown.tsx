@@ -267,11 +267,11 @@ export const ShareDropdown: React.FC<ShareDropdownProps> = ({
           </Tooltip.Trigger>
           <Tooltip.Portal>
             <Tooltip.Content
-              className="px-3 py-1.5 bg-gray-700 text-white rounded-lg shadow-lg"
+              className="px-3 py-1.5 bg-gray-300 text-nasun-black/70 border border-gray-500 rounded-lg shadow-lg"
               sideOffset={5}
             >
               {t("share.shareToTwitter")}
-              <Tooltip.Arrow className="fill-gray-900 dark:fill-gray-700" />
+              <Tooltip.Arrow className="fill-gray-300" />
             </Tooltip.Content>
           </Tooltip.Portal>
         </Tooltip.Root>
@@ -289,11 +289,11 @@ export const ShareDropdown: React.FC<ShareDropdownProps> = ({
           </Tooltip.Trigger>
           <Tooltip.Portal>
             <Tooltip.Content
-              className="px-3 py-1.5 bg-gray-700 text-white rounded-lg shadow-lg"
+              className="px-3 py-1.5 bg-gray-300 text-nasun-black/70 border border-gray-500 rounded-lg shadow-lg"
               sideOffset={5}
             >
               {t("share.copyLink")}
-              <Tooltip.Arrow className="fill-gray-900 dark:fill-gray-700" />
+              <Tooltip.Arrow className="fill-gray-300" />
             </Tooltip.Content>
           </Tooltip.Portal>
         </Tooltip.Root>
@@ -313,11 +313,11 @@ export const ShareDropdown: React.FC<ShareDropdownProps> = ({
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content
-                className="px-3 py-1.5 bg-gray-700 text-white rounded-lg shadow-lg"
+                className="px-3 py-1.5 bg-gray-300 text-nasun-black/70 border border-gray-500 rounded-lg shadow-lg"
                 sideOffset={5}
               >
                 {isGeneratingImage ? t("share.generatingImage") : t("share.downloadImage")}
-                <Tooltip.Arrow className="fill-gray-900 dark:fill-gray-700" />
+                <Tooltip.Arrow className="fill-gray-300" />
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip.Root>
