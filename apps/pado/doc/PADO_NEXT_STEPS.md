@@ -302,7 +302,7 @@ Unified Finance 비전을 향한 핵심 확장
 | 14.6 | Sell 주문 활성화 | ✅ 완료 | 저 |
 | 14.7 | 마켓 해결 (Admin) | ✅ 완료 | 중 |
 | 14.8 | 시드 유동성 공급 | 📋 대기 | 저 |
-| 14.9 | 마켓 생성 (Admin) | 📋 대기 | 중 |
+| 14.9 | 마켓 생성 (Admin) | ✅ 완료 | 중 |
 
 **구현 완료 (2025-12-29 ~ 2025-12-31)**:
 - 예측 시장 스마트 컨트랙트 (CTF 모델)
@@ -314,11 +314,11 @@ Unified Finance 비전을 향한 핵심 확장
 - 사용자 친화적 에러 메시지
 - 확률 계산 통일 (오더북 기반 Polymarket 방식, 2025-12-30)
 - ✅ Sell 주문 활성화 (2025-12-31): Position 선택 UI, P&L 표시
+- ✅ 마켓 해결 Admin (2025-12-31): usePredictionAdmin, AdminResolveModal
+- ✅ 마켓 생성 Admin (2025-12-31): CreateMarketForm, PredictAdminPage
 
 **미구현**:
-- ❌ 마켓 생성 (Admin): 트랜잭션 빌더/UI 없음
-- ❌ 마켓 해결 (Admin): resolve 트랜잭션 빌더/UI 없음
-- ❌ 시드 유동성: 4개 마켓 모두 빈 오더북
+- ❌ 시드 유동성: 4개 마켓 모두 빈 오더북 (수동 작업 필요)
 
 **파일 위치**:
 - `features/prediction/` - hooks, components, types
@@ -466,3 +466,4 @@ frontend/src/
 | 2025-12-31 | Phase 14 문서 정정: MVP 완료 (14.6~14.9 항목 추가) |
 | 2025-12-31 | Phase 14.6 완료: Sell 주문 활성화 (Position 선택 UI, P&L 표시) |
 | 2025-12-31 | Phase 14.7 완료: 마켓 해결 Admin 기능 (usePredictionAdmin, AdminResolveModal) |
+| 2025-12-31 | Phase 14.9 완료: 마켓 생성 Admin UI (CreateMarketForm, PredictAdminPage) |

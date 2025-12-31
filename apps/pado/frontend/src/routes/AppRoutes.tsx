@@ -4,7 +4,7 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { TradePage, PortfolioPage, PaymentPage, PredictPage, PredictMarketPage } from '../pages';
+import { TradePage, PortfolioPage, PaymentPage, PredictPage, PredictMarketPage, PredictAdminPage } from '../pages';
 
 export function AppRoutes() {
   return (
@@ -21,6 +21,7 @@ export function AppRoutes() {
 
       {/* Prediction Markets */}
       <Route path="/predict" element={<PredictPage />} />
+      <Route path="/predict/admin" element={<PredictAdminPage />} />
       <Route path="/predict/:marketId" element={<PredictMarketPage />} />
 
       {/* 향후 추가 예정 */}
