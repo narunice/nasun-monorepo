@@ -3,9 +3,10 @@
  * Order form for buying/selling prediction market outcome tokens
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWallet } from '@nasun/wallet';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
+import { usePredictionPositions, formatPositionAmount } from '../hooks/usePredictionPositions';
 import type { PredictionMarket } from '../types';
 import { calculateProbability } from '../types';
 
@@ -19,15 +20,31 @@ type OrderType = 'buy' | 'sell';
 
 export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { status } = useWallet();
-  const { isLoading, placeBuyOrder, mintTokens } = usePredictionTrade();
+  const { isLoading, placeBuyOrder, placeSellOrder, mintTokens } = usePredictionTrade();
+  const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
   const [amount, setAmount] = useState('');
   const [price, setPrice] = useState('');
+  const [selectedPositionId, setSelectedPositionId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Filter positions by selected outcome type
+  const filteredPositions = useMemo(() => {
+    return positions.filter(p => p.isYes === (outcomeType === 'yes'));
+  }, [positions, outcomeType]);
+
+  // Auto-select first position when switching to sell mode or outcome type
+  useEffect(() => {
+    if (orderType === 'sell' && filteredPositions.length > 0) {
+      setSelectedPositionId(filteredPositions[0].id);
+    } else {
+      setSelectedPositionId('');
+    }
+  }, [orderType, filteredPositions]);
 
   // Calculate current probability
   const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
@@ -58,7 +75,8 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     const amountNum = parseFloat(amount);
     const priceNum = parseFloat(price) || defaultPrice;
 
-    if (!amountNum || amountNum <= 0) {
+    // Amount validation only for buy orders
+    if (orderType === 'buy' && (!amountNum || amountNum <= 0)) {
       setError('Please enter a valid amount');
       return;
     }
@@ -83,10 +101,28 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
         setError(result.error || 'Failed to place order');
       }
     } else {
-      // Sell order requires Position NFT - will implement in Phase 14.5
-      setError('Sell orders coming soon (requires Position NFT)');
+      // Sell order using Position NFT
+      if (!selectedPositionId) {
+        setError('Please select a position to sell');
+        return;
+      }
+
+      const result = await placeSellOrder(market.id, selectedPositionId, priceNum);
+      if (result.success) {
+        setSuccess(`Sell order placed! Tx: ${result.digest?.slice(0, 8)}...`);
+        setPrice('');
+        // Show syncing state while blockchain updates
+        setIsSyncing(true);
+        setTimeout(() => {
+          setIsSyncing(false);
+          refetchPositions();
+          onSuccess?.(result.digest!);
+        }, 1500);
+      } else {
+        setError(result.error || 'Failed to place sell order');
+      }
     }
-  }, [amount, price, defaultPrice, outcomeType, orderType, market.id, placeBuyOrder, onSuccess]);
+  }, [amount, price, defaultPrice, outcomeType, orderType, market.id, selectedPositionId, placeBuyOrder, placeSellOrder, refetchPositions, onSuccess]);
 
   const handleMintTokens = useCallback(async () => {
     setError(null);
@@ -168,22 +204,52 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Amount Input */}
-        <div>
-          <label className="block text-sm text-theme-text-muted mb-1">
-            Amount (NUSDC)
-          </label>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-            disabled={isDisabled}
-            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          />
-        </div>
+        {/* Position Selector (Sell mode only) */}
+        {orderType === 'sell' && (
+          <div>
+            <label className="block text-sm text-theme-text-muted mb-1">
+              Select Position
+            </label>
+            {filteredPositions.length === 0 ? (
+              <div className="text-sm text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+                No {outcomeType.toUpperCase()} positions available to sell.
+                {positions.length > 0 && ' Try selecting the other outcome.'}
+              </div>
+            ) : (
+              <select
+                value={selectedPositionId}
+                onChange={(e) => setSelectedPositionId(e.target.value)}
+                disabled={isDisabled}
+                className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {filteredPositions.map((pos) => (
+                  <option key={pos.id} value={pos.id}>
+                    {formatPositionAmount(pos.shares)} shares @ {formatPositionAmount(pos.costBasis)} NUSDC
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
+        {/* Amount Input (Buy mode only) */}
+        {orderType === 'buy' && (
+          <div>
+            <label className="block text-sm text-theme-text-muted mb-1">
+              Amount (NUSDC)
+            </label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+              disabled={isDisabled}
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            />
+          </div>
+        )}
 
         {/* Price Input */}
         <div>
@@ -206,8 +272,8 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </p>
         </div>
 
-        {/* Order Summary */}
-        {parseFloat(amount) > 0 && (
+        {/* Order Summary - Buy Mode */}
+        {orderType === 'buy' && parseFloat(amount) > 0 && (
           <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-theme-text-muted">Est. Shares:</span>
@@ -227,6 +293,48 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
                 +{(potentialPayout - parseFloat(amount)).toFixed(2)} NUSDC
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Order Summary - Sell Mode */}
+        {orderType === 'sell' && selectedPositionId && (
+          <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1 text-sm">
+            {(() => {
+              const selectedPos = filteredPositions.find(p => p.id === selectedPositionId);
+              if (!selectedPos) return null;
+              const priceNum = parseFloat(price) || defaultPrice;
+              const expectedPayout = Number(selectedPos.shares) / Math.pow(10, 6) * (priceNum / 100);
+              const costBasisNum = Number(selectedPos.costBasis) / Math.pow(10, 6);
+              const pnl = expectedPayout - costBasisNum;
+              return (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">Selling:</span>
+                    <span className="text-theme-text-primary font-mono">
+                      {formatPositionAmount(selectedPos.shares)} {outcomeType.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">At Price:</span>
+                    <span className="text-theme-text-primary font-mono">
+                      {priceNum.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">Expected Payout:</span>
+                    <span className="text-theme-text-primary font-mono">
+                      {expectedPayout.toFixed(2)} NUSDC
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">P&L:</span>
+                    <span className={`font-mono ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} NUSDC
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 
