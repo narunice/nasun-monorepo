@@ -3,11 +3,13 @@
  * Prediction Market listing page
  */
 
-import { useMarkets, MarketCard } from '../features/prediction';
+import { Link } from 'react-router-dom';
+import { useMarkets, MarketCard, usePredictionAdmin } from '../features/prediction';
 import { Spinner } from '../components/common';
 
 export function PredictPage() {
   const { markets, isLoading, error } = useMarkets();
+  const { isResolver } = usePredictionAdmin();
 
   if (isLoading) {
     return (
@@ -40,6 +42,17 @@ export function PredictPage() {
             Trade on the outcome of real-world events
           </p>
         </div>
+        {isResolver && (
+          <Link
+            to="/predict/admin"
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+            Create Market
+          </Link>
+        )}
       </div>
 
       {/* Market Grid */}
