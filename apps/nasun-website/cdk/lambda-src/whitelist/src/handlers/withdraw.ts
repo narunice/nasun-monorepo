@@ -5,8 +5,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse } from '@/utils/response';
-import { validateWithdrawRequest } from '@/utils/validation';
-import { verifyWhitelistSignature, normalizeAddress, validateMessageFormat } from '@/utils/ethereum';
+import { normalizeAddress } from '@/utils/ethereum';
 import { getWhitelistItem, updateWhitelistItem } from '@/utils/dynamodb';
 import { WithdrawRequest } from '@/types/whitelist';
 
@@ -36,41 +35,17 @@ export async function handler(
 
     const body: WithdrawRequest = JSON.parse(event.body);
 
-    // 2. 입력 검증
-    const validation = validateWithdrawRequest(body);
-    if (!validation.valid) {
-      return errorResponse('INVALID_INPUT', validation.error || 'Invalid input', 400);
+    // 2. 지갑 주소 검증
+    if (!body.walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(body.walletAddress)) {
+      return errorResponse('INVALID_INPUT', 'Invalid wallet address', 400);
     }
 
     // 3. 지갑 주소 정규화
     const walletAddress = normalizeAddress(body.walletAddress);
 
-    // 4. 메시지 포맷 검증
-    if (!validateMessageFormat(body.message, body.timestamp, 'withdraw')) {
-      return errorResponse(
-        'INVALID_MESSAGE_FORMAT',
-        'Message format does not match expected format',
-        400
-      );
-    }
+    console.log('[withdraw] Wallet address validated:', walletAddress);
 
-    // 5. 서명 검증
-    const signatureCheck = verifyWhitelistSignature(
-      walletAddress,
-      body.message,
-      body.signature
-    );
-
-    if (!signatureCheck.valid) {
-      console.error('Signature verification failed:', signatureCheck.error);
-      return errorResponse(
-        'INVALID_SIGNATURE',
-        signatureCheck.error || 'Signature verification failed',
-        400
-      );
-    }
-
-    // 6. 존재 확인
+    // 4. 존재 확인
     const existingItem = await getWhitelistItem(walletAddress);
     if (!existingItem || existingItem.status !== 'ACTIVE') {
       console.log('Not found or already withdrawn:', walletAddress);
@@ -81,13 +56,13 @@ export async function handler(
       );
     }
 
-    // 7. Soft Delete (withdrawnAt 설정)
+    // 5. Soft Delete (withdrawnAt 설정)
     const withdrawnAt = new Date().toISOString();
     await updateWhitelistItem(walletAddress, withdrawnAt);
 
     console.log('Successfully withdrawn from whitelist:', walletAddress);
 
-    // 8. 성공 응답
+    // 6. 성공 응답
     return successResponse(
       {
         walletAddress,
