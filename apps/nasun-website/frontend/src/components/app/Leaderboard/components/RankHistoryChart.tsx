@@ -140,8 +140,8 @@ export const RankHistoryChart: React.FC<RankHistoryChartProps> = ({ history, hei
           <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
           <XAxis
             dataKey="displayDate"
-            tick={{ fill: "currentColor", fontSize: 12 }}
-            className="text-gray-400"
+            tick={{ fill: "#9ca3af", fontSize: 12 }}
+            stroke="#4b5563"
             angle={-45}
             textAnchor="end"
             height={60}
@@ -149,13 +149,13 @@ export const RankHistoryChart: React.FC<RankHistoryChartProps> = ({ history, hei
           <YAxis
             reversed={true} // 순위 역순 (낮을수록 좋음)
             domain={yAxisDomain}
-            tick={{ fill: "currentColor", fontSize: 12 }}
-            className="text-gray-400"
+            tick={{ fill: "#9ca3af", fontSize: 12 }}
+            stroke="#4b5563"
             label={{
               value: t("rankHistory.chart.yAxisLabel"),
               angle: -90,
               position: "insideLeft",
-              style: { textAnchor: "middle", fill: "currentColor", fontSize: 12 },
+              style: { textAnchor: "middle", fill: "#9ca3af", fontSize: 12 },
             }}
           />
           <Tooltip content={<CustomTooltip />} />
