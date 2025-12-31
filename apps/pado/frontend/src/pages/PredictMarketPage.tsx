@@ -4,15 +4,17 @@
  */
 
 import { useParams, Link } from 'react-router-dom';
-import { useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   useMarket,
   useMarketOrderbook,
   usePredictionPositions,
+  usePredictionAdmin,
   MarketHeader,
   OutcomeOrderbook,
   OutcomeOrderForm,
   PositionList,
+  AdminResolveModal,
   generateSimulatedOrderbook,
 } from '../features/prediction';
 import { Spinner } from '../components/common';
@@ -22,6 +24,8 @@ export function PredictMarketPage() {
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
   const { yesOrderbook: realYesOrderbook, noOrderbook: realNoOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);
   const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
+  const { isResolver } = usePredictionAdmin();
+  const [showResolveModal, setShowResolveModal] = useState(false);
 
   // Use real orderbook data, with simulated fallback for empty orderbooks
   // NOTE: All hooks must be called before any conditional returns
@@ -177,6 +181,44 @@ export function PredictMarketPage() {
           </div>
         </div>
       </div>
+
+      {/* Admin Section - Only for resolver */}
+      {isResolver && market.status !== 'resolved' && (
+        <div className="bg-theme-bg-secondary rounded-xl p-4 border border-yellow-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-theme-text-primary">
+                Admin Actions
+              </h3>
+              <p className="text-sm text-theme-text-muted">
+                You are the designated resolver for this market
+              </p>
+            </div>
+            <button
+              onClick={() => setShowResolveModal(true)}
+              disabled={market.status === 'open' && Date.now() < market.closeTime}
+              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {market.status === 'open' && Date.now() < market.closeTime
+                ? 'Wait for Close Time'
+                : 'Resolve Market'}
+            </button>
+          </div>
+          {market.status === 'open' && Date.now() < market.closeTime && (
+            <p className="text-xs text-yellow-500 mt-2">
+              Market can be resolved after {new Date(market.closeTime).toLocaleString('en-US')}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Admin Resolve Modal */}
+      <AdminResolveModal
+        market={market}
+        isOpen={showResolveModal}
+        onClose={() => setShowResolveModal(false)}
+        onSuccess={handleRefetch}
+      />
     </div>
   );
 }
