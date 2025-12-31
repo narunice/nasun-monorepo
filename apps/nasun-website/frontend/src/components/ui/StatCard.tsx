@@ -27,16 +27,16 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-nasun-c6/50 rounded-lg p-3 lg:p-4 ${className}`}
+      className={`bg-gray-800/80 rounded-lg p-3 lg:p-4 text-center ${className}`}
     >
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center justify-center gap-2 mb-1">
         {icon && <span className="text-nasun-white/60">{icon}</span>}
-        <span className="text-xs lg:text-sm text-nasun-white/60 uppercase tracking-wide">
+        <span className="text-sm font-light text-nasun-white/60 uppercase tracking-wide">
           {label}
         </span>
       </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-xl lg:text-2xl font-bold text-nasun-white">
+      <div className="flex items-baseline justify-center gap-2">
+        <span className="text-lg font-bold text-nasun-white">
           {typeof value === "number" ? value.toLocaleString() : value}
         </span>
         {trend && (
