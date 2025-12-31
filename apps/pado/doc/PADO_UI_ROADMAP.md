@@ -77,7 +77,7 @@
 ### 미구현 ❌
 
 **Prediction Market**
-- ❌ Sell 주문 UI 활성화 (OutcomeOrderForm에서 비활성화됨)
+- ✅ ~~Sell 주문 UI 활성화~~ (완료, 2025-12-31)
 - ❌ Admin 마켓 생성 페이지 (/admin/predict/create)
 - ❌ Admin 마켓 해결 UI (AdminResolveModal)
 - ❌ 시드 유동성 공급 (4개 마켓 빈 오더북)
@@ -118,7 +118,7 @@
 |---------|------|------|------|
 | MarketCard | `MarketCard.tsx` | ✅ 완료 | 마켓 카드 (확률 바) |
 | MarketHeader | `MarketHeader.tsx` | ✅ 완료 | 마켓 헤더 (카운트다운) |
-| OutcomeOrderForm | `OutcomeOrderForm.tsx` | ⚠️ 부분 | 주문 폼 (Buy만, Sell 비활성화) |
+| OutcomeOrderForm | `OutcomeOrderForm.tsx` | ✅ 완료 | 주문 폼 (Buy/Sell, Position 선택) |
 | OutcomeOrderbook | `OutcomeOrderbook.tsx` | ✅ 완료 | 호가창 (온체인 + 시뮬레이션) |
 | PositionList | `PositionList.tsx` | ✅ 완료 | 포지션 목록 (P&L) |
 | AdminResolveModal | - | ❌ 미구현 | 마켓 해결 UI (Admin) |
