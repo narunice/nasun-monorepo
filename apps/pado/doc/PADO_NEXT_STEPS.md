@@ -19,7 +19,7 @@
 | Phase 6 | ✅ 완료 | Trading UX Pro (MA, Volume, RSI, MACD) | 2025-12-28 |
 | Phase 7 | ✅ 완료 | Portfolio Dashboard | 2025-12-28 |
 | Phase 8 | ✅ 완료 | Mobile & Theme (반응형, 다크/라이트) | 2025-12-28 |
-| Phase 14 | ✅ 완료 | Prediction Markets MVP | 2025-12-29 |
+| Phase 14 | ⚠️ MVP 완료 | Prediction Markets (Sell/Admin 미구현) | 2025-12-29 |
 | Phase 15 | ✅ 완료 | Payments (Send, QR) | 2025-12-28 |
 
 ### 구현 완료 기능 상세
@@ -288,7 +288,7 @@ Unified Finance 비전을 향한 핵심 확장
 
 ---
 
-#### Phase 14: Prediction Markets ⭐ (완료)
+#### Phase 14: Prediction Markets ⭐ (MVP 완료)
 
 **목표**: 이진 예측 시장 (YES/NO Outcome)
 
@@ -297,17 +297,30 @@ Unified Finance 비전을 향한 핵심 확장
 | 14.1 | 스마트 컨트랙트 배포 | ✅ 완료 | 고 |
 | 14.2 | 기본 UI (마켓 목록, 카드) | ✅ 완료 | 중 |
 | 14.3 | 마켓 상세 (오더북, 카운트다운) | ✅ 완료 | 중 |
-| 14.4 | 거래 기능 (Mint, Buy, Sell) | ✅ 완료 | 고 |
+| 14.4 | 거래 기능 (Mint, Buy) | ✅ 완료 | 고 |
 | 14.5 | 포지션 관리 (P&L, Claim) | ✅ 완료 | 중 |
+| 14.6 | Sell 주문 활성화 | 📋 대기 | 저 |
+| 14.7 | 마켓 해결 (Admin) | 📋 대기 | 중 |
+| 14.8 | 시드 유동성 공급 | 📋 대기 | 저 |
+| 14.9 | 마켓 생성 (Admin) | 📋 대기 | 중 |
 
 **구현 완료 (2025-12-29)**:
 - 예측 시장 스마트 컨트랙트 (CTF 모델)
 - 마켓 목록/상세 페이지 (/predict, /predict/:marketId)
 - YES/NO 토큰 민트 (1 NUSDC = 1 YES + 1 NO)
-- 주문 기능 (Buy/Sell)
+- 구매 주문 (Buy)
 - 포지션 NFT 관리
 - 블록체인 동기화 UI 피드백
 - 사용자 친화적 에러 메시지
+- 확률 계산 통일 (오더북 기반 Polymarket 방식, 2025-12-30)
+
+**부분 구현**:
+- ⚠️ Sell 주문: `buildPlaceAskOrder()` 트랜잭션 빌더 있음, UI에서 비활성화
+
+**미구현**:
+- ❌ 마켓 생성 (Admin): 트랜잭션 빌더/UI 없음
+- ❌ 마켓 해결 (Admin): resolve 트랜잭션 빌더/UI 없음
+- ❌ 시드 유동성: 4개 마켓 모두 빈 오더북
 
 **파일 위치**:
 - `features/prediction/` - hooks, components, types
@@ -452,3 +465,4 @@ frontend/src/
 | 2025-12-29 | Phase 8.1 완료: 모바일 반응형 최적화 (햄버거 메뉴, 그리드 반응형) |
 | 2025-12-29 | Phase 3.1 완료: EventService, 실시간 오더북, ConnectionStatusBadge |
 | 2025-12-30 | 마켓 목록/상세 확률 표시 통일 (오더북 기반 확률 계산) |
+| 2025-12-31 | Phase 14 문서 정정: MVP 완료 (14.6~14.9 항목 추가) |
