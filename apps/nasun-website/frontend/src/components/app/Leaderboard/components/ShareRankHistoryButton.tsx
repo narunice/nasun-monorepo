@@ -240,8 +240,8 @@ export const ShareRankHistoryButton: React.FC<ShareRankHistoryButtonProps> = ({
         />
       ) : (
         <>
-          <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 mr-2" />
-          <span>{t('rankHistory.share.button', { defaultValue: 'Share on X' })}</span>
+          <span>Share on</span>
+          <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 ml-2" />
         </>
       )}
     </Button>

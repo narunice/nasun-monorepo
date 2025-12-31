@@ -54,15 +54,15 @@ export const RankHistoryStatsCard = ({
     <div className="mb-6 p-6 min-h-[210px] bg-gradient-to-r from-nasun-c4/10 to-nasun-c3/10 dark:from-nasun-c4/20 dark:to-nasun-c3/10 border border-gray-600 rounded-lg shadow-sm">
       <div className="space-y-4">
         {/* 카드 제목: 선택된 리더보드 종류 */}
-        <h5 className="font-medium uppercase">
+        <h6 className="font-normal uppercase">
           {period === CumulativePeriod.CUMULATIVE
             ? t("rankHistory.leaderboardTitles.cumulative")
             : period === CumulativePeriod.EVENT1
-            ? t("rankHistory.leaderboardTitles.event1")
-            : period === CumulativePeriod.EVENT2
-            ? t("rankHistory.leaderboardTitles.event2")
-            : t("rankHistory.leaderboardTitles.event3")}
-        </h5>
+              ? t("rankHistory.leaderboardTitles.event1")
+              : period === CumulativePeriod.EVENT2
+                ? t("rankHistory.leaderboardTitles.event2")
+                : t("rankHistory.leaderboardTitles.event3")}
+        </h6>
 
         {/* 상단: Best/Average Rank */}
         <div className="grid grid-cols-2 gap-6">

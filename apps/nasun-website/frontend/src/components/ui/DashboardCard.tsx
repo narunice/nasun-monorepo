@@ -15,9 +15,8 @@ interface DashboardCardProps {
 }
 
 const variantStyles = {
-  default:
-    "bg-nasun-c6/50 border border-nasun-c5/30 hover:border-nasun-c5/50",
-  hero: "bg-gradient-to-br from-nasun-c6 to-nasun-c6/80 border border-nasun-c4/30",
+  default: "bg-gray-800/30 border border-nasun-c5/40 hover:border-nasun-c5/50",
+  hero: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5 border border-nasun-c3/40",
   compact: "bg-nasun-c6/30 border border-nasun-c5/20",
   danger: "bg-red-950/30 border border-red-900/50",
 };
