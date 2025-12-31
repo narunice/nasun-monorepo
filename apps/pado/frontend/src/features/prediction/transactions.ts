@@ -175,3 +175,57 @@ export function buildBurnLosingPosition(
 
   return tx;
 }
+
+/**
+ * Resolve market with outcome (Admin only)
+ * Only the designated resolver can call this after close_time
+ */
+export function buildResolveMarket(
+  marketId: string,
+  outcome: boolean, // true = YES wins, false = NO wins
+): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${PREDICTION_PACKAGE_ID}::prediction_market::resolve_market`,
+    arguments: [
+      tx.object(marketId),
+      tx.pure.bool(outcome),
+      tx.object(CLOCK_ID),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Create new market (Admin only)
+ * Requires AdminCap
+ */
+export function buildCreateMarket(
+  adminCapId: string,
+  question: string,
+  description: string,
+  category: string,
+  closeTime: bigint,
+  resolveDeadline: bigint,
+  resolver: string,
+): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${PREDICTION_PACKAGE_ID}::prediction_market::create_market`,
+    arguments: [
+      tx.object(adminCapId),
+      tx.pure.string(question),
+      tx.pure.string(description),
+      tx.pure.string(category),
+      tx.pure.u64(closeTime),
+      tx.pure.u64(resolveDeadline),
+      tx.pure.address(resolver),
+      tx.object(CLOCK_ID),
+    ],
+  });
+
+  return tx;
+}
