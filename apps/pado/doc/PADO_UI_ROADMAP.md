@@ -76,7 +76,11 @@
 
 ### 미구현 ❌
 
-- (모든 주요 기능 구현 완료)
+**Prediction Market**
+- ❌ Sell 주문 UI 활성화 (OutcomeOrderForm에서 비활성화됨)
+- ❌ Admin 마켓 생성 페이지 (/admin/predict/create)
+- ❌ Admin 마켓 해결 UI (AdminResolveModal)
+- ❌ 시드 유동성 공급 (4개 마켓 빈 오더북)
 
 ---
 
@@ -108,15 +112,18 @@
 | Spinner | `Spinner.tsx` | ✅ 완료 | 로딩 상태 표시 |
 | ConnectionStatus | `ConnectionStatus.tsx` | ✅ 완료 | 연결 상태 Badge (Live/Polling/Demo) |
 
-### Prediction Market 컴포넌트 (5개)
+### Prediction Market 컴포넌트 (5개 완료 + 3개 미구현)
 
 | 컴포넌트 | 파일 | 상태 | 설명 |
 |---------|------|------|------|
 | MarketCard | `MarketCard.tsx` | ✅ 완료 | 마켓 카드 (확률 바) |
 | MarketHeader | `MarketHeader.tsx` | ✅ 완료 | 마켓 헤더 (카운트다운) |
-| OutcomeOrderForm | `OutcomeOrderForm.tsx` | ✅ 완료 | 주문 폼 (YES/NO) |
-| OutcomeOrderbook | `OutcomeOrderbook.tsx` | ✅ 완료 | 호가창 (시뮬레이션) |
+| OutcomeOrderForm | `OutcomeOrderForm.tsx` | ⚠️ 부분 | 주문 폼 (Buy만, Sell 비활성화) |
+| OutcomeOrderbook | `OutcomeOrderbook.tsx` | ✅ 완료 | 호가창 (온체인 + 시뮬레이션) |
 | PositionList | `PositionList.tsx` | ✅ 완료 | 포지션 목록 (P&L) |
+| AdminResolveModal | - | ❌ 미구현 | 마켓 해결 UI (Admin) |
+| CreateMarketForm | - | ❌ 미구현 | 마켓 생성 UI (Admin) |
+| PositionSellModal | - | ❌ 미구현 | 포지션 판매 모달 (Sell 활성화 시) |
 
 ---
 
@@ -512,3 +519,4 @@ function MyChart() {
 | 2025-12-29 | Phase 14 Prediction Market UI 완료 (5개 컴포넌트) |
 | 2025-12-29 | 블록체인 동기화 피드백 UI 추가 |
 | 2025-12-29 | Phase 3.1 완료: EventService (WebSocket/Polling/Simulation), 실시간 오더북, ConnectionStatusBadge |
+| 2025-12-31 | Prediction Market 미구현 항목 추가 (Sell UI, Admin 마켓 생성/해결) |
