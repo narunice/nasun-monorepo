@@ -10,6 +10,7 @@ node_modules
 **/dist/
 **/src/**/*.js
 **/src/**/*.d.ts
+function.zip
 
 # CDK asset staging directory
 .cdk.staging
