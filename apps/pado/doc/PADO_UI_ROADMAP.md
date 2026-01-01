@@ -14,9 +14,14 @@
 |-------|------|------|------|
 | UX-A | Navigation Restructure | ✅ 완료 | 5-Tab 네비게이션 (Home, Trade, Earn, Predict, Wallet) |
 | UX-B | Home Dashboard | ✅ 완료 | NetWorthCard, QuickActions, HotMarketsCard, PredictionHighlight |
-| UX-C | Trade Enhancement | 📋 예정 | Simple/Pro 모드, Quick Amount 버튼 |
+| UX-C | Trade Enhancement | ✅ 완료 | Simple/Pro 모드 토글, Quick Amount 버튼 ($50/$100/$250/$500/Max) |
 | UX-D | Wallet Tab | ✅ 기본 완료 | Send/Receive 통합 |
 | UX-E | Earn Tab | 📋 예정 | Lending + Staking 통합 (Phase 12-13 이후) |
+
+**Trade Enhancement 컴포넌트 (UX-C)**
+- ✅ useTradeMode - Simple/Pro 모드 상태 관리 hook (localStorage 저장)
+- ✅ SimpleOrderForm - 간소화된 주문 폼 (USD 금액 기반, Market Order만)
+- ✅ QuickAmountButtons - Quick Amount 버튼 ($50, $100, $250, $500, Max)
 
 **Dashboard 컴포넌트 (features/dashboard/)**
 - ✅ NetWorthCard - 총 자산 표시 (USD 환산)
