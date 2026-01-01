@@ -2,9 +2,13 @@
  * Pages
  */
 
+export { HomePage } from './HomePage';
 export { TradePage } from './TradePage';
-export { PortfolioPage } from './PortfolioPage';
-export { PaymentPage } from './PaymentPage';
+export { WalletPage } from './WalletPage';
 export { PredictPage } from './PredictPage';
 export { PredictMarketPage } from './PredictMarketPage';
 export { PredictAdminPage } from './PredictAdminPage';
+
+// Legacy exports (for backward compatibility during migration)
+export { PortfolioPage } from './PortfolioPage';
+export { PaymentPage } from './PaymentPage';
