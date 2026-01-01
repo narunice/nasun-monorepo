@@ -19,6 +19,7 @@
 | Phase 6 | ✅ 완료 | Trading UX Pro (MA, Volume, RSI, MACD) | 2025-12-28 |
 | Phase 7 | ✅ 완료 | Portfolio Dashboard | 2025-12-28 |
 | Phase 8 | ✅ 완료 | Mobile & Theme (반응형, 다크/라이트) | 2025-12-28 |
+| Phase 13 | ✅ 완료 | Staking (Earn 탭, 네이티브 스테이킹) | 2026-01-01 |
 | Phase 14 | ⚠️ MVP 완료 | Prediction Markets (Sell/Admin 미구현) | 2025-12-29 |
 | Phase 15 | ✅ 완료 | Payments (Send, QR) | 2025-12-28 |
 
@@ -278,13 +279,22 @@ Unified Finance 비전을 향한 핵심 확장
 
 ---
 
-#### Phase 13: Staking
+#### Phase 13: Staking ⭐ (완료)
+
+**목표**: Nasun Devnet 네이티브 스테이킹 통합
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 13.1 | NAS 토큰 스테이킹 | 📋 | 중 |
-| 13.2 | 검증자 위임 | 📋 | 중 |
-| 13.3 | 보상 배분 | 📋 | 중 |
+| 13.1 | EarnPage 생성 (Staking/Lending 탭) | ✅ 완료 | 저 |
+| 13.2 | StakingSection 컴포넌트 | ✅ 완료 | 저 |
+| 13.3 | wallet-ui 스테이킹 컴포넌트 라이트 모드 | ✅ 완료 | 중 |
+| 13.4 | Header Earn 탭 활성화 | ✅ 완료 | 저 |
+
+**구현 완료 (2026-01-01)**:
+- EarnPage with Staking/Lending tabs (Lending disabled for Phase 12)
+- StakingSection with info cards (Your Staked, Rewards, APY, Validators)
+- Light mode support for StakingPanel, ValidatorList, StakingStatus
+- Native staking via @nasun/wallet-ui StakingPanel component
 
 ---
 
