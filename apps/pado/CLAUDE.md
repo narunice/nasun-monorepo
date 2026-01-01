@@ -49,15 +49,17 @@ Pado는 이 분절을 해결합니다:
 
 | Phase | 상태 | 제품 | 설명 |
 |-------|------|------|------|
-| Phase 6 | 🔜 다음 | Trading UX Pro | 고급 주문 유형, 슬리피지 설정, 가격 제안 |
-| Phase 7 | 📋 계획 | Smart Account v2 | zkLogin + Passkey 인증, 시드리스 온보딩 |
-| Phase 8 | 📋 계획 | Cross-Chain Vaults | BTC, ETH 등 외부 자산 Vault 통합 |
-| Phase 9 | 📋 계획 | Perpetuals | 무기한 선물 거래 |
-| Phase 10 | 📋 계획 | Lending & Borrowing | 통합 대출 프로토콜 |
-| Phase 11 | 📋 계획 | Staking | NAS 토큰 스테이킹 |
-| Phase 12 | 📋 계획 | Prediction Markets | 예측 시장 |
-| Phase 13 | 📋 계획 | Payments | 즉시 결제 및 전송 |
-| Phase 14 | 📋 계획 | Unified Margin | 크로스-프로덕트 통합 마진 시스템 |
+| Phase 6 | ✅ 완료 | Trading UX Pro | 고급 주문 유형, 슬리피지 설정, 가격 제안 |
+| Phase 7 | ✅ 완료 | Portfolio Dashboard | 포트폴리오 대시보드, P&L 표시 |
+| Phase 8 | ✅ 완료 | Mobile & Theme | 모바일 반응형, 다크/라이트 테마 |
+| Phase 9 | 📋 계획 | Smart Account v2 | zkLogin + Passkey 인증, 시드리스 온보딩 |
+| Phase 10 | 📋 계획 | Cross-Chain Vaults | BTC, ETH 등 외부 자산 Vault 통합 |
+| Phase 11 | 📋 계획 | Perpetuals | 무기한 선물 거래 |
+| Phase 12 | 📋 계획 | Lending & Borrowing | 통합 대출 프로토콜 |
+| Phase 13 | 📋 계획 | Staking | NAS 토큰 스테이킹 |
+| Phase 14 | ⚠️ MVP+ | Prediction Markets | 예측 시장 (Sell/Admin 완료, 유동성 미구현) |
+| Phase 15 | ✅ 완료 | Payments | 즉시 결제 및 전송 |
+| Phase 16 | 📋 계획 | Unified Margin | 크로스-프로덕트 통합 마진 시스템 |
 
 ---
 
@@ -180,8 +182,8 @@ Phase 4: Community-owned Protocol
 | Network | Nasun Devnet |
 | Chain ID | `6681cdfd` (2025-12-25 V3 리셋) |
 | Fork Source | Sui mainnet v1.63.0 |
-| RPC Endpoint | http://3.38.127.23:9000 |
-| Faucet | http://3.38.127.23:5003/gas |
+| RPC Endpoint | https://rpc.devnet.nasun.io |
+| Faucet | https://faucet.devnet.nasun.io |
 | Base Technology | DeepBook V3 CLOB |
 
 ### Deployed Contracts
@@ -238,13 +240,17 @@ apps/pado/
 ├── CLAUDE.md                     # 이 파일
 ├── README.md                     # 프로젝트 소개
 ├── doc/
-│   └── PADO_IMPLEMENTATION_PLAN.md  # 구현 계획서
+│   ├── PADO_IMPLEMENTATION_PLAN.md  # 구현 계획서
+│   ├── PADO_NEXT_STEPS.md           # 다음 단계 계획
+│   ├── PADO_UI_ROADMAP.md           # UI 로드맵
+│   └── PREDICTION_LIQUIDITY_PLAN.md # 예측 시장 유동성 계획
 ├── contracts/                    # Move 스마트 컨트랙트
 │   ├── pado/                    # Pado 테스트 토큰 패키지
 │   │   └── sources/
 │   │       ├── nbtc.move        # 테스트 BTC 토큰
 │   │       ├── nusdc.move       # 테스트 USDC 토큰
 │   │       └── faucet.move      # Token Faucet
+│   ├── contracts-prediction/    # Prediction Market 컨트랙트
 │   └── deepbookv3/              # DeepBook V3 (git submodule)
 └── frontend/                    # Frontend (Vite + React)
     └── src/
@@ -254,24 +260,30 @@ apps/pado/
         │   ├── sui-client.ts    # Sui 클라이언트
         │   └── deepbook.ts      # DeepBook V3 유틸
         ├── features/
-        │   └── trading/         # 거래 기능 모듈
-        │       ├── components/
-        │       │   ├── OrderForm.tsx
-        │       │   ├── OrderbookView.tsx
-        │       │   ├── OpenOrdersCard.tsx
-        │       │   ├── BalanceManagerCard.tsx
-        │       │   └── MarketSelector.tsx
-        │       ├── context/
-        │       │   ├── OrderFormContext.tsx
-        │       │   └── MarketContext.tsx
-        │       ├── hooks/
-        │       │   ├── useOrderbook.ts
-        │       │   └── useOpenOrders.ts
-        │       ├── transactions.ts
-        │       ├── useTrading.ts
-        │       └── types.ts
+        │   ├── trading/         # 거래 기능 모듈
+        │   │   ├── components/
+        │   │   ├── context/
+        │   │   ├── hooks/
+        │   │   └── types.ts
+        │   ├── prediction/      # 예측 시장 모듈
+        │   │   ├── components/  # MarketCard, OutcomeOrderForm, etc.
+        │   │   ├── hooks/       # useMarkets, usePredictionTrade, etc.
+        │   │   ├── lib/         # prediction-market.ts, transactions.ts
+        │   │   └── types.ts
+        │   ├── portfolio/       # 포트폴리오 모듈
+        │   │   ├── components/  # AssetOverview, TokenBalanceList, etc.
+        │   │   └── hooks/       # useTotalValue, useTradeHistory
+        │   └── payments/        # 결제 모듈
+        │       └── components/  # PaymentQRCode
         ├── pages/
-        │   └── TradePage.tsx    # 메인 거래 페이지
+        │   ├── TradePage.tsx    # 메인 거래 페이지
+        │   ├── PortfolioPage.tsx # 포트폴리오 페이지
+        │   ├── PaymentPage.tsx  # 결제 페이지
+        │   ├── PredictPage.tsx  # 예측 시장 목록
+        │   ├── PredictMarketPage.tsx # 예측 시장 상세
+        │   └── PredictAdminPage.tsx  # Admin 마켓 생성
+        ├── providers/
+        │   └── theme/           # ThemeProvider, useTheme
         └── components/          # 공통 UI 컴포넌트
 ```
 
@@ -295,30 +307,25 @@ cd deepbookv3 && nasun client publish --gas-budget 500000000
 
 ## Future Product Modules
 
-### Perpetuals (Phase 9)
+### Perpetuals (Phase 11)
 - 무기한 선물 거래
 - 펀딩 레이트 메커니즘
 - 교차/격리 마진
 
-### Lending & Borrowing (Phase 10)
+### Lending & Borrowing (Phase 12)
 - 공급/대출 프로토콜
 - 동적 금리 곡선
 - 통합 마진과 연동
 
-### Staking (Phase 11)
+### Staking (Phase 13)
 - NAS 토큰 스테이킹
 - 네트워크 보안 참여
 - 담보 모델링에 반영
 
-### Prediction Markets (Phase 12)
-- 이벤트 기반 예측 시장
-- 결과 오라클 통합
-- 통합 마진 시스템과 연동
-
-### Payments (Phase 13)
-- Near-zero 수수료 즉시 전송
-- 스테이블/변동성 자산 모두 지원
-- 마진, 대출, 거래 잔고와 연동
+### Unified Margin (Phase 16)
+- 크로스-프로덕트 통합 마진 시스템
+- 자산이 모든 상품에 걸쳐 담보로 기능
+- 실시간 포트폴리오 리스크 계산
 
 ---
 
