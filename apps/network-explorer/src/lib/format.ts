@@ -58,3 +58,35 @@ export function truncateType(type: string): string {
   }
   return type;
 }
+
+// ============================================================
+// Time Formatting Utilities
+// ============================================================
+
+// Format timestamp (milliseconds) to localized date string
+export function formatTimestamp(timestampMs: string | number | null | undefined): string {
+  if (!timestampMs) return '-';
+  const date = new Date(Number(timestampMs));
+  return date.toLocaleString('en-US');
+}
+
+// Truncate transaction digest for display
+export function truncateDigest(digest: string, length: number = 8): string {
+  if (digest.length <= length * 2 + 3) return digest;
+  return `${digest.slice(0, length)}...${digest.slice(-6)}`;
+}
+
+// Format date to time-only string (for "Last updated" display)
+export function formatLastUpdated(date: Date | undefined): string {
+  if (!date) return '';
+  return date.toLocaleTimeString('en-US', { hour12: true });
+}
+
+// Format duration in milliseconds to human-readable string
+export function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
