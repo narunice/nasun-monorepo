@@ -58,6 +58,15 @@ Progressive lockout policy for failed password attempts:
 - Configurable timeout (5min / 15min / 30min / 1hr / disabled)
 - Automatic wallet lock on inactivity
 
+### Session Persistence Security
+When `sessionPersist` is enabled (disabled by default), the wallet can auto-unlock on page refresh:
+- **30-minute expiry** - Session automatically expires after 30 minutes
+- **Domain binding** - Session cannot be used on other domains
+- **XOR obfuscation** - Minimal protection against casual inspection
+- **sessionStorage** - Clears automatically when browser tab closes
+
+⚠️ **Note**: Session persistence is a convenience feature with security trade-offs. For maximum security, keep `sessionPersist` disabled.
+
 ### Large Transaction Confirmation
 - Optional confirmation for large transfers
 - Configurable threshold amount

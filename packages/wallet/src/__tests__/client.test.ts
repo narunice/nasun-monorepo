@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   formatBalance,
   parseAmount,
@@ -201,6 +201,60 @@ describe('Client Utilities', () => {
       const specialPassword = 'p@$$w0rd!#%^&*()';
       saveSessionPassword(specialPassword);
       expect(getSessionPassword()).toBe(specialPassword);
+    });
+
+    it('should handle unicode passwords', () => {
+      const unicodePassword = '비밀번호123🔐';
+      saveSessionPassword(unicodePassword);
+      expect(getSessionPassword()).toBe(unicodePassword);
+    });
+  });
+
+  describe('Session Password Expiry', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      configureWallet({ sessionPersist: true });
+      clearSessionPassword();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should return password before expiry', () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      saveSessionPassword('testPassword');
+
+      // Advance 29 minutes (just before 30 min expiry)
+      vi.setSystemTime(now + 29 * 60 * 1000);
+      expect(getSessionPassword()).toBe('testPassword');
+    });
+
+    it('should return null after expiry (30 minutes)', () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      saveSessionPassword('testPassword');
+
+      // Advance 31 minutes (past 30 min expiry)
+      vi.setSystemTime(now + 31 * 60 * 1000);
+      expect(getSessionPassword()).toBeNull();
+    });
+
+    it('should clear expired session from storage', () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      saveSessionPassword('testPassword');
+
+      // Advance past expiry
+      vi.setSystemTime(now + 31 * 60 * 1000);
+      getSessionPassword(); // This should clear the expired session
+
+      // Storage should be cleared
+      expect(sessionStorage.getItem('nasun_wallet_session')).toBeNull();
     });
   });
 });
