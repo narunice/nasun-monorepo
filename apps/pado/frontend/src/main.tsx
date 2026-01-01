@@ -7,14 +7,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { configureWallet, initZkLogin } from '@nasun/wallet';
+import { configureWallet, initZkLogin, registerTokens } from '@nasun/wallet';
 import { WalletProvider } from '@nasun/wallet-ui';
 
 import { ThemeProvider } from './providers/theme';
 import { ErrorBoundary } from './components/layout';
 import { ToastProvider } from './components/common';
 import { validateEnvWithWarning, logEnvSummary } from './utils';
-import { NETWORK_CONFIG } from './config/network';
+import { NETWORK_CONFIG, TOKENS } from './config/network';
 import App from './App';
 import './index.css';
 
@@ -22,8 +22,24 @@ import './index.css';
 validateEnvWithWarning();
 logEnvSummary();
 
+// Register tokens from environment variables
+// This allows token addresses to be updated without modifying package code
+registerTokens([
+  {
+    symbol: 'NBTC',
+    name: 'Nasun BTC',
+    decimals: TOKENS.NBTC.decimals,
+    type: TOKENS.NBTC.type, // from VITE_NBTC_TYPE
+  },
+  {
+    symbol: 'NUSDC',
+    name: 'Nasun USDC',
+    decimals: TOKENS.NUSDC.decimals,
+    type: TOKENS.NUSDC.type, // from VITE_NUSDC_TYPE
+  },
+]);
+
 // Configure wallet with Nasun network
-// Note: NBTC and NUSDC are automatically registered by @nasun/wallet (DEVNET_TOKENS)
 configureWallet({
   rpcUrl: NETWORK_CONFIG.rpcUrl,
   faucetUrl: NETWORK_CONFIG.faucetUrl,
