@@ -265,13 +265,15 @@ cd apps/pado/contracts
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
 ```
 
-### 배포된 컨트랙트 (Devnet)
+### 배포된 컨트랙트 (Devnet) - 2026-01-01 업데이트
 
-| 컨트랙트 | Package ID | 환경변수 |
-|----------|------------|----------|
-| pado (tokens) | `0xfdd1e75f...` | `VITE_TOKENS_PACKAGE` |
-| prediction | `0xc585b0b9...` | - |
-| TokenFaucet (shared) | `0xc9ddd723...` | `VITE_TOKEN_FAUCET` |
+| 컨트랙트 | Package ID | 비고 |
+|----------|------------|------|
+| pado_tokens | `0xb083f14e...` | NBTC/NUSDC + Faucet (Security Hardened) |
+| prediction | `0x6754f580...` | 예측 시장 |
+| TokenFaucet (shared) | `0x6f40eeee...` | 토큰 민팅 |
+| ClaimRecord (shared) | `0xb17a4b82...` | 24시간 쿨다운 |
+| GlobalState (shared) | `0x02bd4975...` | 예측 시장 상태 |
 
 ## 향후 계획
 
