@@ -34,7 +34,7 @@
 | UX-A | Navigation Restructure | 5-Tab 네비게이션 재구성 | ✅ 완료 |
 | UX-B | Home Dashboard | 새 HomePage 구현 | ✅ 완료 |
 | UX-C | Trade Page Enhancement | Simple/Pro 모드, Quick Amount 버튼 | ✅ 완료 |
-| UX-D | Wallet Tab | Send/Receive 통합, 설정 | ✅ 기본 완료 |
+| UX-D | Wallet Tab | Send/Receive/History/Settings | ✅ 완료 |
 | UX-E | Earn Tab (Future) | Lending + Staking 통합 (Phase 12-13 이후) | 📋 예정 |
 
 ---
@@ -391,3 +391,4 @@ git checkout -b fix/ux-issue ux-b-complete
 | 2026-01-01 | Phase UX-B 완료: Home Dashboard 모듈 (ux-b-complete) |
 | 2026-01-01 | 버그 수정: WelcomeBanner 드롭다운 위치, PredictionHighlight 확률 표시 |
 | 2026-01-01 | Phase UX-C 완료: Simple/Pro 모드 토글, Quick Amount 버튼 (ux-c-complete) |
+| 2026-01-01 | Phase UX-D 완료: Wallet Tab에 History, Settings 탭 추가 (ux-d-complete) |
