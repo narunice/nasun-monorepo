@@ -125,6 +125,16 @@
 | CreateMarketForm | `CreateMarketForm.tsx` | ✅ 완료 | 마켓 생성 UI (Admin) |
 | PredictAdminPage | `PredictAdminPage.tsx` | ✅ 완료 | Admin 페이지 (/predict/admin) |
 
+### Dashboard 컴포넌트 (5개 완료)
+
+| 컴포넌트 | 파일 | 상태 | 설명 |
+|---------|------|------|------|
+| NetWorthCard | `NetWorthCard.tsx` | ✅ 완료 | 총 자산 표시 + 24h 변동 |
+| QuickActions | `QuickActions.tsx` | ✅ 완료 | 빠른 작업 버튼 그리드 |
+| HotMarketsCard | `HotMarketsCard.tsx` | ✅ 완료 | 인기 마켓 목록 |
+| PredictionHighlight | `PredictionHighlight.tsx` | ✅ 완료 | 예측 시장 하이라이트 |
+| WelcomeBanner | `WelcomeBanner.tsx` | ✅ 완료 | 미연결 사용자 CTA |
+
 ---
 
 ## CEX vs DEX 분석
@@ -521,3 +531,4 @@ function MyChart() {
 | 2025-12-29 | Phase 3.1 완료: EventService (WebSocket/Polling/Simulation), 실시간 오더북, ConnectionStatusBadge |
 | 2025-12-31 | Prediction Market 미구현 항목 추가 (Sell UI, Admin 마켓 생성/해결) |
 | 2026-01-01 | Phase 14.6 (Sell), 14.7 (AdminResolveModal), 14.9 (CreateMarketForm) 완료 반영 |
+| 2026-01-01 | UX 재구성: Phase UX-A (5-Tab 네비게이션), UX-B (Dashboard 컴포넌트 5개) |

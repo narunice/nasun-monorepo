@@ -29,13 +29,13 @@
 
 ## 2. 구현 Phase 목록
 
-| Phase | 이름 | 설명 | 예상 작업량 |
-|-------|------|------|------------|
-| UX-A | Navigation Restructure | 5-Tab 네비게이션 재구성 | 소 |
-| UX-B | Home Dashboard | 새 HomePage 구현 | 중 |
-| UX-C | Trade Page Enhancement | Simple/Pro 모드, Quick Actions | 중 |
-| UX-D | Wallet Tab | Send/Receive 통합, 설정 | 소 |
-| UX-E | Earn Tab (Future) | Lending + Staking 통합 (Phase 12-13 이후) | - |
+| Phase | 이름 | 설명 | 상태 |
+|-------|------|------|------|
+| UX-A | Navigation Restructure | 5-Tab 네비게이션 재구성 | ✅ 완료 |
+| UX-B | Home Dashboard | 새 HomePage 구현 | ✅ 완료 |
+| UX-C | Trade Page Enhancement | Simple/Pro 모드, Quick Actions | 📋 예정 |
+| UX-D | Wallet Tab | Send/Receive 통합, 설정 | ✅ 기본 완료 |
+| UX-E | Earn Tab (Future) | Lending + Staking 통합 (Phase 12-13 이후) | 📋 예정 |
 
 ---
 
@@ -387,3 +387,5 @@ git checkout -b fix/ux-issue ux-b-complete
 | 날짜 | 변경 내용 |
 |------|----------|
 | 2026-01-01 | 초안 작성 |
+| 2026-01-01 | Phase UX-A 완료: 5-Tab 네비게이션 (ux-a-complete) |
+| 2026-01-01 | Phase UX-B 완료: Home Dashboard 모듈 (ux-b-complete) |
