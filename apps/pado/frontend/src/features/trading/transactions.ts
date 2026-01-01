@@ -11,6 +11,73 @@ import { getSuiClient } from '../../lib/sui-client';
 // 기본 Pool (하위 호환)
 const DEFAULT_POOL = POOLS.NBTC_NUSDC;
 
+// ============================================
+// Security: Validation Functions
+// ============================================
+
+/**
+ * Validate Sui object ID format (0x + 64 hex chars)
+ */
+function isValidObjectId(id: string | undefined): boolean {
+  if (!id) return false;
+  return /^0x[0-9a-f]{64}$/i.test(id);
+}
+
+/**
+ * Validate Pool configuration
+ * @throws Error if pool is invalid
+ */
+function validatePool(pool: PoolConfig, name: string = 'pool'): void {
+  if (!pool) {
+    throw new Error(`[Security] Missing ${name} configuration`);
+  }
+  if (!isValidObjectId(pool.id)) {
+    throw new Error(`[Security] Invalid ${name} ID format: ${pool.id}`);
+  }
+  if (!pool.baseToken?.type || !pool.quoteToken?.type) {
+    throw new Error(`[Security] Missing token types in ${name}`);
+  }
+}
+
+/**
+ * Validate limit order parameters
+ * @throws Error if parameters are invalid
+ */
+function validateLimitOrderParams(params: PlaceLimitOrderParams, pool: PoolConfig): void {
+  if (params.price <= 0n) {
+    throw new Error('[Security] Price must be positive');
+  }
+  if (params.quantity <= 0n) {
+    throw new Error('[Security] Quantity must be positive');
+  }
+
+  // Tick size validation (if available)
+  if (pool.tickSize && pool.tickSize > 0) {
+    const tickSizeBn = BigInt(pool.tickSize);
+    if (params.price % tickSizeBn !== 0n) {
+      throw new Error(`[Security] Price must be multiple of tick size: ${pool.tickSize}`);
+    }
+  }
+
+  // Lot size validation (if available)
+  if (pool.lotSize && pool.lotSize > 0) {
+    const lotSizeBn = BigInt(pool.lotSize);
+    if (params.quantity % lotSizeBn !== 0n) {
+      throw new Error(`[Security] Quantity must be multiple of lot size: ${pool.lotSize}`);
+    }
+  }
+}
+
+/**
+ * Validate market order parameters
+ * @throws Error if parameters are invalid
+ */
+function validateMarketOrderParams(params: PlaceMarketOrderParams): void {
+  if (params.quantity <= 0n) {
+    throw new Error('[Security] Quantity must be positive');
+  }
+}
+
 /**
  * BalanceManager 생성 트랜잭션
  */
@@ -100,6 +167,10 @@ export function buildPlaceLimitOrder(
   params: PlaceLimitOrderParams,
   pool: PoolConfig = DEFAULT_POOL,
 ): Transaction {
+  // Security: Validate inputs before building transaction
+  validatePool(pool, 'NBTC/NUSDC pool');
+  validateLimitOrderParams(params, pool);
+
   const tx = new Transaction();
 
   // Generate trade proof
@@ -148,6 +219,10 @@ export function buildPlaceMarketOrder(
   params: PlaceMarketOrderParams,
   pool: PoolConfig = DEFAULT_POOL,
 ): Transaction {
+  // Security: Validate inputs before building transaction
+  validatePool(pool, 'NBTC/NUSDC pool');
+  validateMarketOrderParams(params);
+
   const tx = new Transaction();
 
   // Generate trade proof
