@@ -10,7 +10,6 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', path: '/', enabled: true },
   { label: 'Trade', path: '/trade', enabled: true },
   { label: 'Earn', path: '/earn', enabled: false },
   { label: 'Predict', path: '/predict', enabled: true },
@@ -68,11 +67,11 @@ export function Header() {
   return (
     <header className="border-b border-theme-border px-4 md:px-6 py-3 md:py-4">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        {/* Logo + App Name */}
-        <div className="flex items-center gap-2">
+        {/* Logo + App Name - Click to go Home */}
+        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img src="/temp-logo.png" alt="Pado" className="w-7 h-7 md:w-8 md:h-8" />
           <h1 className="text-xl md:text-2xl font-bold text-blue-400">Pado</h1>
-        </div>
+        </Link>
 
         {/* Desktop Navigation Menu */}
         <nav className="hidden md:flex items-center gap-1">
