@@ -10,6 +10,9 @@ import { useTrading } from '../useTrading';
 import { useToast } from '../../../components/common';
 import { useWalletAccount } from '@nasun/wallet';
 
+// Must match the query key in @nasun/wallet useMultiBalance
+const MULTI_BALANCE_QUERY_KEY = 'wallet-multi-balance';
+
 export interface UseFaucetResult {
   isNasunLoading: boolean;
   isNbtcLoading: boolean;
@@ -40,7 +43,7 @@ export function useFaucet(): UseFaucetResult {
         showToast('NASUN received!', 'success');
         // 잔고 갱신 (2초 후)
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['balances'] });
+          queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
         }, 2000);
       } else {
         showToast('Faucet request failed', 'error');
@@ -64,7 +67,7 @@ export function useFaucet(): UseFaucetResult {
         showToast('1 NBTC received!', 'success');
         // 잔고 갱신 (2초 후)
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['balances'] });
+          queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
         }, 2000);
       } else {
         showToast(`NBTC faucet error: ${result.error}`, 'error');
@@ -88,7 +91,7 @@ export function useFaucet(): UseFaucetResult {
         showToast('100,000 NUSDC received!', 'success');
         // 잔고 갱신 (2초 후)
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['balances'] });
+          queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
         }, 2000);
       } else {
         showToast(`NUSDC faucet error: ${result.error}`, 'error');
