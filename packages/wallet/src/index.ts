@@ -76,7 +76,19 @@ export type {
 } from './types';
 
 // Security defaults
-export { DEFAULT_SECURITY_SETTINGS } from './types';
+export { DEFAULT_SECURITY_SETTINGS, LOCKOUT_TIERS, DEFAULT_UNLOCK_ATTEMPT_STATE } from './types';
+
+// Rate Limiting Types
+export type { UnlockAttemptState, LockoutTier } from './types';
+
+// Rate Limiting Utilities
+export {
+  isLockedOut,
+  getLockoutRemainingMs,
+  getLockoutInfo,
+  getUnlockAttemptState,
+  resetUnlockAttempts,
+} from './core/rate-limit';
 
 // Address Book (Security Phase 2)
 export { useAddressBook, useAddressStatus } from './hooks/useAddressBook';

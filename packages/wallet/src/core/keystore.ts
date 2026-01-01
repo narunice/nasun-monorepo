@@ -15,6 +15,12 @@ import {
   decryptPrivateKey,
   keypairFromSecretKey,
 } from './crypto';
+import {
+  isLockedOut,
+  getLockoutRemainingMs,
+  recordFailedAttempt,
+  resetUnlockAttempts,
+} from './rate-limit';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const KEYSTORE_KEY = 'nasun_wallet_keystore';
@@ -80,9 +86,18 @@ export async function createAndSaveWallet(password: string): Promise<string> {
 
 /**
  * Decrypt keypair from keystore
+ * Includes rate limiting to prevent brute force attacks.
  * @returns Decrypted keypair
+ * @throws Error if locked out or invalid password
  */
 export async function unlockKeystore(password: string): Promise<Ed25519Keypair> {
+  // Check lockout before attempting
+  if (isLockedOut()) {
+    const remainingMs = getLockoutRemainingMs();
+    const remainingSec = Math.ceil(remainingMs / 1000);
+    throw new Error(`Too many failed attempts. Try again in ${remainingSec} seconds.`);
+  }
+
   const keystore = loadKeystore();
   if (!keystore) {
     throw new Error('No wallet found');
@@ -104,9 +119,22 @@ export async function unlockKeystore(password: string): Promise<Ed25519Keypair> 
       throw new Error('Address mismatch - keystore may be corrupted');
     }
 
+    // Success - reset rate limiting counter
+    resetUnlockAttempts();
+
     return keypair;
   } catch (error) {
     if (error instanceof Error && error.message.includes('decrypt')) {
+      // Record failed attempt for rate limiting
+      recordFailedAttempt();
+
+      // Check if lockout was triggered
+      if (isLockedOut()) {
+        const remainingMs = getLockoutRemainingMs();
+        const remainingSec = Math.ceil(remainingMs / 1000);
+        throw new Error(`Invalid password. Too many attempts. Locked for ${remainingSec} seconds.`);
+      }
+
       throw new Error('Invalid password');
     }
     throw error;
