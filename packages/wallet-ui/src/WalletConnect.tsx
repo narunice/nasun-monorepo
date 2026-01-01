@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useWallet, useNFTs, shortenAddress, isLockedOut, getLockoutRemainingMs, type NFTInfo } from '@nasun/wallet';
+import { useWallet, useNFTs, shortenAddress, isLockedOut, getLockoutRemainingMs, getUnlockAttemptState, LOCKOUT_TIERS, type NFTInfo } from '@nasun/wallet';
 import { CopyableAddress } from './CopyableAddress';
 import { MnemonicBackup } from './MnemonicBackup';
 import { ImportWallet } from './ImportWallet';
@@ -49,10 +49,14 @@ function LockedStateUI({
   setViewMode: (mode: ViewMode) => void;
 }) {
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   // Check lockout status and countdown
   useEffect(() => {
-    const checkLockout = () => {
+    const checkStatus = () => {
+      const state = getUnlockAttemptState();
+      setFailedAttempts(state.failedAttempts);
+
       if (isLockedOut()) {
         setLockoutRemaining(Math.ceil(getLockoutRemainingMs() / 1000));
       } else {
@@ -60,12 +64,16 @@ function LockedStateUI({
       }
     };
 
-    checkLockout();
-    const interval = setInterval(checkLockout, 1000);
+    checkStatus();
+    const interval = setInterval(checkStatus, 1000);
     return () => clearInterval(interval);
   }, []);
 
   const isLocked = lockoutRemaining > 0;
+
+  // Calculate remaining attempts until first lockout
+  const firstLockoutThreshold = LOCKOUT_TIERS[0]?.attempts ?? 8;
+  const attemptsRemaining = Math.max(0, firstLockoutThreshold - failedAttempts);
 
   // Format remaining time for display
   const formatTime = (seconds: number) => {
@@ -105,7 +113,24 @@ function LockedStateUI({
           autoFocus={!isLocked}
         />
 
-        {error && !isLocked && <p className="text-xs text-red-400">{error}</p>}
+        {/* Error message with remaining attempts */}
+        {error && !isLocked && (
+          <div className="text-xs">
+            <p className="text-red-400">{error}</p>
+            {failedAttempts > 0 && attemptsRemaining > 0 && (
+              <p className="text-yellow-500 mt-1">
+                {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining before lockout
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Warning when approaching lockout */}
+        {!error && !isLocked && failedAttempts > 0 && failedAttempts < firstLockoutThreshold && (
+          <p className="text-xs text-yellow-500">
+            {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining before lockout
+          </p>
+        )}
 
         <div className="flex gap-2 mt-2">
           <button
