@@ -39,8 +39,9 @@ export function PredictionHighlight() {
       <div className="space-y-3">
         {markets.slice(0, 3).map(({ market, yesOrderbook }) => {
           // Calculate YES probability from best ask (Polymarket style)
+          // price is in basis points (0-10000), divide by 100 to get percentage
           const bestAsk = yesOrderbook?.asks?.[0];
-          const yesProbability = bestAsk ? Math.round(bestAsk.price * 100) : 50;
+          const yesProbability = bestAsk ? Math.round(bestAsk.price / 100) : 50;
 
           return (
             <Link
