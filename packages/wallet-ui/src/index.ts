@@ -59,3 +59,7 @@ export { SocialLoginButtons, SocialLoginIconButtons } from './SocialLoginButtons
 export type { SocialLoginButtonsProps } from './SocialLoginButtons';
 export { ZkLoginCallback } from './ZkLoginCallback';
 export type { ZkLoginCallbackProps } from './ZkLoginCallback';
+
+// Passkey components
+export { PasskeyButton } from './PasskeyButton';
+export type { PasskeyButtonProps } from './PasskeyButton';

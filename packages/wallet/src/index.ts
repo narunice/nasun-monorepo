@@ -274,3 +274,37 @@ export {
   isZkLoginSessionValid,
   disconnectZkLogin,
 } from './core/zklogin';
+
+// ============================================
+// Passkey Authentication (Phase 9.6)
+// ============================================
+
+// Passkey Hooks
+export { usePasskey, hasPasskeyWallet } from './hooks/usePasskey';
+export type { UsePasskeyOptions, UsePasskeyResult } from './hooks/usePasskey';
+
+// Passkey Types
+export type {
+  PasskeyCredential,
+  PasskeyRegistrationOptions,
+  PasskeyAuthenticationOptions,
+  PasskeyRegistrationResult,
+  PasskeyAuthenticationResult,
+  PasskeyWalletState,
+  PasskeyErrorType,
+} from './types/passkey';
+export { PasskeyError, isWebAuthnSupported, isPlatformAuthenticatorAvailable } from './types/passkey';
+
+// Passkey Utilities
+export {
+  registerPasskey,
+  authenticateWithPasskey,
+  createPasskeyWallet,
+  unlockPasskeyWallet,
+  getPasskeyWallet,
+  savePasskeyWallet,
+  clearPasskeyWallet,
+  addCredentialToWallet,
+  removeCredentialFromWallet,
+  updateCredentialLastUsed,
+} from './core/passkey';

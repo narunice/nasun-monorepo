@@ -275,3 +275,23 @@ export type {
 } from './zklogin';
 
 export { ZkLoginError } from './zklogin';
+
+// ============================================
+// Passkey Types
+// ============================================
+
+export type {
+  PasskeyCredential,
+  PasskeyRegistrationOptions,
+  PasskeyAuthenticationOptions,
+  PasskeyRegistrationResult,
+  PasskeyAuthenticationResult,
+  PasskeyWalletState,
+  PasskeyErrorType,
+} from './passkey';
+
+export {
+  PasskeyError,
+  isWebAuthnSupported,
+  isPlatformAuthenticatorAvailable,
+} from './passkey';
