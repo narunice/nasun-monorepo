@@ -1,17 +1,16 @@
 /**
  * WalletPage
- * Unified wallet page with Send/Receive tabs
- *
- * TODO (Phase UX-D): Add History and Settings tabs
+ * Unified wallet page with Send/Receive/History/Settings tabs
  */
 
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { SendTransaction } from '@nasun/wallet-ui';
+import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
 import { useWallet } from '@nasun/wallet';
 import { PaymentQRCode } from '../features/payments';
+import { TransferHistory } from '../features/portfolio/components/TransferHistory';
 
-type TabType = 'send' | 'receive';
+type TabType = 'send' | 'receive' | 'history' | 'settings';
 
 export function WalletPage() {
   const location = useLocation();
@@ -29,6 +28,8 @@ export function WalletPage() {
   const tabs: { id: TabType; label: string }[] = [
     { id: 'send', label: 'Send' },
     { id: 'receive', label: 'Receive' },
+    { id: 'history', label: 'History' },
+    { id: 'settings', label: 'Settings' },
   ];
 
   return (
@@ -78,6 +79,14 @@ export function WalletPage() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'history' && (
+          <TransferHistory />
+        )}
+
+        {activeTab === 'settings' && (
+          <SecuritySettings />
         )}
       </div>
     </div>
