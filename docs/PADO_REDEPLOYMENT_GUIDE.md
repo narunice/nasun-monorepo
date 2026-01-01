@@ -344,6 +344,13 @@ Requires 500 DEEP tokens as creation fee.
 | NBTC/NUSDC | NBTC (8 decimals) | NUSDC (6 decimals) | $0.01 | 0.0001 BTC |
 | NASUN/NUSDC | NASUN (9 decimals) | NUSDC (6 decimals) | $0.001 | 0.01 NASUN |
 
+### 5.5 Created Pools (2026-01-01)
+
+```
+NBTC/NUSDC Pool: 0xd19dfb9a51424a2193ef4284a1bf67d3c03b5ef3132446016243f9d394ef7180
+NASUN/NUSDC Pool: 0x9022d534d9846cbc32341fe07d4444be142065d0b7b2cc11a16ffe53a2e7d0f2
+```
+
 ---
 
 ## Troubleshooting
