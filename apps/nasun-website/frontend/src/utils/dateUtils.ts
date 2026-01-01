@@ -1,4 +1,4 @@
-import { CumulativePeriod } from '../components/app/Leaderboard/types/leaderboard';
+import { CumulativePeriod } from '@/features/leaderboard/types/leaderboard';
 
 /**
  * 날짜를 YYYY-MM-DD 형식으로 포맷

@@ -98,26 +98,28 @@ components/app/myAccount/
 
 ## 4. Revised Refactoring Plan
 
-### Phase 1: De-duplication 🚨 CRITICAL ⏱️ 2 hours
+### Phase 1: De-duplication 🚨 CRITICAL ✅ COMPLETED (2026-01-01)
 **Priority: IMMEDIATE** (highest impact, lowest risk)
 
-1. **Decision: Keep `components/app/Leaderboard/`** (more discoverable location)
+1. **Decision: Keep `features/leaderboard/`** (follows features pattern, newer code)
 
-2. **Delete `features/leaderboard/` entirely:**
-   ```bash
-   rm -rf apps/nasun-website/frontend/src/features/leaderboard/
-   ```
+2. **Deleted `components/app/Leaderboard/` entirely:**
+   - 61 files removed
+   - Was just a re-export layer pointing to `features/leaderboard/`
 
-3. **Update imports across codebase:**
-   - Search: `from '@/features/leaderboard`
-   - Replace: `from '@/components/app/Leaderboard`
+3. **Updated imports across codebase:**
+   - `LeaderboardPage.tsx` → `@/features/leaderboard`
+   - `ProfileHeroCard.tsx` → `@/features/leaderboard/hooks/...`
+   - `RankHistorySection.tsx` → `@/features/leaderboard/...`
+   - `dateUtils.ts` → `@/features/leaderboard/types/...`
 
-4. **Verify no broken imports:**
-   ```bash
-   pnpm --filter @nasun/nasun-website typecheck
-   ```
+4. **Fixed internal imports in `features/leaderboard/`:**
+   - Changed relative imports (`../../../ui/`) to absolute (`@/components/ui/`)
+   - Affected files: CumulativeLeaderboardRow, CumulativeLeaderboardTable, ErrorState, MyRankCard, ShareRankHistoryButton, ShareButtonsGroup, UserSearchBox, CumulativeLeaderboard, useMyRank, useLeaderboardConfig, getSmartDefaultPeriod
 
-**Expected result:** Remove 60 duplicate files instantly
+5. **Build verified successfully**
+
+**Result:** ✅ 61 duplicate files removed, build passing
 
 ### Phase 2: ButtonShowcaseSection ⏱️ 2 hours
 **Priority: HIGH** (80% reduction possible)
@@ -200,14 +202,14 @@ components/app/myAccount/
 
 ## 5. Expected Outcome
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Duplicate files | 60 | 0 |
-| `ButtonShowcaseSection.tsx` | 1008 lines | ~200 lines |
-| `UserInfo.tsx` | 584 lines | ~300 lines |
-| `routesConfig.ts` | 548 lines | ~100 lines |
-| Total lines saved | - | ~1500+ lines |
-| Bundle size reduction | - | 5-10% |
+| Metric | Before | After | Status |
+|--------|--------|-------|--------|
+| Duplicate files | 61 | 0 | ✅ Done |
+| `ButtonShowcaseSection.tsx` | 1008 lines | ~200 lines | Pending |
+| `UserInfo.tsx` | 584 lines | ~300 lines | Pending |
+| `routesConfig.ts` | 548 lines | ~100 lines | Pending |
+| Total lines saved | - | ~1500+ lines | In Progress |
+| Bundle size reduction | - | 5-10% | In Progress |
 
 ### Benefits
 - Elimination of "split brain" issues in Leaderboard
@@ -235,22 +237,22 @@ components/app/myAccount/
 ```
 apps/nasun-website/frontend/src/
 ├── features/
-│   └── leaderboard/          # DELETE: Entire folder (60 files)
+│   └── leaderboard/          # ✅ KEPT: Source of truth (imports updated to @/)
 ├── components/app/
-│   ├── Leaderboard/          # KEEP: Source of truth
+│   ├── Leaderboard/          # ✅ DELETED: Was duplicate (61 files removed)
 │   ├── home/
-│   │   ├── ButtonShowcaseSection.tsx  # MODIFY → 200 lines
-│   │   └── buttonShowcaseData.ts      # NEW: Variant data
+│   │   ├── ButtonShowcaseSection.tsx  # TODO: MODIFY → 200 lines
+│   │   └── buttonShowcaseData.ts      # TODO: NEW: Variant data
 │   └── myAccount/
-│       ├── UserInfo.tsx      # MODIFY → 300 lines
-│       └── hooks/            # NEW: Account hooks
+│       ├── UserInfo.tsx      # TODO: MODIFY → 300 lines
+│       └── hooks/            # TODO: NEW: Account hooks
 │           ├── useAccountUnlink.ts
 │           ├── useGoogleAccount.ts
 │           ├── useTwitterAccount.ts
 │           └── useMetaMaskAccount.ts
 ├── config/
-│   └── routesConfig.ts       # MODIFY → 100 lines
-└── routes/                   # NEW: Split routes
+│   └── routesConfig.ts       # TODO: MODIFY → 100 lines
+└── routes/                   # TODO: NEW: Split routes
     ├── index.ts
     ├── mainRoutes.ts
     ├── appRoutes.ts
@@ -295,9 +297,13 @@ git checkout refactoring-v0-pre
 
 ## 10. Testing Checklist
 
-After each phase, verify:
-- [ ] `pnpm build:nasun-website` succeeds
-- [ ] `pnpm typecheck:nasun-website` passes
+### Phase 1 (Completed ✅)
+- [x] TypeScript check passes (`npx tsc --noEmit`)
+- [x] Build succeeds (`pnpm build`)
+- [x] No broken imports
+- [x] Backup files cleaned up
+
+### Remaining Phases
 - [ ] All pages load correctly
 - [ ] Authentication flows work
 - [ ] Leaderboard displays data

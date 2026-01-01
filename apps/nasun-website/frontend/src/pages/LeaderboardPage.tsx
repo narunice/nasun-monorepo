@@ -1,4 +1,4 @@
-import Leaderboard from "../components/app/Leaderboard/Leaderboard";
+import { Leaderboard } from "@/features/leaderboard";
 import { PageLayout } from "../components/layout/PageLayout";
 import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../components/layout/ErrorBoundary";

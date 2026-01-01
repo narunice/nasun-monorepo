@@ -6,8 +6,8 @@ import UserProfile from "./UserProfile";
 import RegisteredMemberBadge from "./RegisteredMemberBadge";
 import { getLanguageName } from "@/utils/communityLanguage";
 import { CheckCircle } from "lucide-react";
-import { TableRow } from "../../../ui/table/TableRow";
-import { TableCell } from "../../../ui/table/TableCell";
+import { TableRow } from "@/components/ui/table/TableRow";
+import { TableCell } from "@/components/ui/table/TableCell";
 
 interface CumulativeLeaderboardRowProps {
   entry: CumulativeLeaderboardEntry;

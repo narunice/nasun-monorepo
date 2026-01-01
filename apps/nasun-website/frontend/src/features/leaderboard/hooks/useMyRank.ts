@@ -19,7 +19,7 @@ import {
   MyRankStatus,
   UserRankData,
 } from '../types/leaderboard';
-import { useAuth } from '../../../../providers/auth/AuthContext';
+import { useAuth } from '@/providers/auth/AuthContext';
 import { useRankChanges } from './useRankChanges';
 
 export interface UseMyRankOptions {

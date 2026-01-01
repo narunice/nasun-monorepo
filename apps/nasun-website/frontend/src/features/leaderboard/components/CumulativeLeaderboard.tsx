@@ -10,7 +10,7 @@ import ShareButtonsGroup from "./ShareButtonsGroup";
 import TopClimbersSpotlight from "./TopClimbersSpotlight";
 import SnapshotHeader from "./SnapshotHeader";
 import LeaderboardTableSection from "./LeaderboardTableSection";
-import { SectionLoading } from "../../../ui";
+import { SectionLoading } from "@/components/ui";
 import ErrorState from "./ErrorState";
 import { useLeaderboardManager, useUrlParams, useHighlight, useMyRank } from "../hooks";
 import { useSmartDefaultPeriod } from "../hooks/useSmartDefaultPeriod";
