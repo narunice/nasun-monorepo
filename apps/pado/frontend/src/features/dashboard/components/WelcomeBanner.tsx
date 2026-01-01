@@ -13,7 +13,7 @@ export function WelcomeBanner() {
         The Decentralized Everything Exchange. Connect your wallet to start trading, earning, and predicting.
       </p>
       <div className="inline-block">
-        <WalletConnect />
+        <WalletConnect dropdownAlign="left" />
       </div>
     </div>
   );

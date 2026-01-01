@@ -166,9 +166,11 @@ type TabMode = 'tokens' | 'nfts';
 interface WalletConnectProps {
   /** Dropdown position relative to button */
   dropdownPosition?: 'top' | 'bottom';
+  /** Dropdown horizontal alignment */
+  dropdownAlign?: 'left' | 'right';
 }
 
-export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProps) {
+export function WalletConnect({ dropdownPosition = 'bottom', dropdownAlign = 'right' }: WalletConnectProps) {
   const {
     status,
     account,
@@ -672,7 +674,9 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
       {/* Dropdown */}
       {showDropdown && (
         <div
-          className={`absolute right-0 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] ${
+          className={`absolute bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] ${
+            dropdownAlign === 'left' ? 'left-0' : 'right-0'
+          } ${
             dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
         >
