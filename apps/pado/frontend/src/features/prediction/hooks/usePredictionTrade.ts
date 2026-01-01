@@ -3,7 +3,7 @@
  * Handles prediction market trading operations
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { useWallet } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
@@ -112,6 +112,9 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Security: Reentrancy protection - track pending operations
+  const pendingOperationRef = useRef<string | null>(null);
+
   /**
    * Sign and execute a transaction
    */
@@ -177,6 +180,13 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       return { success: false, error: 'Wallet not connected' };
     }
 
+    // Security: Reentrancy protection
+    const operationKey = `mint:${marketId}`;
+    if (pendingOperationRef.current) {
+      return { success: false, error: 'Another transaction is in progress. Please wait.' };
+    }
+    pendingOperationRef.current = operationKey;
+
     setIsLoading(true);
     setError(null);
 
@@ -197,6 +207,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       setError(message);
       return { success: false, error: message };
     } finally {
+      pendingOperationRef.current = null;
       setIsLoading(false);
     }
   }, [status, account, signAndExecute, getNusdcCoin]);
@@ -213,6 +224,13 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     if (status !== 'unlocked' || !account) {
       return { success: false, error: 'Wallet not connected' };
     }
+
+    // Security: Reentrancy protection
+    const operationKey = `buy:${marketId}:${isYes}`;
+    if (pendingOperationRef.current) {
+      return { success: false, error: 'Another transaction is in progress. Please wait.' };
+    }
+    pendingOperationRef.current = operationKey;
 
     setIsLoading(true);
     setError(null);
@@ -240,6 +258,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       setError(message);
       return { success: false, error: message };
     } finally {
+      pendingOperationRef.current = null;
       setIsLoading(false);
     }
   }, [status, account, signAndExecute, getNusdcCoin]);
@@ -255,6 +274,13 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     if (status !== 'unlocked' || !account) {
       return { success: false, error: 'Wallet not connected' };
     }
+
+    // Security: Reentrancy protection
+    const operationKey = `sell:${positionId}`;
+    if (pendingOperationRef.current) {
+      return { success: false, error: 'Another transaction is in progress. Please wait.' };
+    }
+    pendingOperationRef.current = operationKey;
 
     setIsLoading(true);
     setError(null);
@@ -274,6 +300,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       setError(message);
       return { success: false, error: message };
     } finally {
+      pendingOperationRef.current = null;
       setIsLoading(false);
     }
   }, [status, account, signAndExecute]);
@@ -289,6 +316,13 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       return { success: false, error: 'Wallet not connected' };
     }
 
+    // Security: Reentrancy protection
+    const operationKey = `claim:${positionId}`;
+    if (pendingOperationRef.current) {
+      return { success: false, error: 'Another transaction is in progress. Please wait.' };
+    }
+    pendingOperationRef.current = operationKey;
+
     setIsLoading(true);
     setError(null);
 
@@ -302,6 +336,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       setError(message);
       return { success: false, error: message };
     } finally {
+      pendingOperationRef.current = null;
       setIsLoading(false);
     }
   }, [status, account, signAndExecute]);

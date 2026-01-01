@@ -79,6 +79,25 @@ function validateMarketOrderParams(params: PlaceMarketOrderParams): void {
 }
 
 /**
+ * Validate slippage parameters for swaps
+ * @throws Error if slippage protection is insufficient
+ */
+function validateSlippageParams(minOutput: bigint, inputAmount?: bigint): void {
+  // Minimum output must be positive
+  if (minOutput <= 0n) {
+    throw new Error('[Security] Minimum output must be positive for slippage protection');
+  }
+
+  // If input is provided, ensure minimum output is reasonable (at least 0.1% of input)
+  if (inputAmount && inputAmount > 0n) {
+    const minReasonableOutput = inputAmount / 1000n; // 0.1% of input
+    if (minOutput < minReasonableOutput) {
+      console.warn('[Security] Slippage tolerance is very high. Consider increasing minOutput.');
+    }
+  }
+}
+
+/**
  * BalanceManager 생성 트랜잭션
  */
 export function buildCreateBalanceManager(): Transaction {
@@ -295,6 +314,9 @@ export function buildSwapExactBaseForQuote(
   minQuoteOut: bigint,
   senderAddress: string,
 ): Transaction {
+  // Security: Validate slippage protection
+  validateSlippageParams(minQuoteOut);
+
   const tx = new Transaction();
 
   const [baseOut, quoteOut, deepOut] = tx.moveCall({
@@ -328,6 +350,9 @@ export function buildSwapExactQuoteForBase(
   minBaseOut: bigint,
   senderAddress: string,
 ): Transaction {
+  // Security: Validate slippage protection
+  validateSlippageParams(minBaseOut);
+
   const tx = new Transaction();
 
   const [baseOut, quoteOut, deepOut] = tx.moveCall({
