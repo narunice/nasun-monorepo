@@ -10,13 +10,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { label: 'Home', path: '/', enabled: true },
   { label: 'Trade', path: '/trade', enabled: true },
-  { label: 'Send', path: '/send', enabled: true },
-  { label: 'Perps', path: '/perps', enabled: false },
-  { label: 'Lend', path: '/lend', enabled: false },
+  { label: 'Earn', path: '/earn', enabled: false },
   { label: 'Predict', path: '/predict', enabled: true },
-  { label: 'Stake', path: '/stake', enabled: false },
-  { label: 'Portfolio', path: '/portfolio', enabled: true },
+  { label: 'Wallet', path: '/wallet', enabled: true },
 ];
 
 export function Header() {
@@ -49,10 +47,13 @@ export function Header() {
   }, [isMobileMenuOpen]);
 
   const isActive = (path: string) => {
-    if (path === '/trade') {
-      return location.pathname === '/' || location.pathname === '/trade';
+    if (path === '/') {
+      return location.pathname === '/';
     }
-    return location.pathname === path;
+    if (path === '/predict') {
+      return location.pathname.startsWith('/predict');
+    }
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   // Handle nav click - refresh state if same route

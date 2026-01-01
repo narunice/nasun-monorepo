@@ -1,33 +1,49 @@
 /**
  * AppRoutes
- * 애플리케이션 라우트 정의
+ * Application route definitions
+ *
+ * Navigation Structure (UX Restructure):
+ * - Home (/) - Dashboard
+ * - Trade (/trade) - Spot trading
+ * - Earn (/earn) - Coming soon (Phase 12-13)
+ * - Predict (/predict) - Prediction markets
+ * - Wallet (/wallet) - Send/Receive
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { TradePage, PortfolioPage, PaymentPage, PredictPage, PredictMarketPage, PredictAdminPage } from '../pages';
+import {
+  HomePage,
+  TradePage,
+  WalletPage,
+  PredictPage,
+  PredictMarketPage,
+  PredictAdminPage,
+} from '../pages';
 
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Trading (기본 페이지) */}
-      <Route path="/" element={<TradePage />} />
+      {/* Home (Dashboard) */}
+      <Route path="/" element={<HomePage />} />
+
+      {/* Trade */}
       <Route path="/trade" element={<TradePage />} />
 
-      {/* Portfolio */}
-      <Route path="/portfolio" element={<PortfolioPage />} />
-
-      {/* Send (Payment) */}
-      <Route path="/send" element={<PaymentPage />} />
+      {/* Wallet (Send/Receive) */}
+      <Route path="/wallet" element={<WalletPage />} />
 
       {/* Prediction Markets */}
       <Route path="/predict" element={<PredictPage />} />
       <Route path="/predict/admin" element={<PredictAdminPage />} />
       <Route path="/predict/:marketId" element={<PredictMarketPage />} />
 
-      {/* 향후 추가 예정 */}
+      {/* Legacy redirects for backward compatibility */}
+      <Route path="/portfolio" element={<Navigate to="/" replace />} />
+      <Route path="/send" element={<Navigate to="/wallet" replace />} />
+
+      {/* Future routes */}
+      {/* <Route path="/earn" element={<EarnPage />} /> */}
       {/* <Route path="/perps" element={<PerpsPage />} /> */}
-      {/* <Route path="/lend" element={<LendPage />} /> */}
-      {/* <Route path="/stake" element={<StakePage />} /> */}
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
