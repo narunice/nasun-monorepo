@@ -59,86 +59,99 @@
 
 ---
 
-## 4. Revised Refactoring Plan
+## 4. Refactoring Plan ✅ COMPLETED (2026-01-01)
 
-### Phase 1: Complete Utility Extraction ⏱️ 1 hour
-**Status:** Partially done, complete the remaining
+### Phase 1: Complete Utility Extraction ✅ Done
+1. **Added to `src/lib/format.ts`:**
+   - `formatTimestamp()` - Format timestamp to localized date string
+   - `formatDuration()` - Format milliseconds to human-readable string
+   - `formatLastUpdated()` - Format date to time-only string
+   - `truncateDigest()` - Truncate transaction digest for display
 
-1. **Add to `src/lib/format.ts`:**
-   ```typescript
-   // Time formatting utilities
-   export function formatTimestamp(timestamp: string | number): string
-   export function formatDuration(ms: number): string
-   export function formatLastUpdated(date: Date): string
-   export function truncateDigest(digest: string, length?: number): string
-   ```
+### Phase 2: Custom Hooks Extraction ✅ Done
+1. **Created `src/hooks/types.ts`:**
+   - `TPSDataPoint` interface
+   - `MAX_TPS_HISTORY` constant
 
-2. **Update `Home.tsx` imports:**
-   - Remove inline function definitions
-   - Import from `lib/format.ts`
+2. **Created `src/hooks/useNetworkData.ts`:**
+   - `useNetworkStatus()` - Network status query
+   - `useEpochInfo()` - Epoch information query
+   - `useTPS()` - TPS query
+   - `useRecentTransactions()` - Recent transactions query
 
-### Phase 2: Custom Hooks Extraction ⏱️ 1-2 hours
-1. **Create `src/hooks/useNetworkData.ts`:**
-   - Extract `useQuery` for `networkStatus`, `recentTransactions`, `tps`
-   - Move `TPSDataPoint` interface to `src/types/network.ts`
+3. **Created `src/hooks/useTPSHistory.ts`:**
+   - Encapsulates TPS history accumulation logic
+   - Auto-updates when new TPS data arrives
 
-2. **Create `src/hooks/useTPSHistory.ts`:**
-   - Encapsulate TPS history accumulation logic
-   - Move `useState` + `useEffect` pattern
+### Phase 3: Component Atomization ✅ Done
+1. **Created `src/components/charts/TPSChart.tsx`:**
+   - Reusable TPS trend chart with Recharts
+   - Accepts `data: TPSDataPoint[]` prop
 
-### Phase 3: Component Atomization ⏱️ 1 hour
-1. **Create `src/components/charts/TPSChart.tsx`:**
-   - Move `AreaChart` and Recharts configuration
-   - Accept `data` prop with `TPSDataPoint[]`
+2. **Created `src/components/charts/EpochProgress.tsx`:**
+   - Epoch progress bar with timestamps
+   - Displays remaining time
 
-2. **Optional: Create `src/components/tables/RecentTxTable.tsx`:**
-   - Move transaction list rendering
-   - Accept `transactions` prop
+3. **Created `src/components/charts/SearchBar.tsx`:**
+   - Search functionality for tx/object/address
+   - Auto-detects input type
 
 ---
 
-## 5. Expected Outcome
+## 5. Results
 
-| Metric | Before | After |
-|--------|--------|-------|
-| `Home.tsx` lines | 394 | ~100 |
-| `lib/format.ts` lines | 61 | ~100 |
-| New files created | 0 | 2-3 |
-| Reusable components | 0 | 2 |
+| Metric | Before | After | Status |
+|--------|--------|-------|--------|
+| `Home.tsx` lines | 394 | **174** | ✅ 56% reduction |
+| `lib/format.ts` lines | 61 | **92** | ✅ Time utils added |
+| New hooks created | 0 | **4** | ✅ Done |
+| New components created | 0 | **3** | ✅ Done |
 
-### Benefits
+### Benefits Achieved
 - `Home.tsx` reduced to layout composition only
-- Reusable "TPS Chart" for future pages
-- Centralized time formatting logic
-- Easier unit testing for data hooks
+- Reusable "TPS Chart" and "Epoch Progress" components
+- Centralized time formatting logic in `lib/format.ts`
+- Custom hooks for easier testing and reuse
 
 ---
 
-## 6. Estimated Effort
+## 6. Final Effort
 
-| Phase | Time | Priority |
-|-------|------|----------|
-| Phase 1: Utility Extraction | 1 hour | High |
-| Phase 2: Hooks Extraction | 1-2 hours | Medium |
-| Phase 3: Component Atomization | 1 hour | Low |
-| **Total** | **2-3 hours** | - |
+| Phase | Time | Status |
+|-------|------|--------|
+| Phase 1: Utility Extraction | 15 min | ✅ Done |
+| Phase 2: Hooks Extraction | 30 min | ✅ Done |
+| Phase 3: Component Atomization | 30 min | ✅ Done |
+| **Total** | **~1.5 hours** | ✅ Complete |
 
 ---
 
-## 7. Files to Modify
+## 7. Final File Structure
 
 ```
 apps/network-explorer/src/
 ├── lib/
-│   └── format.ts          # Add time formatting functions
+│   └── format.ts              # ✅ UPDATED: +31 lines (time formatting)
 ├── hooks/
-│   ├── useNetworkData.ts  # NEW: Network data queries
-│   └── useTPSHistory.ts   # NEW: TPS history state
+│   ├── index.ts               # ✅ NEW: Barrel export
+│   ├── types.ts               # ✅ NEW: TPSDataPoint, MAX_TPS_HISTORY
+│   ├── useNetworkData.ts      # ✅ NEW: 4 network query hooks
+│   └── useTPSHistory.ts       # ✅ NEW: TPS history state hook
 ├── components/
 │   └── charts/
-│       └── TPSChart.tsx   # NEW: Recharts wrapper
-├── types/
-│   └── network.ts         # NEW: TPSDataPoint interface
+│       ├── index.ts           # ✅ NEW: Barrel export
+│       ├── TPSChart.tsx       # ✅ NEW: TPS trend chart
+│       ├── EpochProgress.tsx  # ✅ NEW: Epoch progress display
+│       └── SearchBar.tsx      # ✅ NEW: Search component
 └── pages/
-    └── Home.tsx           # MODIFY: Remove inline code
+    └── Home.tsx               # ✅ REFACTORED: 394 → 174 lines
+```
+
+---
+
+## 8. Rollback
+
+If issues arise:
+```bash
+git checkout explorer-refactor-pre
 ```
