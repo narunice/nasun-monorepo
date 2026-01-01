@@ -14,6 +14,7 @@ import {
   encryptPrivateKey,
   decryptPrivateKey,
   keypairFromSecretKey,
+  secureZeroString,
 } from './crypto';
 import {
   isLockedOut,
@@ -67,21 +68,26 @@ export function deleteKeystore(): void {
 export async function createAndSaveWallet(password: string): Promise<string> {
   const keypair = generateKeypair();
   const address = getAddressFromKeypair(keypair);
-  const secretKey = getSecretKeyFromKeypair(keypair);
+  let secretKey: string | null = null;
 
-  const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
+  try {
+    secretKey = getSecretKeyFromKeypair(keypair);
+    const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
-  const keystore: EncryptedKeystore = {
-    encryptedPrivateKey: encrypted,
-    iv,
-    salt,
-    address,
-    createdAt: Date.now(),
-  };
+    const keystore: EncryptedKeystore = {
+      encryptedPrivateKey: encrypted,
+      iv,
+      salt,
+      address,
+      createdAt: Date.now(),
+    };
 
-  saveKeystore(keystore);
-
-  return address;
+    saveKeystore(keystore);
+    return address;
+  } finally {
+    // Clear sensitive data from memory (best effort - JS strings are immutable)
+    if (secretKey) secureZeroString(secretKey);
+  }
 }
 
 /**
@@ -103,8 +109,10 @@ export async function unlockKeystore(password: string): Promise<Ed25519Keypair> 
     throw new Error('No wallet found');
   }
 
+  let secretKey: string | null = null;
+
   try {
-    const secretKey = await decryptPrivateKey(
+    secretKey = await decryptPrivateKey(
       keystore.encryptedPrivateKey,
       keystore.iv,
       keystore.salt,
@@ -138,6 +146,9 @@ export async function unlockKeystore(password: string): Promise<Ed25519Keypair> 
       throw new Error('Invalid password');
     }
     throw error;
+  } finally {
+    // Clear sensitive data from memory (best effort - JS strings are immutable)
+    if (secretKey) secureZeroString(secretKey);
   }
 }
 
@@ -163,23 +174,30 @@ export async function createWalletWithMnemonic(
   // 2. Create keypair from mnemonic
   const keypair = keypairFromMnemonic(mnemonic);
   const address = getAddressFromKeypair(keypair);
-  const secretKey = getSecretKeyFromKeypair(keypair);
+  let secretKey: string | null = null;
 
-  // 3. Encrypt and save private key
-  const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
+  try {
+    secretKey = getSecretKeyFromKeypair(keypair);
 
-  const keystore: EncryptedKeystore = {
-    encryptedPrivateKey: encrypted,
-    iv,
-    salt,
-    address,
-    createdAt: Date.now(),
-  };
+    // 3. Encrypt and save private key
+    const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
-  saveKeystore(keystore);
+    const keystore: EncryptedKeystore = {
+      encryptedPrivateKey: encrypted,
+      iv,
+      salt,
+      address,
+      createdAt: Date.now(),
+    };
 
-  // 4. Return mnemonic without storing (user must backup)
-  return { address, mnemonic };
+    saveKeystore(keystore);
+
+    // 4. Return mnemonic without storing (user must backup)
+    return { address, mnemonic };
+  } finally {
+    // Clear sensitive data from memory (best effort - JS strings are immutable)
+    if (secretKey) secureZeroString(secretKey);
+  }
 }
 
 /**
@@ -200,22 +218,29 @@ export async function importWalletFromMnemonic(
   // 2. Recover keypair from mnemonic
   const keypair = keypairFromMnemonic(mnemonic);
   const address = getAddressFromKeypair(keypair);
-  const secretKey = getSecretKeyFromKeypair(keypair);
+  let secretKey: string | null = null;
 
-  // 3. Encrypt and save private key
-  const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
+  try {
+    secretKey = getSecretKeyFromKeypair(keypair);
 
-  const keystore: EncryptedKeystore = {
-    encryptedPrivateKey: encrypted,
-    iv,
-    salt,
-    address,
-    createdAt: Date.now(),
-  };
+    // 3. Encrypt and save private key
+    const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
-  saveKeystore(keystore);
+    const keystore: EncryptedKeystore = {
+      encryptedPrivateKey: encrypted,
+      iv,
+      salt,
+      address,
+      createdAt: Date.now(),
+    };
 
-  return address;
+    saveKeystore(keystore);
+
+    return address;
+  } finally {
+    // Clear sensitive data from memory (best effort - JS strings are immutable)
+    if (secretKey) secureZeroString(secretKey);
+  }
 }
 
 /**
@@ -237,20 +262,27 @@ export async function importWalletFromPrivateKey(
   }
 
   const address = getAddressFromKeypair(keypair);
-  const secretKey = getSecretKeyFromKeypair(keypair);
+  let secretKey: string | null = null;
 
-  // 2. Encrypt and save private key
-  const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
+  try {
+    secretKey = getSecretKeyFromKeypair(keypair);
 
-  const keystore: EncryptedKeystore = {
-    encryptedPrivateKey: encrypted,
-    iv,
-    salt,
-    address,
-    createdAt: Date.now(),
-  };
+    // 2. Encrypt and save private key
+    const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
-  saveKeystore(keystore);
+    const keystore: EncryptedKeystore = {
+      encryptedPrivateKey: encrypted,
+      iv,
+      salt,
+      address,
+      createdAt: Date.now(),
+    };
 
-  return address;
+    saveKeystore(keystore);
+
+    return address;
+  } finally {
+    // Clear sensitive data from memory (best effort - JS strings are immutable)
+    if (secretKey) secureZeroString(secretKey);
+  }
 }
