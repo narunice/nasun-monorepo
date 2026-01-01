@@ -53,3 +53,9 @@ export type { CopyableAddressProps } from './CopyableAddress';
 // Security components
 export { SecuritySettings } from './SecuritySettings';
 export { AddressBookPanel } from './AddressBookPanel';
+
+// zkLogin components
+export { SocialLoginButtons, SocialLoginIconButtons } from './SocialLoginButtons';
+export type { SocialLoginButtonsProps } from './SocialLoginButtons';
+export { ZkLoginCallback } from './ZkLoginCallback';
+export type { ZkLoginCallbackProps } from './ZkLoginCallback';
