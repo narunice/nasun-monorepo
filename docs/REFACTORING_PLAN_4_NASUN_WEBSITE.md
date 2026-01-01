@@ -134,8 +134,20 @@ Was a dev/design reference file for viewing button variants.
 
 **Result:** ✅ 505 lines deleted (unused code removal)
 
-### Phase 3: UserInfo Handler Extraction ⏱️ 2 hours
+### Phase 3: UserInfo Handler Extraction ✅ COMPLETED (2026-01-01)
 **Priority: MEDIUM**
+
+1. **Replaced inline SVGs with img tags:**
+   - MetaMask SVG (60 lines) → `<img src="/MetaMask_Fox.svg">`
+   - Google SVG (12 lines) → `<img src="/Google__G__logo.svg">`
+
+2. **Extracted refreshUserProfile() helper:** Used 3 times → 1 function
+
+3. **Created handleUnlinkProvider():** Generic handler for Google/Twitter unlink
+
+**Result:** ✅ 584 lines → 459 lines (21% reduction, 125 lines saved)
+
+### Phase 3 (Original Plan - Not Implemented):
 
 1. **Create generic unlink handler:**
    ```typescript
@@ -182,9 +194,9 @@ Was a dev/design reference file for viewing button variants.
 |--------|--------|-------|--------|
 | Duplicate files | 61 | 0 | ✅ Done |
 | `ButtonShowcaseSection.tsx` | 1008 lines | 0 (deleted, unused) | ✅ Done |
-| `UserInfo.tsx` | 584 lines | ~300 lines | Pending |
+| `UserInfo.tsx` | 584 lines | 459 lines | ✅ Done |
 | `routesConfig.ts` | 548 lines | ~100 lines | Pending |
-| Total lines saved | - | 8,717 + 1,008 = ~9,725 lines | In Progress |
+| Total lines saved | - | 8,717 + 1,008 + 125 = ~9,850 lines | In Progress |
 | Bundle size reduction | - | 5-10% | In Progress |
 
 ### Benefits
@@ -219,7 +231,7 @@ apps/nasun-website/frontend/src/
 │   ├── home/
 │   │   └── ButtonShowcaseSection.tsx  # ✅ DELETED: Unused (1008 lines removed)
 │   └── myAccount/
-│       ├── UserInfo.tsx      # TODO: MODIFY → 300 lines
+│       ├── UserInfo.tsx      # ✅ REFACTORED: 584 → 459 lines
 │       └── hooks/            # TODO: NEW: Account hooks
 │           ├── useAccountUnlink.ts
 │           ├── useGoogleAccount.ts
