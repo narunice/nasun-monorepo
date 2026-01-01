@@ -14,6 +14,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import {
   HomePage,
   TradePage,
+  EarnPage,
   WalletPage,
   PredictPage,
   PredictMarketPage,
@@ -41,8 +42,10 @@ export function AppRoutes() {
       <Route path="/portfolio" element={<Navigate to="/" replace />} />
       <Route path="/send" element={<Navigate to="/wallet" replace />} />
 
+      {/* Earn (Staking + Lending) */}
+      <Route path="/earn" element={<EarnPage />} />
+
       {/* Future routes */}
-      {/* <Route path="/earn" element={<EarnPage />} /> */}
       {/* <Route path="/perps" element={<PerpsPage />} /> */}
 
       {/* Fallback */}
