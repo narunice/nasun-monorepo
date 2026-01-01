@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useWallet, useNFTs, shortenAddress, type NFTInfo } from '@nasun/wallet';
+import { useWallet, useNFTs, shortenAddress, isLockedOut, getLockoutRemainingMs, type NFTInfo } from '@nasun/wallet';
 import { CopyableAddress } from './CopyableAddress';
 import { MnemonicBackup } from './MnemonicBackup';
 import { ImportWallet } from './ImportWallet';
@@ -27,6 +27,114 @@ type ViewMode =
   | 'nfts'           // NFT gallery
   | 'staking'        // Staking panel
   | 'settings';      // Security settings
+
+/**
+ * Locked state UI with rate limiting countdown
+ */
+function LockedStateUI({
+  password,
+  setPassword,
+  isLoading,
+  error,
+  handleUnlock,
+  handleDelete,
+  setViewMode,
+}: {
+  password: string;
+  setPassword: (v: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  handleUnlock: () => void;
+  handleDelete: () => void;
+  setViewMode: (mode: ViewMode) => void;
+}) {
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
+  // Check lockout status and countdown
+  useEffect(() => {
+    const checkLockout = () => {
+      if (isLockedOut()) {
+        setLockoutRemaining(Math.ceil(getLockoutRemainingMs() / 1000));
+      } else {
+        setLockoutRemaining(0);
+      }
+    };
+
+    checkLockout();
+    const interval = setInterval(checkLockout, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isLocked = lockoutRemaining > 0;
+
+  // Format remaining time for display
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  return (
+    <div className="p-4 min-w-[280px]">
+      <h3 className="text-sm font-medium text-white dark:text-white mb-3">Unlock Wallet</h3>
+
+      {isLocked && (
+        <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Too many failed attempts</span>
+          </div>
+          <div className="text-center mt-1 font-mono">
+            Try again in {formatTime(lockoutRemaining)}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !isLocked && handleUnlock()}
+          className="px-3 py-2 bg-zinc-700 border border-zinc-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading || isLocked}
+          autoFocus={!isLocked}
+        />
+
+        {error && !isLocked && <p className="text-xs text-red-400">{error}</p>}
+
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => setViewMode('import')}
+            className="px-3 py-2 text-sm text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+            disabled={isLoading}
+            title="Import a different wallet"
+          >
+            Import
+          </button>
+          <button
+            onClick={handleDelete}
+            className="px-3 py-2 text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+            disabled={isLoading}
+          >
+            Delete
+          </button>
+          <button
+            onClick={handleUnlock}
+            disabled={isLoading || !password || isLocked}
+            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
+          >
+            {isLocked ? `Locked (${formatTime(lockoutRemaining)})` : isLoading ? 'Unlocking...' : 'Unlock'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type TabMode = 'tokens' | 'nfts';
 
@@ -326,51 +434,15 @@ export function WalletConnect({ dropdownPosition = 'bottom' }: WalletConnectProp
 
     // Locked state - show unlock form
     if (status === 'locked') {
-      return (
-        <div className="p-4 min-w-[280px]">
-          <h3 className="text-sm font-medium text-white mb-3">Unlock Wallet</h3>
-
-          <div className="flex flex-col gap-2">
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-              className="px-3 py-2 bg-zinc-700 border border-zinc-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading}
-              autoFocus
-            />
-
-            {error && <p className="text-xs text-red-400">{error}</p>}
-
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => setViewMode('import')}
-                className="px-3 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-                disabled={isLoading}
-                title="Import a different wallet"
-              >
-                Import
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-3 py-2 text-sm text-red-400 hover:text-red-300 transition-colors"
-                disabled={isLoading}
-              >
-                Delete
-              </button>
-              <button
-                onClick={handleUnlock}
-                disabled={isLoading || !password}
-                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
-              >
-                {isLoading ? 'Unlocking...' : 'Unlock'}
-              </button>
-            </div>
-          </div>
-        </div>
-      );
+      return <LockedStateUI
+        password={password}
+        setPassword={setPassword}
+        isLoading={isLoading}
+        error={error}
+        handleUnlock={handleUnlock}
+        handleDelete={handleDelete}
+        setViewMode={setViewMode}
+      />;
     }
 
     // Unlocked state - show wallet menu with tabs
