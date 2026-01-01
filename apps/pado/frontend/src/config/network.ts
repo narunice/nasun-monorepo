@@ -22,6 +22,10 @@ export const NETWORK_CONFIG = {
   // Token Faucet
   faucetPackage: import.meta.env.VITE_FAUCET_PACKAGE,
   tokenFaucet: import.meta.env.VITE_TOKEN_FAUCET,
+
+  // zkLogin Configuration
+  zkLoginSaltApiUrl: import.meta.env.VITE_ZKLOGIN_SALT_API_URL || '',
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
 } as const;
 
 // Token Metadata

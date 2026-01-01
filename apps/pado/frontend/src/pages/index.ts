@@ -9,6 +9,7 @@ export { WalletPage } from './WalletPage';
 export { PredictPage } from './PredictPage';
 export { PredictMarketPage } from './PredictMarketPage';
 export { PredictAdminPage } from './PredictAdminPage';
+export { AuthCallbackPage } from './AuthCallbackPage';
 
 // Legacy exports (for backward compatibility during migration)
 export { PortfolioPage } from './PortfolioPage';
