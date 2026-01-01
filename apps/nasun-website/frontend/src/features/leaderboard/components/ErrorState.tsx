@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { CSS_CLASSES } from "../constants";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import { Button } from "../../../ui/button";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
 interface ErrorStateProps {

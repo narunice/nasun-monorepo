@@ -15,13 +15,13 @@ import {
   CumulativePeriod,
   DateRangeOption,
   DATE_RANGE_LABELS,
-} from "../Leaderboard/types/leaderboard";
-import { useUserRankHistory } from "../Leaderboard/hooks/useUserRankHistory";
-import { useLeaderboardConfig } from "../Leaderboard/hooks/useLeaderboardConfig";
-import { useSmartDefaultPeriod } from "../Leaderboard/hooks/useSmartDefaultPeriod";
-import { RankHistoryChart } from "../Leaderboard/components/RankHistoryChart";
-import { RankHistoryStatsCard } from "../Leaderboard/components/RankHistoryStatsCard";
-import { ShareRankHistoryButton } from "../Leaderboard/components/ShareRankHistoryButton";
+} from "@/features/leaderboard/types/leaderboard";
+import { useUserRankHistory } from "@/features/leaderboard/hooks/useUserRankHistory";
+import { useLeaderboardConfig } from "@/features/leaderboard/hooks/useLeaderboardConfig";
+import { useSmartDefaultPeriod } from "@/features/leaderboard/hooks/useSmartDefaultPeriod";
+import { RankHistoryChart } from "@/features/leaderboard/components/RankHistoryChart";
+import { RankHistoryStatsCard } from "@/features/leaderboard/components/RankHistoryStatsCard";
+import { ShareRankHistoryButton } from "@/features/leaderboard/components/ShareRankHistoryButton";
 import { SectionLayout } from "../../layout/SectionLayout";
 import { SectionLoading } from "../../ui";
 import { useAuth } from "../../../providers/auth/AuthContext";

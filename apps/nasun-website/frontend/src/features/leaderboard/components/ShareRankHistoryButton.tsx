@@ -16,10 +16,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import html2canvas from 'html2canvas';
-import { Button } from '../../../ui/button';
+import { Button } from '@/components/ui/button';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
-import { InlineLoading } from '../../../ui';
+import { InlineLoading } from '@/components/ui';
 
 export interface ShareRankHistoryButtonProps {
   /** 캡처할 차트 영역의 ref */

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchLeaderboardConfig } from '../../../../services/leaderboardApi';
+import { fetchLeaderboardConfig } from '@/services/leaderboardApi';
 
 /**
  * 리더보드 설정을 가져오는 React Query Hook

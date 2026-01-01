@@ -1,4 +1,4 @@
-import { LeaderboardConfigItem } from '../../../../types/leaderboard';
+import { LeaderboardConfigItem } from '@/types/leaderboard';
 import { CumulativePeriod } from '../types';
 
 /**

@@ -2,11 +2,11 @@ import React, { memo } from "react";
 import { CumulativeLeaderboardEntry } from "../types";
 import CumulativeLeaderboardRow from "./CumulativeLeaderboardRow";
 import { useTranslation } from "react-i18next";
-import { Table } from "../../../ui/table/Table";
-import { TableHeader } from "../../../ui/table/TableHeader";
-import { TableBody } from "../../../ui/table/TableBody";
-import { TableRow } from "../../../ui/table/TableRow";
-import { TableHead } from "../../../ui/table/TableHead";
+import { Table } from "@/components/ui/table/Table";
+import { TableHeader } from "@/components/ui/table/TableHeader";
+import { TableBody } from "@/components/ui/table/TableBody";
+import { TableRow } from "@/components/ui/table/TableRow";
+import { TableHead } from "@/components/ui/table/TableHead";
 
 interface CumulativeLeaderboardTableProps {
   entries: CumulativeLeaderboardEntry[];
