@@ -389,3 +389,4 @@ git checkout -b fix/ux-issue ux-b-complete
 | 2026-01-01 | 초안 작성 |
 | 2026-01-01 | Phase UX-A 완료: 5-Tab 네비게이션 (ux-a-complete) |
 | 2026-01-01 | Phase UX-B 완료: Home Dashboard 모듈 (ux-b-complete) |
+| 2026-01-01 | 버그 수정: WelcomeBanner 드롭다운 위치, PredictionHighlight 확률 표시 |
