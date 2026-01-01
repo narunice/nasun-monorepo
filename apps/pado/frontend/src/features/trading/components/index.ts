@@ -9,3 +9,5 @@ export { TradeHistory } from './TradeHistory';
 export { SlippageSettings } from './SlippageSettings';
 export { PriceSuggestions } from './PriceSuggestions';
 export { MarketSelector } from './MarketSelector';
+export { SimpleOrderForm } from './SimpleOrderForm';
+export { QuickAmountButtons } from './QuickAmountButtons';
