@@ -12,7 +12,9 @@ export function WelcomeBanner() {
       <p className="text-blue-100 mb-4 text-sm">
         The Decentralized Everything Exchange. Connect your wallet to start trading, earning, and predicting.
       </p>
-      <WalletConnect />
+      <div className="inline-block">
+        <WalletConnect />
+      </div>
     </div>
   );
 }
