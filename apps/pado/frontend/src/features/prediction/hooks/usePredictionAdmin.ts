@@ -16,8 +16,13 @@ interface AdminResult {
   error?: string;
 }
 
-// Known resolver address (from market creation)
-const RESOLVER_ADDRESS = '0x05eef6d318e5a824fdf763270e3a719bb0327ddf814dea29cba6c963ebdb8f21';
+// Resolver address from environment variable (security: avoid hardcoding)
+const RESOLVER_ADDRESS = import.meta.env.VITE_PREDICTION_RESOLVER_ADDRESS;
+
+// Warn if resolver address is not configured
+if (!RESOLVER_ADDRESS) {
+  console.warn('[Security] VITE_PREDICTION_RESOLVER_ADDRESS not configured');
+}
 
 function parseAdminError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
