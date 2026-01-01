@@ -1,0 +1,260 @@
+/**
+ * zkLogin Salt Management Lambda
+ *
+ * Handles:
+ * - POST /auth/zklogin/salt - Get or create salt for a user
+ * - POST /auth/zklogin/verify - Verify JWT and return user info
+ */
+
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+} from '@aws-sdk/lib-dynamodb';
+import * as jose from 'jose';
+import { randomBytes, createHash } from 'crypto';
+
+// Environment variables
+const ZKLOGIN_TABLE = process.env.ZKLOGIN_TABLE_NAME || 'ZkLoginUsers';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',');
+
+// Initialize DynamoDB client
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+
+// CORS headers
+function corsHeaders(origin: string | undefined): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Content-Type': 'application/json',
+  };
+}
+
+// Response helpers
+function success(body: object, origin?: string): APIGatewayProxyResult {
+  return {
+    statusCode: 200,
+    headers: corsHeaders(origin),
+    body: JSON.stringify(body),
+  };
+}
+
+function error(statusCode: number, message: string, origin?: string): APIGatewayProxyResult {
+  return {
+    statusCode,
+    headers: corsHeaders(origin),
+    body: JSON.stringify({ error: message }),
+  };
+}
+
+// Google JWKS for JWT verification
+const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+
+// Allowed OAuth client IDs (set via environment variable)
+const ALLOWED_AUD = (process.env.ALLOWED_AUD || '').split(',').filter(Boolean);
+
+interface JwtPayload {
+  iss: string;
+  sub: string;
+  aud: string;
+  exp: number;
+  iat: number;
+  nonce?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}
+
+interface ZkLoginUser {
+  pk: string;
+  sk: string;
+  salt: string;
+  address: string;
+  provider: string;
+  sub: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+  createdAt: number;
+  lastLoginAt: number;
+}
+
+/**
+ * Verify JWT token from OAuth provider
+ */
+async function verifyJwt(jwt: string): Promise<JwtPayload> {
+  // Decode header to get key ID
+  const [headerB64] = jwt.split('.');
+  const headerJson = Buffer.from(headerB64, 'base64url').toString();
+  const header = JSON.parse(headerJson) as { kid: string; alg: string };
+
+  // Fetch Google JWKS
+  const jwksResponse = await fetch(GOOGLE_JWKS_URL);
+  const jwks = await jwksResponse.json() as { keys: jose.JWK[] };
+
+  // Find the matching key
+  const key = jwks.keys.find((k) => k.kid === header.kid);
+  if (!key) {
+    throw new Error('Invalid JWT: Key not found in JWKS');
+  }
+
+  // Create public key from JWK
+  const publicKey = await jose.importJWK(key as jose.JWK, header.alg);
+
+  // Verify JWT
+  const { payload } = await jose.jwtVerify(jwt, publicKey, {
+    issuer: 'https://accounts.google.com',
+  });
+
+  // Validate audience
+  if (ALLOWED_AUD.length > 0 && !ALLOWED_AUD.includes(payload.aud as string)) {
+    throw new Error('Invalid JWT: Audience mismatch');
+  }
+
+  return payload as unknown as JwtPayload;
+}
+
+/**
+ * Generate a secure random salt
+ */
+function generateSalt(): string {
+  return randomBytes(16).toString('hex');
+}
+
+/**
+ * Derive Sui address from JWT and salt (simplified version)
+ * In production, this should match the actual zkLogin address derivation
+ */
+function deriveSuiAddress(sub: string, salt: string, aud: string): string {
+  // This is a simplified placeholder
+  // Actual implementation should use @mysten/sui/zklogin jwtToAddress
+  const input = `${sub}:${salt}:${aud}`;
+  const hash = createHash('sha256').update(input).digest('hex');
+  return `0x${hash.slice(0, 64)}`;
+}
+
+/**
+ * Handle POST /auth/zklogin/salt
+ */
+async function handleGetSalt(jwt: string, origin?: string): Promise<APIGatewayProxyResult> {
+  try {
+    // 1. Verify JWT
+    const payload = await verifyJwt(jwt);
+    const { sub, aud, email, name, picture, iss } = payload;
+
+    // Determine provider from issuer
+    let provider = 'unknown';
+    if (iss.includes('google')) provider = 'google';
+    else if (iss.includes('apple')) provider = 'apple';
+    else if (iss.includes('twitch')) provider = 'twitch';
+
+    // 2. Create partition key
+    const pk = `ZKLOGIN#${provider}#${sub}`;
+    const sk = 'PROFILE';
+
+    // 3. Check if user exists
+    const getResult = await docClient.send(new GetCommand({
+      TableName: ZKLOGIN_TABLE,
+      Key: { pk, sk },
+    }));
+
+    const now = Date.now();
+    let user: ZkLoginUser;
+    let isNewUser = false;
+
+    if (getResult.Item) {
+      // Existing user - update lastLoginAt
+      user = getResult.Item as ZkLoginUser;
+      user.lastLoginAt = now;
+
+      // Update profile info if changed
+      if (email) user.email = email;
+      if (name) user.name = name;
+      if (picture) user.picture = picture;
+
+      await docClient.send(new PutCommand({
+        TableName: ZKLOGIN_TABLE,
+        Item: user,
+      }));
+    } else {
+      // New user - generate salt
+      isNewUser = true;
+      const salt = generateSalt();
+      const address = deriveSuiAddress(sub, salt, aud);
+
+      user = {
+        pk,
+        sk,
+        salt,
+        address,
+        provider,
+        sub,
+        email,
+        name,
+        picture,
+        createdAt: now,
+        lastLoginAt: now,
+      };
+
+      await docClient.send(new PutCommand({
+        TableName: ZKLOGIN_TABLE,
+        Item: user,
+      }));
+    }
+
+    // 4. Return salt and address
+    return success({
+      salt: user.salt,
+      address: user.address,
+      isNewUser,
+      provider,
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+    }, origin);
+
+  } catch (err) {
+    console.error('Error in handleGetSalt:', err);
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    return error(400, message, origin);
+  }
+}
+
+/**
+ * Main Lambda handler
+ */
+export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  const origin = event.headers.origin || event.headers.Origin;
+  const path = event.path;
+  const method = event.httpMethod;
+
+  console.log(`${method} ${path}`);
+
+  // Handle CORS preflight
+  if (method === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders(origin),
+      body: '',
+    };
+  }
+
+  // Route requests
+  if (path.endsWith('/salt') && method === 'POST') {
+    const body = event.body ? JSON.parse(event.body) : {};
+    const jwt = body.jwt;
+
+    if (!jwt) {
+      return error(400, 'Missing jwt parameter', origin);
+    }
+
+    return handleGetSalt(jwt, origin);
+  }
+
+  return error(404, 'Not found', origin);
+}
