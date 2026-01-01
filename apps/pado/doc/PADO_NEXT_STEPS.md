@@ -163,28 +163,46 @@
 
 ---
 
-#### Phase 9: Smart Account v2 ⭐
+#### Phase 9: Smart Account v2 ⭐ (진행 중)
 
 **목표**: 시드리스 온보딩으로 사용자 진입 장벽 낮춤
 
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 9.1 | zkLogin 통합 | 📋 | 고 |
-| 9.2 | Passkey 인증 | 📋 | 고 |
-| 9.3 | 계정 복구 메커니즘 | 📋 | 중 |
+| 순서 | 작업 | 상태 | 난이도 | 완료일 |
+|------|------|------|--------|--------|
+| 9.1 | 백엔드 인프라 (Salt Lambda, DynamoDB) | ✅ 완료 | 중 | 2026-01-01 |
+| 9.2 | @nasun/wallet zkLogin 확장 | ✅ 완료 | 고 | 2026-01-01 |
+| 9.3 | @nasun/wallet-ui 소셜 로그인 UI | ✅ 완료 | 중 | 2026-01-01 |
+| 9.4 | Pado 앱 통합 | ✅ 완료 | 저 | 2026-01-01 |
+| 9.5 | Nasun Website 통합 | 📋 대기 | 중 | - |
+| 9.6 | Passkey 인증 | 📋 | 고 | - |
+| 9.7 | 계정 복구 메커니즘 | 📋 | 중 | - |
 
-**구현 방향**:
-```typescript
-// Smart Account 인터페이스
-interface ISmartAccount {
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  signTransaction(tx: Transaction): Promise<SignedTransaction>;
-  getBalanceManager(poolId: string): Promise<string | null>;
-}
+**구현 완료 (2026-01-01)**:
+- Salt 관리 Lambda 배포 (`nasun-auth-zklogin-salt`)
+- ZkLoginUsers DynamoDB 테이블
+- `packages/wallet/src/core/zklogin.ts` - 전체 zkLogin 플로우
+- `packages/wallet/src/hooks/useZkLogin.ts` - React hooks
+- `packages/wallet-ui/src/SocialLoginButtons.tsx` - 소셜 로그인 버튼
+- `packages/wallet-ui/src/ZkLoginCallback.tsx` - OAuth 콜백 처리
+- `apps/pado/frontend/src/pages/AuthCallbackPage.tsx` - Pado 콜백 페이지
+- `/auth/callback` 라우트 추가
 
-type AccountType = 'embedded' | 'zklogin' | 'passkey';
+**Nasun Website 통합 (대기)**:
+- 인프라는 준비 완료 (CDK에 Salt Lambda 배포됨)
+- 메인넷 후 활성화 예정
+- 기존 Google OAuth와 동일한 JWT 사용 가능
+
+**환경변수**:
+```bash
+VITE_ZKLOGIN_SALT_API_URL=https://xxx.execute-api.region.amazonaws.com/prod/auth/zklogin/salt
+VITE_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 ```
+
+**롤백 태그**:
+- `phase9-backend` - 백엔드 완료 시점
+- `phase9-wallet` - @nasun/wallet 확장 완료
+- `phase9-ui` - wallet-ui 컴포넌트 완료
+- `phase9-pado` - Pado 앱 통합 완료
 
 ---
 
@@ -489,4 +507,4 @@ frontend/src/
 | 2025-12-31 | Phase 14.9 완료: 마켓 생성 Admin UI (CreateMarketForm, PredictAdminPage) |
 | 2026-01-01 | Phase 13 완료: Staking (EarnPage, StakingSection, 라이트 모드 지원) |
 | 2026-01-01 | Phase 12 완료: Lending Pool (스마트 컨트랙트 배포, Deposit/Withdraw UI) |
-| 2026-01-01 | Phase 9 시작: zkLogin 통합 (Smart Account v2) |
+| 2026-01-01 | Phase 9.1-9.4 완료: zkLogin 통합 (백엔드, wallet 패키지, Pado 앱) |
