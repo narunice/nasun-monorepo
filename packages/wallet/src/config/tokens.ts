@@ -24,19 +24,21 @@ export const NATIVE_TOKEN: TokenConfig = {
  * Devnet default tokens
  * These tokens are registered by default for Nasun Devnet
  * Token contract addresses are stable during devnet phase
+ *
+ * Updated: 2026-01-01 (Security hardened pado_tokens package)
  */
 export const DEVNET_TOKENS: TokenConfig[] = [
   {
     symbol: 'NBTC',
     name: 'Nasun BTC',
     decimals: 8,
-    type: '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nbtc::NBTC',
+    type: '0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7::nbtc::NBTC',
   },
   {
     symbol: 'NUSDC',
     name: 'Nasun USDC',
     decimals: 6,
-    type: '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nusdc::NUSDC',
+    type: '0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7::nusdc::NUSDC',
   },
 ];
 
