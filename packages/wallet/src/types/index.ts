@@ -192,6 +192,42 @@ export interface AddressBook {
 }
 
 // ============================================
+// Rate Limiting Types
+// ============================================
+
+/** Unlock attempt tracking for rate limiting */
+export interface UnlockAttemptState {
+  /** Number of consecutive failed attempts */
+  failedAttempts: number;
+  /** Lockout end timestamp (Date.now()), null if not locked */
+  lockoutEndTime: number | null;
+  /** Last attempt timestamp */
+  lastAttemptTime: number;
+}
+
+/** Lockout tier configuration */
+export interface LockoutTier {
+  /** Minimum failed attempts to trigger this tier */
+  attempts: number;
+  /** Lockout duration in milliseconds */
+  durationMs: number;
+}
+
+/** Rate limiting configuration - progressive lockout tiers */
+export const LOCKOUT_TIERS: LockoutTier[] = [
+  { attempts: 8, durationMs: 30 * 1000 },       // 30 seconds
+  { attempts: 12, durationMs: 5 * 60 * 1000 },  // 5 minutes
+  { attempts: 16, durationMs: 30 * 60 * 1000 }, // 30 minutes
+];
+
+/** Default unlock attempt state */
+export const DEFAULT_UNLOCK_ATTEMPT_STATE: UnlockAttemptState = {
+  failedAttempts: 0,
+  lockoutEndTime: null,
+  lastAttemptTime: 0,
+};
+
+// ============================================
 // Transaction Simulation Types
 // ============================================
 
