@@ -221,3 +221,56 @@ export {
   formatApy,
   formatStakedAmount,
 } from './sui/staking';
+
+// ============================================
+// zkLogin (Smart Account v2)
+// ============================================
+
+// zkLogin Hooks
+export {
+  useZkLogin,
+  useZkLoginCallback,
+  useZkLoginUser,
+  initZkLogin,
+} from './hooks/useZkLogin';
+export type { UseZkLoginOptions, UseZkLoginResult } from './hooks/useZkLogin';
+
+// zkLogin Types
+export type {
+  ZkLoginProvider,
+  OAuthConfig,
+  ZkLoginSession,
+  ZkLoginProof,
+  ZkLoginState,
+  SaltResponse,
+  ProverRequest,
+  ProverResponse,
+  ZkLoginConfig,
+  ZkLoginErrorType,
+} from './types/zklogin';
+export { ZkLoginError } from './types/zklogin';
+
+// zkLogin Utilities
+export {
+  configureZkLogin,
+  getZkLoginConfig,
+  createZkLoginSession,
+  getZkLoginSession,
+  clearZkLoginSession,
+  getZkLoginState,
+  saveZkLoginState,
+  clearZkLoginState,
+  buildOAuthUrl,
+  parseJwt,
+  validateJwt,
+  detectProvider,
+  fetchSalt,
+  deriveAddress,
+  computeAddressSeed,
+  fetchZkProof,
+  signWithZkLogin,
+  startZkLogin,
+  completeZkLogin,
+  isZkLoginSessionValid,
+  disconnectZkLogin,
+} from './core/zklogin';

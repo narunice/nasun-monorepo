@@ -256,3 +256,22 @@ export interface TransactionSimulation {
   /** Raw effects from simulation */
   effects?: unknown;
 }
+
+// ============================================
+// zkLogin Types
+// ============================================
+
+export type {
+  ZkLoginProvider,
+  OAuthConfig,
+  ZkLoginSession,
+  ZkLoginProof,
+  ZkLoginState,
+  SaltResponse,
+  ProverRequest,
+  ProverResponse,
+  ZkLoginConfig,
+  ZkLoginErrorType,
+} from './zklogin';
+
+export { ZkLoginError } from './zklogin';
