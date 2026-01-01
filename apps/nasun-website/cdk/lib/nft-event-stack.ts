@@ -20,6 +20,18 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
+// Security: CORS 허용 도메인 목록
+const ALLOWED_ORIGINS = [
+  'https://nasun.io',
+  'https://www.nasun.io',
+  'https://staging.nasun.io',
+  'https://gensol.nasun.io',
+  'https://staging.gensol.io',
+  'https://pado.finance',
+  'https://staging.pado.finance',
+  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'] : []),
+];
+
 export class NftEventStack extends cdk.Stack {
   public readonly whitelistTable: dynamodb.Table;
   public readonly tasksTable: dynamodb.Table;
@@ -273,7 +285,7 @@ export class NftEventStack extends cdk.Stack {
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
       },
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
         allowCredentials: false,
