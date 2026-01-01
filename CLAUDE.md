@@ -224,6 +224,55 @@ pnpm deploy:gensol-website:staging
 | ------------ | ------------- | -------------------- |
 | nasun-devnet | 블록체인 노드 | 별도 유지 (Rust)     |
 
+## Nasun CLI (스마트컨트랙트)
+
+### CLI 경로
+
+```bash
+# nasun은 sui client의 alias
+# ~/.bashrc에 정의됨:
+alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
+
+# 직접 실행 시:
+/home/naru/my_apps/nasun-devnet/sui/target/release/sui move build
+/home/naru/my_apps/nasun-devnet/sui/target/release/sui client publish
+```
+
+### 스마트컨트랙트 위치
+
+| 디렉토리 | 설명 |
+|----------|------|
+| `apps/pado/contracts/` | NBTC, NUSDC 토큰 + Faucet |
+| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트 |
+| `apps/pado/contracts-lending/` | 렌딩 컨트랙트 (예정) |
+
+### Move 빌드/배포 명령어
+
+```bash
+# 빌드
+cd apps/pado/contracts
+/home/naru/my_apps/nasun-devnet/sui/target/release/sui move build
+
+# 배포 (새 패키지)
+/home/naru/my_apps/nasun-devnet/sui/target/release/sui client publish --gas-budget 100000000
+
+# 업그레이드 (기존 패키지)
+/home/naru/my_apps/nasun-devnet/sui/target/release/sui client upgrade \
+  --upgrade-capability <UPGRADE_CAP_ID> \
+  --gas-budget 100000000
+
+# 환경 확인
+/home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
+```
+
+### 배포된 컨트랙트 (Devnet)
+
+| 컨트랙트 | Package ID | 환경변수 |
+|----------|------------|----------|
+| pado (tokens) | `0xfdd1e75f...` | `VITE_TOKENS_PACKAGE` |
+| prediction | `0xc585b0b9...` | - |
+| TokenFaucet (shared) | `0xc9ddd723...` | `VITE_TOKEN_FAUCET` |
+
 ## 향후 계획
 
 1. @nasun/wallet 패키지를 앱들에 통합 (현재 각 앱이 자체 지갑 코드 사용)
