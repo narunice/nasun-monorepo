@@ -1,7 +1,7 @@
 # Pado 다음 단계 작업 계획서
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2025-12-29
+> 최종 업데이트: 2026-01-01
 > 비전: Unified Onchain Finance
 
 ---
@@ -19,6 +19,7 @@
 | Phase 6 | ✅ 완료 | Trading UX Pro (MA, Volume, RSI, MACD) | 2025-12-28 |
 | Phase 7 | ✅ 완료 | Portfolio Dashboard | 2025-12-28 |
 | Phase 8 | ✅ 완료 | Mobile & Theme (반응형, 다크/라이트) | 2025-12-28 |
+| Phase 12 | ✅ 완료 | Lending Pool (NUSDC 예금/출금) | 2026-01-01 |
 | Phase 13 | ✅ 완료 | Staking (Earn 탭, 네이티브 스테이킹) | 2026-01-01 |
 | Phase 14 | ⚠️ MVP 완료 | Prediction Markets (Sell/Admin 미구현) | 2025-12-29 |
 | Phase 15 | ✅ 완료 | Payments (Send, QR) | 2025-12-28 |
@@ -206,16 +207,25 @@ Unified Finance 비전을 향한 핵심 확장
 
 ---
 
-#### Phase 12: Lending & Borrowing ⭐
+#### Phase 12: Lending & Borrowing ⭐ (완료)
 
 **목표**: 통합 대출 프로토콜
 
 | 순서 | 작업 | 상태 | 난이도 |
 |------|------|------|--------|
-| 12.1 | Lending Pool 설계 | 📋 | 고 |
-| 12.2 | 동적 금리 곡선 | 📋 | 중 |
-| 12.3 | 담보 관리 | 📋 | 고 |
-| 12.4 | 청산 메커니즘 | 📋 | 고 |
+| 12.1 | Lending Pool 스마트 컨트랙트 | ✅ 완료 | 고 |
+| 12.2 | 동적 금리 곡선 (Compound 스타일) | ✅ 완료 | 중 |
+| 12.3 | Frontend UI (Deposit/Withdraw) | ✅ 완료 | 중 |
+| 12.4 | 담보 관리 / 청산 | 📋 | 고 |
+
+**구현 완료 (2026-01-01)**:
+- NUSDC Lending Pool 스마트 컨트랙트 배포
+  - Package: `0x63f513c6dc341cadfaadc672d24123de931c983f8afb6773dc8aef4c42ab49fc`
+  - Pool: `0x7b53b300809a97e506035c4f1161e7b13f34c21cbfe401299f7a88a92479c4ac`
+- Compound 스타일 이자율 모델 (Base 2%, Multiplier 20%, Jump 100%, Kink 80%)
+- EarnPage Lending 탭 활성화
+- PoolStats, DepositForm, PositionList 컴포넌트
+- useLendingPool, useLendingPositions, useLendingActions hooks
 
 **확장 방향**: Unified Margin과 연동하여 거래 마진으로 활용
 
@@ -477,3 +487,6 @@ frontend/src/
 | 2025-12-31 | Phase 14.6 완료: Sell 주문 활성화 (Position 선택 UI, P&L 표시) |
 | 2025-12-31 | Phase 14.7 완료: 마켓 해결 Admin 기능 (usePredictionAdmin, AdminResolveModal) |
 | 2025-12-31 | Phase 14.9 완료: 마켓 생성 Admin UI (CreateMarketForm, PredictAdminPage) |
+| 2026-01-01 | Phase 13 완료: Staking (EarnPage, StakingSection, 라이트 모드 지원) |
+| 2026-01-01 | Phase 12 완료: Lending Pool (스마트 컨트랙트 배포, Deposit/Withdraw UI) |
+| 2026-01-01 | Phase 9 시작: zkLogin 통합 (Smart Account v2) |
