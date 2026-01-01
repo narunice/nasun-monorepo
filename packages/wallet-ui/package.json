@@ -24,14 +24,14 @@
     "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
-    "@nasun/tsconfig": "workspace:*",
     "@nasun/tailwind-config": "workspace:*",
+    "@nasun/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^19.0.0",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.9",
     "happy-dom": "^15.11.7",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.9"
   }
 }
