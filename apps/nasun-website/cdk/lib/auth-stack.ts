@@ -184,5 +184,71 @@ export class AuthStack extends cdk.Stack {
       description: 'DynamoDB table for MetaMask auth nonces',
     });
 
+    // ========================================
+    // zkLogin Authentication (2026-01-01 추가)
+    // ========================================
+
+    // 1. Salt 저장용 DynamoDB 테이블
+    const zkLoginTable = new dynamodb.Table(this, 'ZkLoginUsersTable', {
+      tableName: 'ZkLoginUsers',
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // 개발 환경용
+    });
+
+    // 2. zkLogin Salt Lambda 함수
+    const zkLoginSaltFunction = new lambda.Function(this, 'ZkLoginSaltFunction', {
+      functionName: 'nasun-auth-zklogin-salt',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'dist/index.handler',
+      code: lambda.Code.fromAsset('lambda-src/zklogin-salt'),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: {
+        ZKLOGIN_TABLE_NAME: zkLoginTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_AUD: process.env.GOOGLE_CLIENT_ID || '',
+      },
+      logGroup: new logs.LogGroup(this, 'ZkLoginSaltLambdaLogGroup', {
+        logGroupName: '/aws/lambda/nasun-auth-zklogin-salt',
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    // 3. DynamoDB 권한 부여
+    zkLoginTable.grantReadWriteData(zkLoginSaltFunction);
+
+    // 4. API Gateway for zkLogin Auth
+    const zkLoginAuthApi = new apigw.RestApi(this, 'ZkLoginAuthApi', {
+      restApiName: 'zkLogin Auth Service',
+      description: 'API for Sui zkLogin authentication with social providers',
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+    });
+
+    const zkLoginAuth = zkLoginAuthApi.root.addResource('auth');
+    const zkLogin = zkLoginAuth.addResource('zklogin');
+
+    // POST /auth/zklogin/salt
+    const saltResource = zkLogin.addResource('salt');
+    saltResource.addMethod('POST', new apigw.LambdaIntegration(zkLoginSaltFunction));
+
+    // 5. CloudFormation Outputs
+    new cdk.CfnOutput(this, 'ZkLoginAuthApiUrl', {
+      value: zkLoginAuthApi.url,
+      description: 'The URL of the zkLogin Auth API Gateway',
+      exportName: 'ZkLoginAuthApiUrl',
+    });
+
+    new cdk.CfnOutput(this, 'ZkLoginTableName', {
+      value: zkLoginTable.tableName,
+      description: 'DynamoDB table for zkLogin users',
+    });
+
   }
 }
