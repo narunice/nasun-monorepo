@@ -1,6 +1,6 @@
 import React, { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../../ui/button";
+import { Button } from "@/components/ui/button";
 import { Link as LinkIcon, Download } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";

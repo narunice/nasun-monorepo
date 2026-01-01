@@ -13,7 +13,7 @@ import React, { memo, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useUserSearch } from "../hooks";
 import { CumulativePeriod } from "../types";
-import { Button } from "../../../ui/button";
+import { Button } from "@/components/ui/button";
 
 interface UserSearchBoxProps {
   period: CumulativePeriod;
