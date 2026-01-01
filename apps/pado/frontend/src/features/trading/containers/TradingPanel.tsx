@@ -1,10 +1,12 @@
 /**
  * TradingPanel Container
  * 주문 폼 + BalanceManager 카드 + 오픈 오더 (lg:col-span-1)
+ * Simple mode: SimpleOrderForm only
+ * Pro mode: Full OrderForm + BalanceManager + Open Orders
  */
 
 import { useWallet } from '@nasun/wallet';
-import { useOrderbook, useOpenOrders, useOrderActions } from '../hooks';
+import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm } from '../context';
 import {
   OrderForm,
@@ -12,9 +14,15 @@ import {
   BalanceManagerCard,
   OpenOrders,
   PoolInfo,
+  SimpleOrderForm,
 } from '../components';
 
-export function TradingPanel() {
+interface TradingPanelProps {
+  mode?: TradeMode;
+}
+
+export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
+  const isSimple = mode === 'simple';
   const { status, account } = useWallet();
   const isConnected = status === 'unlocked' && account;
 
@@ -96,6 +104,64 @@ export function TradingPanel() {
     }
   };
 
+  // Simple mode market buy handler (receives baseAmount directly)
+  const handleSimpleMarketBuy = async (baseAmount: number) => {
+    const result = await handleMarketOrder('buy', baseAmount);
+    return result.success;
+  };
+
+  // Simple mode market sell handler
+  const handleSimpleMarketSell = async (baseAmount: number) => {
+    const result = await handleMarketOrder('sell', baseAmount);
+    return result.success;
+  };
+
+  // Simple Mode UI
+  if (isSimple) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-theme-bg-secondary rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-theme-text-primary">Quick Trade</h3>
+
+          {/* Connect wallet banner when not connected */}
+          {!isConnected && (
+            <div className="mb-4 p-3 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
+              Connect wallet to start trading
+            </div>
+          )}
+
+          {/* Balance Manager creation for Simple mode */}
+          {isConnected && !balanceManagerId && (
+            <div className="mb-4 p-4 bg-theme-bg-tertiary rounded-lg text-center">
+              <p className="text-sm text-theme-text-secondary mb-3">
+                Create a Balance Manager to start trading
+              </p>
+              <button
+                onClick={handleCreateBalanceManager}
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {isLoading ? 'Creating...' : 'Create Balance Manager'}
+              </button>
+            </div>
+          )}
+
+          {/* Simple Order Form */}
+          <SimpleOrderForm
+            midPrice={midPrice}
+            onMarketBuy={handleSimpleMarketBuy}
+            onMarketSell={handleSimpleMarketSell}
+            disabled={!isConnected || !balanceManagerId}
+            isLoading={isLoading}
+            quoteBalance={bmBalance.quote}
+            baseBalance={bmBalance.base}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Pro Mode UI (original)
   return (
     <div className="space-y-4">
       {/* Balance Manager Card - 독립 카드 */}
