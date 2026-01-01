@@ -5,54 +5,300 @@
 - **Current State:** The largest and oldest codebase. Contains massive UI components, duplicate logic, and likely unused legacy code.
 - **Refactoring Goal:** Aggressive componentization, removal of duplication, and standardization of state management.
 
-## 2. Key Issues & Analysis
+---
 
-### A. Massive UI Components
-- **File:** `src/components/app/home/ButtonShowcaseSection.tsx` (~1008 lines)
-- **Problem:** Likely repeats JSX for every single button variant. Extremely redundant.
-- **File:** `UserInfo.tsx` (584 lines), `routesConfig.ts` (548 lines).
+## 2. Verification Results (Claude Review)
 
-### B. Code Duplication
-- **Problem:** `features/leaderboard` and `components/app/Leaderboard` both exist.
-- **File:** `leaderboard.ts` and `userRankApi.ts` appear in both locations.
-- **Risk:** Inconsistent state, bug fixes applied to one but missed in the other.
+### Gemini Analysis Accuracy: 97/100
 
-### C. Routes Configuration
-- **File:** `src/config/routesConfig.ts` (548 lines)
-- **Problem:** A single file managing all routes, lazy loading, and likely metadata.
-- **Risk:** Merge conflicts, hard to navigate.
+| Item | Gemini Analysis | Actual Status | Verdict |
+|------|-----------------|---------------|---------|
+| `ButtonShowcaseSection.tsx` | ~1008 lines | **1008 lines** | ✅ Accurate |
+| `UserInfo.tsx` | 584 lines | **584 lines** | ✅ Accurate |
+| `routesConfig.ts` | 548 lines | **548 lines** | ✅ Accurate |
+| Leaderboard duplication | Exists | **60 files IDENTICAL** | ✅ Critical |
+| MyAccount issues | Not mentioned | ⚠️ **Found** | Additional |
 
-## 3. Refactoring Plan
+### Critical Finding: Perfect Duplication
 
-### Phase 1: De-duplication (Critical)
-1. **Consolidate Leaderboard Logic**
-   - audit both `features/leaderboard` and `components/app/Leaderboard`.
-   - Move "Source of Truth" to `src/features/leaderboard` (Domain logic).
-   - `components/app/Leaderboard` should only contain UI components that *use* the feature logic.
-   - Delete duplicate files.
+**`features/leaderboard/` vs `components/app/Leaderboard/` - 60 files IDENTICAL**
 
-### Phase 2: Component Refactoring (Showcase)
-1. **Refactor `ButtonShowcaseSection.tsx`**
-   - Create `ButtonVariantRow` component.
-   - Use a configuration array:
-     ```typescript
-     const BUTTON_VARIANTS = [
-       { name: 'Scarlet', variant: 'scarlet' },
-       { name: 'Amber', variant: 'c1' },
-       // ...
-     ];
-     ```
-   - Map over this array to render the section.
-   - **Target:** Reduce file size from 1000 lines to ~100 lines.
+```
+features/leaderboard/                    components/app/Leaderboard/
+├── types/leaderboard.ts (514 lines) ←→ ├── types/leaderboard.ts (514 lines)
+├── services/userRankApi.ts (486 lines)←→ services/userRankApi.ts (486 lines)
+├── hooks/ (19 files)                ←→ ├── hooks/ (19 files)
+├── components/ (32 files)           ←→ ├── components/ (32 files)
+└── Leaderboard.tsx                  ←→ └── Leaderboard.tsx
+```
 
-### Phase 3: Route Splitting
-1. **Split `routesConfig.ts`**
-   - `src/routes/mainRoutes.ts` (Home, About, Vision)
-   - `src/routes/appRoutes.ts` (Leaderboard, Roadmap)
-   - `src/routes/authRoutes.ts` (Login, Callback)
-   - `src/routes/index.ts` (Combine them)
+**Verified duplicates:**
+- `types/leaderboard.ts`: 514 lines each (identical)
+- `services/userRankApi.ts`: 486 lines each (identical)
+- All hooks: 19 files each (identical names)
+- All components: 32 files each (identical names)
 
-## 4. Expected Outcome
-- Significant reduction in codebase size (removing 500+ lines of redundancy in just one component).
-- Elimination of "Split Brain" logic issues in Leaderboard.
-- Easier navigation for developers.
+### Additional Discovery: MyAccount Directory
+
+**Large files not mentioned by Gemini:**
+```
+components/app/myAccount/
+├── ProfileHeroCard.tsx      (472 lines) ⚠️
+├── UserInfo.tsx             (584 lines) ⚠️ Already mentioned
+├── AccountLinking.tsx       (540 lines) ⚠️ NEW
+├── WalletConnectionBar.tsx  (~400 lines) ⚠️ NEW
+├── RankHistorySection.tsx   (~350 lines)
+├── GovernanceActivitySection.tsx
+└── ... (18 files total)
+```
+
+### TOP 10 Largest Files
+
+| Rank | File | Lines |
+|------|------|-------|
+| 1 | `ButtonShowcaseSection.tsx` | 1008 |
+| 2 | `UserInfo.tsx` | 584 |
+| 3 | `routesConfig.ts` | 548 |
+| 4 | `AccountLinking.tsx` | 540 |
+| 5 | `types/leaderboard.ts` × 2 | 514 |
+| 6 | `userRankApi.ts` × 2 | 486 |
+| 7 | `AuthContext.tsx` | 487 |
+| 8 | `ProfileHeroCard.tsx` | 472 |
+| 9 | `AppRoutes.tsx` | 468 |
+| 10 | `WhitelistModal.tsx` | 437 |
+
+---
+
+## 3. Key Issues & Analysis
+
+### A. Code Duplication 🚨 CRITICAL
+- **Impact:** 60 files × 2 = 120 files of duplicated code
+- **Risk:** Bug fixes applied to one location but not the other
+- **Disk waste:** ~50KB of duplicate code
+- **Bundle impact:** 5-10% unnecessary bundle size
+
+### B. Massive UI Components ⚠️ HIGH
+- `ButtonShowcaseSection.tsx` (1008 lines)
+  - Repeats JSX for every button variant
+  - Can be reduced 80% with data-driven approach
+- `UserInfo.tsx` (584 lines)
+  - 3 nearly identical unlink handlers (Google, Twitter, MetaMask)
+  - Violates DRY principle
+
+### C. MyAccount Complexity ⚠️ MEDIUM
+- 18 files in myAccount directory
+- Multiple 400+ line components
+- Shared logic scattered across files
+
+### D. Routes Configuration ⚠️ LOW
+- `routesConfig.ts` (548 lines)
+- Manageable but could benefit from splitting
+
+---
+
+## 4. Revised Refactoring Plan
+
+### Phase 1: De-duplication 🚨 CRITICAL ⏱️ 2 hours
+**Priority: IMMEDIATE** (highest impact, lowest risk)
+
+1. **Decision: Keep `components/app/Leaderboard/`** (more discoverable location)
+
+2. **Delete `features/leaderboard/` entirely:**
+   ```bash
+   rm -rf apps/nasun-website/frontend/src/features/leaderboard/
+   ```
+
+3. **Update imports across codebase:**
+   - Search: `from '@/features/leaderboard`
+   - Replace: `from '@/components/app/Leaderboard`
+
+4. **Verify no broken imports:**
+   ```bash
+   pnpm --filter @nasun/nasun-website typecheck
+   ```
+
+**Expected result:** Remove 60 duplicate files instantly
+
+### Phase 2: ButtonShowcaseSection ⏱️ 2 hours
+**Priority: HIGH** (80% reduction possible)
+
+1. **Create data-driven structure:**
+   ```typescript
+   // buttonShowcaseData.ts
+   export const BUTTON_VARIANTS = [
+     { name: 'Scarlet', variant: 'scarlet', sizes: ['xs', 'sm', 'md', 'lg', 'xl'] },
+     { name: 'Amber', variant: 'c1', sizes: ['xs', 'sm', 'md', 'lg', 'xl'] },
+     // ... 10+ variants
+   ];
+   ```
+
+2. **Create `ButtonVariantRow.tsx`:**
+   ```tsx
+   const ButtonVariantRow = ({ variant, sizes }) => (
+     <div className="flex gap-2">
+       {sizes.map(size => (
+         <Button key={size} variant={variant} size={size}>{size}</Button>
+       ))}
+     </div>
+   );
+   ```
+
+3. **Simplify main component:**
+   ```tsx
+   const ButtonShowcaseSection = () => (
+     <section>
+       {BUTTON_VARIANTS.map(v => (
+         <ButtonVariantRow key={v.name} {...v} />
+       ))}
+     </section>
+   );
+   ```
+
+**Expected result:** 1008 lines → 200 lines (80% reduction)
+
+### Phase 3: UserInfo Handler Extraction ⏱️ 2 hours
+**Priority: MEDIUM**
+
+1. **Create generic unlink handler:**
+   ```typescript
+   // hooks/useAccountUnlink.ts
+   const useAccountUnlink = () => {
+     const unlinkProvider = async (provider: 'google' | 'twitter' | 'metamask') => {
+       // Common unlink logic
+     };
+     return { unlinkProvider, isUnlinking };
+   };
+   ```
+
+2. **Create provider-specific hooks:**
+   ```
+   hooks/account/
+   ├── useAccountUnlink.ts     # Shared logic
+   ├── useGoogleAccount.ts     # Google-specific
+   ├── useTwitterAccount.ts    # Twitter-specific
+   └── useMetaMaskAccount.ts   # MetaMask-specific
+   ```
+
+**Expected result:** 584 lines → 300 lines (48% reduction)
+
+### Phase 4: Routes Splitting ⏱️ 1 hour
+**Priority: LOW**
+
+1. **Split into route modules:**
+   ```
+   src/routes/
+   ├── index.ts           # Combines all routes
+   ├── mainRoutes.ts      # Home, About, Vision
+   ├── appRoutes.ts       # Leaderboard, Roadmap
+   ├── authRoutes.ts      # Login, Callback
+   └── accountRoutes.ts   # MyAccount, Settings
+   ```
+
+**Expected result:** 548 lines → 100 lines main + 4 small files
+
+---
+
+## 5. Expected Outcome
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Duplicate files | 60 | 0 |
+| `ButtonShowcaseSection.tsx` | 1008 lines | ~200 lines |
+| `UserInfo.tsx` | 584 lines | ~300 lines |
+| `routesConfig.ts` | 548 lines | ~100 lines |
+| Total lines saved | - | ~1500+ lines |
+| Bundle size reduction | - | 5-10% |
+
+### Benefits
+- Elimination of "split brain" issues in Leaderboard
+- Significantly smaller codebase
+- Easier maintenance and navigation
+- Faster build times (fewer files to process)
+- Cleaner git history (no duplicate changes)
+
+---
+
+## 6. Estimated Effort
+
+| Phase | Time | Priority | Impact |
+|-------|------|----------|--------|
+| Phase 1: De-duplication | 2 hours | 🚨 Critical | Highest |
+| Phase 2: ButtonShowcase | 2 hours | ⚠️ High | High |
+| Phase 3: UserInfo | 2 hours | Medium | Medium |
+| Phase 4: Routes | 1 hour | Low | Low |
+| **Total** | **16-20 hours** | - | - |
+
+---
+
+## 7. Files to Modify
+
+```
+apps/nasun-website/frontend/src/
+├── features/
+│   └── leaderboard/          # DELETE: Entire folder (60 files)
+├── components/app/
+│   ├── Leaderboard/          # KEEP: Source of truth
+│   ├── home/
+│   │   ├── ButtonShowcaseSection.tsx  # MODIFY → 200 lines
+│   │   └── buttonShowcaseData.ts      # NEW: Variant data
+│   └── myAccount/
+│       ├── UserInfo.tsx      # MODIFY → 300 lines
+│       └── hooks/            # NEW: Account hooks
+│           ├── useAccountUnlink.ts
+│           ├── useGoogleAccount.ts
+│           ├── useTwitterAccount.ts
+│           └── useMetaMaskAccount.ts
+├── config/
+│   └── routesConfig.ts       # MODIFY → 100 lines
+└── routes/                   # NEW: Split routes
+    ├── index.ts
+    ├── mainRoutes.ts
+    ├── appRoutes.ts
+    ├── authRoutes.ts
+    └── accountRoutes.ts
+```
+
+---
+
+## 8. Already Optimized (Recent Work)
+
+### Completed Optimizations ✅
+1. **Loading UI standardization** (2025-10-27)
+   - SectionLoading, InlineLoading, PageLoading components
+   - Applied to 15+ pages
+
+2. **React Query caching** (2025-10-27)
+   - useMyRank: 3min → 30min cache
+   - useCumulativeLeaderboard: 5min → 30min cache
+
+3. **Leaderboard score metrics** (2025-10-26)
+   - Engagement score reduced 1/5
+   - Score range: 100-800 → 10-200
+
+---
+
+## 9. Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Broken imports after de-duplication | Medium | High | TypeScript will catch all errors |
+| ButtonShowcase visual regression | Low | Medium | Visual comparison testing |
+| Auth flow breakage | Low | High | Test each provider after changes |
+
+### Rollback Strategy
+```bash
+# If issues arise, rollback to tag
+git checkout refactoring-v0-pre
+```
+
+---
+
+## 10. Testing Checklist
+
+After each phase, verify:
+- [ ] `pnpm build:nasun-website` succeeds
+- [ ] `pnpm typecheck:nasun-website` passes
+- [ ] All pages load correctly
+- [ ] Authentication flows work
+- [ ] Leaderboard displays data
+- [ ] No console errors
