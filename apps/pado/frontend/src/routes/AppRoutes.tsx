@@ -19,6 +19,7 @@ import {
   PredictPage,
   PredictMarketPage,
   PredictAdminPage,
+  AuthCallbackPage,
 } from '../pages';
 
 export function AppRoutes() {
@@ -44,6 +45,9 @@ export function AppRoutes() {
 
       {/* Earn (Staking + Lending) */}
       <Route path="/earn" element={<EarnPage />} />
+
+      {/* Auth (zkLogin callback) */}
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       {/* Future routes */}
       {/* <Route path="/perps" element={<PerpsPage />} /> */}
