@@ -124,20 +124,15 @@ components/app/myAccount/
 ### Phase 2: ButtonShowcaseSection ✅ COMPLETED (2026-01-01)
 **Priority: HIGH**
 
-1. **Created data-driven structure:**
-   - `buttonShowcaseData.ts` (136 lines): Variant definitions for all button types
-   - Includes: BRAND_BUTTONS, STANDARD_VARIANTS, DISABLED_VARIANTS, COLOR_SWATCHES, TAG_VARIANTS
+**Discovery:** Component was never used in production (only commented out in FoundersNftPage.tsx).
+Was a dev/design reference file for viewing button variants.
 
-2. **Created `ButtonVariantRow.tsx` (44 lines):**
-   - Reusable component for rendering a row of button sizes
-   - Supports custom labels for special variants (Link, Destructive)
+**Action:** Deleted all 3 files (505 lines total):
+- `ButtonShowcaseSection.tsx` (325 lines)
+- `buttonShowcaseData.ts` (136 lines)
+- `ButtonVariantRow.tsx` (44 lines)
 
-3. **Refactored main component (325 lines):**
-   - Uses data arrays instead of repetitive JSX
-   - Added helper components: ColorSwatch, StatsCard
-
-**Result:** ✅ 1008 lines → 505 lines total (50% reduction, 503 lines saved)
-- Main component: 1008 → 325 lines (68% reduction)
+**Result:** ✅ 505 lines deleted (unused code removal)
 
 ### Phase 3: UserInfo Handler Extraction ⏱️ 2 hours
 **Priority: MEDIUM**
@@ -186,10 +181,10 @@ components/app/myAccount/
 | Metric | Before | After | Status |
 |--------|--------|-------|--------|
 | Duplicate files | 61 | 0 | ✅ Done |
-| `ButtonShowcaseSection.tsx` | 1008 lines | 505 lines (3 files) | ✅ Done |
+| `ButtonShowcaseSection.tsx` | 1008 lines | 0 (deleted, unused) | ✅ Done |
 | `UserInfo.tsx` | 584 lines | ~300 lines | Pending |
 | `routesConfig.ts` | 548 lines | ~100 lines | Pending |
-| Total lines saved | - | 8,717 + 503 = ~9,220 lines | In Progress |
+| Total lines saved | - | 8,717 + 1,008 = ~9,725 lines | In Progress |
 | Bundle size reduction | - | 5-10% | In Progress |
 
 ### Benefits
@@ -222,9 +217,7 @@ apps/nasun-website/frontend/src/
 ├── components/app/
 │   ├── Leaderboard/          # ✅ DELETED: Was duplicate (61 files removed)
 │   ├── home/
-│   │   ├── ButtonShowcaseSection.tsx  # ✅ REFACTORED: 1008 → 325 lines
-│   │   ├── buttonShowcaseData.ts      # ✅ NEW: Variant data (136 lines)
-│   │   └── ButtonVariantRow.tsx       # ✅ NEW: Reusable component (44 lines)
+│   │   └── ButtonShowcaseSection.tsx  # ✅ DELETED: Unused (1008 lines removed)
 │   └── myAccount/
 │       ├── UserInfo.tsx      # TODO: MODIFY → 300 lines
 │       └── hooks/            # TODO: NEW: Account hooks
