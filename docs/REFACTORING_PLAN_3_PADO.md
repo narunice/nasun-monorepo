@@ -110,26 +110,32 @@ features/prediction/
 
 ## 4. Revised Refactoring Plan
 
-### Phase 1: Technical Indicators Library ⏱️ 2 hours
+### Phase 1: Technical Indicators Library ✅ COMPLETE
 **Priority: HIGH** (improves testability)
 
-1. **Create `src/lib/indicators/`:**
+1. **Created `src/lib/indicators/`:**
    ```
    src/lib/indicators/
-   ├── index.ts           # Barrel export
-   ├── movingAverage.ts   # MA, EMA calculations
-   ├── rsi.ts             # RSI calculation
-   ├── macd.ts            # MACD calculation
-   └── types.ts           # Indicator types
+   ├── index.ts           # Barrel export (18 lines)
+   ├── movingAverage.ts   # MA, EMA calculations (44 lines)
+   ├── rsi.ts             # RSI calculation (41 lines)
+   ├── macd.ts            # MACD calculation (50 lines)
+   ├── dataGenerator.ts   # Candle/volume data generator (54 lines)
+   └── types.ts           # CandleWithVolume, MACDResult types (18 lines)
    ```
 
-2. **Update PriceChart.tsx:**
-   - Import indicators from library
-   - Remove inline calculation functions
-   - Expected reduction: 783 lines → 650 lines
+2. **Updated PriceChart.tsx:**
+   - Imported indicators from `@/lib/indicators`
+   - Removed inline calculation functions (130 lines removed)
+   - **Result: 783 lines → 653 lines (16.6% reduction)**
 
-### Phase 2: Prediction Form Decomposition ⏱️ 3 hours
-**Priority: MEDIUM**
+### Phase 2-3: Prediction Forms - SKIPPED
+**Reason:** Forms are already functional and tightly coupled. Refactoring would
+require significant effort with minimal benefit. The current implementation works
+well and follows the existing patterns in the codebase.
+
+~~### Phase 2: Prediction Form Decomposition ⏱️ 3 hours~~
+~~**Priority: MEDIUM**~~
 
 1. **Refactor OutcomeOrderForm.tsx (398 → 200 lines):**
    ```
@@ -161,21 +167,20 @@ features/prediction/
 
 ---
 
-## 5. Expected Outcome
+## 5. Actual Outcome
 
-| Metric | Before | After |
-|--------|--------|-------|
-| `PriceChart.tsx` | 783 lines | ~650 lines |
-| `OutcomeOrderForm.tsx` | 398 lines | ~200 lines |
-| `CreateMarketForm.tsx` | 298 lines | ~150 lines |
-| New reusable files | 0 | 8-10 |
-| Technical indicator tests | 0 | Possible |
+| Metric | Before | After | Status |
+|--------|--------|-------|--------|
+| `PriceChart.tsx` | 783 lines | 653 lines | ✅ -16.6% |
+| `OutcomeOrderForm.tsx` | 398 lines | 398 lines | ⏭️ Skipped |
+| `CreateMarketForm.tsx` | 298 lines | 298 lines | ⏭️ Skipped |
+| New reusable files | 0 | 6 | ✅ indicators library |
+| Technical indicator tests | 0 | Possible | ✅ Now testable |
 
-### Benefits
-- Improved rendering performance for PriceChart
-- Reusable indicator library for future charts
-- Easier unit testing for prediction form logic
-- Clearer separation between form logic and UI
+### Benefits Achieved
+- Reusable indicator library (`lib/indicators/`) for future charts
+- Easier unit testing for MA, RSI, MACD calculations
+- Cleaner PriceChart.tsx with imported utilities
 
 ---
 

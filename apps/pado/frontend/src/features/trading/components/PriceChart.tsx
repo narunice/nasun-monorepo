@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
-import type { IChartApi, ISeriesApi, CandlestickData, Time, LineData, HistogramData } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { useMarket } from '../context/MarketContext';
 import { useTheme } from '../../../providers/theme';
+import {
+  calculateMA,
+  calculateRSI,
+  calculateMACD,
+  generateCandleData,
+  generateVolumeData,
+} from '@/lib/indicators';
 
 // Theme-aware chart colors
 const CHART_COLORS = {
@@ -25,140 +32,6 @@ export type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w';
 interface PriceChartProps {
   currentPrice?: number;
   className?: string;
-}
-
-// Extended candle data with volume
-interface CandleWithVolume extends CandlestickData {
-  volume: number;
-}
-
-// Calculate Moving Average
-function calculateMA(data: CandlestickData[], period: number): LineData[] {
-  const result: LineData[] = [];
-
-  for (let i = period - 1; i < data.length; i++) {
-    let sum = 0;
-    for (let j = 0; j < period; j++) {
-      sum += data[i - j].close;
-    }
-    result.push({
-      time: data[i].time,
-      value: sum / period,
-    });
-  }
-
-  return result;
-}
-
-// Calculate EMA (Exponential Moving Average)
-function calculateEMA(data: number[], period: number): number[] {
-  if (data.length === 0) return [];
-  const k = 2 / (period + 1);
-  const result: number[] = [data[0]];
-  for (let i = 1; i < data.length; i++) {
-    result.push(data[i] * k + result[i - 1] * (1 - k));
-  }
-  return result;
-}
-
-// Calculate RSI (Relative Strength Index)
-function calculateRSI(data: CandlestickData[], period: number = 14): LineData[] {
-  if (data.length < period + 1) return [];
-  const result: LineData[] = [];
-  let avgGain = 0;
-  let avgLoss = 0;
-
-  // Initial average calculation
-  for (let i = 1; i <= period; i++) {
-    const change = data[i].close - data[i - 1].close;
-    if (change > 0) avgGain += change;
-    else avgLoss += Math.abs(change);
-  }
-  avgGain /= period;
-  avgLoss /= period;
-
-  // RSI calculation
-  for (let i = period; i < data.length; i++) {
-    if (i > period) {
-      const change = data[i].close - data[i - 1].close;
-      avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
-      avgLoss = (avgLoss * (period - 1) + (change < 0 ? Math.abs(change) : 0)) / period;
-    }
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    const rsi = 100 - 100 / (1 + rs);
-    result.push({ time: data[i].time, value: rsi });
-  }
-  return result;
-}
-
-// Calculate MACD (Moving Average Convergence Divergence)
-function calculateMACD(data: CandlestickData[]): {
-  macd: LineData[];
-  signal: LineData[];
-  histogram: HistogramData[];
-} {
-  if (data.length < 26) return { macd: [], signal: [], histogram: [] };
-
-  const closes = data.map((d) => d.close);
-  const ema12 = calculateEMA(closes, 12);
-  const ema26 = calculateEMA(closes, 26);
-
-  const macdLine = ema12.map((v, i) => v - ema26[i]).slice(25);
-  const signalLine = calculateEMA(macdLine, 9);
-
-  const result: { macd: LineData[]; signal: LineData[]; histogram: HistogramData[] } = {
-    macd: [],
-    signal: [],
-    histogram: [],
-  };
-
-  for (let i = 8; i < macdLine.length; i++) {
-    const time = data[i + 25].time;
-    const macdVal = macdLine[i];
-    const signalVal = signalLine[i - 8];
-    const histVal = macdVal - signalVal;
-    result.macd.push({ time, value: macdVal });
-    result.signal.push({ time, value: signalVal });
-    result.histogram.push({ time, value: histVal, color: histVal >= 0 ? '#22c55e' : '#ef4444' });
-  }
-  return result;
-}
-
-// Generate simulated OHLCV data
-function generateCandleData(basePrice: number, count: number, intervalMs: number): CandleWithVolume[] {
-  const data: CandleWithVolume[] = [];
-  let price = basePrice;
-  const now = Date.now();
-  const startTime = now - count * intervalMs;
-
-  for (let i = 0; i < count; i++) {
-    const time = Math.floor((startTime + i * intervalMs) / 1000) as Time;
-    const volatility = 0.02;
-
-    const open = price;
-    const change1 = (Math.random() - 0.5) * 2 * volatility * price;
-    const change2 = (Math.random() - 0.5) * 2 * volatility * price;
-    const change3 = (Math.random() - 0.5) * 2 * volatility * price;
-
-    const high = Math.max(open, open + change1, open + change2, open + change3);
-    const low = Math.min(open, open + change1, open + change2, open + change3);
-    const close = open + change3;
-    const volume = 100 + Math.random() * 900; // 100-1000
-
-    data.push({ time, open, high, low, close, volume });
-    price = close;
-  }
-
-  return data;
-}
-
-// Generate volume histogram data
-function generateVolumeData(candleData: CandleWithVolume[]): HistogramData[] {
-  return candleData.map((candle) => ({
-    time: candle.time,
-    value: candle.volume,
-    color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-  }));
 }
 
 const INTERVAL_CONFIG: Record<TimeInterval, { label: string; ms: number; count: number }> = {
