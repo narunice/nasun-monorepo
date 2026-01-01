@@ -1,12 +1,32 @@
 # Pado UI/UX 개선 로드맵
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2025-12-29
+> 최종 업데이트: 2026-01-01
 > 비전: CEX-Grade UX, DEX-Level Transparency
 
 ---
 
-## 현재 상태 요약 (2025-12-29)
+## 현재 상태 요약 (2026-01-01)
+
+### UX 재구성 (Pitch Deck 비전 정렬)
+
+| Phase | 이름 | 상태 | 설명 |
+|-------|------|------|------|
+| UX-A | Navigation Restructure | ✅ 완료 | 5-Tab 네비게이션 (Home, Trade, Earn, Predict, Wallet) |
+| UX-B | Home Dashboard | ✅ 완료 | NetWorthCard, QuickActions, HotMarketsCard, PredictionHighlight |
+| UX-C | Trade Enhancement | 📋 예정 | Simple/Pro 모드, Quick Amount 버튼 |
+| UX-D | Wallet Tab | ✅ 기본 완료 | Send/Receive 통합 |
+| UX-E | Earn Tab | 📋 예정 | Lending + Staking 통합 (Phase 12-13 이후) |
+
+**Dashboard 컴포넌트 (features/dashboard/)**
+- ✅ NetWorthCard - 총 자산 표시 (USD 환산)
+- ✅ QuickActions - 빠른 작업 버튼 (Trade, Send, Predict, Staking)
+- ✅ HotMarketsCard - 인기 마켓 (가격 변동)
+- ✅ PredictionHighlight - 예측 마켓 하이라이트
+- ✅ WelcomeBanner - 지갑 연결 CTA (dropdownAlign="left")
+- ✅ useNetWorth - 자산 가치 계산 hook
+
+---
 
 ### 구현 완료 ✅
 
