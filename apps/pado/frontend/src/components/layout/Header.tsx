@@ -11,7 +11,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Trade', path: '/trade', enabled: true },
-  { label: 'Earn', path: '/earn', enabled: false },
+  { label: 'Earn', path: '/earn', enabled: true },
   { label: 'Predict', path: '/predict', enabled: true },
   { label: 'Wallet', path: '/wallet', enabled: true },
 ];

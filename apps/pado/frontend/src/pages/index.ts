@@ -4,6 +4,7 @@
 
 export { HomePage } from './HomePage';
 export { TradePage } from './TradePage';
+export { EarnPage } from './EarnPage';
 export { WalletPage } from './WalletPage';
 export { PredictPage } from './PredictPage';
 export { PredictMarketPage } from './PredictMarketPage';
