@@ -7,7 +7,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { configureWallet } from '@nasun/wallet';
+import { configureWallet, initZkLogin } from '@nasun/wallet';
 import { WalletProvider } from '@nasun/wallet-ui';
 
 import { ThemeProvider } from './providers/theme';
@@ -29,6 +29,21 @@ configureWallet({
   faucetUrl: NETWORK_CONFIG.faucetUrl,
   sessionPersist: true, // Keep wallet unlocked during browser session
 });
+
+// Configure zkLogin (Phase 9: Smart Account v2)
+// Enables seedless onboarding via Google OAuth
+if (NETWORK_CONFIG.zkLoginSaltApiUrl && NETWORK_CONFIG.googleClientId) {
+  initZkLogin({
+    saltApiUrl: NETWORK_CONFIG.zkLoginSaltApiUrl,
+    providers: {
+      google: {
+        provider: 'google',
+        clientId: NETWORK_CONFIG.googleClientId,
+        redirectUri: `${window.location.origin}/auth/callback`,
+      },
+    },
+  });
+}
 
 // React Query 클라이언트
 const queryClient = new QueryClient({
