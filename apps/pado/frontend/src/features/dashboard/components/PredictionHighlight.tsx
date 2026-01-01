@@ -5,6 +5,7 @@
 
 import { Link } from 'react-router-dom';
 import { useMarkets } from '../../prediction';
+import { calculateProbabilityFromOrderbook } from '../../prediction/types';
 
 export function PredictionHighlight() {
   const { markets, isLoading } = useMarkets();
@@ -38,10 +39,11 @@ export function PredictionHighlight() {
 
       <div className="space-y-3">
         {markets.slice(0, 3).map(({ market, yesOrderbook }) => {
-          // Calculate YES probability from best ask (Polymarket style)
-          // price is in basis points (0-10000), divide by 100 to get percentage
-          const bestAsk = yesOrderbook?.asks?.[0];
-          const yesProbability = bestAsk ? Math.round(bestAsk.price / 100) : 50;
+          // Calculate YES probability using Polymarket midpoint method
+          const { yesProbability } = calculateProbabilityFromOrderbook(
+            yesOrderbook,
+            null
+          );
 
           return (
             <Link
@@ -62,7 +64,7 @@ export function PredictionHighlight() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-green-500 font-medium">{yesProbability}%</span>
+                  <span className="text-green-500 font-medium">{Math.round(yesProbability)}%</span>
                   <span className="text-theme-text-muted">YES</span>
                 </div>
               </div>
