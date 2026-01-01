@@ -32,10 +32,10 @@
   "devDependencies": {
     "@nasun/tsconfig": "workspace:*",
     "@types/react": "^19.0.0",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.9",
     "happy-dom": "^15.11.7",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "zod": "^4.1.11"
