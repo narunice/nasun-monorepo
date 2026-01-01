@@ -7,6 +7,18 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as logs from 'aws-cdk-lib/aws-logs';
 
+// Security: CORS 허용 도메인 목록
+const ALLOWED_ORIGINS = [
+  'https://nasun.io',
+  'https://www.nasun.io',
+  'https://staging.nasun.io',
+  'https://gensol.nasun.io',
+  'https://staging.gensol.io',
+  'https://pado.finance',
+  'https://staging.pado.finance',
+  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'] : []),
+];
+
 export interface AuthStackProps extends cdk.StackProps {
   readonly userProfilesTable: dynamodb.ITable;
 }
@@ -64,7 +76,7 @@ export class AuthStack extends cdk.Stack {
       restApiName: "Twitter Auth Service",
       description: "API for Twitter OAuth 2.0 authentication",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
       },
@@ -143,7 +155,7 @@ export class AuthStack extends cdk.Stack {
       restApiName: 'MetaMask Auth Service',
       description: 'API for MetaMask Ethereum wallet authentication',
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
       },

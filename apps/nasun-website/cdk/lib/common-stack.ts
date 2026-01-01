@@ -15,6 +15,18 @@ export interface CommonStackProps extends cdk.StackProps {
   // 필요한 경우 다른 스택 참조 추가
 }
 
+// Security: CORS 허용 도메인 목록
+const ALLOWED_ORIGINS = [
+  'https://nasun.io',
+  'https://www.nasun.io',
+  'https://staging.nasun.io',
+  'https://gensol.nasun.io',
+  'https://staging.gensol.io',
+  'https://pado.finance',
+  'https://staging.pado.finance',
+  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'] : []),
+];
+
 export class CommonStack extends cdk.Stack {
   public readonly priceApiGateway: apigw.LambdaRestApi;
   public readonly priceUpdaterLambda: lambda.Function;
@@ -81,7 +93,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Get Backup Prices API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS
       },
     });
@@ -105,7 +117,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Get Supply Count API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS
       },
     });
@@ -129,7 +141,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Get All Supply Counts API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS
       },
     });
@@ -156,7 +168,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Random Image API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS
       },
     });
@@ -188,7 +200,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN User Profile API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
@@ -214,7 +226,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Link Account API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
@@ -239,7 +251,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Wallet API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
@@ -273,7 +285,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Governance API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
@@ -336,7 +348,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Price API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS
       },
     });
@@ -376,7 +388,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Get AWS Credentials API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
@@ -412,7 +424,7 @@ export class CommonStack extends cdk.Stack {
         restApiName: "NASUN Deactivate Account API (Common)",
         proxy: false,
         defaultCorsPreflightOptions: {
-            allowOrigins: apigw.Cors.ALL_ORIGINS,
+            allowOrigins: ALLOWED_ORIGINS,
             allowMethods: ["DELETE", "OPTIONS"],
             allowHeaders: ["Content-Type", "Authorization"],
         },
@@ -478,7 +490,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Get User Count API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "OPTIONS"]
       },
     });
@@ -518,7 +530,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Get Follower Count API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "OPTIONS"]
       },
     });
@@ -671,7 +683,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Join Whitelist API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
     });
@@ -697,7 +709,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Withdraw Whitelist API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
     });
@@ -723,7 +735,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Check Whitelist API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
     });
@@ -749,7 +761,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Admin List Whitelist API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
     });
@@ -775,7 +787,7 @@ export class CommonStack extends cdk.Stack {
       restApiName: "NASUN Admin Export Whitelist API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
     });
