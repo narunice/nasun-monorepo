@@ -35,3 +35,12 @@ export { useStakeTransaction } from './useStakeTransaction';
 
 // Address book (Security Phase 2)
 export { useAddressBook, useAddressStatus } from './useAddressBook';
+
+// zkLogin support
+export {
+  useZkLogin,
+  useZkLoginCallback,
+  useZkLoginUser,
+  initZkLogin,
+} from './useZkLogin';
+export type { UseZkLoginOptions, UseZkLoginResult } from './useZkLogin';
