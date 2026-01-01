@@ -15,8 +15,9 @@
 | UX-A | Navigation Restructure | ✅ 완료 | 5-Tab 네비게이션 (Home, Trade, Earn, Predict, Wallet) |
 | UX-B | Home Dashboard | ✅ 완료 | NetWorthCard, QuickActions, HotMarketsCard, PredictionHighlight |
 | UX-C | Trade Enhancement | ✅ 완료 | Simple/Pro 모드 토글, Quick Amount 버튼 ($50/$100/$250/$500/Max) |
-| UX-D | Wallet Tab | ✅ 기본 완료 | Send/Receive 통합 |
-| UX-E | Earn Tab | 📋 예정 | Lending + Staking 통합 (Phase 12-13 이후) |
+| UX-D | Wallet Tab | ✅ 완료 | Send/Receive/History/Settings 통합 |
+| UX-E | Earn Tab (Staking) | ✅ 완료 | Native Staking via @nasun/wallet-ui (Phase 13) |
+| UX-F | Earn Tab (Lending) | 📋 예정 | Lending + Borrowing (Phase 12) |
 
 **Trade Enhancement 컴포넌트 (UX-C)**
 - ✅ useTradeMode - Simple/Pro 모드 상태 관리 hook (localStorage 저장)
