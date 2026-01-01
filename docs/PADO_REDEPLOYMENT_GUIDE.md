@@ -264,6 +264,8 @@ nasun client call \
 
 ## Phase 4: Update Frontend Configuration
 
+> **Note**: Token types are now configured via environment variables. The `@nasun/wallet` package no longer hardcodes token addresses. Each app must call `registerTokens()` on startup with values from `.env` files.
+
 ### 4.1 Update .env.staging
 
 Edit `apps/pado/.env.staging`:
@@ -306,6 +308,22 @@ export const TEST_MARKETS: string[] = [
   // ...
 ];
 ```
+
+### 4.3 Token Registry (Automatic via Environment Variables)
+
+Token registration is handled automatically in `apps/pado/frontend/src/main.tsx`:
+
+```typescript
+// Token types are read from environment variables (TOKENS from config/network.ts)
+registerTokens([
+  { symbol: 'NBTC', name: 'Nasun BTC', decimals: 8, type: TOKENS.NBTC.type },
+  { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: TOKENS.NUSDC.type },
+]);
+```
+
+**Files to update after SC redeployment:**
+- `.env.local` / `.env.staging` - Update `VITE_NBTC_TYPE` and `VITE_NUSDC_TYPE`
+- ~~`packages/wallet/src/config/tokens.ts`~~ - **No longer needed** (uses env vars now)
 
 ---
 

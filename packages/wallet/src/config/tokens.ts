@@ -22,35 +22,26 @@ export const NATIVE_TOKEN: TokenConfig = {
 
 /**
  * Devnet default tokens
- * These tokens are registered by default for Nasun Devnet
- * Token contract addresses are stable during devnet phase
+ * @deprecated Apps should call registerTokens() with environment-specific token types.
+ * This allows token addresses to be configured via .env files without modifying package code.
  *
- * Updated: 2026-01-01 (Security hardened pado_tokens package)
+ * Example usage in app's main.tsx:
+ * ```typescript
+ * import { registerTokens } from '@nasun/wallet';
+ * registerTokens([
+ *   { symbol: 'NBTC', name: 'Nasun BTC', decimals: 8, type: import.meta.env.VITE_NBTC_TYPE },
+ *   { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: import.meta.env.VITE_NUSDC_TYPE },
+ * ]);
+ * ```
  */
-export const DEVNET_TOKENS: TokenConfig[] = [
-  {
-    symbol: 'NBTC',
-    name: 'Nasun BTC',
-    decimals: 8,
-    type: '0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7::nbtc::NBTC',
-  },
-  {
-    symbol: 'NUSDC',
-    name: 'Nasun USDC',
-    decimals: 6,
-    type: '0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7::nusdc::NUSDC',
-  },
-];
+export const DEVNET_TOKENS: TokenConfig[] = [];
 
-// Register native token by default
+// Register native token by default (always available)
 tokenRegistry.set(NATIVE_TOKEN.symbol, NATIVE_TOKEN);
 tokensByType.set(NATIVE_TOKEN.type, NATIVE_TOKEN);
 
-// Register devnet tokens by default
-for (const token of DEVNET_TOKENS) {
-  tokenRegistry.set(token.symbol, token);
-  tokensByType.set(token.type, token);
-}
+// Note: DEVNET_TOKENS are no longer auto-registered.
+// Apps must call registerTokens() explicitly with environment-specific token types.
 
 /**
  * Register a new token
