@@ -44,8 +44,8 @@ export function StakingPanel({
   // Not connected
   if (status !== 'unlocked' || !account) {
     return (
-      <div className={`bg-zinc-800 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
-        <p className="text-zinc-400 text-sm text-center">
+      <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
+        <p className="text-gray-500 dark:text-zinc-400 text-sm text-center">
           Please connect your wallet first.
         </p>
       </div>
@@ -53,10 +53,10 @@ export function StakingPanel({
   }
 
   return (
-    <div className={`bg-zinc-800 rounded-lg ${compact ? '' : 'min-w-[360px]'}`}>
+    <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? '' : 'min-w-[360px]'}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-        <h3 className="text-lg font-medium text-white">Staking</h3>
+      <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Staking</h3>
         {onClose && (
           <button
             onClick={onClose}
@@ -70,15 +70,15 @@ export function StakingPanel({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-700">
+      <div className="flex border-b border-gray-300 dark:border-zinc-700">
         {(['stake', 'positions', 'unstake'] as TabType[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === tab
-                ? 'text-blue-400 border-b-2 border-blue-400'
-                : 'text-zinc-400 hover:text-white'
+                ? 'text-blue-500 dark:text-blue-400 border-b-2 border-blue-500 dark:border-blue-400'
+                : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -137,13 +137,13 @@ function StakeTab({ compact }: StakeTabProps) {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-white">Stake Successful</h3>
-            <p className="text-sm text-zinc-400 mt-1">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Stake Successful</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
               {lastResult.amount} NASUN staked
             </p>
           </div>
 
-          <div className="w-full bg-zinc-700 rounded p-3">
+          <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded p-3">
             <CopyableAddress
               value={lastResult.digest}
               label="Transaction"
@@ -169,36 +169,36 @@ function StakeTab({ compact }: StakeTabProps) {
   if (step === 'confirm' && selectedValidator) {
     return (
       <div className="p-4 space-y-4">
-        <h4 className="text-sm font-medium text-white">Confirm Stake</h4>
+        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Confirm Stake</h4>
 
-        <div className="bg-zinc-700 rounded-lg p-3 space-y-3">
+        <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3 space-y-3">
           <div>
-            <p className="text-xs text-zinc-400">Validator</p>
-            <p className="text-sm text-white mt-1">{selectedValidator.name}</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-400">Validator</p>
+            <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedValidator.name}</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-400">Amount</p>
-            <p className="text-lg text-white font-medium mt-1">
-              {amount} <span className="text-blue-400 text-sm">NASUN</span>
+            <p className="text-xs text-gray-500 dark:text-zinc-400">Amount</p>
+            <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
+              {amount} <span className="text-blue-500 dark:text-blue-400 text-sm">NASUN</span>
             </p>
           </div>
           <div>
-            <p className="text-xs text-zinc-400">Expected APY</p>
-            <p className="text-sm text-green-400 mt-1">
+            <p className="text-xs text-gray-500 dark:text-zinc-400">Expected APY</p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
               {(selectedValidator.apy * 100).toFixed(2)}%
             </p>
           </div>
         </div>
 
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
-          <p className="text-xs text-yellow-400">
+        <div className="bg-yellow-100 dark:bg-yellow-500/10 border border-yellow-300 dark:border-yellow-500/30 rounded p-3">
+          <p className="text-xs text-yellow-700 dark:text-yellow-400">
             Staked tokens will be activated at the next epoch (typically within 24 hours).
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded p-3">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded p-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
@@ -209,7 +209,7 @@ function StakeTab({ compact }: StakeTabProps) {
               clearError();
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white rounded transition-colors"
+            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:bg-gray-100 dark:disabled:bg-zinc-800 text-gray-900 dark:text-white rounded transition-colors"
           >
             Back
           </button>
@@ -221,7 +221,7 @@ function StakeTab({ compact }: StakeTabProps) {
               });
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 text-white font-medium rounded transition-colors"
+            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-zinc-600 text-white font-medium rounded transition-colors"
           >
             {isPending ? 'Staking...' : 'Confirm Stake'}
           </button>
@@ -246,28 +246,28 @@ function StakeTab({ compact }: StakeTabProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setStep('select')}
-            className="text-zinc-400 hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h4 className="text-sm font-medium text-white">Stake to {selectedValidator.name}</h4>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Stake to {selectedValidator.name}</h4>
         </div>
 
-        <div className="bg-zinc-700/50 rounded p-3">
-          <p className="text-xs text-zinc-400">Available Balance</p>
-          <p className="text-lg text-white font-medium mt-1">
-            {availableBalance} <span className="text-blue-400 text-sm">NASUN</span>
+        <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
+          <p className="text-xs text-gray-500 dark:text-zinc-400">Available Balance</p>
+          <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
+            {availableBalance} <span className="text-blue-500 dark:text-blue-400 text-sm">NASUN</span>
           </p>
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm text-zinc-400">Stake Amount</label>
+            <label className="text-sm text-gray-500 dark:text-zinc-400">Stake Amount</label>
             <button
               onClick={() => setAmount(maxStake)}
-              className="text-xs text-blue-400 hover:text-blue-300"
+              className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
             >
               Max
             </button>
@@ -279,20 +279,20 @@ function StakeTab({ compact }: StakeTabProps) {
             onChange={(e) => setAmount(e.target.value)}
             step="0.0001"
             min="0"
-            className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {isBelowMinimum && (
-            <p className="text-xs text-red-400 mt-1">Minimum stake is {MIN_STAKE_NASUN} NASUN</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Minimum stake is {MIN_STAKE_NASUN} NASUN</p>
           )}
           {isAboveBalance && (
-            <p className="text-xs text-red-400 mt-1">Insufficient balance</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Insufficient balance</p>
           )}
         </div>
 
         <button
           onClick={() => setStep('confirm')}
           disabled={!isValidAmount}
-          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
+          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors"
         >
           Continue
         </button>
@@ -303,7 +303,7 @@ function StakeTab({ compact }: StakeTabProps) {
   // Select validator step
   return (
     <div className="p-4 space-y-3">
-      <h4 className="text-sm font-medium text-white">Select Validator</h4>
+      <h4 className="text-sm font-medium text-gray-900 dark:text-white">Select Validator</h4>
       <ValidatorList
         selected={selectedValidator?.address}
         onSelect={(v) => {
@@ -354,13 +354,13 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-white">Unstake Successful</h3>
-            <p className="text-sm text-zinc-400 mt-1">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Unstake Successful</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
               Your NASUN will be available after the current epoch ends.
             </p>
           </div>
 
-          <div className="w-full bg-zinc-700 rounded p-3">
+          <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded p-3">
             <CopyableAddress
               value={lastResult.digest}
               label="Transaction"
@@ -373,7 +373,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
 
           <button
             onClick={handleReset}
-            className="w-full px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white font-medium rounded transition-colors"
+            className="w-full px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-900 dark:text-white font-medium rounded transition-colors"
           >
             Done
           </button>
@@ -386,25 +386,25 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
   if (step === 'confirm' && selectedStake) {
     return (
       <div className="p-4 space-y-4">
-        <h4 className="text-sm font-medium text-white">Confirm Unstake</h4>
+        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Confirm Unstake</h4>
 
-        <div className="bg-zinc-700 rounded-lg p-3">
-          <p className="text-xs text-zinc-400">Amount to Unstake</p>
-          <p className="text-lg text-white font-medium mt-1">
+        <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3">
+          <p className="text-xs text-gray-500 dark:text-zinc-400">Amount to Unstake</p>
+          <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
             {formatStakedAmount(selectedStake.principal)}{' '}
-            <span className="text-blue-400 text-sm">NASUN</span>
+            <span className="text-blue-500 dark:text-blue-400 text-sm">NASUN</span>
           </p>
         </div>
 
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
-          <p className="text-xs text-yellow-400">
+        <div className="bg-yellow-100 dark:bg-yellow-500/10 border border-yellow-300 dark:border-yellow-500/30 rounded p-3">
+          <p className="text-xs text-yellow-700 dark:text-yellow-400">
             Unstaked tokens will be available after the current epoch ends (typically within 24 hours).
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded p-3">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded p-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
@@ -415,7 +415,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
               clearError();
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white rounded transition-colors"
+            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:bg-gray-100 dark:disabled:bg-zinc-800 text-gray-900 dark:text-white rounded transition-colors"
           >
             Cancel
           </button>
@@ -426,7 +426,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
               });
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-zinc-600 text-white font-medium rounded transition-colors"
+            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 dark:disabled:bg-zinc-600 text-white font-medium rounded transition-colors"
           >
             {isPending ? 'Unstaking...' : 'Confirm Unstake'}
           </button>
@@ -439,9 +439,9 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
   if (stakes.length === 0) {
     return (
       <div className="p-4">
-        <div className="bg-zinc-700/50 rounded-lg p-6 text-center">
+        <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg p-6 text-center">
           <svg
-            className="w-12 h-12 mx-auto text-zinc-500 mb-3"
+            className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-500 mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -453,7 +453,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
               d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <p className="text-sm text-zinc-400">No active stakes to unstake</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">No active stakes to unstake</p>
         </div>
       </div>
     );
@@ -461,7 +461,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
 
   return (
     <div className="p-4 space-y-3">
-      <h4 className="text-sm font-medium text-white">Select Position to Unstake</h4>
+      <h4 className="text-sm font-medium text-gray-900 dark:text-white">Select Position to Unstake</h4>
       <StakingStatus
         compact={compact}
         hideSummary
