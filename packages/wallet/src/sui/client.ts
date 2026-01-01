@@ -12,6 +12,23 @@ const NASUN_DECIMALS = 9;
 // Session storage key for password persistence
 const SESSION_KEY = 'nasun_wallet_session';
 
+// Session expiry time (30 minutes)
+const SESSION_EXPIRY_MS = 30 * 60 * 1000;
+
+// Session data structure for secure storage
+interface SecureSessionData {
+  /** Obfuscated password */
+  p: string;
+  /** Creation timestamp */
+  c: number;
+  /** Expiry timestamp */
+  e: number;
+  /** Domain binding */
+  d: string;
+  /** Session version (for future migrations) */
+  v: number;
+}
+
 // Default configuration
 let walletConfig: WalletConfig = {
   rpcUrl: 'https://rpc.devnet.nasun.io',
@@ -238,15 +255,62 @@ export function isSessionPersistEnabled(): boolean {
 }
 
 /**
+ * Simple obfuscation for session password
+ * Not cryptographically secure, but provides minimal protection
+ * against casual inspection. Real security comes from:
+ * - Session expiry (30 minutes)
+ * - Domain binding
+ * - sessionStorage clearing on tab close
+ */
+function obfuscatePassword(password: string): string {
+  // Convert to UTF-8 bytes, XOR with key, then base64
+  const key = window.location.origin.length;
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(password);
+  const xored = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    xored[i] = bytes[i] ^ ((key + i) % 256);
+  }
+  // Convert to base64-safe string
+  return btoa(String.fromCharCode(...xored));
+}
+
+function deobfuscatePassword(obfuscated: string): string {
+  const key = window.location.origin.length;
+  const decoded = atob(obfuscated);
+  const xored = new Uint8Array(decoded.length);
+  for (let i = 0; i < decoded.length; i++) {
+    xored[i] = decoded.charCodeAt(i) ^ ((key + i) % 256);
+  }
+  const decoder = new TextDecoder();
+  return decoder.decode(xored);
+}
+
+/**
  * Save password to session storage (for auto-unlock on page refresh)
- * Only works when sessionPersist is enabled
+ * Only works when sessionPersist is enabled.
+ *
+ * Security features:
+ * - 30-minute expiry time
+ * - Domain binding (prevents use on other domains)
+ * - XOR obfuscation (minimal protection against casual inspection)
+ * - sessionStorage clears on tab close
+ *
+ * Note: This is a convenience feature with security trade-offs.
+ * For maximum security, disable sessionPersist.
  */
 export function saveSessionPassword(password: string): void {
   if (!isSessionPersistEnabled()) return;
   try {
-    // Base64 encode for minimal obfuscation (not security - sessionStorage clears on tab close)
-    const encoded = btoa(password);
-    sessionStorage.setItem(SESSION_KEY, encoded);
+    const now = Date.now();
+    const sessionData: SecureSessionData = {
+      p: obfuscatePassword(password),
+      c: now,
+      e: now + SESSION_EXPIRY_MS,
+      d: window.location.origin,
+      v: 1,
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
   } catch (error) {
     console.warn('Failed to save session:', error);
   }
@@ -254,14 +318,46 @@ export function saveSessionPassword(password: string): void {
 
 /**
  * Get password from session storage
- * Returns null if not available or session persistence is disabled
+ * Returns null if:
+ * - Session persistence is disabled
+ * - No session exists
+ * - Session has expired (30 minutes)
+ * - Domain mismatch
  */
 export function getSessionPassword(): string | null {
   if (!isSessionPersistEnabled()) return null;
   try {
-    const encoded = sessionStorage.getItem(SESSION_KEY);
-    if (!encoded) return null;
-    return atob(encoded);
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    if (!stored) return null;
+
+    // Try to parse as new format
+    try {
+      const sessionData: SecureSessionData = JSON.parse(stored);
+
+      // Validate version
+      if (sessionData.v !== 1) {
+        clearSessionPassword();
+        return null;
+      }
+
+      // Check domain binding
+      if (sessionData.d !== window.location.origin) {
+        clearSessionPassword();
+        return null;
+      }
+
+      // Check expiry
+      if (Date.now() > sessionData.e) {
+        clearSessionPassword();
+        return null;
+      }
+
+      return deobfuscatePassword(sessionData.p);
+    } catch {
+      // Legacy format (plain base64) - migrate or clear
+      clearSessionPassword();
+      return null;
+    }
   } catch (error) {
     console.warn('Failed to get session:', error);
     return null;
