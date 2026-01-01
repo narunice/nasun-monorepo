@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { StakingSection } from '../features/earn/components/StakingSection';
+import { StakingSection, LendingSection } from '../features/earn/components';
 
 type TabType = 'staking' | 'lending';
 
@@ -16,7 +16,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: 'staking', label: 'Staking', enabled: true },
-  { id: 'lending', label: 'Lending', enabled: false },
+  { id: 'lending', label: 'Lending', enabled: true },
 ];
 
 export function EarnPage() {
@@ -60,22 +60,7 @@ export function EarnPage() {
       <div>
         {activeTab === 'staking' && <StakingSection />}
 
-        {activeTab === 'lending' && (
-          <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-theme-bg-tertiary rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-theme-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-theme-text-primary mb-2">
-              Lending Coming Soon
-            </h3>
-            <p className="text-sm text-theme-text-muted max-w-md mx-auto">
-              Deposit NUSDC to earn interest or borrow against your NBTC collateral.
-              Stay tuned for updates!
-            </p>
-          </div>
-        )}
+        {activeTab === 'lending' && <LendingSection />}
       </div>
     </div>
   );
