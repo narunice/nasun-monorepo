@@ -36,5 +36,8 @@
     "happy-dom": "^15.11.7",
     "typescript": "^5.9.3",
     "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "zod": "^4.1.11"
   }
 }

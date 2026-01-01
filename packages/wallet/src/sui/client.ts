@@ -5,6 +5,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import type { BalanceInfo, WalletConfig, TokenBalance, MultiTokenBalanceInfo } from '../types';
 import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
+import { AllBalancesSchema, CoinBalanceSchema, safeParseRpc } from '../schemas/rpc';
 
 // NASUN token decimals (same as SUI: 9)
 const NASUN_DECIMALS = 9;
@@ -71,7 +72,13 @@ export function getSuiClient(): SuiClient {
 export async function getBalance(address: string): Promise<BalanceInfo> {
   try {
     const client = getSuiClient();
-    const balance = await client.getBalance({ owner: address });
+    const rawBalance = await client.getBalance({ owner: address });
+
+    // Validate RPC response
+    const balance = safeParseRpc(CoinBalanceSchema, rawBalance, 'getBalance');
+    if (!balance) {
+      throw new Error('Invalid balance response from RPC');
+    }
 
     const totalBalance = balance.totalBalance;
     const formattedBalance = formatBalance(totalBalance);
@@ -160,7 +167,13 @@ export function shortenAddress(address: string, chars = 6): string {
 export async function getAllBalances(address: string): Promise<MultiTokenBalanceInfo> {
   try {
     const client = getSuiClient();
-    const balances = await client.getAllBalances({ owner: address });
+    const rawBalances = await client.getAllBalances({ owner: address });
+
+    // Validate RPC response
+    const balances = safeParseRpc(AllBalancesSchema, rawBalances, 'getAllBalances');
+    if (!balances) {
+      throw new Error('Invalid balances response from RPC');
+    }
 
     // Initialize native token balance
     const nativeBalance: TokenBalance = {
@@ -221,7 +234,15 @@ export async function getAllBalances(address: string): Promise<MultiTokenBalance
 export async function getTokenBalance(address: string, tokenType: string): Promise<TokenBalance | null> {
   try {
     const client = getSuiClient();
-    const balance = await client.getBalance({ owner: address, coinType: tokenType });
+    const rawBalance = await client.getBalance({ owner: address, coinType: tokenType });
+
+    // Validate RPC response
+    const balance = safeParseRpc(CoinBalanceSchema, rawBalance, 'getTokenBalance');
+    if (!balance) {
+      console.warn('Invalid balance response from RPC');
+      return null;
+    }
+
     const tokenConfig = getTokenByType(tokenType);
 
     if (!tokenConfig) {
