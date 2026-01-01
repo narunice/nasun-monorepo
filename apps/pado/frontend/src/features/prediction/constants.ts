@@ -30,5 +30,10 @@ export const NUSDC_TYPE =
 // Clock
 export const CLOCK_ID = '0x6';
 
-// Test markets - need to recreate after redeployment
-export const TEST_MARKETS: string[] = [];
+// Test markets (created 2026-01-01)
+export const TEST_MARKETS: string[] = [
+  '0xdc90e9a3ab8609e7322d711fb56d996622e1119070057b2359449193656d71b8', // BTC $150k by March 2026
+  '0x0a1f9f569660fa89988192c8645dede0928d489d0330c19e63f4a613bd202fe5', // TikTok Ban by March 2026
+  '0xb1859139e2a7c7005ce17434b2d2d11b9930e7bab9b161b5421e7817b2bc577b', // HUNTR/X Grammy 2026
+  '0x7a044386e183bdaf9c1eb802ee88422078af3603cfe6a00b6aab170164af4805', // Russia-Ukraine Ceasefire by June 2026
+];
