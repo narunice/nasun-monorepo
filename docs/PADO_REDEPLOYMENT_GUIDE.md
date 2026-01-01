@@ -12,6 +12,9 @@ This guide documents the complete redeployment procedure for Pado smart contract
 6. [Phase 4: Update Frontend Configuration](#phase-4-update-frontend-configuration)
 7. [Phase 5: DeepBook V3 Pool Creation](#phase-5-deepbook-v3-pool-creation)
 8. [Troubleshooting](#troubleshooting)
+9. [DeepBook V3 Pool Creation Troubleshooting](#deepbook-v3-pool-creation-troubleshooting)
+10. [Reference: Current Deployed Addresses](#reference-current-deployed-addresses-2026-01-01)
+11. [Commit and Tag](#commit-and-tag)
 
 ---
 
@@ -391,6 +394,121 @@ nasun client switch --env nasun-devnet  # Switch if needed
 
 ---
 
+## DeepBook V3 Pool Creation Troubleshooting
+
+### AdminCap Ownership Issue
+
+**Problem**: `create_pool_admin` fails because AdminCap is owned by a different wallet address.
+
+**Diagnosis**:
+```bash
+# Check who owns the AdminCap
+nasun client object 0x1010f2ef902c482ffba7c9848d74b209bfcbbef4003f583f5faaadcf4ca883cb
+# Look for "owner" field in output
+
+# Check your current wallet
+nasun client active-address
+```
+
+**Solution**: Transfer AdminCap to your current wallet.
+
+```bash
+# 1. List all local keypairs to find the owner
+nasun keytool list
+
+# 2. Switch to the address that owns AdminCap
+nasun client switch --address <owner-alias-or-address>
+
+# 3. Verify you have gas on that address
+nasun client gas
+
+# 4. Transfer AdminCap to your main wallet
+nasun client transfer \
+  --to <YOUR_MAIN_WALLET_ADDRESS> \
+  --object-id 0x1010f2ef902c482ffba7c9848d74b209bfcbbef4003f583f5faaadcf4ca883cb \
+  --gas-budget 10000000
+
+# 5. Switch back to main wallet
+nasun client switch --address <main-wallet-alias>
+```
+
+### create_pool_admin Function Not Found
+
+**Problem**: `Could not resolve function create_pool_admin in module registry`
+
+**Root Cause**: The function is in the `pool` module, not `registry`.
+
+**Solution**: Use correct module name:
+```bash
+nasun client call \
+  --package 0xceaeca5c1a5f31e1282c47000b442289b2aa454f007c1e1e316110414e020757 \
+  --module pool \        # NOT registry!
+  --function create_pool_admin \
+  ...
+```
+
+### create_pool_admin Function Signature
+
+**Problem**: Wrong number of arguments error.
+
+**Correct Signature**:
+```
+create_pool_admin<BaseAsset, QuoteAsset>(
+  registry: &mut Registry,     # Arg 0: Registry shared object
+  tick_size: u64,              # Arg 1: Price precision
+  lot_size: u64,               # Arg 2: Quantity precision
+  min_size: u64,               # Arg 3: Minimum order size
+  whitelisted: bool,           # Arg 4: false for normal pools
+  stable: bool,                # Arg 5: false for volatile pairs
+  admin_cap: &DeepbookAdminCap # Arg 6: AdminCap object
+): ID
+```
+
+**Complete Example** (NBTC/NUSDC):
+```bash
+nasun client call \
+  --package 0xceaeca5c1a5f31e1282c47000b442289b2aa454f007c1e1e316110414e020757 \
+  --module pool \
+  --function create_pool_admin \
+  --type-args \
+    '0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7::nbtc::NBTC' \
+    '0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7::nusdc::NUSDC' \
+  --args \
+    0xf38bd1c809db53656767848a84464ab2a9cdd9283dbb3dd54d82a972c7dab6a4 \
+    10000 \
+    10000 \
+    10000 \
+    false \
+    false \
+    0x1010f2ef902c482ffba7c9848d74b209bfcbbef4003f583f5faaadcf4ca883cb \
+  --gas-budget 100000000
+```
+
+### Pool Parameter Calculation
+
+| Pool | Base Decimals | Quote Decimals | Tick Size (USD) | tick_size value | Lot Size | lot_size value |
+|------|---------------|----------------|-----------------|-----------------|----------|----------------|
+| NBTC/NUSDC | 8 | 6 | $0.01 | 10000 | 0.0001 BTC | 10000 |
+| NASUN/NUSDC | 9 | 6 | $0.001 | 1000 | 0.01 NASUN | 10000000 |
+
+**Formula**:
+- `tick_size = price_step × 10^quote_decimals`
+- `lot_size = quantity_step × 10^base_decimals`
+
+### Finding DeepBook Function Signatures
+
+If you need to find other function signatures:
+
+```bash
+# Search for public functions in DeepBook package
+nasun client object <DEEPBOOK_PACKAGE> 2>&1 | grep -E "public.*create"
+
+# Or search for specific function
+nasun client object <DEEPBOOK_PACKAGE> 2>&1 | grep -A5 "create_pool"
+```
+
+---
+
 ## Reference: Current Deployed Addresses (2026-01-01)
 
 ### pado_tokens Package
@@ -413,8 +531,23 @@ GlobalState:     0x02bd4975791ee0c2e73aa5f41e596b6a04f7cc5045f3e36a60832dcf8b5ba
 Package:         0xceaeca5c1a5f31e1282c47000b442289b2aa454f007c1e1e316110414e020757
 Registry:        0xf38bd1c809db53656767848a84464ab2a9cdd9283dbb3dd54d82a972c7dab6a4
 AdminCap:        0x1010f2ef902c482ffba7c9848d74b209bfcbbef4003f583f5faaadcf4ca883cb
-AdminCap Owner:  0x374345304db69fedcdff5170cf295c5a2b4c7d4680956032255010cb8a1dfbfb
+AdminCap Owner:  0xb52a12ade45f0c955d92003107592260b7b8e0db3601b9aaae97d726f4ffaff0  (transferred 2026-01-01)
 ```
+
+### Trading Pools
+```
+NBTC/NUSDC:      0xd19dfb9a51424a2193ef4284a1bf67d3c03b5ef3132446016243f9d394ef7180
+NASUN/NUSDC:     0x9022d534d9846cbc32341fe07d4444be142065d0b7b2cc11a16ffe53a2e7d0f2
+```
+
+### Local Keypairs Reference
+
+Use `nasun keytool list` to see all local keypairs. Key addresses:
+
+| Alias | Address | Purpose |
+|-------|---------|---------|
+| beautiful-chrysoberyl | `0xb52a...` | Main wallet (AdminCap owner) |
+| faucet-test | `0x3743...` | Original DeepBook AdminCap owner |
 
 ---
 
