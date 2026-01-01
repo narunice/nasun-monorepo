@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { WalletState, WalletActions, WalletAccount, SecuritySettings } from '../types';
 import { DEFAULT_SECURITY_SETTINGS } from '../types';
@@ -323,19 +324,23 @@ export function useWalletAccount() {
 
 // Convenience function: loading/error state only
 export function useWalletLoading() {
-  return useWallet((state) => ({
-    isLoading: state.isLoading,
-    error: state.error,
-  }));
+  return useWallet(
+    useShallow((state) => ({
+      isLoading: state.isLoading,
+      error: state.error,
+    }))
+  );
 }
 
 // Convenience function: security settings only
 export function useSecuritySettings() {
-  return useWallet((state) => ({
-    security: state.security,
-    updateSecuritySettings: state.updateSecuritySettings,
-    updateLastActivity: state.updateLastActivity,
-  }));
+  return useWallet(
+    useShallow((state) => ({
+      security: state.security,
+      updateSecuritySettings: state.updateSecuritySettings,
+      updateLastActivity: state.updateLastActivity,
+    }))
+  );
 }
 
 // ============================================
