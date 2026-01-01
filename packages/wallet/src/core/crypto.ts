@@ -131,15 +131,21 @@ export async function decryptPrivateKey(
 
   const key = await deriveKey(password, new Uint8Array(salt));
 
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: new Uint8Array(iv) },
-    key,
-    encrypted
-  );
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(iv) },
+      key,
+      encrypted
+    );
 
-  // Convert UTF-8 bytes to Bech32 string
-  const decoder = new TextDecoder();
-  return decoder.decode(decrypted);
+    // Convert UTF-8 bytes to Bech32 string
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  } catch {
+    // crypto.subtle.decrypt throws OperationError on invalid password
+    // Rethrow with a message that keystore.ts can detect
+    throw new Error('Failed to decrypt: invalid password or corrupted data');
+  }
 }
 
 /**
