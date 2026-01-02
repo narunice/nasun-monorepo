@@ -72,7 +72,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
             ? 'bg-green-500/20 text-green-400 cursor-default'
             : error
             ? 'bg-red-500/20 text-red-400 cursor-default'
-            : 'bg-zinc-700 hover:bg-zinc-600 text-white disabled:bg-zinc-800 disabled:text-zinc-500'
+            : 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white disabled:bg-gray-200 dark:disabled:bg-zinc-800 disabled:text-gray-400 dark:disabled:text-zinc-500'
         } ${className}`}
         title={error || (success ? 'Tokens received!' : 'Get test tokens from Faucet')}
       >
@@ -108,7 +108,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
         className={`w-full px-4 py-2 font-medium rounded transition-colors ${
           success
             ? 'bg-green-500/20 text-green-400 cursor-default'
-            : 'bg-zinc-700 hover:bg-zinc-600 text-white disabled:bg-zinc-800 disabled:text-zinc-500'
+            : 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white disabled:bg-gray-200 dark:disabled:bg-zinc-800 disabled:text-gray-400 dark:disabled:text-zinc-500'
         }`}
       >
         {isLoading ? (

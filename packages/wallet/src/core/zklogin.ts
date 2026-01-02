@@ -35,8 +35,8 @@ import { ZkLoginError } from '../types/zklogin';
 // Configuration
 // ============================================
 
-/** Default prover URL (Mysten Labs) */
-const DEFAULT_PROVER_URL = 'https://prover.mystenlabs.com/v1';
+/** Default prover URL (Mysten Labs development prover) */
+const DEFAULT_PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
 
 /** Session storage key for zkLogin session */
 const ZKLOGIN_SESSION_KEY = 'nasun:zklogin:session';
@@ -70,11 +70,13 @@ export function getZkLoginConfig(): ZkLoginConfig | null {
  * Generates ephemeral keypair and nonce for OAuth
  */
 export async function createZkLoginSession(): Promise<ZkLoginSession> {
+  console.log('[zkLogin] Creating session...');
   const client = getSuiClient();
 
   // 1. Get current epoch
   const { epoch } = await client.getLatestSuiSystemState();
   const maxEpoch = Number(epoch) + 10; // Valid for ~10 epochs (~1-2 days)
+  console.log('[zkLogin] Current epoch:', epoch, 'Max epoch:', maxEpoch);
 
   // 2. Generate ephemeral keypair
   const ephemeralKeyPair = new Ed25519Keypair();
@@ -86,6 +88,7 @@ export async function createZkLoginSession(): Promise<ZkLoginSession> {
     maxEpoch,
     randomness
   );
+  console.log('[zkLogin] Nonce generated:', nonce.substring(0, 20) + '...');
 
   // 4. Create session object
   const session: ZkLoginSession = {
@@ -98,6 +101,11 @@ export async function createZkLoginSession(): Promise<ZkLoginSession> {
 
   // 5. Save to sessionStorage (survives OAuth redirect)
   sessionStorage.setItem(ZKLOGIN_SESSION_KEY, JSON.stringify(session));
+  console.log('[zkLogin] Session saved to sessionStorage');
+
+  // Verify it was saved
+  const saved = sessionStorage.getItem(ZKLOGIN_SESSION_KEY);
+  console.log('[zkLogin] Session verification:', saved ? 'OK' : 'FAILED');
 
   return session;
 }
@@ -334,8 +342,14 @@ export function deriveAddress(jwt: string, salt: string): string {
  */
 export function computeAddressSeed(jwt: string, salt: string): string {
   const { payload } = parseJwt(jwt);
+  // Convert salt string to BigInt
+  // Salt can be decimal string (e.g., "123456789") or hex string (e.g., "0xa1b2c3")
+  const isDecimal = /^[0-9]+$/.test(salt);
+  const saltBigInt = isDecimal
+    ? BigInt(salt)
+    : BigInt(salt.startsWith('0x') ? salt : '0x' + salt);
   return genAddressSeed(
-    BigInt(salt),
+    saltBigInt,
     'sub',
     payload.sub,
     payload.aud as string
@@ -444,32 +458,60 @@ export async function startZkLogin(provider: ZkLoginProvider): Promise<void> {
  * Returns the complete zkLogin state
  */
 export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
+  console.log('[zkLogin] completeZkLogin started');
+
   // 1. Get saved session
   const session = getZkLoginSession();
+  console.log('[zkLogin] Session found:', !!session);
   if (!session) {
-    throw new ZkLoginError('SESSION_EXPIRED', 'No zkLogin session found');
+    throw new ZkLoginError('SESSION_EXPIRED', 'No zkLogin session found. Please try logging in again.');
   }
 
   // 2. Validate JWT
-  validateJwt(jwt, session.nonce);
+  console.log('[zkLogin] Validating JWT...');
+  try {
+    validateJwt(jwt, session.nonce);
+    console.log('[zkLogin] JWT validated successfully');
+  } catch (err) {
+    console.error('[zkLogin] JWT validation failed:', err);
+    throw err;
+  }
 
   // 3. Detect provider
   const provider = detectProvider(jwt);
+  console.log('[zkLogin] Provider detected:', provider);
 
   // 4. Fetch salt from backend
-  const saltResponse = await fetchSalt(jwt);
+  console.log('[zkLogin] Fetching salt from:', zkLoginConfig?.saltApiUrl);
+  let saltResponse: SaltResponse;
+  try {
+    saltResponse = await fetchSalt(jwt);
+    console.log('[zkLogin] Salt fetched successfully, address:', saltResponse.address);
+  } catch (err) {
+    console.error('[zkLogin] Salt fetch failed:', err);
+    throw err;
+  }
 
   // 5. Compute address seed
   const addressSeed = computeAddressSeed(jwt, saltResponse.salt);
+  console.log('[zkLogin] Address seed computed');
 
   // 6. Fetch ZK proof
-  const proofResponse = await fetchZkProof({
-    jwt,
-    salt: saltResponse.salt,
-    ephemeralPrivateKey: session.ephemeralPrivateKey,
-    maxEpoch: session.maxEpoch,
-    randomness: session.randomness,
-  });
+  console.log('[zkLogin] Fetching ZK proof from prover...');
+  let proofResponse: ProverResponse;
+  try {
+    proofResponse = await fetchZkProof({
+      jwt,
+      salt: saltResponse.salt,
+      ephemeralPrivateKey: session.ephemeralPrivateKey,
+      maxEpoch: session.maxEpoch,
+      randomness: session.randomness,
+    });
+    console.log('[zkLogin] ZK proof generated successfully');
+  } catch (err) {
+    console.error('[zkLogin] ZK proof generation failed:', err);
+    throw err;
+  }
 
   // 7. Parse JWT for user info
   const { payload } = parseJwt(jwt);
@@ -499,6 +541,7 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
   saveZkLoginState(state);
   clearZkLoginSession();
 
+  console.log('[zkLogin] Login complete! Address:', state.address);
   return state;
 }
 

@@ -32,7 +32,7 @@ module pado::faucet {
     }
 
     /// Create the shared faucet (one-time setup by TreasuryCap owner)
-    public entry fun create_faucet(
+    public fun create_faucet(
         nbtc_cap: TreasuryCap<NBTC>,
         nusdc_cap: TreasuryCap<NUSDC>,
         ctx: &mut TxContext
@@ -46,7 +46,7 @@ module pado::faucet {
     }
 
     /// Create shared claim record for rate limiting
-    public entry fun create_claim_record(ctx: &mut TxContext) {
+    public fun create_claim_record(ctx: &mut TxContext) {
         let record = ClaimRecord {
             id: object::new(ctx),
             last_claims: table::new(ctx),
@@ -59,7 +59,7 @@ module pado::faucet {
     // =========================================
 
     /// Request test tokens with 24-hour cooldown
-    public entry fun request_tokens_with_cooldown(
+    public fun request_tokens_with_cooldown(
         faucet: &mut TokenFaucet,
         record: &mut ClaimRecord,
         clock: &Clock,
@@ -81,7 +81,7 @@ module pado::faucet {
     }
 
     /// Request only NBTC with cooldown
-    public entry fun request_nbtc_with_cooldown(
+    public fun request_nbtc_with_cooldown(
         faucet: &mut TokenFaucet,
         record: &mut ClaimRecord,
         clock: &Clock,
@@ -97,7 +97,7 @@ module pado::faucet {
     }
 
     /// Request only NUSDC with cooldown
-    public entry fun request_nusdc_with_cooldown(
+    public fun request_nusdc_with_cooldown(
         faucet: &mut TokenFaucet,
         record: &mut ClaimRecord,
         clock: &Clock,
@@ -139,7 +139,7 @@ module pado::faucet {
     // =========================================
 
     /// Request test tokens (anyone can call) - LEGACY, no rate limiting
-    public entry fun request_tokens(
+    public fun request_tokens(
         faucet: &mut TokenFaucet,
         ctx: &mut TxContext
     ) {
@@ -155,7 +155,7 @@ module pado::faucet {
     }
 
     /// Request only NBTC - LEGACY, no rate limiting
-    public entry fun request_nbtc(
+    public fun request_nbtc(
         faucet: &mut TokenFaucet,
         ctx: &mut TxContext
     ) {
@@ -165,7 +165,7 @@ module pado::faucet {
     }
 
     /// Request only NUSDC - LEGACY, no rate limiting
-    public entry fun request_nusdc(
+    public fun request_nusdc(
         faucet: &mut TokenFaucet,
         ctx: &mut TxContext
     ) {

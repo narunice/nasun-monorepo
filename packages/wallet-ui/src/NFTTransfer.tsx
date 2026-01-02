@@ -61,13 +61,13 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-white">Transfer Complete</h3>
-            <p className="text-sm text-zinc-400 mt-1">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
               {name} has been sent successfully
             </p>
           </div>
 
-          <div className="w-full bg-zinc-700 rounded p-3">
+          <div className="w-full bg-gray-100 dark:bg-zinc-700 rounded p-3">
             <CopyableAddress
               value={lastResult.digest}
               label="Transaction Digest"
@@ -97,13 +97,13 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
     return (
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-white">Confirm Transfer</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
           <button
             onClick={() => {
               setShowConfirm(false);
               clearError();
             }}
-            className="text-zinc-400 hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -112,26 +112,26 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         </div>
 
         {/* NFT Preview */}
-        <div className="flex items-center gap-3 bg-zinc-800 rounded-lg p-3 mb-4">
-          <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-700 flex-shrink-0">
+        <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 mb-4">
+          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0">
             {imageUrl ? (
               <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-gray-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">{name}</p>
-            <p className="text-xs text-zinc-400 font-mono">{shortenAddress(nft.objectId, 6)}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{name}</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-400 font-mono">{shortenAddress(nft.objectId, 6)}</p>
           </div>
         </div>
 
         {/* Recipient */}
-        <div className="bg-zinc-800 rounded-lg p-3 mb-4">
+        <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 mb-4">
           <CopyableAddress
             value={recipient}
             label="Sending to"
@@ -144,9 +144,9 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         </div>
 
         {/* Gas Fee */}
-        <div className="bg-zinc-700/50 rounded-lg p-3 mb-4 border border-zinc-600">
-          <p className="text-xs text-zinc-400">Estimated Gas Fee</p>
-          <p className="text-sm text-white mt-1">
+        <div className="bg-gray-100 dark:bg-zinc-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-zinc-600">
+          <p className="text-xs text-gray-500 dark:text-zinc-400">Estimated Gas Fee</p>
+          <p className="text-sm text-gray-900 dark:text-white mt-1">
             ≈ 0.003 <span className="text-blue-400">NASUN</span>
           </p>
         </div>
@@ -166,7 +166,7 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
               clearError();
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white rounded transition-colors"
+            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 disabled:bg-gray-200 dark:disabled:bg-zinc-800 text-gray-900 dark:text-white rounded transition-colors"
           >
             Cancel
           </button>
@@ -186,10 +186,10 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-white">Transfer NFT</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer NFT</h3>
         <button
           onClick={onClose}
-          className="text-zinc-400 hover:text-white transition-colors"
+          className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -198,36 +198,36 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
       </div>
 
       {/* NFT Preview */}
-      <div className="flex items-center gap-3 bg-zinc-800 rounded-lg p-3 mb-4">
-        <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-700 flex-shrink-0">
+      <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 mb-4">
+        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0">
           {imageUrl ? (
             <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-gray-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-white truncate">{name}</p>
-          <p className="text-xs text-zinc-400 font-mono">{shortenAddress(nft.objectId, 6)}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{name}</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-mono">{shortenAddress(nft.objectId, 6)}</p>
         </div>
       </div>
 
       {/* Recipient Address */}
       <div className="mb-4">
-        <label className="block text-sm text-zinc-400 mb-1">Recipient Address</label>
+        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
         <input
           type="text"
           placeholder="0x..."
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          className={`w-full px-3 py-2 bg-zinc-700 border rounded text-white text-sm font-mono focus:outline-none transition-colors ${
+          className={`w-full px-3 py-2 bg-gray-50 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm font-mono focus:outline-none transition-colors ${
             !isValidRecipient
               ? 'border-red-500 focus:border-red-500'
-              : 'border-zinc-600 focus:ring-2 focus:ring-blue-500'
+              : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
           }`}
         />
         {!isValidRecipient && (
