@@ -58,7 +58,7 @@ const ACTIONS: ActionItem[] = [
   {
     id: 'earn',
     label: 'Earn',
-    description: 'Coming Soon',
+    description: 'Stake & Lend',
     path: '/earn',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +66,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'yellow',
-    enabled: false,
+    enabled: true,
   },
 ];
 
