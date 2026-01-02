@@ -9,7 +9,7 @@ export function WelcomeBanner() {
   return (
     <div className="relative rounded-xl p-6">
       {/* Background gradient - Light: bright & soft, Dark: deep & muted */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pado-4 to-pado-5 opacity-40 dark:from-pado-1 dark:to-pado-2 dark:opacity-20" />
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pado-4 to-pado-5 opacity-40 dark:from-pado-1 dark:to-pado-2 dark:opacity-10" />
 
       {/* Subtle accent overlay for depth */}
       <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-transparent via-transparent to-pado-1/10 dark:to-pado-3/10" />
