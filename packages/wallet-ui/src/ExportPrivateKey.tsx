@@ -68,18 +68,18 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
         </h3>
 
         {/* Warning messages */}
-        <div className="bg-red-900/30 border border-red-500/50 rounded p-3 mb-4">
-          <ul className="text-xs text-red-400 space-y-1">
+        <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-500/50 rounded p-3 mb-4">
+          <ul className="text-xs text-red-700 dark:text-red-400 space-y-1">
             <li className="flex items-start gap-2">
-              <span className="text-red-500 mt-0.5">!</span>
+              <span className="text-red-600 dark:text-red-500 mt-0.5">!</span>
               <span>Anyone with this key can access your funds</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-red-500 mt-0.5">!</span>
+              <span className="text-red-600 dark:text-red-500 mt-0.5">!</span>
               <span>Never share this key with anyone</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-red-500 mt-0.5">!</span>
+              <span className="text-red-600 dark:text-red-500 mt-0.5">!</span>
               <span>Store it in a secure location</span>
             </li>
           </ul>
