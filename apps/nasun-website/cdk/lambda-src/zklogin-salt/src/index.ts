@@ -135,8 +135,8 @@ function generateSalt(): string {
  * Uses the actual zkLogin address derivation from @mysten/sui
  */
 function deriveSuiAddress(jwt: string, salt: string): string {
-  // jwtToAddress expects salt as hex string without 0x prefix
-  return jwtToAddress(jwt, salt);
+  // jwtToAddress handles BigInt correctly, preventing ambiguity with string types
+  return jwtToAddress(jwt, BigInt(salt));
 }
 
 /**

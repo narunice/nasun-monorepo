@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { requestFaucet } from '../../../lib/sui-client';
 import { useTrading } from '../useTrading';
 import { useToast } from '../../../components/common';
-import { useWalletAccount } from '@nasun/wallet';
+import { useWalletAccount, useZkLogin } from '@nasun/wallet';
 
 // Must match the query key in @nasun/wallet useMultiBalance
 const MULTI_BALANCE_QUERY_KEY = 'wallet-multi-balance';
@@ -23,7 +23,10 @@ export interface UseFaucetResult {
 }
 
 export function useFaucet(): UseFaucetResult {
-  const account = useWalletAccount();
+  const walletAccount = useWalletAccount();
+  const { state: zkState } = useZkLogin();
+  // Use wallet address or zkLogin address
+  const address = walletAccount?.address || zkState?.address;
   const { showToast } = useToast();
   const { requestNbtc, requestNusdc, isLoading: isTradeLoading } = useTrading();
   const queryClient = useQueryClient();
@@ -34,11 +37,11 @@ export function useFaucet(): UseFaucetResult {
 
   // NASUN Faucet 요청
   const handleNasunFaucet = useCallback(async () => {
-    if (!account?.address) return;
+    if (!address) return;
 
     setIsNasunLoading(true);
     try {
-      const success = await requestFaucet(account.address);
+      const success = await requestFaucet(address);
       if (success) {
         showToast('NASUN received!', 'success');
         // 잔고 갱신 (2초 후)
@@ -56,7 +59,7 @@ export function useFaucet(): UseFaucetResult {
     } finally {
       setIsNasunLoading(false);
     }
-  }, [account?.address, showToast, queryClient]);
+  }, [address, showToast, queryClient]);
 
   // NBTC Faucet 요청
   const handleNbtcFaucet = useCallback(async () => {

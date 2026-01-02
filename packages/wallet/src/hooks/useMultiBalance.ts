@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAllBalances } from '../sui/client';
 import type { MultiTokenBalanceInfo, TokenBalance } from '../types';
 import { useWallet } from './useWallet';
+import { useZkLoginStore } from '../stores/zkLoginStore';
 
 // Query key
 const MULTI_BALANCE_QUERY_KEY = 'wallet-multi-balance';
@@ -26,12 +27,13 @@ export interface UseMultiBalanceOptions {
  */
 export function useMultiBalance(options?: UseMultiBalanceOptions) {
   const { account, status } = useWallet();
+  const { state: zkState, isConnected: isZkLoggedIn } = useZkLoginStore();
 
-  // Determine target address
-  const targetAddress = options?.address ?? account?.address;
+  // Determine target address (local wallet or zkLogin)
+  const targetAddress = options?.address ?? account?.address ?? zkState?.address;
 
-  // Only query when wallet is connected and address exists
-  const isEnabled = options?.enabled !== false && !!targetAddress && status === 'unlocked';
+  // Only query when wallet is connected (local or zkLogin) and address exists
+  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn);
 
   return useQuery<MultiTokenBalanceInfo>({
     queryKey: [MULTI_BALANCE_QUERY_KEY, targetAddress],
@@ -81,11 +83,15 @@ export function useNativeBalance(address?: string): TokenBalance | undefined {
 export function useRefreshMultiBalance() {
   const queryClient = useQueryClient();
   const { account } = useWallet();
+  const { state: zkState } = useZkLoginStore();
+
+  // Use wallet address or zkLogin address
+  const address = account?.address ?? zkState?.address;
 
   return async () => {
-    if (account?.address) {
+    if (address) {
       await queryClient.invalidateQueries({
-        queryKey: [MULTI_BALANCE_QUERY_KEY, account.address],
+        queryKey: [MULTI_BALANCE_QUERY_KEY, address],
       });
     }
   };

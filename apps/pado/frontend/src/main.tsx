@@ -50,6 +50,7 @@ configureWallet({
 // Enables seedless onboarding via Google OAuth
 console.log('🔐 zkLogin Config:', {
   saltApiUrl: NETWORK_CONFIG.zkLoginSaltApiUrl || '(empty)',
+  proverUrl: NETWORK_CONFIG.zkLoginProverUrl || '(default: Mysten Labs)',
   googleClientId: NETWORK_CONFIG.googleClientId || '(empty)',
 });
 
@@ -57,6 +58,8 @@ if (NETWORK_CONFIG.zkLoginSaltApiUrl && NETWORK_CONFIG.googleClientId) {
   console.log('✅ Initializing zkLogin...');
   initZkLogin({
     saltApiUrl: NETWORK_CONFIG.zkLoginSaltApiUrl,
+    // Custom prover URL (if not set, defaults to Mysten Labs prover)
+    ...(NETWORK_CONFIG.zkLoginProverUrl && { proverUrl: NETWORK_CONFIG.zkLoginProverUrl }),
     providers: {
       google: {
         provider: 'google',

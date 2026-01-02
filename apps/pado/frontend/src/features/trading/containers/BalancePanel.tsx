@@ -3,12 +3,13 @@
  * 상단 잔고 표시 (NASUN, NBTC, NUSDC, Mid Price)
  */
 
-import { useWallet, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useMultiBalance, useZkLogin } from '@nasun/wallet';
 import { useOrderbook, useFaucet } from '../hooks';
 import { TOKENS } from '../../../config/network';
 
 export function BalancePanel() {
   const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
   const { data: multiBalance } = useMultiBalance();
   const { data: orderbookData } = useOrderbook();
 
@@ -20,7 +21,7 @@ export function BalancePanel() {
   } : undefined;
   const { isNasunLoading, isNbtcLoading, isNusdcLoading, handleNasunFaucet, handleNbtcFaucet, handleNusdcFaucet } = useFaucet();
 
-  const isConnected = status === 'unlocked' && account;
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
   const midPrice = orderbookData?.midPrice ?? 0;
 
   if (!isConnected) {
