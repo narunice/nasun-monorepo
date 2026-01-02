@@ -25,6 +25,7 @@ export const NETWORK_CONFIG = {
 
   // zkLogin Configuration
   zkLoginSaltApiUrl: import.meta.env.VITE_ZKLOGIN_SALT_API_URL || '',
+  zkLoginProverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL || '',  // Optional: custom prover URL (defaults to Mysten Labs)
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
 } as const;
 

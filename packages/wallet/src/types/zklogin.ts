@@ -67,6 +67,8 @@ export interface ZkLoginState {
   address: string;
   /** Serialized ephemeral keypair (base64) */
   ephemeralPrivateKey: string;
+  /** Ephemeral public key (base64) - used for validation */
+  ephemeralPublicKey?: string;
   /** Maximum epoch until session expires */
   maxEpoch: number;
   /** Randomness used in nonce generation */

@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { useWallet } from './useWallet';
+import { useZkLogin } from './useZkLogin';
 import { useRefreshMultiBalance } from './useMultiBalance';
 import { getSuiClient, isValidAddress } from '../sui/client';
 import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
@@ -39,7 +40,12 @@ function parseTokenAmount(amount: string, decimals: number): bigint {
 
 export function useTokenTransaction(): UseTokenTransactionReturn {
   const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const refreshMultiBalance = useRefreshMultiBalance();
+
+  // Determine if connected via traditional wallet or zkLogin
+  const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const connectedAddress = account?.address || zkState?.address;
 
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +53,9 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
 
   const sendTokenTransaction = useCallback(
     async (request: TokenTransactionRequest): Promise<TransactionResult> => {
-      // Validate wallet state
-      if (status !== 'unlocked' || !account) {
-        const err = 'Wallet is not unlocked';
+      // Validate wallet state (traditional wallet OR zkLogin)
+      if (!isWalletConnected || !connectedAddress) {
+        const err = 'Wallet is not connected';
         setError(err);
         throw new Error(err);
       }
@@ -77,9 +83,9 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         throw new Error(err);
       }
 
-      // Get keypair
-      const keypair = getKeypair();
-      if (!keypair) {
+      // For traditional wallet, get keypair
+      const keypair = !isZkLoggedIn ? getKeypair() : null;
+      if (!isZkLoggedIn && !keypair) {
         const err = 'Keypair not available';
         setError(err);
         throw new Error(err);
@@ -99,7 +105,7 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         } else {
           // For other tokens, we need to get coins of that type
           const coins = await suiClient.getCoins({
-            owner: account.address,
+            owner: connectedAddress,
             coinType: request.tokenType,
           });
 
@@ -137,13 +143,58 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         }
 
         // Sign and execute transaction
-        const result = await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: tx,
-          options: {
-            showEffects: true,
-          },
-        });
+        let result;
+        if (isZkLoggedIn && zkSignTransaction) {
+          // zkLogin signing flow
+          tx.setSender(connectedAddress);
+
+          // === Debug logs for zkLogin (Gemini's suggestion) ===
+          console.log('[useTokenTransaction] === zkLogin Debug ===');
+          console.log('1. Transaction Sender:', connectedAddress);
+          console.log('2. zkState.address:', zkState?.address);
+          console.log('3. zkState.salt:', zkState?.salt?.substring(0, 20) + '...');
+          console.log('4. zkState.maxEpoch:', zkState?.maxEpoch);
+          console.log('5. zkState.ephemeralPublicKey:', zkState?.ephemeralPublicKey);
+          console.log('6. zkState.addressSeed (first 30):', zkState?.addressSeed?.substring(0, 30));
+          console.log('7. Address match check:', connectedAddress === zkState?.address);
+          // ===================================================
+
+          const txBytes = await tx.build({ client: suiClient });
+          console.log('[useTokenTransaction] Transaction built, bytes length:', txBytes.length);
+
+          const signature = await zkSignTransaction(txBytes);
+          console.log('[useTokenTransaction] Signature received, length:', signature.length);
+          console.log('[useTokenTransaction] Signature (first 100):', signature.substring(0, 100));
+
+          console.log('[useTokenTransaction] Calling executeTransactionBlock...');
+          try {
+            result = await suiClient.executeTransactionBlock({
+              transactionBlock: txBytes,
+              signature,
+              options: {
+                showEffects: true,
+              },
+            });
+            console.log('[useTokenTransaction] executeTransactionBlock completed:', result.digest);
+          } catch (execError) {
+            console.error('[useTokenTransaction] executeTransactionBlock FAILED:');
+            console.error('  Error type:', execError?.constructor?.name);
+            console.error('  Error message:', execError instanceof Error ? execError.message : String(execError));
+            console.error('  Full error:', execError);
+            throw execError;
+          }
+        } else if (keypair) {
+          // Traditional wallet signing
+          result = await suiClient.signAndExecuteTransaction({
+            signer: keypair,
+            transaction: tx,
+            options: {
+              showEffects: true,
+            },
+          });
+        } else {
+          throw new Error('No signing method available');
+        }
 
         // Parse result
         const txResult: TransactionResult = {
@@ -183,7 +234,7 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         throw err;
       }
     },
-    [status, account, getKeypair, refreshMultiBalance]
+    [isWalletConnected, connectedAddress, isZkLoggedIn, zkSignTransaction, getKeypair, refreshMultiBalance]
   );
 
   const clearError = useCallback(() => {

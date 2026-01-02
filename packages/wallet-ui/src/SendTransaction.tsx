@@ -8,6 +8,7 @@ import {
   useTokenTransaction,
   useMultiBalance,
   useWallet,
+  useZkLogin,
   isValidAddress,
   getAllTokens,
   getTokenByType,
@@ -30,6 +31,7 @@ const MIN_GAS_BALANCE = 0.01;
 
 export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: SendTransactionProps) {
   const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { data: balances } = useMultiBalance();
   const { sendTokenTransaction, isPending, error, lastResult, clearError, clearResult } =
     useTokenTransaction();
@@ -63,8 +65,12 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   // Check if we have enough gas for non-native token transfers
   const hasEnoughGas = selectedToken === 'NASUN' || getNativeBalance() >= MIN_GAS_BALANCE;
 
+  // Check if connected via traditional wallet OR zkLogin
+  const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const connectedAddress = account?.address || zkState?.address;
+
   // Wallet not connected
-  if (status !== 'unlocked' || !account) {
+  if (!isWalletConnected || !connectedAddress) {
     return (
       <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">Please connect your wallet first.</p>

@@ -5,7 +5,7 @@
  * Pro mode: Full OrderForm + BalanceManager + Open Orders
  */
 
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm } from '../context';
 import {
@@ -24,7 +24,8 @@ interface TradingPanelProps {
 export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const isSimple = mode === 'simple';
   const { status, account } = useWallet();
-  const isConnected = status === 'unlocked' && account;
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
 
   // 오더북 데이터 (가격 정보)
   const { data: orderbookData } = useOrderbook();

@@ -11,6 +11,7 @@
  */
 
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import {
   generateNonce,
   generateRandomness,
@@ -195,6 +196,7 @@ function buildGoogleOAuthUrl(clientId: string, redirectUri: string, nonce: strin
     response_type: 'id_token',
     scope: 'openid email profile',
     nonce: nonce,
+    prompt: 'select_account', // Always show account selection screen
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
@@ -361,6 +363,14 @@ export function computeAddressSeed(jwt: string, salt: string): string {
 // ============================================
 
 /**
+ * Extended prover response with ephemeral public key
+ */
+export interface FetchZkProofResult {
+  proof: ProverResponse;
+  ephemeralPublicKey: string; // base64 encoded
+}
+
+/**
  * Fetch ZK proof from prover service (Step 4b)
  */
 export async function fetchZkProof(params: {
@@ -369,15 +379,21 @@ export async function fetchZkProof(params: {
   ephemeralPrivateKey: string;
   maxEpoch: number;
   randomness: string;
-}): Promise<ProverResponse> {
+}): Promise<FetchZkProofResult> {
   const proverUrl = zkLoginConfig?.proverUrl || DEFAULT_PROVER_URL;
 
-  // Reconstruct keypair from private key
-  const keypair = Ed25519Keypair.fromSecretKey(params.ephemeralPrivateKey);
+  // Reconstruct keypair from private key (decode bech32 format)
+  const { secretKey } = decodeSuiPrivateKey(params.ephemeralPrivateKey);
+  const keypair = Ed25519Keypair.fromSecretKey(secretKey);
   const publicKey = keypair.getPublicKey();
+  const publicKeyBase64 = publicKey.toBase64();
+
+  // Log public key for debugging (to compare with signing phase)
+  console.log('[zkLogin] fetchZkProof - publicKey (base64):', publicKeyBase64);
 
   // Get extended ephemeral public key
   const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(publicKey);
+  console.log('[zkLogin] fetchZkProof - extendedEphemeralPublicKey:', extendedEphemeralPublicKey.toString().substring(0, 50) + '...');
 
   const response = await fetch(proverUrl, {
     method: 'POST',
@@ -397,7 +413,8 @@ export async function fetchZkProof(params: {
     throw new ZkLoginError('PROVER_FAILED', `Prover error: ${error}`);
   }
 
-  return response.json();
+  const proof = await response.json() as ProverResponse;
+  return { proof, ephemeralPublicKey: publicKeyBase64 };
 }
 
 // ============================================
@@ -416,21 +433,86 @@ export async function signWithZkLogin(params: {
 }): Promise<string> {
   const { txBytes, ephemeralPrivateKey, proof, maxEpoch, addressSeed } = params;
 
-  // Reconstruct keypair
-  const keypair = Ed25519Keypair.fromSecretKey(ephemeralPrivateKey);
+  // Debug: log parameters
+  console.log('[zkLogin] signWithZkLogin called');
+  console.log('[zkLogin] ephemeralPrivateKey prefix:', ephemeralPrivateKey.substring(0, 20));
+  console.log('[zkLogin] maxEpoch:', maxEpoch);
+  console.log('[zkLogin] addressSeed length:', addressSeed.length);
 
-  // Sign with ephemeral key (sync method)
+  // Verify epoch is still valid
+  try {
+    const client = getSuiClient();
+    const { epoch } = await client.getLatestSuiSystemState();
+    const currentEpoch = Number(epoch);
+    console.log('[zkLogin] Current epoch:', currentEpoch, 'Max epoch:', maxEpoch);
+    if (currentEpoch >= maxEpoch) {
+      throw new ZkLoginError('SESSION_EXPIRED', `zkLogin session expired. Current epoch ${currentEpoch} >= max epoch ${maxEpoch}`);
+    }
+  } catch (err) {
+    if (err instanceof ZkLoginError) throw err;
+    console.warn('[zkLogin] Could not verify epoch, proceeding anyway');
+  }
+
+  // Reconstruct keypair (decode bech32 format)
+  const { secretKey } = decodeSuiPrivateKey(ephemeralPrivateKey);
+  console.log('[zkLogin] secretKey decoded, length:', secretKey.length);
+  const keypair = Ed25519Keypair.fromSecretKey(secretKey);
+  const publicKeyBase64 = keypair.getPublicKey().toBase64();
+  console.log('[zkLogin] keypair reconstructed, pubkey (full):', publicKeyBase64);
+
+  // Get extended ephemeral public key (same as used in proof generation)
+  const extendedPubKey = getExtendedEphemeralPublicKey(keypair.getPublicKey());
+  console.log('[zkLogin] extendedEphemeralPublicKey:', extendedPubKey.toString().substring(0, 50) + '...');
+
+  // Validate proof structure
+  console.log('[zkLogin] Proof validation:', {
+    hasProofPoints: !!proof.proofPoints,
+    hasIssBase64Details: !!proof.issBase64Details,
+    hasHeaderBase64: !!proof.headerBase64,
+    proofPointsA: proof.proofPoints?.a?.length,
+    proofPointsB: proof.proofPoints?.b?.length,
+    proofPointsC: proof.proofPoints?.c?.length,
+  });
+
+  // Decode headerBase64 to check JWT kid
+  try {
+    const headerJson = atob(proof.headerBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    const header = JSON.parse(headerJson);
+    console.log('[zkLogin] JWT kid from proof:', header.kid);
+    console.log('[zkLogin] JWT alg from proof:', header.alg);
+  } catch (e) {
+    console.warn('[zkLogin] Could not decode headerBase64:', e);
+  }
+
+  // Sign with ephemeral key
   const userSignature = await keypair.sign(txBytes);
+  console.log('[zkLogin] userSignature created, length:', userSignature.length);
 
   // Generate zkLogin signature
+  console.log('[zkLogin] Generating zkLogin signature with:');
+  console.log('[zkLogin]   maxEpoch:', maxEpoch);
+  console.log('[zkLogin]   addressSeed (full):', addressSeed);
+  console.log('[zkLogin]   proof.proofPoints.a:', JSON.stringify(proof.proofPoints.a));
+  console.log('[zkLogin]   proof.proofPoints.b:', JSON.stringify(proof.proofPoints.b));
+  console.log('[zkLogin]   proof.proofPoints.c:', JSON.stringify(proof.proofPoints.c));
+  console.log('[zkLogin]   proof.issBase64Details:', JSON.stringify(proof.issBase64Details));
+  console.log('[zkLogin]   proof.headerBase64:', proof.headerBase64);
+  console.log('[zkLogin]   userSignature length:', userSignature.length);
+
+  const inputs = {
+    ...proof,
+    addressSeed,
+  };
+  console.log('[zkLogin] Full inputs object keys:', Object.keys(inputs));
+
   const zkLoginSignature = getZkLoginSignature({
-    inputs: {
-      ...proof,
-      addressSeed,
-    },
+    inputs,
     maxEpoch,
     userSignature,
   });
+
+  console.log('[zkLogin] zkLoginSignature generated, length:', zkLoginSignature.length);
+  console.log('[zkLogin] zkLoginSignature (first 100):', zkLoginSignature.substring(0, 100));
 
   return zkLoginSignature;
 }
@@ -486,21 +568,44 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
   let saltResponse: SaltResponse;
   try {
     saltResponse = await fetchSalt(jwt);
-    console.log('[zkLogin] Salt fetched successfully, address:', saltResponse.address);
+    console.log('[zkLogin] Salt fetched successfully');
+    console.log('[zkLogin] Salt API response:', {
+      salt: saltResponse.salt,
+      saltLength: saltResponse.salt.length,
+      address: saltResponse.address,
+    });
   } catch (err) {
     console.error('[zkLogin] Salt fetch failed:', err);
     throw err;
   }
 
-  // 5. Compute address seed
-  const addressSeed = computeAddressSeed(jwt, saltResponse.salt);
-  console.log('[zkLogin] Address seed computed');
+  // Verify address derivation matches Salt API
+  const { payload: jwtPayload } = parseJwt(jwt);
+  console.log('[zkLogin] JWT payload for address derivation:', {
+    sub: jwtPayload.sub,
+    aud: jwtPayload.aud,
+    audType: typeof jwtPayload.aud,
+    audIsArray: Array.isArray(jwtPayload.aud),
+  });
+
+  // Verify address using jwtToAddress
+  const derivedAddress = deriveAddress(jwt, saltResponse.salt);
+  console.log('[zkLogin] Address comparison:');
+  console.log('  - Salt API address:', saltResponse.address);
+  console.log('  - jwtToAddress:', derivedAddress);
+  console.log('  - Match:', derivedAddress === saltResponse.address);
+
+  // Compute address seed locally for comparison (debugging)
+  const localAddressSeed = computeAddressSeed(jwt, saltResponse.salt);
+  console.log('[zkLogin] Local addressSeed computed:', localAddressSeed.substring(0, 30) + '...');
+  console.log('[zkLogin] Full localAddressSeed:', localAddressSeed);
 
   // 6. Fetch ZK proof
   console.log('[zkLogin] Fetching ZK proof from prover...');
-  let proofResponse: ProverResponse;
+  let proofResult: FetchZkProofResult;
+  let proverSeed: string | undefined;
   try {
-    proofResponse = await fetchZkProof({
+    proofResult = await fetchZkProof({
       jwt,
       salt: saltResponse.salt,
       ephemeralPrivateKey: session.ephemeralPrivateKey,
@@ -508,13 +613,42 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
       randomness: session.randomness,
     });
     console.log('[zkLogin] ZK proof generated successfully');
+    console.log('[zkLogin] Ephemeral public key (saved for validation):', proofResult.ephemeralPublicKey);
+
+    // Check if prover returned addressSeed (not all provers do)
+    proverSeed = proofResult.proof.addressSeed;
+    if (proverSeed) {
+      console.log('[zkLogin] Address seed from prover:', proverSeed.substring(0, 30) + '...');
+      // Compare local vs prover addressSeed
+      if (localAddressSeed !== proverSeed) {
+        console.warn('[zkLogin] ⚠️ ADDRESS SEED MISMATCH!');
+        console.warn('[zkLogin] Local:', localAddressSeed);
+        console.warn('[zkLogin] Prover:', proverSeed);
+        console.warn('[zkLogin] Using prover addressSeed (this was likely causing errors before)');
+      } else {
+        console.log('[zkLogin] ✓ Address seeds match');
+      }
+    } else {
+      console.log('[zkLogin] Prover did not return addressSeed, using locally computed value');
+      console.log('[zkLogin] Local addressSeed:', localAddressSeed.substring(0, 30) + '...');
+    }
   } catch (err) {
     console.error('[zkLogin] ZK proof generation failed:', err);
     throw err;
   }
 
-  // 7. Parse JWT for user info
-  const { payload } = parseJwt(jwt);
+  // 7. Parse JWT for user info and log key id
+  const { header, payload } = parseJwt(jwt);
+  console.log('[zkLogin] JWT header kid:', header.kid);
+  console.log('[zkLogin] JWT header alg:', header.alg);
+  console.log('[zkLogin] Expected: Google JWK kids on Nasun Devnet:');
+  console.log('  - 496d008e8c7be1cae4209e0d5c21b050a61e960f');
+  console.log('  - 4ba6efef5e172149971a2d3abb5f332e0f787165');
+
+  // Determine which addressSeed to use
+  // Prefer prover's addressSeed if available, fall back to locally computed
+  const finalAddressSeed = proverSeed || localAddressSeed;
+  console.log('[zkLogin] Using addressSeed:', finalAddressSeed.substring(0, 30) + '...');
 
   // 8. Build complete state
   const state: ZkLoginState = {
@@ -523,14 +657,15 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
     salt: saltResponse.salt,
     address: saltResponse.address,
     ephemeralPrivateKey: session.ephemeralPrivateKey,
+    ephemeralPublicKey: proofResult.ephemeralPublicKey, // Save for validation during signing
     maxEpoch: session.maxEpoch,
     randomness: session.randomness,
     proof: {
-      proofPoints: proofResponse.proofPoints,
-      issBase64Details: proofResponse.issBase64Details,
-      headerBase64: proofResponse.headerBase64,
+      proofPoints: proofResult.proof.proofPoints,
+      issBase64Details: proofResult.proof.issBase64Details,
+      headerBase64: proofResult.proof.headerBase64,
     },
-    addressSeed,
+    addressSeed: finalAddressSeed, // Use prover's addressSeed if available, else local
     expiresAt: session.maxEpoch * 24 * 60 * 60 * 1000, // Rough estimate
     email: payload.email || saltResponse.email,
     name: payload.name || saltResponse.name,

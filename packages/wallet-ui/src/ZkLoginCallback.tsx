@@ -91,12 +91,12 @@ export function ZkLoginCallback({
       setError(message);
       onError?.(err instanceof Error ? err : new Error(message));
     } finally {
-      setIsProcessing(false);
+      isProcessingRef.current = false;
     }
   };
 
   useEffect(() => {
-    if (isCallback && jwt && !isProcessing) {
+    if (isCallback && jwt && !isProcessingRef.current) {
       processCallback();
     } else if (isCallback && callbackError) {
       setStep('error');
@@ -106,8 +106,9 @@ export function ZkLoginCallback({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCallback, jwt, callbackError]);
 
-  // Not a callback URL
-  if (!isCallback) {
+  // Not a callback URL (skip if already processing or completed)
+  // After successful login, state.proof is set and isCallback becomes false
+  if (!isCallback && !isProcessingRef.current && step === 'verifying') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px] p-6">
         <p className="text-gray-500 dark:text-gray-400">

@@ -150,10 +150,14 @@ export function isValidAddress(address: string): boolean {
 
 /**
  * Shorten address for display
+ * @param address - The address to shorten
+ * @param startChars - Number of characters after 0x prefix (default: 6)
+ * @param endChars - Number of characters at the end (default: same as startChars)
  */
-export function shortenAddress(address: string, chars = 6): string {
+export function shortenAddress(address: string, startChars = 6, endChars?: number): string {
   if (!address) return '';
-  return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
+  const end = endChars ?? startChars;
+  return `${address.slice(0, startChars + 2)}...${address.slice(-end)}`;
 }
 
 // ============================================
