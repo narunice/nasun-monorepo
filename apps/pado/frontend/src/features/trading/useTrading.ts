@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '../../lib/sui-client';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import {
   buildPlaceLimitOrder,
   buildPlaceMarketOrder,
@@ -176,8 +176,16 @@ function parseExecutionInfo(
 }
 
 export function useTrading(): UseTrading {
-  const { account, getKeypair } = useWallet();
+  const { account, getKeypair, status } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const { currentPool } = useMarket();
+
+  // Determine address based on connection type
+  // IMPORTANT: If zkLogin is active, use zkLogin address (not local wallet)
+  // If local wallet is unlocked, use local wallet address
+  const isLocalWalletActive = status === 'unlocked' && account?.address;
+  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [balanceManagerId, setBalanceManagerId] = useState<string | null>(
@@ -205,8 +213,15 @@ export function useTrading(): UseTrading {
    */
   const executeTransaction = useCallback(async (tx: Transaction): Promise<TradeResult> => {
     const keypair = getKeypair();
-    if (!keypair || !account) {
+
+    // Check if we have a valid wallet connection (local wallet or zkLogin)
+    // For zkLogin: walletAddress is zkState.address, keypair is null
+    // For local wallet: walletAddress is account.address, keypair exists
+    if (!walletAddress) {
       return { success: false, error: 'Wallet not connected' };
+    }
+    if (!isZkLoggedIn && !keypair) {
+      return { success: false, error: 'No signing method available' };
     }
 
     const client = getSuiClient();
@@ -216,16 +231,66 @@ export function useTrading(): UseTrading {
       setError(null);
 
       // Set sender
-      tx.setSender(account.address);
+      console.log('[useTrading] Setting sender:', walletAddress);
+      console.log('[useTrading] zkState address:', zkState?.address);
+      tx.setSender(walletAddress);
 
-      // Build and sign
+      // Build transaction
       const bytes = await tx.build({ client });
-      const signature = await keypair.signTransaction(bytes);
+      console.log('[useTrading] Transaction built, bytes length:', bytes.length);
 
-      // Execute
+      // Sign with appropriate method
+      let signature: string;
+      if (isZkLoggedIn && zkState) {
+        // zkLogin signing
+        console.log('[useTrading] Using zkLogin signing');
+        signature = await zkSignTransaction(bytes);
+        console.log('[useTrading] zkLogin signature received, length:', signature.length);
+      } else if (keypair) {
+        // Local wallet signing
+        const signResult = await keypair.signTransaction(bytes);
+        signature = signResult.signature;
+      } else {
+        return { success: false, error: 'No signing method available' };
+      }
+
+      // Dry run first to check for errors
+      console.log('[useTrading] Dry running transaction...');
+      try {
+        const dryRunResult = await client.dryRunTransactionBlock({
+          transactionBlock: bytes,
+        });
+        console.log('[useTrading] Dry run result:', {
+          status: dryRunResult.effects?.status,
+          gasUsed: dryRunResult.effects?.gasUsed,
+        });
+        if (dryRunResult.effects?.status.status !== 'success') {
+          console.error('[useTrading] Dry run failed with status:', dryRunResult.effects?.status);
+        }
+      } catch (dryRunErr) {
+        console.error('[useTrading] Dry run failed:', dryRunErr);
+      }
+
+      // Log signature details for debugging
+      console.log('[useTrading] Executing transaction with signature...');
+      console.log('[useTrading] Signature length:', signature.length);
+      console.log('[useTrading] Signature (first 100 chars):', signature.substring(0, 100));
+
+      // For zkLogin, decode signature to verify structure
+      if (isZkLoggedIn) {
+        try {
+          // zkLogin signature is base64 encoded
+          const sigDecoded = atob(signature);
+          console.log('[useTrading] zkLogin signature decoded length:', sigDecoded.length);
+          // First byte indicates signature scheme (5 = zkLogin)
+          console.log('[useTrading] Signature scheme byte:', sigDecoded.charCodeAt(0));
+        } catch (decodeErr) {
+          console.warn('[useTrading] Could not decode signature:', decodeErr);
+        }
+      }
       const result = await client.executeTransactionBlock({
         transactionBlock: bytes,
-        signature: signature.signature,
+        signature: signature,
         options: {
           showEffects: true,
           showEvents: true,
@@ -247,13 +312,50 @@ export function useTrading(): UseTrading {
         };
       }
     } catch (err) {
+      // Log full error for debugging
+      console.error('[useTrading] Transaction execution error:', err);
+      if (err instanceof Error) {
+        console.error('[useTrading] Error name:', err.name);
+        console.error('[useTrading] Error message:', err.message);
+        console.error('[useTrading] Error stack:', err.stack);
+      }
+      // Check if it's an RPC error with more details
+      if (typeof err === 'object' && err !== null) {
+        const errObj = err as any;
+        if ('cause' in errObj) {
+          console.error('[useTrading] Error cause:', errObj.cause);
+        }
+        if ('data' in errObj) {
+          console.error('[useTrading] Error data:', errObj.data);
+        }
+        if ('code' in errObj) {
+          console.error('[useTrading] Error code:', errObj.code);
+        }
+        // Sui RPC errors often have nested message
+        if (errObj.message && typeof errObj.message === 'string') {
+          // Check for JSON in error message
+          try {
+            if (errObj.message.includes('{')) {
+              const jsonStart = errObj.message.indexOf('{');
+              const jsonEnd = errObj.message.lastIndexOf('}');
+              if (jsonStart !== -1 && jsonEnd !== -1) {
+                const jsonStr = errObj.message.substring(jsonStart, jsonEnd + 1);
+                const parsed = JSON.parse(jsonStr);
+                console.error('[useTrading] Parsed error JSON:', parsed);
+              }
+            }
+          } catch (parseErr) {
+            // Ignore parse errors
+          }
+        }
+      }
       // 에러 메시지를 사용자 친화적으로 변환
       const message = formatErrorMessage(err);
       return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }
-  }, [account, getKeypair]);
+  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]);
 
   /**
    * BalanceManager 생성
@@ -438,13 +540,13 @@ export function useTrading(): UseTrading {
       return { success: false, error: 'BalanceManager not created. Create one first.' };
     }
 
-    if (!account) {
+    if (!walletAddress) {
       return { success: false, error: 'Wallet not connected' };
     }
 
     const { tx, baseAmount, quoteAmount } = await buildDepositAll(
       balanceManagerId,
-      account.address,
+      walletAddress,
       currentPool,
     );
     const result = await executeTransaction(tx);
@@ -466,7 +568,7 @@ export function useTrading(): UseTrading {
       };
     }
     return result;
-  }, [balanceManagerId, account, executeTransaction, currentPool]);
+  }, [balanceManagerId, walletAddress, executeTransaction, currentPool]);
 
   /**
    * BalanceManager에서 현재 풀의 Base/Quote 토큰을 지갑으로 출금
@@ -476,13 +578,13 @@ export function useTrading(): UseTrading {
       return { success: false, error: 'BalanceManager not created.' };
     }
 
-    if (!account) {
+    if (!walletAddress) {
       return { success: false, error: 'Wallet not connected' };
     }
 
-    const tx = buildWithdrawAll(balanceManagerId, account.address, currentPool);
+    const tx = buildWithdrawAll(balanceManagerId, walletAddress, currentPool);
     return executeTransaction(tx);
-  }, [balanceManagerId, account, executeTransaction, currentPool]);
+  }, [balanceManagerId, walletAddress, executeTransaction, currentPool]);
 
   return {
     isLoading,

@@ -5,7 +5,7 @@
 
 import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
-import { useWallet, shortenAddress } from '@nasun/wallet';
+import { useWallet, useZkLogin, shortenAddress } from '@nasun/wallet';
 
 interface PaymentQRCodeProps {
   amount?: string;
@@ -15,10 +15,15 @@ interface PaymentQRCodeProps {
 
 export function PaymentQRCode({ amount, token = 'NASUN', message }: PaymentQRCodeProps) {
   const { account, status } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const [copied, setCopied] = useState(false);
 
+  // Check if connected via traditional wallet OR zkLogin
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const connectedAddress = account?.address || zkState?.address;
+
   // Wallet not connected
-  if (status !== 'unlocked' || !account) {
+  if (!isConnected || !connectedAddress) {
     return (
       <div className="p-6 bg-theme-bg-secondary rounded-lg text-center">
         <p className="text-theme-text-muted">Connect wallet to generate QR code</p>
@@ -28,7 +33,7 @@ export function PaymentQRCode({ amount, token = 'NASUN', message }: PaymentQRCod
 
   // Build payment URL
   const paymentUrl = new URL(`${window.location.origin}/send`);
-  paymentUrl.searchParams.set('to', account.address);
+  paymentUrl.searchParams.set('to', connectedAddress);
   if (amount) paymentUrl.searchParams.set('amount', amount);
   if (token) paymentUrl.searchParams.set('token', token);
   if (message) paymentUrl.searchParams.set('msg', message);
@@ -40,7 +45,7 @@ export function PaymentQRCode({ amount, token = 'NASUN', message }: PaymentQRCod
   };
 
   const handleCopyAddress = async () => {
-    await navigator.clipboard.writeText(account.address);
+    await navigator.clipboard.writeText(connectedAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -78,7 +83,7 @@ export function PaymentQRCode({ amount, token = 'NASUN', message }: PaymentQRCod
       >
         <p className="text-xs text-theme-text-muted mb-1">Your Address</p>
         <p className="text-sm text-theme-text-primary font-mono break-all">
-          {shortenAddress(account.address, 10)}
+          {shortenAddress(connectedAddress, 10)}
         </p>
       </div>
 

@@ -186,6 +186,12 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
       throw new ZkLoginError('PROVER_FAILED', 'ZK proof not available');
     }
 
+    // Debug: log state for comparison
+    console.log('[useZkLogin] signTransaction - state.ephemeralPublicKey:', state.ephemeralPublicKey);
+    console.log('[useZkLogin] signTransaction - state.addressSeed (first 20):', state.addressSeed?.substring(0, 20));
+    console.log('[useZkLogin] signTransaction - state.maxEpoch:', state.maxEpoch);
+    console.log('[useZkLogin] signTransaction - proof exists:', !!state.proof);
+
     return signWithZkLogin({
       txBytes,
       ephemeralPrivateKey: state.ephemeralPrivateKey,
