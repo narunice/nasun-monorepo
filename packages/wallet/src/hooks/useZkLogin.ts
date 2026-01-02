@@ -2,10 +2,10 @@
  * useZkLogin Hook
  *
  * React hook for zkLogin authentication.
- * Manages the complete zkLogin flow from OAuth to transaction signing.
+ * Uses Zustand store for global state synchronization.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ZkLoginProvider, ZkLoginState, ZkLoginConfig } from '../types/zklogin';
 import { ZkLoginError } from '../types/zklogin';
@@ -20,6 +20,7 @@ import {
   disconnectZkLogin,
   signWithZkLogin,
 } from '../core/zklogin';
+import { useZkLoginStore } from '../stores/zkLoginStore';
 
 /**
  * zkLogin hook options
@@ -77,14 +78,29 @@ export function initZkLogin(config: ZkLoginConfig): void {
 
 /**
  * React hook for zkLogin authentication
+ * Uses Zustand store for global state - all components share the same state
  */
 export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
   const { autoCheck = true, onLoginComplete, onLoginError, onSessionExpired } = options;
   const queryClient = useQueryClient();
 
-  // Local state for zkLogin
-  const [state, setState] = useState<ZkLoginState | null>(() => getZkLoginState());
-  const [error, setError] = useState<ZkLoginError | null>(null);
+  // Use Zustand store for global state
+  const {
+    state,
+    isConnected,
+    error,
+    setState: setStoreState,
+    clearState: clearStoreState,
+    setError: setStoreError,
+  } = useZkLoginStore();
+
+  // Initialize store from sessionStorage on first mount
+  useEffect(() => {
+    const storedState = getZkLoginState();
+    if (storedState && !state) {
+      setStoreState(storedState);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Session validity query
   const { data: isSessionValid, refetch: refetchSession } = useQuery({
@@ -100,22 +116,22 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
     if (isSessionValid === false && state) {
       onSessionExpired?.();
       // Clear state when session expires
-      setState(null);
+      clearStoreState();
       clearZkLoginState();
     }
-  }, [isSessionValid, state, onSessionExpired]);
+  }, [isSessionValid, state, onSessionExpired, clearStoreState]);
 
   // Login mutation (start OAuth flow)
   const loginMutation = useMutation({
     mutationFn: async (provider: ZkLoginProvider) => {
-      setError(null);
+      setStoreError(null);
       await startZkLogin(provider);
     },
     onError: (err) => {
       const zkError = err instanceof ZkLoginError
         ? err
         : new ZkLoginError('OAUTH_CANCELLED', 'Login failed');
-      setError(zkError);
+      setStoreError(zkError);
       onLoginError?.(zkError);
     },
   });
@@ -123,11 +139,12 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
   // Callback handler mutation (complete OAuth flow)
   const callbackMutation = useMutation({
     mutationFn: async (jwt: string) => {
-      setError(null);
+      setStoreError(null);
       return completeZkLogin(jwt);
     },
     onSuccess: (newState) => {
-      setState(newState);
+      // Update both store and sessionStorage
+      setStoreState(newState);
       saveZkLoginState(newState);
       onLoginComplete?.(newState);
       // Invalidate relevant queries
@@ -137,7 +154,7 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
       const zkError = err instanceof ZkLoginError
         ? err
         : new ZkLoginError('PROVER_FAILED', 'Login callback failed');
-      setError(zkError);
+      setStoreError(zkError);
       onLoginError?.(zkError);
       throw zkError;
     },
@@ -156,10 +173,9 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
   // Logout function
   const logout = useCallback(() => {
     disconnectZkLogin();
-    setState(null);
-    setError(null);
+    clearStoreState();
     queryClient.invalidateQueries({ queryKey: ['zklogin'] });
-  }, [queryClient]);
+  }, [queryClient, clearStoreState]);
 
   // Sign transaction
   const signTransaction = useCallback(async (txBytes: Uint8Array): Promise<string> => {
@@ -188,8 +204,12 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
   // Refresh state from storage
   const refresh = useCallback(() => {
     const storedState = getZkLoginState();
-    setState(storedState);
-  }, []);
+    if (storedState) {
+      setStoreState(storedState);
+    } else {
+      clearStoreState();
+    }
+  }, [setStoreState, clearStoreState]);
 
   // Derive user info from state
   const userInfo = state ? {
@@ -201,7 +221,7 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
 
   return {
     state,
-    isConnected: !!state && !!state.proof,
+    isConnected,
     isLoading: loginMutation.isPending || callbackMutation.isPending,
     error,
     userInfo,
@@ -223,82 +243,77 @@ export function useZkLoginCallback(): {
   jwt: string | null;
   error: string | null;
 } {
-  const [result, setResult] = useState<{
-    isCallback: boolean;
-    jwt: string | null;
-    error: string | null;
-  }>({
-    isCallback: false,
-    jwt: null,
-    error: null,
-  });
+  // Use Zustand store to check if we should parse callback
+  const { state } = useZkLoginStore();
 
-  useEffect(() => {
-    // Check URL hash for id_token (Google returns token in hash)
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const idToken = params.get('id_token');
-      const error = params.get('error');
-      const errorDescription = params.get('error_description');
-
-      if (idToken) {
-        setResult({
-          isCallback: true,
-          jwt: idToken,
-          error: null,
-        });
-        return;
-      }
-
-      if (error) {
-        setResult({
-          isCallback: true,
-          jwt: null,
-          error: errorDescription || error,
-        });
-        return;
-      }
-    }
-
-    // Check URL search params (some providers use query params)
-    const search = window.location.search;
-    if (search) {
-      const params = new URLSearchParams(search);
-      const idToken = params.get('id_token');
-      const error = params.get('error');
-
-      if (idToken) {
-        setResult({
-          isCallback: true,
-          jwt: idToken,
-          error: null,
-        });
-        return;
-      }
-
-      if (error) {
-        setResult({
-          isCallback: true,
-          jwt: null,
-          error: params.get('error_description') || error,
-        });
-        return;
-      }
-    }
-
-    setResult({
+  // If already logged in, not a callback
+  if (state?.proof) {
+    return {
       isCallback: false,
       jwt: null,
       error: null,
-    });
-  }, []);
+    };
+  }
 
-  return result;
+  // Check URL hash for id_token (Google returns token in hash)
+  const hash = typeof window !== 'undefined' ? window.location.hash : '';
+  if (hash) {
+    const params = new URLSearchParams(hash.substring(1));
+    const idToken = params.get('id_token');
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+
+    if (idToken) {
+      return {
+        isCallback: true,
+        jwt: idToken,
+        error: null,
+      };
+    }
+
+    if (error) {
+      return {
+        isCallback: true,
+        jwt: null,
+        error: errorDescription || error,
+      };
+    }
+  }
+
+  // Check URL search params (some providers use query params)
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  if (search) {
+    const params = new URLSearchParams(search);
+    const idToken = params.get('id_token');
+    const error = params.get('error');
+
+    if (idToken) {
+      return {
+        isCallback: true,
+        jwt: idToken,
+        error: null,
+      };
+    }
+
+    if (error) {
+      return {
+        isCallback: true,
+        jwt: null,
+        error: params.get('error_description') || error,
+      };
+    }
+  }
+
+  return {
+    isCallback: false,
+    jwt: null,
+    error: null,
+  };
 }
 
 /**
  * Hook to get zkLogin user info
+ * Uses Zustand store for reactive updates
  */
 export function useZkLoginUser(): {
   address: string | null;
@@ -308,7 +323,7 @@ export function useZkLoginUser(): {
   provider: ZkLoginProvider | null;
   isLoggedIn: boolean;
 } {
-  const state = getZkLoginState();
+  const { state, isConnected } = useZkLoginStore();
 
   if (!state) {
     return {
@@ -327,6 +342,6 @@ export function useZkLoginUser(): {
     name: state.name || null,
     picture: state.picture || null,
     provider: state.provider,
-    isLoggedIn: true,
+    isLoggedIn: isConnected,
   };
 }

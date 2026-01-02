@@ -14,7 +14,8 @@ import {
   PutCommand,
 } from '@aws-sdk/lib-dynamodb';
 import * as jose from 'jose';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes } from 'crypto';
+import { jwtToAddress } from '@mysten/sui/zklogin';
 
 // Environment variables
 const ZKLOGIN_TABLE = process.env.ZKLOGIN_TABLE_NAME || 'ZkLoginUsers';
@@ -121,21 +122,21 @@ async function verifyJwt(jwt: string): Promise<JwtPayload> {
 
 /**
  * Generate a secure random salt
+ * Returns a decimal string (BigInt compatible) for zkLogin
  */
 function generateSalt(): string {
-  return randomBytes(16).toString('hex');
+  // Generate 16 random bytes and convert to BigInt decimal string
+  const hexSalt = randomBytes(16).toString('hex');
+  return BigInt('0x' + hexSalt).toString();
 }
 
 /**
- * Derive Sui address from JWT and salt (simplified version)
- * In production, this should match the actual zkLogin address derivation
+ * Derive Sui address from JWT and salt
+ * Uses the actual zkLogin address derivation from @mysten/sui
  */
-function deriveSuiAddress(sub: string, salt: string, aud: string): string {
-  // This is a simplified placeholder
-  // Actual implementation should use @mysten/sui/zklogin jwtToAddress
-  const input = `${sub}:${salt}:${aud}`;
-  const hash = createHash('sha256').update(input).digest('hex');
-  return `0x${hash.slice(0, 64)}`;
+function deriveSuiAddress(jwt: string, salt: string): string {
+  // jwtToAddress expects salt as hex string without 0x prefix
+  return jwtToAddress(jwt, salt);
 }
 
 /**
@@ -185,7 +186,7 @@ async function handleGetSalt(jwt: string, origin?: string): Promise<APIGatewayPr
       // New user - generate salt
       isNewUser = true;
       const salt = generateSalt();
-      const address = deriveSuiAddress(sub, salt, aud);
+      const address = deriveSuiAddress(jwt, salt);
 
       user = {
         pk,

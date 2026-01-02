@@ -15,7 +15,7 @@ export function WelcomeBanner() {
       <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-transparent via-transparent to-pado-1/10 dark:to-pado-3/10" />
 
       {/* Content - Light: dark text, Dark: white text */}
-      <div className="relative z-10">
+      <div className="relative z-10 text-center">
         <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">
           Welcome to <span className="font-brand tracking-wider">PADO</span>
         </h2>

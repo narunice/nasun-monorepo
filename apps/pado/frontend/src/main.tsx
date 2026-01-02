@@ -48,7 +48,13 @@ configureWallet({
 
 // Configure zkLogin (Phase 9: Smart Account v2)
 // Enables seedless onboarding via Google OAuth
+console.log('🔐 zkLogin Config:', {
+  saltApiUrl: NETWORK_CONFIG.zkLoginSaltApiUrl || '(empty)',
+  googleClientId: NETWORK_CONFIG.googleClientId || '(empty)',
+});
+
 if (NETWORK_CONFIG.zkLoginSaltApiUrl && NETWORK_CONFIG.googleClientId) {
+  console.log('✅ Initializing zkLogin...');
   initZkLogin({
     saltApiUrl: NETWORK_CONFIG.zkLoginSaltApiUrl,
     providers: {
@@ -59,6 +65,8 @@ if (NETWORK_CONFIG.zkLoginSaltApiUrl && NETWORK_CONFIG.googleClientId) {
       },
     },
   });
+} else {
+  console.warn('⚠️ zkLogin not initialized - missing environment variables');
 }
 
 // React Query 클라이언트

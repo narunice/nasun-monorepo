@@ -7,6 +7,7 @@ module pado::nusdc {
     public struct NUSDC has drop {}
 
     /// Initialize the NUSDC currency
+    #[allow(deprecated_usage)]
     fun init(witness: NUSDC, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency<NUSDC>(
             witness,
@@ -22,7 +23,7 @@ module pado::nusdc {
     }
 
     /// Mint NUSDC tokens (only TreasuryCap holder can call)
-    public entry fun mint(
+    public fun mint(
         treasury_cap: &mut TreasuryCap<NUSDC>,
         amount: u64,
         recipient: address,

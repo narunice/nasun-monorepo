@@ -27,25 +27,25 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
   }, [mnemonic]);
 
   return (
-    <div className="p-4 bg-zinc-800 rounded-lg">
-      <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
+    <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
+      <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-2">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         Backup Your Recovery Phrase
       </h3>
 
-      <p className="text-sm text-zinc-400 mb-4">
-        Write down these 12 words in order. This is the <strong className="text-white">ONLY way</strong> to recover
+      <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">
+        Write down these 12 words in order. This is the <strong className="text-gray-900 dark:text-white">ONLY way</strong> to recover
         your wallet if you lose access.
       </p>
 
       {/* Mnemonic word grid */}
-      <div className="grid grid-cols-3 gap-2 mb-4 p-4 bg-zinc-900 rounded border border-zinc-700">
+      <div className="grid grid-cols-3 gap-2 mb-4 p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-700">
         {words.map((word, i) => (
           <div key={i} className="flex items-center gap-2 text-sm py-1">
-            <span className="text-zinc-500 w-5 text-right">{i + 1}.</span>
-            <span className="text-white font-mono">{word}</span>
+            <span className="text-gray-400 dark:text-zinc-500 w-5 text-right">{i + 1}.</span>
+            <span className="text-gray-900 dark:text-white font-mono">{word}</span>
           </div>
         ))}
       </div>
@@ -55,8 +55,8 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         onClick={handleCopy}
         className={`w-full mb-4 px-3 py-2 text-sm rounded transition-colors flex items-center justify-center gap-2 ${
           copied
-            ? 'bg-green-500/20 text-green-400'
-            : 'bg-zinc-700 hover:bg-zinc-600 text-white'
+            ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+            : 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white'
         }`}
       >
         {copied ? (
@@ -100,9 +100,9 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
           type="checkbox"
           checked={confirmed}
           onChange={(e) => setConfirmed(e.target.checked)}
-          className="w-4 h-4 mt-0.5 rounded border-zinc-600 bg-zinc-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-zinc-800"
+          className="w-4 h-4 mt-0.5 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-zinc-800"
         />
-        <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">
+        <span className="text-sm text-gray-600 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
           I have saved my recovery phrase securely and understand that losing it means losing access to my wallet forever
         </span>
       </label>
@@ -112,7 +112,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         {onCancel && (
           <button
             onClick={onCancel}
-            className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-white font-medium rounded transition-colors"
+            className="flex-1 py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white font-medium rounded transition-colors"
           >
             Cancel
           </button>
@@ -120,7 +120,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         <button
           onClick={onConfirm}
           disabled={!confirmed}
-          className="flex-1 py-2 bg-blue-600 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors hover:bg-blue-700 disabled:cursor-not-allowed"
+          className="flex-1 py-2 bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors hover:bg-blue-700 disabled:cursor-not-allowed"
         >
           I've Saved It
         </button>
