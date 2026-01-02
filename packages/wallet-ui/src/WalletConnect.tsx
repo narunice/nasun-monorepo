@@ -169,9 +169,24 @@ interface WalletConnectProps {
   dropdownPosition?: 'top' | 'bottom';
   /** Dropdown horizontal alignment */
   dropdownAlign?: 'left' | 'right';
+  /** Number of characters to show after 0x prefix (default: 6) */
+  addressStartChars?: number;
+  /** Number of characters to show at the end (default: same as start) */
+  addressEndChars?: number;
+  /** @deprecated Use addressStartChars instead */
+  addressLength?: number;
 }
 
-export function WalletConnect({ dropdownPosition = 'bottom', dropdownAlign = 'right' }: WalletConnectProps) {
+export function WalletConnect({
+  dropdownPosition = 'bottom',
+  dropdownAlign = 'right',
+  addressStartChars,
+  addressEndChars,
+  addressLength = 6
+}: WalletConnectProps) {
+  // Use new props if provided, otherwise fall back to deprecated addressLength
+  const startChars = addressStartChars ?? addressLength;
+  const endChars = addressEndChars ?? addressStartChars ?? addressLength;
   const {
     status,
     account,
@@ -319,11 +334,11 @@ export function WalletConnect({ dropdownPosition = 'bottom', dropdownAlign = 'ri
   const getButtonText = () => {
     // zkLogin takes priority if connected
     if (isZkLoggedIn && zkState?.address) {
-      return shortenAddress(zkState.address);
+      return shortenAddress(zkState.address, startChars, endChars);
     }
     if (status === 'disconnected') return 'Get Started';
     if (status === 'locked') return 'Locked';
-    if (status === 'unlocked' && account) return shortenAddress(account.address);
+    if (status === 'unlocked' && account) return shortenAddress(account.address, startChars, endChars);
     return 'Wallet';
   };
 

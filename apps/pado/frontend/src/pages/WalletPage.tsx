@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { PaymentQRCode } from '../features/payments';
 import { TransferHistory } from '../features/portfolio/components/TransferHistory';
 
@@ -15,12 +15,14 @@ type TabType = 'send' | 'receive' | 'history' | 'settings';
 export function WalletPage() {
   const location = useLocation();
   const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
 
   // Allow initial tab from navigation state
   const initialTab = (location.state as { tab?: TabType })?.tab || 'send';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
-  const isConnected = status === 'unlocked' && account;
+  // Check if connected via traditional wallet OR zkLogin
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
 
   // Remount key from navigation
   const remountKey = (location.state as { key?: number })?.key || 0;
