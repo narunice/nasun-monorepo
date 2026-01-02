@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTheme } from '../../providers/theme';
 
 interface NavItem {
@@ -22,6 +23,15 @@ export function Header() {
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Wallet connection state
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isConnected = isZkLoggedIn || (status === 'unlocked' && account);
+
+  // Hide wallet button on homepage when not connected (WelcomeBanner has its own button)
+  const isHomePage = location.pathname === '/';
+  const showWalletButton = !isHomePage || isConnected;
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -70,7 +80,7 @@ export function Header() {
         {/* Logo + App Name - Click to go Home */}
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img src="/temp-logo.png" alt="Pado" className="w-7 h-7 md:w-8 md:h-8" />
-          <h1 className="text-xl md:text-2xl font-bold text-blue-400">Pado</h1>
+          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pado-2">PADO</h1>
         </Link>
 
         {/* Desktop Navigation Menu */}
@@ -127,7 +137,7 @@ export function Header() {
             </span>
           </button>
 
-          <WalletConnect />
+          {showWalletButton && <WalletConnect />}
 
           {/* Mobile Menu Button */}
           <div className="md:hidden relative" ref={mobileMenuRef}>

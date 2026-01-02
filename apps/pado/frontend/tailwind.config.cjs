@@ -10,7 +10,21 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // Brand title font (Pirulen via Adobe Fonts) - for "PADO" logo and emphasis
+        'brand': ['pirulen', 'sans-serif'],
+        // Default UI font (Rubik)
+        'sans': ['Rubik', 'system-ui', 'sans-serif'],
+      },
       colors: {
+        // Pado brand colors (Teal → Mint/Lime gradient)
+        'pado': {
+          1: '#1a8cbc',  // Primary - deep teal
+          2: '#3bb9d8',  // Secondary - bright teal
+          3: '#5ee1e4',  // Accent - cyan
+          4: '#86f3b7',  // Highlight - mint
+          5: '#d2f6a2',  // Light - lime
+        },
         // Theme-aware colors using CSS variables
         'theme-bg-primary': 'var(--color-bg-primary)',
         'theme-bg-secondary': 'var(--color-bg-secondary)',

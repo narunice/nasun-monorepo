@@ -14,6 +14,7 @@ module pado::nbtc {
     public struct NBTC has drop {}
 
     /// Initialize the NBTC currency
+    #[allow(deprecated_usage)]
     fun init(witness: NBTC, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency<NBTC>(
             witness,
@@ -30,7 +31,7 @@ module pado::nbtc {
 
     /// Mint NBTC tokens (only TreasuryCap holder can call)
     /// Enforces MAX_SUPPLY limit of 21 million NBTC
-    public entry fun mint(
+    public fun mint(
         treasury_cap: &mut TreasuryCap<NBTC>,
         amount: u64,
         recipient: address,

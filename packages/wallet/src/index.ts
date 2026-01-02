@@ -226,6 +226,9 @@ export {
 // zkLogin (Smart Account v2)
 // ============================================
 
+// zkLogin Store (Zustand)
+export { useZkLoginStore } from './stores/zkLoginStore';
+
 // zkLogin Hooks
 export {
   useZkLogin,

@@ -63,7 +63,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
         className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
         onClick={handleBackdropClick}
       >
-        <div className="bg-zinc-900 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
           <NFTTransfer
             nft={nft}
             onClose={() => setShowTransfer(false)}
@@ -80,13 +80,13 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-zinc-900 rounded-xl max-w-lg w-full overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-lg w-full overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-medium text-white truncate">{name}</h2>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white truncate">{name}</h2>
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors p-1"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors p-1"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -95,7 +95,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
         </div>
 
         {/* Image */}
-        <div className="bg-zinc-800 h-[280px] flex items-center justify-center">
+        <div className="bg-gray-100 dark:bg-zinc-800 h-[280px] flex items-center justify-center">
           {imageUrl && !imageError ? (
             <img
               src={imageUrl}
@@ -105,7 +105,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
             />
           ) : (
             <svg
-              className="w-20 h-20 text-zinc-600"
+              className="w-20 h-20 text-gray-400 dark:text-zinc-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -124,23 +124,23 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
         <div className="p-4 space-y-3">
           {/* Collection */}
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Collection</p>
-            <p className="text-sm text-white mt-1">{collection}</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Collection</p>
+            <p className="text-sm text-gray-900 dark:text-white mt-1">{collection}</p>
           </div>
 
           {/* Description */}
           {description && (
             <div>
-              <p className="text-xs text-zinc-500 uppercase tracking-wide">Description</p>
-              <p className="text-sm text-zinc-300 mt-1 line-clamp-2">{description}</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Description</p>
+              <p className="text-sm text-gray-600 dark:text-zinc-300 mt-1 line-clamp-2">{description}</p>
             </div>
           )}
 
           {/* Creator */}
           {creator && (
             <div>
-              <p className="text-xs text-zinc-500 uppercase tracking-wide">Creator</p>
-              <p className="text-sm text-white mt-1">{creator}</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Creator</p>
+              <p className="text-sm text-gray-900 dark:text-white mt-1">{creator}</p>
             </div>
           )}
 
@@ -156,7 +156,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
         </div>
 
         {/* Actions */}
-        <div className="p-4 border-t border-zinc-800 flex gap-3">
+        <div className="p-4 border-t border-gray-200 dark:border-zinc-800 flex gap-3">
           <button
             onClick={() => setShowTransfer(true)}
             className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -170,7 +170,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
             href={getExplorerObjectUrl(nft.objectId)}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="px-4 py-2.5 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

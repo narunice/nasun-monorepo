@@ -78,43 +78,43 @@ export function ImportWallet({
   // Import method selection screen
   if (mode === 'select') {
     return (
-      <div className="p-4 bg-zinc-800 rounded-lg">
-        <h3 className="text-lg font-bold text-white mb-4">Import Wallet</h3>
-        <p className="text-sm text-zinc-400 mb-4">
+      <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import Wallet</h3>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">
           Choose how to import your existing wallet
         </p>
 
         <div className="space-y-3 mb-4">
           <button
             onClick={() => setMode('mnemonic')}
-            className="w-full p-4 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-left transition-colors group"
+            className="w-full p-4 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-lg text-left transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-zinc-600 group-hover:bg-zinc-500 rounded-lg flex items-center justify-center transition-colors">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-gray-200 dark:bg-zinc-600 group-hover:bg-gray-300 dark:group-hover:bg-zinc-500 rounded-lg flex items-center justify-center transition-colors">
+                <svg className="w-5 h-5 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
               <div>
-                <div className="font-medium text-white">Recovery Phrase</div>
-                <div className="text-xs text-zinc-400">Import using 12 or 24 word mnemonic</div>
+                <div className="font-medium text-gray-900 dark:text-white">Recovery Phrase</div>
+                <div className="text-xs text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
               </div>
             </div>
           </button>
 
           <button
             onClick={() => setMode('privatekey')}
-            className="w-full p-4 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-left transition-colors group"
+            className="w-full p-4 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-lg text-left transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-zinc-600 group-hover:bg-zinc-500 rounded-lg flex items-center justify-center transition-colors">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-gray-200 dark:bg-zinc-600 group-hover:bg-gray-300 dark:group-hover:bg-zinc-500 rounded-lg flex items-center justify-center transition-colors">
+                <svg className="w-5 h-5 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
               </div>
               <div>
-                <div className="font-medium text-white">Private Key</div>
-                <div className="text-xs text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
+                <div className="font-medium text-gray-900 dark:text-white">Private Key</div>
+                <div className="text-xs text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
               </div>
             </div>
           </button>
@@ -122,7 +122,7 @@ export function ImportWallet({
 
         <button
           onClick={onCancel}
-          className="w-full py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded transition-colors"
+          className="w-full py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded transition-colors"
         >
           Cancel
         </button>
@@ -133,10 +133,10 @@ export function ImportWallet({
   // Mnemonic input screen
   if (mode === 'mnemonic') {
     return (
-      <div className="p-4 bg-zinc-800 rounded-lg">
+      <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
         <button
           onClick={() => setMode('select')}
-          className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white mb-4 transition-colors"
+          className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -144,11 +144,11 @@ export function ImportWallet({
           Back
         </button>
 
-        <h3 className="text-lg font-bold text-white mb-4">Import with Recovery Phrase</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import with Recovery Phrase</h3>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-zinc-400 mb-2">
+            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
               Recovery Phrase (12 or 24 words)
             </label>
             <textarea
@@ -156,13 +156,13 @@ export function ImportWallet({
               onChange={(e) => setMnemonic(e.target.value)}
               placeholder="Enter your recovery phrase, separated by spaces..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm resize-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm resize-none"
               disabled={isLoading}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-zinc-400 mb-2">
+            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
               New Password (min 8 characters)
             </label>
             <input
@@ -170,13 +170,13 @@ export function ImportWallet({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isLoading}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-zinc-400 mb-2">
+            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
               Confirm Password
             </label>
             <input
@@ -184,7 +184,7 @@ export function ImportWallet({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm password"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isLoading}
             />
           </div>
@@ -197,14 +197,14 @@ export function ImportWallet({
             <button
               onClick={onCancel}
               disabled={isLoading}
-              className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded transition-colors disabled:opacity-50"
+              className="flex-1 py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleImportMnemonic}
               disabled={isLoading || !mnemonic.trim() || !password || !confirmPassword}
-              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
+              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors"
             >
               {isLoading ? 'Importing...' : 'Import'}
             </button>
@@ -216,10 +216,10 @@ export function ImportWallet({
 
   // Private key input screen
   return (
-    <div className="p-4 bg-zinc-800 rounded-lg">
+    <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
       <button
         onClick={() => setMode('select')}
-        className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white mb-4 transition-colors"
+        className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -227,18 +227,18 @@ export function ImportWallet({
         Back
       </button>
 
-      <h3 className="text-lg font-bold text-white mb-4">Import with Private Key</h3>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import with Private Key</h3>
 
       {/* Warning */}
-      <div className="bg-yellow-900/30 border border-yellow-500/50 rounded p-3 mb-4">
-        <p className="text-xs text-yellow-400">
+      <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-500/50 rounded p-3 mb-4">
+        <p className="text-xs text-yellow-700 dark:text-yellow-400">
           Never share your private key with anyone. Make sure you are on the correct website.
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-zinc-400 mb-2">
+          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
             Private Key (Bech32 format)
           </label>
           <input
@@ -246,13 +246,13 @@ export function ImportWallet({
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
             placeholder="suiprivkey1..."
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"
             disabled={isLoading}
           />
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-400 mb-2">
+          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
             New Password (min 8 characters)
           </label>
           <input
@@ -260,13 +260,13 @@ export function ImportWallet({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
           />
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-400 mb-2">
+          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
             Confirm Password
           </label>
           <input
@@ -274,7 +274,7 @@ export function ImportWallet({
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm password"
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
           />
         </div>
@@ -287,14 +287,14 @@ export function ImportWallet({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded transition-colors disabled:opacity-50"
+            className="flex-1 py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleImportPrivateKey}
             disabled={isLoading || !privateKey.trim() || !password || !confirmPassword}
-            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded transition-colors"
+            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors"
           >
             {isLoading ? 'Importing...' : 'Import'}
           </button>

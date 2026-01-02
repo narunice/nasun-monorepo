@@ -164,22 +164,22 @@ export function PasskeyButton({
         </button>
 
         {showMenu && (
-          <div className="absolute top-full right-0 mt-2 w-48 bg-zinc-800 dark:bg-zinc-800 bg-white border border-zinc-700 dark:border-zinc-700 border-gray-200 rounded-lg shadow-lg z-50">
-            <div className="p-2 border-b border-zinc-700 dark:border-zinc-700 border-gray-200">
-              <div className="text-xs text-gray-400 dark:text-gray-400 text-gray-500">Address</div>
-              <div className="text-sm font-mono text-white dark:text-white text-gray-900 truncate">
+          <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
+            <div className="p-2 border-b border-gray-200 dark:border-zinc-700">
+              <div className="text-xs text-gray-500 dark:text-gray-400">Address</div>
+              <div className="text-sm font-mono text-gray-900 dark:text-white truncate">
                 {shortenAddress(address)}
               </div>
             </div>
             <button
               onClick={handleLock}
-              className="w-full px-4 py-2 text-left text-sm text-gray-300 dark:text-gray-300 text-gray-700 hover:bg-zinc-700 dark:hover:bg-zinc-700 hover:bg-gray-100"
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
             >
               Lock Wallet
             </button>
             <button
               onClick={handleDelete}
-              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-zinc-700 dark:hover:bg-zinc-700 hover:bg-gray-100"
+              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700"
             >
               Delete Wallet
             </button>
@@ -210,11 +210,11 @@ export function PasskeyButton({
   // Setup state - show registration form
   if (viewState === 'setup') {
     return (
-      <div className={`flex flex-col gap-3 p-4 bg-zinc-800 dark:bg-zinc-800 bg-gray-100 rounded-lg ${className}`}>
-        <h3 className="text-sm font-medium text-white dark:text-white text-gray-900">
+      <div className={`flex flex-col gap-3 p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg ${className}`}>
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
           Setup Passkey Wallet
         </h3>
-        <p className="text-xs text-gray-400 dark:text-gray-400 text-gray-600">
+        <p className="text-xs text-gray-600 dark:text-gray-400">
           Use Face ID, Touch ID, or Windows Hello to secure your wallet.
         </p>
         <input
@@ -222,12 +222,12 @@ export function PasskeyButton({
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
           placeholder="Enter your name"
-          className="px-3 py-2 bg-zinc-700 dark:bg-zinc-700 bg-white border border-zinc-600 dark:border-zinc-600 border-gray-300 rounded-lg text-white dark:text-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <div className="flex gap-2">
           <button
             onClick={() => setViewState('idle')}
-            className="flex-1 px-3 py-2 bg-zinc-700 dark:bg-zinc-700 bg-gray-200 hover:bg-zinc-600 dark:hover:bg-zinc-600 hover:bg-gray-300 text-gray-300 dark:text-gray-300 text-gray-700 rounded-lg transition-colors"
+            className="flex-1 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
           >
             Cancel
           </button>

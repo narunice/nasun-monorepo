@@ -36,9 +36,9 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
 
   // Placeholder for missing/broken images
   const renderPlaceholder = () => (
-    <div className="w-full h-full bg-zinc-700 flex items-center justify-center">
+    <div className="w-full h-full bg-gray-100 dark:bg-zinc-700 flex items-center justify-center">
       <svg
-        className={`text-zinc-500 ${compact ? 'w-6 h-6' : 'w-10 h-10'}`}
+        className={`text-gray-400 dark:text-zinc-500 ${compact ? 'w-6 h-6' : 'w-10 h-10'}`}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -60,7 +60,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
         tabIndex={0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        className="bg-zinc-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+        className="bg-white dark:bg-zinc-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
       >
         {/* Image */}
         <div className="aspect-square">
@@ -79,7 +79,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
 
         {/* Name */}
         <div className="p-2">
-          <p className="text-xs text-white truncate" title={name}>
+          <p className="text-xs text-gray-900 dark:text-white truncate" title={name}>
             {name}
           </p>
         </div>
@@ -93,7 +93,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="bg-zinc-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all group"
+      className="bg-white dark:bg-zinc-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all group"
     >
       {/* Image */}
       <div className="aspect-square relative">
@@ -112,10 +112,10 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
 
       {/* Info */}
       <div className="p-3">
-        <p className="text-sm font-medium text-white truncate" title={name}>
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={name}>
           {name}
         </p>
-        <p className="text-xs text-zinc-400 truncate mt-0.5" title={collection}>
+        <p className="text-xs text-gray-500 dark:text-zinc-400 truncate mt-0.5" title={collection}>
           {collection}
         </p>
       </div>

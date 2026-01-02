@@ -5,7 +5,7 @@
  * Place this component on your /auth/callback route.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   useZkLogin,
   useZkLoginCallback,
@@ -55,12 +55,12 @@ export function ZkLoginCallback({
 
   const [step, setStep] = useState<Step>('verifying');
   const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const isProcessingRef = useRef(false);
 
   const processCallback = async () => {
-    if (!jwt || isProcessing) return;
+    if (!jwt || isProcessingRef.current) return;
 
-    setIsProcessing(true);
+    isProcessingRef.current = true;
     setError(null);
     setStep('verifying');
 

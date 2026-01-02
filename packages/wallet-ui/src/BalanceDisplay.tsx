@@ -26,7 +26,7 @@ export function BalanceDisplay({ compact = false, className = '' }: BalanceDispl
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        {!compact && <span className="text-sm text-zinc-400">Loading balance...</span>}
+        {!compact && <span className="text-sm text-gray-500 dark:text-zinc-400">Loading balance...</span>}
       </div>
     );
   }
@@ -38,7 +38,7 @@ export function BalanceDisplay({ compact = false, className = '' }: BalanceDispl
         <span className="text-sm text-red-400">Failed to load balance</span>
         <button
           onClick={() => refetch()}
-          className="text-xs text-zinc-400 hover:text-white underline"
+          className="text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white underline"
         >
           Retry
         </button>
@@ -55,7 +55,7 @@ export function BalanceDisplay({ compact = false, className = '' }: BalanceDispl
   if (compact) {
     return (
       <div className={`flex items-center gap-1 ${className}`}>
-        <span className="text-sm font-medium text-white">{balance.formattedBalance}</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white">{balance.formattedBalance}</span>
         <span className="text-xs text-blue-400">NASUN</span>
       </div>
     );
@@ -65,15 +65,15 @@ export function BalanceDisplay({ compact = false, className = '' }: BalanceDispl
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-white">{balance.formattedBalance}</span>
+        <span className="text-2xl font-bold text-gray-900 dark:text-white">{balance.formattedBalance}</span>
         <span className="text-sm text-blue-400 font-medium">NASUN</span>
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-zinc-400">
+      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-zinc-400">
         <span>{balance.coinCount} coin objects</span>
         <button
           onClick={() => refreshBalance()}
-          className="hover:text-white transition-colors flex items-center gap-1"
+          className="hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1"
           title="Refresh balance"
         >
           <svg
