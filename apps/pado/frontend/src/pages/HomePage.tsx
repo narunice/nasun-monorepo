@@ -10,7 +10,7 @@
  * - Footer tagline
  */
 
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import {
   NetWorthCard,
   QuickActions,
@@ -21,21 +21,19 @@ import {
 
 export function HomePage() {
   const { status, account } = useWallet();
-  const isConnected = status === 'unlocked' && account;
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isConnected = isZkLoggedIn || (status === 'unlocked' && account);
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Welcome Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-theme-text-primary">
-          {isConnected ? 'Dashboard' : 'Welcome to Pado'}
-        </h1>
-        <p className="text-theme-text-secondary mt-1">
-          The Decentralized Everything Exchange
-        </p>
-      </div>
+      {/* Dashboard Header (only when connected) */}
+      {isConnected && (
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-theme-text-primary">Dashboard</h1>
+        </div>
+      )}
 
-      {/* Connect Wallet CTA (if not connected) */}
+      {/* Welcome Banner (if not connected) */}
       {!isConnected && (
         <div className="mb-6">
           <WelcomeBanner />
