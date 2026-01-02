@@ -77,11 +77,11 @@ export function NFTGallery({
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">My NFTs</h3>
           </div>
         )}
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           <button
             onClick={() => refetch()}
-            className="mt-2 text-sm text-blue-400 hover:text-blue-300"
+            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
           >
             Try again
           </button>
