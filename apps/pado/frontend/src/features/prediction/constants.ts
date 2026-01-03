@@ -1,6 +1,6 @@
 /**
  * Prediction Market Constants
- * Updated: 2026-01-03 (Devnet Genesis Redeployment)
+ * Updated: 2026-01-03 (New Markets with valid close dates)
  */
 
 // Deployed contract addresses (Nasun Devnet)
@@ -30,10 +30,10 @@ export const NUSDC_TYPE =
 // Clock
 export const CLOCK_ID = '0x6';
 
-// Test markets (created 2026-01-03)
+// Active markets (created 2026-01-03 with valid close dates)
 export const TEST_MARKETS: string[] = [
-  '0xb5939eb9f586d27c3f3512f0f5dc727ffba07ba5189a8fb966aca1a186b576dc', // BTC $150k by March 2026
-  '0x948c1978a76fdd6fb3e3b899ae3a921630257d44398733f539dce8fbe70e0cde', // TikTok Ban by March 2026
-  '0x20647b33d2b9cc0d60981d23890781d74aba27ebcc315a7003d70a1bb619f036', // Russia-Ukraine Ceasefire by June 2026
-  '0xd3e138209e3c382d03da6bfbd21a451f62ee67e5a087ea140b8afce42b485b13', // ETH $10k by December 2026
+  '0x860a90a42ee611c5740b4a4e74fcadd301f877991c7f47fffb318f6ca9520c96', // BTC $150k by March 2026 (closes 2026-03-01)
+  '0xf0d8f14b7f9015139d0e5a03ab54b11a2a8cb52c91587559fc1212c7a7b67c64', // TikTok Ban by March 2026 (closes 2026-03-01)
+  '0xc78bffa99153bdb1a43f350f8b4244d3e4f0e91365f425f288ec3f31fec8363f', // Russia-Ukraine Ceasefire by June 2026 (closes 2026-06-30)
+  '0x9a214b8a6ddac338e71d8f8495da51f07db6de5a37dc46354d32dc98b34fcbd1', // ETH $10k by December 2026 (closes 2026-12-31)
 ];
