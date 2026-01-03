@@ -3,14 +3,15 @@
  * Display total portfolio value in USD
  */
 
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTotalValue } from '../hooks';
 
 export function AssetOverview() {
   const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { totalValue, totalPnl24h, totalChange24h, isLoading } = useTotalValue();
 
-  const isConnected = status === 'unlocked';
+  const isConnected = status === 'unlocked' || isZkConnected;
   const isPositive = totalChange24h >= 0;
   const changeColor = totalChange24h === 0 ? 'text-theme-text-secondary' : isPositive ? 'text-green-400' : 'text-red-400';
 
