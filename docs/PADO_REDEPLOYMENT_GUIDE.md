@@ -527,14 +527,13 @@ nasun client object <DEEPBOOK_PACKAGE> 2>&1 | grep -A5 "create_pool"
 
 ---
 
-## Reference: Current Deployed Addresses (2026-01-01)
+## Reference: Current Deployed Addresses (2026-01-03)
 
 ### pado_tokens Package
 ```
-Package ID:      0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7
-TokenFaucet:     0x6f40eeee18299bb4f0f56a55f50aa2d844e83e490d03b0f763ec456188719fab
-ClaimRecord:     0xb17a4b82ff7bd2d8e01bc04cca01397d343435de10f01647e9ef03582547691c
-UpgradeCap:      0x554252adec05b7cdb203cb90aa37cc19571ad4f9b186b04b04cbd3b781f79761
+Package ID:      0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489
+TokenFaucet:     0x5930a54235a835a9d93c6e42d049c5da42255fca0b40199352cfc72fd23fdf5e
+ClaimRecord:     0xd5ea726fa806f17587c42f96a06c2bf5732faec843fe370739a1131ac74df617
 ```
 
 ### prediction Package
@@ -544,18 +543,18 @@ AdminCap:        0x9e06794a20be24f3be11558351125924aed98a6ac03c1d1ec212c3197fb9a
 GlobalState:     0x02bd4975791ee0c2e73aa5f41e596b6a04f7cc5045f3e36a60832dcf8b5ba421
 ```
 
-### DeepBook V3
+### DeepBook V3 (Redeployed 2026-01-03)
 ```
-Package:         0xceaeca5c1a5f31e1282c47000b442289b2aa454f007c1e1e316110414e020757
-Registry:        0xf38bd1c809db53656767848a84464ab2a9cdd9283dbb3dd54d82a972c7dab6a4
-AdminCap:        0x1010f2ef902c482ffba7c9848d74b209bfcbbef4003f583f5faaadcf4ca883cb
-AdminCap Owner:  0xb52a12ade45f0c955d92003107592260b7b8e0db3601b9aaae97d726f4ffaff0  (transferred 2026-01-01)
+Package:         0xaaa2c985cfc0df7c8bd08ac0d8a033f09281af65d295fac69a4eeb37170c0044
+Token (DEEP):    0x351a12307e9d4aec581283fc789b8e75b0ffe8aab94bca46fb37c22da8dc111c
+Registry:        0x01d4a09b9fdc324e3d9c798227ddf654e8d38d8e52d2edf6ae330c0da0836868
+AdminCap:        0x50cedde4e264194ba3ea241bd56b2979e8093a4e1275baa769446fe47de4d9e0
 ```
 
-### Trading Pools
+### Trading Pools (Created 2026-01-03)
 ```
-NBTC/NUSDC:      0xd19dfb9a51424a2193ef4284a1bf67d3c03b5ef3132446016243f9d394ef7180
-NASUN/NUSDC:     0x9022d534d9846cbc32341fe07d4444be142065d0b7b2cc11a16ffe53a2e7d0f2
+NBTC/NUSDC:      0xa77ab14baa08d40f86b037f8a1e7fba1dcc7135e9909690b652fa72351c585aa
+NASUN/NUSDC:     0x9281a581c1d8e5ff2c92aa6dbdb15e579f816987742d5c0351df382fd37ee5ae
 ```
 
 ### Local Keypairs Reference
