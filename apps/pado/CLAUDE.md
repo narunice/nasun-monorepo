@@ -198,12 +198,14 @@ Phase 4: Community-owned Protocol
 | Registry | `0xf38bd1c809db53656767848a84464ab2a9cdd9283dbb3dd54d82a972c7dab6a4` |
 | AdminCap | `0x1010f2ef902c482ffba7c9848d74b209bfcbbef4003f583f5faaadcf4ca883cb` |
 
-**Pado Test Tokens**:
-| 항목 | 값 |
+**Pado Test Tokens** (Single Source of Truth: `.env.development`, `.env.staging`):
+| 항목 | 환경 변수 |
 |------|-----|
-| Package | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976` |
-| NBTC Type | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nbtc::NBTC` |
-| NUSDC Type | `0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nusdc::NUSDC` |
+| Package | `VITE_TOKENS_PACKAGE` |
+| NBTC Type | `VITE_NBTC_TYPE` |
+| NUSDC Type | `VITE_NUSDC_TYPE` |
+
+> 현재 주소: `0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489` (2026-01-03 배포)
 
 **Trading Pools**:
 
