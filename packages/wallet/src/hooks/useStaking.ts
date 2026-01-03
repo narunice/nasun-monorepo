@@ -5,6 +5,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from './useWallet';
+import { useZkLogin } from './useZkLogin';
 import { getStakes, calculateStakingSummary } from '../sui/staking';
 import type { DelegatedStake, StakingSummary } from '../types/staking';
 
@@ -49,21 +50,25 @@ const EMPTY_SUMMARY: StakingSummary = {
  */
 export function useStaking(options: UseStakingOptions = {}): UseStakingResult {
   const { account, status } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { enabled = true, pollingInterval = DEFAULT_POLLING_INTERVAL } = options;
 
-  const isConnected = status === 'unlocked' && account?.address;
+  // Support both mnemonic wallet and zkLogin
+  const walletAddress = account?.address || zkState?.address;
+  const isWalletUnlocked = status === 'unlocked' && Boolean(account?.address);
+  const isConnected = isWalletUnlocked || isZkConnected;
 
   const query = useQuery({
-    queryKey: [STAKING_QUERY_KEY, account?.address],
+    queryKey: [STAKING_QUERY_KEY, walletAddress],
     queryFn: async () => {
-      if (!account?.address) {
+      if (!walletAddress) {
         throw new Error('Wallet not connected');
       }
-      const stakes = await getStakes(account.address);
+      const stakes = await getStakes(walletAddress);
       const summary = calculateStakingSummary(stakes);
       return { stakes, summary };
     },
-    enabled: enabled && !!isConnected,
+    enabled: enabled && isConnected && Boolean(walletAddress),
     refetchInterval: pollingInterval,
     staleTime: 10_000, // 10 seconds
   });
@@ -82,12 +87,14 @@ export function useStaking(options: UseStakingOptions = {}): UseStakingResult {
  */
 export function useRefreshStaking() {
   const { account } = useWallet();
+  const { state: zkState } = useZkLogin();
   const queryClient = useQueryClient();
 
   return () => {
-    if (account?.address) {
+    const address = account?.address || zkState?.address;
+    if (address) {
       queryClient.invalidateQueries({
-        queryKey: [STAKING_QUERY_KEY, account.address],
+        queryKey: [STAKING_QUERY_KEY, address],
       });
     }
   };
