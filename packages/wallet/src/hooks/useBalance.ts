@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBalance } from '../sui/client';
 import type { BalanceInfo } from '../types';
 import { useWallet } from './useWallet';
+import { useZkLogin } from './useZkLogin';
 
 // Query key
 const BALANCE_QUERY_KEY = 'wallet-balance';
@@ -27,12 +28,14 @@ export function useBalance(
   }
 ) {
   const { account, status } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
 
-  // Determine target address
-  const targetAddress = address ?? account?.address;
+  // Determine target address (mnemonic wallet OR zkLogin)
+  const targetAddress = address ?? account?.address ?? zkState?.address;
 
-  // Only query when wallet is connected and address exists
-  const isEnabled = options?.enabled !== false && !!targetAddress && status === 'unlocked';
+  // Enable query when mnemonic wallet unlocked OR zkLogin connected
+  const isWalletConnected = status === 'unlocked' || isZkConnected;
+  const isEnabled = options?.enabled !== false && !!targetAddress && isWalletConnected;
 
   return useQuery<BalanceInfo>({
     queryKey: [BALANCE_QUERY_KEY, targetAddress],
@@ -55,11 +58,13 @@ export function useBalance(
 export function useRefreshBalance() {
   const queryClient = useQueryClient();
   const { account } = useWallet();
+  const { state: zkState } = useZkLogin();
 
   return async () => {
-    if (account?.address) {
+    const address = account?.address ?? zkState?.address;
+    if (address) {
       await queryClient.invalidateQueries({
-        queryKey: [BALANCE_QUERY_KEY, account.address],
+        queryKey: [BALANCE_QUERY_KEY, address],
       });
     }
   };
