@@ -33,7 +33,7 @@
       "esbuild"
     ],
     "overrides": {
-      "@mysten/sui": "1.22.0",
+      "@mysten/sui": "1.45.2",
       "happy-dom": ">=20.0.0",
       "valibot": ">=1.2.0",
       "esbuild": ">=0.25.0"
