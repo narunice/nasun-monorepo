@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTransferHistory, type TransferRecord } from '../hooks/useTransferHistory';
 
 const ITEMS_PER_PAGE = 10;
@@ -68,10 +68,11 @@ function TransferRow({ transfer }: TransferRowProps) {
 
 export function TransferHistory() {
   const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { transfers, isLoading, error, refetch } = useTransferHistory();
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
-  const isConnected = status === 'unlocked';
+  const isConnected = status === 'unlocked' || isZkConnected;
   const displayedTransfers = transfers.slice(0, displayCount);
   const hasMore = displayCount < transfers.length;
   const remaining = transfers.length - displayCount;

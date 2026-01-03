@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 
 const ITEMS_PER_PAGE = 10;
@@ -78,10 +78,11 @@ interface RecentTradesProps {
 
 export function RecentTrades({ embedded = false }: RecentTradesProps) {
   const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { trades, isLoading, error, refetch } = useTradeHistory();
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
-  const isConnected = status === 'unlocked';
+  const isConnected = status === 'unlocked' || isZkConnected;
   const displayedTrades = trades.slice(0, displayCount);
   const hasMore = displayCount < trades.length;
   const remaining = trades.length - displayCount;

@@ -3,7 +3,7 @@
  * Display trading statistics summary
  */
 
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory } from '../hooks/useTradeHistory';
 
 interface StatCardProps {
@@ -34,9 +34,10 @@ function StatCard({ label, value, subValue, color = 'default' }: StatCardProps) 
 
 export function TradeStats() {
   const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { stats, isLoading } = useTradeHistory();
 
-  const isConnected = status === 'unlocked';
+  const isConnected = status === 'unlocked' || isZkConnected;
 
   if (!isConnected) {
     return (
