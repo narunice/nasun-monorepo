@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { usePredictionPositions, formatPositionAmount } from '../hooks/usePredictionPositions';
 import type { PredictionMarket } from '../types';
@@ -20,7 +20,11 @@ type OrderType = 'buy' | 'sell';
 
 export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { status } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
   const { isLoading, placeBuyOrder, placeSellOrder, mintTokens } = usePredictionTrade();
+
+  // Consider wallet connected if either local wallet is unlocked OR zkLogin is active
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
@@ -149,7 +153,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     }
   }, [amount, market.id, mintTokens, onSuccess]);
 
-  const isDisabled = status !== 'unlocked' || market.status !== 'open' || isLoading;
+  const isDisabled = !isWalletConnected || market.status !== 'open' || isLoading;
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4">
@@ -371,7 +375,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
         >
           {isLoading
             ? 'Processing...'
-            : status !== 'unlocked'
+            : !isWalletConnected
             ? 'Connect Wallet'
             : market.status !== 'open'
             ? 'Market Closed'
