@@ -8,7 +8,7 @@
 
 import { FC } from "react";
 import { Link } from "react-router-dom";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useDelegation } from "@/features/governance/hooks/useDelegation";
@@ -25,7 +25,8 @@ export const GovernanceActivitySection: FC<GovernanceActivitySectionProps> = ({
   className = "",
 }) => {
   const { status, account } = useWallet();
-  const isConnected = status === "unlocked" && account;
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   const { votingPower, nftVerification } = useVotingPower();
   const { delegationState } = useDelegation();

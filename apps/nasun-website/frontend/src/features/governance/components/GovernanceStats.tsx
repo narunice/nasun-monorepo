@@ -6,7 +6,7 @@
  */
 
 import { FC } from "react";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVoteHistory } from "../hooks/useVoteHistory";
 
 interface GovernanceStatsProps {
@@ -15,7 +15,8 @@ interface GovernanceStatsProps {
 
 export const GovernanceStats: FC<GovernanceStatsProps> = ({ className = "" }) => {
   const { status, account } = useWallet();
-  const isConnected = status === "unlocked" && account;
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   const { stats, isLoading } = useVoteHistory();
 

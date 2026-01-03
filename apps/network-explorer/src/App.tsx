@@ -10,11 +10,15 @@ import Validator from './pages/Validator';
 import Checkpoints from './pages/Checkpoints';
 import Checkpoint from './pages/Checkpoint';
 import Package from './pages/Package';
+import AuthCallback from './pages/AuthCallback';
 
 function App() {
   return (
     <ErrorBoundary>
       <Routes>
+        {/* OAuth callback route (outside Layout for full-page display) */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/transactions" element={<Transactions />} />
