@@ -6,7 +6,7 @@
  */
 
 import { FC, useState } from "react";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useDelegation } from "../hooks/useDelegation";
 import { Button } from "@/components/ui";
@@ -18,7 +18,8 @@ interface DelegationPanelProps {
 
 export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) => {
   const { status, account } = useWallet();
-  const isConnected = status === "unlocked" && account;
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   const { delegationState, isLoading, error, delegate, revoke } = useDelegation();
 

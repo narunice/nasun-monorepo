@@ -13,7 +13,7 @@ import { NasunProvider } from "./providers/NasunProvider";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
 import AuthProvider from "./providers/auth/AuthContext";
 import { validateEnv } from "./utils/envValidation";
-import { configureWallet } from "@nasun/wallet";
+import { configureWallet, initZkLogin } from "@nasun/wallet";
 import { WalletProvider } from "@nasun/wallet-ui";
 import "./index.css";
 import App from "./App";
@@ -26,6 +26,24 @@ configureWallet({
   networkName: "Nasun Devnet",
   sessionPersist: true, // Keep wallet unlocked during browser session
 });
+
+// Initialize zkLogin (Google OAuth)
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const saltApiUrl = import.meta.env.VITE_ZKLOGIN_SALT_API_URL;
+
+if (googleClientId && saltApiUrl) {
+  initZkLogin({
+    saltApiUrl,
+    proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL,
+    providers: {
+      google: {
+        provider: "google",
+        clientId: googleClientId,
+        redirectUri: `${window.location.origin}/auth/callback`,
+      },
+    },
+  });
+}
 
 // 1. QueryClient 인스턴스 생성 (가장 먼저 실행)
 const queryClient = new QueryClient({

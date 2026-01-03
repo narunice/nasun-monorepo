@@ -1,6 +1,6 @@
 import { FC, useRef, useState, useEffect } from "react";
 import { Proposal } from "../types/voting";
-import { useWallet, getSuiClient } from "@nasun/wallet";
+import { useWallet, useZkLogin, getSuiClient } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { Transaction } from "@mysten/sui/transactions";
@@ -20,7 +20,8 @@ interface VoteModalProps {
 export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onClose, onVote }) => {
   const { t } = useTranslation("proposals");
   const { status, account, getKeypair } = useWallet();
-  const isConnected = status === "unlocked" && account;
+  const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
   const packageId = useNetworkVariable("packageId");
   const toastId = useRef<number | string>();
 
@@ -73,8 +74,9 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   };
 
   const vote = async (voteYes: boolean) => {
-    const keypair = getKeypair();
-    if (!keypair || !account) {
+    // Check if any wallet is connected
+    const walletAddress = account?.address || zkState?.address;
+    if (!isConnected || !walletAddress) {
       dismissToast(t("vote.error"));
       return;
     }
@@ -96,14 +98,32 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
     try {
       const suiClient = getSuiClient();
+      let result;
 
-      const result = await suiClient.signAndExecuteTransaction({
-        signer: keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-        },
-      });
+      // Sign and execute based on wallet type
+      if (isZkConnected && zkState) {
+        // zkLogin signing
+        tx.setSender(zkState.address);
+        const bytes = await tx.build({ client: suiClient });
+        const signature = await zkSignTransaction(bytes);
+        result = await suiClient.executeTransactionBlock({
+          transactionBlock: bytes,
+          signature,
+          options: { showEffects: true },
+        });
+      } else {
+        // Local wallet signing
+        const keypair = getKeypair();
+        if (!keypair) {
+          dismissToast(t("vote.error"));
+          return;
+        }
+        result = await suiClient.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: tx,
+          options: { showEffects: true },
+        });
+      }
 
       await suiClient.waitForTransaction({
         digest: result.digest,

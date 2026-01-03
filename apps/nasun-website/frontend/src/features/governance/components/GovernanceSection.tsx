@@ -9,7 +9,7 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { VotingPowerSummary } from "./VotingPowerSummary";
 import { DelegationPanel } from "./DelegationPanel";
@@ -24,7 +24,8 @@ import { GovernanceStats } from "./GovernanceStats";
 const GovernanceSection = () => {
   const { t } = useTranslation(["proposals", "common"]);
   const { status, account } = useWallet();
-  const isConnected = status === "unlocked" && account;
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   return (

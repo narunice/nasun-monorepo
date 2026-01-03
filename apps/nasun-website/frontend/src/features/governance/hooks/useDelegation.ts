@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { useWallet, getSuiClient } from "@nasun/wallet";
+import { useWallet, useZkLogin, getSuiClient } from "@nasun/wallet";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { Transaction } from "@mysten/sui/transactions";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
@@ -29,6 +29,7 @@ interface UseDelegationReturn {
 
 export function useDelegation(): UseDelegationReturn {
   const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const packageId = useNetworkVariable("packageId");
   const delegationRegistryId = useNetworkVariable("delegationRegistryId");
 
@@ -36,7 +37,8 @@ export function useDelegation(): UseDelegationReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isConnected = status === "unlocked" && account;
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
+  const walletAddress = account?.address || zkState?.address;
 
   // Fetch delegation registry object
   const {
@@ -207,14 +209,14 @@ export function useDelegation(): UseDelegationReturn {
   // Delegate voting power to another address
   const delegate = useCallback(
     async (toAddress: string): Promise<boolean> => {
-      if (!isConnected || !account) {
+      if (!isConnected) {
         setError("Wallet not connected");
         return false;
       }
 
-      const keypair = getKeypair();
-      if (!keypair) {
-        setError("Failed to get keypair");
+      // Check if we have a valid wallet address
+      if (!walletAddress) {
+        setError("No wallet address available");
         return false;
       }
 
@@ -233,13 +235,35 @@ export function useDelegation(): UseDelegationReturn {
           ],
         });
 
-        const result = await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: tx,
-          options: {
-            showEffects: true,
-          },
-        });
+        let result;
+
+        // zkLogin signing path
+        if (isZkConnected && zkState) {
+          tx.setSender(zkState.address);
+          const bytes = await tx.build({ client: suiClient });
+          const signature = await zkSignTransaction(bytes);
+          result = await suiClient.executeTransactionBlock({
+            transactionBlock: bytes,
+            signature,
+            options: {
+              showEffects: true,
+            },
+          });
+        } else {
+          // Mnemonic wallet signing path
+          const keypair = getKeypair();
+          if (!keypair) {
+            setError("Failed to get keypair");
+            return false;
+          }
+          result = await suiClient.signAndExecuteTransaction({
+            signer: keypair,
+            transaction: tx,
+            options: {
+              showEffects: true,
+            },
+          });
+        }
 
         await suiClient.waitForTransaction({
           digest: result.digest,
@@ -259,19 +283,19 @@ export function useDelegation(): UseDelegationReturn {
         setIsLoading(false);
       }
     },
-    [isConnected, account, getKeypair, packageId, delegationRegistryId]
+    [isConnected, walletAddress, isZkConnected, zkState, zkSignTransaction, getKeypair, packageId, delegationRegistryId]
   );
 
   // Revoke delegation
   const revoke = useCallback(async (): Promise<boolean> => {
-    if (!isConnected || !account) {
+    if (!isConnected) {
       setError("Wallet not connected");
       return false;
     }
 
-    const keypair = getKeypair();
-    if (!keypair) {
-      setError("Failed to get keypair");
+    // Check if we have a valid wallet address
+    if (!walletAddress) {
+      setError("No wallet address available");
       return false;
     }
 
@@ -287,13 +311,35 @@ export function useDelegation(): UseDelegationReturn {
         arguments: [tx.object(delegationRegistryId)],
       });
 
-      const result = await suiClient.signAndExecuteTransaction({
-        signer: keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-        },
-      });
+      let result;
+
+      // zkLogin signing path
+      if (isZkConnected && zkState) {
+        tx.setSender(zkState.address);
+        const bytes = await tx.build({ client: suiClient });
+        const signature = await zkSignTransaction(bytes);
+        result = await suiClient.executeTransactionBlock({
+          transactionBlock: bytes,
+          signature,
+          options: {
+            showEffects: true,
+          },
+        });
+      } else {
+        // Mnemonic wallet signing path
+        const keypair = getKeypair();
+        if (!keypair) {
+          setError("Failed to get keypair");
+          return false;
+        }
+        result = await suiClient.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: tx,
+          options: {
+            showEffects: true,
+          },
+        });
+      }
 
       await suiClient.waitForTransaction({
         digest: result.digest,
@@ -312,7 +358,7 @@ export function useDelegation(): UseDelegationReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, account, getKeypair, packageId, delegationRegistryId]);
+  }, [isConnected, walletAddress, isZkConnected, zkState, zkSignTransaction, getKeypair, packageId, delegationRegistryId]);
 
   return {
     delegationState,

@@ -1,6 +1,6 @@
 // src/routes/AppRoutes.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import React from "react";
 import { Helmet } from "react-helmet-async";
 import PrivateRoute from "./PrivateRoute";
@@ -9,6 +9,9 @@ import useScrollToTop from "../hooks/useScrollToTop";
 import LogoutRouteGate from "./LogoutRouteGate";
 import PageLoading from "../components/ui/PageLoading";
 
+// zkLogin callback page (Nasun Wallet)
+const ZkLoginCallback = lazy(() => import("../pages/ZkLoginCallback"));
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<PageLoading />}>
@@ -16,6 +19,7 @@ const AppRoutes = () => {
       <Routes>
         {/* Auth Routes */}
         <Route path="/callback" element={<Pages.Callback />} />
+        <Route path="/auth/callback" element={<ZkLoginCallback />} />
         <Route
           path="/logout"
           element={
