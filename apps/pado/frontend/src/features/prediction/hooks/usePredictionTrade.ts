@@ -61,17 +61,26 @@ function parseTradeError(error: unknown): string {
     return 'This position did not win. Only winning positions can be claimed.';
   }
 
-  // MoveAbort with code
-  const moveAbortMatch = message.match(/MoveAbort.*?(\d+)/);
+  // MoveAbort with code - parse the actual error code, not package ID digits
+  // Error format: "MoveAbort(...) in module::function, X" or "error code: X"
+  const errorCodeMatch = message.match(/(?:error[_\s]?code:?\s*|,\s*)(\d+)(?:\s*\)|$)/i);
+  const moveAbortMatch = errorCodeMatch || message.match(/MoveAbort[^,]*,\s*(\d+)/);
   if (moveAbortMatch) {
     const code = parseInt(moveAbortMatch[1]);
+    // Map error codes from prediction_market.move
     switch (code) {
-      case 1: return 'Market not found or invalid.';
-      case 2: return 'Market is closed.';
-      case 3: return 'Market has not been resolved yet.';
-      case 4: return 'Invalid position for this market.';
+      case 0: return 'Market is not open for trading.';
+      case 1: return 'Market has not closed yet.';
+      case 2: return 'Market has already been resolved.';
+      case 3: return 'Only the designated resolver can resolve this market.';
+      case 4: return 'Market has not been resolved yet.';
       case 5: return 'This position did not win.';
-      case 6: return 'Invalid price range.';
+      case 6: return 'Insufficient balance.';
+      case 7: return 'Invalid price. Must be between 1% and 99%.';
+      case 8: return 'Order not found.';
+      case 9: return 'You are not the owner of this order.';
+      case 10: return 'Market has expired.';
+      case 11: return 'Cannot trade with yourself.';
       default: return `Transaction failed (code: ${code}). Please try again.`;
     }
   }
