@@ -12,8 +12,8 @@ import {
   buildWithdrawAmountTransaction,
 } from '../lib/lending-client';
 
-// NUSDC token type
-const NUSDC_TYPE = '0xfdd1e75f22a7680ea3b1e29eed397b0fbf06838273aaec77001dcfc101d09976::nusdc::NUSDC';
+// NUSDC token type (from environment config)
+const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nusdc::NUSDC';
 
 interface UseLendingActionsResult {
   deposit: (amount: bigint) => Promise<string>;
