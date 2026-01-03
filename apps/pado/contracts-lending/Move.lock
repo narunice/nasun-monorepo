@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "3A67E83926D110BA1E81AF36E4A8404AA356FA1D5E4DBA17F944D6E917167315"
+manifest_digest = "7B3D5DB35FDE5BBA549893C71D943E26483DE8CC50C235F3323CB9250DC9CED8"
 deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
   { id = "Bridge", name = "Bridge" },
@@ -48,10 +48,7 @@ id = "pado_tokens"
 source = { local = "../contracts" }
 
 dependencies = [
-  { id = "Bridge", name = "Bridge" },
-  { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "Sui", name = "Sui" },
-  { id = "SuiSystem", name = "SuiSystem" },
 ]
 
 [move.toolchain-version]
@@ -65,4 +62,10 @@ flavor = "sui"
 chain-id = "6681cdfd"
 original-published-id = "0x63f513c6dc341cadfaadc672d24123de931c983f8afb6773dc8aef4c42ab49fc"
 latest-published-id = "0x63f513c6dc341cadfaadc672d24123de931c983f8afb6773dc8aef4c42ab49fc"
+published-version = "1"
+
+[env.devnet]
+chain-id = "4c879694"
+original-published-id = "0xeaa6d4ac6c6bb0b805bd6863a1b3e3d15c15b72f85c12131d83e9208635ecd15"
+latest-published-id = "0xeaa6d4ac6c6bb0b805bd6863a1b3e3d15c15b72f85c12131d83e9208635ecd15"
 published-version = "1"

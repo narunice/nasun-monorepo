@@ -8,7 +8,7 @@ version = "0.0.1"
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
-pado = "0x0"
+pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
 
 [environments]
 nasun-devnet = "6681cdfd"
