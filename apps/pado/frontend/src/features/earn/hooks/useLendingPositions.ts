@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import {
   getUserPositions,
   calculatePositionValue,
@@ -28,7 +28,10 @@ interface UseLendingPositionsResult {
 
 export function useLendingPositions(): UseLendingPositionsResult {
   const { account } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { pool } = useLendingPool();
+
+  const address = account?.address || zkState?.address;
 
   const {
     data: rawPositions,
@@ -36,9 +39,9 @@ export function useLendingPositions(): UseLendingPositionsResult {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['lending-positions', account?.address],
-    queryFn: () => getUserPositions(account!.address),
-    enabled: !!account?.address,
+    queryKey: ['lending-positions', address],
+    queryFn: () => getUserPositions(address!),
+    enabled: !!address,
     refetchInterval: 30000,
     staleTime: 10000,
   });

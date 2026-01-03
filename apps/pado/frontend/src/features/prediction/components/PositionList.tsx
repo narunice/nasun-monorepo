@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import type { PredictionMarket, Position } from '../types';
 import { calculateProbability } from '../types';
 import { formatPositionAmount, usePositionValue } from '../hooks/usePredictionPositions';
@@ -108,6 +108,7 @@ function PositionCard({ position, market, currentPrice, onSell, onClaim, isLoadi
 
 export function PositionList({ market, positions, onSuccess }: PositionListProps) {
   const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { isLoading, placeSellOrder, claimWinnings } = usePredictionTrade();
   const [sellModalPosition, setSellModalPosition] = useState<string | null>(null);
   const [sellPrice, setSellPrice] = useState('');
@@ -166,7 +167,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     }
   }, [market.id, claimWinnings, onSuccess]);
 
-  if (status !== 'unlocked') {
+  if (status !== 'unlocked' && !isZkConnected) {
     return null;
   }
 
