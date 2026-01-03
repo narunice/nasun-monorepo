@@ -3,7 +3,7 @@
  * Display individual token balances with USD values
  */
 
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTotalValue, type TokenValue } from '../hooks';
 
 interface TokenRowProps {
@@ -69,9 +69,10 @@ function TokenRow({ token }: TokenRowProps) {
 
 export function TokenBalanceList() {
   const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { tokens, isLoading } = useTotalValue();
 
-  const isConnected = status === 'unlocked';
+  const isConnected = status === 'unlocked' || isZkConnected;
 
   if (!isConnected) {
     return (
