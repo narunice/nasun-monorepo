@@ -27,7 +27,7 @@
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2025-12-27)
+### 현재 상태 (2026-01-03)
 
 | 앱                     | 패키지명               | 상태    | 배포 방식        | 설명                   |
 | ---------------------- | ---------------------- | ------- | ---------------- | ---------------------- |
@@ -84,6 +84,8 @@ nasun-monorepo/
 - `configureWallet()` - RPC URL 설정
 - `createWallet()`, `unlockWallet()`, `lockWallet()` - 지갑 생성/잠금
 - `requestFaucet()` - Faucet 토큰 요청
+- `initZkLogin()` - zkLogin 초기화 (Salt API, Prover URL, OAuth 설정)
+- `useZkLogin()` - zkLogin 상태 및 서명
 
 **사용법:**
 
@@ -217,6 +219,10 @@ pnpm deploy:gensol-website:staging
   - 16회 이상 실패 → 30분 lockout
   - 성공 시 카운터 초기화
   - localStorage에 저장되어 새로고침해도 유지
+- **zkLogin**: Google OAuth 기반 ZK proof 인증
+  - Salt 관리 Lambda (AWS)
+  - Ephemeral keypair 생성
+  - ZK proof 서명
 
 ## 관련 외부 프로젝트
 

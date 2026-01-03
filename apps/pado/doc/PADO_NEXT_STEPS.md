@@ -187,10 +187,11 @@
 - `apps/pado/frontend/src/pages/AuthCallbackPage.tsx` - Pado 콜백 페이지
 - `/auth/callback` 라우트 추가
 
-**Nasun Website 통합 (대기)**:
-- 인프라는 준비 완료 (CDK에 Salt Lambda 배포됨)
-- 메인넷 후 활성화 예정
-- 기존 Google OAuth와 동일한 JWT 사용 가능
+**전체 앱 통합 (2026-01-03 완료)**:
+- ✅ Pado: 거래, 예측 시장, 스테이킹, 결제 모든 기능에서 zkLogin 서명 지원
+- ✅ Nasun Website: 거버넌스 투표/위임 서명 지원
+- ✅ Network Explorer: zkLogin 콜백 라우트 + 월렛 UI
+- ✅ GenSol Website: zkLogin 콜백 라우트 + 월렛 UI
 
 **환경변수**:
 ```bash
@@ -508,3 +509,4 @@ frontend/src/
 | 2026-01-01 | Phase 13 완료: Staking (EarnPage, StakingSection, 라이트 모드 지원) |
 | 2026-01-01 | Phase 12 완료: Lending Pool (스마트 컨트랙트 배포, Deposit/Withdraw UI) |
 | 2026-01-01 | Phase 9.1-9.4 완료: zkLogin 통합 (백엔드, wallet 패키지, Pado 앱) |
+| 2026-01-03 | Phase 9.5-9.7 완료: zkLogin 전체 앱 통합 (Nasun Website, Network Explorer, GenSol Website) |

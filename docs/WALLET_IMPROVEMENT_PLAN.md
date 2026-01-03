@@ -1,8 +1,8 @@
 # Nasun Wallet Improvement Plan
 
 > Version: 2.0
-> Last Updated: 2025-12-29
-> Status: Phase 1-5 Complete, Phase 6+ Pending
+> Last Updated: 2026-01-03
+> Status: Phase 1-5 Complete, Phase 7 Complete, Phase 6/8/9 Pending
 
 ---
 
@@ -16,7 +16,7 @@
 | **Phase 4** - NFT Support | ✅ Complete | 2025-12-28 |
 | **Phase 5** - Security Features | 🔄 Partial | - |
 | Phase 6 - Multi-Wallet | ⏳ Pending | - |
-| Phase 7 - zkLogin | ⏳ Pending | - |
+| **Phase 7** - zkLogin | ✅ Complete | 2026-01-03 |
 | Phase 8 - Pado Integration | ⏳ Pending | - |
 | Phase 9 - Multi-Chain | ⏳ Pending | - |
 
@@ -245,24 +245,31 @@ packages/wallet-ui/src/__tests__/
 
 ---
 
-### Phase 7: zkLogin ⏳
+### Phase 7: zkLogin ✅
 
-**Status: Pending**
+**Status: Complete**
+**Completed: 2026-01-03**
 **Goal:** Social login for seedless onboarding
 
-**Prerequisites:**
-- [ ] Nasun Devnet zkLogin support confirmation
-- [ ] ZK proof generation server
-- [ ] OAuth client registration (Google, Apple)
+**Implemented:**
+- ✅ Google OAuth integration via Sui zkLogin
+- ✅ Salt management Lambda (AWS) - `nasun-auth-zklogin-salt`
+- ✅ ZkLoginUsers DynamoDB table
+- ✅ `initZkLogin()` function for configuration
+- ✅ `useZkLogin()` hook for React components
+- ✅ `zkSignTransaction()` for transaction signing
+- ✅ `SocialLoginButtons` UI component
+- ✅ `ZkLoginCallback` page for OAuth redirect
+- ✅ All apps integrated: Pado, network-explorer, gensol-website, nasun-website
 
-**Planned Features:**
-- Google, Apple OAuth integration
-- Ephemeral keypair management
-- ZK proof generation and verification
-- Link zkLogin account to existing wallet
+**Key Files:**
+- `packages/wallet/src/core/zklogin.ts` - Core zkLogin logic
+- `packages/wallet/src/hooks/useZkLogin.ts` - React hooks
+- `packages/wallet-ui/src/SocialLoginButtons.tsx` - UI component
+- `packages/wallet-ui/src/ZkLoginCallback.tsx` - OAuth callback
 
-**Complexity:** Very High
-**Dependency:** Phase 1-6, Nasun Devnet zkLogin support
+**Complexity:** Very High (Completed)
+**Dependency:** Nasun Devnet zkLogin support (verified)
 
 ---
 

@@ -52,7 +52,7 @@ Pado는 이 분절을 해결합니다:
 | Phase 6 | ✅ 완료 | Trading UX Pro | 고급 주문 유형, 슬리피지 설정, 가격 제안 |
 | Phase 7 | ✅ 완료 | Portfolio Dashboard | 포트폴리오 대시보드, P&L 표시 |
 | Phase 8 | ✅ 완료 | Mobile & Theme | 모바일 반응형, 다크/라이트 테마 |
-| Phase 9 | 📋 계획 | Smart Account v2 | zkLogin + Passkey 인증, 시드리스 온보딩 |
+| Phase 9 | ✅ 완료 | Smart Account v2 | zkLogin 인증, 시드리스 온보딩 (2026-01-03) |
 | Phase 10 | 📋 계획 | Cross-Chain Vaults | BTC, ETH 등 외부 자산 Vault 통합 |
 | Phase 11 | 📋 계획 | Perpetuals | 무기한 선물 거래 |
 | Phase 12 | 📋 계획 | Lending & Borrowing | 통합 대출 프로토콜 |
@@ -87,8 +87,11 @@ Pado는 Nasun의 네이티브 계정 추상화를 활용합니다:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**현재 구현**: Embedded Wallet (AES-256-GCM 암호화, PBKDF2)
-**향후 확장**: zkLogin, Passkey 기반 시드리스 인증
+**현재 구현**:
+- Embedded Wallet (AES-256-GCM 암호화, PBKDF2)
+- zkLogin (Google OAuth + ZK proof 기반 인증)
+
+**향후 확장**: Passkey 기반 생체 인증
 
 ### 2. Object-Based Financial Architecture
 
