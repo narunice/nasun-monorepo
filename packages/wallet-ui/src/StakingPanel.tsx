@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import {
   useWallet,
+  useZkLogin,
   useBalance,
   useStakeTransaction,
   useStaking,
@@ -40,9 +41,11 @@ export function StakingPanel({
 }: StakingPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
 
-  // Not connected
-  if (status !== 'unlocked' || !account) {
+  // Not connected (check both mnemonic wallet and zkLogin)
+  const isWalletConnected = (status === 'unlocked' && account) || isZkConnected;
+  if (!isWalletConnected) {
     return (
       <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
         <p className="text-gray-500 dark:text-zinc-400 text-sm text-center">

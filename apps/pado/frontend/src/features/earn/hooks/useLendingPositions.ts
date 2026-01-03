@@ -28,7 +28,7 @@ interface UseLendingPositionsResult {
 
 export function useLendingPositions(): UseLendingPositionsResult {
   const { account } = useWallet();
-  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const { state: zkState } = useZkLogin();
   const { pool } = useLendingPool();
 
   const address = account?.address || zkState?.address;
