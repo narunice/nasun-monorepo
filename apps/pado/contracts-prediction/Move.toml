@@ -2,14 +2,14 @@
 name = "pado_prediction"
 edition = "2024.beta"
 version = "0.0.1"
-published-at = "0x6754f5806b9bb348f570e350b1309deb5bd9469d0d3000455b1ce368ef4085eb"
+# published-at will be set after deployment
 
 [dependencies]
 pado_tokens = { local = "../contracts" }
 
 [addresses]
-prediction = "0x6754f5806b9bb348f570e350b1309deb5bd9469d0d3000455b1ce368ef4085eb"
-pado = "0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7"
+prediction = "0x0"
+pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
 
 [environments]
 nasun-devnet = "6681cdfd"

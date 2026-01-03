@@ -2,7 +2,29 @@
 # This file should be checked in.
 
 [move]
-version = 4
+version = 3
+manifest_digest = "3C276A52163D8FA3E94C5513422E52C084C64924F1573B3A3131686EF8DCDA3C"
+deps_digest = "F8BBB0CCB2491CA29A3DF03D6F92277A4F3574266507ACD77214D37ECA3F3082"
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "MoveStdlib"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/move-stdlib" }
+
+[[move.package]]
+id = "Sui"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/testnet", subdir = "crates/sui-framework/packages/sui-framework" }
+
+dependencies = [
+  { id = "MoveStdlib", name = "MoveStdlib" },
+]
+
+[move.toolchain-version]
+compiler-version = "1.62.1"
+edition = "2024"
+flavor = "sui"
 
 [pinned.nasun-devnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "74e8414a498601333fa4dd408c892f5fe3b0ca93" }
@@ -21,3 +43,11 @@ source = { root = true }
 use_environment = "nasun-devnet"
 manifest_digest = "B1CCDFC77D69F061DBBA2F9D0C61F4378B4F76A183370D129A5A905AE9E36062"
 deps = { Sui = "Sui" }
+
+[env]
+
+[env.devnet]
+chain-id = "4c879694"
+original-published-id = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+latest-published-id = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+published-version = "1"
