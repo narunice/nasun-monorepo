@@ -18,7 +18,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const { data: balances } = useMultiBalance();
-  const { stats } = useLendingPool();
+  const { stats, refetch: refetchPool } = useLendingPool();
   const { refetch: refetchPositions } = useLendingPositions();
   const { deposit, isLoading, error, clearError } = useLendingActions();
 
@@ -56,8 +56,9 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
       setSuccess(digest);
       setAmount('');
 
-      // Refetch positions after delay
+      // Refetch pool and positions after delay
       setTimeout(() => {
+        refetchPool();
         refetchPositions();
       }, 1500);
 
@@ -65,7 +66,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
     } catch {
       // Error is handled by the hook
     }
-  }, [amount, deposit, refetchPositions, onSuccess]);
+  }, [amount, deposit, refetchPool, refetchPositions, onSuccess]);
 
   const parsedAmount = parseNUSDC(amount);
   const isValidAmount = parsedAmount >= MIN_DEPOSIT && parsedAmount <= nusdcBalance;
