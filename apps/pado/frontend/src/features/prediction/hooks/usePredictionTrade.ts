@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
   buildMintOutcomeTokensWithAmount,
@@ -118,6 +118,13 @@ interface UsePredictionTradeResult {
 
 export function usePredictionTrade(): UsePredictionTradeResult {
   const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+
+  // Determine active wallet (zkLogin takes priority)
+  const isLocalWalletActive = status === 'unlocked' && account?.address;
+  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,18 +132,35 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const pendingOperationRef = useRef<string | null>(null);
 
   /**
-   * Sign and execute a transaction
+   * Sign and execute a transaction (supports both local wallet and zkLogin)
    */
   const signAndExecute = useCallback(async (tx: Transaction) => {
-    const keypair = getKeypair();
-    if (!keypair) {
-      throw new Error('Keypair not available');
+    if (!walletAddress) {
+      throw new Error('Wallet not connected');
     }
 
     const client = getSuiClient();
-    const result = await client.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
+    tx.setSender(walletAddress);
+    const bytes = await tx.build({ client });
+
+    // Sign with appropriate method
+    let signature: string;
+    if (isZkLoggedIn && zkState) {
+      // zkLogin signing
+      signature = await zkSignTransaction(bytes);
+    } else {
+      // Local wallet signing
+      const keypair = getKeypair();
+      if (!keypair) {
+        throw new Error('Keypair not available');
+      }
+      const signResult = await keypair.signTransaction(bytes);
+      signature = signResult.signature;
+    }
+
+    const result = await client.executeTransactionBlock({
+      transactionBlock: bytes,
+      signature,
       options: {
         showEffects: true,
       },
@@ -147,17 +171,17 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     }
 
     return result;
-  }, [getKeypair]);
+  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]);
 
   /**
    * Get NUSDC coin with sufficient balance
    */
   const getNusdcCoin = useCallback(async (minAmount: bigint): Promise<string | null> => {
-    if (!account) return null;
+    if (!walletAddress) return null;
 
     const client = getSuiClient();
     const coins = await client.getCoins({
-      owner: account.address,
+      owner: walletAddress,
       coinType: NUSDC_TYPE,
     });
 
@@ -176,7 +200,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     }
 
     return null;
-  }, [account]);
+  }, [walletAddress]);
 
   /**
    * Mint YES and NO tokens
@@ -185,7 +209,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     marketId: string,
     amount: number, // In NUSDC (e.g., 100 = 100 NUSDC)
   ): Promise<TradeResult> => {
-    if (status !== 'unlocked' || !account) {
+    if (!isWalletConnected) {
       return { success: false, error: 'Wallet not connected' };
     }
 
@@ -207,7 +231,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         throw new Error('Insufficient NUSDC balance');
       }
 
-      const tx = buildMintOutcomeTokensWithAmount(marketId, coinId, amountInUnits, account.address);
+      const tx = buildMintOutcomeTokensWithAmount(marketId, coinId, amountInUnits, walletAddress!);
       const result = await signAndExecute(tx);
 
       return { success: true, digest: result.digest };
@@ -219,7 +243,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       pendingOperationRef.current = null;
       setIsLoading(false);
     }
-  }, [status, account, signAndExecute, getNusdcCoin]);
+  }, [isWalletConnected, walletAddress, signAndExecute, getNusdcCoin]);
 
   /**
    * Place a buy order for YES or NO tokens
@@ -230,7 +254,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     price: number, // In percentage (e.g., 65 = 65%)
     amount: number, // In NUSDC
   ): Promise<TradeResult> => {
-    if (status !== 'unlocked' || !account) {
+    if (!isWalletConnected) {
       return { success: false, error: 'Wallet not connected' };
     }
 
@@ -270,7 +294,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       pendingOperationRef.current = null;
       setIsLoading(false);
     }
-  }, [status, account, signAndExecute, getNusdcCoin]);
+  }, [isWalletConnected, signAndExecute, getNusdcCoin]);
 
   /**
    * Place a sell order using a Position NFT
@@ -280,7 +304,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     positionId: string,
     price: number, // In percentage
   ): Promise<TradeResult> => {
-    if (status !== 'unlocked' || !account) {
+    if (!isWalletConnected) {
       return { success: false, error: 'Wallet not connected' };
     }
 
@@ -312,7 +336,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       pendingOperationRef.current = null;
       setIsLoading(false);
     }
-  }, [status, account, signAndExecute]);
+  }, [isWalletConnected, signAndExecute]);
 
   /**
    * Claim winnings after market resolution
@@ -321,7 +345,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     marketId: string,
     positionId: string,
   ): Promise<TradeResult> => {
-    if (status !== 'unlocked' || !account) {
+    if (!isWalletConnected) {
       return { success: false, error: 'Wallet not connected' };
     }
 
@@ -348,7 +372,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       pendingOperationRef.current = null;
       setIsLoading(false);
     }
-  }, [status, account, signAndExecute]);
+  }, [isWalletConnected, signAndExecute]);
 
   return {
     isLoading,
