@@ -6,15 +6,16 @@
 import { useState, useCallback } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useLendingPositions } from '../hooks/useLendingPositions';
+import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingActions } from '../hooks/useLendingActions';
 import { formatNUSDC, type PositionValue } from '../types/lending';
 
 export function PositionList() {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
-  const { positions, totalDeposited, totalEarned, isLoading } = useLendingPositions();
+  const { positions, totalDeposited, totalEarned, isLoading, refetch } = useLendingPositions();
+  const { refetch: refetchPool } = useLendingPool();
   const { withdraw, isLoading: isWithdrawing, error } = useLendingActions();
-  const { refetch } = useLendingPositions();
 
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -27,8 +28,9 @@ export function PositionList() {
       const digest = await withdraw(positionId);
       setSuccess(digest);
 
-      // Refetch positions after delay
+      // Refetch pool and positions after delay
       setTimeout(() => {
+        refetchPool();
         refetch();
       }, 1500);
     } catch {
@@ -36,7 +38,7 @@ export function PositionList() {
     } finally {
       setWithdrawingId(null);
     }
-  }, [withdraw, refetch]);
+  }, [withdraw, refetchPool, refetch]);
 
   const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
