@@ -33,7 +33,7 @@ export async function getLendingPool(): Promise<LendingPool | null> {
 
     return {
       id: LENDING_POOL_ID,
-      totalDeposits: BigInt((fields.total_deposits as { fields: { value: string } })?.fields?.value || '0'),
+      totalDeposits: BigInt(fields.total_deposits as string || '0'),
       totalBorrows: BigInt(fields.total_borrows as string || '0'),
       totalReserves: BigInt(fields.total_reserves as string || '0'),
       lastUpdateTime: BigInt(fields.last_update_time as string || '0'),
