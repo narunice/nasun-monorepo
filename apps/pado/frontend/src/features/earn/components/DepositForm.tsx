@@ -147,7 +147,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
                 Deposit successful!
               </p>
               <a
-                href={`https://explorer.devnet.nasun.io/txblock/${success}`}
+                href={`https://explorer.devnet.nasun.io/tx/${success}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-500 hover:underline"
