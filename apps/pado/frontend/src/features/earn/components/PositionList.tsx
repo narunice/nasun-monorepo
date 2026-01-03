@@ -4,13 +4,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useLendingPositions } from '../hooks/useLendingPositions';
 import { useLendingActions } from '../hooks/useLendingActions';
 import { formatNUSDC, type PositionValue } from '../types/lending';
 
 export function PositionList() {
   const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const { positions, totalDeposited, totalEarned, isLoading } = useLendingPositions();
   const { withdraw, isLoading: isWithdrawing, error } = useLendingActions();
   const { refetch } = useLendingPositions();
@@ -37,7 +38,7 @@ export function PositionList() {
     }
   }, [withdraw, refetch]);
 
-  const isConnected = status === 'unlocked' && account;
+  const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
   if (!isConnected) {
     return (
