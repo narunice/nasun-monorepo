@@ -30,6 +30,7 @@ interface UseTrading {
   isLoading: boolean;
   error: string | null;
   balanceManagerId: string | null;
+  isValidatingBalanceManager: boolean;
 
   // 액션
   createBalanceManager: () => Promise<TradeResult>;
@@ -188,22 +189,30 @@ export function useTrading(): UseTrading {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [balanceManagerId, setBalanceManagerId] = useState<string | null>(
-    getStoredBalanceManagerId()
-  );
+  // BalanceManager ID는 검증 완료 후에만 설정 (race condition 방지)
+  const [balanceManagerId, setBalanceManagerId] = useState<string | null>(null);
+  const [isValidatingBalanceManager, setIsValidatingBalanceManager] = useState(true);
 
   // BalanceManager 유효성 검사 (초기화 시)
+  // 검증 완료 전까지 balanceManagerId는 null로 유지하여 race condition 방지
   useEffect(() => {
     const validateAndCleanup = async () => {
+      setIsValidatingBalanceManager(true);
       const storedId = getStoredBalanceManagerId();
       if (storedId) {
         const exists = await validateBalanceManagerExists(storedId);
-        if (!exists) {
-          console.warn('Stored BalanceManager does not exist on chain, clearing...');
+        if (exists) {
+          // 검증 성공: ID 설정
+          console.log('[useTrading] BalanceManager validated:', storedId);
+          setBalanceManagerId(storedId);
+        } else {
+          // 검증 실패: localStorage 정리
+          console.warn('[useTrading] Stored BalanceManager does not exist on chain, clearing...');
           clearStoredBalanceManagerId();
-          setBalanceManagerId(null);
+          // balanceManagerId는 이미 null이므로 setBalanceManagerId(null) 불필요
         }
       }
+      setIsValidatingBalanceManager(false);
     };
     validateAndCleanup();
   }, []);
@@ -590,6 +599,7 @@ export function useTrading(): UseTrading {
     isLoading,
     error,
     balanceManagerId,
+    isValidatingBalanceManager,
     createBalanceManager,
     depositToBalanceManager,
     placeLimitOrder,
