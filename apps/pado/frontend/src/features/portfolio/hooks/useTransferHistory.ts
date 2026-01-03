@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 
 export interface TransferRecord {
   id: string;
@@ -25,14 +25,16 @@ interface UseTransferHistoryResult {
 
 export function useTransferHistory(): UseTransferHistoryResult {
   const { status, account } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isConnected = status === 'unlocked' && account;
+  const address = account?.address || zkState?.address;
+  const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
   const fetchTransfers = async () => {
-    if (!isConnected || !account) {
+    if (!isConnected || !address) {
       setTransfers([]);
       return;
     }
@@ -43,7 +45,7 @@ export function useTransferHistory(): UseTransferHistoryResult {
     try {
       // TODO: Replace with actual blockchain query
       // For now, generate simulated transfer history
-      const simulatedTransfers = generateSimulatedTransfers(account.address);
+      const simulatedTransfers = generateSimulatedTransfers(address);
 
       // Simulate network delay
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -60,7 +62,7 @@ export function useTransferHistory(): UseTransferHistoryResult {
 
   useEffect(() => {
     fetchTransfers();
-  }, [isConnected, account]);
+  }, [isConnected, address]);
 
   return {
     transfers,

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 
 export interface UserTrade {
   id: string;
@@ -51,15 +51,17 @@ const EMPTY_STATS: TradeStats = {
 
 export function useTradeHistory(): UseTradeHistoryResult {
   const { status, account } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const [trades, setTrades] = useState<UserTrade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isConnected = status === 'unlocked' && account;
+  const address = account?.address || zkState?.address;
+  const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
   // Fetch trades from blockchain (simulated for now)
   const fetchTrades = async () => {
-    if (!isConnected || !account) {
+    if (!isConnected || !address) {
       setTrades([]);
       return;
     }
@@ -70,7 +72,7 @@ export function useTradeHistory(): UseTradeHistoryResult {
     try {
       // TODO: Replace with actual blockchain query
       // For now, generate simulated trade history based on account address
-      const simulatedTrades = generateSimulatedTrades(account.address);
+      const simulatedTrades = generateSimulatedTrades(address);
 
       // Simulate network delay
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -87,7 +89,7 @@ export function useTradeHistory(): UseTradeHistoryResult {
 
   useEffect(() => {
     fetchTrades();
-  }, [isConnected, account]);
+  }, [isConnected, address]);
 
   // Calculate statistics from trades
   const stats = useMemo<TradeStats>(() => {

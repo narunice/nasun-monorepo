@@ -4,7 +4,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { CreateMarketForm, usePredictionAdmin } from '../features/prediction';
 
 // Admin address that owns AdminCap
@@ -12,10 +12,13 @@ const ADMIN_ADDRESS = '0x05eef6d318e5a824fdf763270e3a719bb0327ddf814dea29cba6c96
 
 export function PredictAdminPage() {
   const { account } = useWallet();
+  const { state: zkState } = useZkLogin();
   const { isResolver } = usePredictionAdmin();
   const navigate = useNavigate();
 
-  const isAdmin = account?.address === ADMIN_ADDRESS;
+  // Check admin for both local wallet and zkLogin
+  const walletAddress = account?.address || zkState?.address;
+  const isAdmin = walletAddress === ADMIN_ADDRESS;
 
   const handleSuccess = (digest: string) => {
     console.log('Market created:', digest);

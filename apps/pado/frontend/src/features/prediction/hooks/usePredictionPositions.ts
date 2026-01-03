@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import { POSITION_TYPE, NUSDC_DECIMALS } from '../constants';
@@ -57,15 +57,19 @@ export interface UsePredictionPositionsResult {
  */
 export function usePredictionPositions(marketId?: string): UsePredictionPositionsResult {
   const { status, account } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+
+  const address = account?.address || zkState?.address;
+  const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['prediction-positions', account?.address, marketId],
+    queryKey: ['prediction-positions', address, marketId],
     queryFn: async (): Promise<Position[]> => {
-      if (!account?.address) return [];
+      if (!address) return [];
 
       const client = getSuiClient();
       const response = await client.getOwnedObjects({
-        owner: account.address,
+        owner: address,
         filter: { StructType: POSITION_TYPE },
         options: { showContent: true },
       });
@@ -78,7 +82,7 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       }
       return positions;
     },
-    enabled: status === 'unlocked' && !!account?.address,
+    enabled: isConnected && !!address,
     staleTime: 10_000,
     refetchInterval: 30_000,
   });

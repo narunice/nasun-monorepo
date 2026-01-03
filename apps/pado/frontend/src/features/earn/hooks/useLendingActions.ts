@@ -4,7 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet, getSuiClient } from '@nasun/wallet';
+import { Transaction } from '@mysten/sui/transactions';
+import { useWallet, useZkLogin, getSuiClient } from '@nasun/wallet';
 import {
   buildDepositTransaction,
   buildWithdrawTransaction,
@@ -24,25 +25,48 @@ interface UseLendingActionsResult {
 }
 
 export function useLendingActions(): UseLendingActionsResult {
-  const { account, getKeypair } = useWallet();
+  const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+
+  // Determine active wallet (zkLogin takes priority)
+  const isLocalWalletActive = status === 'unlocked' && account?.address;
+  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
 
   /**
-   * Execute a transaction with signing
+   * Sign and execute a transaction (supports both local wallet and zkLogin)
    */
-  const executeTransaction = async (tx: ReturnType<typeof buildDepositTransaction>): Promise<string> => {
-    const keypair = getKeypair();
-    if (!keypair) {
-      throw new Error('Keypair not available');
+  const signAndExecute = useCallback(async (tx: Transaction): Promise<string> => {
+    if (!walletAddress) {
+      throw new Error('Wallet not connected');
     }
 
     const client = getSuiClient();
-    const result = await client.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
+    tx.setSender(walletAddress);
+    const bytes = await tx.build({ client });
+
+    // Sign with appropriate method
+    let signature: string;
+    if (isZkLoggedIn && zkState) {
+      // zkLogin signing
+      signature = await zkSignTransaction(bytes);
+    } else {
+      // Local wallet signing
+      const keypair = getKeypair();
+      if (!keypair) {
+        throw new Error('Keypair not available');
+      }
+      const signResult = await keypair.signTransaction(bytes);
+      signature = signResult.signature;
+    }
+
+    const result = await client.executeTransactionBlock({
+      transactionBlock: bytes,
+      signature,
       options: { showEffects: true },
     });
 
@@ -51,17 +75,17 @@ export function useLendingActions(): UseLendingActionsResult {
     }
 
     return result.digest;
-  };
+  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]);
 
   /**
    * Find user's NUSDC coins
    */
-  const findNusdcCoins = async (): Promise<{ id: string; balance: bigint }[]> => {
-    if (!account?.address) return [];
+  const findNusdcCoins = useCallback(async (): Promise<{ id: string; balance: bigint }[]> => {
+    if (!walletAddress) return [];
 
     const client = getSuiClient();
     const response = await client.getCoins({
-      owner: account.address,
+      owner: walletAddress,
       coinType: NUSDC_TYPE,
     });
 
@@ -69,13 +93,13 @@ export function useLendingActions(): UseLendingActionsResult {
       id: coin.coinObjectId,
       balance: BigInt(coin.balance),
     }));
-  };
+  }, [walletAddress]);
 
   /**
    * Deposit NUSDC into the lending pool
    */
   const deposit = useCallback(async (amount: bigint): Promise<string> => {
-    if (!account?.address) {
+    if (!walletAddress) {
       throw new Error('Wallet not connected');
     }
 
@@ -102,7 +126,7 @@ export function useLendingActions(): UseLendingActionsResult {
 
       // Build and execute transaction
       const tx = buildDepositTransaction(coin.id, amount);
-      const digest = await executeTransaction(tx);
+      const digest = await signAndExecute(tx);
 
       return digest;
     } catch (err) {
@@ -112,13 +136,13 @@ export function useLendingActions(): UseLendingActionsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [account?.address, getKeypair]);
+  }, [walletAddress, findNusdcCoins, signAndExecute]);
 
   /**
    * Withdraw full position from the lending pool
    */
   const withdraw = useCallback(async (positionId: string): Promise<string> => {
-    if (!account?.address) {
+    if (!walletAddress) {
       throw new Error('Wallet not connected');
     }
 
@@ -127,7 +151,7 @@ export function useLendingActions(): UseLendingActionsResult {
 
     try {
       const tx = buildWithdrawTransaction(positionId);
-      const digest = await executeTransaction(tx);
+      const digest = await signAndExecute(tx);
 
       return digest;
     } catch (err) {
@@ -137,7 +161,7 @@ export function useLendingActions(): UseLendingActionsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [account?.address, getKeypair]);
+  }, [walletAddress, signAndExecute]);
 
   /**
    * Withdraw specific amount from position
@@ -146,7 +170,7 @@ export function useLendingActions(): UseLendingActionsResult {
     positionId: string,
     amount: bigint
   ): Promise<string> => {
-    if (!account?.address) {
+    if (!walletAddress) {
       throw new Error('Wallet not connected');
     }
 
@@ -155,7 +179,7 @@ export function useLendingActions(): UseLendingActionsResult {
 
     try {
       const tx = buildWithdrawAmountTransaction(positionId, amount);
-      const digest = await executeTransaction(tx);
+      const digest = await signAndExecute(tx);
 
       return digest;
     } catch (err) {
@@ -165,7 +189,7 @@ export function useLendingActions(): UseLendingActionsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [account?.address, getKeypair]);
+  }, [walletAddress, signAndExecute]);
 
   return {
     deposit,

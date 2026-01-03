@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { buildResolveMarket, buildCreateMarket } from '../transactions';
 import { PREDICTION_ADMIN_CAP } from '../constants';
@@ -50,27 +50,48 @@ function parseAdminError(error: unknown): string {
 
 export function usePredictionAdmin() {
   const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const [isLoading, setIsLoading] = useState(false);
 
+  // Determine active wallet (zkLogin takes priority)
+  const isLocalWalletActive = status === 'unlocked' && account?.address;
+  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+
   // Check if current user is the resolver
-  const isResolver = account?.address === RESOLVER_ADDRESS;
+  const isResolver = walletAddress === RESOLVER_ADDRESS;
 
   /**
-   * Sign and execute a transaction
+   * Sign and execute a transaction (supports both local wallet and zkLogin)
    */
   const signAndExecute = useCallback(async (tx: Transaction) => {
-    const keypair = getKeypair();
-    if (!keypair) {
-      throw new Error('Keypair not available');
+    if (!walletAddress) {
+      throw new Error('Wallet not connected');
     }
 
     const client = getSuiClient();
-    const result = await client.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
-      options: {
-        showEffects: true,
-      },
+    tx.setSender(walletAddress);
+    const bytes = await tx.build({ client });
+
+    // Sign with appropriate method
+    let signature: string;
+    if (isZkLoggedIn && zkState) {
+      // zkLogin signing
+      signature = await zkSignTransaction(bytes);
+    } else {
+      // Local wallet signing
+      const keypair = getKeypair();
+      if (!keypair) {
+        throw new Error('Keypair not available');
+      }
+      const signResult = await keypair.signTransaction(bytes);
+      signature = signResult.signature;
+    }
+
+    const result = await client.executeTransactionBlock({
+      transactionBlock: bytes,
+      signature,
+      options: { showEffects: true },
     });
 
     if (result.effects?.status?.status !== 'success') {
@@ -78,15 +99,15 @@ export function usePredictionAdmin() {
     }
 
     return result;
-  }, [getKeypair]);
+  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]);
 
   /**
    * Resolve market with outcome
    */
   const resolveMarket = useCallback(
     async (marketId: string, outcome: boolean): Promise<AdminResult> => {
-      if (status !== 'unlocked' || !account) {
-        return { success: false, error: 'Please unlock your wallet' };
+      if (!isWalletConnected) {
+        return { success: false, error: 'Please connect your wallet' };
       }
 
       if (!isResolver) {
@@ -112,7 +133,7 @@ export function usePredictionAdmin() {
         setIsLoading(false);
       }
     },
-    [status, account, isResolver, signAndExecute]
+    [isWalletConnected, isResolver, signAndExecute]
   );
 
   /**
@@ -127,8 +148,8 @@ export function usePredictionAdmin() {
       resolveDeadline: Date,
       resolver?: string
     ): Promise<AdminResult> => {
-      if (status !== 'unlocked' || !account) {
-        return { success: false, error: 'Please unlock your wallet' };
+      if (!isWalletConnected || !walletAddress) {
+        return { success: false, error: 'Please connect your wallet' };
       }
 
       const client = getSuiClient();
@@ -136,7 +157,7 @@ export function usePredictionAdmin() {
       // Check if user has AdminCap
       try {
         const adminCapObjects = await client.getOwnedObjects({
-          owner: account.address,
+          owner: walletAddress,
           filter: {
             StructType: `${PREDICTION_ADMIN_CAP}`,
           },
@@ -155,7 +176,7 @@ export function usePredictionAdmin() {
           category,
           BigInt(closeTime.getTime()),
           BigInt(resolveDeadline.getTime()),
-          resolver || account.address
+          resolver || walletAddress
         );
 
         const result = await signAndExecute(tx);
@@ -173,7 +194,7 @@ export function usePredictionAdmin() {
         setIsLoading(false);
       }
     },
-    [status, account, signAndExecute]
+    [isWalletConnected, walletAddress, signAndExecute]
   );
 
   return {
