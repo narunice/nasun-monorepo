@@ -2,14 +2,13 @@
 name = "pado_tokens"
 edition = "2024"
 version = "0.0.1"
-published-at = "0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7"
+# published-at will be set after deployment
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
-pado = "0xb083f14e6d768d6ccb7bb95b225a06d65fa41a14aea4c8d102ae1a104835c1d7"
+pado = "0x0"
 
 [environments]
-devnet = "579d23f7"
 nasun-devnet = "6681cdfd"

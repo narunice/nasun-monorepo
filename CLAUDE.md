@@ -265,15 +265,32 @@ cd apps/pado/contracts
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
 ```
 
-### 배포된 컨트랙트 (Devnet) - 2026-01-01 업데이트
+### 배포된 컨트랙트 (Devnet) - 2026-01-03 업데이트
 
-| 컨트랙트 | Package ID | 비고 |
+#### Pado Tokens (NBTC, NUSDC, Faucet)
+
+| 컨트랙트 | ID | 비고 |
 |----------|------------|------|
-| pado_tokens | `0xb083f14e...` | NBTC/NUSDC + Faucet (Security Hardened) |
-| prediction | `0x6754f580...` | 예측 시장 |
-| TokenFaucet (shared) | `0x6f40eeee...` | 토큰 민팅 |
-| ClaimRecord (shared) | `0xb17a4b82...` | 24시간 쿨다운 |
-| GlobalState (shared) | `0x02bd4975...` | 예측 시장 상태 |
+| pado_tokens | `0x508ba1bd...` | NBTC/NUSDC + Faucet |
+| TokenFaucet (shared) | `0x5930a542...` | 토큰 민팅 |
+| ClaimRecord (shared) | `0xd5ea726f...` | 24시간 쿨다운 |
+
+#### Prediction Market
+
+| 컨트랙트 | ID | 비고 |
+|----------|------------|------|
+| prediction | `0x8928903e...` | 예측 시장 패키지 |
+| GlobalState (shared) | `0x29d79342...` | 예측 시장 상태 |
+| AdminCap | `0x38a29029...` | 관리자 권한 |
+
+#### Governance (Nasun Website)
+
+| 컨트랙트 | ID | 비고 |
+|----------|------------|------|
+| governance | `0xcd753b00...` | 거버넌스 패키지 |
+| Dashboard (shared) | `0x422ee880...` | 프로포절 대시보드 |
+| DelegationRegistry | `0x23f4c7b5...` | 투표 위임 레지스트리 |
+| AdminCap | `0x21a92db9...` | 관리자 권한 |
 
 ## 향후 계획
 

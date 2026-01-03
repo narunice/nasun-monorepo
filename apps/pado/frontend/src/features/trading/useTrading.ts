@@ -274,7 +274,7 @@ export function useTrading(): UseTrading {
       // Log signature details for debugging
       console.log('[useTrading] Executing transaction with signature...');
       console.log('[useTrading] Signature length:', signature.length);
-      console.log('[useTrading] Signature (first 100 chars):', signature.substring(0, 100));
+      console.log('[useTrading] FULL SIGNATURE:', signature);
 
       // For zkLogin, decode signature to verify structure
       if (isZkLoggedIn) {
