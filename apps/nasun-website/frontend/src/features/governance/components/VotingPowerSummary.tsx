@@ -7,7 +7,7 @@
  */
 
 import { FC, useState } from "react";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useDelegation } from "../hooks/useDelegation";
@@ -43,7 +43,8 @@ const InfoTooltip: FC<{ content: string }> = ({ content }) => (
 
 export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = "" }) => {
   const { status, account } = useWallet();
-  const isConnected = status === "unlocked" && account;
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   const { votingPower, nftVerification, isLoading: isLoadingPower } = useVotingPower();
   const { delegationState, isLoading: isLoadingDelegation } = useDelegation();
