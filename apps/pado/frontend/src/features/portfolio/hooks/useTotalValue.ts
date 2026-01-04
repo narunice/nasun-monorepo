@@ -1,10 +1,13 @@
 /**
  * useTotalValue Hook
  * Calculate total portfolio value in USD with P&L
+ * Includes: Tokens (NASUN, NBTC, NUSDC) + Prediction Positions
  */
 
 import { useMemo } from 'react';
 import { useMultiBalance } from '@nasun/wallet';
+import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
+import { NUSDC_DECIMALS } from '../../prediction/constants';
 
 // Default prices for MVP (will be replaced with oracle/API prices later)
 const DEFAULT_PRICES = {
@@ -39,22 +42,18 @@ export interface UseTotalValueResult {
 }
 
 export function useTotalValue(): UseTotalValueResult {
-  const { data: multiBalance, isLoading } = useMultiBalance();
+  const { data: multiBalance, isLoading: isBalanceLoading } = useMultiBalance();
+  const { positions, isLoading: isPositionsLoading } = usePredictionPositions();
+
+  const isLoading = isBalanceLoading || isPositionsLoading;
 
   const result = useMemo(() => {
-    if (!multiBalance) {
-      return {
-        totalValue: 0,
-        totalPnl24h: 0,
-        totalChange24h: 0,
-        tokens: [],
-        prices: DEFAULT_PRICES,
-      };
-    }
+    const tokens: TokenValue[] = [];
 
-    const nasunBalance = multiBalance.native.formatted;
-    const nbtcBalance = multiBalance.tokens['NBTC']?.formatted || '0';
-    const nusdcBalance = multiBalance.tokens['NUSDC']?.formatted || '0';
+    // Token balances
+    const nasunBalance = multiBalance?.native.formatted || '0';
+    const nbtcBalance = multiBalance?.tokens['NBTC']?.formatted || '0';
+    const nusdcBalance = multiBalance?.tokens['NUSDC']?.formatted || '0';
 
     const nasunValue = parseFloat(nasunBalance) * DEFAULT_PRICES.NASUN;
     const nbtcValue = parseFloat(nbtcBalance) * DEFAULT_PRICES.NBTC;
@@ -65,7 +64,7 @@ export function useTotalValue(): UseTotalValueResult {
     const nbtcPnl = nbtcValue * (SIMULATED_CHANGES.NBTC / 100);
     const nusdcPnl = nusdcValue * (SIMULATED_CHANGES.NUSDC / 100);
 
-    const tokens: TokenValue[] = [
+    tokens.push(
       {
         symbol: 'NASUN',
         balance: nasunBalance,
@@ -90,9 +89,26 @@ export function useTotalValue(): UseTotalValueResult {
         change24h: SIMULATED_CHANGES.NUSDC,
         pnl24h: nusdcPnl,
       },
-    ];
+    );
 
-    const totalValue = nasunValue + nbtcValue + nusdcValue;
+    // Calculate Predictions total value (sum of costBasis)
+    const predictionsCostBasis = positions.reduce((sum, p) => sum + p.costBasis, 0n);
+    const predictionsValue = Number(predictionsCostBasis) / (10 ** NUSDC_DECIMALS);
+    const positionCount = positions.length;
+
+    // Add Predictions as a separate "asset" if user has any positions
+    if (positionCount > 0) {
+      tokens.push({
+        symbol: 'Predictions',
+        balance: `${positionCount} positions`,
+        price: 0, // Not applicable
+        value: predictionsValue,
+        change24h: 0, // TODO: Calculate real P&L when we have current prices
+        pnl24h: 0,
+      });
+    }
+
+    const totalValue = nasunValue + nbtcValue + nusdcValue + predictionsValue;
     const totalPnl24h = nasunPnl + nbtcPnl + nusdcPnl;
     const totalChange24h = totalValue > 0 ? (totalPnl24h / (totalValue - totalPnl24h)) * 100 : 0;
 
@@ -103,7 +119,7 @@ export function useTotalValue(): UseTotalValueResult {
       tokens,
       prices: DEFAULT_PRICES,
     };
-  }, [multiBalance]);
+  }, [multiBalance, positions]);
 
   return {
     ...result,
