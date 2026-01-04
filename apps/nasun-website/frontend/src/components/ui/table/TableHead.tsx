@@ -21,7 +21,7 @@ export const TableHead = ({ children, className = "", align = "left" }: TableHea
   const alignClass = align === "left" ? "text-left" : align === "center" ? "text-center" : "text-right";
 
   return (
-    <th className={`px-6 py-2 font-medium text-white uppercase ${alignClass} ${className}`.trim()}>
+    <th className={`px-2 md:px-6 py-2 font-medium text-white uppercase ${alignClass} ${className}`.trim()}>
       {children}
     </th>
   );

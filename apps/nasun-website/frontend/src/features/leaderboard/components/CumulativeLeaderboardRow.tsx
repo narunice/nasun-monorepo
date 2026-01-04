@@ -70,8 +70,8 @@ const CumulativeLeaderboardRow: React.FC<CumulativeLeaderboardRowProps> = memo(
           </div>
         </TableCell>
 
-        {/* Community Member */}
-        <TableCell align="center">
+        {/* Community Member - hidden on mobile/tablet */}
+        <TableCell align="center" className="hidden lg:table-cell">
           {entry.isCommunityMember ? (
             <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
           ) : (
@@ -79,8 +79,8 @@ const CumulativeLeaderboardRow: React.FC<CumulativeLeaderboardRowProps> = memo(
           )}
         </TableCell>
 
-        {/* 언어 */}
-        <TableCell align="center">
+        {/* 언어 - hidden on mobile */}
+        <TableCell align="center" className="hidden md:table-cell">
           <span className="text-nasun-white">{getLanguageName(entry.dominantLanguage, "en")}</span>
         </TableCell>
 
