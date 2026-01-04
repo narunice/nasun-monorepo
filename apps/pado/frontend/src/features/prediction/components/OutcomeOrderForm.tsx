@@ -7,7 +7,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
-import { usePredictionPositions, formatPositionAmount } from '../hooks/usePredictionPositions';
+import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import type { PredictionMarket } from '../types';
 import { calculateProbability } from '../types';
 
@@ -267,11 +267,15 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
                 disabled={isDisabled}
                 className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                {filteredPositions.map((pos) => (
-                  <option key={pos.id} value={pos.id}>
-                    {formatPositionAmount(pos.shares)} shares @ {formatPositionAmount(pos.costBasis)} NUSDC
-                  </option>
-                ))}
+                {filteredPositions.map((pos) => {
+                  const shares = Number(pos.shares) / Math.pow(10, 6);
+                  const avgPrice = pos.shares > 0n ? Number(pos.costBasis) / Number(pos.shares) : 0;
+                  return (
+                    <option key={pos.id} value={pos.id}>
+                      {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} shares @ {avgPrice.toFixed(2)} NUSDC/share
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>
@@ -341,41 +345,44 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </div>
         )}
 
-        {/* Order Summary - Sell Mode */}
+        {/* Order Summary - Sell Mode (Kalshi/Polymarket style) */}
         {orderType === 'sell' && selectedPositionId && (
-          <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1 text-sm">
+          <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-2 text-sm">
             {(() => {
               const selectedPos = filteredPositions.find(p => p.id === selectedPositionId);
               if (!selectedPos) return null;
               const priceNum = parseFloat(price) || defaultPrice;
-              const expectedPayout = Number(selectedPos.shares) / Math.pow(10, 6) * (priceNum / 100);
-              const costBasisNum = Number(selectedPos.costBasis) / Math.pow(10, 6);
-              const pnl = expectedPayout - costBasisNum;
+              const shares = Number(selectedPos.shares) / Math.pow(10, 6);
+              const expectedPayout = shares * (priceNum / 100);
+              const oppositeOutcome = outcomeType === 'yes' ? 'NO' : 'YES';
+
               return (
                 <>
                   <div className="flex justify-between">
                     <span className="text-theme-text-muted">Selling:</span>
                     <span className="text-theme-text-primary font-mono">
-                      {formatPositionAmount(selectedPos.shares)} {outcomeType.toUpperCase()}
+                      {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} {outcomeType.toUpperCase()} shares
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-theme-text-muted">At Price:</span>
+                    <span className="text-theme-text-muted">Price:</span>
                     <span className="text-theme-text-primary font-mono">
-                      {priceNum.toFixed(1)}%
+                      {(priceNum / 100).toFixed(2)} NUSDC per share
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-theme-text-muted">Expected Payout:</span>
-                    <span className="text-theme-text-primary font-mono">
+                    <span className="text-theme-text-muted">You will receive:</span>
+                    <span className="text-green-500 font-mono">
                       {expectedPayout.toFixed(2)} NUSDC
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-theme-text-muted">P&L:</span>
-                    <span className={`font-mono ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} NUSDC
-                    </span>
+
+                  {/* Position After Trade */}
+                  <div className="border-t border-theme-border/50 pt-2 mt-1">
+                    <p className="text-xs text-theme-text-muted mb-1">Position After Trade</p>
+                    <div className="text-xs text-blue-400 bg-blue-500/10 rounded p-2">
+                      💡 Selling {outcomeType.toUpperCase()} = Betting on {oppositeOutcome}
+                    </div>
                   </div>
                 </>
               );

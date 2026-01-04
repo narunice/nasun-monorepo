@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTheme } from '../../providers/theme';
+import { HeaderNetValue } from './HeaderNetValue';
 
 interface NavItem {
   label: string;
@@ -135,6 +136,9 @@ export function Header() {
               </svg>
             </span>
           </button>
+
+          {/* Net Value (visible when connected, hidden on mobile) */}
+          <HeaderNetValue />
 
           {showWalletButton && <WalletConnect addressStartChars={2} addressEndChars={3} />}
 
