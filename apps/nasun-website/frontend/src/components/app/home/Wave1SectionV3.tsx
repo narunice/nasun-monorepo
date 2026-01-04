@@ -1,0 +1,213 @@
+import React, { useRef, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import wave1VideoPcMP4 from "../../../assets/videos/home-wave1-wave-light-desktop.mp4";
+import wave1VideoMobileMP4 from "../../../assets/videos/home-wave1-wave-light-mobile.mp4";
+import leaderboardDesktop from "../../../assets/images/leaderboard-ss.jpg";
+import leaderboardMobile from "../../../assets/images/leaderboard-ss2.jpg";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ActionLink } from "../../ui/ActionLink";
+import { DividerBox } from "@/components/ui/DividerBox";
+
+/**
+ * Wave1SectionV3 - DividerBox version
+ *
+ * Uses DividerBox component instead of Tag for card titles.
+ * - Same layout as original (left cards + right image)
+ * - DividerBox with color="white" for light background
+ * - Hover effects on cards and image
+ */
+function Wave1SectionV3() {
+  const { t } = useTranslation("home");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Detect mobile/tablet device (< 1024px)
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Select video and image source based on device
+  const videoSrc = isMobile ? wave1VideoMobileMP4 : wave1VideoPcMP4;
+  const leaderboardImage = isMobile ? leaderboardMobile : leaderboardDesktop;
+
+  // Video autoplay handling (iOS support)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleLoadedMetadata = () => {
+      video.play().catch(() => {});
+    };
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    if (video.readyState >= 1) {
+      video.play().catch(() => {});
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, []);
+
+  // IntersectionObserver - play when visible, pause when not
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = videoRef.current;
+
+          if (entry.isIntersecting) {
+            video?.play().catch(() => {});
+          } else {
+            video?.pause();
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Common DividerBox wrapper styles for hover effect
+  const dividerBoxWrapperStyles =
+    "transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl";
+
+  return (
+    <SectionLayout className="max-w-none relative min-h-screen">
+      {/* Background video container */}
+      <div ref={containerRef} className="absolute inset-0 w-full h-full">
+        {/* Background video */}
+        <video
+          key={videoSrc}
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          webkit-playsinline="true"
+          preload="metadata"
+          x-webkit-airplay="allow"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+            filter: "sepia(0.15) saturate(0.7) brightness(1)",
+          }}
+        >
+          <source src={videoSrc} type="video/mp4" />
+        </video>
+        {/* Radial gradient overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.4) 100%)",
+          }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-20 h-full">
+        {/* WAVE 1 Title */}
+        <SectionTitle
+          as="h2"
+          color="scarlet"
+          className="!font-eurostile text-center pt-24 mb-6 lg:pt-8 lg:mb-6 xl:pt-10"
+        >
+          {t("wave1.title")}
+        </SectionTitle>
+
+        {/* Content - Centered layout */}
+        <div className="flex flex-col lg:flex-row-reverse lg:gap-8 mb-6 md:mb-12 lg:mb-14 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto">
+          {/* Leaderboard image (mobile: top, desktop: right) */}
+          <div className="flex items-center justify-center w-full lg:w-2/5 px-4 lg:px-0">
+            <div className="group h-full flex items-center w-full lg:w-auto">
+              <img
+                src={leaderboardImage}
+                alt="Leaderboard Preview"
+                className="w-full lg:w-auto lg:max-h-full lg:h-full object-contain rounded-lg lg:rounded-none"
+              />
+            </div>
+          </div>
+
+          {/* DividerBox cards (mobile: bottom, desktop: left) */}
+          <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-3/5 px-4 lg:px-0">
+            {/* LEADERBOARD Box */}
+            <div className={`w-full ${dividerBoxWrapperStyles}`}>
+              <DividerBox title={t("wave1.leaderboard.title")} color="white" className="shadow-lg">
+                <p className="text-nasun-white/90">{t("wave1.leaderboard.description")}</p>
+                <div className="flex justify-end">
+                  <ActionLink
+                    to="/wave1/leaderboard-info"
+                    variant="action"
+                    className="mt-4 px-6 py-3"
+                  >
+                    {t("wave1.leaderboard.cta")}
+                  </ActionLink>
+                </div>
+              </DividerBox>
+            </div>
+
+            {/* BATTALION NFT Box */}
+            <div className={`w-full ${dividerBoxWrapperStyles}`}>
+              <DividerBox
+                title={t("wave1.battalionNft.title")}
+                color="white"
+                className=" shadow-lg"
+              >
+                <p className="text-nasun-white/90">{t("wave1.battalionNft.description")}</p>
+                <div className="flex justify-end">
+                  <ActionLink to="/wave1/battalion-nft" variant="action" className="mt-4 px-6 py-3">
+                    {t("wave1.battalionNft.cta")}
+                  </ActionLink>
+                </div>
+              </DividerBox>
+            </div>
+
+            {/* EARLY CONTRIBUTOR Box */}
+            <div className={`w-full ${dividerBoxWrapperStyles}`}>
+              <DividerBox
+                title={t("wave1.earlyContributor.title")}
+                color="white"
+                className="shadow-lg"
+              >
+                <p className="text-nasun-white/90">{t("wave1.earlyContributor.description")}</p>
+                <div className="flex justify-end">
+                  <ActionLink
+                    to="/wave1/early-contributors"
+                    variant="action"
+                    className="mt-4 px-6 py-3"
+                  >
+                    {t("wave1.earlyContributor.cta")}
+                  </ActionLink>
+                </div>
+              </DividerBox>
+            </div>
+          </div>
+        </div>
+      </div>
+    </SectionLayout>
+  );
+}
+
+export default React.memo(Wave1SectionV3);

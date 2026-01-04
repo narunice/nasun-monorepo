@@ -8,7 +8,8 @@ import { useHomePageLoading } from "../contexts/PageLoadingContext";
 // Lazy load all sections
 const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
 const VisionSection = lazy(() => import("../components/app/home/VisionSection"));
-const Wave1Section = lazy(() => import("../components/app/home/Wave1Section"));
+const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV2"));
+const Wave1SectionV3 = lazy(() => import("../components/app/home/Wave1SectionV3"));
 const NftSaleSection = lazy(() => import("../components/app/home/NftSaleSection"));
 const AwardsGrantsSection = lazy(() => import("../components/app/home/AwardsGrantsSection"));
 const NewsEventsSection = lazy(() => import("../components/app/home/NewsEventsSection"));
@@ -75,7 +76,12 @@ export default function HomePage() {
               <AwardsGrantsSection />
             </ScrollSnapSection>
 
-            {/* Wave1Section - 긴 컨텐츠 허용 */}
+            {/* Wave1SectionV3 - DividerBox 버전 (새 디자인 테스트) */}
+            <ScrollSnapSection allowTallContent={true}>
+              <Wave1SectionV3 />
+            </ScrollSnapSection>
+
+            {/* Wave1Section - 기존 버전 (V2) */}
             <ScrollSnapSection allowTallContent={true}>
               <Wave1Section />
             </ScrollSnapSection>
