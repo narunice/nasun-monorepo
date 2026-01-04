@@ -24,7 +24,7 @@ export const TableCell = ({ children, className = "", align = "left", colSpan }:
 
   return (
     <td
-      className={`px-6 py-2 md:py-3 align-middle text-nasun-white/80 ${alignClass} ${className}`.trim()}
+      className={`px-2 md:px-6 py-2 md:py-3 align-middle text-nasun-white/80 ${alignClass} ${className}`.trim()}
       colSpan={colSpan}
     >
       {children}
