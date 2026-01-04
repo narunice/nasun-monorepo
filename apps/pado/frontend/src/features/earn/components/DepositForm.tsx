@@ -4,25 +4,31 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet, useMultiBalance, useZkLogin } from '@nasun/wallet';
+import { useWallet, useMultiBalance, useZkLogin, getSuiClient } from '@nasun/wallet';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLendingActions } from '../hooks/useLendingActions';
 import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingPositions } from '../hooks/useLendingPositions';
 import { parseNUSDC, MIN_DEPOSIT, formatPercentage } from '../types/lending';
-import { useFaucet } from '../../trading/hooks/useFaucet';
+import { buildRequestNusdc } from '../../trading/transactions';
 
 interface DepositFormProps {
   onSuccess?: (digest: string) => void;
 }
 
 export function DepositForm({ onSuccess }: DepositFormProps) {
-  const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
+  const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const { data: balances } = useMultiBalance();
   const { stats, refetch: refetchPool } = useLendingPool();
   const { refetch: refetchPositions } = useLendingPositions();
   const { deposit, isLoading, error, clearError } = useLendingActions();
-  const { isNusdcLoading, handleNusdcFaucet } = useFaucet();
+  const queryClient = useQueryClient();
+
+  const [isNusdcLoading, setIsNusdcLoading] = useState(false);
+
+  // Determine active wallet address
+  const walletAddress = isZkConnected ? zkState?.address : (status === 'unlocked' ? account?.address : undefined);
 
   const [amount, setAmount] = useState('');
   const [success, setSuccess] = useState<string | null>(null);
@@ -44,6 +50,51 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
   const handleMaxClick = () => {
     setAmount(formattedBalance);
   };
+
+  // NUSDC Faucet handler (independent of MarketProvider)
+  const handleNusdcFaucet = useCallback(async () => {
+    if (!walletAddress) return;
+
+    setIsNusdcLoading(true);
+    try {
+      const tx = buildRequestNusdc();
+      const client = getSuiClient();
+
+      // Set sender and build transaction
+      tx.setSender(walletAddress);
+      const bytes = await tx.build({ client });
+
+      // Sign with appropriate method
+      let signature: string;
+      if (isZkConnected && zkState) {
+        signature = await zkSignTransaction(bytes);
+      } else {
+        const keypair = getKeypair();
+        if (!keypair) {
+          console.error('Keypair not available');
+          return;
+        }
+        const signResult = await keypair.signTransaction(bytes);
+        signature = signResult.signature;
+      }
+
+      // Execute transaction
+      await client.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
+        options: { showEffects: true },
+      });
+
+      // Refresh balance after 2 seconds
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
+      }, 2000);
+    } catch (err) {
+      console.error('NUSDC faucet error:', err);
+    } finally {
+      setIsNusdcLoading(false);
+    }
+  }, [walletAddress, isZkConnected, zkState, zkSignTransaction, getKeypair, queryClient]);
 
   const handleDeposit = useCallback(async () => {
     if (!amount) return;
