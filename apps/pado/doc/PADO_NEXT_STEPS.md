@@ -150,7 +150,8 @@
 | I.2 | BalanceManager 라벨링 변경 | ✅ | 저 | "Add to Trading" / "Return to Wallet" |
 | I.3 | Prediction 시드 유동성 | ✅ | 저 | 4개 마켓 오더북 주문 배치 |
 | I.4 | Portfolio를 홈 화면으로 | ✅ | 중 | Portfolio-centric HomePage |
-| I.5 | Oracle 옵션 조사 | 📋 | 저 | Pyth, Switchboard on Sui |
+| I.5 | Oracle 옵션 조사 | ✅ | 저 | Switchboard V3 (메인) + Pyth (백업) |
+| I.6 | Switchboard PoC | 📋 | 중 | BTC/ETH 피드 연결 테스트 |
 
 **목표 UI:**
 ```
@@ -478,6 +479,11 @@ git push origin main --tags
 | | - 격주 마일스톤 일정 추가 |
 | | - Prediction 담보를 Phase L로 연기 |
 | | - Haircut 테이블에 버전 컬럼 추가 |
+| 2026-01-04 | **Oracle 리서치 완료 (I.5)** |
+| | - Sui 생태계 오라클 비교: Switchboard, Pyth, Stork, Supra, UMA |
+| | - 추천: Switchboard V3 (메인) + Pyth (백업) |
+| | - Prediction Resolution: Admin → Multi-sig → 커뮤니티 기반 |
+| | - I.6 Switchboard PoC 태스크 추가 |
 
 ---
 
