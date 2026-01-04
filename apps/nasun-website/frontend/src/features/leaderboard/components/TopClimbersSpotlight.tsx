@@ -21,6 +21,19 @@ import ClimberCardSkeleton from "./ClimberCardSkeleton";
 import { CumulativePeriod, TimeRange } from "../types/leaderboard";
 import { Trophy, TrendingUp } from "lucide-react";
 
+/**
+ * Get responsive visibility class for each card based on index
+ * - xl: 5 cards, lg: 4 cards, md: 3 cards, sm: 2 cards, mobile: 3 cards (stacked)
+ */
+const getVisibilityClass = (index: number): string => {
+  switch (index) {
+    case 2: return 'block sm:hidden md:block'; // 3rd: mobile O, sm hidden, md+ O
+    case 3: return 'hidden lg:block';          // 4th: lg+ only
+    case 4: return 'hidden xl:block';          // 5th: xl only
+    default: return '';                         // 1st, 2nd: always visible
+  }
+};
+
 export interface TopClimbersSpotlightProps {
   /** 현재 리더보드 기간 (CUMULATIVE, EVENT1, EVENT2) */
   period: CumulativePeriod;
@@ -97,7 +110,9 @@ const TopClimbersSpotlight: React.FC<TopClimbersSpotlightProps> = memo(
           {/* 스켈레톤 카드 그리드 (실제 카드와 동일한 레이아웃) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: limit }).map((_, index) => (
-              <ClimberCardSkeleton key={`skeleton-${index}`} rank={index + 1} />
+              <div key={`skeleton-${index}`} className={getVisibilityClass(index)}>
+                <ClimberCardSkeleton rank={index + 1} />
+              </div>
             ))}
           </div>
         </div>
@@ -174,15 +189,16 @@ const TopClimbersSpotlight: React.FC<TopClimbersSpotlightProps> = memo(
           />
         </div>
 
-        {/* Climbers 그리드 (반응형: 1 → 3 → 5 columns) */}
+        {/* Climbers 그리드 (반응형: xl:5 lg:4 md:3 sm:2 mobile:3 cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {data.climbers.map((climber, index) => (
-            <ClimberCard
-              key={climber.userId}
-              climber={climber}
-              rank={index + 1}
-              onViewInLeaderboard={handleViewInLeaderboard}
-            />
+            <div key={climber.userId} className={getVisibilityClass(index)}>
+              <ClimberCard
+                climber={climber}
+                rank={index + 1}
+                onViewInLeaderboard={handleViewInLeaderboard}
+              />
+            </div>
           ))}
         </div>
       </div>
