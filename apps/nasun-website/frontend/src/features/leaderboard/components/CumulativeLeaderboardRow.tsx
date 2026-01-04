@@ -69,8 +69,8 @@ const CumulativeLeaderboardRow: React.FC<CumulativeLeaderboardRowProps> = memo(
           </div>
         </TableCell>
 
-        {/* Community Member - xl only */}
-        <TableCell align="center" className="hidden xl:table-cell">
+        {/* Member - always visible */}
+        <TableCell align="center">
           {entry.isCommunityMember ? (
             <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
           ) : (
