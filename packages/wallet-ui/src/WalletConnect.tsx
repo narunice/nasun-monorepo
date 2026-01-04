@@ -85,7 +85,7 @@ function LockedStateUI({
   };
 
   return (
-    <div className="p-4 min-w-[280px]">
+    <div className="p-4 w-[min(280px,calc(100vw-32px))]">
       <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Unlock Wallet</h3>
 
       {isLocked && (
@@ -368,7 +368,7 @@ export function WalletConnect({
     // Create wallet form
     if (viewMode === 'create') {
       return (
-        <div className="p-4 min-w-[280px]">
+        <div className="p-4 w-[min(280px,calc(100vw-32px))]">
           <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Create New Wallet</h3>
 
           <div className="flex flex-col gap-2">
@@ -425,7 +425,7 @@ export function WalletConnect({
     // Import wallet screen
     if (viewMode === 'import') {
       return (
-        <div className="p-2 min-w-[320px]">
+        <div className="p-2 w-[min(320px,calc(100vw-32px))]">
           <ImportWallet
             onImportMnemonic={handleImportMnemonic}
             onImportPrivateKey={handleImportPrivateKey}
@@ -439,7 +439,7 @@ export function WalletConnect({
     // Export private key view
     if (viewMode === 'export') {
       return (
-        <div className="p-2 min-w-[320px]">
+        <div className="p-2 w-[min(320px,calc(100vw-32px))]">
           <ExportPrivateKey
             onExport={handleExportPrivateKey}
             onClose={() => setViewMode('main')}
@@ -451,7 +451,7 @@ export function WalletConnect({
     // Send transaction view
     if (viewMode === 'send') {
       return (
-        <div className="p-2 min-w-[320px]">
+        <div className="p-2 w-[min(320px,calc(100vw-32px))]">
           <SendTransaction
             onClose={() => setViewMode('main')}
             onSuccess={() => {
@@ -465,7 +465,7 @@ export function WalletConnect({
     // Staking panel view
     if (viewMode === 'staking') {
       return (
-        <div className="min-w-[360px]">
+        <div className="w-[min(360px,calc(100vw-32px))]">
           <StakingPanel
             onClose={() => setViewMode('main')}
             compact
@@ -484,7 +484,7 @@ export function WalletConnect({
     // Disconnected state - show social login and create/import options
     if (status === 'disconnected' && !isZkLoggedIn) {
       return (
-        <div className="py-3 px-4 min-w-[280px]">
+        <div className="py-3 px-4 w-[min(280px,calc(100vw-32px))]">
           {/* Social Login Section */}
           <div className="mb-4">
             <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 text-center">Quick start with social login</p>
@@ -535,7 +535,7 @@ export function WalletConnect({
     // zkLogin connected state
     if (isZkLoggedIn && zkState) {
       return (
-        <div className="min-w-[280px]">
+        <div className="w-[min(280px,calc(100vw-32px))]">
           {/* User info header */}
           <div className="px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
             <div className="flex items-center gap-3">
@@ -718,7 +718,7 @@ export function WalletConnect({
     // Unlocked state - show wallet menu with tabs
     if (status === 'unlocked' && account) {
       return (
-        <div className="min-w-[280px]">
+        <div className="w-[min(280px,calc(100vw-32px))]">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
             <CopyableAddress
@@ -917,10 +917,10 @@ export function WalletConnect({
       {/* Dropdown */}
       {showDropdown && (
         <div
-          className={`absolute bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] ${
-            dropdownAlign === 'left' ? 'left-0' : dropdownAlign === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:mx-auto max-sm:w-auto sm:absolute ${
+            dropdownAlign === 'left' ? 'sm:left-0' : dropdownAlign === 'center' ? 'sm:left-1/2 sm:-translate-x-1/2' : 'sm:right-0'
           } ${
-            dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+            dropdownPosition === 'top' ? 'sm:bottom-full sm:mb-2 max-sm:bottom-auto max-sm:top-16' : 'sm:top-full sm:mt-2 max-sm:top-16'
           }`}
         >
           {renderDropdownContent()}

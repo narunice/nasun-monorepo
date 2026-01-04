@@ -56,7 +56,7 @@ export function StakingPanel({
   }
 
   return (
-    <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? '' : 'min-w-[360px]'}`}>
+    <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'w-full' : 'min-w-[360px]'}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Staking</h3>
