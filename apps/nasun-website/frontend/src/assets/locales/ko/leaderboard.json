@@ -100,6 +100,11 @@
     "finalRanking": "최종 순위",
     "eventEnded": "이벤트 종료됨"
   },
+  "eventStatus": {
+    "ended": "종료",
+    "live": "진행중",
+    "soon": "예정"
+  },
   "myRank": {
     "title": "나의 랭킹",
     "rank": "{{rank}}위",
