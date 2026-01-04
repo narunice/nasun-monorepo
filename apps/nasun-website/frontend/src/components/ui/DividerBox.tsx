@@ -1,6 +1,18 @@
 import { ReactNode } from "react";
 
-type NasunColor = "white" | "scarlet" | "c1" | "c2" | "c3" | "c4" | "c5" | "c7" | "green" | "coral" | "gensol-red";
+type NasunColor =
+  | "white"
+  | "scarlet"
+  | "c1"
+  | "c2"
+  | "c3"
+  | "c4"
+  | "c5"
+  | "c7"
+  | "green"
+  | "coral"
+  | "gensol-red"
+  | "black";
 
 interface DividerBoxProps {
   /** 제목 (옵셔널) - 제공하지 않으면 제목과 구분선이 표시되지 않음 */
@@ -29,9 +41,9 @@ interface DividerBoxProps {
 
 const colorStyles: Record<NasunColor, { border: string; background: string; text: string }> = {
   white: {
-    border: "border-nasun-white",
-    background: "bg-nasun-white/90",
-    text: "",
+    border: "border-nasun-white/70",
+    background: "bg-nasun-black/90",
+    text: "text-nasun-white",
   },
   scarlet: {
     border: "border-nasun-scarlet",
@@ -83,6 +95,11 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     background: "bg-nasun-gensol-red/10",
     text: "text-nasun-gensol-red",
   },
+  black: {
+    border: "border-nasun-black/70",
+    background: "bg-white/50",
+    text: "text-nasun-black",
+  },
 };
 
 /**
@@ -116,7 +133,9 @@ export const DividerBox = ({
       {/* Title (옵셔널) - rightTitle/rightAction이 있으면 justify-between 레이아웃 */}
       {(title || rightTitle || rightAction) && (
         <div className="flex justify-between items-center mb-1">
-          <h6 className={`flex items-center gap-2 uppercase font-medium ${titleClassName}`}>
+          <h6
+            className={`flex items-center gap-2 uppercase font-medium ${styles.text} ${titleClassName}`}
+          >
             {icon}
             {title}
           </h6>
