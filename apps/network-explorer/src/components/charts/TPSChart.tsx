@@ -14,8 +14,8 @@ export function TPSChart({ data }: TPSChartProps) {
         <div className="text-xs text-nasun-white/40">(Last {data.length} updates)</div>
       </div>
       {data.length >= 2 ? (
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={1}>
+        <div className="h-[200px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="tpsGradient" x1="0" y1="0" x2="0" y2="1">
