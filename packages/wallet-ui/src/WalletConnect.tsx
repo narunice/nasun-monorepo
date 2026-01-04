@@ -168,7 +168,7 @@ interface WalletConnectProps {
   /** Dropdown position relative to button */
   dropdownPosition?: 'top' | 'bottom';
   /** Dropdown horizontal alignment */
-  dropdownAlign?: 'left' | 'right';
+  dropdownAlign?: 'left' | 'right' | 'center';
   /** Number of characters to show after 0x prefix (default: 6) */
   addressStartChars?: number;
   /** Number of characters to show at the end (default: same as start) */
@@ -918,7 +918,7 @@ export function WalletConnect({
       {showDropdown && (
         <div
           className={`absolute bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] ${
-            dropdownAlign === 'left' ? 'left-0' : 'right-0'
+            dropdownAlign === 'left' ? 'left-0' : dropdownAlign === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'
           } ${
             dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
