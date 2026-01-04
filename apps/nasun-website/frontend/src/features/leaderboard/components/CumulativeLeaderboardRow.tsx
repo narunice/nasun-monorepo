@@ -80,9 +80,9 @@ const CumulativeLeaderboardRow: React.FC<CumulativeLeaderboardRowProps> = memo(
 
         {/* 언어 - always visible (code only: EN, KO, etc.) */}
         <TableCell align="center">
-          <p className="text-nasun-white">
+          <span className="text-nasun-white text-base">
             {entry.dominantLanguage?.toUpperCase() || "-"}
-          </p>
+          </span>
         </TableCell>
 
         {/* 팔로워 수 */}
