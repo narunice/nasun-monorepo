@@ -1,0 +1,9 @@
+[package]
+name = "pado_oracle"
+edition = "2024.beta"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.37.3" }
+
+[addresses]
+pado_oracle = "0x0"

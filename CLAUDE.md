@@ -250,6 +250,7 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 |----------|------|
 | `apps/pado/contracts/` | NBTC, NUSDC 토큰 + Faucet |
 | `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트 |
+| `apps/pado/contracts-oracle/` | DevOracle 가격 피드 |
 | `apps/pado/contracts-lending/` | 렌딩 컨트랙트 (예정) |
 
 ### Move 빌드/배포 명령어
@@ -271,7 +272,17 @@ cd apps/pado/contracts
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
 ```
 
-### 배포된 컨트랙트 (Devnet) - 2026-01-03 업데이트
+### 배포된 컨트랙트 (Devnet) - 2026-01-04 업데이트
+
+#### DevOracle (가격 피드)
+
+| 컨트랙트 | ID | 비고 |
+|----------|------------|------|
+| pado_oracle | `0x10ffe5c6...` | Admin Oracle 패키지 |
+| OracleRegistry (shared) | `0x02394487...` | 가격 데이터 저장 |
+| AdminCap | `0x35552a09...` | 가격 업데이트 권한 |
+
+**심볼 ID**: BTCUSD=1, ETHUSD=2, NASUSD=3 (8 decimals)
 
 #### Pado Tokens (NBTC, NUSDC, Faucet)
 
