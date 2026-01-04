@@ -4,7 +4,8 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { usePredictionPositions, formatPositionAmount } from '../hooks/usePredictionPositions';
 import type { PredictionMarket } from '../types';
@@ -21,11 +22,16 @@ type OrderType = 'buy' | 'sell';
 export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const { isLoading, placeBuyOrder, placeSellOrder, mintTokens } = usePredictionTrade();
+  const { isLoading, isFaucetLoading, placeBuyOrder, placeSellOrder, mintTokens, requestNusdc } = usePredictionTrade();
+  const { data: multiBalance } = useMultiBalance();
+  const queryClient = useQueryClient();
 
   // Consider wallet connected if either local wallet is unlocked OR zkLogin is active
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
+
+  // NUSDC balance
+  const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
@@ -153,11 +159,46 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     }
   }, [amount, market.id, mintTokens, onSuccess]);
 
+  // NUSDC Faucet handler
+  const handleNusdcFaucet = useCallback(async () => {
+    const result = await requestNusdc();
+    if (result.success) {
+      setSuccess('100,000 NUSDC received!');
+      // Refresh balance after 2 seconds
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
+      }, 2000);
+    } else {
+      setError(result.error || 'Failed to get NUSDC');
+    }
+  }, [requestNusdc, queryClient]);
+
   const isDisabled = !isWalletConnected || market.status !== 'open' || isLoading;
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4">
       <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Place Order</h3>
+
+      {/* NUSDC Balance Display */}
+      {isWalletConnected && (
+        <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-xs text-theme-text-muted">Available NUSDC</span>
+              <p className="text-lg font-semibold text-theme-text-primary">
+                {parseFloat(nusdcBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <button
+              onClick={handleNusdcFaucet}
+              disabled={isFaucetLoading}
+              className="px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
+            >
+              {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Outcome Selector */}
       <div className="flex gap-2 mb-4">

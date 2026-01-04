@@ -9,6 +9,7 @@ import { useLendingActions } from '../hooks/useLendingActions';
 import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingPositions } from '../hooks/useLendingPositions';
 import { parseNUSDC, MIN_DEPOSIT, formatPercentage } from '../types/lending';
+import { useFaucet } from '../../trading/hooks/useFaucet';
 
 interface DepositFormProps {
   onSuccess?: (digest: string) => void;
@@ -21,6 +22,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
   const { stats, refetch: refetchPool } = useLendingPool();
   const { refetch: refetchPositions } = useLendingPositions();
   const { deposit, isLoading, error, clearError } = useLendingActions();
+  const { isNusdcLoading, handleNusdcFaucet } = useFaucet();
 
   const [amount, setAmount] = useState('');
   const [success, setSuccess] = useState<string | null>(null);
@@ -88,11 +90,20 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
         <div className="space-y-4">
           {/* Amount Input */}
           <div>
-            <div className="flex justify-between text-xs mb-1">
+            <div className="flex justify-between items-center text-xs mb-1">
               <span className="text-theme-text-muted">Amount</span>
-              <span className="text-theme-text-muted">
-                Balance: {formattedBalance} NUSDC
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-theme-text-muted">
+                  Balance: {formattedBalance} NUSDC
+                </span>
+                <button
+                  onClick={handleNusdcFaucet}
+                  disabled={isNusdcLoading}
+                  className="px-2 py-0.5 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
+                >
+                  {isNusdcLoading ? '...' : 'Get NUSDC'}
+                </button>
+              </div>
             </div>
             <div className="relative">
               <input
