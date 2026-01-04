@@ -150,8 +150,8 @@
 | I.2 | BalanceManager 라벨링 변경 | ✅ | 저 | "Add to Trading" / "Return to Wallet" |
 | I.3 | Prediction 시드 유동성 | ✅ | 저 | 4개 마켓 오더북 주문 배치 |
 | I.4 | Portfolio를 홈 화면으로 | ✅ | 중 | Portfolio-centric HomePage |
-| I.5 | Oracle 옵션 조사 | ✅ | 저 | Switchboard V3 (메인) + Pyth (백업) |
-| I.6 | Switchboard PoC | 📋 | 중 | BTC/ETH 피드 연결 테스트 |
+| I.5 | DevOracle 구현 | ✅ | 중 | Admin Oracle 배포 + 프론트엔드 연동 |
+| I.6 | Price Updater Bot | ✅ | 저 | CoinGecko/Binance API 기반 가격 업데이트 |
 
 **목표 UI:**
 ```
@@ -483,7 +483,13 @@ git push origin main --tags
 | | - Sui 생태계 오라클 비교: Switchboard, Pyth, Stork, Supra, UMA |
 | | - 추천: Switchboard V3 (메인) + Pyth (백업) |
 | | - Prediction Resolution: Admin → Multi-sig → 커뮤니티 기반 |
-| | - I.6 Switchboard PoC 태스크 추가 |
+| 2026-01-04 | **DevOracle 구현 완료 (I.5, I.6)** |
+| | - Nasun Devnet용 Admin Oracle 배포 |
+| | - Package: `0x10ffe5c6...` |
+| | - BTC/ETH/NASUN 가격 피드 (8 decimals) |
+| | - lib/oracle-client.ts + hooks/useOraclePrice.ts |
+| | - bots/price-updater.ts (CoinGecko + Binance fallback) |
+| | - Mainnet 전환: PythOracleClient로 교체 예정 |
 
 ---
 
