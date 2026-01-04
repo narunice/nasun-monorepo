@@ -1,10 +1,11 @@
 /**
  * useNFTs Hook
- * Query NFTs owned by the connected wallet
+ * Query NFTs owned by the connected wallet (supports both regular wallet and zkLogin)
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from './useWallet';
+import { useZkLogin } from './useZkLogin';
 import { getOwnedNFTs } from '../sui/nft';
 import type { NFTInfo, NFTQueryOptions } from '../types/nft';
 
@@ -35,22 +36,26 @@ export interface UseNFTsResult {
 
 /**
  * Hook to query NFTs owned by the connected wallet
+ * Supports both regular wallet and zkLogin
  */
 export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
   const { account, status } = useWallet();
+  const { state: zkLoginState, isConnected: isZkConnected } = useZkLogin();
   const { enabled = true, refetchInterval, limit, cursor } = options;
 
-  const isConnected = status === 'unlocked' && account?.address;
+  // Use wallet address or zkLogin address
+  const ownerAddress = account?.address || zkLoginState?.address;
+  const isConnected = (status === 'unlocked' && account?.address) || isZkConnected;
 
   const query = useQuery({
-    queryKey: [NFT_QUERY_KEY, account?.address, limit, cursor],
+    queryKey: [NFT_QUERY_KEY, ownerAddress, limit, cursor],
     queryFn: async () => {
-      if (!account?.address) {
+      if (!ownerAddress) {
         throw new Error('Wallet not connected');
       }
-      return getOwnedNFTs(account.address, { limit, cursor });
+      return getOwnedNFTs(ownerAddress, { limit, cursor });
     },
-    enabled: enabled && !!isConnected,
+    enabled: enabled && !!isConnected && !!ownerAddress,
     refetchInterval,
     refetchIntervalInBackground: true, // Continue refetching even when tab is not focused
     refetchOnWindowFocus: true, // Refetch when user returns to the tab
@@ -69,15 +74,19 @@ export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
 
 /**
  * Hook to refresh NFT list
+ * Supports both regular wallet and zkLogin
  */
 export function useRefreshNFTs() {
   const { account } = useWallet();
+  const { state: zkLoginState } = useZkLogin();
   const queryClient = useQueryClient();
 
+  const ownerAddress = account?.address || zkLoginState?.address;
+
   return () => {
-    if (account?.address) {
+    if (ownerAddress) {
       queryClient.invalidateQueries({
-        queryKey: [NFT_QUERY_KEY, account.address],
+        queryKey: [NFT_QUERY_KEY, ownerAddress],
       });
     }
   };
