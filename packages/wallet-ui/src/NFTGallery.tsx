@@ -21,6 +21,8 @@ interface NFTGalleryProps {
   hideHeader?: boolean;
   /** Custom class name */
   className?: string;
+  /** Auto-refresh interval in milliseconds (default: 30000 = 30 seconds) */
+  refetchInterval?: number;
 }
 
 export function NFTGallery({
@@ -30,8 +32,12 @@ export function NFTGallery({
   emptyMessage = 'No NFTs found',
   hideHeader = false,
   className = '',
+  refetchInterval = 30000,
 }: NFTGalleryProps) {
-  const { data: nfts, isLoading, error, refetch } = useNFTs({ limit: limit || 50 });
+  const { data: nfts, isLoading, error, refetch } = useNFTs({
+    limit: limit || 50,
+    refetchInterval,
+  });
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
 
   // Grid column classes
