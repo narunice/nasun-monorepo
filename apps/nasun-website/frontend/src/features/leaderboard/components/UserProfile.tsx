@@ -76,7 +76,7 @@ const UserProfile: React.FC<UserProfileProps> = memo(
             </div>
           )}
         </div>
-        <div className="min-w-0 flex-1 max-w-[70px] md:max-w-[90px] lg:max-w-[140px]">
+        <div className="min-w-0 flex-1 max-w-[60px] md:max-w-[80px] lg:max-w-[120px]">
           <p
             className={`!font-medium text-black dark:text-white truncate text-sm md:text-base ${
               xUrl
