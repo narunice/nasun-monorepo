@@ -100,6 +100,11 @@
     "finalRanking": "Final Rankings",
     "eventEnded": "Event Ended"
   },
+  "eventStatus": {
+    "ended": "Ended",
+    "live": "Live",
+    "soon": "Soon"
+  },
   "myRank": {
     "title": "My Rank",
     "rank": "Rank #{{rank}}",
