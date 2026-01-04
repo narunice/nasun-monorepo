@@ -51,10 +51,9 @@ const CumulativeLeaderboardTable: React.FC<CumulativeLeaderboardTableProps> = me
               <div>Community</div>
               <div>Member</div>
             </TableHead>
-            {/* LANGUAGE - abbreviated */}
-            <TableHead align="center" className="hidden md:table-cell w-14">
-              <span className="hidden lg:inline">Lang</span>
-              <span className="lg:hidden">L</span>
+            {/* LANGUAGE - always visible */}
+            <TableHead align="center" className="w-10 md:w-14">
+              Lang
             </TableHead>
             {/* FOLLOWERS - abbreviated */}
             <TableHead align="center" className="w-10 md:w-14">
