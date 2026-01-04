@@ -60,7 +60,7 @@ const ShareButtonsGroup: React.FC<ShareButtonsGroupProps> = ({
 
       {/* 오른쪽: 공유 버튼들 (카드 외부 - 스크린샷 제외됨) */}
       {myRankData.status === "ranked" && myRankData.userRank && (
-        <div className="flex flex-col gap-2 w-full sm:w-auto sm:min-w-[180px]">
+        <div className="grid grid-cols-2 sm:flex sm:flex-col gap-2 w-full sm:w-auto sm:min-w-[180px]">
           {/* View My Rank 버튼 */}
           {onViewRank && myRankData.userRank.page && (
             <Button
