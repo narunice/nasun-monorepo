@@ -46,28 +46,30 @@ const CumulativeLeaderboardTable: React.FC<CumulativeLeaderboardTableProps> = me
             <TableHead align="left" className="min-w-[60px]">
               {t("table.headers.user", "사용자")}
             </TableHead>
-            {/* COMMUNITY MEMBER - xl only (least important) */}
-            <TableHead align="center" className="hidden xl:table-cell w-24">
-              <div>Community</div>
-              <div>Member</div>
+            {/* MEMBER - always visible */}
+            <TableHead align="center" className="w-10 lg:w-16">
+              <span className="hidden lg:inline">Member</span>
+              <span className="lg:hidden">Mem</span>
             </TableHead>
-            {/* LANGUAGE - always visible */}
-            <TableHead align="center" className="w-10 md:w-14">
-              Lang
+            {/* LANGUAGE */}
+            <TableHead align="center" className="w-10 lg:w-20">
+              <span className="hidden lg:inline">Language</span>
+              <span className="lg:hidden">Lang</span>
             </TableHead>
-            {/* FOLLOWERS - always Fol */}
-            <TableHead align="center" className="w-10 md:w-14">
-              Fol
+            {/* FOLLOWERS */}
+            <TableHead align="center" className="w-10 lg:w-20">
+              <span className="hidden lg:inline">Followers</span>
+              <span className="lg:hidden">Fol</span>
             </TableHead>
-            {/* POINTS - abbreviated */}
-            <TableHead align="center" className="w-12 md:w-16">
-              <span className="hidden md:inline">Points</span>
-              <span className="md:hidden">Pts</span>
+            {/* POINTS */}
+            <TableHead align="center" className="w-12 lg:w-16">
+              <span className="hidden lg:inline">Points</span>
+              <span className="lg:hidden">Pts</span>
             </TableHead>
-            {/* CHANGE - abbreviated */}
-            <TableHead align="center" className="w-10 md:w-14">
-              <span className="hidden md:inline">Chg</span>
-              <span className="md:hidden">±</span>
+            {/* CHANGE */}
+            <TableHead align="center" className="w-10 lg:w-16">
+              <span className="hidden lg:inline">Change</span>
+              <span className="lg:hidden">±</span>
             </TableHead>
           </TableRow>
         </TableHeader>
