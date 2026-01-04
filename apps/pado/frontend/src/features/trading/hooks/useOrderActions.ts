@@ -90,7 +90,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
       // 잔고 부족
       if (error.includes('BM-3') || error.includes('Insufficient balance')) {
-        return '잔고가 부족합니다. Deposit 후 다시 시도해주세요.';
+        return 'Insufficient balance. Add funds to trading balance and try again.';
       }
 
       // Post-only 에러
@@ -186,12 +186,12 @@ export function useOrderActions(): UseOrderActionsResult {
     [cancelOrder, showToast, refreshData],
   );
 
-  // BalanceManager 생성
+  // Trading 활성화 (BalanceManager 생성)
   const handleCreateBalanceManager = useCallback(async (): Promise<TradeResult> => {
     const result = await createBalanceManager();
 
     if (result.success) {
-      showToast('BalanceManager created!', 'success');
+      showToast('Trading enabled!', 'success');
     } else {
       showToast(`Error: ${result.error}`, 'error');
     }
@@ -199,33 +199,33 @@ export function useOrderActions(): UseOrderActionsResult {
     return result;
   }, [createBalanceManager, showToast]);
 
-  // 전체 입금
+  // Trading 잔고로 추가
   const handleDeposit = useCallback(async (): Promise<TradeResult> => {
     const result = await depositAllTokens();
 
     if (result.success) {
       const info = result.depositInfo;
       const message = info
-        ? `Deposited ${info.baseAmount} ${info.baseSymbol} + ${info.quoteAmount} ${info.quoteSymbol}`
-        : 'Deposit successful!';
+        ? `Added ${info.baseAmount} ${info.baseSymbol} + ${info.quoteAmount} ${info.quoteSymbol} to trading`
+        : 'Funds added to trading balance!';
       showToast(message, 'success');
       refreshData();
     } else {
-      showToast(`Deposit error: ${result.error}`, 'error');
+      showToast(`Error: ${result.error}`, 'error');
     }
 
     return result;
   }, [depositAllTokens, showToast, refreshData]);
 
-  // 전체 출금
+  // 지갑으로 반환
   const handleWithdraw = useCallback(async (): Promise<TradeResult> => {
     const result = await withdrawAllTokens();
 
     if (result.success) {
-      showToast('Withdrawal successful!', 'success');
+      showToast('Funds returned to wallet!', 'success');
       refreshData();
     } else {
-      showToast(`Withdraw error: ${result.error}`, 'error');
+      showToast(`Error: ${result.error}`, 'error');
     }
 
     return result;
