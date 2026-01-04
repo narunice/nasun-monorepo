@@ -169,7 +169,7 @@ Unified Account & Margin 기초 구축 (v0부터 점진적 확장)
 
 | 순서 | 작업 | 상태 | 난이도 | 설명 |
 |------|------|------|--------|------|
-| S.1 | **Unified Margin v0** | ⚠️ 진행중 | 중 | Frontend 잔고 통합 완료, 온체인 대기 |
+| S.1 | **Unified Margin v0** | ✅ 완료 | 중 | Frontend + 온체인 배포 완료 (0x2886424f...) |
 | S.2 | **Risk Engine v0** | 📋 | 저 | 단순 잔고 체크 (balance > 0) |
 | S.3 | Smart Account UI 통합 | 📋 | 중 | Wallet + BalanceManager 병합 |
 | S.4 | Portfolio View 홈 화면 | 📋 | 중 | 모든 포지션 한눈에 |

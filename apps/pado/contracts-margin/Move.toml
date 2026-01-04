@@ -1,0 +1,16 @@
+[package]
+name = "unified_margin"
+edition = "2024"
+version = "0.0.1"
+published-at = "0x2886424ff9b3ed9ecdb408ea1f68ca9598efbcbf796311ad3dc33c97d31d63c7"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+pado_tokens = { local = "../contracts" }
+
+[addresses]
+unified_margin = "0x0"
+pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+
+[environments]
+nasun-devnet = "6681cdfd"

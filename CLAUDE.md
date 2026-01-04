@@ -300,6 +300,14 @@ cd apps/pado/contracts
 | GlobalState (shared) | `0x29d79342...` | 예측 시장 상태 |
 | AdminCap | `0x38a29029...` | 관리자 권한 |
 
+#### Unified Margin (NEW)
+
+| 컨트랙트 | ID | 비고 |
+|----------|------------|------|
+| unified_margin | `0x2886424f...` | Unified Margin 패키지 |
+| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리 |
+| UpgradeCap | `0x4781e6fd...` | 업그레이드 권한 |
+
 #### Governance (Nasun Website)
 
 | 컨트랙트 | ID | 비고 |
