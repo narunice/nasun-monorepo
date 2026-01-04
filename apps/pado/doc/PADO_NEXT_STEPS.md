@@ -132,10 +132,10 @@
 
 | 순서 | 작업 | 상태 | 난이도 | 설명 |
 |------|------|------|--------|------|
-| I.1 | 상단 Portfolio Header 고정 | 📋 | 저 | 탭 전환에도 Net Value 항상 표시 |
-| I.2 | BalanceManager 라벨링 변경 | 📋 | 저 | "Deposit" → "Enable Trading Balance" |
+| I.1 | 상단 Portfolio Header 고정 | ✅ | 저 | 탭 전환에도 Net Value 항상 표시 |
+| I.2 | BalanceManager 라벨링 변경 | ✅ | 저 | "Add to Trading" / "Return to Wallet" |
 | I.3 | Prediction 시드 유동성 | ✅ | 저 | 4개 마켓 오더북 주문 배치 |
-| I.4 | Portfolio를 홈 화면으로 | 📋 | 중 | Trade 대신 Portfolio가 기본 탭 |
+| I.4 | Portfolio를 홈 화면으로 | ✅ | 중 | Portfolio-centric HomePage |
 | I.5 | Oracle 옵션 조사 | 📋 | 저 | Pyth, Switchboard on Sui |
 
 **목표 UI:**
