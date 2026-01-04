@@ -248,6 +248,43 @@ Default: Nasun Devnet
 | Chain ID | `6681cdfd` |
 | Native Token | NASUN (decimals: 9) |
 
+## Authentication Methods
+
+The wallet package supports two authentication methods with different characteristics:
+
+### 1. Mnemonic Wallet (Password-based)
+Traditional wallet with locally stored encrypted private key.
+- **Best for**: Power users, developers, users who want full control
+- **Security**: User manages their own keys
+- **Features**: Full access to all wallet features
+
+### 2. zkLogin (Social Login)
+Zero-knowledge proof based authentication using Google/Apple OAuth.
+- **Best for**: New users, easy onboarding, users unfamiliar with blockchain
+- **Security**: No private key stored locally, session-based, protected by OAuth 2FA
+- **Features**: Subset of wallet features (no key export/import)
+
+### Menu Comparison (WalletConnect UI)
+
+| Feature | Mnemonic Wallet | zkLogin | Reason |
+|---------|-----------------|---------|--------|
+| Tokens/NFTs Tab | ✅ | ✅ | Same |
+| Copy Address | ✅ | ✅ | Same |
+| Send Token | ✅ | ✅ | Same |
+| Staking | ✅ | ✅ | Same |
+| NFT Gallery | ✅ | ✅ | Same |
+| Export Private Key | ✅ | ❌ | zkLogin has no private key |
+| Security Settings | ✅ | ❌ | Not needed for session-based auth |
+| Lock | ✅ | ❌ | Session-based → use Disconnect |
+| Delete Wallet | ✅ | ❌ | No local storage to delete |
+| Disconnect | ❌ | ✅ | zkLogin session logout |
+
+**Design Rationale for zkLogin**:
+- zkLogin's primary goal is easy onboarding for non-blockchain users
+- Fewer menu options = less confusion for new users
+- Session-based security means Lock/Auto-lock are unnecessary
+- OAuth provider's 2FA provides adequate security
+
 ## Related Packages
 
 - **@nasun/wallet-ui** - React UI components (WalletConnect, BalanceDisplay, SendTransaction, etc.)
