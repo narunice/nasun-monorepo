@@ -3,12 +3,49 @@
  * Main staking section with StakingPanel and info cards
  */
 
+import { useState, useCallback } from 'react';
 import { StakingPanel } from '@nasun/wallet-ui';
-import { useStaking, useValidators, type ValidatorInfo } from '@nasun/wallet';
+import { useStaking, useValidators, useBalance, useWallet, useZkLogin, type ValidatorInfo } from '@nasun/wallet';
+import { useQueryClient } from '@tanstack/react-query';
+import { requestFaucet } from '../../../lib/sui-client';
 
 export function StakingSection() {
   const { summary, isLoading: stakingLoading } = useStaking();
   const { data: validators, isLoading: validatorsLoading } = useValidators();
+  const { data: balance, isLoading: balanceLoading } = useBalance();
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const queryClient = useQueryClient();
+
+  const [isFaucetLoading, setIsFaucetLoading] = useState(false);
+
+  // Get wallet address
+  const walletAddress = account?.address || zkState?.address;
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
+
+  // Format balance
+  const formattedBalance = balance?.formattedBalance || '0';
+
+  // NASUN Faucet handler
+  const handleNasunFaucet = useCallback(async () => {
+    if (!walletAddress) return;
+
+    setIsFaucetLoading(true);
+    try {
+      const success = await requestFaucet(walletAddress);
+      if (success) {
+        // Refresh balance after 2 seconds
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+          queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Faucet error:', error);
+    } finally {
+      setIsFaucetLoading(false);
+    }
+  }, [walletAddress, queryClient]);
 
   // Calculate average APY from validators
   const validatorList = validators || [];
@@ -32,6 +69,32 @@ export function StakingSection() {
           </h3>
 
           <div className="space-y-4">
+            {/* Available Balance */}
+            {isWalletConnected && (
+              <div>
+                <p className="text-xs text-theme-text-muted">Available Balance</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xl font-bold text-theme-text-primary">
+                    {balanceLoading ? (
+                      <span className="text-theme-text-muted">Loading...</span>
+                    ) : (
+                      <>
+                        {formattedBalance}{' '}
+                        <span className="text-sm font-normal text-blue-400">NASUN</span>
+                      </>
+                    )}
+                  </p>
+                  <button
+                    onClick={handleNasunFaucet}
+                    disabled={isFaucetLoading}
+                    className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-white transition-colors"
+                  >
+                    {isFaucetLoading ? 'Requesting...' : 'Get NASUN'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Your Staked */}
             <div>
               <p className="text-xs text-theme-text-muted">Your Staked</p>
