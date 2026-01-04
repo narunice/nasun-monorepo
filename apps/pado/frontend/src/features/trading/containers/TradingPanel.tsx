@@ -131,18 +131,18 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             </div>
           )}
 
-          {/* Balance Manager creation for Simple mode */}
+          {/* Trading Balance setup for Simple mode */}
           {isConnected && !balanceManagerId && (
             <div className="mb-4 p-4 bg-theme-bg-tertiary rounded-lg text-center">
               <p className="text-sm text-theme-text-secondary mb-3">
-                Create a Balance Manager to start trading
+                Enable trading to start placing orders
               </p>
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                {isLoading ? 'Creating...' : 'Create Balance Manager'}
+                {isLoading ? 'Enabling...' : 'Enable Trading'}
               </button>
             </div>
           )}
@@ -165,10 +165,10 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // Pro Mode UI (original)
   return (
     <div className="space-y-4">
-      {/* Balance Manager Card - 독립 카드 */}
+      {/* Trading Balance Card - 독립 카드 */}
       {isConnected && (
         <div className="bg-theme-bg-secondary rounded-lg p-4">
-          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Balance Manager</h3>
+          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Trading Balance</h3>
           <BalanceManagerCard
             balanceManagerId={balanceManagerId}
             balance={bmBalance}

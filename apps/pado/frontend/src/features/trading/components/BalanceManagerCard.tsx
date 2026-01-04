@@ -30,14 +30,14 @@ export function BalanceManagerCard({
     return (
       <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded">
         <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
-          BalanceManager required. Create one to place orders.
+          Trading balance required. Enable trading to place orders.
         </p>
         <button
           onClick={onCreate}
           disabled={isLoading}
           className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm text-white"
         >
-          {isLoading ? 'Creating...' : 'Create BalanceManager'}
+          {isLoading ? 'Enabling...' : 'Enable Trading'}
         </button>
       </div>
     );
@@ -60,18 +60,18 @@ export function BalanceManagerCard({
           disabled={isLoading}
           className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm text-white"
         >
-          {isLoading ? '...' : 'Deposit'}
+          {isLoading ? '...' : 'Add to Trading'}
         </button>
         <button
           onClick={onWithdraw}
           disabled={isLoading}
           className="flex-1 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded font-medium text-sm text-white"
         >
-          {isLoading ? '...' : 'Withdraw'}
+          {isLoading ? '...' : 'Return to Wallet'}
         </button>
       </div>
       <p className="text-xs text-theme-text-secondary mt-1 text-center">
-        Deposit to trade, Withdraw to wallet
+        Add funds to trade, return to wallet when done
       </p>
     </div>
   );
