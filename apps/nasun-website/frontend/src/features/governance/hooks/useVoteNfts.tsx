@@ -1,16 +1,20 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 
 export const useVoteNfts = () => {
-  // Use @nasun/wallet instead of Sui dApp Kit's useCurrentAccount
+  // Support both regular wallet and zkLogin
   const { account } = useWallet();
+  const { state: zkLoginState } = useZkLogin();
   const packageId = useNetworkVariable("packageId");
+
+  // Use wallet address or zkLogin address
+  const ownerAddress = account?.address || zkLoginState?.address;
 
   return useSuiClientQuery(
     "getOwnedObjects",
     {
-      owner: account?.address as string,
+      owner: ownerAddress as string,
       options: {
         showContent: true,
       },
@@ -19,7 +23,7 @@ export const useVoteNfts = () => {
       },
     },
     {
-      enabled: !!account?.address,
+      enabled: !!ownerAddress,
     }
   );
 };
