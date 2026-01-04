@@ -4,7 +4,6 @@ import RankBadge from "./RankBadge";
 import RankChangeIndicator from "./RankChangeIndicator";
 import UserProfile from "./UserProfile";
 import RegisteredMemberBadge from "./RegisteredMemberBadge";
-import { getLanguageName } from "@/utils/communityLanguage";
 import { CheckCircle } from "lucide-react";
 import { TableRow } from "@/components/ui/table/TableRow";
 import { TableCell } from "@/components/ui/table/TableCell";
@@ -70,18 +69,20 @@ const CumulativeLeaderboardRow: React.FC<CumulativeLeaderboardRowProps> = memo(
           </div>
         </TableCell>
 
-        {/* Community Member - hidden below xl */}
+        {/* Community Member - xl only */}
         <TableCell align="center" className="hidden xl:table-cell">
           {entry.isCommunityMember ? (
-            <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
+            <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
           ) : (
-            <span className="font-medium text-gray-500">-</span>
+            <span className="text-gray-500">-</span>
           )}
         </TableCell>
 
-        {/* 언어 - hidden below lg */}
-        <TableCell align="center" className="hidden lg:table-cell">
-          <span className="text-nasun-white">{getLanguageName(entry.dominantLanguage, "en")}</span>
+        {/* 언어 - abbreviated (code only: EN, KO, etc.) */}
+        <TableCell align="center" className="hidden md:table-cell">
+          <span className="text-nasun-white text-xs">
+            {entry.dominantLanguage?.toUpperCase() || "-"}
+          </span>
         </TableCell>
 
         {/* 팔로워 수 */}

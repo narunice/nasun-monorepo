@@ -42,36 +42,33 @@ const CumulativeLeaderboardTable: React.FC<CumulativeLeaderboardTableProps> = me
               <span className="hidden md:inline">{t("table.headers.rank", "순위")}</span>
               <span className="md:hidden">#</span>
             </TableHead>
-            {/* USER - responsive width */}
-            <TableHead align="left" className="min-w-[80px] md:min-w-[120px] lg:min-w-[180px]">
+            {/* USER - compact width */}
+            <TableHead align="left" className="min-w-[60px]">
               {t("table.headers.user", "사용자")}
             </TableHead>
-            {/* COMMUNITY MEMBER - hidden on mobile/tablet */}
-            <TableHead align="center" className="hidden xl:table-cell w-32">
-              {t("table.headers.communityMember", "Community Member")
-                .split(" ")
-                .map((word, index) => (
-                  <div key={index}>{word}</div>
-                ))}
+            {/* COMMUNITY MEMBER - xl only (least important) */}
+            <TableHead align="center" className="hidden xl:table-cell w-24">
+              <div>Community</div>
+              <div>Member</div>
             </TableHead>
-            {/* LANGUAGE - hidden below lg */}
-            <TableHead align="center" className="hidden lg:table-cell w-20">
-              <span className="hidden xl:inline">{t("table.headers.language", "Language")}</span>
-              <span className="xl:hidden">Lang</span>
+            {/* LANGUAGE - abbreviated */}
+            <TableHead align="center" className="hidden md:table-cell w-14">
+              <span className="hidden lg:inline">Lang</span>
+              <span className="lg:hidden">L</span>
             </TableHead>
-            {/* FOLLOWERS - mobile: Fol */}
-            <TableHead align="center" className="w-12 md:w-20">
-              <span className="hidden md:inline">{t("table.headers.followers", "팔로워")}</span>
-              <span className="md:hidden">Fol</span>
+            {/* FOLLOWERS - abbreviated */}
+            <TableHead align="center" className="w-10 md:w-14">
+              <span className="hidden md:inline">Fol</span>
+              <span className="md:hidden">F</span>
             </TableHead>
-            {/* FINAL SCORE - mobile: Score */}
-            <TableHead align="center" className="w-14 md:w-24">
-              <span className="hidden md:inline">{t("table.headers.finalScore", "총점")}</span>
-              <span className="md:hidden">Score</span>
+            {/* POINTS - abbreviated */}
+            <TableHead align="center" className="w-12 md:w-16">
+              <span className="hidden md:inline">Points</span>
+              <span className="md:hidden">Pts</span>
             </TableHead>
-            {/* CHANGE - mobile: ± */}
-            <TableHead align="center" className="w-10 md:w-24">
-              <span className="hidden md:inline">{t("table.headers.change", "변동")}</span>
+            {/* CHANGE - abbreviated */}
+            <TableHead align="center" className="w-10 md:w-14">
+              <span className="hidden md:inline">Chg</span>
               <span className="md:hidden">±</span>
             </TableHead>
           </TableRow>
