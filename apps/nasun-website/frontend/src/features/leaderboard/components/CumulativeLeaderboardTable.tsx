@@ -43,20 +43,21 @@ const CumulativeLeaderboardTable: React.FC<CumulativeLeaderboardTableProps> = me
               <span className="md:hidden">#</span>
             </TableHead>
             {/* USER - responsive width */}
-            <TableHead align="left" className="min-w-[100px] md:min-w-[200px]">
+            <TableHead align="left" className="min-w-[80px] md:min-w-[120px] lg:min-w-[180px]">
               {t("table.headers.user", "사용자")}
             </TableHead>
             {/* COMMUNITY MEMBER - hidden on mobile/tablet */}
-            <TableHead align="center" className="hidden lg:table-cell w-32">
+            <TableHead align="center" className="hidden xl:table-cell w-32">
               {t("table.headers.communityMember", "Community Member")
                 .split(" ")
                 .map((word, index) => (
                   <div key={index}>{word}</div>
                 ))}
             </TableHead>
-            {/* LANGUAGE - hidden on mobile */}
-            <TableHead align="center" className="hidden md:table-cell w-24">
-              {t("table.headers.language", "Language")}
+            {/* LANGUAGE - hidden below lg */}
+            <TableHead align="center" className="hidden lg:table-cell w-20">
+              <span className="hidden xl:inline">{t("table.headers.language", "Language")}</span>
+              <span className="xl:hidden">Lang</span>
             </TableHead>
             {/* FOLLOWERS - mobile: Fol */}
             <TableHead align="center" className="w-12 md:w-20">
