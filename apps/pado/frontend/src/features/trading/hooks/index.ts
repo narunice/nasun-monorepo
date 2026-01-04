@@ -8,3 +8,4 @@ export { useFaucet, type UseFaucetResult } from './useFaucet';
 export { useOrderActions, type UseOrderActionsResult } from './useOrderActions';
 export { useTradeEvents } from './useTradeEvents';
 export { useTradeMode, type TradeMode } from './useTradeMode';
+export { useBalanceManagerBalance } from './useBalanceManagerBalance';

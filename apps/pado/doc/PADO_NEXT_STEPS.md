@@ -36,8 +36,8 @@
 
 | 영역 | 점수 | 비전 임팩트 | 상태 |
 |------|------|------------|------|
-| **Unified Margin** | **0%** | ⭐⭐⭐⭐⭐ | ❌ **핵심 미구현** |
-| **Smart Account** | **30%** | ⭐⭐⭐⭐⭐ | ⚠️ 잔고 이원화 |
+| **Unified Margin** | **20%** | ⭐⭐⭐⭐⭐ | ⚠️ Frontend v0 완료 |
+| **Smart Account** | **40%** | ⭐⭐⭐⭐⭐ | ⚠️ 잔고 통합 시작 |
 | **Risk Engine** | **0%** | ⭐⭐⭐⭐ | ❌ 미구현 |
 | Perpetuals | 0% | ⭐⭐⭐⭐ | ❌ 미구현 |
 | Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager |
@@ -47,7 +47,7 @@
 | Prediction | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
 | Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
 
-**전체 비전 부합도: 약 40%**
+**전체 비전 부합도: 약 45%** (v0 통합 후 상승)
 
 ---
 
@@ -169,7 +169,7 @@ Unified Account & Margin 기초 구축 (v0부터 점진적 확장)
 
 | 순서 | 작업 | 상태 | 난이도 | 설명 |
 |------|------|------|--------|------|
-| S.1 | **Unified Margin v0** | 📋 | 중 | NUSDC 전용, Spot+Prediction 공유 |
+| S.1 | **Unified Margin v0** | ⚠️ 진행중 | 중 | Frontend 잔고 통합 완료, 온체인 대기 |
 | S.2 | **Risk Engine v0** | 📋 | 저 | 단순 잔고 체크 (balance > 0) |
 | S.3 | Smart Account UI 통합 | 📋 | 중 | Wallet + BalanceManager 병합 |
 | S.4 | Portfolio View 홈 화면 | 📋 | 중 | 모든 포지션 한눈에 |
@@ -490,6 +490,12 @@ git push origin main --tags
 | | - lib/oracle-client.ts + hooks/useOraclePrice.ts |
 | | - bots/price-updater.ts (CoinGecko + Binance fallback) |
 | | - Mainnet 전환: PythOracleClient로 교체 예정 |
+| 2026-01-04 | **Unified Margin v0 Frontend 구현 (S.1)** |
+| | - useBalanceManagerBalance 훅 생성 |
+| | - useNetWorth 수정: BM 잔고 통합 |
+| | - useUnifiedMargin 훅 (core/unified-margin) |
+| | - HeaderNetValue: Wallet + Trading 통합 표시 |
+| | - 비전 부합도: 40% → 45% 상승 |
 
 ---
 
