@@ -24,7 +24,7 @@ export function WelcomeBanner() {
         </p>
         {/* z-50 to ensure dropdown appears above banner */}
         <div className="inline-block relative z-50">
-          <WalletConnect dropdownAlign="left" />
+          <WalletConnect dropdownAlign="center" />
         </div>
       </div>
     </div>
