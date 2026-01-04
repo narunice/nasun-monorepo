@@ -55,10 +55,9 @@ const CumulativeLeaderboardTable: React.FC<CumulativeLeaderboardTableProps> = me
             <TableHead align="center" className="w-10 md:w-14">
               Lang
             </TableHead>
-            {/* FOLLOWERS - abbreviated */}
+            {/* FOLLOWERS - always Fol */}
             <TableHead align="center" className="w-10 md:w-14">
-              <span className="hidden md:inline">Fol</span>
-              <span className="md:hidden">F</span>
+              Fol
             </TableHead>
             {/* POINTS - abbreviated */}
             <TableHead align="center" className="w-12 md:w-16">
