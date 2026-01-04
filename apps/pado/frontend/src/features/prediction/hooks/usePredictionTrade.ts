@@ -13,6 +13,7 @@ import {
   buildPlaceAskOrder,
   buildClaimWinnings,
 } from '../transactions';
+import { buildRequestNusdc } from '../../trading/transactions';
 import { NUSDC_TYPE, NUSDC_DECIMALS } from '../constants';
 
 /**
@@ -107,6 +108,7 @@ interface TradeResult {
 interface UsePredictionTradeResult {
   // State
   isLoading: boolean;
+  isFaucetLoading: boolean;
   error: string | null;
 
   // Actions
@@ -114,6 +116,7 @@ interface UsePredictionTradeResult {
   placeBuyOrder: (marketId: string, isYes: boolean, price: number, amount: number) => Promise<TradeResult>;
   placeSellOrder: (marketId: string, positionId: string, price: number) => Promise<TradeResult>;
   claimWinnings: (marketId: string, positionId: string) => Promise<TradeResult>;
+  requestNusdc: () => Promise<TradeResult>;
 }
 
 export function usePredictionTrade(): UsePredictionTradeResult {
@@ -126,6 +129,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isFaucetLoading, setIsFaucetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Security: Reentrancy protection - track pending operations
@@ -374,12 +378,36 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     }
   }, [isWalletConnected, signAndExecute]);
 
+  /**
+   * Request NUSDC from faucet
+   */
+  const requestNusdc = useCallback(async (): Promise<TradeResult> => {
+    if (!isWalletConnected) {
+      return { success: false, error: 'Wallet not connected' };
+    }
+
+    setIsFaucetLoading(true);
+
+    try {
+      const tx = buildRequestNusdc();
+      const result = await signAndExecute(tx);
+      return { success: true, digest: result.digest };
+    } catch (err) {
+      const message = parseTradeError(err);
+      return { success: false, error: message };
+    } finally {
+      setIsFaucetLoading(false);
+    }
+  }, [isWalletConnected, signAndExecute]);
+
   return {
     isLoading,
+    isFaucetLoading,
     error,
     mintTokens,
     placeBuyOrder,
     placeSellOrder,
     claimWinnings,
+    requestNusdc,
   };
 }
