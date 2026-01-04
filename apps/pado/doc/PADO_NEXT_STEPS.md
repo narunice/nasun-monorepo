@@ -1,387 +1,369 @@
-# Pado 다음 단계 작업 계획서
+# Pado 개발 로드맵
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2026-01-01
-> 비전: Unified Onchain Finance
+> 최종 업데이트: 2026-01-04
+> 비전: **"One Account. One Margin Pool. Every Asset Works Harder."**
 
 ---
 
-## 현재 구현 상태
+## Executive Summary
+
+### 핵심 전략 선언
+
+> **Pado = Decentralized Prime Brokerage + Unified Account**
+
+현재 Pado는 개별 vertical(Spot, Lending, Staking, Prediction)은 구현되었으나, 이들을 통합하는 **Core(Unified Margin)**가 미구현 상태입니다. 이로 인해 비전 부합도는 **약 40%** 수준입니다.
+
+### 핵심 문제: 잔고 이원화
+
+```
+현재 문제:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [Trade 탭]              [Predict/Earn/Wallet 탭]
+       │                           │
+       ▼                           ▼
+┌─────────────────┐      ┌─────────────────┐
+│ BalanceManager  │      │   Wallet 잔고    │
+│   (DeepBook)    │      │   (직접 사용)    │
+│ "Deposit 필요"   │      │ "즉시 사용"      │
+└─────────────────┘      └─────────────────┘
+
+⚠️ 이것은 Pado가 해결하려던 "Fragmented DeFi" 문제 그 자체!
+```
+
+### 비전 부합도 점수
+
+| 영역 | 점수 | 비전 임팩트 | 상태 |
+|------|------|------------|------|
+| **Unified Margin** | **0%** | ⭐⭐⭐⭐⭐ | ❌ **핵심 미구현** |
+| **Smart Account** | **30%** | ⭐⭐⭐⭐⭐ | ⚠️ 잔고 이원화 |
+| **Risk Engine** | **0%** | ⭐⭐⭐⭐ | ❌ 미구현 |
+| Perpetuals | 0% | ⭐⭐⭐⭐ | ❌ 미구현 |
+| Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager |
+| zkLogin | 100% | ⭐⭐⭐ | ✅ 완료 |
+| Lending | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
+| Staking | 70% | ⭐⭐ | ⚠️ Core 통합 대기 |
+| Prediction | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
+| Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
+
+**전체 비전 부합도: 약 40%**
+
+---
+
+## 구현 완료 상태
+
+### Era 1: Foundation Era ✅
 
 | Phase | 상태 | 내용 | 완료일 |
 |-------|------|------|--------|
-| Phase 0 | ✅ 완료 | Nasun Devnet V3 리셋 | 2025-12-25 |
-| Phase 1 | ✅ 완료 | DeepBook V3 배포 + 테스트 토큰 | 2025-12-25 |
-| Phase 2 | ✅ 완료 | Frontend MVP (오더북, 주문폼, 잔고관리) | 2025-12-25 |
-| Phase 3 | ✅ 완료 | Trading UX (차트, 가격 클릭, 피드백) | 2025-12-26 |
-| Phase 4 | ✅ 완료 | Multi-Pool (NASUN/NUSDC 풀, MarketSelector) | 2025-12-26 |
-| Phase 5 | ✅ 완료 | Native Token (NASUN 입금/출금, 가스비 예약) | 2025-12-26 |
-| Phase 6 | ✅ 완료 | Trading UX Pro (MA, Volume, RSI, MACD) | 2025-12-28 |
-| Phase 7 | ✅ 완료 | Portfolio Dashboard | 2025-12-28 |
-| Phase 8 | ✅ 완료 | Mobile & Theme (반응형, 다크/라이트) | 2025-12-28 |
-| Phase 12 | ✅ 완료 | Lending Pool (NUSDC 예금/출금) | 2026-01-01 |
-| Phase 13 | ✅ 완료 | Staking (Earn 탭, 네이티브 스테이킹) | 2026-01-01 |
-| Phase 14 | ⚠️ MVP 완료 | Prediction Markets (Sell/Admin 미구현) | 2025-12-29 |
-| Phase 15 | ✅ 완료 | Payments (Send, QR) | 2025-12-28 |
+| Phase 0 | ✅ | Nasun Devnet V3 리셋 | 2025-12-25 |
+| Phase 1 | ✅ | DeepBook V3 배포 + 테스트 토큰 | 2025-12-25 |
+| Phase 2 | ✅ | Frontend MVP (오더북, 주문폼, 잔고관리) | 2025-12-25 |
+| Phase 3 | ✅ | Trading UX (차트, 가격 클릭, 피드백) | 2025-12-26 |
+| Phase 4 | ✅ | Multi-Pool (NASUN/NUSDC 풀) | 2025-12-26 |
+| Phase 5 | ✅ | Native Token (NASUN 입금/출금) | 2025-12-26 |
+| Phase 9 | ✅ | zkLogin (Google OAuth) | 2026-01-03 |
 
-### 구현 완료 기능 상세
+### Era 2: Vertical Era ⚠️ (부분 완료)
 
-**스팟 거래**
-- ✅ 지정가 주문 (GTC, IOC, FOK, POST_ONLY)
-- ✅ 시장가 주문 (슬리피지 설정)
-- ✅ 주문 취소
-- ✅ 오더북 (5/10/20 depth, Depth Bar)
-- ✅ 캔들스틱 차트 (Lightweight Charts)
-- ✅ 거래 히스토리
-- ✅ 주문 확인 모달
-- ✅ Toast 알림
+| Phase | 상태 | 내용 | 비전 기여도 | 완료일 |
+|-------|------|------|------------|--------|
+| Phase 6 | ✅ | Trading UX Pro (MA, RSI, MACD) | ⭐ | 2025-12-28 |
+| Phase 7 | ✅ | Portfolio Dashboard | ⭐ | 2025-12-28 |
+| Phase 8 | ✅ | Mobile & Theme | ⭐ | 2025-12-28 |
+| Phase 12 | ✅ | Lending Pool (NUSDC) | ⭐⭐ | 2026-01-01 |
+| Phase 13 | ✅ | Staking (Native) | ⭐⭐ | 2026-01-01 |
+| Phase 14 | ⚠️ MVP | Prediction Markets | ⭐⭐ | 2025-12-31 |
+| Phase 15 | ✅ | Payments (Send, QR) | ⭐⭐ | 2025-12-28 |
+| **Phase 11** | ❌ | **Perpetuals** | ⭐⭐⭐⭐ | - |
 
-**잔고 관리**
-- ✅ BalanceManager 생성/관리
-- ✅ 토큰 입금/출금 (NBTC, NUSDC, NASUN)
-- ✅ 가스비 예약 (NASUN 0.1)
-- ✅ 다중 토큰 잔고 조회 (useMultiBalance)
+### Era 3: Core Era 📋 (시작 필요)
 
-**마켓**
-- ✅ NBTC/NUSDC, NASUN/NUSDC 풀
-- ✅ 마켓 선택 드롭다운
-- ✅ 가격 제안 버튼 (Mid, Best Bid/Ask)
-
-**지갑**
-- ✅ @nasun/wallet, @nasun/wallet-ui 통합
-- ✅ Embedded Wallet
-- ✅ NASUN Faucet + Token Faucet
+| Phase | 상태 | 내용 | 비전 기여도 |
+|-------|------|------|------------|
+| **Phase 16** | ❌ | **Unified Margin** | ⭐⭐⭐⭐⭐ |
+| Phase 16.1 | ❌ | Smart Account 통합 | ⭐⭐⭐⭐⭐ |
+| Phase 16.2 | ❌ | Risk Engine | ⭐⭐⭐⭐ |
+| Phase 16.3 | ❌ | Portfolio Margin | ⭐⭐⭐⭐⭐ |
 
 ---
 
-## 우선순위별 개발 로드맵
+## 우선순위 매트릭스
 
-### 🔴 Tier 1: 핵심 기능 (즉시 ~ 2주)
+```
+                         HIGH VISION IMPACT
+                              ▲
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+         │   ⭐ PRIORITY 1    │   ⭐ PRIORITY 0    │
+         │   (해야 하지만     │   (당장 해야 함)   │
+         │    시간 필요)      │                    │
+         │                    │                    │
+         │  • Perp DEX       │  • Unified Margin  │
+         │  • Cross-Chain    │  • Smart Account   │
+         │  • Portfolio      │  • Risk Engine     │
+         │    Margin         │  • 잔고 통합 UI    │
+         │                    │                    │
+  LOW ◄──┼────────────────────┼────────────────────┼──► HIGH
+  EFFORT │                    │                    │   EFFORT
+         │   PRIORITY 3      │   PRIORITY 2       │
+         │   (선택적)         │   (Core 이후)      │
+         │                    │                    │
+         │  • 차트 인디케이터 │  • Oracle 통합     │
+         │  • 테마/모바일     │  • 청산 엔진       │
+         │  • Prediction     │  • 펀딩 레이트     │
+         │    시드 유동성     │  • Keeper 인프라   │
+         │                    │                    │
+         └────────────────────┼────────────────────┘
+                              │
+                              ▼
+                         LOW VISION IMPACT
+```
 
-비즈니스 가치가 높고, Unified Onchain Finance 비전에 필수적인 기능
+---
 
-#### Phase 3.1: Realtime Events ⭐ (완료)
+## 개발 로드맵 (Vision-Aligned)
 
-**목표**: 실시간 블록체인 이벤트 구독으로 거래/오더북 즉시 업데이트
+### IMMEDIATE (1-2주) - UI/UX Quick Wins
 
-| 순서 | 작업 | 상태 | 난이도 |
+비전에 가까워지는 즉각적인 UX 개선
+
+| 순서 | 작업 | 상태 | 난이도 | 설명 |
+|------|------|------|--------|------|
+| I.1 | 상단 Portfolio Header 고정 | 📋 | 저 | 탭 전환에도 Net Value 항상 표시 |
+| I.2 | BalanceManager 라벨링 변경 | 📋 | 저 | "Deposit" → "Enable Trading Balance" |
+| I.3 | Prediction 시드 유동성 | ✅ | 저 | 4개 마켓 오더북 주문 배치 |
+| I.4 | Portfolio를 홈 화면으로 | 📋 | 중 | Trade 대신 Portfolio가 기본 탭 |
+| I.5 | Oracle 옵션 조사 | 📋 | 저 | Pyth, Switchboard on Sui |
+
+**목표 UI:**
+```
+┌─────────────────────────────────────────────────────┐
+│  Net Value: $10,000  │  Available: $5,000  │  🟢   │
+└─────────────────────────────────────────────────────┘
+         ↑ 이 헤더가 모든 탭에서 항상 표시됨
+```
+
+---
+
+### SHORT-TERM (3-4주) - Core Foundation
+
+Unified Account & Margin 기초 구축
+
+| 순서 | 작업 | 상태 | 난이도 | 설명 |
+|------|------|------|--------|------|
+| S.1 | Unified Margin Pool 스마트컨트랙트 v0 | 📋 | 고 | 단일 담보 풀 |
+| S.2 | Smart Account 통합 | 📋 | 고 | Wallet + BalanceManager 병합 |
+| S.3 | Pyth Network 연동 PoC | 📋 | 중 | 가격 오라클 |
+| S.4 | Portfolio View 홈 화면 구현 | 📋 | 중 | 모든 포지션 한눈에 |
+
+**Unified Margin Pool v0 요구사항:**
+```move
+module pado::unified_margin {
+    struct UnifiedAccount has key {
+        id: UID,
+        owner: address,
+        // 담보 자산
+        collateral: Table<TypeName, Balance>,
+        // 사용 중인 마진
+        used_margin: u64,
+        // 미실현 PnL
+        unrealized_pnl: i64,
+    }
+
+    // 모든 product에서 공유
+    public fun deposit(account: &mut UnifiedAccount, coin: Coin<T>);
+    public fun withdraw(account: &mut UnifiedAccount, amount: u64): Coin<T>;
+    public fun get_available_margin(account: &UnifiedAccount): u64;
+}
+```
+
+---
+
+### MID-TERM (5-8주) - Perp DEX + Core Validation
+
+Unified Margin을 검증하는 첫 번째 고난도 vertical
+
+| 순서 | 작업 | 상태 | 난이도 | 설명 |
+|------|------|------|--------|------|
+| M.1 | Perp 마진 시스템 (Cross only) | 📋 | 고 | Unified Margin 연동 |
+| M.2 | 펀딩 레이트 메커니즘 | 📋 | 고 | 8시간 정산 |
+| M.3 | 청산 엔진 (부분 청산) | 📋 | 고 | Liquidation bot |
+| M.4 | Risk Engine v1 | 📋 | 고 | 포트폴리오 레벨 리스크 |
+| M.5 | Spot/Perp/Prediction 통합 | 📋 | 고 | 동일 마진 풀 공유 |
+
+**Perp DEX의 전략적 위치:**
+> **Perp DEX ≠ 별도의 새로운 제품**
+> **Perp DEX = Unified Margin의 실전 검증 수단**
+
+---
+
+### LONG-TERM (9-12주) - Portfolio Margin
+
+Cross-product 전략 지원
+
+| 순서 | 작업 | 상태 | 난이도 | 설명 |
+|------|------|------|--------|------|
+| L.1 | Portfolio Margin (헤지 인정) | 📋 | 고 | Spot Long + Perp Short = 낮은 마진 |
+| L.2 | Lending/Staking margin eligible | 📋 | 중 | 예치금을 담보로 인정 |
+| L.3 | Isolated margin 옵션 | 📋 | 중 | 사용자 선택 |
+| L.4 | 추가 Perp 마켓 | 📋 | 중 | ETH-PERP, SOL-PERP |
+
+**Cross-Product 전략 예시:**
+
+| 전략 | 설명 | Unified Margin 필요성 |
+|------|------|---------------------|
+| **Carry Trade** | Spot Long + Perp Short | 헤지 인정으로 마진 절감 |
+| **Event Hedge** | Prediction YES + Perp Short | 이벤트 리스크 상쇄 |
+| **Yield Leverage** | Lending yield 담보로 Perp | 수익 극대화 |
+| **Basis Trade** | Spot + Perp funding 차익 | 저위험 수익 |
+
+---
+
+## 담보 자산별 Haircut 정의
+
+| 자산 | Margin Eligible | Haircut | 비고 |
+|------|-----------------|---------|------|
+| NASUN (Native) | ✅ Yes | 0% | 기본 담보 |
+| NUSDC (Stable) | ✅ Yes | 0% | 스테이블코인 |
+| NBTC | ✅ Yes | 10% | 변동성 고려 |
+| Spot Position | ✅ Yes | 15% | 유동성 리스크 |
+| Perp Unrealized PnL | ✅ Yes | 20% | 실현 전 리스크 |
+| Prediction Position | ⚠️ Partial | 50% | 바이너리 payoff |
+| Lending Deposit | ✅ Yes | 5% | 이자 수익 인정 |
+| Staking Position | ⚠️ Partial | 30% | 언스테이킹 지연 |
+
+---
+
+## 상세 구현 현황
+
+### Phase 14: Prediction Markets ⚠️ (MVP 완료)
+
+| 순서 | 작업 | 상태 | 완료일 |
 |------|------|------|--------|
-| 3.1.1 | EventService 레이어 | ✅ 완료 | 중 |
-| 3.1.2 | useTradeEvents 통합 | ✅ 완료 | 중 |
-| 3.1.3 | 실시간 오더북 | ✅ 완료 | 중 |
-| 3.1.4 | 연결 상태 UI | ✅ 완료 | 저 |
+| 14.1 | 스마트 컨트랙트 배포 | ✅ | 2025-12-29 |
+| 14.2 | 기본 UI (마켓 목록) | ✅ | 2025-12-29 |
+| 14.3 | 마켓 상세 (오더북) | ✅ | 2025-12-29 |
+| 14.4 | 거래 기능 (Mint, Buy) | ✅ | 2025-12-29 |
+| 14.5 | 포지션 관리 (P&L, Claim) | ✅ | 2025-12-30 |
+| 14.6 | Sell 주문 활성화 | ✅ | 2025-12-31 |
+| 14.7 | 마켓 해결 (Admin) | ✅ | 2025-12-31 |
+| 14.8 | 시드 유동성 공급 | ✅ | 2026-01-04 |
+| 14.9 | 마켓 생성 (Admin) | ✅ | 2025-12-31 |
 
-**구현 완료 (2025-12-29)**:
-- EventService 클래스 (WebSocket → Polling → Simulation 폴백)
-- useTradeEvents EventService 통합, connectionMode 반환
-- useOrderbook 이벤트 기반 invalidation + 10s 백업 폴링
-- ConnectionStatusBadge 컴포넌트 (Live/Polling/Demo)
+**현재 마켓 상태 (2026-01-04):**
+
+| # | Market | Collateral | Ask Orders | Target % |
+|---|--------|------------|------------|----------|
+| 1 | BTC $150k by Mar 2026 | 1,330 NUSDC | YES:1, NO:2 | ~35% |
+| 2 | TikTok Ban by Mar 2026 | 2,000 NUSDC | YES:1, NO:1 | ~30% |
+| 3 | Russia-Ukraine Ceasefire | 1,000 NUSDC | YES:1, NO:1 | ~25% |
+| 4 | ETH $10k by Dec 2026 | 2,000 NUSDC | YES:1, NO:1 | ~50% |
 
 ---
 
-#### Phase 6: Trading UX Pro ⭐ (완료)
+### Phase 9: Smart Account (zkLogin) ✅
 
-**목표**: CEX 수준의 거래 경험 완성
-
-| 순서 | 작업 | 상태 | 난이도 |
+| 순서 | 작업 | 상태 | 완료일 |
 |------|------|------|--------|
-| 6.1 | 실시간 거래 데이터 | ✅ 완료 | 중 |
-| 6.2 | 차트 기술 지표 (MA) | ✅ 완료 | 중 |
-| 6.3 | 포지션 P&L 표시 | ✅ 완료 | 저 |
-
-**구현 완료 (2025-12-28)**:
-- useTradeEvents hook + 시뮬레이션 fallback
-- PriceChart MA 5/20/60 + 토글 기능
-- TokenBalanceList 24h P&L 표시
-
----
-
-#### Phase 7: Portfolio Dashboard ⭐ (완료)
-
-**목표**: 사용자 자산/거래 현황 한눈에 파악
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 7.1 | 포트폴리오 페이지 | ✅ 완료 | 중 |
-| 7.2 | 전체 자산 현황 | ✅ 완료 | 저 |
-| 7.3 | 24h P&L 표시 | ✅ 완료 | 저 |
-| 7.4 | 거래 통계/내역 | ✅ 완료 | 중 |
-
-**구현 완료 (2025-12-28)**:
-- PortfolioPage + /portfolio 라우팅
-- AssetOverview 전체 자산 USD 환산
-- TokenBalanceList 24h P&L 색상 표시
-- Header 네비게이션 Portfolio 메뉴 활성화
-- useTradeHistory hook (사용자 거래 내역 조회)
-- TradeStats 컴포넌트 (거래 통계: 총 거래 수, 거래량, 매수/매도 비율)
-- RecentTrades 컴포넌트 (최근 거래 목록 테이블)
+| 9.1 | 백엔드 인프라 (Salt Lambda) | ✅ | 2026-01-01 |
+| 9.2 | @nasun/wallet zkLogin 확장 | ✅ | 2026-01-01 |
+| 9.3 | @nasun/wallet-ui 소셜 로그인 UI | ✅ | 2026-01-01 |
+| 9.4 | Pado 앱 통합 | ✅ | 2026-01-01 |
+| 9.5 | 전체 앱 통합 | ✅ | 2026-01-03 |
+| 9.6 | Passkey 인증 | 📋 | - |
+| 9.7 | 계정 복구 메커니즘 | 📋 | - |
 
 ---
 
-#### Wallet Security Phases ⭐
+### Wallet Security Phases
 
-**목표**: 웹3 지갑 보안 강화로 사용자 자산 보호
+**완료된 보안 기능 (Phase 1-2):**
 
-**완료된 보안 기능 (Phase 1-2)**
+| Phase | 기능 | 상태 |
+|-------|------|------|
+| 1.1 | 세션 타임아웃 (자동 잠금) | ✅ |
+| 1.2 | 메모리 보안 (secureZero) | ✅ |
+| 1.3 | SecuritySettings UI | ✅ |
+| 2.1 | 주소록 시스템 | ✅ |
+| 2.2 | 첫 거래 주소 경고 | ✅ |
+| 2.3 | 트랜잭션 시뮬레이션 API | ✅ |
 
-| Phase | 기능 | 상태 | 완료일 |
+**남은 보안 작업 (Phase 3-4):**
+
+| Phase | 기능 | 상태 | 난이도 |
 |-------|------|------|--------|
-| Security 1.1 | 세션 타임아웃 (자동 잠금) | ✅ 완료 | 2025-12-28 |
-| Security 1.2 | 메모리 보안 (secureZero) | ✅ 완료 | 2025-12-28 |
-| Security 1.3 | SecuritySettings UI | ✅ 완료 | 2025-12-28 |
-| Security 2.1 | 주소록 시스템 | ✅ 완료 | 2025-12-28 |
-| Security 2.2 | 첫 거래 주소 경고 | ✅ 완료 | 2025-12-28 |
-| Security 2.3 | 트랜잭션 시뮬레이션 API | ✅ 완료 | 2025-12-28 |
-
-**남은 보안 작업 (Phase 3-4)**
-
-##### Security Phase 3: 저장소 보안 강화
-
-| 순서 | 작업 | 상태 | 난이도 | 설명 |
-|------|------|------|--------|------|
-| 3.1 | IndexedDB 마이그레이션 | 📋 | 중 | localStorage → IndexedDB (더 안전) |
-| 3.2 | 암호화 키 저장소 개선 | 📋 | 고 | 키 파생 알고리즘 강화 (Argon2) |
-| 3.3 | 세션 스토리지 보안 | 📋 | 중 | 민감 데이터 암호화 저장 |
-
-##### Security Phase 4: 고급 보안 기능
-
-| 순서 | 작업 | 상태 | 난이도 | 설명 |
-|------|------|------|--------|------|
-| 4.1 | 스캠 주소 DB 연동 | 📋 | 중 | 외부 API로 스캠 주소 체크 |
-| 4.2 | 하드웨어 지갑 연동 | 📋 | 고 | Ledger/Trezor 지원 |
-| 4.3 | dApp 권한 관리 | 📋 | 고 | 연결된 dApp 권한 제어 |
-| 4.4 | 트랜잭션 화이트리스트 | 📋 | 중 | 신뢰할 수 있는 컨트랙트만 허용 |
-
-**구현된 보안 기능 파일 위치**:
-- `packages/wallet/src/types/index.ts` - SecuritySettings, AddressBook 타입
-- `packages/wallet/src/hooks/useWallet.ts` - 자동 잠금 로직
-- `packages/wallet/src/hooks/useAddressBook.ts` - 주소록 관리
-- `packages/wallet/src/core/crypto.ts` - secureZero 함수
-- `packages/wallet/src/sui/client.ts` - simulateTransaction 함수
-- `packages/wallet-ui/src/SecuritySettings.tsx` - 보안 설정 UI
-- `packages/wallet-ui/src/SendTransaction.tsx` - 주소 경고 UI
+| 3.1 | IndexedDB 마이그레이션 | 📋 | 중 |
+| 3.2 | 암호화 키 저장소 개선 (Argon2) | 📋 | 고 |
+| 4.1 | 스캠 주소 DB 연동 | 📋 | 중 |
+| 4.2 | 하드웨어 지갑 연동 | 📋 | 고 |
 
 ---
 
-#### Phase 9: Smart Account v2 ⭐ (진행 중)
+## 성공 지표
 
-**목표**: 시드리스 온보딩으로 사용자 진입 장벽 낮춤
+### 비전 달성 마일스톤
 
-| 순서 | 작업 | 상태 | 난이도 | 완료일 |
-|------|------|------|--------|--------|
-| 9.1 | 백엔드 인프라 (Salt Lambda, DynamoDB) | ✅ 완료 | 중 | 2026-01-01 |
-| 9.2 | @nasun/wallet zkLogin 확장 | ✅ 완료 | 고 | 2026-01-01 |
-| 9.3 | @nasun/wallet-ui 소셜 로그인 UI | ✅ 완료 | 중 | 2026-01-01 |
-| 9.4 | Pado 앱 통합 | ✅ 완료 | 저 | 2026-01-01 |
-| 9.5 | Nasun Website 통합 | 📋 대기 | 중 | - |
-| 9.6 | Passkey 인증 | 📋 | 고 | - |
-| 9.7 | 계정 복구 메커니즘 | 📋 | 중 | - |
+| 마일스톤 | 설명 | 비전 기여도 | 상태 |
+|----------|------|------------|------|
+| M1 | Portfolio Header UI | ⭐⭐ | 📋 |
+| M2 | Unified Margin Pool v0 | ⭐⭐⭐⭐⭐ | 📋 |
+| M3 | Perp v0 + 통합 | ⭐⭐⭐⭐ | 📋 |
+| M4 | Portfolio Margin | ⭐⭐⭐⭐⭐ | 📋 |
 
-**구현 완료 (2026-01-01)**:
-- Salt 관리 Lambda 배포 (`nasun-auth-zklogin-salt`)
-- ZkLoginUsers DynamoDB 테이블
-- `packages/wallet/src/core/zklogin.ts` - 전체 zkLogin 플로우
-- `packages/wallet/src/hooks/useZkLogin.ts` - React hooks
-- `packages/wallet-ui/src/SocialLoginButtons.tsx` - 소셜 로그인 버튼
-- `packages/wallet-ui/src/ZkLoginCallback.tsx` - OAuth 콜백 처리
-- `apps/pado/frontend/src/pages/AuthCallbackPage.tsx` - Pado 콜백 페이지
-- `/auth/callback` 라우트 추가
+### 정성적 성공 지표
 
-**전체 앱 통합 (2026-01-03 완료)**:
-- ✅ Pado: 거래, 예측 시장, 스테이킹, 결제 모든 기능에서 zkLogin 서명 지원
-- ✅ Nasun Website: 거버넌스 투표/위임 서명 지원
-- ✅ Network Explorer: zkLogin 콜백 라우트 + 월렛 UI
-- ✅ GenSol Website: zkLogin 콜백 라우트 + 월렛 UI
+- [ ] 사용자가 "두 개의 잔고"를 인지하지 않음
+- [ ] 모든 상품에서 동일한 margin pool 사용
+- [ ] Spot + Perp 헤지 시 마진 절감 체감
+- [ ] "One account, One margin pool" 실현
 
-**환경변수**:
-```bash
-VITE_ZKLOGIN_SALT_API_URL=https://xxx.execute-api.region.amazonaws.com/prod/auth/zklogin/salt
-VITE_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+---
+
+## 핵심 파일 구조
+
+### 현재 구조
+
+```
+frontend/src/
+├── features/
+│   ├── trading/          # Spot 거래 ✅
+│   ├── portfolio/        # 포트폴리오 ✅
+│   ├── prediction/       # 예측 시장 ✅
+│   ├── earn/             # Staking/Lending ✅
+│   ├── payments/         # 결제 ✅
+│   └── dashboard/        # 홈 대시보드 ✅
+├── pages/
+│   ├── TradePage.tsx
+│   ├── PortfolioPage.tsx
+│   ├── PredictPage.tsx
+│   ├── EarnPage.tsx
+│   └── WalletPage.tsx
+└── components/
+    └── common/
 ```
 
-**롤백 태그**:
-- `phase9-backend` - 백엔드 완료 시점
-- `phase9-wallet` - @nasun/wallet 확장 완료
-- `phase9-ui` - wallet-ui 컴포넌트 완료
-- `phase9-pado` - Pado 앱 통합 완료
+### 목표 구조 (Core Era)
 
----
-
-### 🟡 Tier 2: 확장 기능 (2~4주)
-
-Unified Finance 비전을 향한 핵심 확장
-
-#### Phase 11: Perpetuals ⭐
-
-**목표**: 무기한 선물 거래 지원
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 11.1 | Perps 컨트랙트 설계 | 📋 | 고 |
-| 11.2 | 펀딩 레이트 메커니즘 | 📋 | 고 |
-| 11.3 | 마진 시스템 (교차/격리) | 📋 | 고 |
-| 11.4 | 청산 엔진 | 📋 | 고 |
-
-**의존성**: Oracle 통합 (DeepBook V3 Oracle)
-
----
-
-#### Phase 12: Lending & Borrowing ⭐ (완료)
-
-**목표**: 통합 대출 프로토콜
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 12.1 | Lending Pool 스마트 컨트랙트 | ✅ 완료 | 고 |
-| 12.2 | 동적 금리 곡선 (Compound 스타일) | ✅ 완료 | 중 |
-| 12.3 | Frontend UI (Deposit/Withdraw) | ✅ 완료 | 중 |
-| 12.4 | 담보 관리 / 청산 | 📋 | 고 |
-
-**구현 완료 (2026-01-01)**:
-- NUSDC Lending Pool 스마트 컨트랙트 배포
-  - Package: `0x63f513c6dc341cadfaadc672d24123de931c983f8afb6773dc8aef4c42ab49fc`
-  - Pool: `0x7b53b300809a97e506035c4f1161e7b13f34c21cbfe401299f7a88a92479c4ac`
-- Compound 스타일 이자율 모델 (Base 2%, Multiplier 20%, Jump 100%, Kink 80%)
-- EarnPage Lending 탭 활성화
-- PoolStats, DepositForm, PositionList 컴포넌트
-- useLendingPool, useLendingPositions, useLendingActions hooks
-
-**확장 방향**: Unified Margin과 연동하여 거래 마진으로 활용
-
----
-
-#### Phase 16: Unified Margin ⭐
-
-**목표**: 크로스-프로덕트 통합 마진 시스템
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 16.1 | 통합 담보 관리 | 📋 | 고 |
-| 16.2 | 포트폴리오 레벨 리스크 엔진 | 📋 | 고 |
-| 16.3 | 자산별 리스크 가중치 | 📋 | 중 |
-| 16.4 | 실시간 청산 가격 계산 | 📋 | 고 |
-
-**아키텍처**:
 ```
-┌─────────────────────────────────────┐
-│         Unified Risk Engine         │
-├─────────────────────────────────────┤
-│  Spot + Perps + Lending + Prediction │
-│  공유 담보 풀 (BalanceManager)        │
-│  실시간 PnL + 청산 가격              │
-└─────────────────────────────────────┘
+frontend/src/
+├── features/
+│   ├── core/             # 🆕 Core 기능
+│   │   ├── unified-margin/
+│   │   ├── risk-engine/
+│   │   └── smart-account/
+│   ├── trading/          # Spot + Perp 통합
+│   ├── portfolio/        # 재설계 필요
+│   ├── prediction/
+│   ├── earn/
+│   └── payments/
+└── contracts/
+    ├── unified_margin.move  # 🆕
+    ├── perp_market.move     # 🆕
+    └── risk_engine.move     # 🆕
 ```
-
----
-
-### 🟢 Tier 3: 부가 기능 (4주+)
-
-사용자 경험 향상 및 생태계 확장
-
-#### Phase 8: Mobile & Theme ⭐ (완료)
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 8.1 | 모바일 반응형 최적화 | ✅ 완료 | 중 |
-| 8.2 | 다크/라이트 테마 | ✅ 완료 | 저 |
-| 8.3 | 레이아웃 커스터마이징 | 📋 | 고 |
-
-**구현 완료 (8.1, 8.2 - 2025-12-28)**:
-- 모바일 햄버거 메뉴 (768px 이하)
-- 그리드 반응형 개선 (TradePage, Orderbook, BalancePanel)
-- ThemeProvider + useTheme hook
-- CSS 변수 기반 테마 시스템
-- Header에 테마 토글 버튼 (해/달 아이콘)
-- localStorage 테마 저장
-- 시스템 테마 감지 (prefers-color-scheme)
-
----
-
-#### Phase 10: Cross-Chain Vaults
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 10.1 | BTC Vault 설계 | 📋 | 고 |
-| 10.2 | ETH Vault 설계 | 📋 | 고 |
-| 10.3 | MPC/Threshold Signature | 📋 | 고 |
-| 10.4 | 1:1 Mint/Burn 메커니즘 | 📋 | 고 |
-
----
-
-#### Phase 13: Staking ⭐ (완료)
-
-**목표**: Nasun Devnet 네이티브 스테이킹 통합
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 13.1 | EarnPage 생성 (Staking/Lending 탭) | ✅ 완료 | 저 |
-| 13.2 | StakingSection 컴포넌트 | ✅ 완료 | 저 |
-| 13.3 | wallet-ui 스테이킹 컴포넌트 라이트 모드 | ✅ 완료 | 중 |
-| 13.4 | Header Earn 탭 활성화 | ✅ 완료 | 저 |
-
-**구현 완료 (2026-01-01)**:
-- EarnPage with Staking/Lending tabs (Lending disabled for Phase 12)
-- StakingSection with info cards (Your Staked, Rewards, APY, Validators)
-- Light mode support for StakingPanel, ValidatorList, StakingStatus
-- Native staking via @nasun/wallet-ui StakingPanel component
-
----
-
-#### Phase 14: Prediction Markets ⭐ (MVP 완료)
-
-**목표**: 이진 예측 시장 (YES/NO Outcome)
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 14.1 | 스마트 컨트랙트 배포 | ✅ 완료 | 고 |
-| 14.2 | 기본 UI (마켓 목록, 카드) | ✅ 완료 | 중 |
-| 14.3 | 마켓 상세 (오더북, 카운트다운) | ✅ 완료 | 중 |
-| 14.4 | 거래 기능 (Mint, Buy) | ✅ 완료 | 고 |
-| 14.5 | 포지션 관리 (P&L, Claim) | ✅ 완료 | 중 |
-| 14.6 | Sell 주문 활성화 | ✅ 완료 | 저 |
-| 14.7 | 마켓 해결 (Admin) | ✅ 완료 | 중 |
-| 14.8 | 시드 유동성 공급 | 📋 대기 | 저 |
-| 14.9 | 마켓 생성 (Admin) | ✅ 완료 | 중 |
-
-**구현 완료 (2025-12-29 ~ 2025-12-31)**:
-- 예측 시장 스마트 컨트랙트 (CTF 모델)
-- 마켓 목록/상세 페이지 (/predict, /predict/:marketId)
-- YES/NO 토큰 민트 (1 NUSDC = 1 YES + 1 NO)
-- 구매 주문 (Buy)
-- 포지션 NFT 관리
-- 블록체인 동기화 UI 피드백
-- 사용자 친화적 에러 메시지
-- 확률 계산 통일 (오더북 기반 Polymarket 방식, 2025-12-30)
-- ✅ Sell 주문 활성화 (2025-12-31): Position 선택 UI, P&L 표시
-- ✅ 마켓 해결 Admin (2025-12-31): usePredictionAdmin, AdminResolveModal
-- ✅ 마켓 생성 Admin (2025-12-31): CreateMarketForm, PredictAdminPage
-
-**미구현**:
-- ❌ 시드 유동성: 4개 마켓 모두 빈 오더북 (수동 작업 필요)
-
-**파일 위치**:
-- `features/prediction/` - hooks, components, types
-- `pages/PredictPage.tsx` - 마켓 목록
-- `pages/PredictMarketPage.tsx` - 마켓 상세
-
----
-
-#### Phase 15: Payments ⭐
-
-| 순서 | 작업 | 상태 | 난이도 |
-|------|------|------|--------|
-| 15.1 | 즉시 전송 | ✅ 완료 | 저 |
-| 15.2 | 정기 결제 | 📋 | 중 |
-| 15.3 | QR 코드 결제 | ✅ 완료 | 저 |
-
-**구현 완료 (15.1, 15.3)**:
-- PaymentPage with @nasun/wallet-ui SendTransaction
-- 라우팅: /send
-- 헤더 네비게이션 추가
-- NASUN, NBTC, NUSDC 전송 지원
-- PaymentQRCode 컴포넌트 (qrcode.react)
-- Send/Receive 탭 UI
-- QR 코드로 결제 링크 공유
 
 ---
 
@@ -394,7 +376,7 @@ Unified Finance 비전을 향한 핵심 확장
 git add -A && git commit -m "chore: checkpoint before phase X"
 git tag vX.Y.Z-pre
 
-# 2. 작업 브랜치 생성
+# 2. 작업 브랜치 생성 (선택)
 git checkout -b feature/phase-X
 ```
 
@@ -408,9 +390,9 @@ pnpm build:pado
 pnpm dev:pado
 
 # 3. 문서 업데이트
-# - CLAUDE.md
+# - PADO_NEXT_STEPS.md (이 문서)
 # - PADO_IMPLEMENTATION_PLAN.md
-# - 이 문서 (PADO_NEXT_STEPS.md)
+# - PADO_UI_ROADMAP.md
 
 # 4. 커밋 & 태그
 git add -A && git commit -m "feat: complete phase X - 설명"
@@ -422,91 +404,27 @@ git push origin main --tags
 
 ---
 
-## 핵심 파일 구조
-
-### 현재 구조
-
-```
-frontend/src/
-├── features/
-│   └── trading/          # 스팟 거래 (구현 완료)
-│       ├── components/   # 11개 컴포넌트
-│       ├── hooks/        # 4개 훅
-│       └── context/      # 2개 컨텍스트
-├── pages/
-│   └── TradePage.tsx     # 메인 거래 페이지
-└── components/
-    └── common/           # 공통 UI
-```
-
-### 향후 확장 구조
-
-```
-frontend/src/
-├── features/
-│   ├── trading/          # 스팟 거래 ✅
-│   ├── portfolio/        # 포트폴리오 (Phase 7)
-│   ├── perps/            # 무기한 선물 (Phase 11)
-│   ├── lending/          # 대출 (Phase 12)
-│   ├── staking/          # 스테이킹 (Phase 13)
-│   ├── prediction/       # 예측 시장 (Phase 14)
-│   └── payments/         # 결제 (Phase 15)
-├── smart-account/        # Smart Account (Phase 9)
-│   ├── adapters/
-│   │   ├── EmbeddedAdapter.ts
-│   │   ├── ZkLoginAdapter.ts
-│   │   └── PasskeyAdapter.ts
-│   └── core/
-└── pages/
-    ├── TradePage.tsx
-    ├── PortfolioPage.tsx
-    ├── PerpsPage.tsx
-    ├── LendPage.tsx
-    └── PredictPage.tsx
-```
-
----
-
-## 우선순위 결정 기준
-
-### Tier 1 (즉시)
-- ✅ 사용자 획득에 직접적 영향
-- ✅ Unified Finance 비전 핵심
-- ✅ 현재 인프라로 구현 가능
-
-### Tier 2 (2~4주)
-- ✅ 수익 창출 가능
-- ✅ 경쟁 우위 확보
-- ⚠️ 새로운 컨트랙트 필요
-
-### Tier 3 (4주+)
-- ✅ 생태계 확장
-- ⚠️ 외부 의존성 있음
-- ⚠️ 규제 고려 필요
-
----
-
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
 |------|----------|
 | 2025-12-26 | 초안 작성 (Phase 6-10 계획) |
-| 2025-12-26 | Phase 6 완료: NASUN 입금/출금 멀티풀 지원 |
-| 2025-12-27 | 문서 전면 개편: Unified Onchain Finance 비전 기반 우선순위 재정렬 |
-| 2025-12-28 | Phase 15.1 완료: 즉시 전송 (Immediate Transfer) |
-| 2025-12-28 | Phase 6 완료 (실시간 거래, MA, P&L), Phase 7 완료 (포트폴리오, 자산현황) |
-| 2025-12-28 | Phase 8.2 완료: 다크/라이트 테마 전환 |
-| 2025-12-28 | Phase 15.3 완료: QR 코드 결제 (PaymentQRCode, Send/Receive 탭) |
-| 2025-12-28 | Phase 7.4 완료: 거래 통계/내역 (TradeStats, RecentTrades, useTradeHistory) |
-| 2025-12-29 | Phase 14 완료: Prediction Market MVP (14.1~14.5) |
-| 2025-12-29 | Phase 8.1 완료: 모바일 반응형 최적화 (햄버거 메뉴, 그리드 반응형) |
-| 2025-12-29 | Phase 3.1 완료: EventService, 실시간 오더북, ConnectionStatusBadge |
-| 2025-12-30 | 마켓 목록/상세 확률 표시 통일 (오더북 기반 확률 계산) |
-| 2025-12-31 | Phase 14 문서 정정: MVP 완료 (14.6~14.9 항목 추가) |
-| 2025-12-31 | Phase 14.6 완료: Sell 주문 활성화 (Position 선택 UI, P&L 표시) |
-| 2025-12-31 | Phase 14.7 완료: 마켓 해결 Admin 기능 (usePredictionAdmin, AdminResolveModal) |
-| 2025-12-31 | Phase 14.9 완료: 마켓 생성 Admin UI (CreateMarketForm, PredictAdminPage) |
-| 2026-01-01 | Phase 13 완료: Staking (EarnPage, StakingSection, 라이트 모드 지원) |
-| 2026-01-01 | Phase 12 완료: Lending Pool (스마트 컨트랙트 배포, Deposit/Withdraw UI) |
-| 2026-01-01 | Phase 9.1-9.4 완료: zkLogin 통합 (백엔드, wallet 패키지, Pado 앱) |
-| 2026-01-03 | Phase 9.5-9.7 완료: zkLogin 전체 앱 통합 (Nasun Website, Network Explorer, GenSol Website) |
+| 2025-12-27 | 문서 전면 개편: Unified Onchain Finance 비전 기반 |
+| 2025-12-28 | Phase 6, 7, 8, 15 완료 |
+| 2025-12-29 | Phase 14 MVP, Phase 3.1 완료 |
+| 2025-12-31 | Phase 14.6~14.9 완료 |
+| 2026-01-01 | Phase 9, 12, 13 완료 |
+| 2026-01-03 | zkLogin 전체 앱 통합 완료 |
+| 2026-01-04 | **Vision Analysis 기반 전면 재구성** |
+| | - 비전 부합도 분석 결과 반영 (40%) |
+| | - Unified Account & Margin을 핵심 축으로 재정의 |
+| | - Priority 매트릭스 추가 |
+| | - 잔고 이원화 문제 명시 |
+| | - Perp DEX를 Core 검증 수단으로 재정의 |
+| | - Phase 14.8 시드 유동성 완료 |
+| | - 담보 Haircut 테이블 추가 |
+
+---
+
+*이 문서는 PADO_VISION_VS_REALITY_ANALYSIS.md를 기반으로 전략적 방향을 반영합니다.*
+*마지막 업데이트: 2026-01-04*
