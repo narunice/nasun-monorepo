@@ -572,44 +572,132 @@ export function WalletConnect({
             </div>
           </div>
 
-          {/* Menu options */}
-          <div className="py-1">
+          {/* Tab navigation for zkLogin */}
+          <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
-              onClick={() => setViewMode('send')}
-              className="w-full px-3 py-2 text-left text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              onClick={() => setActiveTab('tokens')}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'tokens'
+                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Send Token
+              Tokens
             </button>
-
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(zkState.address);
-                setShowDropdown(false);
-              }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              onClick={() => setActiveTab('nfts')}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'nfts'
+                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy Address
-            </button>
-
-            <button
-              onClick={() => {
-                zkLogout();
-                setShowDropdown(false);
-              }}
-              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Disconnect
+              NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
             </button>
           </div>
+
+          {/* Tokens tab content */}
+          {activeTab === 'tokens' && (
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(zkState.address);
+                  setShowDropdown(false);
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy Address
+              </button>
+
+              <button
+                onClick={() => setViewMode('send')}
+                className="w-full px-3 py-2 text-left text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send Token
+              </button>
+
+              <button
+                onClick={() => setViewMode('staking')}
+                className="w-full px-3 py-2 text-left text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Staking
+              </button>
+
+              <button
+                onClick={() => {
+                  zkLogout();
+                  setShowDropdown(false);
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Disconnect
+              </button>
+            </div>
+          )}
+
+          {/* NFTs tab content */}
+          {activeTab === 'nfts' && (
+            <div className="p-3">
+              {nftsLoading ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                  ))}
+                </div>
+              ) : nfts.length === 0 ? (
+                <div className="text-center py-6">
+                  <svg
+                    className="w-10 h-10 text-gray-400 dark:text-zinc-600 mx-auto mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">No NFTs found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
+                  {nfts.map((nft) => (
+                    <NFTCard
+                      key={nft.objectId}
+                      nft={nft}
+                      compact
+                      onClick={setSelectedNFT}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* NFT Detail Modal for zkLogin */}
+          {selectedNFT && (
+            <NFTDetail
+              nft={selectedNFT}
+              onClose={() => setSelectedNFT(null)}
+              onTransferSuccess={() => {
+                setSelectedNFT(null);
+              }}
+            />
+          )}
         </div>
       );
     }
