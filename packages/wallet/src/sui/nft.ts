@@ -12,6 +12,7 @@ const DEFAULT_LIMIT = 50;
 
 /**
  * Parse Display data from Sui response
+ * Handles both successful responses and error responses (when Display<T> is not registered)
  */
 function parseDisplayData(displayData: unknown): NFTDisplay {
   if (!displayData || typeof displayData !== 'object') {
@@ -20,8 +21,19 @@ function parseDisplayData(displayData: unknown): NFTDisplay {
 
   const data = displayData as Record<string, unknown>;
 
+  // Check if this is an error response (Display<T> not registered)
+  // Error format: { error: { code: "displayError", ... } }
+  if (data.error) {
+    return {};
+  }
+
   // Handle the nested structure: { data: { name: ..., image_url: ... } }
   const fields = (data.data as Record<string, string | undefined>) || data;
+
+  // Ensure we don't pick up random properties from non-Display objects
+  if (!fields || typeof fields !== 'object') {
+    return {};
+  }
 
   return {
     name: fields.name,
