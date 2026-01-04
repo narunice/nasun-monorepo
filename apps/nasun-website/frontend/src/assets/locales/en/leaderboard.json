@@ -2,9 +2,13 @@
   "title": "COMMUNITY LEADERBOARD",
   "periods": {
     "cumulative": "Overall Cumulative",
+    "cumulativeShort": "Overall",
     "event1": "Season 1",
+    "event1Short": "S1",
     "event2": "Season 2",
-    "event3": "Season 3"
+    "event2Short": "S2",
+    "event3": "Season 3",
+    "event3Short": "S3"
   },
   "snapshot": {
     "title": "Snapshot Viewer",

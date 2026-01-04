@@ -2,9 +2,13 @@
   "title": "커뮤니티 리더보드",
   "periods": {
     "cumulative": "전체 누적",
+    "cumulativeShort": "전체",
     "event1": "시즌 1",
+    "event1Short": "S1",
     "event2": "시즌 2",
-    "event3": "시즌 3"
+    "event2Short": "S2",
+    "event3": "시즌 3",
+    "event3Short": "S3"
   },
   "snapshot": {
     "title": "스냅샷 조회",

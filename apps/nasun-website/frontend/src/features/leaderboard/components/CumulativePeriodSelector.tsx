@@ -76,6 +76,7 @@ const CumulativePeriodSelector: React.FC<CumulativePeriodSelectorProps> = memo(
           return {
             value: periodLower as CumulativePeriod,
             label,
+            shortLabel: String(t(`periods.${periodLower}Short`)),
             status,
             icon: getPeriodIcon(periodLower as CumulativePeriod),
           };
@@ -129,7 +130,8 @@ const CumulativePeriodSelector: React.FC<CumulativePeriodSelectorProps> = memo(
               ${isLoadingCombined ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
             `}
             >
-              {String(option.label)}
+              <span className="hidden sm:inline">{option.label}</span>
+              <span className="sm:hidden">{option.shortLabel}</span>
               <StatusBadge status={option.status} />
             </button>
           ))}
@@ -153,7 +155,8 @@ const CumulativePeriodSelector: React.FC<CumulativePeriodSelectorProps> = memo(
                 ${isLoadingCombined ? "cursor-not-allowed opacity-60" : ""}
               `}
               >
-                {String(option.label)}
+                <span className="hidden sm:inline">{option.label}</span>
+                <span className="sm:hidden">{option.shortLabel}</span>
                 <StatusBadge status={option.status} />
                 {isActive && (
                   <span className="absolute bottom-0 left-0 w-full h-0.5 bg-white rounded-lg-full" />
