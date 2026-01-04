@@ -52,7 +52,9 @@ export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
     },
     enabled: enabled && !!isConnected,
     refetchInterval,
-    staleTime: 30000, // 30 seconds
+    refetchIntervalInBackground: true, // Continue refetching even when tab is not focused
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab
+    staleTime: 10000, // 10 seconds (reduced from 30s for faster updates)
   });
 
   return {
