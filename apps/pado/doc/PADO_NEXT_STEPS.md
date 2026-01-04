@@ -51,6 +51,20 @@
 
 ---
 
+## 인프라 리스크 (Devnet 한계)
+
+| 항목 | 현재 상태 | 리스크 | 대응책 |
+|------|----------|--------|--------|
+| **TPS** | ~21 TPS | 고빈도 거래 불가 | 배치 처리, 오프체인 매칭 |
+| **안정성** | V4 리셋 경험 | 데이터 유실 가능 | 롤백 태그 관리 |
+| **블록 생성** | ~2초 | 실시간 UX 어려움 | Optimistic UI |
+| **RPC** | 단일 노드 | SPOF | 모니터링 강화 |
+
+> ⚠️ **경고**: Devnet은 개발/테스트 전용입니다.
+> 프로덕션 출시 전 Testnet → Mainnet 마이그레이션 필요.
+
+---
+
 ## 구현 완료 상태
 
 ### Era 1: Foundation Era ✅
@@ -150,39 +164,47 @@
 
 ### SHORT-TERM (3-4주) - Core Foundation
 
-Unified Account & Margin 기초 구축
+Unified Account & Margin 기초 구축 (v0부터 점진적 확장)
 
 | 순서 | 작업 | 상태 | 난이도 | 설명 |
 |------|------|------|--------|------|
-| S.1 | Unified Margin Pool 스마트컨트랙트 v0 | 📋 | 고 | 단일 담보 풀 |
-| S.2 | Smart Account 통합 | 📋 | 고 | Wallet + BalanceManager 병합 |
-| S.3 | Pyth Network 연동 PoC | 📋 | 중 | 가격 오라클 |
-| S.4 | Portfolio View 홈 화면 구현 | 📋 | 중 | 모든 포지션 한눈에 |
+| S.1 | **Unified Margin v0** | 📋 | 중 | NUSDC 전용, Spot+Prediction 공유 |
+| S.2 | **Risk Engine v0** | 📋 | 저 | 단순 잔고 체크 (balance > 0) |
+| S.3 | Smart Account UI 통합 | 📋 | 중 | Wallet + BalanceManager 병합 |
+| S.4 | Portfolio View 홈 화면 | 📋 | 중 | 모든 포지션 한눈에 |
 
-**Unified Margin Pool v0 요구사항:**
+**Unified Margin 버전 로드맵:**
+
+| 버전 | 담보 자산 | 연동 상품 | 주요 기능 |
+|------|----------|----------|----------|
+| **v0** | NUSDC only | Spot + Prediction | 단일 담보 풀, 잔고 통합 |
+| **v0.5** | + NASUN, NBTC | + Lending | Multi-collateral, Haircut 적용 |
+| **v1** | 모든 토큰 | + Perp | Portfolio Margin, 헤지 인정 |
+
+**Unified Margin v0 요구사항:**
 ```move
 module pado::unified_margin {
     struct UnifiedAccount has key {
         id: UID,
         owner: address,
-        // 담보 자산
-        collateral: Table<TypeName, Balance>,
+        // v0: NUSDC만 지원
+        nusdc_balance: Balance<NUSDC>,
         // 사용 중인 마진
         used_margin: u64,
-        // 미실현 PnL
-        unrealized_pnl: i64,
     }
 
     // 모든 product에서 공유
-    public fun deposit(account: &mut UnifiedAccount, coin: Coin<T>);
-    public fun withdraw(account: &mut UnifiedAccount, amount: u64): Coin<T>;
+    public fun deposit(account: &mut UnifiedAccount, coin: Coin<NUSDC>);
+    public fun withdraw(account: &mut UnifiedAccount, amount: u64): Coin<NUSDC>;
     public fun get_available_margin(account: &UnifiedAccount): u64;
 }
 ```
 
+> **v0 설계 원칙**: 복잡성을 최소화하고 핵심 기능(잔고 통합)부터 검증
+
 ---
 
-### MID-TERM (5-8주) - Perp DEX + Core Validation
+### MID-TERM (5-8주) - Perp DEX + Risk Validation
 
 Unified Margin을 검증하는 첫 번째 고난도 vertical
 
@@ -190,9 +212,18 @@ Unified Margin을 검증하는 첫 번째 고난도 vertical
 |------|------|------|--------|------|
 | M.1 | Perp 마진 시스템 (Cross only) | 📋 | 고 | Unified Margin 연동 |
 | M.2 | 펀딩 레이트 메커니즘 | 📋 | 고 | 8시간 정산 |
-| M.3 | 청산 엔진 (부분 청산) | 📋 | 고 | Liquidation bot |
-| M.4 | Risk Engine v1 | 📋 | 고 | 포트폴리오 레벨 리스크 |
+| M.3 | **Risk Engine v0.5** | 📋 | 중 | 마진 사용률 추적 |
+| M.4 | **Risk Engine v1** | 📋 | 고 | 청산 로직 (부분 청산) |
 | M.5 | Spot/Perp/Prediction 통합 | 📋 | 고 | 동일 마진 풀 공유 |
+
+**Risk Engine 버전 로드맵:**
+
+| 버전 | 주요 기능 | 트리거 | 상태 |
+|------|----------|--------|------|
+| **v0** | `balance > 0` 체크 | 주문 시 | SHORT-TERM |
+| **v0.5** | 마진 사용률 (usedMargin / totalMargin) | 주문 시 | MID-TERM |
+| **v1** | 청산 가격 계산, 부분 청산 | 가격 변동 시 | MID-TERM |
+| **v2** | 포트폴리오 상관관계 (헤지 인정) | 실시간 | LONG-TERM |
 
 **Perp DEX의 전략적 위치:**
 > **Perp DEX ≠ 별도의 새로운 제품**
@@ -224,16 +255,19 @@ Cross-product 전략 지원
 
 ## 담보 자산별 Haircut 정의
 
-| 자산 | Margin Eligible | Haircut | 비고 |
-|------|-----------------|---------|------|
-| NASUN (Native) | ✅ Yes | 0% | 기본 담보 |
-| NUSDC (Stable) | ✅ Yes | 0% | 스테이블코인 |
-| NBTC | ✅ Yes | 10% | 변동성 고려 |
-| Spot Position | ✅ Yes | 15% | 유동성 리스크 |
-| Perp Unrealized PnL | ✅ Yes | 20% | 실현 전 리스크 |
-| Prediction Position | ⚠️ Partial | 50% | 바이너리 payoff |
-| Lending Deposit | ✅ Yes | 5% | 이자 수익 인정 |
-| Staking Position | ⚠️ Partial | 30% | 언스테이킹 지연 |
+| 자산 | Margin Eligible | Haircut | 버전 | 비고 |
+|------|-----------------|---------|------|------|
+| NUSDC (Stable) | ✅ Yes | 0% | v0 | 스테이블코인, 첫 담보 |
+| NASUN (Native) | ✅ Yes | 0% | v0.5 | 기본 담보 |
+| NBTC | ✅ Yes | 10% | v0.5 | 변동성 고려 |
+| Spot Position | ✅ Yes | 15% | v1 | 유동성 리스크 |
+| Perp Unrealized PnL | ✅ Yes | 20% | v1 | 실현 전 리스크 |
+| Lending Deposit | ✅ Yes | 5% | v0.5 | 이자 수익 인정 |
+| Staking Position | ⚠️ Partial | 30% | v1 | 언스테이킹 지연 |
+| Prediction Position | ❌ Phase L | 50%* | v2 | 바이너리 payoff |
+
+> **참고**: Prediction Position의 담보 인정은 Phase L (LONG-TERM)에서 구현 예정.
+> 바이너리 payoff 특성상 복잡한 리스크 모델 필요. (*50%는 목표치)
 
 ---
 
@@ -299,6 +333,20 @@ Cross-product 전략 지원
 | 3.2 | 암호화 키 저장소 개선 (Argon2) | 📋 | 고 |
 | 4.1 | 스캠 주소 DB 연동 | 📋 | 중 |
 | 4.2 | 하드웨어 지갑 연동 | 📋 | 고 |
+
+---
+
+## 격주 마일스톤 (Bi-Weekly Targets)
+
+| 주차 | 날짜 | 목표 | 검증 기준 |
+|------|------|------|----------|
+| W1-2 | 1/6 - 1/17 | Unified Margin v0 스마트컨트랙트 | devInspect 성공 |
+| W3-4 | 1/20 - 1/31 | Smart Account UI 통합 | 잔고 이원화 해소 |
+| W5-6 | 2/3 - 2/14 | Risk Engine v0.5 | 마진 사용률 표시 |
+| W7-8 | 2/17 - 2/28 | Perp v0 MVP | BTC-PERP 거래 가능 |
+
+> **유연성**: 이 일정은 목표치이며, Devnet 상황에 따라 조정 가능.
+> 각 마일스톤 종료 시 retrospective 진행 후 다음 일정 조정.
 
 ---
 
@@ -423,6 +471,13 @@ git push origin main --tags
 | | - Perp DEX를 Core 검증 수단으로 재정의 |
 | | - Phase 14.8 시드 유동성 완료 |
 | | - 담보 Haircut 테이블 추가 |
+| 2026-01-04 | **AI 피드백 기반 문서 개선** (Perplexity/ChatGPT) |
+| | - 인프라 리스크 섹션 추가 (Devnet 한계 명시) |
+| | - Unified Margin v0/v0.5/v1 단계화 |
+| | - Risk Engine v0/v0.5/v1/v2 버전화 |
+| | - 격주 마일스톤 일정 추가 |
+| | - Prediction 담보를 Phase L로 연기 |
+| | - Haircut 테이블에 버전 컬럼 추가 |
 
 ---
 
