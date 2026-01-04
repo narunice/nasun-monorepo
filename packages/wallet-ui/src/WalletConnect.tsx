@@ -238,7 +238,11 @@ export function WalletConnect({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch NFTs when unlocked (only active tab uses the data)
-  const { data: nfts = [], isLoading: nftsLoading } = useNFTs({ limit: 20 });
+  // Auto-refresh every 15 seconds to catch new NFTs (e.g., after voting)
+  const { data: nfts = [], isLoading: nftsLoading } = useNFTs({
+    limit: 20,
+    refetchInterval: 15000,
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
