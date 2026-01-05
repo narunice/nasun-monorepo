@@ -308,14 +308,22 @@ cd apps/pado/contracts
 | MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리 |
 | UpgradeCap | `0x4781e6fd...` | 업그레이드 권한 |
 
-#### Governance (Nasun Website)
+#### Governance (Nasun Website) - 2026-01-05 업데이트
 
 | 컨트랙트 | ID | 비고 |
 |----------|------------|------|
-| governance | `0xcd753b00...` | 거버넌스 패키지 |
+| governance (v1) | `0xcd753b00...` | 초기 패키지 (deprecated vote 함수) |
+| governance (v2) | `0x77153fb28cf00adb7e59a62b057d7cbfcf26dabc4bc9daad8073e5321b22c0af` | 현재 패키지 (Certificate 기반 투표) |
+| VotingPowerOracle (shared) | `0x656632e390118ddf2c41fc59f14ddbbdfdd2115b8a08e4db48e8232846f43199` | Ed25519 서명 검증 |
+| CertificateRegistry (shared) | `0x5edbaf20f817ee3a9a94528babff2d2218364d4ec9a60af486a35228ad8a421f` | 중복 발급 방지 |
 | Dashboard (shared) | `0x422ee880...` | 프로포절 대시보드 |
 | DelegationRegistry | `0x23f4c7b5...` | 투표 위임 레지스트리 |
 | AdminCap | `0x21a92db9...` | 관리자 권한 |
+| UpgradeCap | `0x71d874e0...` | 업그레이드 권한 |
+
+**Secrets (AWS Secrets Manager):**
+- `nasun/governance/oracle` - Oracle Ed25519 keypair (서명 발급)
+- `nasun/governance/sponsor` - Sponsor Ed25519 keypair (가스비 지불)
 
 ## 향후 계획
 

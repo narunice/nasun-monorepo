@@ -1,9 +1,11 @@
 [package]
 name = "governance"
 edition = "2024.beta"
-version = "0.0.1"
+version = "0.0.2"
+published-at = "0xcd753b00e5c298c8b8d37e74ac36732de04f1f2f3a3409d1e67d10ed3126ba1c"
 
 [dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/devnet" }
 
 [addresses]
 governance = "0x0"
