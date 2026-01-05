@@ -7,6 +7,8 @@ import { useHomePageLoading } from "../contexts/PageLoadingContext";
 
 // Lazy load all sections
 const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
+const HeroSectionV2 = lazy(() => import("../components/app/home/HeroSectionV2"));
+const HeroSectionV3 = lazy(() => import("../components/app/home/HeroSectionV3"));
 const VisionSectionV2 = lazy(() => import("../components/app/home/VisionSectionV2"));
 const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV3"));
 const NftSaleSection = lazy(() => import("../components/app/home/NftSaleSection"));
@@ -60,7 +62,12 @@ export default function HomePage() {
       <ScrollSnapContainer>
         <ErrorBoundary fallback={errorFallback}>
           <Suspense fallback={suspenseFallback}>
-            {/* HeroSection: 첫 번째 섹션 (CSS 기반 위치 제어) */}
+            {/* HeroSectionV3: 맨 위 섹션 (개별 타이밍 애니메이션 + 트레일러) */}
+            <ScrollSnapSection>
+              <HeroSectionV3 onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
+            </ScrollSnapSection>
+
+            {/* HeroSection: 기존 첫 번째 섹션 (CSS 기반 위치 제어) */}
             <ScrollSnapSection>
               <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
             </ScrollSnapSection>
