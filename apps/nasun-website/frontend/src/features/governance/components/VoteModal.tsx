@@ -205,8 +205,14 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const votingDisable = hasVoted || isPending || isSuccess;
 
   return (
-    <div className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-nasun-c6 border border-nasun-c5/50 p-6 md:p-8 rounded-xl max-w-md w-full shadow-lg">
+    <div
+      className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-nasun-c6 border border-nasun-c5/50 p-6 md:p-8 rounded-xl max-w-md w-full shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between gap-3 mb-4">
           <h2 className="text-2xl font-medium text-nasun-white">{proposal.title}</h2>
           {hasVoted || isSuccess ? (
