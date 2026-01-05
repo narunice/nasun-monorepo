@@ -10,8 +10,18 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { ethers } from "ethers";
 import { Alchemy, Network } from "alchemy-sdk";
+import * as ed25519 from "@noble/ed25519";
+import { sha512 } from "@noble/hashes/sha512";
+import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { Transaction } from "@mysten/sui/transactions";
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { fromBase64, toBase64 } from "@mysten/bcs";
+
+// Configure ed25519 to use sha512
+ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -28,6 +38,94 @@ const NFT_BONUS = Number(process.env.NFT_BONUS) || 2;
 // Ethereum NFT verification
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || "";
 const NASUN_NFT_CONTRACT_ADDRESS = process.env.NASUN_NFT_CONTRACT_ADDRESS || "";
+
+// Oracle/Sponsor configuration
+const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
+const CERTIFICATE_TTL_MS = 15 * 60 * 1000; // 15 minutes (Devnet), 30 min for Mainnet
+const SUI_RPC_URL = process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io";
+const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
+
+// Cached keypairs
+let oraclePrivateKey: Uint8Array | null = null;
+let sponsorKeypair: Ed25519Keypair | null = null;
+
+/**
+ * Get Oracle private key from Secrets Manager
+ */
+async function getOraclePrivateKey(): Promise<Uint8Array> {
+  if (oraclePrivateKey) return oraclePrivateKey;
+
+  const secret = await secretsClient.send(
+    new GetSecretValueCommand({ SecretId: "nasun/governance/oracle" })
+  );
+  const { privateKey } = JSON.parse(secret.SecretString!);
+  oraclePrivateKey = Buffer.from(privateKey, "hex");
+  return oraclePrivateKey;
+}
+
+/**
+ * Get Sponsor keypair from Secrets Manager
+ */
+async function getSponsorKeypair(): Promise<Ed25519Keypair> {
+  if (sponsorKeypair) return sponsorKeypair;
+
+  const secret = await secretsClient.send(
+    new GetSecretValueCommand({ SecretId: "nasun/governance/sponsor" })
+  );
+  const { privateKey } = JSON.parse(secret.SecretString!);
+  // privateKey is hex-encoded 32-byte seed
+  sponsorKeypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, "hex"));
+  return sponsorKeypair;
+}
+
+// Allowed MoveCall targets for sponsor (whitelist)
+const ALLOWED_TARGETS = new Set([
+  `${GOVERNANCE_PACKAGE_ID}::voting_power::mint_certificate`,
+  `${GOVERNANCE_PACKAGE_ID}::proposal::vote_with_certificate`,
+]);
+
+/**
+ * Validate transaction kind to prevent abuse
+ * Rules:
+ * 1. Must contain exactly 2 MoveCall commands
+ * 2. Order: mint_certificate → vote
+ * 3. All targets must be in whitelist
+ */
+function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {
+  const txData = tx.getData();
+  const commands = txData.commands;
+
+  // Must have exactly 2 commands
+  if (commands.length !== 2) {
+    return { valid: false, error: `Expected 2 commands, got ${commands.length}` };
+  }
+
+  const expectedFunctions = ["mint_certificate", "vote_with_certificate"];
+
+  for (let i = 0; i < commands.length; i++) {
+    const cmd = commands[i];
+
+    // All commands must be MoveCall
+    if (cmd.$kind !== "MoveCall") {
+      return { valid: false, error: `Command ${i} is not MoveCall: ${cmd.$kind}` };
+    }
+
+    const moveCall = cmd.MoveCall;
+    const target = `${moveCall.package}::${moveCall.module}::${moveCall.function}`;
+
+    // Check whitelist
+    if (!ALLOWED_TARGETS.has(target)) {
+      return { valid: false, error: `Unauthorized target: ${target}` };
+    }
+
+    // Check order
+    if (moveCall.function !== expectedFunctions[i]) {
+      return { valid: false, error: `Wrong order at ${i}: expected ${expectedFunctions[i]}, got ${moveCall.function}` };
+    }
+  }
+
+  return { valid: true };
+}
 
 // Initialize Alchemy SDK (lazy)
 let alchemyClient: Alchemy | null = null;
@@ -341,6 +439,186 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           headers: corsHeaders,
           body: JSON.stringify({
             error: "Invalid signature",
+            message: error.message,
+          }),
+        };
+      }
+    }
+
+    // POST /certificate - Issue Oracle-signed voting power certificate
+    if (path.endsWith("/certificate") && event.httpMethod === "POST") {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: "Request body is required" }),
+        };
+      }
+
+      const { voter, proposalId, twitterId, ethSignature } = JSON.parse(event.body);
+
+      if (!voter || !proposalId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: "Missing voter or proposalId" }),
+        };
+      }
+
+      try {
+        // 1. Calculate voting power (reuse existing logic)
+        let leaderboardScore = 0;
+        if (twitterId) {
+          leaderboardScore = await getLeaderboardScore(twitterId);
+        }
+
+        let hasNft = false;
+        if (ethSignature) {
+          try {
+            const ethAddress = recoverAddressFromSignature(ethSignature.message, ethSignature.signature);
+            hasNft = await verifyNftOwnership(ethAddress);
+          } catch (e) {
+            console.warn("ETH signature verification failed:", e);
+          }
+        }
+
+        const power = calculateVotingPower(leaderboardScore, hasNft, 0);
+        const votingPower = Math.max(1, power.total); // Minimum 1
+
+        // 2. Build message for signature (voter || proposalId || votingPower || expiresAt)
+        const expiresAt = Date.now() + CERTIFICATE_TTL_MS;
+
+        // voter and proposalId are Sui addresses/IDs (32 bytes each)
+        const voterBytes = Buffer.from(voter.replace("0x", ""), "hex");
+        const proposalIdBytes = Buffer.from(proposalId.replace("0x", ""), "hex");
+        const votingPowerBytes = Buffer.alloc(8);
+        votingPowerBytes.writeBigUInt64BE(BigInt(votingPower));
+        const expiresAtBytes = Buffer.alloc(8);
+        expiresAtBytes.writeBigUInt64BE(BigInt(expiresAt));
+
+        const message = Buffer.concat([voterBytes, proposalIdBytes, votingPowerBytes, expiresAtBytes]);
+
+        // 3. Sign with Oracle private key (Ed25519)
+        const privateKey = await getOraclePrivateKey();
+        const signature = await ed25519.signAsync(message, privateKey);
+
+        const certificate = {
+          voter,
+          proposalId,
+          votingPower,
+          expiresAt,
+          signature: Buffer.from(signature).toString("hex"),
+          breakdown: power,
+        };
+
+        console.log(`Certificate issued for ${voter} on proposal ${proposalId}: power=${votingPower}`);
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify(certificate),
+        };
+      } catch (error: any) {
+        console.error("Certificate issuance error:", error);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: "Failed to issue certificate",
+            message: error.message,
+          }),
+        };
+      }
+    }
+
+    // POST /sponsor - Sponsor a governance vote transaction
+    if (path.endsWith("/sponsor") && event.httpMethod === "POST") {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: "Request body is required" }),
+        };
+      }
+
+      const { txKindBytes, sender } = JSON.parse(event.body);
+
+      if (!txKindBytes || !sender) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: "Missing txKindBytes or sender" }),
+        };
+      }
+
+      try {
+        // Reconstruct transaction from kind bytes
+        const tx = Transaction.fromKind(fromBase64(txKindBytes));
+
+        // Validate transaction (prevent abuse)
+        const validation = validateTxKind(tx);
+        if (!validation.valid) {
+          console.error("Transaction validation failed:", validation.error);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: "Transaction validation failed",
+              details: validation.error,
+            }),
+          };
+        }
+
+        const suiClient = new SuiClient({ url: SUI_RPC_URL });
+        const keypair = await getSponsorKeypair();
+        const sponsorAddress = keypair.getPublicKey().toSuiAddress();
+
+        // Get sponsor's gas coins
+        const coins = await suiClient.getCoins({
+          owner: sponsorAddress,
+          coinType: "0x2::sui::SUI",
+        });
+
+        if (coins.data.length === 0) {
+          return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: "Sponsor has no gas coins" }),
+          };
+        }
+
+        // Set transaction parameters
+        tx.setSender(sender);
+        tx.setGasOwner(sponsorAddress);
+        tx.setGasPayment([
+          {
+            objectId: coins.data[0].coinObjectId,
+            version: coins.data[0].version,
+            digest: coins.data[0].digest,
+          },
+        ]);
+
+        // Build and sign as sponsor
+        const txBytes = await tx.build({ client: suiClient });
+        const sponsorSignature = await keypair.signTransaction(txBytes);
+
+        console.log(`Transaction sponsored for ${sender}`);
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            txBytes: toBase64(txBytes),
+            sponsorSignature: sponsorSignature.signature,
+          }),
+        };
+      } catch (error: any) {
+        console.error("Sponsor error:", error);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: "Failed to sponsor transaction",
             message: error.message,
           }),
         };

@@ -3,14 +3,15 @@ module governance::proposal;
 use std::string::String;
 use sui::table::{Self, Table};
 use sui::url::{Url, new_unsafe_from_bytes};
-use sui::clock::{Clock};
+use sui::clock::Clock;
 use sui::event;
 use governance::dashboard::AdminCap;
+use governance::voting_power::{Self, VotingPowerCertificate};
 
 const EDuplicateVote: u64 = 0;
 const EProposalDelisted: u64 = 1;
 const EProposalExpired: u64 = 2;
-const EInvalidVotingPower: u64 = 3;
+const EDeprecatedFunction: u64 = 3;
 
 public enum ProposalStatus has store, drop {
     Active,
@@ -59,19 +60,42 @@ public struct VoteRegistered has copy, drop {
 
 // === Public Functions ===
 
-/// Vote on a proposal with voting power
-/// voting_power: The voter's voting power (calculated by backend from leaderboard, NFT, tokens)
+/// DEPRECATED: This function is disabled. Use vote_with_certificate() instead.
+/// Kept for upgrade compatibility only.
 public fun vote(
+    _self: &mut Proposal,
+    _vote_yes: bool,
+    _voting_power: u64,
+    _clock: &Clock,
+    _ctx: &mut TxContext
+) {
+    // This function is deprecated and always aborts
+    // Use vote_with_certificate() with Oracle-signed certificate instead
+    abort EDeprecatedFunction
+}
+
+/// Vote on a proposal with Oracle-signed VotingPowerCertificate
+/// The certificate is burned after use to prevent replay attacks
+public fun vote_with_certificate(
     self: &mut Proposal,
     vote_yes: bool,
-    voting_power: u64,
+    certificate: VotingPowerCertificate,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
     assert!(self.expiration > clock.timestamp_ms(), EProposalExpired);
     assert!(self.is_active(), EProposalDelisted);
     assert!(!self.voters.contains(ctx.sender()), EDuplicateVote);
-    assert!(voting_power > 0, EInvalidVotingPower);
+
+    // Consume certificate and get verified voting power
+    // This also validates: voter matches sender, proposal matches, not expired
+    // Certificate is burned after consumption
+    let voting_power = voting_power::consume_certificate(
+        certificate,
+        self.id.to_inner(),
+        clock,
+        ctx
+    );
 
     if (vote_yes) {
         self.total_power_yes = self.total_power_yes + voting_power;
