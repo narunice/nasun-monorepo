@@ -9,6 +9,7 @@ import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { PaymentQRCode } from '../features/payments';
 import { TransferHistory } from '../features/portfolio/components/TransferHistory';
+import { MarginAccountCard } from '../features/core/unified-margin';
 
 type TabType = 'send' | 'receive' | 'history' | 'settings';
 
@@ -42,6 +43,11 @@ export function WalletPage() {
         <p className="text-sm text-theme-text-secondary mt-1">
           Send and receive tokens
         </p>
+      </div>
+
+      {/* Pado Balance Account */}
+      <div className="mb-6">
+        <MarginAccountCard />
       </div>
 
       {/* Tab Navigation */}
