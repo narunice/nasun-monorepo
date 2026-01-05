@@ -83,11 +83,12 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const nftBonus = nftVerification?.nftBonus || 0;
   const totalVotingPower = baseVotingPower + nftBonus;
 
-  // Reset NFT verification when modal closes
+  // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       clearNftVerification();
       setShowNftOption(false);
+      setConfirmStep({ show: false, voteYes: null });
     }
   }, [isOpen, clearNftVerification]);
 
