@@ -8,7 +8,7 @@ interface CategoryData {
   items: string[];
 }
 
-function FoundersNftFundsSection() {
+function GenesisNftFundsSection() {
   const { t } = useTranslation("spectra");
 
   const categories: { key: string; data: CategoryData }[] = [
@@ -52,4 +52,4 @@ function FoundersNftFundsSection() {
   );
 }
 
-export default React.memo(FoundersNftFundsSection);
+export default React.memo(GenesisNftFundsSection);

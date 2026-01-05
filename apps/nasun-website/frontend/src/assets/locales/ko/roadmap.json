@@ -3,22 +3,22 @@
   "intro": {
     "heading": "블록 바이 블록, 미래를 구축하다",
     "subheading": "나선의 여정",
-    "description": "나선은 크리에이터가 자신의 작품을 소유하고 커뮤니티가 사랑하는 이야기를 형성하는 퍼미션리스 네트워크를 구축하고 있습니다. 로드맵은 Web3 인프라와 엔터테인먼트 IP라는 두 가지 트랙으로 진행됩니다."
+    "description": "나선은 크리에이터가 자신의 작품을 소유하고 커뮤니티가 사랑하는 이야기를 직접 만들어가는 퍼미션리스 네트워크를 구축하고 있습니다. 우리의 로드맵은 프로토콜 및 인프라, 제품, 그리고 커뮤니티 및 마케팅이라는 세 가지 평행 트랙으로 진행됩니다."
   },
   "metrics": {
-    "awards": "수상 & 그랜트",
+    "awards": "수상 및 그랜트",
     "years": "구축 기간",
     "community": "커뮤니티 멤버"
   },
   "tracks": {
     "web3": {
-      "title": "블록체인 & 인프라"
+      "title": "프로토콜 및 인프라"
     },
     "content": {
-      "title": "엔터테인먼트 & IP"
+      "title": "제품 및 서비스"
     },
     "finance": {
-      "title": "DeFi & 금융"
+      "title": "커뮤니티 및 마케팅"
     }
   },
   "status": {
@@ -47,101 +47,74 @@
       "description": "기반 구축의 해",
       "web3": [
         {
-          "id": "founders-sale",
-          "title": "파운더스 NFT 세일",
+          "id": "devnet-alpha",
+          "title": "데브넷 알파",
           "status": "completed",
-          "description": "초기 서포터를 위한 한정판 NFT 컬렉션"
+          "description": "나선 L1 내부 테스트"
         },
         {
-          "id": "devnet",
-          "title": "데브넷 런칭",
+          "id": "wallet-alpha",
+          "title": "지갑 알파",
           "status": "completed",
-          "description": "NASUN L1 데브넷 (2 밸리데이터 노드)"
+          "description": "로그인 및 Faucet 기능"
         },
         {
-          "id": "staking",
-          "title": "스테이킹 런칭",
-          "status": "in-progress",
-          "progress": 60,
-          "description": "NFT 스테이킹으로 리워드 획득"
+          "id": "explorer-alpha",
+          "title": "익스플로러 알파",
+          "status": "completed",
+          "description": "객체 데이터 검색 및 매핑"
         },
         {
-          "id": "early-contributors",
-          "title": "얼리 컨트리뷰터 프로그램",
-          "status": "in-progress",
-          "progress": 40,
-          "description": "커뮤니티 빌더와 기여자에게 보상"
-        },
-        {
-          "id": "governance-staking",
+          "id": "gov-staking-logic",
           "title": "거버넌스 스테이킹 로직",
           "status": "in-progress",
-          "progress": 30,
           "description": "탈중앙화 거버넌스 기반 구축"
         },
         {
-          "id": "dao-voting",
-          "title": "DAO 투표 구조",
+          "id": "dao-voting-alpha",
+          "title": "DAO 투표 알파",
           "status": "in-progress",
-          "progress": 25,
-          "description": "커뮤니티 주도 의사결정 설계"
+          "description": "커뮤니티 주도 합의 내부 테스트"
         }
       ],
       "content": [
         {
-          "id": "spectra-ffa",
-          "title": "SPECTRA 자유 대전 모드",
+          "id": "spectra-alpha",
+          "title": "젠솔: SPECTRA 알파",
           "status": "completed",
-          "description": "자유 대전 모드 플레이 가능"
+          "description": "자유 대전(FFA) 전투 모드 플레이 가능"
         },
         {
           "id": "gamelift-servers",
-          "title": "AWS GameLift 서버",
+          "title": "젠솔: AWS GameLift 서버",
           "status": "completed",
           "description": "클라우드 게임 인프라 배포"
         },
         {
-          "id": "nft-smart-contract",
-          "title": "NFT 스마트 컨트랙트",
-          "status": "completed",
-          "description": "인게임 NFT 민팅 시스템"
-        },
-        {
-          "id": "team-mission",
-          "title": "팀 미션 모드",
+          "id": "pado-alpha",
+          "title": "파도 알파",
           "status": "in-progress",
-          "progress": 30,
-          "description": "협동 게임플레이 개발"
-        },
-        {
-          "id": "competitive-systems",
-          "title": "경쟁 시스템 기반 작업",
-          "status": "in-progress",
-          "progress": 20,
-          "description": "랭크 및 토너먼트 시스템 구축"
-        },
-        {
-          "id": "animation-previz",
-          "title": "애니메이션 시리즈 프리비즈",
-          "status": "in-progress",
-          "progress": 40,
-          "description": "Gen Sol 애니메이션 시리즈 사전 시각화"
+          "description": "현물 거래 기능"
         }
       ],
       "finance": [
         {
-          "id": "pado-initiative",
-          "title": "파도 이니셔티브",
+          "id": "infofi-alpha",
+          "title": "인포파이 알파",
           "status": "in-progress",
-          "progress": 50,
-          "description": "DeFi 레이어 설계 및 아키텍처"
+          "description": "자체 리더보드 런칭"
         },
         {
-          "id": "walden-design",
-          "title": "월든 DEX 설계",
-          "status": "in-progress",
-          "progress": 30,
-          "description": "스팟 및 무기한 선물 거래 엔진 설계"
+          "id": "nasun-staging",
+          "title": "나선 웹사이트 스테이징",
+          "status": "completed",
+          "description": "Web3 통합"
+        },
+        {
+          "id": "gensol-staging",
+          "title": "젠솔 웹사이트 스테이징",
+          "status": "completed",
+          "description": "Web3 통합"
         }
       ]
     },
@@ -149,86 +122,218 @@
       "description": "확장의 해",
       "web3": [
         {
-          "id": "testnet",
+          "id": "devnet-mvp",
+          "title": "데브넷 MVP",
+          "status": "upcoming",
+          "description": "2개의 밸리데이터 노드를 갖춘 나선 L1 데브넷"
+        },
+        {
+          "id": "wallet-mvp",
+          "title": "지갑 MVP",
+          "status": "upcoming",
+          "description": "거버넌스, 파도 및 Web2 통합"
+        },
+        {
+          "id": "explorer-mvp",
+          "title": "익스플로러 MVP",
+          "status": "upcoming",
+          "description": "고급 검색 기능"
+        },
+        {
+          "id": "val-staking",
+          "title": "밸리데이터 스테이킹 및 위임",
+          "status": "upcoming",
+          "description": "DPOS 및 위임 기능 활성화"
+        },
+        {
+          "id": "testnet-launch",
           "title": "나선 테스트넷 런칭",
           "status": "upcoming",
-          "description": "개발자와 얼리 어답터를 위한 퍼블릭 테스트넷"
+          "description": "인센티브 테스트넷 및 바운티 프로그램"
         },
         {
-          "id": "governance-mvp",
-          "title": "거버넌스 MVP",
+          "id": "infra-partners",
+          "title": "인프라 파트너 온보딩",
           "status": "upcoming",
-          "description": "최소 기능 거버넌스 시스템 출시"
+          "description": "오라클, 상호운용성, 인덱싱, 노드 인프라, 수탁 기관"
         },
         {
-          "id": "nft-migration",
-          "title": "파운더스 NFT 마이그레이션 / 스테이킹 시작",
+          "id": "compute-pilot",
+          "title": "컴퓨트 파일럿",
           "status": "upcoming",
-          "description": "원활한 마이그레이션 및 스테이킹 활성화"
+          "description": "DePIN 및 DRN 파트너 온보딩"
         },
         {
-          "id": "grants",
-          "title": "그랜트 / 온보딩 프로그램",
+          "id": "stablecoin-rails",
+          "title": "스테이블코인 레일",
           "status": "upcoming",
-          "description": "나선 위에서 빌더와 크리에이터 지원"
+          "description": "민팅/소각 엔진, 컴플라이언스 훅, 가스 추상화"
         },
         {
-          "id": "defi",
-          "title": "DeFi 플랫폼, 스테이블코인, 온/오프 램프",
+          "id": "rwa-tokenization",
+          "title": "RWA 토큰화",
           "status": "upcoming",
-          "description": "금융 생태계 확장"
+          "description": "오라클 통합, 신원 확인 레이어, zk-KYC"
         }
       ],
       "content": [
         {
-          "id": "spectra-prototype",
-          "title": "SPECTRA 프로토타입 테스팅",
+          "id": "pado-mvp",
+          "title": "파도 MVP",
+          "status": "upcoming",
+          "description": "DEX, 예측 시장, 대출, 트랜잭션 및 결제"
+        },
+        {
+          "id": "gensol-partnerships",
+          "title": "젠솔: 파트너십",
+          "status": "upcoming",
+          "description": "제작사 및 탤런트 에이전시 협력"
+        },
+        {
+          "id": "spectra-team",
+          "title": "젠솔: SPECTRA",
+          "status": "upcoming",
+          "description": "팀 미션 모드"
+        },
+        {
+          "id": "pado-unified",
+          "title": "파도 MVP 통합",
+          "status": "upcoming",
+          "description": "통합 계정 및 zk 로그인"
+        },
+        {
+          "id": "spectra-heist-previz",
+          "title": "젠솔: Spectra Heist",
+          "status": "upcoming",
+          "description": "애니메이션 시리즈 프리비즈 및 시나리오 개발"
+        },
+        {
+          "id": "spectra-web3",
+          "title": "젠솔: SPECTRA",
+          "status": "upcoming",
+          "description": "랭킹 및 토너먼트 시스템, Web3 통합"
+        },
+        {
+          "id": "stablecoin-strategy",
+          "title": "스테이블코인 전략",
+          "status": "upcoming",
+          "description": "네이티브 발행 파트너십 및 유동성 부트스트래핑"
+        },
+        {
+          "id": "rwa-strategy",
+          "title": "RWA 전략",
+          "status": "upcoming",
+          "description": "자산 온보딩 파트너 및 2차 시장"
+        },
+        {
+          "id": "pado-beta",
+          "title": "파도 오픈 베타",
+          "status": "upcoming",
+          "description": "인센티브 기반 커뮤니티 런칭"
+        },
+        {
+          "id": "liquidity-program",
+          "title": "유동성 프로그램",
+          "status": "upcoming",
+          "description": "전략적 유동성 파트너 온보딩"
+        },
+        {
+          "id": "spectra-mvp",
+          "title": "젠솔: SPECTRA MVP",
           "status": "upcoming",
           "description": "커뮤니티 플레이테스트 및 피드백 수집"
         },
         {
-          "id": "animation-trailer",
-          "title": "애니메이션 시리즈 프리비즈 트레일러",
+          "id": "spectra-heist-trailer",
+          "title": "젠솔: Spectra Heist",
           "status": "upcoming",
-          "description": "애니메이션 시리즈의 첫 번째 공개"
+          "description": "애니메이션 시리즈 프리비즈 트레일러"
         },
         {
-          "id": "distribution-model",
-          "title": "배급 모델 확보",
+          "id": "the-heir-dev",
+          "title": "젠솔: The Heir",
           "status": "upcoming",
-          "description": "안전한 콘텐츠 배급 채널 구축"
-        },
-        {
-          "id": "movie-dev",
-          "title": "영화 개발",
-          "status": "upcoming",
-          "description": "장편 영화 개발 중"
-        },
-        {
-          "id": "merch",
-          "title": "머천다이징",
-          "status": "upcoming",
-          "description": "피지컬 및 디지털 상품"
+          "description": "실사 시리즈 개발"
         }
       ],
       "finance": [
         {
-          "id": "walden-testnet",
-          "title": "월든 테스트넷",
+          "id": "nasun-launch",
+          "title": "나선 공식 런칭",
           "status": "upcoming",
-          "description": "DEX 테스트넷 런칭"
+          "description": "X(Twitter) 공식 발표"
         },
         {
-          "id": "predictions-beta",
-          "title": "예측 시장 베타",
+          "id": "nasun-web-launch",
+          "title": "나선 웹사이트 런칭",
           "status": "upcoming",
-          "description": "예측 시장 베타 테스트"
+          "description": "파도, 거버넌스 및 NFT 대시보드"
         },
         {
-          "id": "rwa-framework",
-          "title": "RWA 프레임워크",
+          "id": "battalion-nft",
+          "title": "바탈리온 NFT",
           "status": "upcoming",
-          "description": "실물자산 토큰화 프레임워크"
+          "description": "무료 민팅 및 유틸리티 캠페인"
+        },
+        {
+          "id": "infofi-preseed",
+          "title": "인포파이 프리시드 런칭",
+          "status": "upcoming",
+          "description": "자체 리더보드 시스템"
+        },
+        {
+          "id": "early-contributors",
+          "title": "얼리 컨트리뷰터 캠페인",
+          "status": "upcoming",
+          "description": "KOL 및 소셜 플랫폼 크리에이터 온보딩"
+        },
+        {
+          "id": "gensol-web-launch",
+          "title": "젠솔 웹사이트 런칭",
+          "status": "upcoming",
+          "description": "커뮤니티 온보딩"
+        },
+        {
+          "id": "founders-sale",
+          "title": "제너시스 NFT 세일",
+          "status": "upcoming",
+          "description": "초기 서포터를 위한 한정판 NFT 컬렉션"
+        },
+        {
+          "id": "nasun-foundation",
+          "title": "나선 재단",
+          "status": "upcoming",
+          "description": "재단 설립 및 법적 프레임워크 구축"
+        },
+        {
+          "id": "team-advisors",
+          "title": "팀 및 어드바이저",
+          "status": "upcoming",
+          "description": "핵심 팀 채용 및 자문위원회 구성"
+        },
+        {
+          "id": "infofi-seed",
+          "title": "인포파이 시드 런칭",
+          "status": "upcoming",
+          "description": "소셜 참여 보상 시스템"
+        },
+        {
+          "id": "content-contests",
+          "title": "콘텐츠 콘테스트",
+          "status": "upcoming",
+          "description": "아트 및 라이팅 공모전"
+        },
+        {
+          "id": "pado-contests",
+          "title": "파도 콘테스트",
+          "status": "upcoming",
+          "description": "인센티브 기반 테스팅"
+        },
+        {
+          "id": "seed-sale",
+          "title": "시드 세일",
+          "status": "upcoming",
+          "description": "PFP 커뮤니티 브랜딩 및 성장 전략"
         }
       ]
     },
@@ -237,67 +342,139 @@
       "web3": [
         {
           "id": "mainnet-tge",
-          "title": "메인넷 & TGE",
+          "title": "나선 메인넷 및 TGE",
           "status": "upcoming",
-          "description": "메인넷 정식 출시 및 토큰 생성 이벤트"
+          "description": "정식 메인넷 런칭 및 토큰 생성 이벤트"
         },
         {
-          "id": "full-governance",
-          "title": "완전한 IP 거버넌스",
+          "id": "core-sdks",
+          "title": "코어 SDK",
           "status": "upcoming",
-          "description": "완전 탈중앙화 IP 거버넌스 시스템"
+          "description": "노드 운영자 및 개발자를 위한 도구 표준화"
         },
         {
-          "id": "exchanges",
-          "title": "거래소 / 유동성 캠페인",
+          "id": "docs-portal",
+          "title": "문서 포털",
           "status": "upcoming",
-          "description": "CEX/DEX 상장 및 유동성 인센티브"
+          "description": "종합 퀵스타트 가이드 및 API 레퍼런스"
         },
         {
-          "id": "ecosystem-expansion",
-          "title": "에코시스템 확장",
+          "id": "dev-hub",
+          "title": "나선 개발자 허브",
           "status": "upcoming",
-          "description": "나선 네트워크 및 파트너십 성장"
+          "description": "기술 리소스, 커뮤니티 지원 및 버그 리포팅"
+        },
+        {
+          "id": "wallet-ga",
+          "title": "지갑 정식 버전(GA)",
+          "status": "upcoming",
+          "description": "감사 완료된 안정적인 공개 버전"
+        },
+        {
+          "id": "explorer-ga",
+          "title": "익스플로러 정식 버전(GA)",
+          "status": "upcoming",
+          "description": "99.9% 가동률 보장"
+        },
+        {
+          "id": "ip-governance",
+          "title": "IP 거버넌스",
+          "status": "upcoming",
+          "description": "완전한 탈중앙화 IP 거버넌스 시스템"
+        },
+        {
+          "id": "move-vm-custom",
+          "title": "Move VM 커스텀",
+          "status": "upcoming",
+          "description": "게임 및 DeFi 최적화"
         }
       ],
       "content": [
         {
           "id": "spectra-beta",
-          "title": "SPECTRA 퍼블릭 베타",
+          "title": "젠솔: SPECTRA 베타",
           "status": "upcoming",
           "description": "커뮤니티 피드백을 위한 오픈 베타"
         },
         {
-          "id": "spectra-launch",
-          "title": "SPECTRA 정식 출시",
+          "id": "pado-ga",
+          "title": "파도 정식 런칭(GA)",
           "status": "upcoming",
-          "description": "Web3 통합을 갖춘 정식 게임 출시"
+          "description": "전체 서비스 런칭"
         },
         {
-          "id": "competitive-arena",
-          "title": "경쟁 아레나 출시",
+          "id": "genesis-liquidity",
+          "title": "제네시스 유동성 공급",
           "status": "upcoming",
-          "description": "랭크 매치 및 e스포츠 토너먼트"
+          "description": "기관 마켓 메이커 자본 투입"
+        },
+        {
+          "id": "gensol-distribution",
+          "title": "젠솔: 배급",
+          "status": "upcoming",
+          "description": "전통적/혁신적 배급 채널 확보"
+        },
+        {
+          "id": "moonoak-dev",
+          "title": "젠솔: Moonoak",
+          "status": "upcoming",
+          "description": "장편 영화 개발"
+        },
+        {
+          "id": "rider-studio",
+          "title": "라이더 스튜디오 런칭",
+          "status": "upcoming",
+          "description": "제작 파이프라인용 거버넌스 및 소셜 인프라"
+        },
+        {
+          "id": "spectra-heist-prod",
+          "title": "젠솔: Spectra Heist",
+          "status": "upcoming",
+          "description": "본격 제작"
+        },
+        {
+          "id": "the-heir-preprod",
+          "title": "젠솔: The Heir Apparent",
+          "status": "upcoming",
+          "description": "프리 프로덕션"
+        },
+        {
+          "id": "pado-partners",
+          "title": "파도 파트너",
+          "status": "upcoming",
+          "description": "파트너사 온보딩"
+        },
+        {
+          "id": "gensol-tge",
+          "title": "젠솔 TGE",
+          "status": "upcoming",
+          "description": "토큰 생성 이벤트"
         }
       ],
       "finance": [
         {
-          "id": "walden-mainnet",
-          "title": "월든 메인넷",
+          "id": "infofi-tge",
+          "title": "인포파이 TGE 런칭",
           "status": "upcoming",
-          "description": "DEX 메인넷 정식 런칭"
+          "description": "토큰 생성 이벤트"
         },
         {
-          "id": "money-market",
-          "title": "머니 마켓 런칭",
+          "id": "grants-programs",
+          "title": "그랜트 프로그램",
           "status": "upcoming",
-          "description": "렌딩/보로잉 프로토콜"
+          "description": "프로젝트 및 개발자 온보딩"
         },
         {
-          "id": "cross-market",
-          "title": "크로스 마켓 통합",
+          "id": "hackathons",
+          "title": "해커톤",
           "status": "upcoming",
-          "description": "생태계 통합 완성"
+          "description": "서울 및 싱가포르 이벤트"
+        },
+        {
+          "id": "pado-onboarding",
+          "title": "파도 온보딩",
+          "status": "upcoming",
+          "description": "리더보드, 에어드랍, 포인트 및 보상 프로그램"
         }
       ]
     }

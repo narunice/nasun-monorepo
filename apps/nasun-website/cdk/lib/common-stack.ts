@@ -629,10 +629,12 @@ export class CommonStack extends cdk.Stack {
     // ========================================
     // 10. NFT Whitelist 시스템
     // ========================================
+    // NOTE: Renamed from "FoundersNftWhitelist" to "GenesisNftWhitelist"
+    // MIGRATION REQUIRED: Before CDK deploy, run data migration script.
 
     // 10-1. DynamoDB 테이블 생성
-    const whitelistTable = new dynamodb.Table(this, "FoundersNftWhitelistTable", {
-      tableName: "FoundersNftWhitelist",
+    const whitelistTable = new dynamodb.Table(this, "GenesisNftWhitelistTable", {
+      tableName: "GenesisNftWhitelist",
       partitionKey: {
         name: "walletAddress",
         type: dynamodb.AttributeType.STRING,
@@ -795,7 +797,7 @@ export class CommonStack extends cdk.Stack {
     // 10-8. CloudFormation Outputs
     new cdk.CfnOutput(this, "WhitelistTableName", {
       value: whitelistTable.tableName,
-      description: "Founders NFT Whitelist DynamoDB Table Name",
+      description: "Genesis NFT Whitelist DynamoDB Table Name",
     });
 
     new cdk.CfnOutput(this, "JoinWhitelistApiUrl", {

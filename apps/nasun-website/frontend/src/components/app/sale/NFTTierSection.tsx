@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { NFTTierSectionProps } from "../../../types/foundersNFTs.d";
+import { NFTTierSectionProps } from "../../../types/genesisNFTs.d";
 import { PayAndMintNftCard } from "./PayAndMintNftCard";
-import { NFTTiers, NFT_COLLECTION } from "../../../constants/pageContent/foundersNFTTiers";
+import { NFTTiers, NFT_COLLECTION } from "../../../constants/pageContent/genesisNFTTiers";
 
 function NFTTierSectionComponent({
   tier,

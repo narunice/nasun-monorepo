@@ -1,5 +1,5 @@
-// src/constants/pageContent/foundersNFTTiers.ts
-import { NFTTiers, TierData } from "../../types/foundersNFTs.d";
+// src/constants/pageContent/genesisNFTTiers.ts
+import { NFTTiers, TierData } from "../../types/genesisNFTs.d";
 import tier1Image from "../../assets/nft_images/tier1.jpg";
 import tier2Image from "../../assets/nft_images/tier2.jpg";
 import tier3Image from "../../assets/nft_images/tier3.jpg";

@@ -109,7 +109,7 @@ export async function handler(
 
       await docClient.send(
         new UpdateCommand({
-          TableName: process.env.WHITELIST_TABLE_NAME || 'FoundersNftWhitelist',
+          TableName: process.env.WHITELIST_TABLE_NAME || 'GenesisNftWhitelist',
           Key: { walletAddress: walletAddress.toLowerCase() },
           UpdateExpression: 'SET signature = :signature, message = :message, #timestamp = :timestamp, joinedAt = :joinedAt, #status = :status REMOVE withdrawnAt',
           ExpressionAttributeNames: {

@@ -38,10 +38,10 @@ const GovernanceSection = () => {
       {isConnected ? (
         <div className="mb-6">
           {/* Header with Wallet and Toggle */}
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
             <button
               onClick={() => setIsInfoOpen(!isInfoOpen)}
-              className="flex items-center gap-2 px-4 py-2 bg-nasun-c6 border border-nasun-c5/50 rounded-lg hover:border-nasun-c4 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-nasun-c6 border border-nasun-c5/50 rounded-lg hover:border-nasun-c4 transition-colors w-full sm:w-auto justify-center sm:justify-start"
             >
               <span className="text-nasun-white font-medium">My Governance Info</span>
               <svg
@@ -53,7 +53,7 @@ const GovernanceSection = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <WalletConnect />
+            <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
           </div>
 
           {/* Collapsible Governance Info Panel */}

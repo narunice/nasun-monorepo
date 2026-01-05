@@ -8,12 +8,12 @@
  *
  * @usage
  * node export-opensea-allowlist.js                  # 두 파일 모두 생성
- * node export-opensea-allowlist.js --table=founders # Founders Whitelist만
+ * node export-opensea-allowlist.js --table=genesis  # Genesis Whitelist만
  * node export-opensea-allowlist.js --table=event    # Event Whitelist만
  * node export-opensea-allowlist.js --dry-run        # 미리보기 (파일 생성 안함)
  *
  * @output
- * - output/founders-allowlist-{timestamp}.csv
+ * - output/genesis-allowlist-{timestamp}.csv
  * - output/event-allowlist-{timestamp}.csv
  *
  * @author Claude Code
@@ -30,8 +30,8 @@ const path = require('path');
 const CONFIG = {
   region: process.env.AWS_REGION || 'ap-northeast-2',
   tables: {
-    founders: {
-      name: 'FoundersNftWhitelist',
+    genesis: {
+      name: 'GenesisNftWhitelist',
       indexName: 'joinedAt-index',
       statusField: 'status',
       activeValue: 'ACTIVE',
@@ -76,7 +76,7 @@ function ensureOutputDir() {
 /**
  * DynamoDB에서 ACTIVE 사용자 조회
  *
- * @param {string} tableType - 'founders' | 'event'
+ * @param {string} tableType - 'genesis' | 'event'
  * @returns {Promise<Array>} ACTIVE 사용자 목록
  */
 async function queryActiveUsers(tableType) {
@@ -154,7 +154,7 @@ function convertToOpenSeaCsv(users) {
  * CSV 파일 저장
  *
  * @param {string} csvContent - CSV 문자열
- * @param {string} tableType - 'founders' | 'event'
+ * @param {string} tableType - 'genesis' | 'event'
  * @param {boolean} dryRun - Dry-run 모드 여부
  * @returns {string|null} 저장된 파일 경로 (dry-run 시 null)
  */
@@ -193,7 +193,7 @@ function saveCsvFile(csvContent, tableType, dryRun = false) {
 /**
  * 특정 테이블의 Allowlist CSV 생성
  *
- * @param {string} tableType - 'founders' | 'event'
+ * @param {string} tableType - 'genesis' | 'event'
  * @param {boolean} dryRun - Dry-run 모드 여부
  */
 async function exportAllowlist(tableType, dryRun = false) {
@@ -258,17 +258,17 @@ async function main() {
       // 두 테이블 모두 생성
       console.log('📋 두 개의 Allowlist를 생성합니다.\n');
 
-      const foundersPath = await exportAllowlist('founders', dryRun);
+      const genesisPath = await exportAllowlist('genesis', dryRun);
       const eventPath = await exportAllowlist('event', dryRun);
 
-      if (foundersPath) results.push(foundersPath);
+      if (genesisPath) results.push(genesisPath);
       if (eventPath) results.push(eventPath);
-    } else if (tableType === 'founders' || tableType === 'event') {
+    } else if (tableType === 'genesis' || tableType === 'event') {
       // 특정 테이블만 생성
       const filepath = await exportAllowlist(tableType, dryRun);
       if (filepath) results.push(filepath);
     } else {
-      throw new Error(`잘못된 --table 옵션: ${tableType} (사용 가능: founders, event, all)`);
+      throw new Error(`잘못된 --table 옵션: ${tableType} (사용 가능: genesis, event, all)`);
     }
 
     // 결과 요약
@@ -290,7 +290,7 @@ async function main() {
     console.error(`\n🔧 트러블슈팅:`);
     console.error(`   1. AWS CLI 설정 확인: aws configure list`);
     console.error(`   2. DynamoDB 읽기 권한 확인`);
-    console.error(`   3. 테이블 이름 확인: FoundersNftWhitelist, nasun-nft-whitelist`);
+    console.error(`   3. 테이블 이름 확인: GenesisNftWhitelist, nasun-nft-whitelist`);
     console.error(`   4. 자세한 가이드: /doc/OPENSEA_ALLOWLIST_EXPORT_GUIDE.md\n`);
     process.exit(1);
   }

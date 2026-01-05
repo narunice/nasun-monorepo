@@ -4,30 +4,42 @@
  * All forms are displayed as dropdowns to maintain consistent header height
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useWallet, useNFTs, useZkLogin, shortenAddress, isLockedOut, getLockoutRemainingMs, getUnlockAttemptState, LOCKOUT_TIERS, type NFTInfo, type ZkLoginProvider } from '@nasun/wallet';
-import { CopyableAddress } from './CopyableAddress';
-import { MnemonicBackup } from './MnemonicBackup';
-import { ImportWallet } from './ImportWallet';
-import { ExportPrivateKey } from './ExportPrivateKey';
-import { SendTransaction } from './SendTransaction';
-import { NFTCard } from './NFTCard';
-import { NFTDetail } from './NFTDetail';
-import { StakingPanel } from './StakingPanel';
-import { SecuritySettings } from './SecuritySettings';
-import { SocialLoginButtons } from './SocialLoginButtons';
+import { useState, useCallback, useRef, useEffect } from "react";
+import {
+  useWallet,
+  useNFTs,
+  useZkLogin,
+  useMultiBalance,
+  shortenAddress,
+  isLockedOut,
+  getLockoutRemainingMs,
+  getUnlockAttemptState,
+  LOCKOUT_TIERS,
+  type NFTInfo,
+  type ZkLoginProvider,
+} from "@nasun/wallet";
+import { CopyableAddress } from "./CopyableAddress";
+import { MnemonicBackup } from "./MnemonicBackup";
+import { ImportWallet } from "./ImportWallet";
+import { ExportPrivateKey } from "./ExportPrivateKey";
+import { SendTransaction } from "./SendTransaction";
+import { NFTCard } from "./NFTCard";
+import { NFTDetail } from "./NFTDetail";
+import { StakingPanel } from "./StakingPanel";
+import { SecuritySettings } from "./SecuritySettings";
+import { SocialLoginButtons } from "./SocialLoginButtons";
 
 type ViewMode =
-  | 'main'
-  | 'create'
-  | 'create-backup'  // Mnemonic backup screen
-  | 'unlock'
-  | 'import'         // Recovery screen
-  | 'export'         // Export private key
-  | 'send'           // Token transfer
-  | 'nfts'           // NFT gallery
-  | 'staking'        // Staking panel
-  | 'settings';      // Security settings
+  | "main"
+  | "create"
+  | "create-backup" // Mnemonic backup screen
+  | "unlock"
+  | "import" // Recovery screen
+  | "export" // Export private key
+  | "send" // Token transfer
+  | "nfts" // NFT gallery
+  | "staking" // Staking panel
+  | "settings"; // Security settings
 
 /**
  * Locked state UI with rate limiting countdown
@@ -85,14 +97,19 @@ function LockedStateUI({
   };
 
   return (
-    <div className="p-4 w-[min(280px,calc(100vw-32px))]">
+    <div className="p-4 w-full sm:w-[280px]">
       <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Unlock Wallet</h3>
 
       {isLocked && (
         <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <span>Too many failed attempts</span>
           </div>
@@ -108,7 +125,7 @@ function LockedStateUI({
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !isLocked && handleUnlock()}
+          onKeyDown={(e) => e.key === "Enter" && !isLocked && handleUnlock()}
           className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading || isLocked}
           autoFocus={!isLocked}
@@ -120,7 +137,8 @@ function LockedStateUI({
             <p className="text-red-400">{error}</p>
             {failedAttempts > 0 && attemptsRemaining > 0 && (
               <p className="text-yellow-500 mt-1">
-                {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining before lockout
+                {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining before
+                lockout
               </p>
             )}
           </div>
@@ -129,13 +147,13 @@ function LockedStateUI({
         {/* Warning when approaching lockout */}
         {!error && !isLocked && failedAttempts > 0 && failedAttempts < firstLockoutThreshold && (
           <p className="text-xs text-yellow-500">
-            {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining before lockout
+            {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining before lockout
           </p>
         )}
 
         <div className="flex gap-2 mt-2">
           <button
-            onClick={() => setViewMode('import')}
+            onClick={() => setViewMode("import")}
             className="px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
             disabled={isLoading}
             title="Import a different wallet"
@@ -154,7 +172,11 @@ function LockedStateUI({
             disabled={isLoading || !password || isLocked}
             className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
           >
-            {isLocked ? `Locked (${formatTime(lockoutRemaining)})` : isLoading ? 'Unlocking...' : 'Unlock'}
+            {isLocked
+              ? `Locked (${formatTime(lockoutRemaining)})`
+              : isLoading
+                ? "Unlocking..."
+                : "Unlock"}
           </button>
         </div>
       </div>
@@ -162,13 +184,13 @@ function LockedStateUI({
   );
 }
 
-type TabMode = 'tokens' | 'nfts';
+type TabMode = "tokens" | "nfts";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
-  dropdownPosition?: 'top' | 'bottom';
+  dropdownPosition?: "top" | "bottom";
   /** Dropdown horizontal alignment */
-  dropdownAlign?: 'left' | 'right' | 'center';
+  dropdownAlign?: "left" | "right" | "center";
   /** Number of characters to show after 0x prefix (default: 6) */
   addressStartChars?: number;
   /** Number of characters to show at the end (default: same as start) */
@@ -178,11 +200,11 @@ interface WalletConnectProps {
 }
 
 export function WalletConnect({
-  dropdownPosition = 'bottom',
-  dropdownAlign = 'right',
+  dropdownPosition = "bottom",
+  dropdownAlign = "right",
   addressStartChars,
   addressEndChars,
-  addressLength = 6
+  addressLength = 6,
 }: WalletConnectProps) {
   // Use new props if provided, otherwise fall back to deprecated addressLength
   const startChars = addressStartChars ?? addressLength;
@@ -217,23 +239,26 @@ export function WalletConnect({
   const [loadingProvider, setLoadingProvider] = useState<ZkLoginProvider | null>(null);
 
   // Handle social login
-  const handleSocialLogin = useCallback(async (provider: ZkLoginProvider) => {
-    setLoadingProvider(provider);
-    try {
-      await zkLogin(provider);
-      // OAuth redirect will happen, so we don't need to do anything here
-    } catch {
-      // Error is handled by the hook
-    }
-    setLoadingProvider(null);
-  }, [zkLogin]);
+  const handleSocialLogin = useCallback(
+    async (provider: ZkLoginProvider) => {
+      setLoadingProvider(provider);
+      try {
+        await zkLogin(provider);
+        // OAuth redirect will happen, so we don't need to do anything here
+      } catch {
+        // Error is handled by the hook
+      }
+      setLoadingProvider(null);
+    },
+    [zkLogin]
+  );
 
-  const [viewMode, setViewMode] = useState<ViewMode>('main');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>("main");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [mnemonic, setMnemonic] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabMode>('tokens');
+  const [activeTab, setActiveTab] = useState<TabMode>("tokens");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -244,23 +269,28 @@ export function WalletConnect({
     refetchInterval: 15000,
   });
 
+  // Fetch token balances (NASUN, NBTC, NUSDC)
+  const { data: balances, isLoading: balancesLoading } = useMultiBalance({
+    pollingInterval: 15000,
+  });
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
         // Reset view when closing dropdown
-        if (viewMode !== 'create-backup') {
-          setViewMode('main');
-          setPassword('');
-          setConfirmPassword('');
+        if (viewMode !== "create-backup") {
+          setViewMode("main");
+          setPassword("");
+          setConfirmPassword("");
           clearError();
         }
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [viewMode, clearError]);
 
   // Create wallet with mnemonic backup
@@ -271,9 +301,9 @@ export function WalletConnect({
     try {
       const result = await createWalletWithBackup(password);
       setMnemonic(result.mnemonic);
-      setPassword('');
-      setConfirmPassword('');
-      setViewMode('create-backup');
+      setPassword("");
+      setConfirmPassword("");
+      setViewMode("create-backup");
     } catch {
       // Error is stored in state
     }
@@ -282,7 +312,7 @@ export function WalletConnect({
   // After mnemonic backup confirmed
   const handleBackupConfirmed = useCallback(() => {
     setMnemonic(null);
-    setViewMode('main');
+    setViewMode("main");
     setShowDropdown(false);
   }, []);
 
@@ -290,8 +320,8 @@ export function WalletConnect({
   const handleUnlock = useCallback(async () => {
     try {
       await unlockWallet(password);
-      setPassword('');
-      setViewMode('main');
+      setPassword("");
+      setViewMode("main");
       setShowDropdown(false);
     } catch {
       // Error is stored in state
@@ -299,36 +329,45 @@ export function WalletConnect({
   }, [password, unlockWallet]);
 
   // Import from mnemonic
-  const handleImportMnemonic = useCallback(async (mnemonicPhrase: string, pwd: string) => {
-    await importFromMnemonic(mnemonicPhrase, pwd);
-    setViewMode('main');
-    setShowDropdown(false);
-  }, [importFromMnemonic]);
+  const handleImportMnemonic = useCallback(
+    async (mnemonicPhrase: string, pwd: string) => {
+      await importFromMnemonic(mnemonicPhrase, pwd);
+      setViewMode("main");
+      setShowDropdown(false);
+    },
+    [importFromMnemonic]
+  );
 
   // Import from private key
-  const handleImportPrivateKey = useCallback(async (privateKey: string, pwd: string) => {
-    await importFromPrivateKey(privateKey, pwd);
-    setViewMode('main');
-    setShowDropdown(false);
-  }, [importFromPrivateKey]);
+  const handleImportPrivateKey = useCallback(
+    async (privateKey: string, pwd: string) => {
+      await importFromPrivateKey(privateKey, pwd);
+      setViewMode("main");
+      setShowDropdown(false);
+    },
+    [importFromPrivateKey]
+  );
 
   // Export private key
-  const handleExportPrivateKey = useCallback(async (pwd: string) => {
-    return await exportPrivateKey(pwd);
-  }, [exportPrivateKey]);
+  const handleExportPrivateKey = useCallback(
+    async (pwd: string) => {
+      return await exportPrivateKey(pwd);
+    },
+    [exportPrivateKey]
+  );
 
   // Reset view
   const resetView = useCallback(() => {
-    setViewMode('main');
-    setPassword('');
-    setConfirmPassword('');
+    setViewMode("main");
+    setPassword("");
+    setConfirmPassword("");
     setMnemonic(null);
     clearError();
   }, [clearError]);
 
   // Delete wallet confirmation
   const handleDelete = useCallback(() => {
-    if (confirm('Are you sure you want to delete your wallet? This action cannot be undone.')) {
+    if (confirm("Are you sure you want to delete your wallet? This action cannot be undone.")) {
       deleteWallet();
       setShowDropdown(false);
     }
@@ -340,40 +379,40 @@ export function WalletConnect({
     if (isZkLoggedIn && zkState?.address) {
       return shortenAddress(zkState.address, startChars, endChars);
     }
-    if (status === 'disconnected') return 'Get Started';
-    if (status === 'locked') return 'Locked';
-    if (status === 'unlocked' && account) return shortenAddress(account.address, startChars, endChars);
-    return 'Wallet';
+    if (status === "disconnected") return "Get Started";
+    if (status === "locked") return "Locked";
+    if (status === "unlocked" && account)
+      return shortenAddress(account.address, startChars, endChars);
+    return "Wallet";
   };
 
   // Get status indicator color
   const getStatusColor = () => {
     // zkLogin takes priority
-    if (isZkLoggedIn) return 'bg-green-500';
-    if (status === 'unlocked') return 'bg-green-500';
-    if (status === 'locked') return 'bg-yellow-500';
-    return 'bg-zinc-500';
+    if (isZkLoggedIn) return "bg-green-500";
+    if (status === "unlocked") return "bg-green-500";
+    if (status === "locked") return "bg-yellow-500";
+    return "bg-zinc-500";
   };
 
   // Render dropdown content based on status and viewMode
   const renderDropdownContent = () => {
     // Mnemonic backup screen (full-size, important)
-    if (viewMode === 'create-backup' && mnemonic) {
+    if (viewMode === "create-backup" && mnemonic) {
       return (
-        <div className="p-2">
-          <MnemonicBackup
-            mnemonic={mnemonic}
-            onConfirm={handleBackupConfirmed}
-          />
+        <div className="p-2 w-full sm:w-[400px]">
+          <MnemonicBackup mnemonic={mnemonic} onConfirm={handleBackupConfirmed} />
         </div>
       );
     }
 
     // Create wallet form
-    if (viewMode === 'create') {
+    if (viewMode === "create") {
       return (
-        <div className="p-4 w-[min(280px,calc(100vw-32px))]">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Create New Wallet</h3>
+        <div className="p-4 w-full sm:w-[280px]">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+            Create New Wallet
+          </h3>
 
           <div className="flex flex-col gap-2">
             <input
@@ -418,7 +457,7 @@ export function WalletConnect({
                 disabled={isLoading || password.length < 8 || password !== confirmPassword}
                 className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
               >
-                {isLoading ? 'Creating...' : 'Create'}
+                {isLoading ? "Creating..." : "Create"}
               </button>
             </div>
           </div>
@@ -427,9 +466,9 @@ export function WalletConnect({
     }
 
     // Import wallet screen
-    if (viewMode === 'import') {
+    if (viewMode === "import") {
       return (
-        <div className="p-2 w-[min(320px,calc(100vw-32px))]">
+        <div className="p-2 w-full sm:w-[320px]">
           <ImportWallet
             onImportMnemonic={handleImportMnemonic}
             onImportPrivateKey={handleImportPrivateKey}
@@ -441,23 +480,20 @@ export function WalletConnect({
     }
 
     // Export private key view
-    if (viewMode === 'export') {
+    if (viewMode === "export") {
       return (
-        <div className="p-2 w-[min(320px,calc(100vw-32px))]">
-          <ExportPrivateKey
-            onExport={handleExportPrivateKey}
-            onClose={() => setViewMode('main')}
-          />
+        <div className="p-2 w-full sm:w-[320px]">
+          <ExportPrivateKey onExport={handleExportPrivateKey} onClose={() => setViewMode("main")} />
         </div>
       );
     }
 
     // Send transaction view
-    if (viewMode === 'send') {
+    if (viewMode === "send") {
       return (
-        <div className="p-2 w-[min(320px,calc(100vw-32px))]">
+        <div className="p-2 w-full sm:w-[320px]">
           <SendTransaction
-            onClose={() => setViewMode('main')}
+            onClose={() => setViewMode("main")}
             onSuccess={() => {
               // Optionally return to main view on success
             }}
@@ -467,41 +503,36 @@ export function WalletConnect({
     }
 
     // Staking panel view
-    if (viewMode === 'staking') {
+    if (viewMode === "staking") {
       return (
-        <div className="w-[min(360px,calc(100vw-32px))]">
-          <StakingPanel
-            onClose={() => setViewMode('main')}
-            compact
-          />
+        <div className="w-full sm:w-[360px]">
+          <StakingPanel onClose={() => setViewMode("main")} compact />
         </div>
       );
     }
 
     // Security settings view
-    if (viewMode === 'settings') {
-      return (
-        <SecuritySettings onClose={() => setViewMode('main')} />
-      );
+    if (viewMode === "settings") {
+      return <SecuritySettings onClose={() => setViewMode("main")} />;
     }
 
     // Disconnected state - show social login and create/import options
-    if (status === 'disconnected' && !isZkLoggedIn) {
+    if (status === "disconnected" && !isZkLoggedIn) {
       return (
-        <div className="py-3 px-4 w-[min(280px,calc(100vw-32px))]">
+        <div className="py-3 px-4 w-full sm:w-[280px]">
           {/* Social Login Section */}
           <div className="mb-4">
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 text-center">Quick start with social login</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 text-center">
+              Quick start with social login
+            </p>
             <SocialLoginButtons
               onLogin={handleSocialLogin}
               isLoading={isZkLoading}
               loadingProvider={loadingProvider}
-              providers={['google']}
+              providers={["google"]}
               size="md"
             />
-            {zkError && (
-              <p className="text-xs text-red-400 mt-2 text-center">{zkError.message}</p>
-            )}
+            {zkError && <p className="text-xs text-red-400 mt-2 text-center">{zkError.message}</p>}
           </div>
 
           {/* Divider */}
@@ -514,20 +545,30 @@ export function WalletConnect({
           {/* Password Wallet Options */}
           <div className="space-y-1">
             <button
-              onClick={() => setViewMode('create')}
+              onClick={() => setViewMode("create")}
               className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Create Password Wallet
             </button>
             <button
-              onClick={() => setViewMode('import')}
+              onClick={() => setViewMode("import")}
               className="w-full px-3 py-2 text-left text-sm text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
               </svg>
               Import Existing Wallet
             </button>
@@ -539,27 +580,27 @@ export function WalletConnect({
     // zkLogin connected state
     if (isZkLoggedIn && zkState) {
       return (
-        <div className="w-[min(280px,calc(100vw-32px))]">
+        <div className="w-full sm:w-[280px]">
           {/* User info header */}
           <div className="px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
             <div className="flex items-center gap-3">
               {zkUserInfo?.picture ? (
                 <img
                   src={zkUserInfo.picture}
-                  alt={zkUserInfo.name || 'User'}
+                  alt={zkUserInfo.name || "User"}
                   className="w-10 h-10 rounded-full"
                 />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
-                  {zkUserInfo?.name?.[0] || 'U'}
+                  {zkUserInfo?.name?.[0] || "U"}
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-900 dark:text-white font-medium truncate">
-                  {zkUserInfo?.name || 'Social Login'}
+                  {zkUserInfo?.name || "Social Login"}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">
-                  {zkUserInfo?.email || zkUserInfo?.provider || 'Connected'}
+                  {zkUserInfo?.email || zkUserInfo?.provider || "Connected"}
                 </p>
               </div>
             </div>
@@ -579,21 +620,21 @@ export function WalletConnect({
           {/* Tab navigation for zkLogin */}
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
-              onClick={() => setActiveTab('tokens')}
+              onClick={() => setActiveTab("tokens")}
               className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'tokens'
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+                activeTab === "tokens"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               Tokens
             </button>
             <button
-              onClick={() => setActiveTab('nfts')}
+              onClick={() => setActiveTab("nfts")}
               className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'nfts'
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+                activeTab === "nfts"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
@@ -601,37 +642,70 @@ export function WalletConnect({
           </div>
 
           {/* Tokens tab content */}
-          {activeTab === 'tokens' && (
+          {activeTab === "tokens" && (
             <div className="py-1">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(zkState.address);
-                  setShowDropdown(false);
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy Address
-              </button>
+              {/* Token Balances Section */}
+              <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
+                <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
+                  Token Balances
+                </p>
+                {balancesLoading ? (
+                  <div className="space-y-1.5">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {/* Native token (NASUN) */}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 dark:text-zinc-300">NASUN</span>
+                      <span className="font-mono text-gray-900 dark:text-white">
+                        {balances?.native?.formatted || "0"}
+                      </span>
+                    </div>
+                    {/* Additional tokens */}
+                    {Object.entries(balances?.tokens || {}).map(([symbol, token]) => (
+                      <div key={symbol} className="flex justify-between text-sm">
+                        <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
+                        <span className="font-mono text-gray-900 dark:text-white">
+                          {token.formatted}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <button
-                onClick={() => setViewMode('send')}
+                onClick={() => setViewMode("send")}
                 className="w-full px-3 py-2 text-left text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
                 </svg>
                 Send Token
               </button>
 
               <button
-                onClick={() => setViewMode('staking')}
+                onClick={() => setViewMode("staking")}
                 className="w-full px-3 py-2 text-left text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 Staking
               </button>
@@ -644,7 +718,12 @@ export function WalletConnect({
                 className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
                 </svg>
                 Disconnect
               </button>
@@ -652,12 +731,15 @@ export function WalletConnect({
           )}
 
           {/* NFTs tab content */}
-          {activeTab === 'nfts' && (
+          {activeTab === "nfts" && (
             <div className="p-3">
               {nftsLoading ? (
                 <div className="grid grid-cols-3 gap-2">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                    <div
+                      key={i}
+                      className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
+                    />
                   ))}
                 </div>
               ) : nfts.length === 0 ? (
@@ -680,12 +762,7 @@ export function WalletConnect({
               ) : (
                 <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
                   {nfts.map((nft) => (
-                    <NFTCard
-                      key={nft.objectId}
-                      nft={nft}
-                      compact
-                      onClick={setSelectedNFT}
-                    />
+                    <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
                   ))}
                 </div>
               )}
@@ -707,22 +784,24 @@ export function WalletConnect({
     }
 
     // Locked state - show unlock form
-    if (status === 'locked') {
-      return <LockedStateUI
-        password={password}
-        setPassword={setPassword}
-        isLoading={isLoading}
-        error={error}
-        handleUnlock={handleUnlock}
-        handleDelete={handleDelete}
-        setViewMode={setViewMode}
-      />;
+    if (status === "locked") {
+      return (
+        <LockedStateUI
+          password={password}
+          setPassword={setPassword}
+          isLoading={isLoading}
+          error={error}
+          handleUnlock={handleUnlock}
+          handleDelete={handleDelete}
+          setViewMode={setViewMode}
+        />
+      );
     }
 
     // Unlocked state - show wallet menu with tabs
-    if (status === 'unlocked' && account) {
+    if (status === "unlocked" && account) {
       return (
-        <div className="w-[min(280px,calc(100vw-32px))]">
+        <div className="w-full sm:w-[280px]">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
             <CopyableAddress
@@ -739,21 +818,21 @@ export function WalletConnect({
           {/* Tab navigation */}
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
-              onClick={() => setActiveTab('tokens')}
+              onClick={() => setActiveTab("tokens")}
               className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'tokens'
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+                activeTab === "tokens"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               Tokens
             </button>
             <button
-              onClick={() => setActiveTab('nfts')}
+              onClick={() => setActiveTab("nfts")}
               className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'nfts'
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+                activeTab === "nfts"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
@@ -761,57 +840,100 @@ export function WalletConnect({
           </div>
 
           {/* Tokens tab content */}
-          {activeTab === 'tokens' && (
+          {activeTab === "tokens" && (
             <div className="py-1">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(account.address);
-                  setShowDropdown(false);
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy Address
-              </button>
+              {/* Token Balances Section */}
+              <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
+                <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
+                  Token Balances
+                </p>
+                {balancesLoading ? (
+                  <div className="space-y-1.5">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {/* Native token (NASUN) */}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 dark:text-zinc-300">NASUN</span>
+                      <span className="font-mono text-gray-900 dark:text-white">
+                        {balances?.native?.formatted || "0"}
+                      </span>
+                    </div>
+                    {/* Additional tokens */}
+                    {Object.entries(balances?.tokens || {}).map(([symbol, token]) => (
+                      <div key={symbol} className="flex justify-between text-sm">
+                        <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
+                        <span className="font-mono text-gray-900 dark:text-white">
+                          {token.formatted}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <button
-                onClick={() => setViewMode('send')}
+                onClick={() => setViewMode("send")}
                 className="w-full px-3 py-2 text-left text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
                 </svg>
                 Send Token
               </button>
 
               <button
-                onClick={() => setViewMode('staking')}
+                onClick={() => setViewMode("staking")}
                 className="w-full px-3 py-2 text-left text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 Staking
               </button>
 
               <button
-                onClick={() => setViewMode('export')}
+                onClick={() => setViewMode("export")}
                 className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  />
                 </svg>
                 Export Private Key
               </button>
 
               <button
-                onClick={() => setViewMode('settings')}
+                onClick={() => setViewMode("settings")}
                 className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  />
                 </svg>
                 Security Settings
               </button>
@@ -824,7 +946,12 @@ export function WalletConnect({
                 className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
                 </svg>
                 Lock
               </button>
@@ -834,7 +961,12 @@ export function WalletConnect({
                 className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 Delete Wallet
               </button>
@@ -842,12 +974,15 @@ export function WalletConnect({
           )}
 
           {/* NFTs tab content */}
-          {activeTab === 'nfts' && (
+          {activeTab === "nfts" && (
             <div className="p-3">
               {nftsLoading ? (
                 <div className="grid grid-cols-3 gap-2">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                    <div
+                      key={i}
+                      className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
+                    />
                   ))}
                 </div>
               ) : nfts.length === 0 ? (
@@ -870,12 +1005,7 @@ export function WalletConnect({
               ) : (
                 <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
                   {nfts.map((nft) => (
-                    <NFTCard
-                      key={nft.objectId}
-                      nft={nft}
-                      compact
-                      onClick={setSelectedNFT}
-                    />
+                    <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
                   ))}
                 </div>
               )}
@@ -909,7 +1039,7 @@ export function WalletConnect({
         <span className={`w-2 h-2 ${getStatusColor()} rounded-full`} />
         <span className="text-gray-900 dark:text-white font-mono">{getButtonText()}</span>
         <svg
-          className={`w-4 h-4 text-gray-500 dark:text-zinc-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-gray-500 dark:text-zinc-400 transition-transform ${showDropdown ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -921,10 +1051,16 @@ export function WalletConnect({
       {/* Dropdown */}
       {showDropdown && (
         <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:mx-auto max-sm:w-auto sm:absolute ${
-            dropdownAlign === 'left' ? 'sm:left-0' : dropdownAlign === 'center' ? 'sm:left-1/2 sm:-translate-x-1/2' : 'sm:right-0'
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] absolute ${
+            dropdownAlign === "left"
+              ? "left-0"
+              : dropdownAlign === "center"
+                ? "left-1/2 -translate-x-1/2"
+                : "right-0 max-sm:right-auto max-sm:left-0"
           } ${
-            dropdownPosition === 'top' ? 'sm:bottom-full sm:mb-2 max-sm:bottom-auto max-sm:top-16' : 'sm:top-full sm:mt-2 max-sm:top-16'
+            dropdownPosition === "top"
+              ? "bottom-full mb-2"
+              : "top-full mt-2"
           }`}
         >
           {renderDropdownContent()}

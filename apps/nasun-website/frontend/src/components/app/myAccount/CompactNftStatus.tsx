@@ -152,12 +152,12 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
   };
 
   /**
-   * Founders NFT Withdraw Handler (no signature required)
+   * Genesis NFT Withdraw Handler (no signature required)
    */
-  const handleFoundersWithdraw = async () => {
+  const handleGenesisWithdraw = async () => {
     if (!walletAddress || isWithdrawing) return;
 
-    if (!confirm("Are you sure you want to withdraw from Founders NFT Whitelist?")) {
+    if (!confirm("Are you sure you want to withdraw from Genesis NFT Whitelist?")) {
       return;
     }
 
@@ -170,7 +170,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
         new Date().toISOString()
       );
       refetchFounders();
-      alert("Successfully withdrawn from Founders NFT Whitelist.");
+      alert("Successfully withdrawn from Genesis NFT Whitelist.");
     } catch (err) {
       console.error("[CompactNftStatus] Founders withdraw error:", err);
       alert("Failed to withdraw. Please try again.");
@@ -202,10 +202,10 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
           onWithdraw={handleBattalionWithdraw}
         />
         <NftStatusItem
-          title="Founders NFT Whitelist"
+          title="Genesis NFT Whitelist"
           isRegistered={isFoundersRegistered}
           isLoading={isFoundersLoading || isWithdrawing}
-          onWithdraw={handleFoundersWithdraw}
+          onWithdraw={handleGenesisWithdraw}
           renderJoinButton={
             <JoinWhitelistButton
               variant="filledOutlineC4"

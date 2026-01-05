@@ -124,7 +124,7 @@ components/app/myAccount/
 ### Phase 2: ButtonShowcaseSection ✅ COMPLETED (2026-01-01)
 **Priority: HIGH**
 
-**Discovery:** Component was never used in production (only commented out in FoundersNftPage.tsx).
+**Discovery:** Component was never used in production (only commented out in GenesisNftPage.tsx).
 Was a dev/design reference file for viewing button variants.
 
 **Action:** Deleted all 3 files (505 lines total):

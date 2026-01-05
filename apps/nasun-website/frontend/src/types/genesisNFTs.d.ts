@@ -1,4 +1,4 @@
-// src/types/foundersNFTs.d.ts
+// src/types/genesisNFTs.d.ts
 
 /**
  * NFT 티어 등급 (Enum)
@@ -71,7 +71,7 @@ declare namespace NFT {
 // 기존
 // export type TierKeys = keyof typeof NFTTiers; // "TIER1" | "TIER2" | ...
 
-// 제안: 값(“1” | “2” …) 자체를 키로 쓰려면
+// 제안: 값("1" | "2" …) 자체를 키로 쓰려면
 export type TierKeys = NFTTiers; // "1" | "2" | "3" | "4" | "5"
 // export type BenefitItem = TierData["BENEFITS"][number];
 export type BenefitItem = TierData["BENEFITS"] extends string[]
@@ -100,12 +100,12 @@ export interface NFTMintedEvent {
 
 declare global {
   interface Window {
-    __FOUNDERS_NFT_MODAL?: {
+    __GENESIS_NFT_MODAL?: {
       openEmptyModal: (txId: string) => void;
       setNFTData?: (data: NFTMintedEvent, txId?: string) => void;
       closeModal: () => void;
     };
-    __FOUNDERS_NFT_MODAL_SUI?: {
+    __GENESIS_NFT_MODAL_SUI?: {
       openEmptyModal: (txId: string) => void;
       setNFTData?: (data: NFTMintedEvent, txId?: string) => void;
       closeModal: () => void;

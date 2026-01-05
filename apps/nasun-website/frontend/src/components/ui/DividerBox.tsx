@@ -42,7 +42,7 @@ interface DividerBoxProps {
 const colorStyles: Record<NasunColor, { border: string; background: string; text: string }> = {
   white: {
     border: "border-nasun-white/70",
-    background: "bg-nasun-black/90",
+    background: "bg-nasun-black/70",
     text: "text-nasun-white",
   },
   scarlet: {

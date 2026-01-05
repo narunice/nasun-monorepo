@@ -1,7 +1,7 @@
 /**
  * NFT Whitelist Types
  *
- * Founders NFT Whitelist 시스템의 타입 정의
+ * Genesis NFT Whitelist 시스템의 타입 정의
  */
 
 import type { VariantProps } from 'class-variance-authority';

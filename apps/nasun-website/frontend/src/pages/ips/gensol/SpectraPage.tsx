@@ -30,8 +30,8 @@ const PrototypeDevelopmentSection = lazy(
 const BeyondPrototypeSection = lazy(
   () => import("../../../components/app/ips/spectra/BeyondPrototypeSection")
 );
-const FoundersNftFundsSection = lazy(
-  () => import("../../../components/app/ips/spectra/FoundersNftFundsSection")
+const GenesisNftFundsSection = lazy(
+  () => import("../../../components/app/ips/spectra/GenesisNftFundsSection")
 );
 const HiresSection = lazy(() => import("../../../components/app/ips/spectra/HiresSection"));
 const ScheduleSection = lazy(() => import("../../../components/app/ips/spectra/ScheduleSection"));
@@ -52,7 +52,7 @@ export default function SpectraPage() {
           <CurrentStateSection />
           <PrototypeDevelopmentSection />
           <BeyondPrototypeSection />
-          <FoundersNftFundsSection />
+          <GenesisNftFundsSection />
           <HiresSection />
           <ScheduleSection />
         </Suspense>
