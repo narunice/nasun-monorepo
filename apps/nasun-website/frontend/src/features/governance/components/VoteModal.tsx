@@ -1,13 +1,12 @@
 import { FC, useRef, useState, useEffect } from "react";
 import { Proposal } from "../types/voting";
-import { useWallet, useZkLogin, getSuiClient } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
-import { useNetworkVariable } from "@/config/suiNetworkConfig";
-import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 import { useVotingPower } from "../hooks/useVotingPower";
+import { useSponsoredVote } from "../hooks/useSponsoredVote";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -19,13 +18,14 @@ interface VoteModalProps {
 
 export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onClose, onVote }) => {
   const { t } = useTranslation("proposals");
-  const { status, account, getKeypair } = useWallet();
-  const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
-  const packageId = useNetworkVariable("packageId");
   const toastId = useRef<number | string>();
 
-  const [isPending, setIsPending] = useState(false);
+  // Sponsored vote hook (gas-free voting)
+  const { vote: sponsoredVote, isPending, error: voteError } = useSponsoredVote();
+
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmStep, setConfirmStep] = useState<{
     show: boolean;
@@ -44,39 +44,6 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
   // Check if MetaMask is available
   const hasMetaMask = typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
-
-  // Parse vote transaction errors into user-friendly messages
-  function parseVoteError(error: unknown): string {
-    const message = error instanceof Error ? error.message : String(error);
-
-    // Gas/balance issues
-    if (message.includes("No valid gas coins")) {
-      return "Not enough NASUN for transaction fee. Please get some tokens from the faucet first.";
-    }
-    if (message.includes("InsufficientGas") || message.includes("insufficient gas")) {
-      return "Insufficient gas. The transaction requires more NASUN.";
-    }
-
-    // Move Abort codes
-    if (message.includes("MoveAbort")) {
-      if (message.includes(", 0)")) return "You have already voted on this proposal.";
-      if (message.includes(", 2)")) return "This proposal has expired.";
-      if (message.includes(", 3)")) return "Invalid voting power.";
-    }
-
-    // Network errors
-    if (message.includes("network") || message.includes("fetch") || message.includes("timeout")) {
-      return "Network error. Please check your connection and try again.";
-    }
-
-    // User cancelled
-    if (message.includes("rejected") || message.includes("cancelled") || message.includes("canceled")) {
-      return "Transaction was cancelled.";
-    }
-
-    // Fallback - show truncated message
-    return `Vote failed: ${message.slice(0, 100)}`;
-  }
 
   // Calculate total voting power
   const baseVotingPower = votingPower?.totalVotingPower || 1;
@@ -112,94 +79,34 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   };
 
   const vote = async (voteYes: boolean) => {
-    // Check if any wallet is connected
-    const walletAddress = account?.address || zkState?.address;
-    if (!isConnected || !walletAddress) {
+    if (!isConnected) {
       dismissToast(t("vote.error"));
       return;
     }
 
-    const tx = new Transaction();
-    // Pass voting power as the third argument (before clock)
-    tx.moveCall({
-      arguments: [
-        tx.object(proposal.id.id),
-        tx.pure.bool(voteYes),
-        tx.pure.u64(totalVotingPower),
-        tx.object("0x6"),
-      ],
-      target: `${packageId}::proposal::vote`,
-    });
-
     showToast(t("vote.processing"));
-    setIsPending(true);
 
-    try {
-      const suiClient = getSuiClient();
-      let result;
-
-      // Sign and execute based on wallet type
-      if (isZkConnected && zkState) {
-        // zkLogin signing
-        tx.setSender(zkState.address);
-        const bytes = await tx.build({ client: suiClient });
-        const signature = await zkSignTransaction(bytes);
-        result = await suiClient.executeTransactionBlock({
-          transactionBlock: bytes,
-          signature,
-          options: { showEffects: true },
-        });
-      } else {
-        // Local wallet signing
-        const keypair = getKeypair();
-        if (!keypair) {
-          dismissToast(t("vote.error"));
-          return;
+    // Prepare ETH signature for NFT bonus if verified
+    const ethSignature = nftVerification?.ethAddress
+      ? {
+          message: `Nasun Governance: Verify NFT ownership for Proposal #${proposal.id.id}\nTimestamp: ${Date.now()}`,
+          signature: "", // Would need to be captured during verification
         }
-        result = await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: tx,
-          options: { showEffects: true },
-        });
-      }
+      : undefined;
 
-      await suiClient.waitForTransaction({
-        digest: result.digest,
-        options: {
-          showEffects: true,
-        },
-      });
+    // Use sponsored vote (gas-free)
+    const result = await sponsoredVote(proposal.id.id, voteYes, ethSignature);
 
-      const eventResult = await suiClient.queryEvents({
-        query: { Transaction: result.digest },
-      });
-
-      if (eventResult.data.length > 0) {
-        const firstEvent = eventResult.data[0].parsedJson as {
-          proposal_id?: string;
-          voter?: string;
-          vote_yes?: boolean;
-        };
-        const id = firstEvent.proposal_id || "No event found for given criteria";
-        const voter = firstEvent.voter || "No event found for given criteria";
-        const votedYes = firstEvent.vote_yes || "No event found for given criteria";
-        console.log("Event Captured");
-        console.log(id, voter, votedYes);
-      } else {
-        console.log("No events found");
-      }
-
+    if (result.success) {
       setIsSuccess(true);
       dismissToast(t("vote.success"));
+      console.log("Vote successful:", result.digest, "Power:", result.votingPower);
       onVote(voteYes);
-    } catch (error: unknown) {
-      console.error("Vote transaction failed:", error);
-      const friendlyMessage = parseVoteError(error);
-      dismissToast(friendlyMessage);
-    } finally {
-      setIsPending(false);
-      setConfirmStep({ show: false, voteYes: null });
+    } else {
+      dismissToast(result.error || t("vote.error"));
     }
+
+    setConfirmStep({ show: false, voteYes: null });
   };
 
   const votingDisable = hasVoted || isPending || isSuccess;
@@ -239,6 +146,14 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           {/* Voting Power Display */}
           {isConnected && !hasVoted && !isSuccess && !confirmStep.show && (
             <div className="bg-nasun-black/30 rounded-lg p-4 border border-nasun-c5/30">
+              {/* Zero Gas Fee Badge */}
+              <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-nasun-c5/20">
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+                  ⛽ Zero Gas Fee
+                </span>
+                <span className="text-xs text-nasun-white/50">Sponsored by Nasun</span>
+              </div>
+
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-nasun-white/70">Your Voting Power</span>
                 <span className="text-lg font-semibold text-nasun-c3">
