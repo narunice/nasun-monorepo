@@ -314,10 +314,6 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-yellow-400">•</span>
-                  <span>Signing confirms your vote — <strong>no tokens will be transferred</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">•</span>
                   <span>
                     Vote direction:{" "}
                     <strong className={confirmStep.voteYes ? "text-green-400" : "text-red-400"}>
