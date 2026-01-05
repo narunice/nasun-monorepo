@@ -9,3 +9,4 @@
 
 export { useUnifiedMargin, type UnifiedMarginState } from './useUnifiedMargin';
 export { useMarginAccount } from './useMarginAccount';
+export { MarginAccountCard } from './MarginAccountCard';
