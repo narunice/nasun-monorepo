@@ -1,10 +1,10 @@
 /**
  * MarginAccountCard
  *
- * UI component for Unified Margin account management
+ * UI component for Pado Balance account management
  * Shows balance, deposit/withdraw actions
  *
- * @version 0.1.0
+ * @version 0.2.0 - Renamed from "Unified Margin" to "Pado Balance"
  */
 
 import { useState } from 'react';
@@ -60,12 +60,16 @@ export function MarginAccountCard() {
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showGasWarning, setShowGasWarning] = useState(false);
 
   const isConnected = status === 'unlocked' && walletAccount;
 
-  // Get NUSDC wallet balance
+  // Get wallet balances
   const nusdcBalance = balances?.tokens?.NUSDC;
   const walletNusdcAmount = nusdcBalance ? Number(nusdcBalance.balance) / 1e6 : 0;
+  const nasunBalance = balances?.tokens?.NASUN;
+  const walletNasunAmount = nasunBalance ? Number(nasunBalance.balance) / 1e9 : 0;
+  const MIN_GAS_RESERVE = 0.1; // Keep at least 0.1 NASUN for gas
 
   // Handle deposit
   const handleDeposit = async () => {
@@ -120,7 +124,7 @@ export function MarginAccountCard() {
     return (
       <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
         <div className="text-center text-theme-text-muted py-4">
-          Connect wallet to manage Unified Margin
+          Connect wallet to manage Pado Balance
         </div>
       </div>
     );
@@ -145,10 +149,10 @@ export function MarginAccountCard() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-theme-text-primary">
-              Unified Margin
+              Pado Balance
             </h3>
             <p className="text-sm text-theme-text-secondary mt-1">
-              Create a margin account to access all trading features
+              Enable Pado Balance to use funds across Trading, Predictions, and more
             </p>
           </div>
           <button
@@ -156,7 +160,7 @@ export function MarginAccountCard() {
             disabled={isCreating}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isCreating ? 'Creating...' : 'Create Account'}
+            {isCreating ? 'Enabling...' : 'Enable Pado Balance'}
           </button>
         </div>
       </div>
@@ -168,7 +172,7 @@ export function MarginAccountCard() {
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-theme-text-primary">Unified Margin</h3>
+        <h3 className="font-semibold text-theme-text-primary">Pado Balance</h3>
         <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">
           Active
         </span>
@@ -236,18 +240,45 @@ export function MarginAccountCard() {
                 <input
                   type="number"
                   value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
+                  onChange={(e) => {
+                    setDepositAmount(e.target.value);
+                    setShowGasWarning(false);
+                  }}
                   placeholder="0.00"
                   className="w-full px-4 py-3 bg-theme-bg-primary border border-theme-border rounded-lg text-theme-text-primary placeholder:text-theme-text-muted"
                 />
                 <button
-                  onClick={() => setDepositAmount(walletNusdcAmount.toString())}
+                  onClick={() => {
+                    setDepositAmount(walletNusdcAmount.toString());
+                    // Show gas warning if NASUN balance is low
+                    if (walletNasunAmount < MIN_GAS_RESERVE) {
+                      setShowGasWarning(true);
+                    }
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-400"
                 >
                   MAX
                 </button>
               </div>
             </div>
+
+            {/* Gas Warning */}
+            {showGasWarning && (
+              <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-yellow-500 text-sm">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      Low NASUN balance ({walletNasunAmount.toFixed(3)} NASUN).
+                      Keep at least {MIN_GAS_RESERVE} NASUN for transaction fees.
+                    </p>
+                    <p className="text-xs text-theme-text-muted mt-1">
+                      Get NASUN from faucet on the Trade page.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="text-sm text-red-500 mb-4">{error}</div>
@@ -258,6 +289,7 @@ export function MarginAccountCard() {
                 onClick={() => {
                   setShowDepositModal(false);
                   setError(null);
+                  setShowGasWarning(false);
                 }}
                 className="flex-1 py-2 bg-theme-bg-tertiary text-theme-text-primary rounded-lg"
               >

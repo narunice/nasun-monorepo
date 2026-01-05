@@ -216,16 +216,23 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
                   ? 'bg-blue-600 text-white'
                   : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
               }`}
-              title={!hasMarginAccount ? 'Create a Margin Account in Wallet tab first' : undefined}
+              title={!hasMarginAccount ? 'Enable Pado Balance in Wallet tab first' : undefined}
             >
-              Margin {!hasMarginAccount && '🔒'}
+              Pado {!hasMarginAccount && '🔒'}
             </button>
           </div>
 
-          <div className="flex justify-between items-center">
+          {/* Pado Balance hint when not enabled */}
+          {!hasMarginAccount && (
+            <p className="text-xs text-theme-text-muted mt-2">
+              💡 <a href="/wallet" className="text-blue-500 hover:text-blue-400 underline">Enable Pado Balance</a> to use funds across all features
+            </p>
+          )}
+
+          <div className="flex justify-between items-center mt-2">
             <div>
               <span className="text-xs text-theme-text-muted">
-                {fundingSource === 'wallet' ? 'Wallet Balance' : 'Margin Balance'}
+                {fundingSource === 'wallet' ? 'Wallet Balance' : 'Pado Balance'}
               </span>
               <p className="text-lg font-semibold text-theme-text-primary">
                 {availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-normal text-theme-text-muted">NUSDC</span>
