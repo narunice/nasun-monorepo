@@ -14,7 +14,7 @@
 import { useState } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { SuiClient } from "@mysten/sui/client";
-import { useWallet, useZkLogin, signTransaction } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { useAuth } from "@/providers/auth/AuthContext";
 
@@ -49,7 +49,7 @@ export function useSponsoredVote() {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { account, status } = useWallet();
+  const { account, status, getKeypair } = useWallet();
   const { isConnected: isZkConnected, address: zkAddress, signTransaction: zkSignTransaction } = useZkLogin();
   const { user } = useAuth();
 
@@ -159,7 +159,11 @@ export function useSponsoredVote() {
         userSignature = typeof sig === "string" ? sig : sig.signature;
       } else if (status === "unlocked" && account) {
         // Local wallet signing
-        const sig = await signTransaction(txBytesArray);
+        const keypair = getKeypair();
+        if (!keypair) {
+          throw new Error("Wallet unlocked but keypair not available");
+        }
+        const sig = await keypair.signTransaction(txBytesArray);
         userSignature = sig.signature;
       } else {
         throw new Error("No signing method available");
