@@ -50,8 +50,8 @@ export function useMarginAccount(): UseMarginAccountResult {
   const { account: walletAccount, status, getKeypair } = useWallet();
   const queryClient = useQueryClient();
 
-  const [marginAccountId, setMarginAccountId] = useState<string | null>(
-    getStoredMarginAccountId
+  const [marginAccountId, setMarginAccountId] = useState<string | null>(() =>
+    walletAccount?.address ? getStoredMarginAccountId(walletAccount.address) : null
   );
 
   // Find or use stored account ID
@@ -61,7 +61,7 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (!walletAccount?.address) return null;
 
       // First check localStorage
-      const storedId = getStoredMarginAccountId();
+      const storedId = getStoredMarginAccountId(walletAccount.address);
       if (storedId) {
         // Verify it still exists
         const account = await getMarginAccount(storedId);
@@ -79,11 +79,11 @@ export function useMarginAccount(): UseMarginAccountResult {
 
   // Update local state when account is found
   useEffect(() => {
-    if (foundAccountId && foundAccountId !== marginAccountId) {
+    if (foundAccountId && foundAccountId !== marginAccountId && walletAccount?.address) {
       setMarginAccountId(foundAccountId);
-      storeMarginAccountId(foundAccountId);
+      storeMarginAccountId(walletAccount.address, foundAccountId);
     }
-  }, [foundAccountId, marginAccountId]);
+  }, [foundAccountId, marginAccountId, walletAccount?.address]);
 
   // Fetch account data
   const {
@@ -138,10 +138,10 @@ export function useMarginAccount(): UseMarginAccountResult {
           'AddressOwner' in obj.owner
       );
 
-      if (marginAccountObj) {
+      if (marginAccountObj && walletAccount?.address) {
         const newAccountId = marginAccountObj.objectId;
         setMarginAccountId(newAccountId);
-        storeMarginAccountId(newAccountId);
+        storeMarginAccountId(walletAccount.address, newAccountId);
         return newAccountId;
       }
 
