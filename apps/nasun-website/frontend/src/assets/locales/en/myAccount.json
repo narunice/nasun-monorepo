@@ -44,7 +44,7 @@
     "notSupported": "Not Supported Yet"
   },
   "whitelist": {
-    "title": "FOUNDERS NFT WHITELIST STATUS",
+    "title": "GENESIS NFT WHITELIST STATUS",
     "connectWallet": "Please connect your MetaMask wallet to check your whitelist status.",
     "registered": "Registered",
     "notRegistered": "You are not on the whitelist yet.",

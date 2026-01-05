@@ -10,7 +10,7 @@ import {
 import { toast } from "react-toastify";
 import { useNetworkVariable } from "../../config/suiNetworkConfig";
 import { useCoinPrice } from "./useCoinPrice";
-import { NFTTiers, NFTTierDisplayNames } from "../../types/foundersNFTs.d";
+import { NFTTiers, NFTTierDisplayNames } from "../../types/genesisNFTs.d";
 import logger from "../../lib/logger"; // Import logger
 import axios from "axios";
 
@@ -166,8 +166,8 @@ export const usePayAndMintSuiNFT = () => {
             }
           | undefined;
 
-        if (parsed && window.__FOUNDERS_NFT_MODAL?.setNFTData) {
-          window.__FOUNDERS_NFT_MODAL.setNFTData({
+        if (parsed && window.__GENESIS_NFT_MODAL?.setNFTData) {
+          window.__GENESIS_NFT_MODAL.setNFTData({
             objectId: parsed.object_id,
             tier: parsed.tier,
             minter: parsed.minter,
@@ -176,8 +176,8 @@ export const usePayAndMintSuiNFT = () => {
             imageUrl: parsed.image_url,
             txId: result.digest,
           });
-        } else if (window.__FOUNDERS_NFT_MODAL?.openEmptyModal) {
-          window.__FOUNDERS_NFT_MODAL.openEmptyModal(result.digest);
+        } else if (window.__GENESIS_NFT_MODAL?.openEmptyModal) {
+          window.__GENESIS_NFT_MODAL.openEmptyModal(result.digest);
         }
 
         return {
@@ -197,7 +197,7 @@ export const usePayAndMintSuiNFT = () => {
           autoClose: 4000,
         });
 
-        window.__FOUNDERS_NFT_MODAL?.closeModal?.();
+        window.__GENESIS_NFT_MODAL?.closeModal?.();
         const errObj = e instanceof Error ? e : new Error(errorMessage);
         setError(errObj);
         throw errObj;

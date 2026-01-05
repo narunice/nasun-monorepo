@@ -1,7 +1,7 @@
 /**
  * Join Whitelist Button Component
  *
- * Founders NFT Whitelist에 등록하는 버튼 컴포넌트
+ * Genesis NFT Whitelist에 등록하는 버튼 컴포넌트
  * MetaMask 연결 → 서명 → API 호출 → 모달 표시
  */
 

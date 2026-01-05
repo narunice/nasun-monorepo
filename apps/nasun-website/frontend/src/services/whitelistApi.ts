@@ -1,5 +1,5 @@
 /**
- * Founders NFT Whitelist API Client
+ * Genesis NFT Whitelist API Client
  *
  * 백엔드 Whitelist API와 통신하는 클라이언트 함수들
  */

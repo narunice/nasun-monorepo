@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NFT_COLLECTION } from "../../../constants/pageContent/foundersNFTTiers";
-import { NFTTiers, TierData } from "../../../types/foundersNFTs.d";
+import { NFT_COLLECTION } from "../../../constants/pageContent/genesisNFTTiers";
+import { NFTTiers, TierData } from "../../../types/genesisNFTs.d";
 import { usePayAndMintSuiNFT } from "../../../hooks/PayAndMintNFT/usePayAndMintSuiNFT";
 import { useCurrentWallet as useCurrentSuiWallet } from "@mysten/dapp-kit";
 import { PriceConverter } from "./PriceConverter";
@@ -47,7 +47,7 @@ function PayAndMintNftCardComponent({ tierData, tier, currentSupply, isSupplyLoa
     try {
       const result = await payAndMintNFT(tier, tierData!.USD_PRICE);
       if (result && result.txId) {
-        window.__FOUNDERS_NFT_MODAL_SUI?.openEmptyModal?.(result.txId);
+        window.__GENESIS_NFT_MODAL_SUI?.openEmptyModal?.(result.txId);
       }
     } catch (error) {
       console.error("SUI Minting failed:", error);

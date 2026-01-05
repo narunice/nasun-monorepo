@@ -7,9 +7,8 @@ import { useHomePageLoading } from "../contexts/PageLoadingContext";
 
 // Lazy load all sections
 const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
-const VisionSection = lazy(() => import("../components/app/home/VisionSection"));
-const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV2"));
-const Wave1SectionV3 = lazy(() => import("../components/app/home/Wave1SectionV3"));
+const VisionSectionV2 = lazy(() => import("../components/app/home/VisionSectionV2"));
+const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV3"));
 const NftSaleSection = lazy(() => import("../components/app/home/NftSaleSection"));
 const AwardsGrantsSection = lazy(() => import("../components/app/home/AwardsGrantsSection"));
 const NewsEventsSection = lazy(() => import("../components/app/home/NewsEventsSection"));
@@ -29,7 +28,7 @@ export default function HomePage() {
     // Preload critical above-the-fold sections before showing footer
     // This prevents layout shift when sections load after footer appears
     await Promise.all([
-      import("../components/app/home/VisionSection"),
+      import("../components/app/home/VisionSectionV2"),
       import("../components/app/home/AwardsGrantsSection"),
     ]);
 
@@ -66,9 +65,9 @@ export default function HomePage() {
               <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
             </ScrollSnapSection>
 
-            {/* VisionSection */}
+            {/* VisionSectionV2: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}
             <ScrollSnapSection>
-              <VisionSection />
+              <VisionSectionV2 />
             </ScrollSnapSection>
 
             {/* AwardsGrantsSection - 긴 컨텐츠 허용 */}
@@ -76,12 +75,7 @@ export default function HomePage() {
               <AwardsGrantsSection />
             </ScrollSnapSection>
 
-            {/* Wave1SectionV3 - DividerBox 버전 (새 디자인 테스트) */}
-            <ScrollSnapSection allowTallContent={true}>
-              <Wave1SectionV3 />
-            </ScrollSnapSection>
-
-            {/* Wave1Section - 기존 버전 (V2) */}
+            {/* Wave1Section */}
             <ScrollSnapSection allowTallContent={true}>
               <Wave1Section />
             </ScrollSnapSection>

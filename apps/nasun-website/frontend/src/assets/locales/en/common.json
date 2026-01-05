@@ -42,7 +42,7 @@
     "opportunities": "Opportunities",
     "team": "Team",
     "founders": "Founders",
-    "foundersNft": "Founders NFT",
+    "genesisNft": "Genesis NFT",
     "leaderboard": "Leaderboard",
     "wave1Campaign": "Wave 1",
     "battalionNft": "Battalion NFT",
@@ -135,7 +135,7 @@
       },
       "success": {
         "title": "Successfully Joined!",
-        "description": "You have successfully joined the Founders NFT whitelist.",
+        "description": "You have successfully joined the Genesis NFT whitelist.",
         "walletAddress": "Wallet Address",
         "joinedAt": "Joined At",
         "withdraw": "Withdraw",
@@ -143,7 +143,7 @@
       },
       "alreadyJoined": {
         "title": "Already Joined",
-        "description": "This wallet address is already registered in the Founders NFT whitelist.",
+        "description": "This wallet address is already registered in the Genesis NFT whitelist.",
         "walletAddress": "Wallet Address",
         "joinedAt": "Joined At",
         "withdraw": "Withdraw",

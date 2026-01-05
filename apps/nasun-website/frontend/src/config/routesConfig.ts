@@ -25,7 +25,7 @@ export const Pages = {
   Opportunities: lazy(() => import("../pages/about/OpportunitiesPage")),
   Grants: lazy(() => import("../pages/AwardsPage")),
   Founders: lazy(() => import("../pages/about/FoundersPage")),
-  FoundersNft: lazy(() => import("../pages/FoundersNftPage")),
+  GenesisNft: lazy(() => import("../pages/GenesisNftPage")),
   Web3: lazy(() => import("../pages/protocol/ProposalPage")),
   MyAccountPage: lazy(() => import("../pages/MyAccountPage")),
   PrivacyPolicy: lazy(() => import("../pages/PrivacyPolicyPage")),
@@ -386,16 +386,16 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  foundersNft: {
-    path: "/founders-nft",
-    component: Pages.FoundersNft,
+  genesisNft: {
+    path: "/genesis-nft",
+    component: Pages.GenesisNft,
     navItem: {
-      name: "navigation.foundersNft",
-      path: "/founders-nft",
+      name: "navigation.genesisNft",
+      path: "/genesis-nft",
     },
     meta: {
-      title: "Founders NFT - NASUN",
-      description: "NASUN Founders NFT collection",
+      title: "Genesis NFT - NASUN",
+      description: "NASUN Genesis NFT collection",
     },
   },
 
@@ -529,7 +529,7 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
       })),
     }))
     .sort((a, b) => {
-      // 정렬 순서: protocol, ips, finance, updates, about, team, wave1, leaderboard, founders-nft
+      // 정렬 순서: protocol, ips, finance, updates, about, team, wave1, leaderboard, genesis-nft
       const order = [
         "protocol",
         "ips",
@@ -539,7 +539,7 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
         "team",
         "wave1",
         "leaderboard",
-        "founders-nft",
+        "genesis-nft",
       ];
       const aIndex = order.findIndex((item) => a.path.includes(item));
       const bIndex = order.findIndex((item) => b.path.includes(item));

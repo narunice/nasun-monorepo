@@ -5,7 +5,7 @@ import GensolWordmarkWhite from "@/assets/logo_images/GensolWordmarkWhite.svg"
 const NASUN_URL = import.meta.env.VITE_NASUN_URL || "https://nasun.io"
 
 const HomeHeroSection = () => {
-  const foundersNftUrl = `${NASUN_URL}/founders-nft`
+  const genesisNftUrl = `${NASUN_URL}/genesis-nft`
 
   return (
     <FadeIn className="h-screen">
@@ -43,12 +43,12 @@ const HomeHeroSection = () => {
 
           {/* 버튼 */}
           <a
-            href={foundersNftUrl}
+            href={genesisNftUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="opacity-80 px-5 py-2 bg-sf-red hover:bg-sf-darkred rounded-md font-medium tracking-widest transition-all text-sf-yellow hover:text-sf-blue font-pirulen"
           >
-            FOUNDERS NFT
+            GENESIS NFT
           </a>
         </div>
       </section>

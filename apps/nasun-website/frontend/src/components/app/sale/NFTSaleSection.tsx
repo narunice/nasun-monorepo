@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from "react";
-import { NFTTiers } from "../../../types/foundersNFTs.d";
+import { NFTTiers } from "../../../types/genesisNFTs.d";
 import { NFTTierSection } from "../../../components/app/sale/NFTTierSection";
 import { SectionLayout } from "../../layout/SectionLayout";
 import { useAllTiersSupplyCounts } from "../../../hooks/PayAndMintNFT/useAllTiersSupplyCounts";

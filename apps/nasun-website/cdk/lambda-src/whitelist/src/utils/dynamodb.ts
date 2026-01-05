@@ -17,7 +17,7 @@ import { WhitelistItem } from '@/types/whitelist';
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(client);
 
-const TABLE_NAME = process.env.WHITELIST_TABLE_NAME || 'FoundersNftWhitelist';
+const TABLE_NAME = process.env.WHITELIST_TABLE_NAME || 'GenesisNftWhitelist';
 
 /**
  * Whitelist 항목 조회

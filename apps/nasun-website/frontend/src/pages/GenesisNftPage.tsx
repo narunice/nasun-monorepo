@@ -2,17 +2,17 @@ import { Suspense, lazy, useState, useEffect } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { useTranslation } from "react-i18next";
-import foundersVideoDesktop from "../assets/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
-import foundersVideoMobile from "../assets/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
+import genesisVideoDesktop from "../assets/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
+import genesisVideoMobile from "../assets/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
 
-const FoundersNftHeroSection = lazy(() => import("../components/app/sale/FoundersNftHeroSection"));
+const GenesisNftHeroSection = lazy(() => import("../components/app/sale/GenesisNftHeroSection"));
 const KeyBenefitsSection = lazy(() => import("../components/app/sale/KeyBenefitsSection"));
 // const SaleHeroSection = lazy(() => import("../components/app/sale/SaleHeroSection"));
 // const NFTSaleSection = lazy(() => import("../components/app/sale/NFTSaleSection"));
 // const TiersComparisonSection = lazy(() => import("../components/app/sale/TiersComparisonSection"));
 // const ButtonShowcaseSection = lazy(() => import("../components/app/home/ButtonShowcaseSection"));
 
-const FoundersNftPage = () => {
+const GenesisNftPage = () => {
   const { t } = useTranslation("common");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -26,7 +26,7 @@ const FoundersNftPage = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const videoSrc = isMobile ? foundersVideoMobile : foundersVideoDesktop;
+  const videoSrc = isMobile ? genesisVideoMobile : genesisVideoDesktop;
 
   return (
     <PageLayout className="relative">
@@ -62,7 +62,7 @@ const FoundersNftPage = () => {
       <div className="relative z-10">
         <ErrorBoundary fallback={<div>Error loading content</div>}>
           <Suspense fallback={<div>{t("info.loading")}</div>}>
-            <FoundersNftHeroSection />
+            <GenesisNftHeroSection />
             <KeyBenefitsSection />
             {/* <SaleHeroSection />
             <NFTSaleSection />
@@ -75,4 +75,4 @@ const FoundersNftPage = () => {
   );
 };
 
-export default FoundersNftPage;
+export default GenesisNftPage;

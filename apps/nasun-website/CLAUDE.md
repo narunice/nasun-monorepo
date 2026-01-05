@@ -259,7 +259,7 @@ pnpm cdk deploy CdkStack --require-approval never
 
 ---
 
-**문제**: `/founders-nft` 페이지에서 암호화폐 가격 정보가 표시되지 않음 (502 Bad Gateway)
+**문제**: `/genesis-nft` 페이지에서 암호화폐 가격 정보가 표시되지 않음 (502 Bad Gateway)
 
 **증상**:
 - 브라우저 콘솔: `GET /proxy-backup-api/BackupPrices 502 (Bad Gateway)`
