@@ -1,6 +1,6 @@
 // src/utils/nftUtils.ts
-import { NFTTiers, NFTTierDisplayNames } from "../types/foundersNFTs.d";
-import { NFT_COLLECTION } from "../constants/pageContent/foundersNFTTiers";
+import { NFTTiers, NFTTierDisplayNames } from "../types/genesisNFTs.d";
+import { NFT_COLLECTION } from "../constants/pageContent/genesisNFTTiers";
 
 // 기존 함수 대체 (더 이상 숫자 추출 로직이 필요 없음)
 export const getTierDisplayName = (tier: NFTTiers): string => {

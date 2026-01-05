@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNetworkVariable } from "../../../../config/suiNetworkConfig";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { BaseNFTMintedModal } from "./BaseNFTMintedModal";
-import { NFTMintedEvent } from "../../../../types/foundersNFTs.d";
+import { NFTMintedEvent } from "../../../../types/genesisNFTs.d";
 import { useSuiNFTMintedEvents } from "../../../../hooks/NFTMintedEvents/useSuiNFTMintedEvents";
 
 interface SuiNFTMintedModalProps {
@@ -23,7 +23,7 @@ export const SuiNFTMintedModal = ({ networkName }: SuiNFTMintedModalProps) => {
 
   // 1) 전역 핸들러 등록: mint 훅에서 호출되는 openEmptyModal(txId)
   useEffect(() => {
-    window.__FOUNDERS_NFT_MODAL_SUI = {
+    window.__GENESIS_NFT_MODAL_SUI = {
       openEmptyModal: (txId: string) => {
         setCurrentTxId(txId);
         setOpen(true);
@@ -34,7 +34,7 @@ export const SuiNFTMintedModal = ({ networkName }: SuiNFTMintedModalProps) => {
       },
     };
     return () => {
-      window.__FOUNDERS_NFT_MODAL_SUI = undefined;
+      window.__GENESIS_NFT_MODAL_SUI = undefined;
     };
   }, []);
 

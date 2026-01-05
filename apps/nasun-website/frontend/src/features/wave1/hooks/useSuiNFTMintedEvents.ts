@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { SuiClient } from "@mysten/sui/client";
-import { NFTMintedEvent, NFTTierDisplayNames } from "../../types/foundersNFTs.d";
+import { NFTMintedEvent, NFTTierDisplayNames } from "../../types/genesisNFTs.d";
 
 export const useSuiNFTMintedEvents = (packageId: string, client: SuiClient, txId?: string) => {
   const [events, setEvents] = useState<NFTMintedEvent[]>([]);

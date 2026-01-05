@@ -232,10 +232,10 @@
     "rewards": {
       "topPercentageShare": "Top Percentage Share of Total Pre-Allocated Launch Marketing Budget (TBA)",
       "percentageShare": "Percentage Share of the Total Pre-Allocated Launch Marketing Budget (TBA)",
-      "freeMint": "1 Free Mint of the Nasun Founders Membership NFT",
-      "discountedMint": "1 Discounted Mint of the Nasun Founders Membership NFT",
+      "freeMint": "1 Free Mint of the Nasun Genesis Membership NFT",
+      "discountedMint": "1 Discounted Mint of the Nasun Genesis Membership NFT",
       "battalionNft": "Wave 1 Battalion NFT",
-      "allowlistAccess": "Allowlist Access for 4 additional Founders Membership NFT mints / GTD",
+      "allowlistAccess": "Allowlist Access for 4 additional Genesis Membership NFT mints / GTD",
       "randomDrawings": "Eligible for Random Drawings",
       "beyondRewards": "Additional participation rewards and community perks will be announced soon."
     },

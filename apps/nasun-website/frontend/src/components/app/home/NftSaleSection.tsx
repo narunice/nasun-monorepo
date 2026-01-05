@@ -8,9 +8,9 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 
 /**
- * NftSaleSection 컴포넌트 (Founders NFT - Space Canyons)
+ * NftSaleSection 컴포넌트 (Genesis NFT - Space Canyons)
  *
- * 우주 협곡 배경 비디오와 Founders NFT 정보를 표시하는 섹션입니다.
+ * 우주 협곡 배경 비디오와 Genesis NFT 정보를 표시하는 섹션입니다.
  * 데스크탑/모바일 반응형 동영상 지원
  */
 function NftSaleSection() {
@@ -98,7 +98,7 @@ function NftSaleSection() {
       <div className="max-w-8xl mx-auto relative z-10 px-4 lg:px-8 flex lg:justify-end">
         {/* 모바일: 타이틀 상단, 카드 하단 (justify-between), 데스크톱: 우측 배치 */}
         <div className="min-h-screen flex flex-col w-full lg:w-fit lg:justify-center items-center mt-80 md:mt-64 lg:mt-[25%] pb-8 lg:pt-14 lg:pb-0 px-14 gap-4">
-          {/* FOUNDERS NFT 타이틀 - 가운데 정렬 */}
+          {/* GENESIS NFT 타이틀 - 가운데 정렬 */}
           <SectionTitle
             as="h3"
             className="font-medium  !font-eurostile !text-nasun-white text-center"
@@ -114,7 +114,7 @@ function NftSaleSection() {
               variant="default"
               className="font-normal !font-founders tracking-wide "
             >
-              <Link to="/founders-nft">{t("nftSale.moreInfo")}</Link>
+              <Link to="/genesis-nft">{t("nftSale.moreInfo")}</Link>
             </Button>
           </div>
         </div>

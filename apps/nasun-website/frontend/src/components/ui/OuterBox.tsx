@@ -13,7 +13,7 @@ import React, { ReactNode } from "react";
  * - OpportunitiesSection (외부 박스)
  * - TeamCard (외부 박스)
  * - NFT Event Step1 (외부 박스)
- * - FoundersNftHeroSection
+ * - GenesisNftHeroSection
  *
  * @param variant - 색상 프리셋 (default, c1~c6, scarlet)
  */

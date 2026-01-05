@@ -5,7 +5,7 @@ import { DividerBox } from "../../ui/DividerBox";
 import { OuterBox } from "../../ui/OuterBox";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 
-function FoundersNftHeroSection() {
+function GenesisNftHeroSection() {
   const { t } = useTranslation("sale");
 
   return (
@@ -47,7 +47,7 @@ function FoundersNftHeroSection() {
               color="c3"
               title={t("foundersHero.visionTitle")}
               className="font-semibold"
-              titleClassName="text-nasun-c3 
+              titleClassName="text-nasun-c3
                "
             >
               <p className="text-nasun-white/85 mb-4 ">{t("foundersHero.visionDescription1")}</p>
@@ -60,4 +60,4 @@ function FoundersNftHeroSection() {
   );
 }
 
-export default React.memo(FoundersNftHeroSection);
+export default React.memo(GenesisNftHeroSection);

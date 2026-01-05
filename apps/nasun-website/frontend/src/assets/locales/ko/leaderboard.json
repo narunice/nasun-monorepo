@@ -232,10 +232,10 @@
     "rewards": {
       "topPercentageShare": "런칭 마케팅 예산의 상위 비율 배분 (추후 공개)",
       "percentageShare": "런칭 마케팅 예산의 일정 비율 배분 (추후 공개)",
-      "freeMint": "나선 파운더스 멤버십 NFT 무료 민팅 1회",
-      "discountedMint": "나선 파운더스 멤버십 NFT 할인 민팅 1회",
+      "freeMint": "나선 제너시스 멤버십 NFT 무료 민팅 1회",
+      "discountedMint": "나선 제너시스 멤버십 NFT 할인 민팅 1회",
       "battalionNft": "Wave 1 Battalion NFT",
-      "allowlistAccess": "파운더스 멤버십 NFT 추가 민팅 4회 허용 목록 / 보장",
+      "allowlistAccess": "제너시스 멤버십 NFT 추가 민팅 4회 허용 목록 / 보장",
       "randomDrawings": "랜덤 추첨 참여 자격",
       "beyondRewards": "추가 참여 보상 및 커뮤니티 혜택은 곧 공개됩니다."
     },

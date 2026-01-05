@@ -32,7 +32,7 @@ Successfully implemented Ethereum NFT display functionality in the MY ASSETS sec
 - ✅ **Dual API Support**: Alchemy (primary) + Etherscan (fallback) with automatic failover
 - ✅ **Network Auto-Detection**: Sepolia (dev) ↔ Mainnet (prod) via `VITE_NETWORK`
 - ✅ **NFT-Only Display**: Excludes ETH balance, focuses on NFT assets
-- ✅ **Environment-based Filtering**: Optional contract address filtering for future NASUN Founders NFT collection
+- ✅ **Environment-based Filtering**: Optional contract address filtering for future NASUN Genesis NFT collection
 - ✅ **Consistent UI**: Integrated seamlessly with existing Sui/IOTA sections
 - ✅ **React Query Caching**: 5-minute stale time, 30-minute cache time
 - ✅ **Bilingual Support**: Complete English/Korean translations
@@ -57,7 +57,7 @@ Successfully implemented Ethereum NFT display functionality in the MY ASSETS sec
 ### Detailed Requirements
 
 1. **NFT Data Only**: No ETH balance display
-2. **Future NASUN NFT Drop**: Prepare for NASUN Founders NFT collection on OpenSea
+2. **Future NASUN NFT Drop**: Prepare for NASUN Genesis NFT collection on OpenSea
 3. **API Strategy**: Alchemy (primary) + Etherscan (fallback) to maximize free tier
 4. **Network Support**: Auto-switch between Sepolia (dev) and Mainnet (prod)
 5. **Filtering**: Show all NFTs initially, with environment variable filtering capability
@@ -925,9 +925,9 @@ npm run build
 # - Check API call success rates
 ```
 
-### Phase 12: NASUN Founders NFT Filtering (Future)
+### Phase 12: NASUN Genesis NFT Filtering (Future)
 
-**When NASUN Founders NFT is deployed on OpenSea:**
+**When NASUN Genesis NFT is deployed on OpenSea:**
 
 1. Obtain contract address (e.g., `0x1234...`)
 2. Update environment variables:

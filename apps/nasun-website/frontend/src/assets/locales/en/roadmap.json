@@ -3,7 +3,7 @@
   "intro": {
     "heading": "Building the Future, Block by Block",
     "subheading": "The Nasun Journey",
-    "description": "Nasun is building a permissionless network where creators own their work and communities shape the stories they love. Our roadmap unfolds in two parallel tracks: Web3 infrastructure and entertainment IP."
+    "description": "Nasun is building a permissionless network where creators own their work and communities shape the stories they love. Our roadmap unfolds in three parallel tracks: Protocol & Infrastructure, Products, and Community & Marketing."
   },
   "metrics": {
     "awards": "Awards & Grants",
@@ -12,13 +12,13 @@
   },
   "tracks": {
     "web3": {
-      "title": "Blockchain & Infrastructure"
+      "title": "PROTOCOL & INFRASTRUCTURE"
     },
     "content": {
-      "title": "Entertainment & IP"
+      "title": "PRODUCTS"
     },
     "finance": {
-      "title": "DeFi & Finance"
+      "title": "COMMUNITY & MARKETING"
     }
   },
   "status": {
@@ -47,101 +47,74 @@
       "description": "Foundation Year",
       "web3": [
         {
-          "id": "founders-sale",
-          "title": "Founder's NFT Sale",
+          "id": "devnet-alpha",
+          "title": "Devnet Alpha",
           "status": "completed",
-          "description": "Limited edition NFT collection for early supporters"
+          "description": "Nasun L1 internal testing"
         },
         {
-          "id": "devnet",
-          "title": "Devnet Launch",
+          "id": "wallet-alpha",
+          "title": "Wallet Alpha",
           "status": "completed",
-          "description": "NASUN L1 devnet with 2 validator nodes"
+          "description": "Sign-in and faucet"
         },
         {
-          "id": "staking",
-          "title": "Staking Launch",
-          "status": "in-progress",
-          "progress": 60,
-          "description": "Earn rewards by staking your NFTs"
+          "id": "explorer-alpha",
+          "title": "Explorer Alpha",
+          "status": "completed",
+          "description": "Search & map object data"
         },
         {
-          "id": "early-contributors",
-          "title": "Early Contributors Program",
-          "status": "in-progress",
-          "progress": 40,
-          "description": "Rewarding community builders and contributors"
-        },
-        {
-          "id": "governance-staking",
+          "id": "gov-staking-logic",
           "title": "Governance Staking Logic",
           "status": "in-progress",
-          "progress": 30,
           "description": "Building the foundation for decentralized governance"
         },
         {
-          "id": "dao-voting",
-          "title": "DAO Voting Structure",
+          "id": "dao-voting-alpha",
+          "title": "DAO Voting Alpha",
           "status": "in-progress",
-          "progress": 25,
-          "description": "Designing community-driven decision making"
+          "description": "Community-driven consensus internal testing"
         }
       ],
       "content": [
         {
-          "id": "spectra-ffa",
-          "title": "SPECTRA FFA Mode",
+          "id": "spectra-alpha",
+          "title": "Gen Sol: SPECTRA Alpha",
           "status": "completed",
-          "description": "Free-for-All combat mode playable"
+          "description": "Free-for-all combat mode playable"
         },
         {
           "id": "gamelift-servers",
-          "title": "AWS GameLift Servers",
+          "title": "Gen Sol: AWS Gamelift Servers",
           "status": "completed",
           "description": "Cloud gaming infrastructure deployed"
         },
         {
-          "id": "nft-smart-contract",
-          "title": "NFT Smart Contract",
-          "status": "completed",
-          "description": "In-game NFT minting system"
-        },
-        {
-          "id": "team-mission",
-          "title": "Team Mission Mode",
+          "id": "pado-alpha",
+          "title": "Pado Alpha",
           "status": "in-progress",
-          "progress": 30,
-          "description": "Cooperative gameplay development"
-        },
-        {
-          "id": "competitive-systems",
-          "title": "Competitive Systems Groundwork",
-          "status": "in-progress",
-          "progress": 20,
-          "description": "Building ranked and tournament systems"
-        },
-        {
-          "id": "animation-previz",
-          "title": "Animated Series Pre-Viz",
-          "status": "in-progress",
-          "progress": 40,
-          "description": "Pre-visualization for Gen Sol animated series"
+          "description": "Spot trading"
         }
       ],
       "finance": [
         {
-          "id": "pado-initiative",
-          "title": "The Pado Initiative",
+          "id": "infofi-alpha",
+          "title": "InfoFi Alpha",
           "status": "in-progress",
-          "progress": 50,
-          "description": "DeFi layer design and architecture"
+          "description": "Proprietary leaderboard launch"
         },
         {
-          "id": "walden-design",
-          "title": "Walden DEX Design",
-          "status": "in-progress",
-          "progress": 30,
-          "description": "Spot and perpetual trading engine design"
+          "id": "nasun-staging",
+          "title": "Nasun Website Staging",
+          "status": "completed",
+          "description": "Web3 integration"
+        },
+        {
+          "id": "gensol-staging",
+          "title": "Gen Sol Website Staging",
+          "status": "completed",
+          "description": "Web3 integration"
         }
       ]
     },
@@ -149,86 +122,218 @@
       "description": "Expansion Year",
       "web3": [
         {
-          "id": "testnet",
+          "id": "devnet-mvp",
+          "title": "Devnet MVP",
+          "status": "upcoming",
+          "description": "Nasun L1 devnet with 2 validator nodes"
+        },
+        {
+          "id": "wallet-mvp",
+          "title": "Wallet MVP",
+          "status": "upcoming",
+          "description": "Governance, Pado, and Web2 integration"
+        },
+        {
+          "id": "explorer-mvp",
+          "title": "Explorer MVP",
+          "status": "upcoming",
+          "description": "Advanced search"
+        },
+        {
+          "id": "val-staking",
+          "title": "Validator Staking & Delegation",
+          "status": "upcoming",
+          "description": "Enable DPOS and delegation"
+        },
+        {
+          "id": "testnet-launch",
           "title": "Nasun Testnet Launch",
           "status": "upcoming",
-          "description": "Public testnet for developers and early adopters"
+          "description": "Incentivized testnet & bounty program"
         },
         {
-          "id": "governance-mvp",
-          "title": "Governance MVP",
+          "id": "infra-partners",
+          "title": "Onboard Infrastructure Partners",
           "status": "upcoming",
-          "description": "Minimum viable governance system launch"
+          "description": "Oracles, Interoperability, Indexing, Node infra, Custody"
         },
         {
-          "id": "nft-migration",
-          "title": "Migrate Founder's NFTs / Start Staking",
+          "id": "compute-pilot",
+          "title": "Compute Pilot",
           "status": "upcoming",
-          "description": "Seamless migration and staking activation"
+          "description": "Onboard DePIN & DRN partners"
         },
         {
-          "id": "grants",
-          "title": "Grants / Onboarding Programs",
+          "id": "stablecoin-rails",
+          "title": "Stablecoin Rails",
           "status": "upcoming",
-          "description": "Supporting builders and creators on Nasun"
+          "description": "Mint/burn engines, compliance hooks, gas abstractions"
         },
         {
-          "id": "defi",
-          "title": "DeFi Platforms, Stablecoins, On/Off Ramps",
+          "id": "rwa-tokenization",
+          "title": "RWA Tokenization",
           "status": "upcoming",
-          "description": "Expanding the financial ecosystem"
+          "description": "Oracle integration, identity layer, zk-KYC"
         }
       ],
       "content": [
         {
-          "id": "spectra-prototype",
-          "title": "SPECTRA Prototype Testing",
+          "id": "pado-mvp",
+          "title": "Pado MVP",
           "status": "upcoming",
-          "description": "Community playtesting and feedback collection"
+          "description": "DEX, Prediction markets, Lending, Transactions & Payments"
         },
         {
-          "id": "animation-trailer",
-          "title": "Animation Series Pre-Viz Trailer",
+          "id": "gensol-partnerships",
+          "title": "Gen Sol: Partnerships",
           "status": "upcoming",
-          "description": "First look at the animated series"
+          "description": "Producers, Prodcos, & Talent Agencies"
         },
         {
-          "id": "distribution-model",
-          "title": "Secure Distribution Model",
+          "id": "spectra-team",
+          "title": "Gen Sol: SPECTRA",
           "status": "upcoming",
-          "description": "Establishing secure content distribution channels"
+          "description": "Team mission mode"
         },
         {
-          "id": "movie-dev",
-          "title": "Movie Development",
+          "id": "pado-unified",
+          "title": "Pado MVP",
           "status": "upcoming",
-          "description": "Feature film in development"
+          "description": "Unified accounts & zK login"
         },
         {
-          "id": "merch",
-          "title": "Merchandising",
+          "id": "spectra-heist-previz",
+          "title": "Gen Sol: Spectra Heist",
           "status": "upcoming",
-          "description": "Physical and digital merchandise"
+          "description": "Pre-visualization for animated series & script development"
+        },
+        {
+          "id": "spectra-web3",
+          "title": "Gen Sol: SPECTRA",
+          "status": "upcoming",
+          "description": "Ranked & tournament systems and Web3 Integration"
+        },
+        {
+          "id": "stablecoin-strategy",
+          "title": "Stablecoin Strategy",
+          "status": "upcoming",
+          "description": "Native issuance partnerships & liquidity bootstrapping"
+        },
+        {
+          "id": "rwa-strategy",
+          "title": "RWA Strategy",
+          "status": "upcoming",
+          "description": "Asset onboarding partners & secondary markets"
+        },
+        {
+          "id": "pado-beta",
+          "title": "Pado Open Beta",
+          "status": "upcoming",
+          "description": "Incentivized community launch"
+        },
+        {
+          "id": "liquidity-program",
+          "title": "Liquidity Program",
+          "status": "upcoming",
+          "description": "Onboarding strategic liquidity partners"
+        },
+        {
+          "id": "spectra-mvp",
+          "title": "Gen Sol: SPECTRA MVP",
+          "status": "upcoming",
+          "description": "Incentivized community playtesting and feedback collection"
+        },
+        {
+          "id": "spectra-heist-trailer",
+          "title": "Gen Sol: Spectra Heist",
+          "status": "upcoming",
+          "description": "Animation series pre-viz trailer"
+        },
+        {
+          "id": "the-heir-dev",
+          "title": "Gen Sol: The Heir",
+          "status": "upcoming",
+          "description": "Live-action series development"
         }
       ],
       "finance": [
         {
-          "id": "walden-testnet",
-          "title": "Walden Testnet",
+          "id": "nasun-launch",
+          "title": "Nasun Launch",
           "status": "upcoming",
-          "description": "DEX testnet launch"
+          "description": "Official announcement on X"
         },
         {
-          "id": "predictions-beta",
-          "title": "Predictions Market Beta",
+          "id": "nasun-web-launch",
+          "title": "Nasun Website Launch",
           "status": "upcoming",
-          "description": "Predictions market beta testing"
+          "description": "Pado, governance & NFT dashboard"
         },
         {
-          "id": "rwa-framework",
-          "title": "RWA Framework",
+          "id": "battalion-nft",
+          "title": "Battalion NFT",
           "status": "upcoming",
-          "description": "Real-world asset tokenization framework"
+          "description": "Free mint + utility campaign"
+        },
+        {
+          "id": "infofi-preseed",
+          "title": "InfoFi Pre-Seed Launch",
+          "status": "upcoming",
+          "description": "Proprietary leaderboard"
+        },
+        {
+          "id": "early-contributors",
+          "title": "Early Contributors Campaign",
+          "status": "upcoming",
+          "description": "Onboard KOLs and creators on social platforms"
+        },
+        {
+          "id": "gensol-web-launch",
+          "title": "Gen Sol Website Launch",
+          "status": "upcoming",
+          "description": "Community onboarding"
+        },
+        {
+          "id": "founders-sale",
+          "title": "Genesis NFT Sale",
+          "status": "upcoming",
+          "description": "Limited edition NFT with utility collection"
+        },
+        {
+          "id": "nasun-foundation",
+          "title": "Nasun Foundation",
+          "status": "upcoming",
+          "description": "Establish foundation and legal framework"
+        },
+        {
+          "id": "team-advisors",
+          "title": "Team & Advisors",
+          "status": "upcoming",
+          "description": "Hire core team & establish advisory board"
+        },
+        {
+          "id": "infofi-seed",
+          "title": "InfoFi Seed Launch",
+          "status": "upcoming",
+          "description": "Social engagement rewards"
+        },
+        {
+          "id": "content-contests",
+          "title": "Content Contests",
+          "status": "upcoming",
+          "description": "Art & writing competitions"
+        },
+        {
+          "id": "pado-contests",
+          "title": "Pado Contests",
+          "status": "upcoming",
+          "description": "Incentivized testing"
+        },
+        {
+          "id": "seed-sale",
+          "title": "Seed Sale",
+          "status": "upcoming",
+          "description": "PFP community branding and growth strategy"
         }
       ]
     },
@@ -237,67 +342,139 @@
       "web3": [
         {
           "id": "mainnet-tge",
-          "title": "Mainnet & TGE",
+          "title": "Nasun Mainnet & TGE",
           "status": "upcoming",
-          "description": "Full mainnet launch and token generation event"
+          "description": "Full mainnet launch and Token generation event"
         },
         {
-          "id": "full-governance",
-          "title": "Full IP Governance",
+          "id": "core-sdks",
+          "title": "Core SDKs",
+          "status": "upcoming",
+          "description": "Tools for node operators and smart contract builders"
+        },
+        {
+          "id": "docs-portal",
+          "title": "Documentation Portal",
+          "status": "upcoming",
+          "description": "Comprehensive Quickstart guides and API references"
+        },
+        {
+          "id": "dev-hub",
+          "title": "Nasun Developer Hub",
+          "status": "upcoming",
+          "description": "Technical resources, community support, and bug reporting"
+        },
+        {
+          "id": "wallet-ga",
+          "title": "Wallet GA",
+          "status": "upcoming",
+          "description": "Publicly available, audited, and stable"
+        },
+        {
+          "id": "explorer-ga",
+          "title": "Explorer GA",
+          "status": "upcoming",
+          "description": "99.9% uptime"
+        },
+        {
+          "id": "ip-governance",
+          "title": "IP Governance",
           "status": "upcoming",
           "description": "Complete decentralized IP governance system"
         },
         {
-          "id": "exchanges",
-          "title": "Exchanges / Liquidity Campaign",
+          "id": "move-vm-custom",
+          "title": "Move VM Customization",
           "status": "upcoming",
-          "description": "CEX/DEX listings and liquidity incentives"
-        },
-        {
-          "id": "ecosystem-expansion",
-          "title": "Ecosystem Expansion",
-          "status": "upcoming",
-          "description": "Growing the Nasun network and partnerships"
+          "description": "Gaming/DeFi optimizations"
         }
       ],
       "content": [
         {
           "id": "spectra-beta",
-          "title": "SPECTRA Public Beta",
+          "title": "Gen Sol: SPECTRA Beta",
           "status": "upcoming",
           "description": "Open beta for community feedback"
         },
         {
-          "id": "spectra-launch",
-          "title": "SPECTRA Full Launch",
+          "id": "pado-ga",
+          "title": "Pado GA",
           "status": "upcoming",
-          "description": "Full game release with Web3 integration"
+          "description": "Full launch"
         },
         {
-          "id": "competitive-arena",
-          "title": "Competitive Arena Launch",
+          "id": "genesis-liquidity",
+          "title": "Genesis Liquidity Provision",
           "status": "upcoming",
-          "description": "Ranked matches and esports tournaments"
+          "description": "Deployment of institutional market maker capital"
+        },
+        {
+          "id": "gensol-distribution",
+          "title": "Gen Sol: Distribution",
+          "status": "upcoming",
+          "description": "Securing traditional and innovative distribution channels"
+        },
+        {
+          "id": "moonoak-dev",
+          "title": "Gen Sol: Moonoak",
+          "status": "upcoming",
+          "description": "Feature film development"
+        },
+        {
+          "id": "rider-studio",
+          "title": "Rider Studio Launch",
+          "status": "upcoming",
+          "description": "Governance & social media infra for production"
+        },
+        {
+          "id": "spectra-heist-prod",
+          "title": "Gen Sol: Spectra Heist",
+          "status": "upcoming",
+          "description": "Production"
+        },
+        {
+          "id": "the-heir-preprod",
+          "title": "Gen Sol: The Heir Apparent",
+          "status": "upcoming",
+          "description": "Pre-production"
+        },
+        {
+          "id": "pado-partners",
+          "title": "Pado",
+          "status": "upcoming",
+          "description": "Onboard partners"
+        },
+        {
+          "id": "gensol-tge",
+          "title": "Gen Sol TGE",
+          "status": "upcoming",
+          "description": "Token generation event"
         }
       ],
       "finance": [
         {
-          "id": "walden-mainnet",
-          "title": "Walden Mainnet",
+          "id": "infofi-tge",
+          "title": "InfoFi TGE Launch",
           "status": "upcoming",
-          "description": "DEX mainnet full launch"
+          "description": "Token generation event"
         },
         {
-          "id": "money-market",
-          "title": "Money Market Launch",
+          "id": "grants-programs",
+          "title": "Grants Programs",
           "status": "upcoming",
-          "description": "Lending and borrowing protocols"
+          "description": "Onboard projects and devs"
         },
         {
-          "id": "cross-market",
-          "title": "Cross-Market Integrations",
+          "id": "hackathons",
+          "title": "Hackathons",
           "status": "upcoming",
-          "description": "Complete ecosystem integration"
+          "description": "Seoul & Singapore events"
+        },
+        {
+          "id": "pado-onboarding",
+          "title": "Pado Onboarding",
+          "status": "upcoming",
+          "description": "Leaderboard, airdrops, points & rewards program"
         }
       ]
     }

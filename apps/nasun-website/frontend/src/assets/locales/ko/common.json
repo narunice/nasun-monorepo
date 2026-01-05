@@ -35,7 +35,7 @@
     "opportunities": "기회",
     "team": "팀",
     "founders": "창립자",
-    "foundersNft": "파운더스 NFT",
+    "genesisNft": "제너시스 NFT",
     "leaderboard": "리더보드",
     "wave1Campaign": "웨이브 1",
     "battalionNft": "배틀리온 NFT",
@@ -129,7 +129,7 @@
       },
       "success": {
         "title": "등록 완료!",
-        "description": "Founders NFT 화이트리스트에 성공적으로 등록되었습니다.",
+        "description": "Genesis NFT 화이트리스트에 성공적으로 등록되었습니다.",
         "walletAddress": "지갑 주소",
         "joinedAt": "등록 시각",
         "withdraw": "등록 취소",
@@ -137,7 +137,7 @@
       },
       "alreadyJoined": {
         "title": "이미 등록됨",
-        "description": "이 지갑 주소는 이미 Founders NFT 화이트리스트에 등록되어 있습니다.",
+        "description": "이 지갑 주소는 이미 Genesis NFT 화이트리스트에 등록되어 있습니다.",
         "walletAddress": "지갑 주소",
         "joinedAt": "등록 시각",
         "withdraw": "등록 취소",
