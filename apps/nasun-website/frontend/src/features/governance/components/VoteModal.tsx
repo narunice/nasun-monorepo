@@ -219,7 +219,9 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           )}
         </div>
 
-        <p className="mb-6 text-nasun-white/85">{proposal.description}</p>
+        {!confirmStep.show && (
+          <p className="mb-6 text-nasun-white/85">{proposal.description}</p>
+        )}
         <div className="flex flex-col gap-4">
           {/* Current Vote Counts */}
           <div className="flex justify-between text-sm text-nasun-white/70">
@@ -228,7 +230,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           </div>
 
           {/* Voting Power Display */}
-          {isConnected && !hasVoted && !isSuccess && (
+          {isConnected && !hasVoted && !isSuccess && !confirmStep.show && (
             <div className="bg-nasun-black/30 rounded-lg p-4 border border-nasun-c5/30">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-nasun-white/70">Your Voting Power</span>
