@@ -3,28 +3,28 @@
 
 [move]
 version = 3
-manifest_digest = "65153E5BA8E9244C746C49BF47EDB32EF70CBFA6456DA8C38AB2B04145D87B76"
-deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
+manifest_digest = "3000442201DE776B0FC8FBADF109375826B17DE98CC3FBF3773CF2537F17E8FB"
+deps_digest = "F8BBB0CCB2491CA29A3DF03D6F92277A4F3574266507ACD77214D37ECA3F3082"
 dependencies = [
-  { id = "Bridge", name = "Bridge" },
-  { id = "MoveStdlib", name = "MoveStdlib" },
   { id = "Sui", name = "Sui" },
-  { id = "SuiSystem", name = "SuiSystem" },
-]
-
-[[move.package]]
-id = "Bridge"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863", subdir = "crates/sui-framework/packages/bridge" }
-
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
-  { id = "SuiSystem", name = "SuiSystem" },
 ]
 
 [[move.package]]
 id = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/devnet", subdir = "crates/sui-framework/packages/move-stdlib" }
+
+[[move.package]]
+id = "Sui"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/devnet", subdir = "crates/sui-framework/packages/sui-framework" }
+
+dependencies = [
+  { id = "MoveStdlib", name = "MoveStdlib" },
+]
+
+[move.toolchain-version]
+compiler-version = "1.62.1"
+edition = "2024.beta"
+flavor = "sui"
 
 [pinned.nasun-devnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863" }
@@ -32,33 +32,11 @@ use_environment = "nasun-devnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
-[[move.package]]
-id = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863", subdir = "crates/sui-framework/packages/sui-framework" }
-
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-]
-
 [pinned.nasun-devnet.Sui]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863" }
 use_environment = "nasun-devnet"
 manifest_digest = "518E3A3B71FC55CAAD005026C6A6DE447A4F23EFEB0F0E9949A4E3CB9132D8ED"
 deps = { MoveStdlib = "MoveStdlib" }
-
-[[move.package]]
-id = "SuiSystem"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863", subdir = "crates/sui-framework/packages/sui-system" }
-
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "Sui", name = "Sui" },
-]
-
-[move.toolchain-version]
-compiler-version = "1.62.1"
-edition = "2024.beta"
-flavor = "sui"
 
 [pinned.nasun-devnet.governance]
 source = { root = true }
@@ -71,5 +49,5 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [env.devnet]
 chain-id = "4c879694"
 original-published-id = "0xcd753b00e5c298c8b8d37e74ac36732de04f1f2f3a3409d1e67d10ed3126ba1c"
-latest-published-id = "0xcd753b00e5c298c8b8d37e74ac36732de04f1f2f3a3409d1e67d10ed3126ba1c"
-published-version = "1"
+latest-published-id = "0x77153fb28cf00adb7e59a62b057d7cbfcf26dabc4bc9daad8073e5321b22c0af"
+published-version = "2"

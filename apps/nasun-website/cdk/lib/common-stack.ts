@@ -257,12 +257,13 @@ export class CommonStack extends cdk.Stack {
       },
     });
 
-    // 2-4. Governance API
+    // 2-4. Governance API (with VotingPowerCertificate + Sponsored Transaction)
     const governanceApiLambda = new lambda.Function(this, "GovernanceApiLambda", {
       functionName: "nasun-common-governance-api",
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/governance-api/dist"),
+      timeout: cdk.Duration.seconds(30),
       environment: {
         LEADERBOARD_TABLE: this.cumulativeLeaderboardTable.tableName,
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
@@ -271,6 +272,9 @@ export class CommonStack extends cdk.Stack {
         NFT_BONUS: process.env.NFT_BONUS || "2",
         LEADERBOARD_WEIGHT: process.env.LEADERBOARD_WEIGHT || "1",
         TOKEN_WEIGHT: process.env.TOKEN_WEIGHT || "0",
+        // VotingPowerCertificate + Sponsored Transaction
+        SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x77153fb28cf00adb7e59a62b057d7cbfcf26dabc4bc9daad8073e5321b22c0af",
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-governance-api",
@@ -279,6 +283,15 @@ export class CommonStack extends cdk.Stack {
     });
     this.cumulativeLeaderboardTable.grantReadData(governanceApiLambda);
     this.userProfilesTable.grantReadData(governanceApiLambda);
+
+    // Grant Secrets Manager access for Oracle/Sponsor keypairs
+    governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["secretsmanager:GetSecretValue"],
+      resources: [
+        `arn:aws:secretsmanager:${this.region}:${this.account}:secret:nasun/governance/*`,
+      ],
+    }));
 
     const governanceApi = new apigw.LambdaRestApi(this, "GovernanceApi", {
       handler: governanceApiLambda,
