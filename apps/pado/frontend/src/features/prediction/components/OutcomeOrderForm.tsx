@@ -229,7 +229,19 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             </p>
           )}
 
-          <div className="flex justify-between items-center mt-2">
+            {/* Coming Soon notice for Pado Balance */}
+          {fundingSource === 'margin' && hasMarginAccount && (
+            <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <p className="text-xs text-blue-400">
+                🚀 Pado Balance funding coming in v0.5!
+              </p>
+              <p className="text-xs text-theme-text-muted mt-1">
+                Wallet will be used for this transaction.
+              </p>
+            </div>
+          )}
+
+        <div className="flex justify-between items-center mt-2">
             <div>
               <span className="text-xs text-theme-text-muted">
                 {fundingSource === 'wallet' ? 'Wallet Balance' : 'Pado Balance'}
