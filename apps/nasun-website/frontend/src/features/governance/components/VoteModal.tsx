@@ -27,6 +27,10 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
   const [isPending, setIsPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [confirmStep, setConfirmStep] = useState<{
+    show: boolean;
+    voteYes: boolean | null;
+  }>({ show: false, voteYes: null });
 
   // Voting Power state
   const {
@@ -40,6 +44,39 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
   // Check if MetaMask is available
   const hasMetaMask = typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
+
+  // Parse vote transaction errors into user-friendly messages
+  function parseVoteError(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+
+    // Gas/balance issues
+    if (message.includes("No valid gas coins")) {
+      return "Not enough NASUN for transaction fee. Please get some tokens from the faucet first.";
+    }
+    if (message.includes("InsufficientGas") || message.includes("insufficient gas")) {
+      return "Insufficient gas. The transaction requires more NASUN.";
+    }
+
+    // Move Abort codes
+    if (message.includes("MoveAbort")) {
+      if (message.includes(", 0)")) return "You have already voted on this proposal.";
+      if (message.includes(", 2)")) return "This proposal has expired.";
+      if (message.includes(", 3)")) return "Invalid voting power.";
+    }
+
+    // Network errors
+    if (message.includes("network") || message.includes("fetch") || message.includes("timeout")) {
+      return "Network error. Please check your connection and try again.";
+    }
+
+    // User cancelled
+    if (message.includes("rejected") || message.includes("cancelled") || message.includes("canceled")) {
+      return "Transaction was cancelled.";
+    }
+
+    // Fallback - show truncated message
+    return `Vote failed: ${message.slice(0, 100)}`;
+  }
 
   // Calculate total voting power
   const baseVotingPower = votingPower?.totalVotingPower || 1;
@@ -156,19 +193,11 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
       onVote(voteYes);
     } catch (error: unknown) {
       console.error("Vote transaction failed:", error);
-      // Parse error message
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MoveAbort") && errorMessage.includes(", 0)")) {
-        dismissToast("You have already voted on this proposal");
-      } else if (errorMessage.includes("MoveAbort") && errorMessage.includes(", 2)")) {
-        dismissToast("This proposal has expired");
-      } else if (errorMessage.includes("MoveAbort") && errorMessage.includes(", 3)")) {
-        dismissToast("Invalid voting power");
-      } else {
-        dismissToast(t("vote.error"));
-      }
+      const friendlyMessage = parseVoteError(error);
+      dismissToast(friendlyMessage);
     } finally {
       setIsPending(false);
+      setConfirmStep({ show: false, voteYes: null });
     }
   };
 
@@ -262,35 +291,98 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
             </div>
           )}
 
-          {/* Vote Buttons */}
-          <div className="flex justify-between gap-4">
-            {isConnected ? (
-              <>
+          {/* Confirmation Step */}
+          {confirmStep.show && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <h4 className="font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Confirm Your Vote
+              </h4>
+              <ul className="text-sm text-nasun-white/80 space-y-2 mb-4">
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-400">•</span>
+                  <span>This vote <strong>cannot be undone</strong></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-400">•</span>
+                  <span>Signing confirms your vote — <strong>no tokens will be transferred</strong></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-400">•</span>
+                  <span>
+                    Vote direction:{" "}
+                    <strong className={confirmStep.voteYes ? "text-green-400" : "text-red-400"}>
+                      {confirmStep.voteYes ? "YES" : "NO"}
+                    </strong>
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-400">•</span>
+                  <span>
+                    Voting power: <strong className="text-nasun-c3">{totalVotingPower}</strong>
+                  </span>
+                </li>
+              </ul>
+              <div className="flex gap-3">
                 <Button
-                  variant="green"
-                  size="lg"
-                  disabled={votingDisable}
-                  onClick={() => vote(true)}
+                  variant="c5"
+                  size="md"
+                  onClick={() => setConfirmStep({ show: false, voteYes: null })}
                   className="flex-1"
+                  disabled={isPending}
                 >
-                  {t("vote.vote_yes")}
+                  Cancel
                 </Button>
                 <Button
-                  variant="destructive"
-                  size="lg"
-                  disabled={votingDisable}
-                  onClick={() => vote(false)}
+                  variant={confirmStep.voteYes ? "green" : "destructive"}
+                  size="md"
+                  onClick={() => vote(confirmStep.voteYes!)}
                   className="flex-1"
+                  disabled={isPending}
                 >
-                  {t("vote.vote_no")}
+                  {isPending ? "Voting..." : "Confirm Vote"}
                 </Button>
-              </>
-            ) : (
-              <div className="w-full flex justify-center">
-                <WalletConnect dropdownPosition="top" />
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Vote Buttons */}
+          {!confirmStep.show && (
+            <div className="flex justify-between gap-4">
+              {isConnected ? (
+                <>
+                  <Button
+                    variant="green"
+                    size="lg"
+                    disabled={votingDisable}
+                    onClick={() => setConfirmStep({ show: true, voteYes: true })}
+                    className="flex-1"
+                  >
+                    {t("vote.vote_yes")}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="lg"
+                    disabled={votingDisable}
+                    onClick={() => setConfirmStep({ show: true, voteYes: false })}
+                    className="flex-1"
+                  >
+                    {t("vote.vote_no")}
+                  </Button>
+                </>
+              ) : (
+                <div className="w-full flex justify-center">
+                  <WalletConnect dropdownPosition="top" />
+                </div>
+              )}
+            </div>
+          )}
           <Button variant="c5" size="lg" onClick={onClose} className="w-full">
             {t("vote.close")}
           </Button>
