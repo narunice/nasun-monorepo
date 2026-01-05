@@ -456,4 +456,242 @@ v1 (Mainnet) 전에 필수:
 
 ---
 
+# Part 3: UX Review (PM 관점)
+
+## 1. "사용자가 머릿속으로 이해할 수 있는가?"
+
+### 현재 구현된 개념 구조
+
+```
+사용자의 머릿속 예상:
+"내 지갑에 돈이 있으면 거래할 수 있다"
+
+실제 Pado 구조:
+┌─────────────────────────────────────────────────────────────┐
+│  Wallet (지갑)                                               │
+│  └── NUSDC: 1,000 ← 직접 사용 가능 (Trade, Predict)          │
+│                                                              │
+│  Unified Margin (별도 계정)                                   │
+│  └── NUSDC: 500 ← Deposit 해야 생김, 아직 미사용            │
+└─────────────────────────────────────────────────────────────┘
+
+Gap: 사용자는 "왜 두 군데에 돈이 있지?"라고 느낌
+```
+
+### 이해도 평가
+
+| 개념 | 이해 가능성 | 문제점 |
+|------|-------------|--------|
+| "Unified Margin" | 🟡 낮음 | "Margin"은 레버리지/담보를 연상. "통합"의 의미 불분명 |
+| "Create Account" | 🟡 중간 | 지갑 계정 vs Margin 계정 혼동 |
+| "Deposit/Withdraw" | 🟢 높음 | 익숙한 용어 |
+| "Wallet vs Margin" 선택 | 🔴 낮음 | 둘 다 내 돈인데 왜 선택? |
+
+---
+
+## 2. 사용자가 헷갈릴 가능성이 높은 포인트
+
+### 2.1 용어 혼란
+
+| 현재 용어 | 사용자 예상 | 실제 의미 | 권장 변경 |
+|-----------|-------------|-----------|-----------|
+| **"Unified Margin"** | 레버리지 거래? | 통합 자금 풀 | **"Trading Balance"** 또는 **"Pado Balance"** |
+| **"Create Account"** | 새 지갑 만들기? | Margin 계정 활성화 | **"Activate Trading"** 또는 **"Enable"** |
+| **"Deposit"** | 외부에서 입금 | 내 지갑 → Margin 이동 | **"Move to Trading"** 또는 **"Fund"** |
+| **"Wallet Balance"** | 전체 잔액 | 지갑에 남은 잔액 | **"Direct Balance"** |
+
+### 2.2 화면 혼란
+
+| 화면 | 혼란 요소 | 사용자 반응 |
+|------|-----------|-------------|
+| **Wallet 페이지 상단 MarginAccountCard** | 갑자기 "Create Account" 버튼 등장 | "지갑은 이미 만들었는데?" |
+| **Predict 페이지 Funding Source** | Wallet/Margin 토글 | "둘 다 내 돈인데 왜 고르지?" |
+| **Margin 잠금 아이콘 (🔒)** | 왜 잠겨있는지 설명 없음 | "뭘 해야 열리지?" |
+
+### 2.3 상태 혼란
+
+```
+시나리오: 사용자가 Predict 페이지 방문
+
+현재 상태 표시:
+┌────────────────────────┐
+│ Wallet: 1,000 NUSDC    │  ← "이건 사용 가능"
+│ Margin: 🔒             │  ← "이건 뭐지? 왜 잠김?"
+└────────────────────────┘
+
+사용자 혼란:
+- "내 돈이 1,000인데 왜 Margin은 0이지?"
+- "🔒가 뭘 의미하지?"
+- "어디서 풀지?"
+```
+
+---
+
+## 3. 실수로 손해 볼 수 있는 UX 포인트
+
+### 🔴 Critical Risk
+
+| 시나리오 | 손해 | 현재 대응 | 권장 대응 |
+|----------|------|-----------|-----------|
+| **MAX로 전액 Deposit** | 가스비 부족으로 다른 거래 불가 | ❌ 없음 | "Keep 0.1 NASUN for gas" 경고 |
+| **Margin 선택 후 주문 → 실제론 Wallet 사용** | 예상과 다른 잔액 차감 | ❌ fundingSource 미사용 | fundingSource 실제 적용 |
+| **Withdraw 중 네트워크 오류** | 자금 상태 불명확 | ❌ 없음 | Pending 상태 표시 + 재시도 안내 |
+
+### 🟡 Medium Risk
+
+| 시나리오 | 손해 | 현재 대응 |
+|----------|------|-----------|
+| 중복 Margin 계정 생성 | 자금 분산, 혼란 | ❌ 없음 |
+| Margin에 자금 넣고 Wallet으로 거래 시도 | 잔액 부족 에러 | 일반 에러 메시지 |
+| 거래 성공 후 잔액 미갱신 | 잔액 혼란 | 1.5초 대기 후 refetch |
+
+---
+
+## 4. v0에서 반드시 있어야 할 UX 피드백
+
+### 4.1 필수 Warning (즉시 추가)
+
+```
+1. MAX Deposit 시:
+   ⚠️ "Depositing all NUSDC. Keep at least 0.1 NASUN for transaction fees."
+   [Keep 0.1 NASUN] [Deposit All Anyway]
+
+2. Margin 잠금 상태:
+   🔒 "Create a Margin Account to use funds across all Pado features"
+   [Go to Wallet → Create Account]
+
+3. Withdraw 시 잔액 부족:
+   ⚠️ "Cannot withdraw more than available balance: {balance} NUSDC"
+```
+
+### 4.2 필수 Hint (즉시 추가)
+
+```
+1. Margin Account 생성 화면:
+   ℹ️ "Unified Margin lets you use one balance for Trading, Predictions, and more.
+       Think of it as your 'trading wallet' within Pado."
+
+2. Funding Source 선택:
+   ℹ️ "Wallet: Use tokens directly from your wallet
+       Margin: Use your Pado trading balance (faster, lower fees)"
+
+3. 첫 Deposit 시:
+   ℹ️ "Moving NUSDC to your Margin Account. You can withdraw anytime."
+```
+
+### 4.3 필수 State 표시
+
+| 상태 | 현재 | 권장 |
+|------|------|------|
+| 트랜잭션 진행 중 | "Creating..." | "Creating account... (10s)" |
+| 성공 | 간단한 메시지 | ✅ + 요약 + 잔액 변화 |
+| 실패 | 에러 메시지만 | ❌ + 원인 + 재시도 버튼 |
+| 블록체인 동기화 | "Syncing..." | "Confirming on blockchain... (5s)" |
+
+---
+
+## 5. v1까지 미뤄도 되는 UX 개선
+
+### 🟢 v1에서 해도 됨
+
+| 개선 | 이유 |
+|------|------|
+| **잔액 변화 애니메이션** | 이해도에 영향 없음 |
+| **상세 거래 히스토리** | 기본 기능에 집중 |
+| **P&L (손익) 표시** | 복잡도 증가 |
+| **자동 가스 예약** | 고급 기능 |
+| **Margin <-> Wallet 원클릭 이동** | 편의 기능 |
+| **예상 체결 시간 표시** | 예측 어려움 |
+| **거래 알림 (Push)** | 인프라 필요 |
+
+### 🟡 v0.5에서 고려
+
+| 개선 | 이유 |
+|------|------|
+| **온보딩 플로우** | 첫 사용자 이탈 방지 |
+| **Margin 통합 사용** | 핵심 가치 구현 |
+| **에러 복구 안내** | 사용자 신뢰 |
+
+---
+
+## 6. 권장 UX 개선 우선순위
+
+### 즉시 (v0 완성 전)
+
+```
+Priority 1 - 손해 방지:
+□ MAX Deposit 가스비 경고
+□ fundingSource 실제 적용 (현재 UI만 있음)
+□ Pending 상태 명확한 표시
+
+Priority 2 - 이해도 향상:
+□ "Unified Margin" → "Trading Balance" 용어 변경
+□ 🔒 상태에 "어디서 해제" 안내 추가
+□ Margin 생성 화면에 "왜 필요한지" 한 줄 설명
+```
+
+### 단기 (v0.5)
+
+```
+□ 온보딩 튜토리얼 (첫 방문 시)
+□ Margin ↔ Wallet 통합 잔액 표시
+□ 거래 결과 상세 피드백
+```
+
+### 중기 (v1)
+
+```
+□ 상세 히스토리
+□ P&L 대시보드
+□ 알림 시스템
+```
+
+---
+
+## 7. 핵심 UX 메트릭 (추적 권장)
+
+| 메트릭 | 측정 방법 | 목표 |
+|--------|-----------|------|
+| **Margin 생성 전환율** | 버튼 노출 → 생성 완료 | > 50% |
+| **첫 Deposit 완료율** | 계정 생성 → 첫 Deposit | > 70% |
+| **Funding Source 혼란율** | Margin 선택 → Wallet 사용 시도 | < 10% |
+| **에러 후 이탈율** | 에러 발생 → 세션 종료 | < 20% |
+
+---
+
+## 8. 종합 UX 평가
+
+| 영역 | 현재 점수 | 주요 문제 |
+|------|-----------|-----------|
+| **개념 이해도** | ⭐⭐ | "Unified Margin" 용어가 직관적이지 않음 |
+| **에러 방지** | ⭐⭐ | MAX Deposit 가스비 문제, fundingSource 미적용 |
+| **피드백 명확성** | ⭐⭐⭐ | 성공/실패는 있으나 상태 전환 불명확 |
+| **회복 가능성** | ⭐⭐ | 에러 후 다음 행동 안내 부족 |
+| **학습 용이성** | ⭐⭐ | 왜 필요한지 설명 부족 |
+
+**종합: ⭐⭐ (개선 필요)**
+
+---
+
+## 최종 UX 권장사항
+
+### Devnet v0에서 반드시 수정
+
+1. **fundingSource 실제 동작** - 현재 UI만 있고 실제 Margin에서 자금 사용 안 됨
+2. **가스비 경고** - MAX Deposit 시 최소 가스비 예약 안내
+3. **용어 정리** - "Unified Margin" → "Trading Balance" 또는 "Pado Balance"
+
+### 권장 용어 변경
+
+| 현재 | 권장 |
+|------|------|
+| Unified Margin | **Trading Balance** |
+| Create Account | **Enable Trading Balance** |
+| Deposit | **Add Funds** 또는 **Transfer In** |
+| Withdraw | **Transfer Out** |
+| Wallet Balance | **Wallet** |
+| Margin Balance | **Trading Balance** |
+
+---
+
 *Last updated: 2026-01-05*
