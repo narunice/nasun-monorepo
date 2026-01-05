@@ -8,8 +8,11 @@ import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
+import { useMarginAccount } from '../../core/unified-margin';
 import type { PredictionMarket } from '../types';
 import { calculateProbability } from '../types';
+
+type FundingSource = 'wallet' | 'margin';
 
 interface OutcomeOrderFormProps {
   market: PredictionMarket;
@@ -24,23 +27,35 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const { isLoading, isFaucetLoading, placeBuyOrder, placeSellOrder, mintTokens, requestNusdc } = usePredictionTrade();
   const { data: multiBalance } = useMultiBalance();
+  const { account: marginAccount, hasAccount: hasMarginAccount } = useMarginAccount();
   const queryClient = useQueryClient();
 
   // Consider wallet connected if either local wallet is unlocked OR zkLogin is active
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
-  // NUSDC balance
+  // NUSDC balance from wallet
   const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
+
+  // NUSDC balance from margin account
+  const marginNusdcBalance = marginAccount?.nusdcBalance
+    ? Number(marginAccount.nusdcBalance) / 1e6
+    : 0;
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
+  const [fundingSource, setFundingSource] = useState<FundingSource>('wallet');
   const [amount, setAmount] = useState('');
   const [price, setPrice] = useState('');
   const [selectedPositionId, setSelectedPositionId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Get available balance based on funding source
+  const availableBalance = fundingSource === 'wallet'
+    ? parseFloat(nusdcBalance)
+    : marginNusdcBalance;
 
   // Filter positions by selected outcome type
   const filteredPositions = useMemo(() => {
@@ -179,23 +194,52 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     <div className="bg-theme-bg-secondary rounded-xl p-4">
       <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Place Order</h3>
 
-      {/* NUSDC Balance Display */}
+      {/* Funding Source Selector */}
       {isWalletConnected && (
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => setFundingSource('wallet')}
+              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                fundingSource === 'wallet'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
+              }`}
+            >
+              Wallet
+            </button>
+            <button
+              onClick={() => setFundingSource('margin')}
+              disabled={!hasMarginAccount}
+              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                fundingSource === 'margin'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
+              }`}
+              title={!hasMarginAccount ? 'Create a Margin Account in Wallet tab first' : undefined}
+            >
+              Margin {!hasMarginAccount && '🔒'}
+            </button>
+          </div>
+
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-xs text-theme-text-muted">Available NUSDC</span>
+              <span className="text-xs text-theme-text-muted">
+                {fundingSource === 'wallet' ? 'Wallet Balance' : 'Margin Balance'}
+              </span>
               <p className="text-lg font-semibold text-theme-text-primary">
-                {parseFloat(nusdcBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-normal text-theme-text-muted">NUSDC</span>
               </p>
             </div>
-            <button
-              onClick={handleNusdcFaucet}
-              disabled={isFaucetLoading}
-              className="px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
-            >
-              {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
-            </button>
+            {fundingSource === 'wallet' && (
+              <button
+                onClick={handleNusdcFaucet}
+                disabled={isFaucetLoading}
+                className="px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
+              >
+                {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
+              </button>
+            )}
           </div>
         </div>
       )}

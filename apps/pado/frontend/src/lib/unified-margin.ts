@@ -32,37 +32,44 @@ export interface MarginRegistryData {
   totalTvl: bigint;
 }
 
-// Storage key for MarginAccount ID
-const MARGIN_ACCOUNT_KEY = 'pado_margin_account';
+// Storage key prefix for MarginAccount ID (per-wallet)
+const MARGIN_ACCOUNT_KEY_PREFIX = 'pado_margin_account_';
 
 /**
- * Get stored MarginAccount ID from localStorage
+ * Get storage key for a specific wallet address
  */
-export function getStoredMarginAccountId(): string | null {
+function getMarginAccountKey(walletAddress: string): string {
+  return `${MARGIN_ACCOUNT_KEY_PREFIX}${walletAddress}`;
+}
+
+/**
+ * Get stored MarginAccount ID from localStorage for a specific wallet
+ */
+export function getStoredMarginAccountId(walletAddress: string): string | null {
   try {
-    return localStorage.getItem(MARGIN_ACCOUNT_KEY);
+    return localStorage.getItem(getMarginAccountKey(walletAddress));
   } catch {
     return null;
   }
 }
 
 /**
- * Store MarginAccount ID in localStorage
+ * Store MarginAccount ID in localStorage for a specific wallet
  */
-export function storeMarginAccountId(id: string): void {
+export function storeMarginAccountId(walletAddress: string, id: string): void {
   try {
-    localStorage.setItem(MARGIN_ACCOUNT_KEY, id);
+    localStorage.setItem(getMarginAccountKey(walletAddress), id);
   } catch {
     console.error('Failed to store margin account ID');
   }
 }
 
 /**
- * Clear stored MarginAccount ID
+ * Clear stored MarginAccount ID for a specific wallet
  */
-export function clearMarginAccountId(): void {
+export function clearMarginAccountId(walletAddress: string): void {
   try {
-    localStorage.removeItem(MARGIN_ACCOUNT_KEY);
+    localStorage.removeItem(getMarginAccountKey(walletAddress));
   } catch {
     console.error('Failed to clear margin account ID');
   }
