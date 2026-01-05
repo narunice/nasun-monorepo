@@ -19,6 +19,7 @@ import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, toBase64 } from "@mysten/bcs";
+import { bcs } from "@mysten/sui/bcs";
 
 // Configure ed25519 to use sha512
 ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
@@ -44,6 +45,10 @@ const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION 
 const CERTIFICATE_TTL_MS = 15 * 60 * 1000; // 15 minutes (Devnet), 30 min for Mainnet
 const SUI_RPC_URL = process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io";
 const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
+
+// Domain Separation (MUST match Move contract's DOMAIN_SEPARATOR)
+// Format: "NASUN_GOVERNANCE_{NETWORK}_V{version}"
+const DOMAIN_SEPARATOR = "NASUN_GOVERNANCE_DEVNET_V1";
 
 // Cached keypairs
 let oraclePrivateKey: Uint8Array | null = null;
@@ -485,18 +490,40 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         const power = calculateVotingPower(leaderboardScore, hasNft, 0);
         const votingPower = Math.max(1, power.total); // Minimum 1
 
-        // 2. Build message for signature (voter || proposalId || votingPower || expiresAt)
+        // 2. Build message for signature (MUST match Move's build_certificate_message)
+        // Message format: domain_separator (26 bytes) || voter (32 bytes BCS) || proposal_id (32 bytes BCS)
+        //                 || voting_power (8 bytes BE) || expires_at (8 bytes BE)
+        // Total: 26 + 32 + 32 + 8 + 8 = 106 bytes
         const expiresAt = Date.now() + CERTIFICATE_TTL_MS;
 
-        // voter and proposalId are Sui addresses/IDs (32 bytes each)
-        const voterBytes = Buffer.from(voter.replace("0x", ""), "hex");
-        const proposalIdBytes = Buffer.from(proposalId.replace("0x", ""), "hex");
+        // 1. Domain separator (UTF-8 bytes)
+        const domainBytes = Buffer.from(DOMAIN_SEPARATOR, "utf8");
+
+        // 2. Voter address (BCS - MUST match bcs::to_bytes(&address))
+        const voterBytes = Buffer.from(bcs.Address.serialize(voter).toBytes());
+
+        // 3. Proposal ID (BCS - MUST match bcs::to_bytes(&ID))
+        // Note: Sui ID is same as Address (32 bytes)
+        const proposalIdBytes = Buffer.from(bcs.Address.serialize(proposalId).toBytes());
+
+        // 4. Voting power (8 bytes big-endian)
         const votingPowerBytes = Buffer.alloc(8);
         votingPowerBytes.writeBigUInt64BE(BigInt(votingPower));
+
+        // 5. Expires at (8 bytes big-endian)
         const expiresAtBytes = Buffer.alloc(8);
         expiresAtBytes.writeBigUInt64BE(BigInt(expiresAt));
 
-        const message = Buffer.concat([voterBytes, proposalIdBytes, votingPowerBytes, expiresAtBytes]);
+        // Concatenate all fields
+        const message = Buffer.concat([
+          domainBytes,        // "NASUN_GOVERNANCE_DEVNET_V1" (26 bytes)
+          voterBytes,         // voter (32 bytes BCS)
+          proposalIdBytes,    // proposal_id (32 bytes BCS)
+          votingPowerBytes,   // voting_power (8 bytes)
+          expiresAtBytes,     // expires_at (8 bytes)
+        ]);
+
+        console.log("Certificate message length:", message.length, "bytes"); // Expected: 106
 
         // 3. Sign with Oracle private key (Ed25519)
         const privateKey = await getOraclePrivateKey();

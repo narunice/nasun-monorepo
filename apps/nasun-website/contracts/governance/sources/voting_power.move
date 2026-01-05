@@ -18,6 +18,14 @@ use sui::bcs;
 use sui::table::{Self, Table};
 use governance::dashboard::AdminCap;
 
+// === Domain Separation ===
+
+/// Domain separator for signature verification
+/// Format: "NASUN_GOVERNANCE_{NETWORK}_V{version}"
+/// NOTE: Domain separator is variable-length UTF-8 string.
+///       Its value is versioned and immutable per package version.
+const DOMAIN_SEPARATOR: vector<u8> = b"NASUN_GOVERNANCE_DEVNET_V1";
+
 // === Errors ===
 const EInvalidSignature: u64 = 0;
 const ECertificateExpired: u64 = 1;
@@ -293,8 +301,17 @@ public(package) fun consume_certificate(
 
 // === Helper Functions ===
 
-/// Build message for signature verification
-/// Format: voter (BCS) || proposal_id (BCS) || voting_power (8 bytes BE) || expires_at (8 bytes BE)
+/// Build message for signature verification (with domain separation)
+///
+/// Message format (canonical):
+///   domain_separator (N bytes UTF-8)
+///   || voter (32 bytes BCS)
+///   || proposal_id (32 bytes BCS)
+///   || voting_power (8 bytes BE)
+///   || expires_at (8 bytes BE)
+///
+/// Total: N + 32 + 32 + 8 + 8 = N + 80 bytes
+/// For DEVNET_V1: 26 + 80 = 106 bytes
 fun build_certificate_message(
     voter: address,
     proposal_id: ID,
@@ -302,10 +319,22 @@ fun build_certificate_message(
     expires_at: u64
 ): vector<u8> {
     let mut msg = vector::empty<u8>();
+
+    // 1. Domain separator (replay attack prevention)
+    vector::append(&mut msg, DOMAIN_SEPARATOR);
+
+    // 2. Voter address (BCS encoded - 32 bytes)
     vector::append(&mut msg, bcs::to_bytes(&voter));
+
+    // 3. Proposal ID (BCS encoded - 32 bytes)
     vector::append(&mut msg, bcs::to_bytes(&proposal_id));
+
+    // 4. Voting power (8 bytes big-endian)
     vector::append(&mut msg, u64_to_be_bytes(voting_power));
+
+    // 5. Expires at (8 bytes big-endian)
     vector::append(&mut msg, u64_to_be_bytes(expires_at));
+
     msg
 }
 
@@ -333,6 +362,11 @@ public fun oracle_is_paused(oracle: &VotingPowerOracle): bool {
 
 public fun oracle_grace_period(oracle: &VotingPowerOracle): u64 {
     oracle.rotation_grace_period
+}
+
+/// Get domain separator for external verification
+public fun domain_separator(): vector<u8> {
+    DOMAIN_SEPARATOR
 }
 
 /// Check if certificate was already issued for voter + proposal
