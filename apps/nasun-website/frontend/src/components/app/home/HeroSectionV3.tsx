@@ -80,7 +80,7 @@ const animVariants: Variants = {
     if (item?.id === "LOGO" || item?.type === "image") {
       return {
         opacity: 0,
-        scale: 1, // 크기 유지하며 투명도만 조절 (또는 즉시 삭제)
+        // scale 속성을 명시하지 않음으로써 다음 등장 시 initial scale(15)이 강제 적용되도록 함
         transition: { duration: 0 },
       };
     }

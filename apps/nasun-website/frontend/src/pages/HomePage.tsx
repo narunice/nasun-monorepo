@@ -7,7 +7,6 @@ import { useHomePageLoading } from "../contexts/PageLoadingContext";
 
 // Lazy load all sections
 const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
-const HeroSectionV2 = lazy(() => import("../components/app/home/HeroSectionV2"));
 const HeroSectionV3 = lazy(() => import("../components/app/home/HeroSectionV3"));
 const VisionSectionV2 = lazy(() => import("../components/app/home/VisionSectionV2"));
 const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV3"));
