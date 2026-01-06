@@ -80,7 +80,7 @@ const animVariants: Variants = {
     if (item?.id === "LOGO" || item?.type === "image") {
       return {
         opacity: 0,
-        // scale 속성을 명시하지 않음으로써 다음 등장 시 initial scale(15)이 강제 적용되도록 함
+        scale: 15, // 다음 등장 시의 initial 값(15)과 일치시켜 상태 보존 버그 방지
         transition: { duration: 0 },
       };
     }
@@ -238,7 +238,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                 className="flex items-center justify-center"
               >
                 {activeItem.type === "text" ? (
-                  <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-widest text-center uppercase drop-shadow-lg">
+                  <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wider text-center uppercase drop-shadow-lg">
                     {activeItem.content}
                   </h1>
                 ) : (
