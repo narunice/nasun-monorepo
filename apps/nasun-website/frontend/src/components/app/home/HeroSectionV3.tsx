@@ -63,7 +63,7 @@ const TIMELINE_RANGES: TimelineRange[] = [
       type: "image",
       content: "/NASUN_wordmark-white.png",
       enterDur: 0.26,
-      exitDur: 0.4,
+      exitDur: 0.3,
     },
   },
 ];
@@ -75,22 +75,12 @@ const animVariants: Variants = {
     opacity: 1,
     transition: { duration: item?.enterDur || 0.5, ease: "circOut" },
   }),
-  exit: (item: TimelineItem | null) => {
-    // LOGO이거나 아이템 정보가 없는 경우 줌아웃 없이 즉시 사라짐 (컷아웃)
-    if (item?.id === "LOGO" || item?.type === "image") {
-      return {
-        opacity: 0,
-        scale: 15, // 다음 등장 시의 initial 값(15)과 일치시켜 상태 보존 버그 방지
-        transition: { duration: 0 },
-      };
-    }
-    // 텍스트 타이틀인 경우에만 줌아웃하며 사라짐
-    return {
-      scale: 0,
-      opacity: 0,
-      transition: { duration: item?.exitDur || 0.5 },
-    };
-  },
+  exit: (item: TimelineItem | null) => ({
+    // 모든 아이템(텍스트 및 이미지) 동일하게 줌아웃하며 사라짐
+    scale: 0,
+    opacity: 0,
+    transition: { duration: item?.exitDur || 0.5 },
+  }),
 };
 
 function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
@@ -165,10 +155,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
             if (prev?.id === currentRange.item.id) {
               return prev;
             }
-            return {
-              ...currentRange.item,
-              renderKey: `${currentRange.item.id}-${Date.now()}`,
-            };
+            return currentRange.item;
           } else {
             // 구간에 해당하지 않으면 null (exit 애니메이션 트리거)
             return prev === null ? null : null;
@@ -226,10 +213,10 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
       {/* 텍스트/이미지 애니메이션 오버레이 */}
       {isVideoPlaying && (
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-[28vh] z-30 pointer-events-none">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {activeItem && (
               <motion.div
-                key={activeItem.renderKey || activeItem.id}
+                key={activeItem.id} // 안정적인 키를 사용하여 불필요한 DOM 파괴 방지
                 custom={activeItem}
                 variants={animVariants}
                 initial="initial"
@@ -245,6 +232,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                   <img
                     src={activeItem.content}
                     alt="NASUN"
+                    decoding="sync" // 애니메이션 시작 전 이미지 준비 강제
                     className="w-48 md:w-64 lg:w-80 object-contain drop-shadow-lg "
                   />
                 )}
@@ -257,6 +245,14 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
       {/* NASUN 로고 오버레이 (심볼) - V2와 동일한 위치 */}
       {isVideoPlaying && areImagesReady && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 md:gap-10 z-10 pt-14 -translate-y-[5vh] pointer-events-none">
+          {/* 워드마크 프리렌더링 (GPU 레이어 및 디코딩 유지용) */}
+          <img
+            src="/NASUN_wordmark-white.png"
+            alt=""
+            className="sr-only opacity-0 invisible"
+            aria-hidden="true"
+            decoding="sync"
+          />
           <img
             src="/nasun_symbol_white.svg"
             alt="NASUN Symbol"
