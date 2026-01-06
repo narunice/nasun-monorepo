@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import fullTrailerVideoMP4 from "../../../assets/videos/Full-Trailer184s-rf29.mp4";
 import { InlineLoading } from "../../ui";
 
@@ -17,6 +17,7 @@ interface TimelineItem {
   content: string;
   enterDur: number;
   exitDur: number;
+  renderKey?: string; // 애니메이션 강제 리렌더링을 위한 고유 키
 }
 
 interface TimelineRange {
@@ -31,56 +32,65 @@ interface TimelineRange {
 const TIMELINE_RANGES: TimelineRange[] = [
   {
     id: "GAMES",
-    start: 1.33,
-    end: 3.03,
+    start: 1.23,
+    end: 2.93,
     item: { id: "GAMES", type: "text", content: "GAMES", enterDur: 0.3, exitDur: 0.3 },
   },
   {
     id: "FILMS",
-    start: 4.16,
-    end: 7.05,
+    start: 4.06,
+    end: 6.95,
     item: { id: "FILMS", type: "text", content: "FILMS", enterDur: 0.26, exitDur: 0.3 },
   },
   {
     id: "FINANCE",
-    start: 8.78,
-    end: 11.08,
+    start: 8.68,
+    end: 10.98,
     item: { id: "FINANCE", type: "text", content: "FINANCE", enterDur: 0.3, exitDur: 0.36 },
   },
   {
     id: "EXECUTION",
-    start: 12.1,
-    end: 14.26,
+    start: 12.0,
+    end: 14.16,
     item: { id: "EXECUTION", type: "text", content: "EXECUTION", enterDur: 0.3, exitDur: 0.3 },
   },
   {
     id: "LOGO",
-    start: 16.09,
-    end: 18.1,
+    start: 15.99,
+    end: 18.0,
     item: {
       id: "LOGO",
       type: "image",
       content: "/NASUN_wordmark-white.png",
       enterDur: 0.26,
-      exitDur: 0.3,
+      exitDur: 0.4,
     },
   },
 ];
 
-const animVariants = {
-  initial: { scale: 15, opacity: 0, filter: "blur(15px)" },
+const animVariants: Variants = {
+  initial: { scale: 15, opacity: 0 },
   enter: (item: TimelineItem | null) => ({
     scale: 1,
     opacity: 1,
-    filter: "blur(0px)",
     transition: { duration: item?.enterDur || 0.5, ease: "circOut" },
   }),
-  exit: (item: TimelineItem | null) => ({
-    scale: 0,
-    opacity: 0,
-    filter: "blur(15px)",
-    transition: { duration: item?.exitDur || 0.5, ease: "circIn" },
-  }),
+  exit: (item: TimelineItem | null) => {
+    // LOGO이거나 아이템 정보가 없는 경우 줌아웃 없이 즉시 사라짐 (컷아웃)
+    if (item?.id === "LOGO" || item?.type === "image") {
+      return {
+        opacity: 0,
+        scale: 1, // 크기 유지하며 투명도만 조절 (또는 즉시 삭제)
+        transition: { duration: 0 },
+      };
+    }
+    // 텍스트 타이틀인 경우에만 줌아웃하며 사라짐
+    return {
+      scale: 0,
+      opacity: 0,
+      transition: { duration: item?.exitDur || 0.5 },
+    };
+  },
 };
 
 function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
@@ -152,7 +162,13 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
         setActiveItem((prev) => {
           if (currentRange) {
             // 새 아이템이 있거나, 기존 아이템과 다를 경우 업데이트
-            return prev?.id === currentRange.item.id ? prev : currentRange.item;
+            if (prev?.id === currentRange.item.id) {
+              return prev;
+            }
+            return {
+              ...currentRange.item,
+              renderKey: `${currentRange.item.id}-${Date.now()}`,
+            };
           } else {
             // 구간에 해당하지 않으면 null (exit 애니메이션 트리거)
             return prev === null ? null : null;
@@ -209,11 +225,11 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
 
       {/* 텍스트/이미지 애니메이션 오버레이 */}
       {isVideoPlaying && (
-        <div className="absolute inset-0 flex flex-col items-center justify-end pb-[23vh] z-30 pointer-events-none">
-          <AnimatePresence mode="wait" custom={activeItem}>
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-[28vh] z-30 pointer-events-none">
+          <AnimatePresence mode="wait">
             {activeItem && (
               <motion.div
-                key={activeItem.id}
+                key={activeItem.renderKey || activeItem.id}
                 custom={activeItem}
                 variants={animVariants}
                 initial="initial"
@@ -222,14 +238,14 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                 className="flex items-center justify-center"
               >
                 {activeItem.type === "text" ? (
-                  <h1 className="text-nasun-white !font-changeling text-4xl md:text-6xl lg:text-8xl tracking-widest text-center uppercase drop-shadow-lg">
+                  <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-widest text-center uppercase drop-shadow-lg">
                     {activeItem.content}
                   </h1>
                 ) : (
                   <img
                     src={activeItem.content}
                     alt="NASUN"
-                    className="w-48 md:w-64 lg:w-80 object-contain drop-shadow-lg"
+                    className="w-48 md:w-64 lg:w-80 object-contain drop-shadow-lg "
                   />
                 )}
               </motion.div>
@@ -244,7 +260,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
           <img
             src="/nasun_symbol_white.svg"
             alt="NASUN Symbol"
-            className="w-32 md:w-36 lg:w-44 xl:w-48"
+            className="w-32 md:w-36 lg:w-40 xl:w-44"
           />
         </div>
       )}
