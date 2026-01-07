@@ -121,7 +121,7 @@ const fetchCoinPrice = async (): Promise<CoinPriceData> => {
     if (geckoData && !isPriceStale(geckoData)) {
       return { ...geckoData, source: "coingecko" };
     }
-  } catch (error) {
+  } catch {
     // CoinGecko 실패 시 로그 (warn으로 변경하여 노이즈 감소)
     console.warn("CoinGecko API failed, trying fallback...");
   }
@@ -132,7 +132,7 @@ const fetchCoinPrice = async (): Promise<CoinPriceData> => {
     if (cmcData) {
       return { ...cmcData, source: "coinmarketcap" };
     }
-  } catch (error) {
+  } catch {
     console.warn("CoinMarketCap API also failed");
   }
 
