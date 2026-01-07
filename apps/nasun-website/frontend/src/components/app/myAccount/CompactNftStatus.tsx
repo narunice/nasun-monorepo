@@ -6,7 +6,6 @@
  */
 
 import { FC, useState, useEffect, ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useBattalionNftStatus } from "../../../hooks/useBattalionNftStatus";
 import { checkWhitelistStatus, withdrawWhitelist } from "../../../services/whitelistApi";
@@ -74,7 +73,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
   walletAddress,
   className = "",
 }) => {
-  const { t } = useTranslation(["myAccount", "common"]);
   const navigate = useNavigate();
   const { reset: resetBattalionStore } = useBattalionNftStore();
   const [isWithdrawing, setIsWithdrawing] = useState(false);
