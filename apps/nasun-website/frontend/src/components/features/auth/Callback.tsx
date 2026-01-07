@@ -92,7 +92,7 @@ export default function Callback() {
 
   return (
     <ErrorBoundary>
-      <PageLayout title={t("auth.processing_title")}>
+      <PageLayout>
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
           <PageLoading />
           <p className="mt-4">{t("auth.processing_message")}</p>
