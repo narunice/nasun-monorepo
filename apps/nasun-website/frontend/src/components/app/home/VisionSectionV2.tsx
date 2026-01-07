@@ -4,6 +4,7 @@ import visionVideoPcMP4 from "../../../assets/videos/home-vision-wave-light-desk
 import visionVideoMobileMP4 from "../../../assets/videos/home-vision-wave-light-mobile.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 /**
  * VisionSectionV2 Component
@@ -112,11 +113,14 @@ function VisionSectionV2() {
         {/* CTA Button */}
         <Button
           variant="default"
-          size="2xl"
+          size="xl"
           asChild
           className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
         >
-          <Link to="/wave1/battalion-nft">JOIN THE BATTALION</Link>
+          <Link to="/wave1/battalion-nft">
+            WAVE 1 BATTALION
+            <ExternalLink className="w-4 h-4 ml-2" />
+          </Link>
         </Button>
 
         {/* Tagline */}
