@@ -16,7 +16,7 @@ interface AuthContextType {
   error: Error | null;
   signInWithGoogle: () => Promise<void>;
   signInWithTwitter: () => Promise<void>;
-  signInWithMetaMask: (identityId: string, token: string, walletAddress: string) => Promise<void>;
+  signInWithMetaMask: (identityId: string, walletAddress: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -32,6 +32,125 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper functions moved outside component
+const handleTwitterCallback = async (code: string, state: string, sessionId: string) => {
+  const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/callback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ code, state, sessionId }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Twitter OAuth callback failed');
+  }
+
+  return await response.json();
+};
+
+const linkAccounts = async (
+  primaryIdentityId: string,
+  secondaryIdentityId: string,
+  secondaryProvider: 'Google' | 'Twitter'
+) => {
+  const response = await fetch(`${import.meta.env.VITE_LINK_ACCOUNT_API}/link`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      primaryIdentityId,
+      secondaryIdentityId,
+      secondaryProvider,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Failed to link accounts');
+  }
+
+  return await response.json();
+};
+
+const createUserProfile = async (userData: UserData): Promise<void> => {
+  try {
+    const payload = JSON.stringify(userData);
+    logger.log('Creating user profile with payload:', payload);
+
+    const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('POST failed with status:', response.status, 'Body:', errorText);
+      throw new Error(`Failed to create user profile: ${response.status} - ${errorText}`);
+    }
+
+    logger.log('User profile created successfully:', userData.identityId);
+  } catch (error) {
+    logger.error('Error creating user profile:', error);
+    throw error;
+  }
+};
+
+const fetchUserProfile = async (identityId: string): Promise<UserData | null> => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}?identityId=${identityId}`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user profile');
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error fetching user profile:', error);
+    return null;
+  }
+};
+
+const ensureUserProfile = async (userData: UserData): Promise<UserData | null> => {
+  try {
+    // 1. Check if profile exists
+    let profile = await fetchUserProfile(userData.identityId);
+
+    // 2. If not, create it
+    if (!profile) {
+      logger.log('User profile not found, creating...', userData.identityId);
+      await createUserProfile(userData);
+      profile = await fetchUserProfile(userData.identityId);
+    }
+
+    return profile;
+  } catch (error) {
+    logger.error('Error ensuring user profile:', error);
+    return null;
+  }
+};
+
+const getCognitoIdentityId = async (provider: 'Google', token: string): Promise<string | undefined> => {
+  logger.debug(`Attempting to get Cognito Identity ID for provider: ${provider}`);
+  const identityPoolId = import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID;
+  const region = import.meta.env.VITE_AWS_REGION;
+
+  if (provider === 'Google') {
+    const cognitoIdentity = new CognitoIdentityClient({ region });
+    const loginKey = 'accounts.google.com';
+    const getIdCommand = new GetIdCommand({ IdentityPoolId: identityPoolId, Logins: { [loginKey]: token } });
+    try {
+      const result = await cognitoIdentity.send(getIdCommand);
+      return result.IdentityId;
+    } catch (error) {
+      logger.error("Failed to get Cognito Identity ID for Google.", error);
+      throw error;
+    }
+  }
+};
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading, setUser, clearUser, setIsLoading } = useUserStore();
@@ -134,7 +253,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         if (provider === 'Twitter' && twitterUserData && twitterLinkSession) {
           // Twitter linking
           const linkSession = JSON.parse(twitterLinkSession);
-          await linkAccounts(linkSession.primaryIdentityId, identityId, 'Twitter', twitterUserData);
+          await linkAccounts(linkSession.primaryIdentityId, identityId, 'Twitter');
           sessionStorage.removeItem('twitter_link_session');
 
           // Reload user profile to get updated linked accounts
@@ -146,12 +265,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         } else if (provider === 'Google' && userInfo && googleLinkSession) {
           // Google linking
           const linkSession = JSON.parse(googleLinkSession);
-          const googleUserData = {
-            identityId,
-            username: userInfo.name,
-            email: userInfo.email,
-          };
-          await linkAccounts(linkSession.primaryIdentityId, identityId, 'Google', googleUserData);
+          await linkAccounts(linkSession.primaryIdentityId, identityId, 'Google');
           sessionStorage.removeItem('google_link_session');
 
           // Reload user profile to get updated linked accounts
@@ -242,126 +356,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     initializeAuth();
   }, [checkAuthStatus, handleOAuthRedirect]);
 
-  const handleTwitterCallback = async (code: string, state: string, sessionId: string) => {
-    const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/callback`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code, state, sessionId }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Twitter OAuth callback failed');
-    }
-
-    return await response.json();
-  };
-
-  const linkAccounts = async (
-    primaryIdentityId: string,
-    secondaryIdentityId: string,
-    secondaryProvider: 'Google' | 'Twitter',
-    secondaryData: any
-  ) => {
-    const response = await fetch(`${import.meta.env.VITE_LINK_ACCOUNT_API}/link`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        primaryIdentityId,
-        secondaryIdentityId,
-        secondaryProvider,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to link accounts');
-    }
-
-    return await response.json();
-  };
-
-  const createUserProfile = async (userData: UserData): Promise<void> => {
-    try {
-      const payload = JSON.stringify(userData);
-      logger.log('Creating user profile with payload:', payload);
-
-      const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('POST failed with status:', response.status, 'Body:', errorText);
-        throw new Error(`Failed to create user profile: ${response.status} - ${errorText}`);
-      }
-
-      logger.log('User profile created successfully:', userData.identityId);
-    } catch (error) {
-      logger.error('Error creating user profile:', error);
-      throw error;
-    }
-  };
-
-  const fetchUserProfile = async (identityId: string): Promise<UserData | null> => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}?identityId=${identityId}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user profile');
-      }
-
-      return await response.json();
-    } catch (error) {
-      logger.error('Error fetching user profile:', error);
-      return null;
-    }
-  };
-
-  const ensureUserProfile = async (userData: UserData): Promise<UserData | null> => {
-    try {
-      // 1. Check if profile exists
-      let profile = await fetchUserProfile(userData.identityId);
-
-      // 2. If not, create it
-      if (!profile) {
-        logger.log('User profile not found, creating...', userData.identityId);
-        await createUserProfile(userData);
-        profile = await fetchUserProfile(userData.identityId);
-      }
-
-      return profile;
-    } catch (error) {
-      logger.error('Error ensuring user profile:', error);
-      return null;
-    }
-  };
-
-  const getCognitoIdentityId = async (provider: 'Google', token: string): Promise<string | undefined> => {
-    logger.debug(`Attempting to get Cognito Identity ID for provider: ${provider}`);
-    const identityPoolId = import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID;
-    const region = import.meta.env.VITE_AWS_REGION;
-
-    if (provider === 'Google') {
-      const cognitoIdentity = new CognitoIdentityClient({ region });
-      const loginKey = 'accounts.google.com';
-      const getIdCommand = new GetIdCommand({ IdentityPoolId: identityPoolId, Logins: { [loginKey]: token } });
-      try {
-        const result = await cognitoIdentity.send(getIdCommand);
-        return result.IdentityId;
-      } catch (error) {
-        logger.error("Failed to get Cognito Identity ID for Google.", error);
-        throw error;
-      }
-    }
-  };
-
   const signInWithGoogle = async () => {
     clearError();
     setIsLoading(true);
@@ -395,7 +389,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
-  const signInWithMetaMask = async (identityId: string, token: string, walletAddress: string) => {
+  const signInWithMetaMask = async (identityId: string, walletAddress: string) => {
     clearError();
     setIsLoading(true);
     localStorage.setItem('auth_provider_preference', 'MetaMask');
