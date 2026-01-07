@@ -19,9 +19,9 @@ export function validateEnv() {
   } catch (error) {
     // ZodError 타입 확인
     if (error instanceof z.ZodError) {
-      console.error("❌ 환경 변수 검증 실패:", error.errors);
+      console.error("❌ 환경 변수 검증 실패:", error.issues);
       throw new Error(
-        `환경 변수 오류: ${error.errors.map((e) => `${e.path}: ${e.message}`).join(", ")}`
+        `환경 변수 오류: ${error.issues.map((e: z.ZodIssue) => `${e.path}: ${e.message}`).join(", ")}`
       );
     }
 
