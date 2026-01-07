@@ -128,6 +128,35 @@
       "p2": "It positions Nasun as a foundation for capital-efficient, transparent, and programmable finance — an ecosystem where all market types can interoperate natively, and where users control a single, cryptographically secure account spanning the entire financial stack."
     }
   },
+  "overview": {
+    "title": "Pado Initiative Overview",
+    "intro": {
+      "p1": "Pado is redefining decentralized finance by offering a unified, high-performance platform for spot trading, derivatives, and more.",
+      "p2": "Built on the secure and scalable Nasun Network, we provide institutional-grade infrastructure for everyone.",
+      "p3": "Our mission is to bridge the gap between traditional finance and the on-chain economy through transparency and efficiency."
+    },
+    "coreInfra": {
+      "title": "Core Infrastructure",
+      "perpetuals": {
+        "title": "Perpetuals & Spot DEX",
+        "description": "Experience lightning-fast trading with our high-performance order book and perpetual futures engine."
+      },
+      "rwa": {
+        "title": "Real-World Assets (RWA)",
+        "description": "Seamlessly trade and collateralize tokenized real-world assets alongside native digital assets."
+      },
+      "crossMarket": {
+        "title": "Cross-Market Integration",
+        "description": "Unlock capital efficiency with unified margin across all supported markets and asset classes."
+      }
+    },
+    "closing": {
+      "title": "The Future of Finance",
+      "p1": "Join us as we build the next generation of financial infrastructure.",
+      "p2": "With Pado, you are not just a user, but a participant in a truly open and sovereign financial system.",
+      "p3": "Start your journey today and experience the power of unified on-chain finance."
+    }
+  },
   "compliance": {
     "title": "Our Approach to Global Compliance & Governance",
     "intro": "At Nasun and Pado, we believe that decentralized systems reach their full potential only when they are built for durability, transparency, and responsible participation at global scale. As regulatory frameworks mature, we view alignment not as a constraint on decentralization, but as a prerequisite for long-term trust and adoption across both institutional and retail users.",
@@ -179,6 +208,40 @@
       "title": "Our Objective",
       "content": "Our goal is to build a decentralized financial system that is resilient, transparent, and credible at global scale. By aligning with clear regulatory frameworks while maintaining cryptographic guarantees and non-custodial design, Nasun and Pado aim to demonstrate that decentralized systems can be both open and responsible.",
       "closing": "We believe this balance is essential to protecting the long-term integrity—and the underlying values—of the Nasun ecosystem."
+    }
+  },
+  "initiative": {
+    "title": "The Pado Initiative",
+    "intro": "The Pado Initiative is a strategic roadmap to revolutionize on-chain finance.",
+    "buildingTogether": {
+      "title": "What We Are Building Together",
+      "description": "Collaborative financial infrastructure for the decentralized future."
+    },
+    "products": {
+      "perpetuals": {
+        "title": "Perpetuals & Spot DEX",
+        "description": "High-performance trading with deep liquidity."
+      },
+      "predictions": {
+        "title": "Predictions Market",
+        "description": "Decentralized forecasting on global events."
+      },
+      "rwa": {
+        "title": "Real-World Assets (RWA)",
+        "description": "Bridging traditional assets with blockchain efficiency."
+      },
+      "moneyMarket": {
+        "title": "Money Market",
+        "description": "Algorithmic lending and borrowing protocols."
+      },
+      "crossMarket": {
+        "title": "Cross-Market Integrations",
+        "description": "Unified liquidity and composability across products."
+      }
+    },
+    "closing": {
+      "p1": "Join the initiative and shape the future of Pado.",
+      "p2": "Together, we build a more open and accessible financial system."
     }
   }
 }

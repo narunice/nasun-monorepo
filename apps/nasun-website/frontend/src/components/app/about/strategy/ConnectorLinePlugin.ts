@@ -26,7 +26,7 @@ export const connectorLinePlugin: Plugin = {
 
     const ctx = chart.ctx;
     const meta = chart.getDatasetMeta(0);
-    const { chartArea, width, height } = chart;
+    const { chartArea } = chart;
 
     if (!meta || !meta.data) {
       return;
@@ -34,7 +34,6 @@ export const connectorLinePlugin: Plugin = {
 
     const { left, right, top, bottom } = chartArea;
     const chartCenterX = (left + right) / 2;
-    const chartCenterY = (top + bottom) / 2;
 
     // 투명 세그먼트(간격) 제외 - 짝수 인덱스만 (0, 2, 4, 6, 8)
     const realElements = meta.data.filter((_, idx) => idx % 2 === 0);
@@ -47,37 +46,46 @@ export const connectorLinePlugin: Plugin = {
       {
         x: right + 80,
         y: top + 80,
-        align: "left"
+        align: "left",
       },
       // [1] Public Community Sales - 오른쪽 하단
       {
         x: right + 80,
         y: bottom - 40,
-        align: "left"
+        align: "left",
       },
       // [2] Early Contributors - 아래 중앙
       {
         x: chartCenterX,
         y: bottom + 100,
-        align: "center"
+        align: "center",
       },
       // [3] Nasun Core - 왼쪽 하단
       {
         x: left - 80,
         y: bottom - 40,
-        align: "right"
+        align: "right",
       },
       // [4] Testers & Community - 왼쪽 상단
       {
         x: left - 80,
         y: top + 40,
-        align: "right"
+        align: "right",
       },
     ];
 
+    interface ChartElement {
+      x: number;
+      y: number;
+      startAngle: number;
+      endAngle: number;
+      outerRadius: number;
+    }
+
     // 각 실제 세그먼트에 대해 연결선 그리기
-    realElements.forEach((element: any, idx: number) => {
-      const { x, y, startAngle, endAngle, outerRadius } = element;
+    realElements.forEach((element: unknown, idx: number) => {
+      const el = element as ChartElement;
+      const { x, y, startAngle, endAngle, outerRadius } = el;
 
       // 1. 세그먼트 중심 각도 계산
       const angle = (startAngle + endAngle) / 2;
@@ -97,10 +105,6 @@ export const connectorLinePlugin: Plugin = {
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(segmentEndX, segmentEndY);
-
-      // 중간 지점 계산 (부드러운 곡선을 위한 control point)
-      const controlX = (segmentEndX + labelPos.x) / 2;
-      const controlY = (segmentEndY + labelPos.y) / 2;
 
       // 직선으로 연결 (참고 이미지처럼 직선)
       ctx.lineTo(labelPos.x, labelPos.y);
