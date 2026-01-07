@@ -70,7 +70,7 @@ const LoginButton = () => {
   ) => {
     try {
       console.log("MetaMask login successful:", { identityId, walletAddress });
-      await signInWithMetaMask(identityId, token, walletAddress);
+      await signInWithMetaMask(identityId, walletAddress);
       navigate("/my-account");
     } catch (error) {
       console.error("Error saving MetaMask user data:", error);
