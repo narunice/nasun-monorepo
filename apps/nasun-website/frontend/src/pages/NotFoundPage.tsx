@@ -8,15 +8,14 @@ import { PageTitle } from "../components/ui/PageTitle";
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation(["common", "notFound"]);
 
   return (
     <PageLayout>
-      <ErrorBoundary fallback={<div>{/* @ts-expect-error - i18next translation with namespace */}{t("error.generic", { ns: "common" })}</div>}>
+      <ErrorBoundary fallback={<div>{t("common:error.generic")}</div>}>
         <SectionLayout>
           <PageTitle as="h2" align="center">
-            {/* @ts-expect-error - i18next translation with namespace */}
-            {t("title", { ns: "notFound" })}
+            {t("notFound:title")}
           </PageTitle>
 
           <div className="flex flex-col items-center justify-center min-h-[50vh]">
@@ -24,10 +23,10 @@ export default function NotFoundPage() {
               404
             </h1>
             <p className="text-xl text-gray-400 mb-8">
-              {/* @ts-expect-error - i18next translation with namespace */}{t("message", { ns: "notFound" })}
+              {t("notFound:message")}
             </p>
             <Button onClick={() => navigate("/")} size="lg">
-              {/* @ts-expect-error - i18next translation with namespace */}{t("goHome", { ns: "notFound" })}
+              {t("notFound:goHome")}
             </Button>
           </div>
         </SectionLayout>
