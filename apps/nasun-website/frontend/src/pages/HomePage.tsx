@@ -31,7 +31,7 @@ export default function HomePage() {
     // This prevents layout shift when sections load after footer appears
     await Promise.all([
       import("../components/app/home/VisionSectionV2"),
-      import("../components/app/home/AwardsGrantsSection"),
+      import("../components/app/home/NewsEventsSection"),
     ]);
 
     // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
@@ -72,9 +72,9 @@ export default function HomePage() {
               <VisionSectionV2 />
             </ScrollSnapSection>
 
-            {/* AwardsGrantsSection - 긴 컨텐츠 허용 */}
+            {/* NewsEventsSection - 긴 컨텐츠 허용 */}
             <ScrollSnapSection allowTallContent={true}>
-              <AwardsGrantsSection />
+              <NewsEventsSection />
             </ScrollSnapSection>
 
             {/* Wave1Section */}
@@ -94,9 +94,9 @@ export default function HomePage() {
       {isVideoReady && (
         <ErrorBoundary fallback={errorFallback}>
           <Suspense fallback={suspenseFallback}>
-            {/* NewsEventsSection - 긴 컨텐츠 허용 */}
+            {/* AwardsGrantsSection - 긴 컨텐츠 허용 */}
             <ScrollSnapSection allowTallContent={true}>
-              <NewsEventsSection />
+              <AwardsGrantsSection />
             </ScrollSnapSection>
           </Suspense>
         </ErrorBoundary>
