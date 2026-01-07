@@ -3,6 +3,9 @@ import React, { useState, useEffect } from "react";
 import { InlineLoading } from "../../../ui/InlineLoading";
 import waldenVideoDesktop from "../../../../assets/videos/walden-hero-token-desktop.mp4";
 import waldenVideoMobile from "../../../../assets/videos/Walden-Dex-Token-Mobile-rf18.mp4";
+import { Button } from "@/components/ui";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 
 interface PadoHeroSectionProps {
   onVideoReady?: () => void;
@@ -14,7 +17,7 @@ interface PadoHeroSectionProps {
  *
  * Pado 페이지의 Hero 섹션 - 반응형 배경 동영상과 텍스트+아이콘
  */
-function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
+function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -70,7 +73,7 @@ function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 -mt-14 md:mt-0 mx-auto flex items-center justify-center bg-nasun-black ${!isVideoPlaying ? 'h-screen' : ''}`;
+  const containerClassName = `relative !p-0 -mt-14 md:mt-0 mx-auto flex items-center justify-center bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
 
   return (
     <div className={containerClassName}>
@@ -119,17 +122,23 @@ function PadoHeroSection({ onVideoReady, isVideoReady }: PadoHeroSectionProps) {
             /* Mobile: Bottom Center */
             bottom-[15%] sm:bottom-[30%] left-0 right-0 
             /* Desktop: Right Center */
-            md:bottom-[30%] md:left-auto md:right-[5%] lg:right-[10%] xl:right-[15%] md:-translate-y-1/2
+            md:bottom-[20%] lg:bottom-[20%] xl:bottom-[30%] md:left-auto md:right-[12%] lg:right-[15%] xl:right-[15%] md:-translate-y-1/2
             /* Alignment */
             flex flex-col items-center 
             text-center
             px-4
             pointer-events-auto"
           >
-            <h3 className="!font-eurostile uppercase text-[34px] xl:text-[40px]">The Next Wave</h3>
-            <h4 className="!font-eurostile text-nasun-white/70 text-[27px] xl:text-[32px]">
-              in Financial Autonomy
+            <h2 className="">The Next Wave</h2>
+            <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
+              of Financial Autonomy
             </h4>
+            <Button variant="defaultReverse" size="lg" asChild className="mt-5">
+              <Link to={import.meta.env.VITE_PADO_ALPHA_URL}>
+                Pado Open Alpha
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
           </div>
         </div>
       )}

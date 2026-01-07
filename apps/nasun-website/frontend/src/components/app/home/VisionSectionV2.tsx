@@ -117,10 +117,7 @@ function VisionSectionV2() {
           asChild
           className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
         >
-          <Link to="/wave1/battalion-nft">
-            WAVE 1 BATTALION
-            <ExternalLink className="w-4 h-4 ml-2" />
-          </Link>
+          <Link to="/wave1/battalion-nft">WAVE 1 BATTALION</Link>
         </Button>
 
         {/* Tagline */}

@@ -35,7 +35,7 @@ function PadoOverviewSection() {
             asChild
           >
             <a href="https://staging.pado.finance/" target="_blank" rel="noopener noreferrer">
-              Pado Prototype
+              Pado Open Alpha
               <ExternalLink className="w-4 h-4 ml-1" />
             </a>
           </Button>
