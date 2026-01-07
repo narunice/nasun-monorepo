@@ -5,7 +5,6 @@
  * - 지갑 연결, 네트워크 전환, 메시지 서명 등
  */
 
-import { BrowserProvider } from 'ethers';
 import type {
   MetaMaskWalletInfo,
   MetaMaskErrorType,
@@ -61,14 +60,16 @@ export async function connectWallet(): Promise<string> {
     }
 
     return accounts[0].toLowerCase();
-  } catch (error: any) {
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as any;
     // 사용자가 요청을 거부한 경우
-    if (error.code === 4001) {
+    if (err.code === 4001) {
       throw new Error('User rejected the connection request');
     }
 
     console.error('Failed to connect wallet:', error);
-    throw new Error(error.message || 'Failed to connect to MetaMask');
+    throw new Error(err.message || 'Failed to connect to MetaMask');
   }
 }
 
@@ -155,7 +156,9 @@ export async function switchNetwork(chainId: number | string): Promise<void> {
       params: [{ chainId: chainIdHex }],
     });
     console.log(`[MetaMask] Successfully switched to network ${chainIdNumber}`);
-  } catch (switchError: any) {
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const switchError = error as any;
     // 네트워크가 MetaMask에 추가되지 않은 경우 (에러 코드 4902)
     if (switchError.code === 4902) {
       console.log(`[MetaMask] Network ${chainIdNumber} not found, attempting to add...`);
@@ -171,14 +174,16 @@ export async function switchNetwork(chainId: number | string): Promise<void> {
         });
 
         console.log(`[MetaMask] Successfully added and switched to network ${chainIdNumber}`);
-      } catch (addError: any) {
+      } catch (addError) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = addError as any;
         // 사용자가 네트워크 추가를 거부한 경우
-        if (addError.code === 4001) {
+        if (err.code === 4001) {
           throw new Error('User rejected the request to add the network');
         }
 
-        console.error('[MetaMask] Failed to add network:', addError);
-        throw new Error(`Failed to add network: ${addError.message || 'Unknown error'}`);
+        console.error('[MetaMask] Failed to add network:', err);
+        throw new Error(`Failed to add network: ${err.message || 'Unknown error'}`);
       }
     }
     // 사용자가 전환을 거부한 경우
@@ -216,11 +221,11 @@ export async function signMessage(message: string, walletAddress: string): Promi
     // MetaMask provider 명시적 선택 (multiple wallet 충돌 방지)
     let provider = window.ethereum!;
 
-    // @ts-ignore - providers 배열이 있는 경우 MetaMask만 선택
+    // @ts-expect-error - providers 배열이 있는 경우 MetaMask만 선택
     if (window.ethereum?.providers?.length > 0) {
       console.log('[DEBUG] Multiple providers detected, selecting MetaMask...');
-      // @ts-ignore
-      provider = window.ethereum.providers.find((p: any) => p.isMetaMask) || window.ethereum;
+      // @ts-expect-error - selecting from providers
+      provider = window.ethereum.providers.find((p: { isMetaMask: boolean }) => p.isMetaMask) || window.ethereum;
     }
 
     console.log('[DEBUG] Using provider:', provider.isMetaMask ? 'MetaMask' : 'Unknown');
@@ -244,15 +249,17 @@ export async function signMessage(message: string, walletAddress: string): Promi
     console.log('[DEBUG] Signature obtained:', signature.substring(0, 20) + '...');
 
     return signature;
-  } catch (error: any) {
-    console.error('[DEBUG] signMessage error:', error);
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as any;
+    console.error('[DEBUG] signMessage error:', err);
     // 사용자가 서명을 거부한 경우
-    if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+    if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
       throw new Error('User rejected the signature request');
     }
 
-    console.error('Failed to sign message:', error);
-    throw new Error(error.message || 'Failed to sign message');
+    console.error('Failed to sign message:', err);
+    throw new Error(err.message || 'Failed to sign message');
   }
 }
 
@@ -346,7 +353,7 @@ export function onChainChanged(callback: (chainId: string) => void): void {
  * @param event - 이벤트 이름
  * @param callback - 제거할 콜백 함수
  */
-export function removeListener(event: string, callback: (...args: any[]) => void): void {
+export function removeListener(event: string, callback: (...args: unknown[]) => void): void {
   if (!isMetaMaskInstalled()) {
     return;
   }
@@ -360,20 +367,23 @@ export function removeListener(event: string, callback: (...args: any[]) => void
  * @param error - 에러 객체
  * @returns MetaMask 에러 타입
  */
-export function getMetaMaskErrorType(error: any): MetaMaskErrorType {
+export function getMetaMaskErrorType(error: unknown): MetaMaskErrorType {
   if (!isMetaMaskInstalled()) {
     return 'NO_METAMASK' as MetaMaskErrorType;
   }
 
-  if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const err = error as any;
+
+  if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
     return 'USER_REJECTED' as MetaMaskErrorType;
   }
 
-  if (error.code === 4902) {
+  if (err.code === 4902) {
     return 'WRONG_NETWORK' as MetaMaskErrorType;
   }
 
-  if (error.message?.includes('network')) {
+  if (err.message?.includes('network')) {
     return 'NETWORK_ERROR' as MetaMaskErrorType;
   }
 
