@@ -30,6 +30,7 @@ import battalionNftEN from "../assets/locales/en/battalion-nft.json";
 import earlyContributorsEN from "../assets/locales/en/early-contributors.json";
 import padoEN from "../assets/locales/en/pado.json";
 import newsEN from "../assets/locales/en/news.json";
+import notFoundEN from "../assets/locales/en/notFound.json";
 import proposalsEN from "../assets/locales/en/proposals.json";
 
 declare module "i18next" {
@@ -279,6 +280,7 @@ declare module "i18next" {
       "early-contributors": typeof earlyContributorsEN;
       pado: typeof padoEN;
       news: typeof newsEN;
+      notFound: typeof notFoundEN;
       proposals: typeof proposalsEN;
     };
   }
