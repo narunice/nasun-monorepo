@@ -161,9 +161,9 @@ const UserInfo = ({ user, isLoading, error }: UserInfoProps) => {
   // Generic unlink handler for Google/Twitter
   const handleUnlinkProvider = async (
     provider: "google" | "twitter",
-    confirmKey: any,
-    successKey: any,
-    errorKey: any
+    confirmKey: Parameters<typeof t>[0],
+    successKey: Parameters<typeof t>[0],
+    errorKey: Parameters<typeof t>[0]
   ) => {
     if (!confirm(t(confirmKey) || `Are you sure you want to unlink your ${provider} account?`)) {
       return;
