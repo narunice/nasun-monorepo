@@ -4,15 +4,23 @@ import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 
-const NetworkHeroSection = lazy(() => import("../../components/app/protocol/network/NetworkHeroSection"));
+const NetworkHeroSection = lazy(
+  () => import("../../components/app/protocol/network/NetworkHeroSection")
+);
 
 // NEW DESIGN - 새로운 디자인 섹션들
-const NasunNetworkSection = lazy(() => import("../../components/app/protocol/network/NasunNetworkSection"));
-const NasunTokenSection = lazy(() => import("../../components/app/protocol/network/NasunTokenSection"));
-const MoveTogetherSection = lazy(() => import("../../components/app/protocol/network/MoveTogetherSection"));
-const TokenDistributionSection = lazy(() => import("../../components/app/protocol/network/TokenDistributionSection"));
-
-
+const NasunNetworkSection = lazy(
+  () => import("../../components/app/protocol/network/NasunNetworkSection")
+);
+const NasunTokenSection = lazy(
+  () => import("../../components/app/protocol/network/NasunTokenSection")
+);
+const MoveTogetherSection = lazy(
+  () => import("../../components/app/protocol/network/MoveTogetherSection")
+);
+const TokenDistributionSection = lazy(
+  () => import("../../components/app/protocol/network/TokenDistributionSection")
+);
 
 const VisionNetworkPage = () => {
   const [isVideoReady, setIsVideoReady] = useState(false);

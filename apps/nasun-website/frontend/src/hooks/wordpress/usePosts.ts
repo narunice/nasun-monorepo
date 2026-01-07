@@ -7,9 +7,10 @@ import logger from '../../lib/logger';
 const WORDPRESS_API_URL = import.meta.env.VITE_WORDPRESS_DOMAIN || 'https://cms.moonoak.io';
 
 // WordPress Category IDs
-// awards: 4, news: 3, events: 5
+// awards: 4, grants: 6, news: 3, events: 5
 export const WP_CATEGORIES = {
   AWARDS: 4,
+  GRANTS: 6,
   NEWS: 3,
   EVENTS: 5,
 } as const;

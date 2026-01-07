@@ -3,6 +3,8 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "../../../ui/InlineLoading";
 import nsnNetworkVideo from "../../../../assets/videos/Nsn-Network-Section-rf29.mp4";
 import nsnNetworkVideoMobile from "../../../../assets/videos/Nsn-Network-Section-Mobile-rf27.mp4";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface NetworkHeroSectionProps {
   onVideoReady?: () => void;
@@ -14,7 +16,7 @@ interface NetworkHeroSectionProps {
  *
  * NSN Network 페이지의 Hero 섹션 - 반응형 배경 동영상과 좌측 하단 타이틀
  */
-function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionProps) {
+function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -70,7 +72,7 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 -mt-14 md:mt-0 bg-nasun-black ${!isVideoPlaying ? 'h-screen' : ''}`;
+  const containerClassName = `relative !p-0 -mt-14 md:mt-0 bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
 
   return (
     <SectionLayout className={containerClassName}>
@@ -109,37 +111,31 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
         }}
       />
 
-      {/* Hero 타이틀 - 모바일 (md 미만): 인라인, 자연스러운 줄바꿈 */}
+      {/* Hero 타이틀 - 모바일 (md 미만): 인라인, 자연스러운 줄바꿈 + 버튼 중앙 정렬 */}
       {isVideoPlaying && (
-        <div className="absolute inset-x-0 bottom-[15%] z-20 px-6 md:hidden">
-          <h3 className="leading-tight text-center">
-            <span className="!font-eurostile uppercase text-nasun-c3">Public</span>{" "}
-            <span className="!font-eurostile uppercase text-nasun-white">Transparency</span>
-            <br />
-            <span className="!font-eurostile uppercase text-nasun-c3">Private</span>{" "}
-            <span className="!font-eurostile uppercase text-nasun-white">Autonomy</span>
-          </h3>
+        <div className="absolute inset-x-0 bottom-[5%] sm:bottom-[10%] z-20 px-6 md:hidden">
+          <div className="leading-tight text-center">
+            <h3 className=" font-medium text-nasun-white">End-to-End Protocol</h3>
+            <h4 className=" text-nasun-white/70">for Coordinated Creation</h4>
+          </div>
+          <div className="flex justify-center mt-3">
+            <Button variant="defaultReverse" size="lg" asChild>
+              <Link to={import.meta.env.VITE_EXPLORER_URL}>Open Devnet & Wallet</Link>
+            </Button>
+          </div>
         </div>
       )}
 
       {/* Hero 타이틀 - 데스크탑 (md 이상): 우측 정렬, xl에서 레이아웃 변경 */}
       {isVideoPlaying && (
-        <div className="absolute hidden md:block md:inset-x-auto md:right-[10%] lg:right-[10%] md:bottom-[25%] xl:bottom-[40%] z-20">
-          <h3 className="leading-tight text-right">
-            <span className="block xl:inline !font-eurostile uppercase text-nasun-c3">Public</span>
-            <span className="hidden xl:inline">{"  "}</span>
-            <span className="block xl:inline !font-eurostile uppercase text-nasun-white">
-              Transparency
-            </span>
-            <br className="hidden xl:block" />
-            <span className="block xl:inline mt-4 xl:mt-0 !font-eurostile uppercase text-nasun-c3">
-              Private
-            </span>
-            <span className="hidden xl:inline">{"  "}</span>
-            <span className="block xl:inline !font-eurostile uppercase text-nasun-white">
-              Autonomy
-            </span>
-          </h3>
+        <div className="absolute hidden md:flex md:flex-col md:inset-x-auto md:right-[10%] md:bottom-[25%]  lg:right-[10%] xl:right-[17%] xl:bottom-[25%] z-20 text-end">
+          <div>
+            <h3 className="font-medium text-nasun-white">End-to-End Protocol</h3>
+            <h5 className="text-nasun-white/70">for Coordinated Creation</h5>
+            <Button variant="defaultReverse" size="lg" asChild className="mt-5">
+              <Link to={import.meta.env.VITE_EXPLORER_URL}>Open Devnet & Wallet</Link>
+            </Button>
+          </div>
         </div>
       )}
     </SectionLayout>

@@ -112,7 +112,7 @@ function NftSaleSection() {
               asChild
               size="xl"
               variant="default"
-              className="font-normal !font-founders tracking-wide "
+              className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
             >
               <Link to="/genesis-nft">{t("nftSale.moreInfo")}</Link>
             </Button>

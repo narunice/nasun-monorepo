@@ -32,8 +32,27 @@ const getCategory = (post: Post): string => {
   return "NEWS";
 };
 
+// Helper function to extract image URL from WordPress post
+const getImageUrl = (post: Post): string => {
+  const media = post._embedded?.["wp:featuredmedia"]?.[0];
+  if (!media) return "";
+
+  // 1. Try direct source_url
+  if (media.source_url) return media.source_url;
+
+  // 2. Try media_details sizes (preferred order)
+  const sizes = media.media_details?.sizes;
+  if (sizes) {
+    if (sizes.large?.source_url) return sizes.large.source_url;
+    if (sizes.medium_large?.source_url) return sizes.medium_large.source_url;
+    if (sizes.full?.source_url) return sizes.full.source_url;
+  }
+
+  return "";
+};
+
 export default function NewsCard({ post }: NewsCardProps) {
-  const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+  const imageUrl = getImageUrl(post);
   const category = getCategory(post);
   const title = stripHtml(post.title.rendered);
   const excerpt = stripHtml(post.excerpt.rendered);
@@ -76,14 +95,10 @@ export default function NewsCard({ post }: NewsCardProps) {
           {/* Excerpt */}
           <p className="text-gray-400 text-sm line-clamp-3 flex-grow">{excerpt}</p>
 
-          {/* Read More button */}
-          <ActionLink
-            to={`/news-events/${post.slug}`}
-            state={{ from: "/news" }}
-            className="self-end mt-4 px-4 py-2"
-          >
+          {/* Read More button (visual only, card is clickable) */}
+          <div className="self-end mt-4 px-4 py-2 inline-flex items-center justify-center rounded-3xl bg-nasun-c2/20 text-white text-sm capitalize transition-all group-hover:bg-nasun-c2/30">
             Read More
-          </ActionLink>
+          </div>
         </div>
       </article>
     </Link>

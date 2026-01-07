@@ -19,7 +19,7 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg  hover:bg-black/70 transition-all border border-nasun-white/30 ${
+    className={`absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg  hover:bg-black  transition-all border border-nasun-white/50 hover:border-white ${
       direction === "left"
         ? "left-4 md:-left-6 lg:-left-8 xl:-left-10"
         : "right-4 md:-right-6 lg:-right-8 xl:-right-10"
@@ -27,16 +27,27 @@ const CustomArrow = ({
     aria-label={direction === "left" ? "Previous awards" : "Next awards"}
   >
     {direction === "left" ? (
-      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/30" />
+      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/60  transition-all" />
     ) : (
-      <ChevronRightIcon className="w-6 h-6 text-nasun-white/30" />
+      <ChevronRightIcon className="w-6 h-6 text-nasun-white/60 transition-all" />
     )}
   </button>
 );
 
 function AwardsGrantsSection() {
   const { t } = useTranslation("home");
-  const { posts, loading, error, refetch } = usePosts(WP_CATEGORIES.AWARDS, 6);
+  const { posts, loading, error, refetch } = usePosts(
+    [WP_CATEGORIES.AWARDS, WP_CATEGORIES.GRANTS],
+    6
+  );
+
+  // 디버깅: posts 데이터 확인
+  console.log("🏆 [AwardsGrantsSection] Posts data:", {
+    count: posts.length,
+    posts: posts.map((p) => ({ id: p.id, slug: p.slug, title: p.title.rendered })),
+    loading,
+    error,
+  });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -100,8 +111,8 @@ function AwardsGrantsSection() {
         {/* Title */}
         <SectionTitle
           as="h2"
-          color="scarlet"
-          className="!font-eurostile text-center mt-6 mb-2 sm:my-4 md:my-6 lg:mt-8  xl:mt-10 "
+          color="white"
+          className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-6 sm:mt-18 xl:mt-20"
         >
           {t("awardsGrants.title")}
         </SectionTitle>

@@ -85,8 +85,7 @@ function Wave1SectionV3() {
   }, []);
 
   // Common DividerBox wrapper styles for hover effect
-  const dividerBoxWrapperStyles =
-    "transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl";
+  const dividerBoxWrapperStyles = "transition-all duration-300 ease-out ";
 
   return (
     <SectionLayout className="max-w-none relative min-h-screen">
@@ -131,8 +130,8 @@ function Wave1SectionV3() {
         {/* WAVE 1 Title */}
         <SectionTitle
           as="h2"
-          color="scarlet"
-          className="!font-eurostile text-center pt-24 mb-6 lg:pt-8 lg:mb-6 xl:pt-10"
+          color="black"
+          className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-4 sm:mt-8 md:mt-14 lg:mt-18 xl:mt-20"
         >
           {t("wave1.title")}
         </SectionTitle>
@@ -140,7 +139,7 @@ function Wave1SectionV3() {
         {/* Content - Centered layout */}
         <div className="flex flex-col lg:flex-row-reverse lg:gap-8 mb-6 md:mb-12 lg:mb-14 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto">
           {/* Leaderboard image (mobile: top, desktop: right) */}
-          <div className="flex items-center justify-center w-full lg:w-2/5 px-4 lg:px-0">
+          <div className="flex items-center justify-center w-full lg:w-[45%] px-4 lg:px-0">
             <div className="group h-full flex items-center w-full lg:w-auto">
               <img
                 src={leaderboardImage}
@@ -151,17 +150,13 @@ function Wave1SectionV3() {
           </div>
 
           {/* DividerBox cards (mobile: bottom, desktop: left) */}
-          <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-3/5 px-4 lg:px-0">
+          <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-[55%] px-4 lg:px-0">
             {/* LEADERBOARD Box */}
             <div className={`w-full ${dividerBoxWrapperStyles}`}>
               <DividerBox title={t("wave1.leaderboard.title")} color="white" className="shadow-lg">
                 <p className="text-nasun-white/90">{t("wave1.leaderboard.description")}</p>
                 <div className="flex justify-end">
-                  <ActionLink
-                    to="/wave1/leaderboard-info"
-                    variant="action"
-                    className="mt-4 px-6 py-3"
-                  >
+                  <ActionLink to="/wave1/leaderboard-info" variant="action" className="px-6 py-3">
                     {t("wave1.leaderboard.cta")}
                   </ActionLink>
                 </div>
@@ -177,7 +172,7 @@ function Wave1SectionV3() {
               >
                 <p className="text-nasun-white/90">{t("wave1.battalionNft.description")}</p>
                 <div className="flex justify-end">
-                  <ActionLink to="/wave1/battalion-nft" variant="action" className="mt-4 px-6 py-3">
+                  <ActionLink to="/wave1/battalion-nft" variant="action" className=" px-6 py-3">
                     {t("wave1.battalionNft.cta")}
                   </ActionLink>
                 </div>
@@ -193,11 +188,7 @@ function Wave1SectionV3() {
               >
                 <p className="text-nasun-white/90">{t("wave1.earlyContributor.description")}</p>
                 <div className="flex justify-end">
-                  <ActionLink
-                    to="/wave1/early-contributors"
-                    variant="action"
-                    className="mt-4 px-6 py-3"
-                  >
+                  <ActionLink to="/wave1/early-contributors" variant="action" className="px-6 py-3">
                     {t("wave1.earlyContributor.cta")}
                   </ActionLink>
                 </div>

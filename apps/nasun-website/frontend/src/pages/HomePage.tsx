@@ -5,8 +5,9 @@ import { ScrollSnapContainer } from "../components/layout/ScrollSnapContainer";
 import { ScrollSnapSection } from "../components/layout/ScrollSnapSection";
 import { useHomePageLoading } from "../contexts/PageLoadingContext";
 
+import HeroSectionSkeleton from "../components/app/home/HeroSectionSkeleton";
+
 // Lazy load all sections
-const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
 const HeroSectionV3 = lazy(() => import("../components/app/home/HeroSectionV3"));
 const VisionSectionV2 = lazy(() => import("../components/app/home/VisionSectionV2"));
 const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV3"));
@@ -43,9 +44,9 @@ export default function HomePage() {
 
   // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
-  // Suspense fallback: null to prevent unnecessary loading spinners
-  // HeroSection uses CSS-based positioning to avoid re-mounting
-  const suspenseFallback = null;
+  // Suspense fallback: Use HeroSectionSkeleton to prevent layout shift
+  // This ensures h-screen space is reserved immediately
+  const suspenseFallback = <HeroSectionSkeleton />;
 
   const errorFallback = (
     <SectionLayout>
@@ -64,11 +65,6 @@ export default function HomePage() {
             {/* HeroSectionV3: 맨 위 섹션 (개별 타이밍 애니메이션 + 트레일러) */}
             <ScrollSnapSection>
               <HeroSectionV3 onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
-            </ScrollSnapSection>
-
-            {/* HeroSection: 기존 첫 번째 섹션 (CSS 기반 위치 제어) */}
-            <ScrollSnapSection>
-              <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
             </ScrollSnapSection>
 
             {/* VisionSectionV2: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}

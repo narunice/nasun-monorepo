@@ -7,11 +7,10 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         // Default: NASUN 모노톤 스타일
-        default: "bg-gray-800/60 text-nasun-white border border-nasun-white/50 hover:bg-gray-800",
+        default: "bg-nasun-black/75 text-nasun-white hover:bg-gray-800/80",
 
         // Default Reverse: NASUN 색상 반전 모노톤 스타일
-        defaultReverse:
-          "bg-gray-200/60 text-nasun-black border border-nasun-black/50 hover:bg-gray-200",
+        defaultReverse: "bg-nasun-white/75 text-nasun-black hover:bg-gray-200/80",
 
         // Scarlet: Solid red button
         scarlet: "bg-nasun-scarlet text-nasun-white hover:bg-nasun-scarlet/80",
