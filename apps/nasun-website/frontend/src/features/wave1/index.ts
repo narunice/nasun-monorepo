@@ -5,22 +5,22 @@
  */
 
 // Battalion NFT Components
-export { default as BattalionNftPage } from "./components/battalion-nft/BattalionNftPage";
-export { default as BattalionNftCard } from "./components/battalion-nft/BattalionNftCard";
+export { BattalionNftPage } from "./components/battalion-nft/BattalionNftPage";
+export { BattalionNftCard } from "./components/battalion-nft/BattalionNftCard";
 export { default as BattalionNftHeroSection } from "./components/battalion-nft/BattalionNftHeroSection";
-export { default as StepperProgress } from "./components/battalion-nft/StepperProgress";
-export { default as WalletDisconnectedCard } from "./components/battalion-nft/WalletDisconnectedCard";
+export { StepperProgress } from "./components/battalion-nft/StepperProgress";
+export { WalletDisconnectedCard } from "./components/battalion-nft/WalletDisconnectedCard";
 
 // Card Steps
-export { default as Step1WelcomeCard } from "./components/battalion-nft/cards/Step1WelcomeCard";
-export { default as Step2XAuthCard } from "./components/battalion-nft/cards/Step2XAuthCard";
-export { default as Step3TaskVerificationCard } from "./components/battalion-nft/cards/Step3TaskVerificationCard";
-export { default as Step4WalletConnectCard } from "./components/battalion-nft/cards/Step4WalletConnectCard";
-export { default as Step5ConfirmationCard } from "./components/battalion-nft/cards/Step5ConfirmationCard";
-export { default as Step6RegistrationSuccessCard } from "./components/battalion-nft/cards/Step6RegistrationSuccessCard";
+export { Step1WelcomeCard } from "./components/battalion-nft/cards/Step1WelcomeCard";
+export { XAuthCard as Step2XAuthCard } from "./components/battalion-nft/cards/Step2XAuthCard";
+export { TaskVerificationCard as Step3TaskVerificationCard } from "./components/battalion-nft/cards/Step3TaskVerificationCard";
+export { WalletConnectCard as Step4WalletConnectCard } from "./components/battalion-nft/cards/Step4WalletConnectCard";
+export { Step5ConfirmationCard } from "./components/battalion-nft/cards/Step5ConfirmationCard";
+export { RegistrationSuccessCard as Step6RegistrationSuccessCard } from "./components/battalion-nft/cards/Step6RegistrationSuccessCard";
 
 // Other Sections
-export { default as EarlyContributorsSection } from "./components/early-contributors/EarlyContributorsSection";
+export { EarlyContributorsSection } from "./components/early-contributors/EarlyContributorsSection";
 export { default as LeaderboardInfoSection } from "./components/leaderboard-info/LeaderboardInfoSection";
 
 // Hooks
