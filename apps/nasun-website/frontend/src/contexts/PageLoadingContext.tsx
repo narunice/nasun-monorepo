@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import React, { createContext, useContext, useState, ReactNode, useLayoutEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 
 interface PageLoadingContextType {
