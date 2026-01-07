@@ -177,6 +177,13 @@ pnpm deploy:nasun-website:prod
 pnpm deploy:gensol-website:staging
 ```
 
+## 개발 환경 팁 (Junie/CLI)
+
+- **터미널 페이징 비활성화**: Junie가 명령어를 실행할 때 `(END)` 상태로 멈추는 것을 방지하기 위해 AWS CLI와 Git의 페이저를 비활성화했습니다.
+  - AWS CLI: `aws configure set cli_pager ""`
+  - Git: `git config core.pager "cat"`
+- **포트 충돌**: OAuth 2.0 인증(`setup-oauth2-auto.ts`) 시 5174 포트가 필요하므로, `nasun-website` 개발 서버를 일시 정지해야 할 수 있습니다.
+
 ## 배포 방식
 
 | 앱               | 배포 방식        | 트리거        | 대상 URL                          |
