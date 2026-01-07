@@ -70,7 +70,8 @@
   },
   "error": {
     "generic": "An error occurred. Please try again later.",
-    "notAuthenticated": "User authentication information is missing. Please log in again."
+    "notAuthenticated": "User authentication information is missing. Please log in again.",
+    "content_load_failed": "Failed to load content. Please try again later."
   },
   "info": {
     "loading": "Loading...",
