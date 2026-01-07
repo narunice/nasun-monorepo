@@ -60,8 +60,8 @@ const TIMELINE_RANGES: TimelineRange[] = [
     end: 18.0,
     item: {
       id: "LOGO",
-      type: "image",
-      content: "/NASUN_wordmark-white.png",
+      type: "text",
+      content: "NASUN",
       enterDur: 0.26,
       exitDur: 0.3,
     },
@@ -91,31 +91,15 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rafRef = useRef<number | null>(null);
 
-  // 로고 이미지 프리로드 (동시 로딩 보장)
+  // 로고 이미지 프리로드 (심볼만)
   useEffect(() => {
     const symbolImg = new Image();
-    const wordmarkImg = new Image();
-    let symbolLoaded = false;
-    let wordmarkLoaded = false;
-
-    const checkBothLoaded = () => {
-      if (symbolLoaded && wordmarkLoaded) {
-        setAreImagesReady(true);
-      }
-    };
 
     symbolImg.onload = () => {
-      symbolLoaded = true;
-      checkBothLoaded();
-    };
-
-    wordmarkImg.onload = () => {
-      wordmarkLoaded = true;
-      checkBothLoaded();
+      setAreImagesReady(true);
     };
 
     symbolImg.src = "/nasun_symbol_white.svg";
-    wordmarkImg.src = "/NASUN_wordmark-white.png";
   }, []);
 
   // 비디오가 재생 가능할 때
@@ -224,17 +208,20 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                 exit="exit"
                 className="flex items-center justify-center"
               >
-                {activeItem.type === "text" ? (
+                {activeItem.id === "LOGO" ? (
+                  <h1 className="text-nasun-white text-5xl md:text-6xl lg:text-7xl text-center uppercase drop-shadow-lg flex items-baseline">
+                    <span
+                      className="!font-changeling font-semibold tracking-widest "
+                      style={{ fontSize: "1.3em" }}
+                    >
+                      N
+                    </span>
+                    <span className="!font-changeling font-semibold tracking-widest">ASUN</span>
+                  </h1>
+                ) : (
                   <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wider text-center uppercase drop-shadow-lg">
                     {activeItem.content}
                   </h1>
-                ) : (
-                  <img
-                    src={activeItem.content}
-                    alt="NASUN"
-                    decoding="sync" // 애니메이션 시작 전 이미지 준비 강제
-                    className="w-48 md:w-64 lg:w-80 object-contain drop-shadow-lg "
-                  />
                 )}
               </motion.div>
             )}
@@ -245,14 +232,6 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
       {/* NASUN 로고 오버레이 (심볼) - V2와 동일한 위치 */}
       {isVideoPlaying && areImagesReady && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 md:gap-10 z-10 pt-14 -translate-y-[5vh] pointer-events-none">
-          {/* 워드마크 프리렌더링 (GPU 레이어 및 디코딩 유지용) */}
-          <img
-            src="/NASUN_wordmark-white.png"
-            alt=""
-            className="sr-only opacity-0 invisible"
-            aria-hidden="true"
-            decoding="sync"
-          />
           <img
             src="/nasun_symbol_white.svg"
             alt="NASUN Symbol"

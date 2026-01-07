@@ -21,7 +21,7 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg hover:bg-black/70 transition-all border border-nasun-white/30 ${
+    className={`absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg  hover:bg-black  transition-all border border-nasun-white/50 hover:border-white ${
       direction === "left"
         ? "-left-16 md:-left-20 lg:-left-24"
         : "-right-16 md:-right-20 lg:-right-24"
@@ -29,9 +29,9 @@ const CustomArrow = ({
     aria-label={direction === "left" ? "Previous news" : "Next news"}
   >
     {direction === "left" ? (
-      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/30" />
+      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/60  transition-all" />
     ) : (
-      <ChevronRightIcon className="w-6 h-6 text-nasun-white/30" />
+      <ChevronRightIcon className="w-6 h-6 text-nasun-white/60  transition-all" />
     )}
   </button>
 );
@@ -92,7 +92,7 @@ function NewsEventsSection() {
         {/* 섹션 타이틀 - Awards & Grants 스타일 */}
         <SectionTitle
           as="h2"
-          color="scarlet"
+          color="white"
           className="!font-eurostile text-center mt-6 mb-2 sm:my-4 md:my-6 lg:mt-8 xl:mt-10"
         >
           {t("newsEvents.title")}
