@@ -3,6 +3,8 @@ import { ResourcesConfig } from '@aws-amplify/core';
 const awsConfig: ResourcesConfig = {
   Auth: {
     Cognito: {
+      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID as string,
+      userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID as string,
       identityPoolId: import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID as string,
       allowGuestAccess: true,
       loginWith: {
