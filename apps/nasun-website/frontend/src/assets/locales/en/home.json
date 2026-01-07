@@ -91,7 +91,7 @@
     },
     "leaderboard": {
       "title": "Leaderboard",
-      "description": "Join the Leaderboard to earn rewards, exclusive access, and recognition within our growing community.",
+      "description": "Climb the Ranks Early and meaningful contribution is recognized. Top contributors share in the launch reward pool and a chance to receive a Genesis NFT.",
       "cta": "Get Started"
     },
     "leader": {
@@ -100,13 +100,13 @@
       "cta": "Get started →"
     },
     "battalionNft": {
-      "title": "Battalion NFT",
-      "description": "Mint your NFT and join the campaign.",
+      "title": "Battalion NFT (Free Mint)",
+      "description": "The Gateway Pass Mint your free pass to unlock Genesis NFT multipliers, eligibility for exclusive giveaways, and early testing access.",
       "cta": "Get Started"
     },
     "earlyContributor": {
       "title": "Early Contributors",
-      "description": "Join us as an early contributor.",
+      "description": "Lasting Status Lead in Wave 1 to earn a rare Brigadier NFT with exclusive utilities and long-term recognition.",
       "cta": "Get Started"
     }
   },

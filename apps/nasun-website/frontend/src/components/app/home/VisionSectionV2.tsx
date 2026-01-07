@@ -114,13 +114,13 @@ function VisionSectionV2() {
           variant="default"
           size="2xl"
           asChild
-          className="rounded-full font-light text-base lg:text-lg px-10 lg:px-14 py-2 lg:py-3 bg-nasun-black/90 mb-12 md:mb-14 lg:mb-16"
+          className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
         >
           <Link to="/wave1/battalion-nft">JOIN THE BATTALION</Link>
         </Button>
 
         {/* Tagline */}
-        <p className="font-medium text-base/snug md:text-lg/snug xl:text-xl/snug text-nasun-black/70 text-center max-w-2xl">
+        <p className="font-medium text-base/snug md:text-lg/snug xl:text-xl/snug text-nasun-black/70 text-center max-w-3xl">
           Building the next generation of global IP through coordinated creation.
         </p>
       </div>
