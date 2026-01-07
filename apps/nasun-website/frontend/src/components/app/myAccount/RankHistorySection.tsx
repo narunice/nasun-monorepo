@@ -53,7 +53,7 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
   const { defaultPeriod, availableLeaderboards } = useSmartDefaultPeriod();
 
   // Ref for chart capture
-  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   // 상태 관리 - 스마트 기본값 사용
   const [selectedPeriod, setSelectedPeriod] = useState<CumulativePeriod>(defaultPeriod);

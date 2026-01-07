@@ -23,7 +23,7 @@ import { InlineLoading } from '@/components/ui';
 
 export interface ShareRankHistoryButtonProps {
   /** 캡처할 차트 영역의 ref */
-  chartRef: React.RefObject<HTMLElement>;
+  chartRef: React.RefObject<HTMLDivElement | null>;
   /** 사용자명 */
   username: string;
   /** 기간 */
