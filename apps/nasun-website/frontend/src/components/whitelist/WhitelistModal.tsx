@@ -145,7 +145,7 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+            <Button variant="outlineC1" onClick={handleClose} className="w-full sm:w-auto">
               {t("whitelist.modal.intro.cancel")}
             </Button>
             <Button onClick={handleProceed} className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600">
@@ -277,7 +277,7 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={handleWithdrawClick} className="w-full sm:w-auto">
+            <Button variant="outlineC1" onClick={handleWithdrawClick} className="w-full sm:w-auto">
               {t("whitelist.modal.success.withdraw")}
             </Button>
             <Button onClick={handleClose} className="w-full sm:w-auto">
@@ -323,7 +323,7 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={handleWithdrawClick} className="w-full sm:w-auto">
+            <Button variant="outlineC1" onClick={handleWithdrawClick} className="w-full sm:w-auto">
               {t("whitelist.modal.alreadyJoined.withdraw")}
             </Button>
             <Button onClick={handleClose} className="w-full sm:w-auto">
