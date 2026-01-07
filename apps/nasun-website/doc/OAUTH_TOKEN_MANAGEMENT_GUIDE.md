@@ -153,46 +153,46 @@ Secrets Manager 업데이트
 2. Refresh Token이 revoke된 경우 (비밀번호 변경, 앱 권한 취소 등)
 3. Lambda에서 `"Value passed for the token was invalid"` 에러 발생
 
-### Step 1: Authorization URL 생성
+### Step 1: 자동화 스크립트 실행
 
 ```bash
 cd /home/naru/my_apps/nasun-apps/nasun-website/cdk
 source .env  # 개발 환경
 # source .env.production  # 프로덕션 환경
 
-npx tsx generate-oauth-url.ts
+# 통합 인증 스크립트 실행
+npx tsx setup-oauth2-auto.ts
 ```
 
-**출력 예시**:
-```
-🔗 다음 URL을 브라우저에서 열어주세요:
-https://x.com/i/oauth2/authorize?response_type=code&client_id=...
+> 💡 **Tip**: 만약 5174 포트가 이미 사용 중이라는 에러가 발생하면, 프론트엔드 개발 서버(Vite)를 일시적으로 종료한 후 다시 실행하세요.
 
-✅ State와 Code Verifier 저장됨: /tmp/oauth-auth-data.json
-```
+### Step 2: 브라우저 인증
 
-### Step 2: 사용자 인증
-
-1. 출력된 URL을 브라우저에서 열기
+1. 스크립트 실행 시 출력되는 **인증 URL**을 브라우저에서 엽니다.
 2. 타겟 계정으로 로그인 (개발: @Naru010110, 프로덕션: @Nasun_io)
-3. "Authorize app" 클릭
-4. Redirect된 URL에서 `code=` 파라미터 값 복사
+3. "Authorize app"을 클릭하여 권한을 승인합니다.
+4. 인증이 완료되면 브라우저에 "OAuth 2.0 인증 성공!" 메시지가 표시됩니다.
 
-### Step 3: 토큰 교환
+### Step 3: 완료 확인
 
-```bash
-# code 값만 입력 (URL 전체가 아님!)
-npx tsx exchange-oauth-code.ts "<AUTHORIZATION_CODE>"
-```
+스크립트가 브라우저의 콜백을 자동으로 수신하여 다음과 같은 작업을 수행합니다:
+1. Authorization Code를 Access/Refresh Token으로 교환.
+2. 발급된 토큰을 AWS Secrets Manager에 자동 저장.
+3. 토큰 소유자 계정 검증.
 
 **출력 예시**:
 ```
+✅ Authorization Code 수신
+🔄 즉시 Access Token으로 교환 중...
 ✅ OAuth 2.0 토큰 발급 성공!
-✅ AWS Secrets Manager 업데이트 완료!
-✅ 토큰 소유자 확인: @Naru010110
+✅ Secrets Manager 업데이트 완료!
+✅ 토큰 소유자: @Naru010110 (Naru)
+🎉 OAuth 2.0 설정 완료!
 ```
 
 ### Step 4: Lambda 테스트
+
+재인증이 끝난 후 자동 갱신 Lambda를 테스트하여 토큰이 정상적으로 작동하는지 확인합니다.
 
 ```bash
 # 개발 환경
