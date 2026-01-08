@@ -134,7 +134,11 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
               of Financial Autonomy
             </h4>
             <Button variant="defaultReverse" size="lg" asChild className="mt-5">
-              <Link to={import.meta.env.VITE_PADO_ALPHA_URL}>
+              <Link
+                to={import.meta.env.VITE_PADO_ALPHA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Pado Open Alpha
                 <ExternalLink className="w-4 h-4 ml-2" />
               </Link>

@@ -41,14 +41,6 @@ function AwardsGrantsSection() {
     6
   );
 
-  // 디버깅: posts 데이터 확인
-  console.log("🏆 [AwardsGrantsSection] Posts data:", {
-    count: posts.length,
-    posts: posts.map((p) => ({ id: p.id, slug: p.slug, title: p.title.rendered })),
-    loading,
-    error,
-  });
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",

@@ -35,6 +35,8 @@ const MAPPING = {
   'LinkAccountApiUrl': 'VITE_LINK_ACCOUNT_API',
   'GetAwsCredentialsApiUrl': 'VITE_AWS_CREDENTIALS_API',
   'WalletApiUrl': 'VITE_WALLET_API_ENDPOINT',
+  'GetUserCountApiUrl': 'VITE_USER_COUNT_API',
+  'GetFollowerCountApiUrl': 'VITE_FOLLOWER_COUNT_API',
 
   // AuthStack (특수 처리: path 추가 필요)
   'TwitterAuthApiUrl': {

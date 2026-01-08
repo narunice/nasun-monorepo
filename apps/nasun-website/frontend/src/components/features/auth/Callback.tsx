@@ -6,6 +6,7 @@ import ErrorBoundary from "../../layout/ErrorBoundary";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../providers/auth/AuthContext";
 import logger from "../../../lib/logger";
+import { ZkLoginCallback } from "@nasun/wallet-ui";
 
 export default function Callback() {
   const navigate = useNavigate();
@@ -14,9 +15,12 @@ export default function Callback() {
   const { isAuthenticated, isLoading, user, error } = useAuth();
   const hasHandledRef = useRef(false);
 
+  // Check if this is a zkLogin callback (Implicit Flow uses URL hash)
+  const isZkLogin = window.location.hash.includes("id_token=");
+
   useEffect(() => {
     // Prevent double execution in React StrictMode
-    if (hasHandledRef.current) {
+    if (hasHandledRef.current || isZkLogin) {
       return;
     }
 
@@ -89,6 +93,23 @@ export default function Callback() {
     // Otherwise, we are still loading, so the component will just keep showing the spinner.
 
   }, [navigate, searchParams, isAuthenticated, isLoading, user, error]);
+
+  if (isZkLogin) {
+    return (
+      <div className="min-h-screen bg-nasun-black flex items-center justify-center">
+        <div className="bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl border border-zinc-800">
+          <ZkLoginCallback
+            onSuccess={() => {
+              navigate("/", { replace: true });
+            }}
+            onError={(err) => {
+              logger.error("zkLogin error:", err);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>

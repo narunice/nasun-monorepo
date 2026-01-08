@@ -39,7 +39,7 @@ if (googleClientId && saltApiUrl) {
       google: {
         provider: "google",
         clientId: googleClientId,
-        redirectUri: `${window.location.origin}/auth/callback`,
+        redirectUri: `${window.location.origin}/callback`,
       },
     },
   });
