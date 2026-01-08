@@ -21,7 +21,7 @@ import { CumulativePeriod } from "../types";
 import { UserRankData } from "../types/leaderboard";
 import RankChangeIndicator from "./RankChangeIndicator";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { toast } from "react-toastify";
 import html2canvas from "html2canvas";
 

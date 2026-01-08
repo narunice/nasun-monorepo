@@ -16,7 +16,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SuiClient } from "@mysten/sui/client";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { fromBase64, toBase64 } from "@mysten/bcs";
-import { useAuth } from "@/providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 
 const API_URL = import.meta.env.VITE_GOVERNANCE_API_URL;
 const PACKAGE_ID = import.meta.env.VITE_GOVERNANCE_PACKAGE_ID;

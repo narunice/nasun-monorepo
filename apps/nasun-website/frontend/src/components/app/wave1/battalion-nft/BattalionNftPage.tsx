@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useBattalionNftStore } from "../../../../stores/useBattalionNftStore";
 import { useBattalionNftRegistration } from "../../../../hooks/useBattalionNftRegistration";
 import { StepperProgress } from "./StepperProgress";

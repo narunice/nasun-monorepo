@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react';
-import { useAuth } from '../../providers/auth/AuthContext';
+import { useAuth } from "@/features/auth";
 import { useUserStore } from '../../store/userStore';
 import {
   connectWallet,

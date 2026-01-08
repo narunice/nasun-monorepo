@@ -1,6 +1,6 @@
 // src/routes/LogoutRouteGate.tsx
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 
 export default function LogoutRouteGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();

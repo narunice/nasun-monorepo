@@ -11,7 +11,7 @@ import awsConfig from "./config/awsConfig"; // 기존 awsConfig 임포트 유지
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { NasunProvider } from "./providers/NasunProvider";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
-import AuthProvider from "./providers/auth/AuthContext";
+import { AuthProvider } from "@/features/auth";
 import { validateEnv } from "./utils/envValidation";
 import { configureWallet, initZkLogin } from "@nasun/wallet";
 import { WalletProvider } from "@nasun/wallet-ui";
