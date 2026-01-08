@@ -64,7 +64,7 @@ if (NETWORK_CONFIG.zkLoginSaltApiUrl && NETWORK_CONFIG.googleClientId) {
       google: {
         provider: 'google',
         clientId: NETWORK_CONFIG.googleClientId,
-        redirectUri: `${window.location.origin}/auth/callback`,
+        redirectUri: `${window.location.origin}/callback`,
       },
     },
   });

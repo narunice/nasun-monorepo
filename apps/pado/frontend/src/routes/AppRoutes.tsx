@@ -47,7 +47,7 @@ export function AppRoutes() {
       <Route path="/earn" element={<EarnPage />} />
 
       {/* Auth (zkLogin callback) */}
-      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/callback" element={<AuthCallbackPage />} />
 
       {/* Future routes */}
       {/* <Route path="/perps" element={<PerpsPage />} /> */}
