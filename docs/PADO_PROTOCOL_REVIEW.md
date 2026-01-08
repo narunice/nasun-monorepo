@@ -418,7 +418,138 @@ MarginRegistry.total_tvl = Σ(모든 MarginAccount.nusdc_balance)
 
 ---
 
-## 5. 종합 보안 평가
+## 5. Protocol Invariants (v0)
+
+> 이 섹션은 프로토콜의 핵심 불변식을 명시적으로 정의합니다.
+> 모든 상태 전환은 이 불변식을 유지해야 합니다.
+
+### Core Invariants
+
+| # | Invariant | Enforcement | Violation Consequence |
+|---|-----------|-------------|----------------------|
+| **I1** | `MarginAccount.balance >= 0` | `Balance<T>` 타입이 언어 수준에서 보장 | 컴파일 에러 (불가능) |
+| **I2** | `Registry.total_tvl == Σ(all account balances)` | `deposit()`, `withdraw()` 시 atomic 업데이트 | TVL 표시 오류 |
+| **I3** | Only `account.owner` can withdraw | `assert!(account.owner == sender)` | 무단 출금 |
+| **I4** | Oracle price never moves funds (v0) | Oracle은 읽기 전용, 자금 이동 로직 미구현 | N/A (v0 범위 외) |
+| **I5** | All state transitions are atomic | Sui 트랜잭션 모델 보장 | 부분 실패 불가능 |
+
+### Invariant Details
+
+#### I1: Balance Non-negativity
+
+```move
+// Move의 Balance<T> 타입은 음수가 불가능
+public struct Balance<T> has store {
+    value: u64,  // unsigned, cannot be negative
+}
+
+// 출금 시 잔액 체크
+public fun withdraw(..., amount: u64) {
+    assert!(account.nusdc_balance.value() >= amount, EInsufficientBalance);
+    // Balance::split() 내부에서도 재검증
+}
+```
+
+#### I2: TVL Consistency
+
+```move
+// Deposit: balance 증가 + TVL 증가 (동일 트랜잭션)
+public fun deposit(...) {
+    balance::join(&mut account.nusdc_balance, payment.into_balance());
+    registry.total_tvl = registry.total_tvl + amount;
+}
+
+// Withdraw: balance 감소 + TVL 감소 (동일 트랜잭션)
+public fun withdraw(...) {
+    let coin = coin::take(&mut account.nusdc_balance, amount, ctx);
+    registry.total_tvl = registry.total_tvl - amount;
+    transfer::public_transfer(coin, sender);
+}
+
+// Sui 원자성으로 중간 상태 없음
+```
+
+#### I3: Owner-only Withdrawal
+
+```move
+const ENotOwner: u64 = 1;
+
+public fun withdraw(...) {
+    let sender = tx_context::sender(ctx);
+    assert!(account.owner == sender, ENotOwner);  // 필수 체크
+    // ...
+}
+```
+
+#### I4: Oracle Read-only (v0)
+
+```
+v0에서 Oracle은:
+✅ 가격 조회 (get_price)
+✅ Frontend 표시용 데이터
+❌ 담보 가치 평가 (v1)
+❌ 청산 트리거 (v1)
+❌ 자금 이동 결정 (v1)
+```
+
+#### I5: Atomic State Transitions
+
+```
+Sui 트랜잭션 모델:
+- 트랜잭션 내 모든 효과(effects)는 all-or-nothing
+- 중간 실패 시 전체 롤백
+- 관찰 가능한 상태는 항상 유효한 상태
+
+예시:
+deposit() 실행 중:
+1. Coin 수신 ← 여기서 실패하면 전체 롤백
+2. Balance 증가
+3. TVL 증가
+4. Event 발생
+
+외부에서는 1-4 모두 완료된 상태만 관찰 가능
+```
+
+### Risk Engine Invariants (v0)
+
+| # | Invariant | Description |
+|---|-----------|-------------|
+| **R1** | `required_margin = trade_value * 1.10` | 10% 버퍼 요구 |
+| **R2** | `trade_allowed = (margin_balance >= required_margin)` | 단순 잔액 비교 |
+| **R3** | No position tracking | v0에서 포지션 누적 없음 |
+| **R4** | No liquidation | v0에서 청산 로직 없음 |
+
+### Frontend Invariant Checks
+
+```typescript
+// lib/risk-engine.ts
+
+// R1: Buffer calculation
+export function getRequiredMargin(tradeValue: bigint): bigint {
+  return (tradeValue * 110n) / 100n;
+}
+
+// R2: Trade validation
+export function validateTrade(marginBalance: bigint, tradeValue: bigint): boolean {
+  if (tradeValue === 0n) return true;
+  return marginBalance >= getRequiredMargin(tradeValue);
+}
+```
+
+### Invariant Monitoring (Devnet)
+
+권장 모니터링 지표:
+
+| Metric | Expected | Alert Threshold |
+|--------|----------|-----------------|
+| `Registry.total_tvl` vs `Σ account balances` | 항상 일치 | 1 NUSDC 차이 |
+| Failed withdraw rate | < 1% | > 5% |
+| `ENotOwner` error rate | 0 | > 0 |
+| `EInsufficientBalance` rate | 정상 범위 | 급증 시 |
+
+---
+
+## 6. 종합 보안 평가
 
 | 영역 | Devnet 점수 | Mainnet 준비도 |
 |------|-------------|----------------|
@@ -694,4 +825,4 @@ Priority 2 - 이해도 향상:
 
 ---
 
-*Last updated: 2026-01-05*
+*Last updated: 2026-01-08*

@@ -42,6 +42,11 @@ function parseTradeError(error: unknown): string {
     return 'Insufficient balance. Please check your NUSDC balance.';
   }
 
+  // Insufficient margin (Pado Balance)
+  if (message.includes('EInsufficientMargin') || message.includes('Insufficient margin')) {
+    return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
+  }
+
   // Market closed
   if (message.includes('market_closed') || message.includes('EMarketClosed')) {
     return 'This market is closed and no longer accepting orders.';
@@ -82,6 +87,9 @@ function parseTradeError(error: unknown): string {
       case 9: return 'You are not the owner of this order.';
       case 10: return 'Market has expired.';
       case 11: return 'Cannot trade with yourself.';
+      // Risk Engine error codes (margin_account.move)
+      case 100: return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
+      case 101: return 'Trade value cannot be zero.';
       default: return `Transaction failed (code: ${code}). Please try again.`;
     }
   }

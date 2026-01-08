@@ -28,7 +28,7 @@ export function useFaucet(): UseFaucetResult {
   // Use wallet address or zkLogin address
   const address = walletAccount?.address || zkState?.address;
   const { showToast } = useToast();
-  const { requestNbtc, requestNusdc, isLoading: isTradeLoading } = useTrading();
+  const { requestNbtc, requestNusdc } = useTrading();
   const queryClient = useQueryClient();
 
   const [isNasunLoading, setIsNasunLoading] = useState(false);
@@ -111,8 +111,8 @@ export function useFaucet(): UseFaucetResult {
 
   return {
     isNasunLoading,
-    isNbtcLoading: isNbtcLoading || isTradeLoading,
-    isNusdcLoading: isNusdcLoading || isTradeLoading,
+    isNbtcLoading,
+    isNusdcLoading,
     handleNasunFaucet,
     handleNbtcFaucet,
     handleNusdcFaucet,

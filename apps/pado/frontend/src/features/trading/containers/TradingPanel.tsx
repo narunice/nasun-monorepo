@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm } from '../context';
-import { useMarginAccount } from '../../core/unified-margin';
+import { useMarginAccount, useRiskEngine } from '../../core/unified-margin';
 import {
   OrderForm,
   OrderConfirmModal,
@@ -32,13 +32,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
 
   // Pado Balance integration
-  const { account: marginAccount, hasAccount: hasMarginAccount } = useMarginAccount();
+  const { hasAccount: hasMarginAccount } = useMarginAccount();
+  const { currentMarginFormatted, canTrade, formatRequired } = useRiskEngine();
   const [fundingSource, setFundingSource] = useState<FundingSource>('trading');
-
-  // NUSDC balance from Pado Balance
-  const padoBalance = marginAccount?.nusdcBalance
-    ? Number(marginAccount.nusdcBalance) / 1e6
-    : 0;
 
   // 오더북 데이터 (가격 정보)
   const { data: orderbookData } = useOrderbook();
@@ -223,9 +219,22 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               <p className="text-xs text-theme-text-muted mt-1">
                 Trading Balance will be used for this trade.
               </p>
-              <p className="text-xs text-theme-text-muted mt-1">
-                Pado Balance: {padoBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
-              </p>
+              <div className="mt-2 pt-2 border-t border-blue-500/20">
+                <div className="flex justify-between text-xs">
+                  <span className="text-theme-text-muted">Pado Balance:</span>
+                  <span className="text-theme-text-primary font-mono">
+                    {currentMarginFormatted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
+                  </span>
+                </div>
+                {parseFloat(amount) > 0 && midPrice > 0 && (
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-theme-text-muted">Required (10% buffer):</span>
+                    <span className={`font-mono ${canTrade(parseFloat(amount) * midPrice) ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {formatRequired(parseFloat(amount) * midPrice)} NUSDC
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
