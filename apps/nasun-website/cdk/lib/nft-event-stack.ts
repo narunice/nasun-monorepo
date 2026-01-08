@@ -183,6 +183,7 @@ export class NftEventStack extends cdk.Stack {
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
       },
     });
 
@@ -208,6 +209,7 @@ export class NftEventStack extends cdk.Stack {
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
         CURRENT_BATCH_ID, // Allowlist Batch ID
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
       },
     });
 
@@ -225,6 +227,7 @@ export class NftEventStack extends cdk.Stack {
       logGroup: withdrawLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
       },
     });
 
@@ -248,6 +251,7 @@ export class NftEventStack extends cdk.Stack {
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
         EXPORT_BUCKET_NAME: exportBucket.bucketName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
       },
     });
 
@@ -266,6 +270,7 @@ export class NftEventStack extends cdk.Stack {
       logGroup: checkStatusLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
       },
     });
 

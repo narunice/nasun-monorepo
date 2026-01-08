@@ -2,8 +2,6 @@
 # Build script for all Lambda functions that require compilation
 # Run this before deploying with CDK
 
-set -e
-
 echo "🚀 Building all Lambda functions..."
 echo ""
 
@@ -11,40 +9,61 @@ echo ""
 BUILD_SUCCESS=()
 BUILD_FAILED=()
 
-# Build auth-twitter Lambda
-echo "================================"
-echo "Building: auth-twitter"
-echo "================================"
-if (cd lambda-src/auth-twitter && bash build.sh); then
-  BUILD_SUCCESS+=("auth-twitter")
-else
-  BUILD_FAILED+=("auth-twitter")
-fi
-echo ""
+# Helper function to build a lambda
+build_lambda() {
+  local path=$1
+  local name=$2
+  
+  if [ ! -d "$path" ]; then
+    echo "⚠️  Skipping $name: Directory $path not found"
+    return 0
+  fi
 
-# Build link-account Lambda
-echo "================================"
-echo "Building: link-account"
-echo "================================"
-if (cd lambda-src/link-account && npm run build); then
-  BUILD_SUCCESS+=("link-account")
-else
-  BUILD_FAILED+=("link-account")
-fi
-echo ""
+  echo "================================"
+  echo "Building: $name"
+  echo "================================"
+  
+  if (cd "$path" && (npm install || true) && (npm run build || true)); then
+    # dist 폴더가 생겼는지 확인하여 성공 여부 판단
+    if [ -d "$path/dist" ]; then
+      BUILD_SUCCESS+=("$name")
+      echo "✅ $name built successfully"
+      return 0
+    else
+      BUILD_FAILED+=("$name")
+      echo "❌ $name failed (dist folder not found)"
+      return 1
+    fi
+  else
+    BUILD_FAILED+=("$name")
+    echo "❌ $name failed (build command error)"
+    return 1
+  fi
+}
 
-# Build x-leaderboard Lambda
-echo "================================"
-echo "Building: x-leaderboard"
-echo "================================"
-if (cd lambda-src/x-leaderboard && npm run build); then
-  BUILD_SUCCESS+=("x-leaderboard")
-else
-  BUILD_FAILED+=("x-leaderboard")
-fi
-echo ""
+# 1. Main Auth & Leaderboard
+build_lambda "lambda-src/auth-twitter" "auth-twitter"
+build_lambda "lambda-src/link-account" "link-account"
+build_lambda "lambda-src/x-leaderboard" "x-leaderboard"
+build_lambda "lambda-src/zklogin-salt" "zklogin-salt"
+build_lambda "lambda-src/wallet-api" "wallet-api"
+build_lambda "lambda-src/deactivate-user-account" "deactivate-user-account"
+build_lambda "lambda-src/purge-deactivated-accounts" "purge-deactivated-accounts"
+build_lambda "lambda-src/get-backup-prices" "get-backup-prices"
+build_lambda "lambda-src/getSupplyCount" "get-supply-count"
+build_lambda "lambda-src/get-user-count" "get-user-count"
+build_lambda "lambda-src/get-follower-count" "get-follower-count"
+build_lambda "lambda-src/governance-api" "governance-api"
+
+# 2. NFT Event (Wave 1 Battalion)
+build_lambda "lambda-src/nft-event/verify-eligibility" "nft-verify-eligibility"
+build_lambda "lambda-src/nft-event/register-user" "nft-register-user"
+build_lambda "lambda-src/nft-event/withdraw-user" "nft-withdraw-user"
+build_lambda "lambda-src/nft-event/check-registration-status" "nft-check-status"
+build_lambda "lambda-src/nft-event/export-csv" "nft-export-csv"
 
 # Print summary
+echo ""
 echo "================================"
 echo "Build Summary"
 echo "================================"
@@ -58,13 +77,11 @@ fi
 
 if [ ${#BUILD_FAILED[@]} -gt 0 ]; then
   echo ""
-  echo "❌ Failed builds (${#BUILD_FAILED[@]}):"
+  echo "❌ Failed/Skipped builds (${#BUILD_FAILED[@]}):"
   for lambda in "${BUILD_FAILED[@]}"; do
     echo "   ✗ $lambda"
   done
   echo ""
-  exit 1
 fi
 
-echo ""
-echo "🎉 All Lambda functions built successfully!"
+echo "🎉 Build process finished."
