@@ -2,6 +2,7 @@ import { Suspense, lazy, useState, useCallback, useEffect } from "react";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
+import PadoHeroSectionSkeleton from "../../components/app/finance/pado/PadoHeroSectionSkeleton";
 
 // Lazy load all section components
 const PadoHeroSection = lazy(() => import("../../components/app/finance/pado/PadoHeroSection"));
@@ -57,7 +58,7 @@ export default function PadoPage() {
         </SectionLayout>
       }
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<PadoHeroSectionSkeleton />}>
         <PadoHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
         {/* 비디오 준비 후 렌더링하여 레이아웃 시프트 방지 */}
         {isVideoReady && (

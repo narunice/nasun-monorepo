@@ -4,6 +4,8 @@ import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 
+import NetworkHeroSectionSkeleton from "../../components/app/protocol/network/NetworkHeroSectionSkeleton";
+
 const NetworkHeroSection = lazy(
   () => import("../../components/app/protocol/network/NetworkHeroSection")
 );
@@ -51,8 +53,9 @@ const VisionNetworkPage = () => {
 
   // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
-  // Suspense fallback: null to prevent unnecessary loading spinners
-  const suspenseFallback = null;
+  // Suspense fallback: Use NetworkHeroSectionSkeleton to prevent layout shift
+  // This ensures h-screen space is reserved immediately
+  const suspenseFallback = <NetworkHeroSectionSkeleton />;
 
   const errorFallback = (
     <SectionLayout>

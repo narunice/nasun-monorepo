@@ -121,7 +121,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
           <div className="flex justify-center mt-3">
             <Button variant="defaultReverse" size="lg" asChild className="mt-5">
               <Link
-                to={import.meta.env.VITE_EXPLORER_URL}
+                to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -140,7 +140,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
             <h5 className="text-nasun-white/70">for Coordinated Creation</h5>
             <Button variant="defaultReverse" size="lg" asChild className="mt-5">
               <Link
-                to={import.meta.env.VITE_EXPLORER_URL}
+                to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
               >

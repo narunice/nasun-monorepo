@@ -17,6 +17,7 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
+import BattalionNftHeroSectionSkeleton from "../../components/app/wave1/battalion-nft/BattalionNftHeroSectionSkeleton";
 
 const BattalionNftHeroSection = lazy(
   () => import("../../components/app/wave1/battalion-nft/BattalionNftHeroSection")
@@ -58,8 +59,9 @@ const BattalionNftPage: React.FC = () => {
 
   // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
-  // Suspense fallback: null to prevent unnecessary loading spinners
-  const suspenseFallback = null;
+  // Suspense fallback: Use BattalionNftHeroSectionSkeleton to prevent layout shift
+  // This ensures h-screen space is reserved immediately
+  const suspenseFallback = <BattalionNftHeroSectionSkeleton />;
 
   return (
     <PageLayout className="!pt-0">
