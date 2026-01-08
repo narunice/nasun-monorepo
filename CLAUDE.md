@@ -360,19 +360,25 @@ cd apps/pado/contracts
 |----------|------------|------|
 | governance (v1) | `0xcd753b00...` | 초기 패키지 (deprecated) |
 | governance (v2) | `0x77153fb2...` | Certificate 기반 투표 (deprecated) |
-| governance (v3) | `0x01ceae826f1ce6a13407eaa290fd0f99ca02230f1253f312246a57f9edf94ff0` | **현재 패키지** (Domain Separation) |
+| governance (v3) | `0x01ceae82...` | Domain Separation 추가 (deprecated) |
+| governance (v4) | `0xf6d2c99985eec548a604d7d49491b36a76fd02d7ac37e3cab11b8609797186fc` | **현재 패키지** (ProposalType 추가) |
 | VotingPowerOracle (shared) | `0x656632e390118ddf2c41fc59f14ddbbdfdd2115b8a08e4db48e8232846f43199` | Ed25519 서명 검증 |
 | CertificateRegistry (shared) | `0x5edbaf20f817ee3a9a94528babff2d2218364d4ec9a60af486a35228ad8a421f` | 중복 발급 방지 |
+| ProposalTypeRegistry (shared) | `0x87bd4a3f00b1ef6cbb3311eb4d40ee14d32dadbaf6498d07e2347f517ebe84ba` | 프로포절 유형 관리 |
 | Dashboard (shared) | `0x422ee880...` | 프로포절 대시보드 |
 | DelegationRegistry | `0x23f4c7b5...` | 투표 위임 레지스트리 |
-| AdminCap | `0x21a92db9...` | 관리자 권한 |
-| UpgradeCap | `0x71d874e0...` | 업그레이드 권한 |
+| AdminCap | `0x21a92db9776a4c4b4c81323103dd16c082ae13c8c86a780e6711fb9b81620972` | 관리자 권한 |
+| UpgradeCap | `0x71d874e076031e9645ceb372ef5546de5d250abf87e1ab08fa3cf459544e5ba5` | 업그레이드 권한 |
 
-**v3 Security Features:**
+**v4 Features:**
+- **ProposalType**: Governance (사용자 가스비) vs Poll (Sponsored/Zero Gas)
+- **ProposalTypeRegistry**: 프로포절 유형 On-chain 저장
+- **조건부 Sponsoring**: Poll 프로포절만 가스비 지원
+
+**v3 Security Features (유지):**
 - **Domain Separation**: `NASUN_GOVERNANCE_DEVNET_V1` (cross-chain replay 방지)
 - **BCS Serialization**: Move와 Lambda 간 직렬화 일치 (106 bytes message)
 - **TTL Policy**: Devnet 15분, Mainnet 최대 30분 (proposal 만료 고려)
-- **Sponsored Transaction**: 사용자 가스비 없이 투표 가능 (Zero Gas Fee)
 
 **API Endpoint:**
 - Production: `https://3n52syk380.execute-api.ap-northeast-2.amazonaws.com/prod`

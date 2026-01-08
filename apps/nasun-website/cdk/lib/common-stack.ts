@@ -16,6 +16,7 @@ export interface CommonStackProps extends cdk.StackProps {
 }
 
 // Security: CORS 허용 도메인 목록
+// Note: localhost included for devnet development/testing
 const ALLOWED_ORIGINS = [
   'https://nasun.io',
   'https://www.nasun.io',
@@ -24,7 +25,11 @@ const ALLOWED_ORIGINS = [
   'https://staging.gensol.io',
   'https://pado.finance',
   'https://staging.pado.finance',
-  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'] : []),
+  // Devnet: allow localhost for development
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
 ];
 
 export class CommonStack extends cdk.Stack {
@@ -274,7 +279,7 @@ export class CommonStack extends cdk.Stack {
         TOKEN_WEIGHT: process.env.TOKEN_WEIGHT || "0",
         // VotingPowerCertificate + Sponsored Transaction
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x77153fb28cf00adb7e59a62b057d7cbfcf26dabc4bc9daad8073e5321b22c0af",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x01ceae826f1ce6a13407eaa290fd0f99ca02230f1253f312246a57f9edf94ff0",
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-governance-api",
