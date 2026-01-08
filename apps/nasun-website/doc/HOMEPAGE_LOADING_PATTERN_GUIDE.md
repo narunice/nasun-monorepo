@@ -1,135 +1,97 @@
-# HomePage Loading Pattern Guide
+# Video Loading Pattern Guide
 
 **작성일**: 2025-11-08
-**최종 수정**: 2026-01-08 (순차적 비디오 로딩 패턴 추가)
-**버전**: 1.3.0
+**최종 수정**: 2026-01-08 (사이트 전체 순차 로딩 표준화)
+**버전**: 2.0.0
 **작성자**: Claude Code
 
-나선 웹사이트의 홈페이지(HomePage)에서 사용되는 로딩 패턴, 레이아웃 시프트 방지, 그리고 **비디오 로딩 최적화** 가이드입니다.
+나선 웹사이트의 모든 페이지에서 대용량 비디오 자원을 효율적으로 로딩하기 위한 **순차적 로딩(Sequential Loading)** 및 **레이아웃 시프트 방지** 가이드입니다.
 
 ---
 
 ## 📋 목차
 
-1. [핵심 요약](#핵심-요약)
-2. [문제 정의](#문제-정의)
-3. [패턴 1: 스켈레톤 기반 공간 선점 (Layout Shift 방지)](#패턴-1-스켈레톤-기반-공간-선점-layout-shift-방지)
-4. [패턴 2: 순차적 비디오 로딩 (대역폭 최적화)](#패턴-2-순차적-비디오-로딩-대역폭-최적화)
-5. [구현 가이드](#구현-가이드)
-6. [코드 예시](#코드-예시)
-7. [고급 테크닉: Footer 타이밍 제어](#고급-테크닉-footer-타이밍-제어)
-8. [체크리스트](#체크리스트)
+1. [핵심 원칙](#핵심-원칙)
+2. [패턴 1: 스켈레톤 기반 공간 선점 (Layout Shift 방지)](#패턴-1-스켈레톤-기반-공간-선점-layout-shift-방지)
+3. [패턴 2: Waterfall 순차 로딩 (대역폭 최적화)](#패턴-2-waterfall-순차-로딩-대역폭-최적화)
+4. [구현 가이드](#구현-가이드)
+5. [코드 예시 (HomePage)](#코드-예시-homepage)
+6. [체크리스트](#체크리스트)
 
 ---
 
-## 핵심 요약
+## 핵심 원칙
 
-홈페이지의 사용자 경험을 최적화하기 위해 두 가지 핵심 패턴을 사용합니다:
-
-1.  **스켈레톤 기반 공간 선점**: 로딩 중 레이아웃이 깨지거나 밀리는 현상 방지 (Visual Stability)
-2.  **순차적 비디오 로딩**: 중요도가 높은 히어로 비디오를 먼저 로드하고, 하단 비디오는 나중에 로드하여 초기 로딩 속도 향상 (Network Performance)
-
----
-
-## 문제 정의
-
-### 문제 1: 레이아웃 시프트 (Layout Shift)
-대용량 미디어가 로드되면서 갑자기 공간을 차지하여 하단 컨텐츠가 밀려나는 현상.
-
-### 문제 2: 대역폭 경쟁 (Bandwidth Contention)
-히어로 섹션과 하단(Vision) 섹션의 비디오가 동시에 로딩을 시작하면, 한정된 네트워크 대역폭을 나눠 쓰게 되어 **가장 중요한 첫 화면(LCP)의 비디오 재생이 늦어짐**.
+1.  **Top-Down Priority**: 페이지의 가장 상단(Hero)에 있는 비디오가 가장 높은 우선순위를 가집니다.
+2.  **Sequential Loading**: 상위 섹션의 비디오 로딩이 완료(`onCanPlay`)되어야만, 하위 섹션의 비디오 로딩(`src` 할당)이 시작됩니다.
+3.  **Space Reservation**: 비디오가 로딩되기 전에도 레이아웃 높이(`h-screen` 등)는 확보되어 있어야 합니다.
 
 ---
 
 ## 패턴 1: 스켈레톤 기반 공간 선점 (Layout Shift 방지)
 
+가장 먼저 로딩되는 **Hero Section**에 필수적입니다.
+
 ### 작동 원리
-1.  **Loading Phase**: `HeroSectionSkeleton`이 `100vh` 공간을 차지하고 로딩 스피너를 보여줍니다.
-2.  **Mount Phase**: `HeroSectionV3` 코드가 로드되면 교체됩니다. 이때 `HeroSectionV3`는 비디오가 준비될 때까지 **스켈레톤과 똑같은 모습**을 유지합니다.
-3.  **Ready Phase**: 비디오가 준비되면(`onCanPlay`) 비디오의 투명도(`opacity`)를 높여 부드럽게 전환합니다.
+1.  **Loading Phase**: `Suspense`의 fallback으로 실제 컴포넌트와 동일한 크기(`100vh`)의 스켈레톤을 표시합니다.
+2.  **Mount Phase**: 실제 컴포넌트가 마운트되더라도, 비디오가 재생 준비될 때까지는 스켈레톤과 동일한 로딩 UI를 유지합니다.
+3.  **Ready Phase**: 비디오 준비 완료(`onCanPlay`) 시 부드럽게(`opacity` transition) 전환합니다.
 
 ---
 
-## 패턴 2: 순차적 비디오 로딩 (대역폭 최적화)
+## 패턴 2: Waterfall 순차 로딩 (대역폭 최적화)
 
-### 작동 원리
-중요한 비디오(Hero)가 준비될 때까지 덜 중요한 비디오(Vision 등)의 로딩을 **차단**합니다.
+여러 비디오 섹션이 있는 페이지에서 필수적입니다.
 
-1.  **Hero Loading**: 페이지 진입 시, 상단 Hero 비디오만 다운로드합니다.
-2.  **Signal**: Hero 비디오가 준비되면(`onVideoReady`), 부모 컴포넌트에 알립니다.
-3.  **Lazy Loading**: 부모는 하단 섹션에 `shouldLoadVideo={true}` 신호를 보냅니다.
-4.  **Vision Loading**: 신호를 받은 하단 섹션이 비로소 `<video src="...">`를 렌더링하여 다운로드를 시작합니다.
+### 작동 원리 (Daisy Chain)
+`Hero` 로딩 완료 ➔ `Section A` 로딩 시작 ➔ `Section A` 완료 ➔ `Section B` 로딩 시작 ...
+
+### 구현 로직
+1.  **부모 페이지 (Controller)**: 각 섹션의 준비 상태(`isReady`)를 관리하고, 다음 섹션에 로딩 허가(`shouldLoad`)를 내립니다.
+2.  **자식 섹션 (Consumer)**: `shouldLoadVideo` prop이 `true`가 될 때까지 `<video>` 태그를 렌더링하지 않습니다. 준비가 완료되면 `onVideoReady` 콜백을 호출합니다.
 
 ---
 
 ## 구현 가이드
 
-### Step 1: 스켈레톤 컴포넌트 (패턴 1)
+### Step 1: 섹션 컴포넌트 표준 인터페이스
 
-실제 컴포넌트와 **최상위 컨테이너 스타일이 100% 일치**해야 합니다.
+모든 비디오 포함 섹션은 다음 두 가지 Prop을 지원해야 합니다.
 
 ```tsx
-// HeroSectionSkeleton.tsx
-export default function HeroSectionSkeleton() {
-  return (
-    <div className="w-screen relative ... h-screen ... bg-nasun-black">
-      <div className="absolute inset-0 ...">
-        <InlineLoading message="Loading..." size="lg" />
-      </div>
-    </div>
-  );
+interface VideoSectionProps {
+  // Input: 상위 비디오가 준비되었으니 로딩을 시작하라는 신호
+  shouldLoadVideo?: boolean;
+  
+  // Output: 내 비디오가 준비되었음을 알리는 콜백 (다음 섹션을 위해)
+  onVideoReady?: () => void;
 }
 ```
 
-### Step 2: 히어로 컴포넌트 (패턴 1)
-
-비디오가 재생되기 전까지는 스켈레톤과 똑같은 UI를 보여줍니다.
+### Step 2: 컴포넌트 구현 (예시)
 
 ```tsx
-// HeroSectionV3.tsx
-function HeroSectionV3({ onVideoReady }: Props) {
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-
+function VideoSection({ shouldLoadVideo = false, onVideoReady }: VideoSectionProps) {
   const handleCanPlay = () => {
-    // 준비 완료 신호 전송
+    // 1. 비디오 재생 시작
+    videoRef.current?.play();
+    // 2. 부모에게 준비 완료 알림 (다음 섹션 로딩 트리거)
     onVideoReady?.();
   };
 
   return (
-    <div className="w-screen relative ... h-screen ...">
-      <video
-        className={`... ${isVideoPlaying ? "opacity-100" : "opacity-0"}`}
-        onCanPlay={handleCanPlay}
-        onPlaying={() => setIsVideoPlaying(true)}
-      />
-      {!isVideoPlaying && <LoadingOverlay />}
-    </div>
-  );
-}
-```
-
-### Step 3: 하단 비디오 컴포넌트 (패턴 2)
-
-`shouldLoadVideo` prop을 받아 비디오 소스 할당을 제어합니다.
-
-```tsx
-// VisionSectionV2.tsx
-interface Props {
-  shouldLoadVideo?: boolean;
-}
-
-function VisionSectionV2({ shouldLoadVideo = false }: Props) {
-  return (
-    <div className="relative h-screen ...">
-      {/* 신호를 받기 전에는 video 태그를 렌더링하지 않거나 src를 비워둠 */}
+    <div className="relative h-screen bg-nasun-black">
+      {/* shouldLoadVideo가 true일 때만 video 렌더링 */}
       {shouldLoadVideo && (
-        <video autoPlay loop muted>
-          <source src={videoSrc} type="video/mp4" />
-        </video>
+        <video 
+          src={videoSrc} 
+          onCanPlay={handleCanPlay} 
+          // ... attrs 
+        />
       )}
       
-      {/* 비디오 로딩 전 보여줄 대체 이미지나 배경색 */}
-      {!shouldLoadVideo && <div className="absolute inset-0 bg-nasun-white" />}
+      {/* 로딩 전/중에는 배경색이나 포스터 이미지 표시 */}
+      <div className="absolute inset-0 bg-nasun-black -z-10" />
     </div>
   );
 }
@@ -137,50 +99,43 @@ function VisionSectionV2({ shouldLoadVideo = false }: Props) {
 
 ---
 
-## 코드 예시
+## 코드 예시 (HomePage)
 
-### `frontend/src/pages/HomePage.tsx`
+`Hero` ➔ `Vision` ➔ `Wave1` ➔ `NftSale` 순서로 로딩하는 예시입니다.
 
 ```tsx
-import { Suspense, lazy, useState, useCallback } from "react";
-// ... imports
-
 export default function HomePage() {
-  const [isVideoReady, setIsVideoReady] = useState(false); // Hero 비디오 준비 상태
-
-  // 비디오 로딩 완료 핸들러
-  const handleVideoReady = useCallback(async () => {
-    setIsVideoReady(true); // 1. Hero 준비 완료 -> 하단 비디오 로딩 허용
-
-    // 2. 중요 섹션 코드 프리로드
-    await Promise.all([
-      import("../components/app/home/VisionSectionV2"),
-      // ...
-    ]);
-
-    // 3. Footer 표시 (레이아웃 시프트 방지)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsPageReady(true);
-      });
-    });
-  }, [setIsPageReady]);
+  // 상태 체인 (State Chain)
+  const [isHeroReady, setIsHeroReady] = useState(false);
+  const [isVisionReady, setIsVisionReady] = useState(false);
+  const [isWave1Ready, setIsWave1Ready] = useState(false);
 
   return (
     <ScrollSnapContainer>
-      <Suspense fallback={<HeroSectionSkeleton />}>
-        {/* Hero Section */}
-        <ScrollSnapSection>
-          <HeroSectionV3 onVideoReady={handleVideoReady} />
-        </ScrollSnapSection>
+      {/* 1. Hero Section (즉시 로딩) */}
+      <HeroSectionV3 
+        onVideoReady={() => {
+          setIsHeroReady(true);
+          // ... Footer 표시 로직 등
+        }} 
+      />
 
-        {/* Vision Section: Hero가 준비된 후에만 비디오 로딩 시작 */}
-        <ScrollSnapSection>
-          <VisionSectionV2 shouldLoadVideo={isVideoReady} />
-        </ScrollSnapSection>
+      {/* 2. Vision Section (Hero 완료 후 로딩) */}
+      <VisionSectionV2 
+        shouldLoadVideo={isHeroReady}
+        onVideoReady={() => setIsVisionReady(true)}
+      />
 
-        {/* 다른 섹션들... */}
-      </Suspense>
+      {/* 3. Wave1 Section (Vision 완료 후 로딩) */}
+      <Wave1SectionV3 
+        shouldLoadVideo={isVisionReady}
+        onVideoReady={() => setIsWave1Ready(true)}
+      />
+
+      {/* 4. NFT Sale Section (Wave1 완료 후 로딩) */}
+      <NftSaleSection 
+        shouldLoadVideo={isWave1Ready}
+      />
     </ScrollSnapContainer>
   );
 }
@@ -188,26 +143,10 @@ export default function HomePage() {
 
 ---
 
-## 고급 테크닉: Footer 타이밍 제어
-
-비디오 로딩이 완료된 직후 Footer가 갑자기 나타나거나 위치가 튀는 것을 막기 위해 `requestAnimationFrame`을 사용합니다.
-
-```tsx
-requestAnimationFrame(() => {        // 현재 프레임 처리 대기
-  requestAnimationFrame(() => {      // 다음 프레임 준비 대기
-    setIsPageReady(true);            // 이제 안전하게 Footer 표시!
-  });
-});
-```
-
----
-
 ## 체크리스트
 
-새로운 비디오 페이지를 만들 때 확인하세요:
-
-- [ ] **스켈레톤 생성**: 실제 컴포넌트와 `width`, `height`, `layout`이 일치하는가?
-- [ ] **공간 선점**: 로딩 전후 높이 변화가 없는가?
-- [ ] **순차적 로딩**: Hero 비디오가 준비되기 전에는 하단 비디오의 로딩(`src` 할당)을 막았는가?
-- [ ] **Props 연결**: 부모 페이지에서 `isVideoReady` 상태를 하단 섹션의 `shouldLoadVideo`로 연결했는가?
-- [ ] **Fallback UI**: 하단 비디오 로딩 전 보여줄 배경색이나 이미지가 있는가?
+- [ ] **Interface**: 컴포넌트가 `shouldLoadVideo`, `onVideoReady` prop을 가지고 있는가?
+- [ ] **Conditional Rendering**: `shouldLoadVideo`가 `false`일 때 `<video>` 태그가 렌더링되지 않는가? (대역폭 차단 확인)
+- [ ] **Callback**: `onCanPlay` 이벤트에서 `onVideoReady`를 호출하는가?
+- [ ] **Fallback**: 비디오 로딩 전 보여줄 배경색이나 이미지가 설정되어 있어 깜빡임이 없는가?
+- [ ] **Chain**: 부모 페이지에서 상태(`useState`)가 올바른 순서로 연결되어 있는가?

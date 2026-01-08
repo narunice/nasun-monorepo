@@ -9,6 +9,11 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ActionLink } from "../../ui/ActionLink";
 import { DividerBox } from "@/components/ui/DividerBox";
 
+interface Wave1SectionV3Props {
+  shouldLoadVideo?: boolean;
+  onVideoReady?: () => void;
+}
+
 /**
  * Wave1SectionV3 - DividerBox version
  *
@@ -17,7 +22,7 @@ import { DividerBox } from "@/components/ui/DividerBox";
  * - DividerBox with color="white" for light background
  * - Hover effects on cards and image
  */
-function Wave1SectionV3() {
+function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV3Props) {
   const { t } = useTranslation("home");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -42,26 +47,32 @@ function Wave1SectionV3() {
 
   // Video autoplay handling (iOS support)
   useEffect(() => {
+    if (!shouldLoadVideo) return;
+
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
       video.play().catch(() => {});
+      onVideoReady?.();
     };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     if (video.readyState >= 1) {
       video.play().catch(() => {});
+      onVideoReady?.();
     }
 
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, []);
+  }, [shouldLoadVideo, onVideoReady]);
 
   // IntersectionObserver - play when visible, pause when not
   useEffect(() => {
+    if (!shouldLoadVideo) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -82,7 +93,7 @@ function Wave1SectionV3() {
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [shouldLoadVideo]);
 
   // Common DividerBox wrapper styles for hover effect
   const dividerBoxWrapperStyles = "transition-all duration-300 ease-out ";
@@ -90,31 +101,33 @@ function Wave1SectionV3() {
   return (
     <SectionLayout className="max-w-none relative min-h-screen">
       {/* Background video container */}
-      <div ref={containerRef} className="absolute inset-0 w-full h-full">
+      <div ref={containerRef} className="absolute inset-0 w-full h-full bg-nasun-black">
         {/* Background video */}
-        <video
-          key={videoSrc}
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          webkit-playsinline="true"
-          preload="metadata"
-          x-webkit-airplay="allow"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center",
-            filter: "sepia(0.15) saturate(0.7) brightness(1)",
-          }}
-        >
-          <source src={videoSrc} type="video/mp4" />
-        </video>
+        {shouldLoadVideo && (
+          <video
+            key={videoSrc}
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            webkit-playsinline="true"
+            preload="metadata"
+            x-webkit-airplay="allow"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+              filter: "sepia(0.15) saturate(0.7) brightness(1)",
+            }}
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
+        )}
         {/* Radial gradient overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -201,4 +214,6 @@ function Wave1SectionV3() {
   );
 }
 
-export default React.memo(Wave1SectionV3);
+export default React.memo(Wave1SectionV3, (prev, next) => {
+  return prev.shouldLoadVideo === next.shouldLoadVideo;
+});

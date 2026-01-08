@@ -7,13 +7,17 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 
+interface NftSaleSectionProps {
+  shouldLoadVideo?: boolean;
+}
+
 /**
  * NftSaleSection 컴포넌트 (Genesis NFT - Space Canyons)
  *
  * 우주 협곡 배경 비디오와 Genesis NFT 정보를 표시하는 섹션입니다.
  * 데스크탑/모바일 반응형 동영상 지원
  */
-function NftSaleSection() {
+function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
   const { t } = useTranslation("home");
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -33,6 +37,8 @@ function NftSaleSection() {
 
   // IntersectionObserver - viewport 진입 시 처음부터 재생, 완전히 이탈 시 멈춤
   useEffect(() => {
+    if (!shouldLoadVideo) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -59,39 +65,41 @@ function NftSaleSection() {
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [shouldLoadVideo]);
 
   return (
     <SectionLayout className={`relative ${isMobile ? "h-screen" : "min-h-screen"}`}>
       {/* 배경 비디오 컨테이너 - 브라우저 전체 너비 */}
       <div
         ref={containerRef}
-        className={`absolute top-0 left-1/2 -translate-x-1/2 w-screen ${
+        className={`absolute top-0 left-1/2 -translate-x-1/2 w-screen bg-nasun-black ${
           isMobile ? "h-screen" : "h-full"
         }`}
       >
         {/* 배경 비디오 - 데스크탑/모바일 반응형 */}
-        <video
-          ref={videoRef}
-          loop
-          muted
-          playsInline
-          webkit-playsinline="true"
-          preload="metadata"
-          x-webkit-airplay="allow"
-          key={isMobile ? "mobile" : "desktop"} // 동영상 전환 시 재렌더링
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center",
-          }}
-        >
-          <source src={isMobile ? nftCanyonsMobileMP4 : nftCanyonsDesktopMP4} type="video/mp4" />
-        </video>
+        {shouldLoadVideo && (
+          <video
+            ref={videoRef}
+            loop
+            muted
+            playsInline
+            webkit-playsinline="true"
+            preload="metadata"
+            x-webkit-airplay="allow"
+            key={isMobile ? "mobile" : "desktop"} // 동영상 전환 시 재렌더링
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+          >
+            <source src={isMobile ? nftCanyonsMobileMP4 : nftCanyonsDesktopMP4} type="video/mp4" />
+          </video>
+        )}
       </div>
 
       {/* 컨텐츠 */}
@@ -123,4 +131,6 @@ function NftSaleSection() {
   );
 }
 
-export default React.memo(NftSaleSection);
+export default React.memo(NftSaleSection, (prev, next) => {
+  return prev.shouldLoadVideo === next.shouldLoadVideo;
+});

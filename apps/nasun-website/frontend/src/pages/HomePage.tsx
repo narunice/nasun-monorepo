@@ -17,6 +17,8 @@ const NewsEventsSection = lazy(() => import("../components/app/home/NewsEventsSe
 
 export default function HomePage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isVisionVideoReady, setIsVisionVideoReady] = useState(false);
+  const [isWave1VideoReady, setIsWave1VideoReady] = useState(false);
   const { setIsPageReady } = useHomePageLoading();
 
   // 홈페이지 마운트 시 페이지 준비 상태가 false임을 보장 (Context에서 자동 처리되지만 명시적 설정)
@@ -24,6 +26,7 @@ export default function HomePage() {
     setIsPageReady(false);
   }, [setIsPageReady]);
 
+  // Hero 비디오 로딩 완료 핸들러
   const handleVideoReady = useCallback(async () => {
     setIsVideoReady(true);
 
@@ -41,6 +44,16 @@ export default function HomePage() {
       });
     });
   }, [setIsPageReady]);
+
+  // Vision 비디오 로딩 완료 핸들러
+  const handleVisionVideoReady = useCallback(() => {
+    setIsVisionVideoReady(true);
+  }, []);
+
+  // Wave1 비디오 로딩 완료 핸들러
+  const handleWave1VideoReady = useCallback(() => {
+    setIsWave1VideoReady(true);
+  }, []);
 
   // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
@@ -68,8 +81,12 @@ export default function HomePage() {
             </ScrollSnapSection>
 
             {/* VisionSectionV2: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}
+            {/* Hero 비디오 로딩 후 시작 */}
             <ScrollSnapSection>
-              <VisionSectionV2 />
+              <VisionSectionV2
+                shouldLoadVideo={isVideoReady}
+                onVideoReady={handleVisionVideoReady}
+              />
             </ScrollSnapSection>
 
             {/* NewsEventsSection - 긴 컨텐츠 허용 */}
@@ -78,13 +95,18 @@ export default function HomePage() {
             </ScrollSnapSection>
 
             {/* Wave1Section */}
+            {/* Vision 비디오 로딩 후 시작 */}
             <ScrollSnapSection allowTallContent={true}>
-              <Wave1Section />
+              <Wave1Section
+                shouldLoadVideo={isVisionVideoReady}
+                onVideoReady={handleWave1VideoReady}
+              />
             </ScrollSnapSection>
 
             {/* NftSaleSection - 스냅 스크롤 */}
+            {/* Wave1 비디오 로딩 후 시작 */}
             <ScrollSnapSection>
-              <NftSaleSection />
+              <NftSaleSection shouldLoadVideo={isWave1VideoReady} />
             </ScrollSnapSection>
           </Suspense>
         </ErrorBoundary>
