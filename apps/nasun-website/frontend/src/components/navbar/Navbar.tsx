@@ -68,11 +68,11 @@ export default function Navbar() {
   // Authentication is now handled by AuthContext
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 nav:px-4 flex gap-6 items-stretch">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 xl:px-4 flex gap-6 items-stretch">
       {/* 데스크탑: 심볼 박스 (가장 왼쪽, 독립적) */}
       <Link
         to="/"
-        className="hidden nav:block flex-shrink-0 w-14 h-14"
+        className="hidden xl:block flex-shrink-0 w-14 h-14"
         onClick={(e) => {
           // 현재 홈페이지에 있으면 상단으로 스크롤
           if (location.pathname === "/") {
@@ -94,7 +94,7 @@ export default function Navbar() {
       {/* 메인 navbar 박스 */}
       <div className="flex-1 min-w-0 h-14 bg-nasun-white rounded-3xl shadow-lg transition-all flex pl-4 xl:pl-6 pr-4 xl:pr-6 gap-2 xl:gap-4 2xl:gap-8 justify-between items-center text-center text-base ">
         {/* 모바일: 햄버거 메뉴 + 워드마크 */}
-        <div className="flex items-center gap-4 nav:hidden">
+        <div className="flex items-center gap-4 xl:hidden">
           <MobileNav
             navItems={navItems}
             isMenuOpen={isMenuOpen}
@@ -126,7 +126,7 @@ export default function Navbar() {
         <DesktopNav navItems={navItems} />
 
         {/* 공통 기능들 */}
-        <div className="flex gap-4 nav:gap-5 min-w-36 items-center justify-end flex-shrink-0">
+        <div className="flex gap-4 xl:gap-5 min-w-36 items-center justify-end flex-shrink-0">
           {isAuthenticated && user && (
             <Tooltip.Root>
               <Tooltip.Trigger asChild>

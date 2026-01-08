@@ -43,14 +43,14 @@ function NasunTokenSection() {
   // 지그재그 레이아웃 (원본과 동일)
   const getStaggerClass = (index: number) => {
     // 모바일: 짝수(0,2) 우측마진, 홀수(1,3) 좌측마진
-    const mobileClass = index % 2 === 0 ? "mr-12 xlg:mr-12" : "ml-12 xlg:ml-12";
+    const mobileClass = index % 2 === 0 ? "mr-12 xl:mr-12" : "ml-12 xl:ml-12";
 
     // 데스크톱: 각 카드별 개별 오프셋
     const desktopClasses = [
-      "xlg:ml-10 xlg:-translate-y-5", // 0번
-      "xlg:mr-10 xlg:translate-y-5", // 1번
-      "xlg:ml-10 xlg:-translate-y-5", // 2번
-      "xlg:mr-10 xlg:translate-y-5", // 3번
+      "xl:ml-10 xl:-translate-y-5", // 0번
+      "xl:mr-10 xl:translate-y-5", // 1번
+      "xl:ml-10 xl:-translate-y-5", // 2번
+      "xl:mr-10 xl:translate-y-5", // 3번
     ];
 
     return `${mobileClass} ${desktopClasses[index] || ""}`;
@@ -76,7 +76,7 @@ function NasunTokenSection() {
           </div>
 
           {/* Right: Use Cases Cards - DividerBox 사용 (원본 레이아웃) */}
-          <div className="space-y-6 xlg:space-y-0 xlg:grid xlg:grid-cols-2 xlg:gap-x-4 xlg:gap-y-10 xlg:items-start xlg:-mr-0">
+          <div className="space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-x-4 xl:gap-y-10 xl:items-start xl:-mr-0">
             {tokenUses.map((use, index) => (
               <DividerBox
                 key={use.key}
@@ -87,7 +87,7 @@ function NasunTokenSection() {
                 descriptionClassName="!mb-0"
                 className={` ${
                   use.gradient
-                } transition-all hover:shadow-lg min-h-[160px] xlg:min-h-[192px] ${getStaggerClass(
+                } transition-all hover:shadow-lg min-h-[160px] xl:min-h-[192px] ${getStaggerClass(
                   index
                 )}`}
               />
