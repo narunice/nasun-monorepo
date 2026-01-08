@@ -14,10 +14,10 @@ import {
   getChainId,
   isCorrectNetwork,
   switchNetwork,
-} from '../../../../utils/metamaskUtils';
-import { authenticateWithMetaMask } from '../../../../services/metamaskApi';
-import type { MetaMaskAuthStatus, MetaMaskErrorType } from '../../../../types/metamask';
-import { InlineLoading } from '../../../ui/InlineLoading';
+} from '@/utils/metamaskUtils';
+import { authenticateWithMetaMask } from '@/services/metamaskApi';
+import type { MetaMaskAuthStatus, MetaMaskErrorType } from '@/types/metamask';
+import { InlineLoading } from '@/components/ui/InlineLoading';
 
 interface WalletLoginButtonProps {
   onSuccess?: (identityId: string, token: string, walletAddress: string) => void;

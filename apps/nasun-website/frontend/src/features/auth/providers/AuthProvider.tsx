@@ -1,12 +1,12 @@
 import React, { createContext, useEffect, useState, useCallback } from "react";
 import { Amplify } from "aws-amplify";
 import { fetchAuthSession } from "aws-amplify/auth";
-import awsConfig from "../../../config/awsConfig";
-import logger from "../../../lib/logger";
-import { useUserStore } from "../../../store/userStore";
-import type { UserData } from "../../../store/userStore";
-import { generateCodeVerifier, parseJwt } from "../../../utils/authUtils";
-import { useBattalionNftStore } from "../../../stores/useBattalionNftStore";
+import awsConfig from "@/config/awsConfig";
+import logger from "@/lib/logger";
+import { useUserStore } from "@/store/userStore";
+import type { UserData } from "@/store/userStore";
+import { generateCodeVerifier, parseJwt } from "@/utils/authUtils";
+import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { AuthContextType } from "../types";
 import { 
   handleTwitterCallback, 
