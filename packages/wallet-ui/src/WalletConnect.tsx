@@ -10,6 +10,8 @@ import {
   useNFTs,
   useZkLogin,
   useMultiBalance,
+  useNetwork,
+  requestFaucet,
   shortenAddress,
   isLockedOut,
   getLockoutRemainingMs,
@@ -18,6 +20,7 @@ import {
   type NFTInfo,
   type ZkLoginProvider,
 } from "@nasun/wallet";
+import { NetworkSelector } from "./NetworkSelector";
 import { CopyableAddress } from "./CopyableAddress";
 import { MnemonicBackup } from "./MnemonicBackup";
 import { ImportWallet } from "./ImportWallet";
@@ -270,9 +273,45 @@ export function WalletConnect({
   });
 
   // Fetch token balances (NASUN, NBTC, NUSDC)
-  const { data: balances, isLoading: balancesLoading } = useMultiBalance({
+  const { data: balances, isLoading: balancesLoading, refetch: refetchBalances } = useMultiBalance({
     pollingInterval: 15000,
   });
+
+  // Network info
+  const { networkType, isDevnet, hasFaucet } = useNetwork();
+
+  // Faucet state
+  const [isFaucetLoading, setIsFaucetLoading] = useState(false);
+  const [faucetMessage, setFaucetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Handle faucet request
+  const handleFaucet = useCallback(async () => {
+    const address = account?.address || zkState?.address;
+    if (!address || isFaucetLoading) return;
+
+    setIsFaucetLoading(true);
+    setFaucetMessage(null);
+
+    try {
+      const success = await requestFaucet(address);
+      if (success) {
+        setFaucetMessage({ type: 'success', text: 'NASUN received!' });
+        // Refresh balance after 2 seconds
+        setTimeout(() => {
+          refetchBalances();
+          setFaucetMessage(null);
+        }, 2000);
+      } else {
+        setFaucetMessage({ type: 'error', text: 'Faucet request failed' });
+        setTimeout(() => setFaucetMessage(null), 3000);
+      }
+    } catch (err) {
+      setFaucetMessage({ type: 'error', text: 'Faucet error' });
+      setTimeout(() => setFaucetMessage(null), 3000);
+    } finally {
+      setIsFaucetLoading(false);
+    }
+  }, [account?.address, zkState?.address, isFaucetLoading, refetchBalances]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -583,7 +622,7 @@ export function WalletConnect({
         <div className="w-full sm:w-[280px]">
           {/* User info header */}
           <div className="px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-2">
               {zkUserInfo?.picture ? (
                 <img
                   src={zkUserInfo.picture}
@@ -604,17 +643,14 @@ export function WalletConnect({
                 </p>
               </div>
             </div>
-            <div className="mt-2">
-              <CopyableAddress
-                value={zkState.address}
-                label="Wallet Address"
-                shorten={8}
-                showCopy
-                showExplorer
-                explorerType="address"
-                size="xs"
-              />
-            </div>
+            <CopyableAddress
+              value={zkState.address}
+              shorten={8}
+              showCopy
+              showExplorer
+              explorerType="address"
+              size="xs"
+            />
           </div>
 
           {/* Tab navigation for zkLogin */}
@@ -677,6 +713,39 @@ export function WalletConnect({
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Faucet Button (Devnet only) */}
+                {isDevnet && hasFaucet && (
+                  <button
+                    onClick={handleFaucet}
+                    disabled={isFaucetLoading}
+                    className="w-full mt-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                      bg-orange-500/10 text-orange-600 dark:text-orange-400
+                      hover:bg-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2"
+                  >
+                    {isFaucetLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Requesting...
+                      </>
+                    ) : faucetMessage ? (
+                      <span className={faucetMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {faucetMessage.text}
+                      </span>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Get NASUN from Faucet
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
 
@@ -779,6 +848,11 @@ export function WalletConnect({
               }}
             />
           )}
+
+          {/* Network Selector */}
+          <div className="border-t border-gray-200 dark:border-zinc-700">
+            <NetworkSelector currentNetwork={networkType} />
+          </div>
         </div>
       );
     }
@@ -804,9 +878,9 @@ export function WalletConnect({
         <div className="w-full sm:w-[280px]">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
+            <span className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">Connected Address</span>
             <CopyableAddress
               value={account.address}
-              label="Connected Address"
               shorten={8}
               showCopy
               showExplorer
@@ -875,6 +949,39 @@ export function WalletConnect({
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Faucet Button (Devnet only) */}
+                {isDevnet && hasFaucet && (
+                  <button
+                    onClick={handleFaucet}
+                    disabled={isFaucetLoading}
+                    className="w-full mt-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                      bg-orange-500/10 text-orange-600 dark:text-orange-400
+                      hover:bg-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2"
+                  >
+                    {isFaucetLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Requesting...
+                      </>
+                    ) : faucetMessage ? (
+                      <span className={faucetMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {faucetMessage.text}
+                      </span>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Get NASUN from Faucet
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
 
@@ -1022,6 +1129,11 @@ export function WalletConnect({
               }}
             />
           )}
+
+          {/* Network Selector */}
+          <div className="border-t border-gray-200 dark:border-zinc-700">
+            <NetworkSelector currentNetwork={networkType} />
+          </div>
         </div>
       );
     }
