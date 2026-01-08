@@ -4,24 +4,26 @@
   "description": "Governance Voting Power API",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --external:@aws-sdk/*",
+    "build:tsc": "tsc",
     "clean": "rm -rf dist",
     "test": "jest",
     "test:security": "jest test/security-e2e.test.ts --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",
-    "@aws-sdk/lib-dynamodb": "^3.0.0",
     "@aws-sdk/client-secrets-manager": "^3.0.0",
-    "@noble/ed25519": "^2.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
     "@mysten/sui": "^1.0.0",
-    "ethers": "^6.0.0",
-    "alchemy-sdk": "^3.0.0"
+    "@noble/ed25519": "^2.0.0",
+    "alchemy-sdk": "^3.0.0",
+    "ethers": "^6.0.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
+    "esbuild": "^0.27.2",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.0.0"
