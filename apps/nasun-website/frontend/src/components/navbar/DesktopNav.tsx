@@ -31,7 +31,7 @@ export default function DesktopNav({ navItems }: Props) {
   };
 
   return (
-    <div className="hidden nav:flex flex-1 items-center justify-between gap-1 xl:gap-3 2xl:gap-6">
+    <div className="hidden xl:flex flex-1 items-center justify-between gap-1 xl:gap-3 2xl:gap-6">
       {navItems.map((item) => (
         <div key={item.name}>
           {item.subMenu ? (
