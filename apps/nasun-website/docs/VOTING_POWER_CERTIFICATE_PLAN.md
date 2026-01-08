@@ -1,7 +1,56 @@
 # Governance VotingPowerCertificate + Sponsored Transaction 구현 계획
 
 > **작성일**: 2026-01-05
-> **상태**: 계획 완료, 구현 대기
+> **최종 업데이트**: 2026-01-08
+> **상태**: ✅ 구현 완료 (v3)
+
+---
+
+## 구현 완료 요약 (2026-01-08)
+
+### 배포된 패키지
+
+| 버전 | Package ID | 상태 |
+|------|-----------|------|
+| v1 | `0xcd753b00...` | deprecated |
+| v2 | `0x77153fb2...` | deprecated |
+| **v3** | `0x01ceae826f1ce6a13407eaa290fd0f99ca02230f1253f312246a57f9edf94ff0` | **현재 사용** |
+
+### v3 보안 강화 (Security Hardening)
+
+| 기능 | 설명 |
+|------|------|
+| **Domain Separation** | `NASUN_GOVERNANCE_DEVNET_V1` - cross-chain replay attack 방지 |
+| **BCS Serialization** | Move와 Lambda 간 직렬화 일치 (106 bytes message) |
+| **TTL Policy** | Devnet 15분, Mainnet 최대 30분 (proposal 만료 고려) |
+| **Sponsored Transaction** | Zero Gas Fee 투표 (사용자 가스비 없음) |
+
+### Certificate Message Format (106 bytes)
+
+```
+domain_separator (26B UTF-8)  // "NASUN_GOVERNANCE_DEVNET_V1"
+|| voter (32B BCS)            // bcs::to_bytes(&address)
+|| proposal_id (32B BCS)      // bcs::to_bytes(&ID)
+|| voting_power (8B BE)       // big-endian u64
+|| expires_at (8B BE)         // big-endian u64
+```
+
+### API Endpoints
+
+- **Base URL**: `https://3n52syk380.execute-api.ap-northeast-2.amazonaws.com/prod`
+- `POST /certificate` - VotingPowerCertificate 발급
+- `POST /sponsor` - Sponsored Transaction 서명
+- `POST /voting-power` - Voting Power 조회
+
+### 관련 커밋
+
+- `0d297d8` - Domain Separation (v3 배포)
+- `85a728e` - useSponsoredVote 빌드 에러 수정
+- `5f1261b` - VoteModal sponsored voting 통합
+- `a454f87` - TTL 정책 개선
+- `fe6e5a6` - E2E Security Tests 추가
+
+---
 
 ## 1. 개요
 
