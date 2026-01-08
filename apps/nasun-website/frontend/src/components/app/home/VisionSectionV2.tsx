@@ -4,7 +4,6 @@ import visionVideoPcMP4 from "../../../assets/videos/home-vision-wave-light-desk
 import visionVideoMobileMP4 from "../../../assets/videos/home-vision-wave-light-mobile.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
 
 /**
  * VisionSectionV2 Component
