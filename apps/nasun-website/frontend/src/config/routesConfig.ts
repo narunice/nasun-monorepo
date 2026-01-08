@@ -32,7 +32,7 @@ export const Pages = {
   TermsOfUse: lazy(() => import("../pages/TermsOfUsePage")),
   PostDetailPage: lazy(() => import("../pages/PostDetailPage")), // Headless WP Post Page
   News: lazy(() => import("../pages/NewsPage")),
-  Callback: lazy(() => import("../components/features/auth/Callback")),
+  Callback: lazy(() => import("@/features/auth").then(module => ({ default: module.Callback }))),
   Logout: lazy(() => import("../pages/LogoutPage")),
   Leaderboard: lazy(() => import("../pages/LeaderboardPage")),
   XLeaderboard: lazy(() => import("../pages/LeaderboardPage")), // backward compatibility

@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useUserStore } from "../../../../../store/userStore";
 import {
   isMetaMaskInstalled as checkMetaMaskInstalled,

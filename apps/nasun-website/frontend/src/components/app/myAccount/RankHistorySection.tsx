@@ -24,7 +24,7 @@ import { RankHistoryStatsCard } from "@/features/leaderboard/components/RankHist
 import { ShareRankHistoryButton } from "@/features/leaderboard/components/ShareRankHistoryButton";
 import { SectionLayout } from "../../layout/SectionLayout";
 import { SectionLoading } from "../../ui";
-import { useAuth } from "../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 
 export interface RankHistorySectionProps {
   username: string | null; // X 사용자명 (null인 경우 미연결 상태)

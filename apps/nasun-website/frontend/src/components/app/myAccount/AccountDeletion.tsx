@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "../../layout/SectionLayout";
 import { Button } from "../../ui/button";
-import { useAuth } from "../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 
 export const AccountDeletion = () => {
   const { t } = useTranslation("myAccount");

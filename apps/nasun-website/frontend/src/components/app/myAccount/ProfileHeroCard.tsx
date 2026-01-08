@@ -7,7 +7,7 @@
 
 import { FC, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useUserStore } from "../../../store/userStore";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useDelegation } from "@/features/governance/hooks/useDelegation";

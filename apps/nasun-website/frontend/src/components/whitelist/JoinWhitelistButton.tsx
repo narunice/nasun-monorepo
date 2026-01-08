@@ -23,7 +23,7 @@ import {
   WhitelistApiError,
 } from '../../services/whitelistApi';
 import { authenticateWithMetaMask } from '../../services/metamaskApi';
-import { useAuth } from '../../providers/auth/AuthContext';
+import { useAuth } from "@/features/auth";
 import { useUserStore } from '../../store/userStore';
 import type {
   JoinWhitelistButtonProps,

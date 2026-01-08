@@ -10,7 +10,7 @@ import { PageLayout } from "../components/layout/PageLayout";
 import { SectionLayout } from "../components/layout/SectionLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { Suspense, useEffect, useState } from "react";
-import { useAuth } from "../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { SectionLoading, PageTitle } from "../components/ui";

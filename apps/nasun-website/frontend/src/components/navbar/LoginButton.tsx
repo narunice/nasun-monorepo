@@ -4,8 +4,7 @@ import { useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
-import { useAuth } from "../../providers/auth/AuthContext";
-import MetaMaskLoginButton from "../auth/MetaMaskLoginButton";
+import { useAuth, WalletLoginButton as MetaMaskLoginButton } from "@/features/auth";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
 
 const LoginButton = () => {

@@ -6,7 +6,7 @@
 
 import { FC } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { Button } from "../../ui/button";
 
