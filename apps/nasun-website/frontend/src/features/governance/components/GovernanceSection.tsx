@@ -159,7 +159,14 @@ const ProposalList = () => {
           <Suspense fallback={<InlineLoading size="sm" />}>
             <ProposalItem
               id={id}
-              onVoteTxSuccess={() => refetchNfts()}
+              onVoteTxSuccess={async () => {
+                // Poll for NFT with retry (up to 5 attempts, 2s interval)
+                // NFT mint happens on-chain and may take a few seconds
+                for (let i = 0; i < 5; i++) {
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  await refetchNfts();
+                }
+              }}
               voteNft={voteNfts.find((nft) => nft.proposalId === id)}
             />
           </Suspense>
