@@ -1,7 +1,7 @@
 // Nasun Devnet Configuration
 export const NETWORK_CONFIG = {
   rpcUrl: import.meta.env.VITE_RPC_URL || 'https://rpc.devnet.nasun.io',
-  faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io/gas',
+  faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
   chainId: import.meta.env.VITE_CHAIN_ID || '6681cdfd',
 
   // DeepBook V3
