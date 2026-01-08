@@ -8,7 +8,7 @@ import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
-import { useMarginAccount } from '../../core/unified-margin';
+import { useMarginAccount, useRiskEngine } from '../../core/unified-margin';
 import type { PredictionMarket } from '../types';
 import { calculateProbability } from '../types';
 
@@ -27,7 +27,8 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const { isLoading, isFaucetLoading, placeBuyOrder, placeSellOrder, mintTokens, requestNusdc } = usePredictionTrade();
   const { data: multiBalance } = useMultiBalance();
-  const { account: marginAccount, hasAccount: hasMarginAccount } = useMarginAccount();
+  const { hasAccount: hasMarginAccount } = useMarginAccount();
+  const { currentMarginFormatted, canTrade, formatRequired } = useRiskEngine();
   const queryClient = useQueryClient();
 
   // Consider wallet connected if either local wallet is unlocked OR zkLogin is active
@@ -36,11 +37,6 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
 
   // NUSDC balance from wallet
   const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
-
-  // NUSDC balance from margin account
-  const marginNusdcBalance = marginAccount?.nusdcBalance
-    ? Number(marginAccount.nusdcBalance) / 1e6
-    : 0;
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
@@ -55,7 +51,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   // Get available balance based on funding source
   const availableBalance = fundingSource === 'wallet'
     ? parseFloat(nusdcBalance)
-    : marginNusdcBalance;
+    : currentMarginFormatted;
 
   // Filter positions by selected outcome type
   const filteredPositions = useMemo(() => {
@@ -229,7 +225,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             </p>
           )}
 
-            {/* Coming Soon notice for Pado Balance */}
+          {/* Coming Soon notice for Pado Balance */}
           {fundingSource === 'margin' && hasMarginAccount && (
             <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <p className="text-xs text-blue-400">
@@ -238,6 +234,22 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
               <p className="text-xs text-theme-text-muted mt-1">
                 Wallet will be used for this transaction.
               </p>
+              <div className="mt-2 pt-2 border-t border-blue-500/20">
+                <div className="flex justify-between text-xs">
+                  <span className="text-theme-text-muted">Pado Balance:</span>
+                  <span className="text-theme-text-primary font-mono">
+                    {currentMarginFormatted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
+                  </span>
+                </div>
+                {parseFloat(amount) > 0 && (
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-theme-text-muted">Required (10% buffer):</span>
+                    <span className={`font-mono ${canTrade(parseFloat(amount)) ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {formatRequired(parseFloat(amount))} NUSDC
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -9,4 +9,5 @@
 
 export { useUnifiedMargin, type UnifiedMarginState } from './useUnifiedMargin';
 export { useMarginAccount } from './useMarginAccount';
+export { useRiskEngine, type UseRiskEngineResult } from './useRiskEngine';
 export { MarginAccountCard } from './MarginAccountCard';
