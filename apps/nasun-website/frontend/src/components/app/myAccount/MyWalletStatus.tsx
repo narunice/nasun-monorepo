@@ -51,7 +51,7 @@ export const MyWalletStatus = () => {
       address: null,
       color: "red",
       connectComponent: (
-        <Button variant="outline" size="sm" className="w-full md:max-w-[60%]">
+        <Button variant="outlineC3" size="sm" className="w-full md:max-w-[60%]">
           {t("myWalletStatus.notSupported")}
         </Button>
       ),
@@ -63,15 +63,9 @@ export const MyWalletStatus = () => {
       <Table variant="c3">
         <TableHeader variant="c3">
           <TableRow>
-            <TableHead align="left">
-              {t("myWalletStatus.chains")}
-            </TableHead>
-            <TableHead align="left">
-              {t("myWalletStatus.status")}
-            </TableHead>
-            <TableHead align="center">
-              {t("myWalletStatus.connectDisconnect")}
-            </TableHead>
+            <TableHead align="left">{t("myWalletStatus.chains")}</TableHead>
+            <TableHead align="left">{t("myWalletStatus.status")}</TableHead>
+            <TableHead align="center">{t("myWalletStatus.connectDisconnect")}</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -82,13 +76,7 @@ export const MyWalletStatus = () => {
                 <span className="font-normal">{wallet.chain}</span>
               </TableCell>
               <TableCell align="left">
-                <span
-                  className={
-                    wallet.color === "green"
-                      ? "text-green-400"
-                      : "text-red-400"
-                  }
-                >
+                <span className={wallet.color === "green" ? "text-green-400" : "text-red-400"}>
                   {t(
                     wallet.status === "Connected"
                       ? "myWalletStatus.connected"
