@@ -11,7 +11,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useDelegation } from "../hooks/useDelegation";
-import { useAuth } from "@/providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { InfoCircledIcon, ChevronDownIcon, CheckCircledIcon } from "@radix-ui/react-icons";
 

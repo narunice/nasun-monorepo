@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { PageLayout } from "../../layout/PageLayout";
-import { PageLoading } from "../../ui";
-import ErrorBoundary from "../../layout/ErrorBoundary";
+import { PageLayout } from "../../../layout/PageLayout";
+import { PageLoading } from "../../../components/ui";
+import ErrorBoundary from "../../../components/layout/ErrorBoundary";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "../hooks/useAuth"; // Path updated
 import logger from "../../../lib/logger";
 import { ZkLoginCallback } from "@nasun/wallet-ui";
 

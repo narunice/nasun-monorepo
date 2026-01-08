@@ -6,7 +6,7 @@ import { useCurrentAccount as useCurrentSuiAccount } from "@mysten/dapp-kit";
 import { ConnectSuiWallet } from "../../features/wallets/ConnectSuiWallet";
 import { ConnectMetaMaskWallet } from "../../features/wallets/ConnectMetaMaskWallet";
 import { SectionLayout } from "../../layout/SectionLayout";
-import { useAuth } from "../../../providers/auth/AuthContext";
+import { useAuth } from "@/features/auth";
 import { Button } from "../../ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../ui/table";
 
