@@ -237,7 +237,7 @@ VITE_USER_PROFILE_API=https://...      # user-profile Lambda 엔드포인트
 ### Dependencies
 
 - `react` (useState)
-- `../../providers/auth/AuthContext` (useAuth, signInWithMetaMask)
+- `@/features/auth` (useAuth, signInWithMetaMask)
 - `../../store/userStore` (useUserStore, updateUserProfile)
 - `../../utils/metamaskUtils` (connectWallet, switchNetwork, signMessage)
 - `../../services/metamaskApi` (authenticateWithMetaMask)

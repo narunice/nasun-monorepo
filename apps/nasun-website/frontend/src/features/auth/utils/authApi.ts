@@ -1,5 +1,5 @@
-import logger from "../../../../lib/logger";
-import type { UserData } from "../../../../store/userStore";
+import logger from "@/lib/logger";
+import type { UserData } from "@/store/userStore";
 
 // Twitter OAuth Callback
 export const handleTwitterCallback = async (code: string, state: string, sessionId: string) => {
