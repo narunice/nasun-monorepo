@@ -1,12 +1,13 @@
 /**
  * useTotalValue Hook
  * Calculate total portfolio value in USD with P&L
- * Includes: Tokens (NASUN, NBTC, NUSDC) + Prediction Positions
+ * Includes: Tokens (NASUN, NBTC, NUSDC) + Pado Balance + Prediction Positions
  */
 
 import { useMemo } from 'react';
 import { useMultiBalance } from '@nasun/wallet';
 import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
+import { useMarginAccount } from '../../core/unified-margin';
 import { NUSDC_DECIMALS } from '../../prediction/constants';
 
 // Default prices for MVP (will be replaced with oracle/API prices later)
@@ -44,8 +45,9 @@ export interface UseTotalValueResult {
 export function useTotalValue(): UseTotalValueResult {
   const { data: multiBalance, isLoading: isBalanceLoading } = useMultiBalance();
   const { positions, isLoading: isPositionsLoading } = usePredictionPositions();
+  const { account: marginAccount, isLoading: isMarginLoading, hasAccount: hasMarginAccount } = useMarginAccount();
 
-  const isLoading = isBalanceLoading || isPositionsLoading;
+  const isLoading = isBalanceLoading || isPositionsLoading || isMarginLoading;
 
   const result = useMemo(() => {
     const tokens: TokenValue[] = [];
@@ -91,6 +93,24 @@ export function useTotalValue(): UseTotalValueResult {
       },
     );
 
+    // Pado Balance (NUSDC in margin account)
+    const padoBalanceRaw = hasMarginAccount && marginAccount?.nusdcBalance
+      ? Number(marginAccount.nusdcBalance) / 1e6
+      : 0;
+    const padoBalanceValue = padoBalanceRaw * DEFAULT_PRICES.NUSDC;
+
+    // Add Pado Balance as a separate "asset" if user has any funds
+    if (padoBalanceRaw > 0) {
+      tokens.push({
+        symbol: 'Pado Balance',
+        balance: padoBalanceRaw.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        price: DEFAULT_PRICES.NUSDC,
+        value: padoBalanceValue,
+        change24h: 0, // Stablecoin - no change
+        pnl24h: 0,
+      });
+    }
+
     // Calculate Predictions total value (sum of costBasis)
     const predictionsCostBasis = positions.reduce((sum, p) => sum + p.costBasis, 0n);
     const predictionsValue = Number(predictionsCostBasis) / (10 ** NUSDC_DECIMALS);
@@ -108,7 +128,7 @@ export function useTotalValue(): UseTotalValueResult {
       });
     }
 
-    const totalValue = nasunValue + nbtcValue + nusdcValue + predictionsValue;
+    const totalValue = nasunValue + nbtcValue + nusdcValue + padoBalanceValue + predictionsValue;
     const totalPnl24h = nasunPnl + nbtcPnl + nusdcPnl;
     const totalChange24h = totalValue > 0 ? (totalPnl24h / (totalValue - totalPnl24h)) * 100 : 0;
 
@@ -119,7 +139,7 @@ export function useTotalValue(): UseTotalValueResult {
       tokens,
       prices: DEFAULT_PRICES,
     };
-  }, [multiBalance, positions]);
+  }, [multiBalance, positions, marginAccount, hasMarginAccount]);
 
   return {
     ...result,
