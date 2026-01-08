@@ -12,10 +12,27 @@ const EDuplicateVote: u64 = 0;
 const EProposalDelisted: u64 = 1;
 const EProposalExpired: u64 = 2;
 const EDeprecatedFunction: u64 = 3;
+const EInvalidProposalType: u64 = 4;
 
 public enum ProposalStatus has store, drop {
     Active,
     Delisted,
+}
+
+/// Proposal type determines voting rules and gas payment
+/// - Governance: User pays gas, binding decision for protocol changes
+/// - Poll: Sponsored (zero gas), non-binding community sentiment
+public enum ProposalType has store, drop, copy {
+    Governance,  // User pays gas fee
+    Poll,        // Sponsored (Zero Gas Fee)
+}
+
+/// Registry to store proposal types (separate from Proposal struct for upgrade compatibility)
+/// Proposals not in registry default to Governance type
+public struct ProposalTypeRegistry has key {
+    id: UID,
+    /// Maps proposal ID to its type
+    types: Table<ID, ProposalType>,
 }
 
 /// Vote record storing the voter's choice and voting power
@@ -233,6 +250,65 @@ fun change_status(
     status: ProposalStatus
 ) {
     self.status = status;
+}
+
+// === ProposalTypeRegistry Functions ===
+
+/// Initialize the proposal type registry (one-time setup)
+public fun init_type_registry(_admin_cap: &AdminCap, ctx: &mut TxContext) {
+    let registry = ProposalTypeRegistry {
+        id: object::new(ctx),
+        types: table::new(ctx),
+    };
+    transfer::share_object(registry);
+}
+
+/// Set proposal type in registry (admin only)
+/// proposal_type: 0 = Governance, 1 = Poll
+public fun set_proposal_type(
+    registry: &mut ProposalTypeRegistry,
+    _admin_cap: &AdminCap,
+    proposal_id: ID,
+    proposal_type: u8,
+) {
+    let ptype = if (proposal_type == 0) {
+        ProposalType::Governance
+    } else if (proposal_type == 1) {
+        ProposalType::Poll
+    } else {
+        abort EInvalidProposalType
+    };
+
+    if (registry.types.contains(proposal_id)) {
+        registry.types.remove(proposal_id);
+    };
+    registry.types.add(proposal_id, ptype);
+}
+
+/// Get proposal type from registry (returns 0/Governance if not found)
+public fun get_proposal_type(registry: &ProposalTypeRegistry, proposal_id: ID): u8 {
+    if (registry.types.contains(proposal_id)) {
+        let ptype = registry.types.borrow(proposal_id);
+        match (ptype) {
+            ProposalType::Governance => 0,
+            ProposalType::Poll => 1,
+        }
+    } else {
+        0 // Default to Governance for legacy proposals
+    }
+}
+
+/// Check if proposal is sponsored (Poll type = zero gas)
+public fun is_sponsored(registry: &ProposalTypeRegistry, proposal_id: ID): bool {
+    if (registry.types.contains(proposal_id)) {
+        let ptype = registry.types.borrow(proposal_id);
+        match (ptype) {
+            ProposalType::Poll => true,
+            ProposalType::Governance => false,
+        }
+    } else {
+        false // Default to non-sponsored (Governance)
+    }
 }
 
 fun issue_vote_proof(proposal: &Proposal, vote_yes: bool, ctx: &mut TxContext) {

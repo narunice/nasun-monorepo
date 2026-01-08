@@ -73,6 +73,7 @@ function calculateCertificateTTL(proposalExpiration?: number): number {
   return MAX_TTL_MS;
 }
 const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
+const PROPOSAL_TYPE_REGISTRY_ID = process.env.PROPOSAL_TYPE_REGISTRY_ID || "";
 
 // Domain Separation (MUST match Move contract's DOMAIN_SEPARATOR)
 // Format: "NASUN_GOVERNANCE_{NETWORK}_V{version}"
@@ -158,6 +159,95 @@ function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {
   }
 
   return { valid: true };
+}
+
+/**
+ * Extract proposal ID from vote transaction
+ * Looks for vote_with_certificate call and extracts the first argument (proposal)
+ */
+function extractProposalIdFromTx(tx: Transaction): string | null {
+  const txData = tx.getData();
+  const commands = txData.commands;
+
+  for (const cmd of commands) {
+    if (cmd.$kind === "MoveCall" && cmd.MoveCall.function === "vote_with_certificate") {
+      const args = cmd.MoveCall.arguments;
+      if (args && args.length > 0 && args[0].$kind === "Input") {
+        const inputIndex = args[0].Input;
+        const input = txData.inputs[inputIndex];
+        if (input && input.$kind === "Object") {
+          const obj = input.Object;
+          if (obj.ImmOrOwnedObject) {
+            return obj.ImmOrOwnedObject.objectId;
+          }
+          if (obj.SharedObject) {
+            return obj.SharedObject.objectId;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Get proposal type from ProposalTypeRegistry
+ * Returns: 0 = Governance, 1 = Poll, -1 = error/not found (treated as Governance)
+ */
+async function getProposalType(proposalId: string): Promise<number> {
+  if (!PROPOSAL_TYPE_REGISTRY_ID) {
+    console.warn("PROPOSAL_TYPE_REGISTRY_ID not configured, defaulting to Governance");
+    return 0;
+  }
+
+  const suiClient = new SuiClient({ url: SUI_RPC_URL });
+
+  try {
+    // Query the registry using dynamic field
+    const registry = await suiClient.getObject({
+      id: PROPOSAL_TYPE_REGISTRY_ID,
+      options: { showContent: true },
+    });
+
+    if (!registry.data?.content || registry.data.content.dataType !== "moveObject") {
+      console.warn("Failed to get ProposalTypeRegistry");
+      return 0;
+    }
+
+    // Get the types table ID
+    const fields = registry.data.content.fields as Record<string, unknown>;
+    const typesTable = fields.types as { fields: { id: { id: string } } } | undefined;
+
+    if (!typesTable?.fields?.id?.id) {
+      console.warn("Types table not found in registry");
+      return 0;
+    }
+
+    // Query dynamic field for proposal type
+    const dynamicField = await suiClient.getDynamicFieldObject({
+      parentId: typesTable.fields.id.id,
+      name: { type: "0x2::object::ID", value: proposalId },
+    });
+
+    if (!dynamicField.data?.content || dynamicField.data.content.dataType !== "moveObject") {
+      // Proposal not in registry = Governance (default)
+      console.log(`Proposal ${proposalId} not in registry, defaulting to Governance`);
+      return 0;
+    }
+
+    const dfFields = dynamicField.data.content.fields as Record<string, unknown>;
+    const value = dfFields.value as { variant: string } | undefined;
+
+    if (!value?.variant) {
+      return 0;
+    }
+
+    // Check enum variant
+    return value.variant === "Poll" ? 1 : 0;
+  } catch (error) {
+    console.error("Failed to get proposal type:", error);
+    return 0; // Default to Governance on error
+  }
 }
 
 // Initialize Alchemy SDK (lazy)
@@ -625,6 +715,34 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           };
         }
 
+        // Extract proposal ID and check type
+        const proposalId = extractProposalIdFromTx(tx);
+        if (!proposalId) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: "Could not extract proposal ID from transaction" }),
+          };
+        }
+
+        // Check proposal type - only sponsor Poll proposals
+        const proposalType = await getProposalType(proposalId);
+        if (proposalType === 0) {
+          // Governance proposals require user to pay gas
+          console.log(`Rejecting sponsor request for Governance proposal ${proposalId}`);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: "Governance proposals require user gas payment",
+              code: "NOT_SPONSORED",
+              proposalType: "Governance",
+              proposalId,
+            }),
+          };
+        }
+
+        console.log(`Sponsoring Poll proposal ${proposalId}`);
         const suiClient = new SuiClient({ url: SUI_RPC_URL });
         const keypair = await getSponsorKeypair();
         const sponsorAddress = keypair.getPublicKey().toSuiAddress();
