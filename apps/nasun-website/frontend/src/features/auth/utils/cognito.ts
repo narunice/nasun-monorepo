@@ -1,5 +1,5 @@
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
-import logger from "../../../../lib/logger";
+import logger from "@/lib/logger";
 
 export const getCognitoIdentityId = async (
   provider: "Google",

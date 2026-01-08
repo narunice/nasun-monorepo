@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { PageLayout } from "../../../layout/PageLayout";
-import { PageLoading } from "../../../components/ui";
-import ErrorBoundary from "../../../components/layout/ErrorBoundary";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { PageLoading } from "@/components/ui";
+import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../hooks/useAuth"; // Path updated
-import logger from "../../../lib/logger";
+import { useAuth } from "../hooks/useAuth"; // 내부 경로는 상대 경로 유지
+import logger from "@/lib/logger";
 import { ZkLoginCallback } from "@nasun/wallet-ui";
 
 export default function Callback() {
