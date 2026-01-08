@@ -68,11 +68,6 @@ module.exports = {
         "8xl": "1440px",
         "9xl": "1920px",
       },
-      screens: {
-        nav: "1090px",
-        xlg: "1160px",
-        xl: "1350px",
-      },
       transitionDuration: {
         1500: "1500ms",
       },
