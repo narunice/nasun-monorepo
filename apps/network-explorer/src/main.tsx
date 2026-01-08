@@ -10,7 +10,7 @@ import App from './App.tsx'
 // Configure wallet for Nasun Devnet
 configureWallet({
   rpcUrl: import.meta.env.VITE_SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
-  faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io/gas',
+  faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
   sessionPersist: true,
 })
 
@@ -26,7 +26,7 @@ if (googleClientId && saltApiUrl) {
       google: {
         provider: 'google',
         clientId: googleClientId,
-        redirectUri: `${window.location.origin}/auth/callback`,
+        redirectUri: `${window.location.origin}/callback`,
       },
     },
   })

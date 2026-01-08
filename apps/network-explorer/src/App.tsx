@@ -17,7 +17,7 @@ function App() {
     <ErrorBoundary>
       <Routes>
         {/* OAuth callback route (outside Layout for full-page display) */}
-        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/callback" element={<AuthCallback />} />
 
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
