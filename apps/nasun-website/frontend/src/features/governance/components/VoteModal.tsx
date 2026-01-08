@@ -7,13 +7,14 @@ import { Button } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
+import { useDirectVote } from "../hooks/useDirectVote";
 
 interface VoteModalProps {
   proposal: Proposal;
   hasVoted: boolean;
   isOpen: boolean;
   onClose: () => void;
-  onVote: (votedYes: boolean) => void;
+  onVote: (votedYes: boolean) => void | Promise<void>;
 }
 
 export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onClose, onVote }) => {
@@ -23,8 +24,15 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const isConnected = (status === "unlocked" && account) || isZkConnected;
   const toastId = useRef<number | string>();
 
-  // Sponsored vote hook (gas-free voting)
-  const { vote: sponsoredVote, isPending, error: voteError } = useSponsoredVote();
+  // Sponsored vote hook (gas-free voting for Poll proposals)
+  const { vote: sponsoredVote, isPending: isSponsoredPending } = useSponsoredVote();
+
+  // Direct vote hook (user pays gas for Governance proposals)
+  const { vote: directVote, isPending: isDirectPending } = useDirectVote();
+
+  // Check if this is a Poll (sponsored) or Governance (user pays gas)
+  const isSponsored = proposal.proposalType === "Poll";
+  const isPending = isSponsored ? isSponsoredPending : isDirectPending;
 
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmStep, setConfirmStep] = useState<{
@@ -94,14 +102,16 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
         }
       : undefined;
 
-    // Use sponsored vote (gas-free)
-    const result = await sponsoredVote(proposal.id.id, voteYes, ethSignature);
+    // Use appropriate voting method based on proposal type
+    const result = isSponsored
+      ? await sponsoredVote(proposal.id.id, voteYes, ethSignature)
+      : await directVote(proposal.id.id, voteYes, ethSignature);
 
     if (result.success) {
       setIsSuccess(true);
       dismissToast(t("vote.success"));
       console.log("Vote successful:", result.digest, "Power:", result.votingPower);
-      onVote(voteYes);
+      await onVote(voteYes);
     } else {
       dismissToast(result.error || t("vote.error"));
     }
@@ -146,12 +156,23 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           {/* Voting Power Display */}
           {isConnected && !hasVoted && !isSuccess && !confirmStep.show && (
             <div className="bg-nasun-black/30 rounded-lg p-4 border border-nasun-c5/30">
-              {/* Zero Gas Fee Badge */}
+              {/* Gas Fee Badge - different for Poll vs Governance */}
               <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-nasun-c5/20">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
-                  ⛽ Zero Gas Fee
-                </span>
-                <span className="text-xs text-nasun-white/50">Sponsored by Nasun</span>
+                {isSponsored ? (
+                  <>
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+                      Zero Gas Fee
+                    </span>
+                    <span className="text-xs text-nasun-white/50">Sponsored by Nasun</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/50">
+                      Gas Required
+                    </span>
+                    <span className="text-xs text-nasun-white/50">You pay transaction fee</span>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center justify-between mb-2">

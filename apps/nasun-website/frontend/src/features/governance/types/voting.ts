@@ -4,6 +4,11 @@ export type SuiID = {
   id: string;
 };
 
+// Proposal type determines voting rules and gas payment
+// - Governance: User pays gas, binding decision for protocol changes
+// - Poll: Sponsored (zero gas), non-binding community sentiment
+export type ProposalType = "Governance" | "Poll";
+
 // Vote history for My Account page
 export interface VoteHistory {
   proposalId: string;
@@ -30,6 +35,7 @@ export interface Proposal {
   title: string;
   description: string;
   status: ProposalStatus;
+  proposalType: ProposalType;
   yesVotes: string;
   noVotes: string;
   expiration: number;
