@@ -1,21 +1,20 @@
 /**
- * useSponsoredVote Hook
+ * useDirectVote Hook
  *
- * Handles gas-free voting with VotingPowerCertificate + Sponsored Transaction.
+ * Direct voting for Governance proposals (user pays gas).
+ * Similar to useSponsoredVote but without sponsor signature.
  *
  * Flow:
  * 1. Request Certificate from API (Oracle signs voting power)
  * 2. Build Transaction (mint_certificate + vote)
- * 3. Get sponsor signature from API
- * 4. User signs
- * 5. Execute with both signatures
+ * 3. User signs and pays gas
+ * 4. Execute transaction
  */
 
 import { useState } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { SuiClient } from "@mysten/sui/client";
 import { useWallet, useZkLogin } from "@nasun/wallet";
-import { fromBase64, toBase64 } from "@mysten/bcs";
 import { useAuth } from "@/features/auth";
 
 const API_URL = import.meta.env.VITE_GOVERNANCE_API_URL;
@@ -45,7 +44,7 @@ interface VoteResult {
   error?: string;
 }
 
-export function useSponsoredVote() {
+export function useDirectVote() {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +53,7 @@ export function useSponsoredVote() {
   const { user } = useAuth();
 
   /**
-   * Execute a sponsored vote
+   * Execute a direct vote (user pays gas)
    * @param proposalId - The proposal ID to vote on
    * @param voteYes - true for Yes, false for No
    * @param ethSignature - Optional ETH signature for NFT bonus verification
@@ -74,7 +73,7 @@ export function useSponsoredVote() {
         throw new Error("Wallet not connected");
       }
 
-      // 1. Request Certificate from API
+      // 1. Request Certificate from API (still needed for voting power)
       const certResponse = await fetch(`${API_URL}/certificate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +119,7 @@ export function useSponsoredVote() {
         ],
       });
 
-      // vote_with_certificate (upgraded from deprecated vote function)
+      // vote_with_certificate
       tx.moveCall({
         target: `${PACKAGE_ID}::proposal::vote_with_certificate`,
         arguments: [
@@ -131,52 +130,37 @@ export function useSponsoredVote() {
         ],
       });
 
-      // 3. Get sponsor signature
+      // Set sender
+      tx.setSender(voterAddress);
+
+      // 3. User signs and pays gas directly
       const suiClient = new SuiClient({ url: SUI_RPC_URL });
-      const kindBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
 
-      const sponsorResponse = await fetch(`${API_URL}/sponsor`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          txKindBytes: toBase64(kindBytes),
-          sender: voterAddress,
-        }),
-      });
-
-      if (!sponsorResponse.ok) {
-        const err = await sponsorResponse.json();
-        throw new Error(err.error || "Failed to get sponsor signature");
-      }
-
-      const { txBytes, sponsorSignature } = await sponsorResponse.json();
-      const txBytesArray = fromBase64(txBytes);
-
-      // 4. User signs
-      let userSignature: string;
-
+      let result;
       if (isZkConnected && zkSignTransaction) {
         // zkLogin signing
-        const sig = await zkSignTransaction(txBytesArray);
-        userSignature = typeof sig === "string" ? sig : sig.signature;
+        const txBytes = await tx.build({ client: suiClient });
+        const sig = await zkSignTransaction(txBytes);
+        const signature = typeof sig === "string" ? sig : sig.signature;
+        result = await suiClient.executeTransactionBlock({
+          transactionBlock: txBytes,
+          signature: [signature],
+          options: { showEffects: true },
+        });
       } else if (status === "unlocked" && account) {
         // Local wallet signing
         const keypair = getKeypair();
         if (!keypair) {
           throw new Error("Wallet unlocked but keypair not available");
         }
-        const sig = await keypair.signTransaction(txBytesArray);
-        userSignature = sig.signature;
+        result = await suiClient.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: tx,
+          options: { showEffects: true },
+        });
       } else {
         throw new Error("No signing method available");
       }
-
-      // 5. Execute with both signatures (user + sponsor)
-      const result = await suiClient.executeTransactionBlock({
-        transactionBlock: txBytes,
-        signature: [userSignature, sponsorSignature],
-        options: { showEffects: true },
-      });
 
       console.log("Vote transaction successful:", result.digest);
 
@@ -185,9 +169,9 @@ export function useSponsoredVote() {
         digest: result.digest,
         votingPower: cert.votingPower,
       };
-    } catch (err: any) {
-      const errorMessage = err.message || "Vote failed";
-      console.error("Sponsored vote error:", err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Vote failed";
+      console.error("Direct vote error:", err);
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -203,4 +187,4 @@ export function useSponsoredVote() {
   };
 }
 
-export default useSponsoredVote;
+export default useDirectVote;
