@@ -1,8 +1,37 @@
 # Governance VotingPowerCertificate + Sponsored Transaction 구현 계획
 
 > **작성일**: 2026-01-05
-> **상태**: 계획 완료, 구현 대기
-> **리뷰**: ChatGPT/Perplexity 피드백 반영 (v3 - P0 보안 강화)
+> **최종 업데이트**: 2026-01-08
+> **상태**: ✅ 구현 완료 (v3 - Security Hardening)
+> **리뷰**: ChatGPT/Perplexity 피드백 반영 + 선임 리뷰 보안 강화
+
+---
+
+## 구현 완료 상태 (2026-01-08)
+
+### 배포된 패키지
+
+| 버전 | Package ID | 상태 |
+|------|-----------|------|
+| v1 | `0xcd753b00...` | deprecated |
+| v2 | `0x77153fb2...` | deprecated |
+| **v3** | `0x01ceae826f1ce6a13407eaa290fd0f99ca02230f1253f312246a57f9edf94ff0` | **Production** |
+
+### Shared Objects
+
+| Object | ID |
+|--------|-----|
+| VotingPowerOracle | `0x656632e390118ddf2c41fc59f14ddbbdfdd2115b8a08e4db48e8232846f43199` |
+| CertificateRegistry | `0x5edbaf20f817ee3a9a94528babff2d2218364d4ec9a60af486a35228ad8a421f` |
+
+### v3 Security Features
+
+| 기능 | 설명 |
+|------|------|
+| **Domain Separation** | `NASUN_GOVERNANCE_DEVNET_V1` (cross-chain replay 방지) |
+| **BCS Serialization** | Move/Lambda 직렬화 일치 (106 bytes message) |
+| **TTL Policy** | calculateCertificateTTL() - 네트워크별 동적 TTL |
+| **Sponsor Tx Validation** | txKind 파싱 + target whitelist |
 
 ---
 
@@ -18,6 +47,8 @@
 | **Sponsor Tx 검증** | ✅ txKind 파싱 + target 화이트리스트 (v3) |
 | **Oracle 중앙화 명시** | ✅ UI/문서에 명시 (v3) |
 | **Certificate issuer 필드** | ✅ multi-oracle 확장성 (v3) |
+| **Domain Separation** | ✅ 선임 리뷰 반영 - cross-chain replay 방지 (v3) |
+| **BCS 직렬화 일치** | ✅ 선임 리뷰 반영 - Move/Lambda 동일 직렬화 (v3) |
 
 ---
 
