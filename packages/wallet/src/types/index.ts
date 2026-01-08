@@ -100,6 +100,24 @@ export interface BalanceInfo {
   coinCount: number;
 }
 
+// ============================================
+// Network Types
+// ============================================
+
+/** Network type identifier */
+export type NetworkType = 'devnet' | 'testnet' | 'mainnet';
+
+/** Network configuration info */
+export interface NetworkInfo {
+  type: NetworkType;
+  name: string;
+  rpcUrl: string;
+  faucetUrl?: string;
+  explorerUrl?: string;
+  /** Whether this network is currently enabled/available */
+  enabled: boolean;
+}
+
 // Wallet configuration
 export interface WalletConfig {
   rpcUrl: string;
@@ -109,6 +127,8 @@ export interface WalletConfig {
   explorerUrl?: string;
   /** Persist session across page refreshes (stores password in sessionStorage) */
   sessionPersist?: boolean;
+  /** Network type for display purposes */
+  networkType?: NetworkType;
 }
 
 // ============================================

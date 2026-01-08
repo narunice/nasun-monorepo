@@ -73,6 +73,9 @@ export type {
   MultiTokenBalanceInfo,
   // Security types
   SecuritySettings,
+  // Network types
+  NetworkType,
+  NetworkInfo,
 } from './types';
 
 // Security defaults
@@ -142,6 +145,19 @@ export {
   isTokenRegistered,
   clearTokens,
 } from './config/tokens';
+
+// Network Configuration
+export {
+  NETWORKS,
+  getNetworkInfo,
+  getEnabledNetworks,
+  hasNetworkFaucet,
+  detectNetworkType,
+} from './config/networks';
+
+// Network Hook
+export { useNetwork } from './hooks/useNetwork';
+export type { UseNetworkResult } from './hooks/useNetwork';
 
 // Crypto utilities
 export {
