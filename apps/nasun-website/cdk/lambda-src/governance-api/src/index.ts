@@ -42,8 +42,36 @@ const NASUN_NFT_CONTRACT_ADDRESS = process.env.NASUN_NFT_CONTRACT_ADDRESS || "";
 
 // Oracle/Sponsor configuration
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
-const CERTIFICATE_TTL_MS = 15 * 60 * 1000; // 15 minutes (Devnet), 30 min for Mainnet
 const SUI_RPC_URL = process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io";
+
+// Certificate TTL Policy
+// - Devnet: Fixed 15 minutes (faster testing)
+// - Mainnet: Up to 30 minutes, capped by proposal expiration
+const DEFAULT_TTL_MS = 15 * 60 * 1000;  // 15 min (Devnet)
+const MAX_TTL_MS = 30 * 60 * 1000;      // 30 min (Mainnet)
+
+/**
+ * Calculate certificate TTL based on network and proposal expiration
+ * @param proposalExpiration - Optional proposal expiration timestamp (ms)
+ * @returns TTL in milliseconds
+ */
+function calculateCertificateTTL(proposalExpiration?: number): number {
+  const isMainnet = process.env.NETWORK === "mainnet";
+
+  if (!isMainnet) {
+    // Devnet: fixed TTL for faster testing
+    return DEFAULT_TTL_MS;
+  }
+
+  // Mainnet: respect proposal expiration
+  if (proposalExpiration) {
+    const untilExpiration = proposalExpiration - Date.now();
+    // Cap at MAX_TTL_MS, minimum 0 (already expired)
+    return Math.min(MAX_TTL_MS, Math.max(0, untilExpiration));
+  }
+
+  return MAX_TTL_MS;
+}
 const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
 
 // Domain Separation (MUST match Move contract's DOMAIN_SEPARATOR)
@@ -494,7 +522,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         // Message format: domain_separator (26 bytes) || voter (32 bytes BCS) || proposal_id (32 bytes BCS)
         //                 || voting_power (8 bytes BE) || expires_at (8 bytes BE)
         // Total: 26 + 32 + 32 + 8 + 8 = 106 bytes
-        const expiresAt = Date.now() + CERTIFICATE_TTL_MS;
+        const ttlMs = calculateCertificateTTL(); // TODO: Pass proposal expiration when available
+        const expiresAt = Date.now() + ttlMs;
 
         // 1. Domain separator (UTF-8 bytes)
         const domainBytes = Buffer.from(DOMAIN_SEPARATOR, "utf8");
