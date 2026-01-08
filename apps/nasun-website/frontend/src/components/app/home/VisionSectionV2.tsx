@@ -5,6 +5,11 @@ import visionVideoMobileMP4 from "../../../assets/videos/home-vision-wave-light-
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Button } from "@/components/ui/button";
 
+interface VisionSectionV2Props {
+  shouldLoadVideo?: boolean;
+  onVideoReady?: () => void;
+}
+
 /**
  * VisionSectionV2 Component
  *
@@ -14,7 +19,7 @@ import { Button } from "@/components/ui/button";
  * - CTA button: "JOIN THE BATTALION"
  * - Tagline: "Building the next generation of global IP..."
  */
-function VisionSectionV2() {
+function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectionV2Props) {
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -33,25 +38,31 @@ function VisionSectionV2() {
 
   // Video autoplay handling for iOS
   useEffect(() => {
+    if (!shouldLoadVideo) return;
+
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
       video.play().catch(() => {});
+      onVideoReady?.();
     };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     if (video.readyState >= 1) {
       video.play().catch(() => {});
+      onVideoReady?.();
     }
 
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, []);
+  }, [shouldLoadVideo, onVideoReady]);
 
   // IntersectionObserver - play/pause based on visibility
   useEffect(() => {
+    if (!shouldLoadVideo) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -71,28 +82,30 @@ function VisionSectionV2() {
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [shouldLoadVideo]);
 
   const keywords = ["ENTERTAINMENT", "TECHNOLOGY", "FINANCE", "UNIFIED"];
 
   return (
     <SectionLayout className="relative min-h-screen">
       {/* Background video container - full browser width */}
-      <div ref={containerRef} className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full">
-        <video
-          key={videoSrc}
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          webkit-playsinline="true"
-          preload="metadata"
-          x-webkit-airplay="allow"
-          className="absolute top-0 left-0 w-full h-full object-cover object-center"
-        >
-          <source src={videoSrc} type="video/mp4" />
-        </video>
+      <div ref={containerRef} className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full bg-nasun-white">
+        {shouldLoadVideo && (
+          <video
+            key={videoSrc}
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            webkit-playsinline="true"
+            preload="metadata"
+            x-webkit-airplay="allow"
+            className="absolute top-0 left-0 w-full h-full object-cover object-center"
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
+        )}
       </div>
 
       {/* Content */}
@@ -128,4 +141,6 @@ function VisionSectionV2() {
   );
 }
 
-export default React.memo(VisionSectionV2);
+export default React.memo(VisionSectionV2, (prev, next) => {
+  return prev.shouldLoadVideo === next.shouldLoadVideo;
+});
