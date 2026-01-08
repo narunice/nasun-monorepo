@@ -11,6 +11,7 @@ import type { TradeResult, OrderType } from '../types';
 import { ORDER_TYPE } from '../constants';
 import { useToast } from '../../../components/common';
 import { quantityToRaw, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
+import { isMarginError } from '../../../lib/risk-engine';
 
 export interface UseOrderActionsResult {
   isLoading: boolean;
@@ -91,6 +92,11 @@ export function useOrderActions(): UseOrderActionsResult {
       // 잔고 부족
       if (error.includes('BM-3') || error.includes('Insufficient balance')) {
         return 'Insufficient balance. Add funds to trading balance and try again.';
+      }
+
+      // Margin 부족 (Pado Balance)
+      if (isMarginError(error)) {
+        return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
       }
 
       // Post-only 에러
