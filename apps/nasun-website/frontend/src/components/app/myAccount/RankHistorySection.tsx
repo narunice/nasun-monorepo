@@ -43,7 +43,10 @@ export interface RankHistorySectionProps {
  * // 조건부 렌더링
  * {user?.twitterHandle && <RankHistorySection username={user.twitterHandle} />}
  */
-export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username, embedded = false }) => {
+export const RankHistorySection: React.FC<RankHistorySectionProps> = ({
+  username,
+  embedded = false,
+}) => {
   const { t, i18n } = useTranslation(["myAccount", "common"]);
   const isKorean = i18n.language === "ko";
   const { user } = useAuth();
@@ -136,9 +139,7 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
       {/* Section Title with Share Button (only when embedded) */}
       {embedded && (
         <div className="flex items-center justify-between mb-4">
-          <h5 className="uppercase text-nasun-white">
-            {t("rankHistory.title")}
-          </h5>
+          <h5 className="uppercase text-nasun-white">{t("rankHistory.title")}</h5>
           {/* 공유 버튼 (데이터 있을 때만 표시) */}
           {data && data.history.length > 0 && !isLoading && (
             <ShareRankHistoryButton
@@ -257,10 +258,10 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({ username
                     selectedPeriod === CumulativePeriod.CUMULATIVE
                       ? t("rankHistory.periods.cumulative")
                       : selectedPeriod === CumulativePeriod.EVENT1
-                      ? t("rankHistory.periods.event1")
-                      : selectedPeriod === CumulativePeriod.EVENT2
-                      ? t("rankHistory.periods.event2")
-                      : t("rankHistory.periods.event3");
+                        ? t("rankHistory.periods.event1")
+                        : selectedPeriod === CumulativePeriod.EVENT2
+                          ? t("rankHistory.periods.event2")
+                          : t("rankHistory.periods.event3");
 
                   if (selectedPeriod === CumulativePeriod.CUMULATIVE) {
                     return t("rankHistory.notParticipating", { targetAccount });
