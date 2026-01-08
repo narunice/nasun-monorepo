@@ -63,3 +63,9 @@ export type { ZkLoginCallbackProps } from './ZkLoginCallback';
 // Passkey components
 export { PasskeyButton } from './PasskeyButton';
 export type { PasskeyButtonProps } from './PasskeyButton';
+
+// Network components
+export { NetworkBadge } from './NetworkBadge';
+export type { NetworkBadgeProps } from './NetworkBadge';
+export { NetworkSelector } from './NetworkSelector';
+export type { NetworkSelectorProps } from './NetworkSelector';
