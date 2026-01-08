@@ -3,6 +3,7 @@
   "categories": {
     "all": "전체",
     "news": "뉴스",
-    "events": "이벤트"
+    "events": "이벤트",
+    "grants": "지원사업"
   }
 }

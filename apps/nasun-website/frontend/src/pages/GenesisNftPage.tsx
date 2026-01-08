@@ -1,7 +1,9 @@
-import { Suspense, lazy, useState, useEffect } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { useTranslation } from "react-i18next";
+import { usePageLoading } from "../contexts/PageLoadingContext";
+import GenesisNftHeroSkeleton from "../components/app/sale/GenesisNftHeroSkeleton";
 import genesisVideoDesktop from "../assets/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
 import genesisVideoMobile from "../assets/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
 
@@ -15,6 +17,12 @@ const KeyBenefitsSection = lazy(() => import("../components/app/sale/KeyBenefits
 const GenesisNftPage = () => {
   const { t } = useTranslation("common");
   const [isMobile, setIsMobile] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const { setIsPageReady } = usePageLoading();
+
+  useEffect(() => {
+    setIsPageReady(false);
+  }, [setIsPageReady]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -26,12 +34,28 @@ const GenesisNftPage = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  const handleCanPlay = useCallback(() => {
+    setIsVideoReady(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsPageReady(true);
+      });
+    });
+  }, [setIsPageReady]);
+
   const videoSrc = isMobile ? genesisVideoMobile : genesisVideoDesktop;
 
   return (
     <PageLayout className="relative">
       {/* Background Video Container - Full Browser Width */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1920px] aspect-[16/9] min-h-[700px] z-0">
+        {/* Skeleton Overlay */}
+        {!isVideoReady && (
+          <div className="absolute inset-0 z-20">
+            <GenesisNftHeroSkeleton />
+          </div>
+        )}
+
         <video
           key={videoSrc}
           autoPlay
@@ -39,7 +63,10 @@ const GenesisNftPage = () => {
           muted
           playsInline
           preload="auto"
-          className="w-full h-full"
+          onCanPlay={handleCanPlay}
+          className={`w-full h-full transition-opacity duration-500 ${
+            isVideoReady ? "opacity-100" : "opacity-0"
+          }`}
           style={{
             objectFit: "cover",
             objectPosition: "top center",
