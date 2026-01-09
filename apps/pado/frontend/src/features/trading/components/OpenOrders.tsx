@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import type { OpenOrder } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
+
+const PAGE_SIZE = 5;
 
 interface OpenOrdersProps {
   orders: OpenOrder[];
@@ -10,6 +13,27 @@ interface OpenOrdersProps {
 export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Sort orders by orderId descending (newest first)
+  const sortedOrders = [...orders].sort((a, b) => {
+    const aId = BigInt(a.orderId);
+    const bId = BigInt(b.orderId);
+    return aId > bId ? -1 : aId < bId ? 1 : 0;
+  });
+
+  const visibleOrders = sortedOrders.slice(0, visibleCount);
+  const remainingCount = sortedOrders.length - visibleCount;
+  const canShowMore = remainingCount > 0;
+  const canShowLess = visibleCount > PAGE_SIZE;
+
+  const handleShowMore = () => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, sortedOrders.length));
+  };
+
+  const handleShowLess = () => {
+    setVisibleCount(PAGE_SIZE);
+  };
 
   return (
     <div className="mt-6 pt-4 border-t border-theme-border">
@@ -20,7 +44,7 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
         <p className="text-xs text-theme-text-muted">No open orders</p>
       ) : (
         <div className="space-y-2">
-          {orders.map((order) => (
+          {visibleOrders.map((order) => (
             <div
               key={order.orderId}
               className="flex items-center justify-between p-2 bg-theme-bg-tertiary rounded text-xs"
@@ -42,6 +66,28 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
               </button>
             </div>
           ))}
+
+          {/* Show more / Show less buttons */}
+          {(canShowMore || canShowLess) && (
+            <div className="flex justify-center gap-3 pt-1">
+              {canShowMore && (
+                <button
+                  onClick={handleShowMore}
+                  className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+                >
+                  Show {Math.min(PAGE_SIZE, remainingCount)} more
+                </button>
+              )}
+              {canShowLess && (
+                <button
+                  onClick={handleShowLess}
+                  className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+                >
+                  Collapse
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
