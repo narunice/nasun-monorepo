@@ -18,6 +18,8 @@ interface SimpleOrderFormProps {
   isLoading: boolean;
   quoteBalance?: number;
   baseBalance?: number;
+  walletQuoteBalance?: string;
+  walletBaseBalance?: string;
 }
 
 export function SimpleOrderForm({
@@ -28,6 +30,8 @@ export function SimpleOrderForm({
   isLoading,
   quoteBalance = 0,
   baseBalance = 0,
+  walletQuoteBalance = '0',
+  walletBaseBalance = '0',
 }: SimpleOrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -36,11 +40,13 @@ export function SimpleOrderForm({
   const [usdAmount, setUsdAmount] = useState<number | null>(null);
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
 
-  // Calculate base token amount from USD
+  // Calculate base token amount from USD (rounded to lot size)
   const baseAmount = useMemo(() => {
     if (!usdAmount || !midPrice || midPrice <= 0) return 0;
-    return usdAmount / midPrice;
-  }, [usdAmount, midPrice]);
+    const rawAmount = usdAmount / midPrice;
+    const lotSizeDecimal = currentPool.lotSize / Math.pow(10, currentPool.baseToken.decimals);
+    return Math.floor(rawAmount / lotSizeDecimal) * lotSizeDecimal;
+  }, [usdAmount, midPrice, currentPool]);
 
   // Max values
   const maxBuyUsd = quoteBalance;
@@ -68,6 +74,39 @@ export function SimpleOrderForm({
 
   return (
     <div className="space-y-4">
+      {/* Balance Overview */}
+      <div className="p-3 bg-theme-bg-tertiary/50 rounded-lg">
+        <div className="text-xs text-theme-text-muted mb-2">Your Balance</div>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Wallet Column */}
+          <div>
+            <div className="text-[10px] text-theme-text-muted mb-1">Wallet</div>
+            <div className="text-sm font-mono text-theme-text-primary">
+              {walletBaseBalance} {baseSymbol}
+            </div>
+            <div className="text-sm font-mono text-theme-text-secondary">
+              {walletQuoteBalance} {quoteSymbol}
+            </div>
+          </div>
+          {/* Trading Column */}
+          <div>
+            <div className="text-[10px] text-theme-text-muted mb-1">Trading</div>
+            <div className="text-sm font-mono text-theme-text-primary">
+              {baseBalance.toFixed(4)} {baseSymbol}
+            </div>
+            <div className="text-sm font-mono text-theme-text-secondary">
+              {quoteBalance.toFixed(2)} {quoteSymbol}
+            </div>
+          </div>
+        </div>
+        {/* Deposit hint when Trading balance is empty */}
+        {quoteBalance === 0 && baseBalance === 0 && (
+          <div className="mt-2 text-xs text-theme-text-muted">
+            Deposit to Trading balance to start trading
+          </div>
+        )}
+      </div>
+
       {/* Buy/Sell Toggle */}
       <div className="flex bg-theme-bg-tertiary rounded-lg p-1">
         <button
@@ -132,13 +171,6 @@ export function SimpleOrderForm({
           </div>
         </div>
       )}
-
-      {/* Available Balance */}
-      <div className="text-xs text-theme-text-muted text-right">
-        Available: {orderSide === 'buy'
-          ? `${quoteBalance.toFixed(2)} ${quoteSymbol}`
-          : `${baseBalance.toFixed(4)} ${baseSymbol}`}
-      </div>
 
       {/* Execute Button */}
       <button
