@@ -4,6 +4,7 @@ import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTheme } from '../../providers/theme';
 import { HeaderNetValue } from './HeaderNetValue';
+import { useAdminAccess } from '../../features/admin';
 
 interface NavItem {
   label: string;
@@ -15,6 +16,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Trade', path: '/trade', enabled: true },
   { label: 'Earn', path: '/earn', enabled: true },
   { label: 'Predict', path: '/predict', enabled: true },
+  { label: 'Lottery', path: '/lottery', enabled: true },
   { label: 'Wallet', path: '/wallet', enabled: true },
 ];
 
@@ -29,6 +31,9 @@ export function Header() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isConnected = isZkLoggedIn || (status === 'unlocked' && account);
+
+  // Admin access check
+  const { isAdmin } = useAdminAccess();
 
   // Hide wallet button on homepage when not connected (WelcomeBanner has its own button)
   const isHomePage = location.pathname === '/';
@@ -108,6 +113,19 @@ export function Header() {
                 {item.label}
               </span>
             )
+          )}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={(e) => handleNavClick(e, '/admin')}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive('/admin')
+                  ? 'text-yellow-400 bg-yellow-400/10'
+                  : 'text-yellow-500 hover:text-yellow-400 hover:bg-yellow-400/10'
+              }`}
+            >
+              Admin
+            </Link>
           )}
         </nav>
 
@@ -189,6 +207,22 @@ export function Header() {
                       <span className="text-xs ml-1">(Soon)</span>
                     </span>
                   )
+                )}
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={(e) => {
+                      handleNavClick(e, '/admin');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`block px-4 py-3 text-sm font-medium transition-colors border-t border-theme-border ${
+                      isActive('/admin')
+                        ? 'text-yellow-400 bg-yellow-400/10'
+                        : 'text-yellow-500 hover:bg-yellow-400/10'
+                    }`}
+                  >
+                    Admin
+                  </Link>
                 )}
               </nav>
             )}
