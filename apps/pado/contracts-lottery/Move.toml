@@ -1,0 +1,15 @@
+[package]
+name = "pado_lottery"
+edition = "2024.beta"
+version = "0.0.1"
+# published-at will be set after deployment
+
+[dependencies]
+pado_tokens = { local = "../contracts" }
+
+[addresses]
+lottery = "0x0"
+pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+
+[environments]
+nasun-devnet = "6681cdfd"

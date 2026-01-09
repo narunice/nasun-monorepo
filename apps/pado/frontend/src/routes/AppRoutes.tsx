@@ -8,6 +8,7 @@
  * - Earn (/earn) - Coming soon (Phase 12-13)
  * - Predict (/predict) - Prediction markets
  * - Wallet (/wallet) - Send/Receive
+ * - Admin (/admin) - Unified admin dashboard
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -18,8 +19,10 @@ import {
   WalletPage,
   PredictPage,
   PredictMarketPage,
-  PredictAdminPage,
   AuthCallbackPage,
+  LotteryPage,
+  LotteryRoundPage,
+  AdminPage,
 } from '../pages';
 
 export function AppRoutes() {
@@ -36,8 +39,17 @@ export function AppRoutes() {
 
       {/* Prediction Markets */}
       <Route path="/predict" element={<PredictPage />} />
-      <Route path="/predict/admin" element={<PredictAdminPage />} />
       <Route path="/predict/:marketId" element={<PredictMarketPage />} />
+
+      {/* Lottery */}
+      <Route path="/lottery" element={<LotteryPage />} />
+      <Route path="/lottery/:roundId" element={<LotteryRoundPage />} />
+
+      {/* Admin (Unified Dashboard) */}
+      <Route path="/admin" element={<AdminPage />} />
+      {/* Legacy admin routes redirect to unified admin */}
+      <Route path="/predict/admin" element={<Navigate to="/admin" replace />} />
+      <Route path="/lottery/admin" element={<Navigate to="/admin" replace />} />
 
       {/* Legacy redirects for backward compatibility */}
       <Route path="/portfolio" element={<Navigate to="/" replace />} />

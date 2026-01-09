@@ -10,6 +10,10 @@ export { PredictPage } from './PredictPage';
 export { PredictMarketPage } from './PredictMarketPage';
 export { PredictAdminPage } from './PredictAdminPage';
 export { AuthCallbackPage } from './AuthCallbackPage';
+export { LotteryPage } from './LotteryPage';
+export { LotteryRoundPage } from './LotteryRoundPage';
+export { LotteryAdminPage } from './LotteryAdminPage';
+export { AdminPage } from './AdminPage';
 
 // Legacy exports (for backward compatibility during migration)
 export { PortfolioPage } from './PortfolioPage';
