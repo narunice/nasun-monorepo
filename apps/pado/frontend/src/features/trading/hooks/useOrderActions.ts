@@ -70,7 +70,7 @@ export function useOrderActions(): UseOrderActionsResult {
     withdrawAllTokens,
   } = useTrading();
 
-  // 에러 메시지를 사용자 친화적으로 변환
+  // Convert error message to user-friendly format
   const formatUserFriendlyError = useCallback(
     (error: string | undefined): string => {
       if (!error) return 'Unknown error';
@@ -79,29 +79,29 @@ export function useOrderActions(): UseOrderActionsResult {
       const minPrice = getMinPrice(currentPool);
       const baseSymbol = currentPool.baseToken.symbol;
 
-      // 수량 관련 에러
+      // Quantity error
       if (error.includes('ORDER_INFO-2') || error.includes('lot size')) {
-        return `수량은 ${minQty} ${baseSymbol}의 배수여야 합니다 (예: ${minQty}, ${minQty * 10}, ${minQty * 100})`;
+        return `Quantity must be a multiple of ${minQty} ${baseSymbol} (e.g., ${minQty}, ${minQty * 10}, ${minQty * 100})`;
       }
 
-      // 가격 관련 에러
+      // Price error
       if (error.includes('POOL-2') || error.includes('tick size')) {
-        return `가격은 $${minPrice}의 배수여야 합니다`;
+        return `Price must be a multiple of $${minPrice}`;
       }
 
-      // 잔고 부족
+      // Insufficient balance
       if (error.includes('BM-3') || error.includes('Insufficient balance')) {
         return 'Insufficient balance. Add funds to trading balance and try again.';
       }
 
-      // Margin 부족 (Pado Balance)
+      // Insufficient margin (Pado Balance)
       if (isMarginError(error)) {
         return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
       }
 
-      // Post-only 에러
+      // Post-only error
       if (error.includes('POOL-6') || error.includes('cross the book')) {
-        return 'Post-only 주문이 즉시 체결됩니다. 가격을 조정해주세요.';
+        return 'Post-only order would execute immediately. Please adjust the price.';
       }
 
       return error;

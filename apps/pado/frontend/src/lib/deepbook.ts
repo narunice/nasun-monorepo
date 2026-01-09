@@ -60,7 +60,7 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
       ],
       arguments: [
         tx.object(pool.id),
-        tx.pure.u64(10), // ticks (number of price levels)
+        tx.pure.u64(20), // ticks (number of price levels to fetch from mid)
         tx.object('0x6'), // Clock
       ],
     });
@@ -200,7 +200,8 @@ function formatQuantityWithDecimals(rawQuantity: bigint, decimals: number): numb
  * @param decimals - Quote token decimals (default: NUSDC = 6)
  */
 export function priceToRaw(price: number, decimals: number = TOKENS.NUSDC.decimals): bigint {
-  return BigInt(Math.floor(price * Math.pow(10, decimals)));
+  // Use Math.round to avoid floating-point precision errors
+  return BigInt(Math.round(price * Math.pow(10, decimals)));
 }
 
 /**
@@ -209,7 +210,9 @@ export function priceToRaw(price: number, decimals: number = TOKENS.NUSDC.decima
  * @param decimals - Base token decimals (default: NBTC = 8)
  */
 export function quantityToRaw(quantity: number, decimals: number = TOKENS.NBTC.decimals): bigint {
-  return BigInt(Math.floor(quantity * Math.pow(10, decimals)));
+  // Use Math.round to avoid floating-point precision errors
+  // e.g., 0.018 * 10^8 = 1799999.9999999998 with floor, but 1800000 with round
+  return BigInt(Math.round(quantity * Math.pow(10, decimals)));
 }
 
 /**
@@ -620,17 +623,17 @@ export function formatMinPrice(pool: PoolConfig): string {
  */
 export function validateQuantity(amount: number, pool: PoolConfig): ValidationResult {
   if (!amount || amount <= 0) {
-    return { valid: false, message: '수량을 입력해주세요' };
+    return { valid: false, message: 'Please enter a quantity' };
   }
 
   const minQty = getMinQuantity(pool);
   const remainder = amount % minQty;
 
-  // 부동소수점 오차 허용 (minQty의 0.1% 미만이면 OK)
+  // Allow floating point tolerance (less than 0.1% of minQty is OK)
   if (remainder > minQty * 0.001 && remainder < minQty * 0.999) {
     return {
       valid: false,
-      message: `수량은 ${minQty} ${pool.baseToken.symbol}의 배수여야 합니다`,
+      message: `Quantity must be a multiple of ${minQty} ${pool.baseToken.symbol}`,
     };
   }
 
@@ -644,17 +647,17 @@ export function validateQuantity(amount: number, pool: PoolConfig): ValidationRe
  */
 export function validatePrice(price: number, pool: PoolConfig): ValidationResult {
   if (!price || price <= 0) {
-    return { valid: false, message: '가격을 입력해주세요' };
+    return { valid: false, message: 'Please enter a price' };
   }
 
   const minPrice = getMinPrice(pool);
   const remainder = price % minPrice;
 
-  // 부동소수점 오차 허용 (minPrice의 0.1% 미만이면 OK)
+  // Allow floating point tolerance (less than 0.1% of minPrice is OK)
   if (remainder > minPrice * 0.001 && remainder < minPrice * 0.999) {
     return {
       valid: false,
-      message: `가격은 $${minPrice}의 배수여야 합니다`,
+      message: `Price must be a multiple of $${minPrice}`,
     };
   }
 
