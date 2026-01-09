@@ -94,14 +94,30 @@ export async function getMarginAccount(
     }
 
     const fields = result.data.content.fields as Record<string, unknown>;
+    if (!fields) return null;
+
+    // Safe access for Balance<NUSDC> field (nested structure: { fields: { value: string } })
+    let nusdcBalanceValue = '0';
+    const nusdcBalanceField = fields.nusdc_balance;
+    if (nusdcBalanceField && typeof nusdcBalanceField === 'object') {
+      const balanceFields = (nusdcBalanceField as { fields?: { value?: string } }).fields;
+      if (balanceFields?.value) {
+        nusdcBalanceValue = balanceFields.value;
+      }
+    }
+
+    // Safe access for u64 fields
+    const totalDeposited = fields.total_deposited;
+    const totalWithdrawn = fields.total_withdrawn;
+    const createdAt = fields.created_at;
 
     return {
       id: accountId,
-      owner: fields.owner as string,
-      nusdcBalance: BigInt((fields.nusdc_balance as { fields: { value: string } }).fields.value),
-      totalDeposited: BigInt(fields.total_deposited as string),
-      totalWithdrawn: BigInt(fields.total_withdrawn as string),
-      createdAt: Number(fields.created_at),
+      owner: String(fields.owner || ''),
+      nusdcBalance: BigInt(nusdcBalanceValue),
+      totalDeposited: BigInt(String(totalDeposited || '0')),
+      totalWithdrawn: BigInt(String(totalWithdrawn || '0')),
+      createdAt: Number(createdAt || 0),
     };
   } catch (error) {
     console.error('Failed to fetch margin account:', error);
