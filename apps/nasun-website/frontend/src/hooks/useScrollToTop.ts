@@ -14,31 +14,14 @@ export default function useScrollToTop() {
   const prevPathnameRef = useRef<string | null>(null);
 
   useEffect(() => {
-    console.log("🔄 [useScrollToTop] pathname 체크:", {
-      prev: prevPathnameRef.current,
-      current: location.pathname,
-      search: location.search,
-      willScroll: prevPathnameRef.current !== location.pathname
-    });
-
-    // pathname 값이 실제로 변경되었을 때만 스크롤
-    // (객체 참조가 아닌 값 비교)
     if (prevPathnameRef.current !== location.pathname) {
-      console.log("⬆️ [useScrollToTop] 페이지 상단으로 스크롤 실행 (pathname 변경)");
-      window.scrollTo({
-        top: 0,
-        behavior: "auto",
-      });
+      window.scrollTo({ top: 0, behavior: "auto" });
       prevPathnameRef.current = location.pathname;
     }
   }, [location.pathname]);
 
-  // 초기 마운트 시에도 스크롤을 최상단으로 이동 (페이지 리로드 지원)
+  // Scroll to top on initial mount (page reload support)
   useEffect(() => {
-    console.log("🎬 [useScrollToTop] 초기 마운트 - 페이지 상단으로 스크롤");
-    window.scrollTo({
-      top: 0,
-      behavior: "auto",
-    });
+    window.scrollTo({ top: 0, behavior: "auto" });
   }, []);
 }

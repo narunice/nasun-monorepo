@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "../../../layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import SectionTitle from "@/components/ui/SectionTitle";
+import progressVideo from "@/assets/videos/Progress-Video-rf29.mp4";
 
 function CommunityEngagementSection() {
   const { t } = useTranslation("spectra");
@@ -11,8 +12,20 @@ function CommunityEngagementSection() {
     <SectionLayout className="">
       <PageTitle> {t("pageTitle")}</PageTitle>
 
+      <div className="max-w-4xl mx-auto -mt-4 mb-6">
+        <video
+          src={progressVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+          controls
+          className="w-full rounded-lg"
+        />
+      </div>
+
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h3" className="pt-2 mb-2 md:mb-3 lg:mb-4">
           {t("communityEngagement.title")}
         </SectionTitle>
 
