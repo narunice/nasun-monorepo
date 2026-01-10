@@ -8,19 +8,10 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getBalanceManagerBalances, type BalanceManagerBalance } from '../../../lib/deepbook';
+import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { useMarket } from '../context/MarketContext';
-
-// Storage key for BalanceManager ID
-const BALANCE_MANAGER_KEY = 'pado_balance_manager';
-
-function getStoredBalanceManagerId(): string | null {
-  try {
-    return localStorage.getItem(BALANCE_MANAGER_KEY);
-  } catch {
-    return null;
-  }
-}
 
 interface UseBalanceManagerBalanceResult {
   balance: BalanceManagerBalance | null;
@@ -43,7 +34,17 @@ export function useBalanceManagerBalance(options?: {
 }): UseBalanceManagerBalanceResult {
   const { refetchInterval = 5000, enabled = true } = options ?? {};
   const { currentPool } = useMarket();
-  const balanceManagerId = getStoredBalanceManagerId();
+
+  // Get active wallet address (zkLogin takes priority)
+  const { account: walletAccount, status } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const activeAddress = isZkLoggedIn
+    ? zkState?.address
+    : status === 'unlocked'
+      ? walletAccount?.address
+      : undefined;
+
+  const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
   const {
     data: balance,

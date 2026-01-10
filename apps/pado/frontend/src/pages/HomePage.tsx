@@ -37,11 +37,8 @@ export function HomePage() {
       {/* ===== Connected State: Portfolio-Centric Layout ===== */}
       {isConnected && (
         <>
-          {/* Portfolio Overview Section */}
+          {/* Asset Overview Section */}
           <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-theme-text-primary mb-4">
-              Portfolio
-            </h1>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Asset Overview - spans 1 column on lg */}
               <div className="lg:col-span-1">
@@ -56,7 +53,7 @@ export function HomePage() {
 
           {/* Quick Actions */}
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-theme-text-primary mb-4">Quick Actions</h2>
+            <h2 className="text-lg font-bold text-theme-text-primary mb-4">What would you like to do?</h2>
             <QuickActions />
           </div>
 
@@ -84,7 +81,7 @@ export function HomePage() {
 
           {/* Quick Actions */}
           <div className="mb-8">
-            <h2 className="text-lg font-bold text-theme-text-primary mb-4">Quick Actions</h2>
+            <h2 className="text-lg font-bold text-theme-text-primary mb-4">What would you like to do?</h2>
             <QuickActions />
           </div>
 
@@ -97,7 +94,7 @@ export function HomePage() {
           {/* Footer Tagline */}
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 text-center">
             <p className="text-sm text-theme-text-muted">
-              One account. One margin pool. Every asset works harder.
+              Trade, predict, and earn — all in one place.
             </p>
           </div>
         </>

@@ -11,3 +11,4 @@ export { PriceSuggestions } from './PriceSuggestions';
 export { MarketSelector } from './MarketSelector';
 export { SimpleOrderForm } from './SimpleOrderForm';
 export { QuickAmountButtons } from './QuickAmountButtons';
+export { TradingBalanceBar } from './TradingBalanceBar';

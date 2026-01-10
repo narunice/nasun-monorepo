@@ -1,28 +1,35 @@
 /**
  * useTotalValue Hook
  * Calculate total portfolio value in USD with P&L
- * Includes: Tokens (NASUN, NBTC, NUSDC) + Pado Balance + Prediction Positions
+ *
+ * Includes:
+ * - Tokens (NASUN, NBTC, NUSDC) from wallet
+ * - Trading balance (BalanceManager)
+ * - Pado Balance (MarginAccount)
+ * - Prediction Positions (cost basis)
+ *
+ * Uses unified prices from lib/prices.ts for consistency.
+ *
+ * @version 2.0.0 (Phase 16.1)
  */
 
 import { useMemo } from 'react';
-import { useMultiBalance } from '@nasun/wallet';
+import { useQuery } from '@tanstack/react-query';
+import { useMultiBalance, useWallet, useZkLogin } from '@nasun/wallet';
 import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
 import { useMarginAccount } from '../../core/unified-margin';
+import { getBalanceManagerBalances } from '../../../lib/deepbook';
+import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
+import { POOLS, TOKENS } from '../../../config/network';
 import { NUSDC_DECIMALS } from '../../prediction/constants';
-
-// Default prices for MVP (will be replaced with oracle/API prices later)
-const DEFAULT_PRICES = {
-  NASUN: 0.10,   // $0.10 per NASUN
-  NBTC: 95000,   // $95,000 per BTC
-  NUSDC: 1,      // $1 per USDC (stablecoin)
-} as const;
-
-// Simulated 24h price changes (will be replaced with real data later)
-const SIMULATED_CHANGES = {
-  NASUN: 2.5,    // +2.5%
-  NBTC: -1.2,    // -1.2%
-  NUSDC: 0,      // stablecoin - no change
-} as const;
+import {
+  type TokenSymbol,
+  getUnifiedPrice,
+  getPriceChange24h,
+  calculateUsdValue,
+  calculate24hPnl,
+  getAllPrices,
+} from '../../../lib/prices';
 
 export interface TokenValue {
   symbol: string;
@@ -31,6 +38,7 @@ export interface TokenValue {
   value: number;
   change24h: number;  // 24h change percentage
   pnl24h: number;     // 24h P&L in USD
+  source?: 'wallet' | 'trading' | 'margin' | 'combined';
 }
 
 export interface UseTotalValueResult {
@@ -38,76 +46,131 @@ export interface UseTotalValueResult {
   totalPnl24h: number;      // Total 24h P&L in USD
   totalChange24h: number;   // Total 24h change percentage
   tokens: TokenValue[];
-  prices: typeof DEFAULT_PRICES;
+  prices: Record<TokenSymbol, number>;
   isLoading: boolean;
 }
 
 export function useTotalValue(): UseTotalValueResult {
+  // Get active wallet address
+  const { account: walletAccount, status } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const activeAddress = isZkLoggedIn ? zkState?.address : (status === 'unlocked' ? walletAccount?.address : undefined);
+
   const { data: multiBalance, isLoading: isBalanceLoading } = useMultiBalance();
   const { positions, isLoading: isPositionsLoading } = usePredictionPositions();
   const { account: marginAccount, isLoading: isMarginLoading, hasAccount: hasMarginAccount } = useMarginAccount();
 
-  const isLoading = isBalanceLoading || isPositionsLoading || isMarginLoading;
+  // BalanceManager balances (DeepBook trading)
+  // IMPORTANT: Use address-keyed storage to support multi-wallet
+  const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
+  const { data: bmBalance, isLoading: isBmLoading } = useQuery({
+    queryKey: ['portfolio-bm-balance', balanceManagerId],
+    queryFn: async () => {
+      if (!balanceManagerId) return { base: 0, quote: 0 };
+      return getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
+    },
+    refetchInterval: 10000,
+    staleTime: 5000,
+    enabled: !!balanceManagerId,
+  });
+
+  const isLoading = isBalanceLoading || isPositionsLoading || isMarginLoading || isBmLoading;
 
   const result = useMemo(() => {
     const tokens: TokenValue[] = [];
+    const prices = getAllPrices();
 
-    // Token balances
-    const nasunBalance = multiBalance?.native.formatted || '0';
-    const nbtcBalance = multiBalance?.tokens['NBTC']?.formatted || '0';
-    const nusdcBalance = multiBalance?.tokens['NUSDC']?.formatted || '0';
+    // Parse wallet balances
+    const nasunWallet = Number(multiBalance?.native?.balance ?? 0n) / 10 ** TOKENS.NASUN.decimals;
+    const nbtcWallet = Number(multiBalance?.tokens?.['NBTC']?.balance ?? 0n) / 10 ** TOKENS.NBTC.decimals;
+    const nusdcWallet = Number(multiBalance?.tokens?.['NUSDC']?.balance ?? 0n) / 10 ** TOKENS.NUSDC.decimals;
 
-    const nasunValue = parseFloat(nasunBalance) * DEFAULT_PRICES.NASUN;
-    const nbtcValue = parseFloat(nbtcBalance) * DEFAULT_PRICES.NBTC;
-    const nusdcValue = parseFloat(nusdcBalance) * DEFAULT_PRICES.NUSDC;
+    // Parse trading balances (BalanceManager)
+    const nbtcTrading = bmBalance?.base ?? 0;
+    const nusdcTrading = bmBalance?.quote ?? 0;
 
-    // Calculate 24h P&L for each token
-    const nasunPnl = nasunValue * (SIMULATED_CHANGES.NASUN / 100);
-    const nbtcPnl = nbtcValue * (SIMULATED_CHANGES.NBTC / 100);
-    const nusdcPnl = nusdcValue * (SIMULATED_CHANGES.NUSDC / 100);
-
-    tokens.push(
-      {
-        symbol: 'NASUN',
-        balance: nasunBalance,
-        price: DEFAULT_PRICES.NASUN,
-        value: nasunValue,
-        change24h: SIMULATED_CHANGES.NASUN,
-        pnl24h: nasunPnl,
-      },
-      {
-        symbol: 'NBTC',
-        balance: nbtcBalance,
-        price: DEFAULT_PRICES.NBTC,
-        value: nbtcValue,
-        change24h: SIMULATED_CHANGES.NBTC,
-        pnl24h: nbtcPnl,
-      },
-      {
-        symbol: 'NUSDC',
-        balance: nusdcBalance,
-        price: DEFAULT_PRICES.NUSDC,
-        value: nusdcValue,
-        change24h: SIMULATED_CHANGES.NUSDC,
-        pnl24h: nusdcPnl,
-      },
-    );
-
-    // Pado Balance (NUSDC in margin account)
-    const padoBalanceRaw = hasMarginAccount && marginAccount?.nusdcBalance
-      ? Number(marginAccount.nusdcBalance) / 1e6
+    // Parse margin balance (MarginAccount - NUSDC only)
+    const nusdcMargin = hasMarginAccount && marginAccount?.nusdcBalance
+      ? Number(marginAccount.nusdcBalance) / 10 ** TOKENS.NUSDC.decimals
       : 0;
-    const padoBalanceValue = padoBalanceRaw * DEFAULT_PRICES.NUSDC;
 
-    // Add Pado Balance as a separate "asset" if user has any funds
-    if (padoBalanceRaw > 0) {
+    // Calculate totals per token
+    const nasunTotal = nasunWallet;
+    const nbtcTotal = nbtcWallet + nbtcTrading;
+    const nusdcTotal = nusdcWallet + nusdcTrading + nusdcMargin;
+
+    // Calculate USD values using unified prices
+    const nasunValue = calculateUsdValue('NASUN', nasunTotal);
+    const nbtcValue = calculateUsdValue('NBTC', nbtcTotal);
+    const nusdcValue = calculateUsdValue('NUSDC', nusdcTotal);
+
+    // Calculate 24h P&L
+    const nasunPnl = calculate24hPnl('NASUN', nasunValue);
+    const nbtcPnl = calculate24hPnl('NBTC', nbtcValue);
+    const nusdcPnl = calculate24hPnl('NUSDC', nusdcValue);
+
+    // Determine source for each token
+    const getNasunSource = () => 'wallet' as const;
+    const getNbtcSource = () => {
+      if (nbtcWallet > 0 && nbtcTrading > 0) return 'combined' as const;
+      if (nbtcTrading > 0) return 'trading' as const;
+      return 'wallet' as const;
+    };
+    const getNusdcSource = () => {
+      const sources = [nusdcWallet > 0, nusdcTrading > 0, nusdcMargin > 0].filter(Boolean).length;
+      if (sources > 1) return 'combined' as const;
+      if (nusdcTrading > 0) return 'trading' as const;
+      if (nusdcMargin > 0) return 'margin' as const;
+      return 'wallet' as const;
+    };
+
+    // Add tokens to list
+    if (nasunTotal > 0) {
+      tokens.push({
+        symbol: 'NASUN',
+        balance: nasunTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
+        price: getUnifiedPrice('NASUN'),
+        value: nasunValue,
+        change24h: getPriceChange24h('NASUN'),
+        pnl24h: nasunPnl,
+        source: getNasunSource(),
+      });
+    }
+
+    if (nbtcTotal > 0) {
+      tokens.push({
+        symbol: 'NBTC',
+        balance: nbtcTotal.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 8 }),
+        price: getUnifiedPrice('NBTC'),
+        value: nbtcValue,
+        change24h: getPriceChange24h('NBTC'),
+        pnl24h: nbtcPnl,
+        source: getNbtcSource(),
+      });
+    }
+
+    if (nusdcTotal > 0) {
+      tokens.push({
+        symbol: 'NUSDC',
+        balance: nusdcTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        price: getUnifiedPrice('NUSDC'),
+        value: nusdcValue,
+        change24h: getPriceChange24h('NUSDC'),
+        pnl24h: nusdcPnl,
+        source: getNusdcSource(),
+      });
+    }
+
+    // Pado Balance as separate entry (for display purposes)
+    if (nusdcMargin > 0) {
       tokens.push({
         symbol: 'Pado Balance',
-        balance: padoBalanceRaw.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        price: DEFAULT_PRICES.NUSDC,
-        value: padoBalanceValue,
+        balance: nusdcMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        price: getUnifiedPrice('NUSDC'),
+        value: calculateUsdValue('NUSDC', nusdcMargin),
         change24h: 0, // Stablecoin - no change
         pnl24h: 0,
+        source: 'margin',
       });
     }
 
@@ -128,18 +191,21 @@ export function useTotalValue(): UseTotalValueResult {
       });
     }
 
-    const totalValue = nasunValue + nbtcValue + nusdcValue + padoBalanceValue + predictionsValue;
+    // Calculate totals (don't double-count margin in NUSDC)
+    const totalValue = nasunValue + nbtcValue + nusdcValue + predictionsValue;
     const totalPnl24h = nasunPnl + nbtcPnl + nusdcPnl;
-    const totalChange24h = totalValue > 0 ? (totalPnl24h / (totalValue - totalPnl24h)) * 100 : 0;
+    const totalChange24h = totalValue > 0 && totalPnl24h !== 0
+      ? (totalPnl24h / (totalValue - totalPnl24h)) * 100
+      : 0;
 
     return {
       totalValue,
       totalPnl24h,
       totalChange24h,
       tokens,
-      prices: DEFAULT_PRICES,
+      prices,
     };
-  }, [multiBalance, positions, marginAccount, hasMarginAccount]);
+  }, [multiBalance, positions, marginAccount, hasMarginAccount, bmBalance]);
 
   return {
     ...result,

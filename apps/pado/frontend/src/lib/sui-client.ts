@@ -16,7 +16,7 @@ export function getSuiClient(): SuiClient {
 // Request tokens from faucet
 export async function requestFaucet(address: string): Promise<boolean> {
   try {
-    const response = await fetch(NETWORK_CONFIG.faucetUrl, {
+    const response = await fetch(`${NETWORK_CONFIG.faucetUrl}/gas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

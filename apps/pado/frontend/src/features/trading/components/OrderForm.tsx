@@ -18,6 +18,8 @@ interface OrderFormProps {
   onMarketSell?: () => void;
   disabled: boolean;
   isLoading: boolean;
+  /** P0-3: Auto deposit in progress - hard disable submit */
+  isAutoDepositing?: boolean;
   midPrice?: number;
   bestBid?: number;
   bestAsk?: number;
@@ -27,6 +29,9 @@ interface OrderFormProps {
   // Slippage (Market)
   slippage?: number;
   onSlippageChange?: (value: number) => void;
+  // Balance info for hints and warnings (Phase 2)
+  availableQuote?: number;
+  availableBase?: number;
 }
 
 // Execution Option 설명
@@ -48,6 +53,7 @@ export function OrderForm({
   onMarketSell,
   disabled,
   isLoading,
+  isAutoDepositing = false,
   midPrice,
   bestBid = 0,
   bestAsk = 0,
@@ -55,6 +61,8 @@ export function OrderForm({
   onExecutionOptionChange,
   slippage = 0.5,
   onSlippageChange,
+  availableQuote = 0,
+  availableBase = 0,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -70,6 +78,10 @@ export function OrderForm({
   const effectivePrice = isMarket ? (midPrice || 0) : parseFloat(price) || 0;
   const amountNum = parseFloat(amount) || 0;
   const total = effectivePrice * amountNum;
+
+  // Balance check for insufficient funds warning (Phase 2)
+  const insufficientForBuy = total > 0 && total > availableQuote;
+  const insufficientForSell = amountNum > 0 && amountNum > availableBase;
 
   // Validation
   const priceValidation = useMemo(
@@ -101,10 +113,11 @@ export function OrderForm({
 
   // Determine if buttons should be disabled
   // Validation must pass for the button to be enabled
+  // P0-3: Include isAutoDepositing for submit mutex (hard disable during deposit)
   const hasValidationError = !quantityValidation.valid || (!isMarket && !priceValidation.valid);
   const isButtonDisabled = isMarket
-    ? disabled || !amount || isLoading || !quantityValidation.valid
-    : disabled || isLoading || hasValidationError;
+    ? disabled || !amount || isLoading || isAutoDepositing || !quantityValidation.valid
+    : disabled || isLoading || isAutoDepositing || hasValidationError;
 
   return (
     <div className="space-y-4">
@@ -262,21 +275,58 @@ export function OrderForm({
         </div>
       )}
 
+      {/* Balance Hints & Warnings (Phase 2) */}
+      {total > 0 && (
+        <div className="space-y-1">
+          {/* Buy hint - shows required quote */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-theme-text-muted">Buy requires:</span>
+            <span className={`font-mono ${insufficientForBuy ? 'text-red-400' : 'text-theme-text-secondary'}`}>
+              {total.toFixed(2)} {quoteSymbol}
+            </span>
+          </div>
+          {insufficientForBuy && (
+            <p className="text-xs text-red-400 flex items-center gap-1">
+              <span>⚠</span>
+              <span>Insufficient {quoteSymbol} balance ({availableQuote.toFixed(2)} available)</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {amountNum > 0 && (
+        <div className="space-y-1">
+          {/* Sell hint - shows required base */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-theme-text-muted">Sell requires:</span>
+            <span className={`font-mono ${insufficientForSell ? 'text-red-400' : 'text-theme-text-secondary'}`}>
+              {amountNum.toFixed(4)} {baseSymbol}
+            </span>
+          </div>
+          {insufficientForSell && (
+            <p className="text-xs text-red-400 flex items-center gap-1">
+              <span>⚠</span>
+              <span>Insufficient {baseSymbol} balance ({availableBase.toFixed(4)} available)</span>
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Buy/Sell Buttons */}
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={handleBuy}
           className="py-2 bg-green-600 hover:bg-green-700 rounded font-medium disabled:opacity-50 transition-colors text-white"
-          disabled={isButtonDisabled}
+          disabled={isButtonDisabled || insufficientForBuy}
         >
-          {isLoading ? '...' : `${isMarket ? 'Market ' : ''}Buy`}
+          {isAutoDepositing ? 'Depositing...' : isLoading ? '...' : `${isMarket ? 'Market ' : ''}Buy`}
         </button>
         <button
           onClick={handleSell}
           className="py-2 bg-red-600 hover:bg-red-700 rounded font-medium disabled:opacity-50 transition-colors text-white"
-          disabled={isButtonDisabled}
+          disabled={isButtonDisabled || insufficientForSell}
         >
-          {isLoading ? '...' : `${isMarket ? 'Market ' : ''}Sell`}
+          {isAutoDepositing ? 'Depositing...' : isLoading ? '...' : `${isMarket ? 'Market ' : ''}Sell`}
         </button>
       </div>
     </div>

@@ -19,6 +19,11 @@ import {
   buildDepositAll,
   buildWithdrawAll,
 } from './transactions';
+import {
+  getStoredBalanceManagerId,
+  storeBalanceManagerId,
+  clearBalanceManagerId,
+} from '../../lib/unified-margin';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, TradeResult, OrderExecutionInfo, OrderType } from './types';
 import { priceToRaw, quantityToRaw } from '../../lib/deepbook';
 import { NETWORK_CONFIG } from '../../config/network';
@@ -53,33 +58,6 @@ interface UseTrading {
 
   // Withdraw
   withdrawAllTokens: () => Promise<TradeResult>;
-}
-
-// BalanceManager ID를 로컬 스토리지에 저장
-const BALANCE_MANAGER_KEY = 'pado_balance_manager';
-
-function getStoredBalanceManagerId(): string | null {
-  try {
-    return localStorage.getItem(BALANCE_MANAGER_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function storeBalanceManagerId(id: string): void {
-  try {
-    localStorage.setItem(BALANCE_MANAGER_KEY, id);
-  } catch {
-    console.error('Failed to store balance manager ID');
-  }
-}
-
-function clearStoredBalanceManagerId(): void {
-  try {
-    localStorage.removeItem(BALANCE_MANAGER_KEY);
-  } catch {
-    console.error('Failed to clear balance manager ID');
-  }
 }
 
 async function validateBalanceManagerExists(id: string): Promise<boolean> {
@@ -193,29 +171,41 @@ export function useTrading(): UseTrading {
   const [balanceManagerId, setBalanceManagerId] = useState<string | null>(null);
   const [isValidatingBalanceManager, setIsValidatingBalanceManager] = useState(true);
 
-  // BalanceManager 유효성 검사 (초기화 시)
+  // BalanceManager 유효성 검사 (초기화 시 및 지갑 주소 변경 시)
   // 검증 완료 전까지 balanceManagerId는 null로 유지하여 race condition 방지
+  // IMPORTANT: walletAddress가 변경되면 해당 주소에 맞는 BM ID를 다시 조회
   useEffect(() => {
     const validateAndCleanup = async () => {
+      // Reset state when wallet changes
+      setBalanceManagerId(null);
       setIsValidatingBalanceManager(true);
-      const storedId = getStoredBalanceManagerId();
+
+      console.log('[useTrading] Validating BM for address:', walletAddress, 'isZkLoggedIn:', isZkLoggedIn);
+
+      if (!walletAddress) {
+        console.log('[useTrading] No wallet address, skipping BM validation');
+        setIsValidatingBalanceManager(false);
+        return;
+      }
+
+      const storedId = getStoredBalanceManagerId(walletAddress);
+      console.log('[useTrading] Stored BM ID:', storedId, 'for address:', walletAddress);
       if (storedId) {
         const exists = await validateBalanceManagerExists(storedId);
         if (exists) {
           // 검증 성공: ID 설정
-          console.log('[useTrading] BalanceManager validated:', storedId);
+          console.log('[useTrading] BalanceManager validated:', storedId, 'for address:', walletAddress);
           setBalanceManagerId(storedId);
         } else {
           // 검증 실패: localStorage 정리
           console.warn('[useTrading] Stored BalanceManager does not exist on chain, clearing...');
-          clearStoredBalanceManagerId();
-          // balanceManagerId는 이미 null이므로 setBalanceManagerId(null) 불필요
+          clearBalanceManagerId(walletAddress);
         }
       }
       setIsValidatingBalanceManager(false);
     };
     validateAndCleanup();
-  }, []);
+  }, [walletAddress]);
 
   /**
    * 트랜잭션 서명 및 실행
@@ -370,6 +360,10 @@ export function useTrading(): UseTrading {
    * BalanceManager 생성
    */
   const createBalanceManager = useCallback(async (): Promise<TradeResult> => {
+    if (!walletAddress) {
+      return { success: false, error: 'Wallet not connected' };
+    }
+
     const tx = buildCreateBalanceManager();
     const result = await executeTransaction(tx);
 
@@ -382,14 +376,23 @@ export function useTrading(): UseTrading {
 
       if (created && 'objectId' in created) {
         const managerId = created.objectId;
+        // Store immediately for persistence
+        storeBalanceManagerId(walletAddress, managerId);
+        console.log('[useTrading] BalanceManager created:', managerId, 'for address:', walletAddress);
+
+        // Wait for RPC to index the new object before setting state
+        // This prevents immediate queries from failing with "notExists"
+        console.log('[useTrading] Waiting for RPC sync...');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         setBalanceManagerId(managerId);
-        storeBalanceManagerId(managerId);
+        console.log('[useTrading] BalanceManager state updated');
+
         return { success: true, digest: result.digest };
       }
     }
 
     return result;
-  }, [executeTransaction]);
+  }, [walletAddress, executeTransaction]);
 
   /**
    * BalanceManager에 토큰 입금

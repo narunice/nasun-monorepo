@@ -59,7 +59,12 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
 
-  const address = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const address = isZkConnected
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
   const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
   const { data, isLoading, error, refetch } = useQuery({

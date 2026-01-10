@@ -2,11 +2,14 @@
  * AppRoutes
  * Application route definitions
  *
- * Navigation Structure (UX Restructure):
+ * Navigation Structure (Menu Restructure v2):
  * - Home (/) - Dashboard
- * - Trade (/trade) - Spot trading
- * - Earn (/earn) - Coming soon (Phase 12-13)
+ * - Markets (/markets) - Spot + Perp trading
+ *   - Spot (/markets/spot) - Spot trading
+ *   - Perp (/markets/perp) - Perpetual futures (Coming Soon)
  * - Predict (/predict) - Prediction markets
+ * - Lottery (/lottery) - Weekly lottery
+ * - Earn (/earn) - Staking + Lending (Phase 12-13)
  * - Wallet (/wallet) - Send/Receive
  * - Admin (/admin) - Unified admin dashboard
  */
@@ -23,6 +26,7 @@ import {
   LotteryPage,
   LotteryRoundPage,
   AdminPage,
+  PerpsComingSoonPage,
 } from '../pages';
 
 export function AppRoutes() {
@@ -31,8 +35,10 @@ export function AppRoutes() {
       {/* Home (Dashboard) */}
       <Route path="/" element={<HomePage />} />
 
-      {/* Trade */}
-      <Route path="/trade" element={<TradePage />} />
+      {/* Markets */}
+      <Route path="/markets" element={<Navigate to="/markets/spot" replace />} />
+      <Route path="/markets/spot" element={<TradePage />} />
+      <Route path="/markets/perp" element={<PerpsComingSoonPage />} />
 
       {/* Wallet (Send/Receive) */}
       <Route path="/wallet" element={<WalletPage />} />
@@ -47,22 +53,12 @@ export function AppRoutes() {
 
       {/* Admin (Unified Dashboard) */}
       <Route path="/admin" element={<AdminPage />} />
-      {/* Legacy admin routes redirect to unified admin */}
-      <Route path="/predict/admin" element={<Navigate to="/admin" replace />} />
-      <Route path="/lottery/admin" element={<Navigate to="/admin" replace />} />
-
-      {/* Legacy redirects for backward compatibility */}
-      <Route path="/portfolio" element={<Navigate to="/" replace />} />
-      <Route path="/send" element={<Navigate to="/wallet" replace />} />
 
       {/* Earn (Staking + Lending) */}
       <Route path="/earn" element={<EarnPage />} />
 
       {/* Auth (zkLogin callback) */}
       <Route path="/callback" element={<AuthCallbackPage />} />
-
-      {/* Future routes */}
-      {/* <Route path="/perps" element={<PerpsPage />} /> */}
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

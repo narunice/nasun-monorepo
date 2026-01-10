@@ -27,11 +27,16 @@ interface UseLendingPositionsResult {
 }
 
 export function useLendingPositions(): UseLendingPositionsResult {
-  const { account } = useWallet();
-  const { state: zkState } = useZkLogin();
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { pool } = useLendingPool();
 
-  const address = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const address = isZkConnected
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
 
   const {
     data: rawPositions,

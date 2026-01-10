@@ -19,8 +19,12 @@ export function StakingSection() {
 
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
 
-  // Get wallet address
-  const walletAddress = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
 
   // Format balance

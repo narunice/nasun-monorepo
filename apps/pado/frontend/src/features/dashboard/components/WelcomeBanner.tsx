@@ -16,11 +16,14 @@ export function WelcomeBanner() {
 
       {/* Content - Light: dark text, Dark: white text */}
       <div className="relative z-10 text-center">
-        <h2 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+        <h2 className="text-2xl md:text-3xl font-bold mb-2 text-gray-900 dark:text-white">
           Welcome to <span className="font-brand tracking-wider">PADO</span>
         </h2>
-        <p className="text-gray-700 dark:text-white/80 mb-4 text-base">
-          The Decentralized Everything Exchange
+        <p className="text-gray-700 dark:text-white/80 mb-1 text-base font-medium">
+          The Everything Exchange
+        </p>
+        <p className="text-gray-600 dark:text-white/60 mb-4 text-sm">
+          Trade, predict, and grow your assets — all in one place
         </p>
         {/* z-50 to ensure dropdown appears above banner */}
         <div className="inline-block relative z-50">

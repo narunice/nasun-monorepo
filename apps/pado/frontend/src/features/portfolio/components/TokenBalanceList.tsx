@@ -21,12 +21,13 @@ const TOKEN_COLORS: Record<string, string> = {
 function TokenRow({ token }: TokenRowProps) {
   const isPredictions = token.symbol === 'Predictions';
 
-  // Format balance based on token
+  // Format balance based on token - simplified for readability
   const formatBalance = (symbol: string, balance: string) => {
     if (symbol === 'Predictions') return balance; // "X positions"
     const num = parseFloat(balance);
     if (symbol === 'NBTC') {
-      return num.toFixed(6);
+      // Show 4 decimals for small amounts, 2 for larger
+      return num < 0.01 ? num.toFixed(4) : num.toFixed(2);
     } else if (symbol === 'NUSDC') {
       return num.toFixed(2);
     }
@@ -46,7 +47,7 @@ function TokenRow({ token }: TokenRowProps) {
           <div className="font-medium">{token.symbol}</div>
           {!isPredictions && (
             <div className="text-sm text-theme-text-secondary">
-              @${token.price.toLocaleString('en-US')}
+              ${token.price.toLocaleString('en-US')} each
             </div>
           )}
           {isPredictions && (
