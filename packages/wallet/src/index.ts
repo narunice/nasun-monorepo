@@ -71,6 +71,8 @@ export type {
   TokenConfig,
   TokenBalance,
   MultiTokenBalanceInfo,
+  // Token faucet types
+  TokenFaucetHandler,
   // Security types
   SecuritySettings,
   // Network types
@@ -112,6 +114,9 @@ export {
   parseAmount,
   isValidAddress,
   shortenAddress,
+  // Responsive address display
+  shortenAddressResponsive,
+  DEFAULT_ADDRESS_DISPLAY,
   // Multi-token utilities
   getAllBalances,
   getTokenBalance,
@@ -128,9 +133,13 @@ export {
   simulateTransaction,
 } from './sui/client';
 
+// Address display types
+export type { AddressDisplayConfig } from './sui/client';
+
 export {
   requestFaucet,
   checkFaucetAvailable,
+  nativeFaucetHandler,
 } from './sui/faucet';
 
 // Token Registry
@@ -144,6 +153,11 @@ export {
   getAllTokens,
   isTokenRegistered,
   clearTokens,
+  // Token faucet registry
+  registerTokenFaucet,
+  getTokenFaucet,
+  hasTokenFaucet,
+  clearTokenFaucets,
 } from './config/tokens';
 
 // Network Configuration
@@ -158,6 +172,10 @@ export {
 // Network Hook
 export { useNetwork } from './hooks/useNetwork';
 export type { UseNetworkResult } from './hooks/useNetwork';
+
+// Token Faucet Hook
+export { useTokenFaucet } from './hooks/useTokenFaucet';
+export type { UseTokenFaucetResult } from './hooks/useTokenFaucet';
 
 // Crypto utilities
 export {
@@ -327,3 +345,20 @@ export {
   removeCredentialFromWallet,
   updateCredentialLastUsed,
 } from './core/passkey';
+
+// ============================================
+// Auto-register Token Faucets (Devnet)
+// ============================================
+// This ensures all apps using @nasun/wallet get faucet support for all tokens
+// without needing to manually call registerTokenFaucet()
+
+import { nativeFaucetHandler } from './sui/faucet';
+import { nbtcFaucetHandler, nusdcFaucetHandler } from './sui/tokenFaucet';
+import { registerTokenFaucet } from './config/tokens';
+
+// NASUN - Native token faucet (HTTP API)
+registerTokenFaucet('NASUN', nativeFaucetHandler);
+
+// NBTC/NUSDC - Token faucet (Move contract, requires signing)
+registerTokenFaucet('NBTC', nbtcFaucetHandler);
+registerTokenFaucet('NUSDC', nusdcFaucetHandler);
