@@ -34,7 +34,7 @@ const ACTIONS: ActionItem[] = [
   {
     id: 'perp',
     label: 'Perp',
-    description: 'Trade with leverage',
+    description: 'Trade with up to 20x leverage',
     path: '/markets/perp',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,8 +42,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'purple',
-    enabled: false,
-    tooltip: 'Perpetual futures trading coming in Phase 11',
+    enabled: true,
   },
   {
     id: 'predict',

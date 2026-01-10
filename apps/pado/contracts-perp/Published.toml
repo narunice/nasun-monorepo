@@ -1,0 +1,14 @@
+# contracts-perp Published Objects (Nasun Devnet)
+# Last updated: 2026-01-10
+
+[package]
+package_id = "0xe985134c5bec0013332e0a9ca5cbb301e982da7acf8deeaeac39856ceb603249"
+upgrade_cap = "0x19f09fb2fe1c4406b61d134881743e37a3cab2f8ae5b538f350025213c0fb910"
+
+[modules]
+perpetual = "perpetual"
+funding = "funding"
+
+# Note: PerpMarket (shared) and AdminCap need to be created via create_market()
+# [markets]
+# btc_perp = ""
