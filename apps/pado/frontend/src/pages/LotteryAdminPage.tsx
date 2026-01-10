@@ -50,7 +50,7 @@ interface RoundCardProps {
   isLoading: boolean;
   onClose: () => void;
   onDraw: () => void;
-  onSettle: () => void;
+  onSettle: (tier1: number, tier2: number, tier3: number) => void;
 }
 
 function RoundCard({
@@ -60,7 +60,9 @@ function RoundCard({
   onDraw,
   onSettle,
 }: RoundCardProps) {
-  const [winnersCount, setWinnersCount] = useState(0);
+  const [tier1Winners, setTier1Winners] = useState(0);
+  const [tier2Winners, setTier2Winners] = useState(0);
+  const [tier3Winners, setTier3Winners] = useState(0);
   const now = Date.now();
 
   const canClose =
@@ -146,22 +148,46 @@ function RoundCard({
 
         {canSettle && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="text-theme-text-secondary text-sm">
-                Jackpot Winners:
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={winnersCount}
-                onChange={(e) =>
-                  setWinnersCount(Math.max(0, parseInt(e.target.value) || 0))
-                }
-                className="w-20 px-2 py-1 bg-theme-bg-tertiary border border-theme-border rounded text-theme-text-primary"
-              />
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <label className="text-theme-text-secondary">Tier 1 (5)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={tier1Winners}
+                  onChange={(e) =>
+                    setTier1Winners(Math.max(0, parseInt(e.target.value) || 0))
+                  }
+                  className="w-full px-2 py-1 bg-theme-bg-tertiary border border-theme-border rounded text-theme-text-primary"
+                />
+              </div>
+              <div>
+                <label className="text-theme-text-secondary">Tier 2 (4)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={tier2Winners}
+                  onChange={(e) =>
+                    setTier2Winners(Math.max(0, parseInt(e.target.value) || 0))
+                  }
+                  className="w-full px-2 py-1 bg-theme-bg-tertiary border border-theme-border rounded text-theme-text-primary"
+                />
+              </div>
+              <div>
+                <label className="text-theme-text-secondary">Tier 3 (3)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={tier3Winners}
+                  onChange={(e) =>
+                    setTier3Winners(Math.max(0, parseInt(e.target.value) || 0))
+                  }
+                  className="w-full px-2 py-1 bg-theme-bg-tertiary border border-theme-border rounded text-theme-text-primary"
+                />
+              </div>
             </div>
             <button
-              onClick={() => onSettle()}
+              onClick={() => onSettle(tier1Winners, tier2Winners, tier3Winners)}
               disabled={isLoading}
               className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
             >
@@ -330,8 +356,8 @@ function CreateRoundForm({ onSubmit, isLoading }: CreateRoundFormProps) {
 }
 
 export function LotteryAdminPage() {
-  const { account } = useWallet();
-  const { state: zkState } = useZkLogin();
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { showToast } = useToast();
 
   const { rounds, registry, refetch } = useLotteries();
@@ -346,8 +372,12 @@ export function LotteryAdminPage() {
     withdrawTreasury,
   } = useLotteryAdmin();
 
-  // Get current wallet address
-  const walletAddress = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
 
   // Find most recent round for management
   const latestRound = rounds.length > 0 ? rounds[0] : null;
@@ -391,13 +421,20 @@ export function LotteryAdminPage() {
     }
   };
 
-  const handleSettleRound = async (roundId: string, winnersCount: number) => {
+  const handleSettleRound = async (
+    roundId: string,
+    tier1: number,
+    tier2: number,
+    tier3: number
+  ) => {
+    const totalWinners = tier1 + tier2 + tier3;
     const confirmed = window.confirm(
-      `Are you sure you want to settle this round with ${winnersCount} jackpot winner(s)?`
+      `Are you sure you want to settle this round with ${totalWinners} winner(s)?\n` +
+        `Tier 1: ${tier1}, Tier 2: ${tier2}, Tier 3: ${tier3}`
     );
     if (!confirmed) return;
 
-    const result = await settleRound(roundId, winnersCount);
+    const result = await settleRound(roundId, tier1, tier2, tier3);
     if (result.success) {
       showToast('Round settled successfully!', 'success');
       refetch();
@@ -545,8 +582,8 @@ export function LotteryAdminPage() {
             isLoading={isLoading}
             onClose={() => handleCloseRound(latestRound.id)}
             onDraw={() => handleDrawNumbers(latestRound.id)}
-            onSettle={() =>
-              handleSettleRound(latestRound.id, latestRound.jackpotWinners || 0)
+            onSettle={(tier1, tier2, tier3) =>
+              handleSettleRound(latestRound.id, tier1, tier2, tier3)
             }
           />
         </div>
