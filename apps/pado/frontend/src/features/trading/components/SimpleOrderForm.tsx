@@ -9,6 +9,7 @@
 import { useState, useMemo } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { QuickAmountButtons } from './QuickAmountButtons';
+import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 
 interface SimpleOrderFormProps {
   midPrice?: number;
@@ -20,6 +21,10 @@ interface SimpleOrderFormProps {
   quoteBalance?: number;
   /** Trading balance - base token (for Max button calculation) */
   baseBalance?: number;
+  /** Faucet callback for quote token (Phase 16.1c) */
+  onFaucetQuote?: () => void;
+  /** Faucet callback for base token (Phase 16.1c) */
+  onFaucetBase?: () => void;
 }
 
 export function SimpleOrderForm({
@@ -30,6 +35,8 @@ export function SimpleOrderForm({
   isLoading,
   quoteBalance = 0,
   baseBalance = 0,
+  onFaucetQuote,
+  onFaucetBase,
 }: SimpleOrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -73,7 +80,7 @@ export function SimpleOrderForm({
     }
   };
 
-  const isButtonDisabled = disabled || isLoading || !usdAmount || baseAmount <= 0 || isInsufficientBalance;
+  const isButtonDisabled = disabled || isLoading || midPrice <= 0 || !usdAmount || baseAmount <= 0 || isInsufficientBalance;
 
   return (
     <div className="space-y-4">
@@ -111,6 +118,23 @@ export function SimpleOrderForm({
         </div>
       )}
 
+      {/* No Liquidity Warning */}
+      {midPrice <= 0 && (
+        <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
+          <div className="flex items-start gap-2">
+            <svg className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-yellow-400">No market liquidity</p>
+              <p className="text-xs text-theme-text-muted mt-1">
+                The orderbook is empty. Place a limit order in Pro mode or wait for liquidity.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Amount Buttons */}
       <div>
         <div className="text-sm text-theme-text-secondary mb-2">
@@ -123,6 +147,26 @@ export function SimpleOrderForm({
           selectedAmount={usdAmount ?? undefined}
         />
       </div>
+
+      {/* Zero Balance Warning with Faucet CTA (Phase 16.1c) */}
+      {orderSide === 'buy' && quoteBalance <= 0 && (
+        <InsufficientBalancePrompt
+          tokenSymbol={quoteSymbol}
+          requiredAmount={50}
+          availableAmount={quoteBalance}
+          onFaucet={onFaucetQuote}
+          message={`Get ${quoteSymbol} to start trading`}
+        />
+      )}
+      {orderSide === 'sell' && baseBalance <= 0 && (
+        <InsufficientBalancePrompt
+          tokenSymbol={baseSymbol}
+          requiredAmount={0.001}
+          availableAmount={baseBalance}
+          onFaucet={onFaucetBase}
+          message={`Get ${baseSymbol} to start selling`}
+        />
+      )}
 
       {/* Amount Summary */}
       {usdAmount && usdAmount > 0 && (
@@ -139,19 +183,25 @@ export function SimpleOrderForm({
               ~{baseAmount.toFixed(4)} {baseSymbol}
             </span>
           </div>
-          {/* Insufficient Balance Warning (Phase 2) */}
-          {isInsufficientBalance && (
+          {/* Insufficient Balance Warning with CTA (Phase 16.1c) */}
+          {insufficientForBuy && (
             <div className="pt-2 border-t border-theme-border/30">
-              <p className="text-xs text-red-400 flex items-center gap-1">
-                <span>⚠</span>
-                <span>
-                  Insufficient balance (
-                  {orderSide === 'buy'
-                    ? `${maxBuyUsd.toFixed(2)} ${quoteSymbol}`
-                    : `${maxSellUsd.toFixed(2)} ${quoteSymbol}`}
-                  {' '}available)
-                </span>
-              </p>
+              <InsufficientBalancePrompt
+                tokenSymbol={quoteSymbol}
+                requiredAmount={usdAmount}
+                availableAmount={quoteBalance}
+                onFaucet={onFaucetQuote}
+              />
+            </div>
+          )}
+          {insufficientForSell && (
+            <div className="pt-2 border-t border-theme-border/30">
+              <InsufficientBalancePrompt
+                tokenSymbol={baseSymbol}
+                requiredAmount={usdAmount / midPrice}
+                availableAmount={baseBalance}
+                onFaucet={onFaucetBase}
+              />
             </div>
           )}
         </div>
@@ -169,9 +219,11 @@ export function SimpleOrderForm({
       >
         {isLoading
           ? 'Processing...'
-          : usdAmount
-            ? `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${baseAmount.toFixed(4)} ${baseSymbol}`
-            : `Select Amount to ${orderSide === 'buy' ? 'Buy' : 'Sell'}`}
+          : midPrice <= 0
+            ? 'No Market Liquidity'
+            : usdAmount
+              ? `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${baseAmount.toFixed(4)} ${baseSymbol}`
+              : `Select Amount to ${orderSide === 'buy' ? 'Buy' : 'Sell'}`}
       </button>
 
       {/* Info Text */}

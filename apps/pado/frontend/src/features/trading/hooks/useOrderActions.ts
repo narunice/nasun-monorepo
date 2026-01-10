@@ -14,6 +14,8 @@ import { ORDER_TYPE } from '../constants';
 import { useToast } from '../../../components/common';
 import { quantityToRaw, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
 import { isMarginError } from '../../../lib/risk-engine';
+import { isFaucetAvailable } from '../../../config/network';
+import { parseError } from '../utils/errorParser';
 
 export interface UseOrderActionsResult {
   isLoading: boolean;
@@ -102,6 +104,17 @@ export function useOrderActions(): UseOrderActionsResult {
       const minQty = getMinQuantity(currentPool);
       const minPrice = getMinPrice(currentPool);
       const baseSymbol = currentPool.baseToken.symbol;
+
+      // Parse error to get type
+      const parsed = parseError(error);
+
+      // Gas-related errors with faucet guidance
+      if (parsed.errorType === 'GAS_REQUIRED') {
+        const faucetMsg = isFaucetAvailable()
+          ? ' Get NASUN from the faucet in your wallet.'
+          : '';
+        return parsed.message + faucetMsg;
+      }
 
       // Quantity error
       if (error.includes('ORDER_INFO-2') || error.includes('lot size')) {
@@ -300,7 +313,8 @@ export function useOrderActions(): UseOrderActionsResult {
     const result = await createBalanceManager();
 
     if (!result.success) {
-      showToast(`Error: ${result.error}`, 'error');
+      const friendlyError = formatUserFriendlyError(result.error);
+      showToast(friendlyError, 'error');
       return result;
     }
 

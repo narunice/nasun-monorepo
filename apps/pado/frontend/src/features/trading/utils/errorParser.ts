@@ -3,10 +3,13 @@
  * Move abort 에러를 사용자 친화적인 메시지로 변환
  */
 
-interface ParsedError {
+export type ErrorType = 'GAS_REQUIRED' | 'INSUFFICIENT_BALANCE' | 'GENERIC';
+
+export interface ParsedError {
   message: string;
   code?: string;
   isKnown: boolean;
+  errorType?: ErrorType;
 }
 
 // DeepBook V3 balance_manager 에러 코드
@@ -38,14 +41,21 @@ const ORDER_INFO_ERRORS: Record<number, string> = {
 };
 
 // 일반적인 Sui 에러 패턴
-const GENERAL_ERRORS: { pattern: RegExp; message: string }[] = [
+const GENERAL_ERRORS: { pattern: RegExp; message: string; errorType?: ErrorType }[] = [
+  {
+    pattern: /No valid gas coins found/i,
+    message: 'No gas tokens available. You need NASUN to pay for transaction fees.',
+    errorType: 'GAS_REQUIRED',
+  },
   {
     pattern: /InsufficientGas/i,
-    message: 'Insufficient gas. Please request more NASUN from faucet.',
+    message: 'Insufficient gas. You need more NASUN to pay for transaction fees.',
+    errorType: 'GAS_REQUIRED',
   },
   {
     pattern: /InsufficientCoinBalance/i,
     message: 'Insufficient token balance.',
+    errorType: 'INSUFFICIENT_BALANCE',
   },
   {
     pattern: /ObjectNotFound/i,
@@ -181,11 +191,12 @@ export function parseError(error: unknown): ParsedError {
   }
 
   // 일반적인 에러 패턴 매칭
-  for (const { pattern, message } of GENERAL_ERRORS) {
+  for (const { pattern, message, errorType } of GENERAL_ERRORS) {
     if (pattern.test(errorStr)) {
       return {
         message,
         isKnown: true,
+        errorType,
       };
     }
   }
@@ -200,8 +211,30 @@ export function parseError(error: unknown): ParsedError {
 
 /**
  * 에러 메시지 포맷팅 (UI 표시용)
+ * Gas 에러의 경우 Faucet 안내 메시지 추가 (devnet/testnet)
  */
 export function formatErrorMessage(error: unknown): string {
   const parsed = parseError(error);
-  return parsed.code ? `${parsed.message} [${parsed.code}]` : parsed.message;
+  let message = parsed.code ? `${parsed.message} [${parsed.code}]` : parsed.message;
+
+  // Gas-related errors: add faucet guidance on devnet/testnet
+  // Import dynamically to avoid circular dependency
+  if (parsed.errorType === 'GAS_REQUIRED') {
+    try {
+      // Check network type inline to avoid circular import
+      const chainId = import.meta.env.VITE_CHAIN_ID || '6681cdfd';
+      const rpcUrl = import.meta.env.VITE_RPC_URL || '';
+      const isDevOrTest =
+        chainId === '6681cdfd' ||
+        rpcUrl.includes('devnet') ||
+        rpcUrl.includes('testnet');
+      if (isDevOrTest) {
+        message += ' Get NASUN from the faucet in your wallet.';
+      }
+    } catch {
+      // Ignore env access errors
+    }
+  }
+
+  return message;
 }

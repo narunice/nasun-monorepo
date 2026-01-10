@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
-import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
+import { useOrderbook, useOpenOrders, useOrderActions, useFaucet, type TradeMode } from '../hooks';
 import { useOrderForm, useMarket } from '../context';
 import {
   OrderForm,
@@ -69,6 +69,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
+
+  // Faucet handlers for insufficient balance CTA (Phase 16.1c)
+  const { handleNbtcFaucet, handleNusdcFaucet } = useFaucet();
 
   // 주문 폼 상태 (Context)
   const {
@@ -188,6 +191,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             isLoading={isLoading}
             quoteBalance={availableQuote}
             baseBalance={availableBase}
+            onFaucetQuote={handleNusdcFaucet}
+            onFaucetBase={baseSymbol === 'NBTC' ? handleNbtcFaucet : undefined}
           />
         </div>
       </div>
@@ -352,6 +357,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onSlippageChange={setSlippage}
           availableQuote={availableQuote}
           availableBase={availableBase}
+          onFaucetQuote={handleNusdcFaucet}
+          onFaucetBase={baseSymbol === 'NBTC' ? handleNbtcFaucet : undefined}
         />
 
         {/* Order Confirmation Modal */}
