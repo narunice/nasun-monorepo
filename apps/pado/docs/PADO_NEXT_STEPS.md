@@ -1,7 +1,7 @@
 # Pado 개발 로드맵
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2026-01-04
+> 최종 업데이트: 2026-01-10
 > 비전: **"One Account. One Margin Pool. Every Asset Works Harder."**
 
 ---
@@ -36,18 +36,19 @@
 
 | 영역 | 점수 | 비전 임팩트 | 상태 |
 |------|------|------------|------|
-| **Unified Margin** | **20%** | ⭐⭐⭐⭐⭐ | ⚠️ Frontend v0 완료 |
-| **Smart Account** | **40%** | ⭐⭐⭐⭐⭐ | ⚠️ 잔고 통합 시작 |
-| **Risk Engine** | **0%** | ⭐⭐⭐⭐ | ❌ 미구현 |
-| Perpetuals | 0% | ⭐⭐⭐⭐ | ❌ 미구현 |
+| **Unified Margin** | **80%** | ⭐⭐⭐⭐⭐ | ✅ v1 완료 (Multi-collateral + Risk Engine + Liquidation) |
+| **Smart Account** | **70%** | ⭐⭐⭐⭐⭐ | ✅ 잔고 통합 UI 완료 |
+| **Risk Engine** | **80%** | ⭐⭐⭐⭐ | ✅ v1 완료 (4-Tier Threshold) |
+| **Perpetuals** | **30%** | ⭐⭐⭐⭐ | 🚧 11.1-11.2 완료 (컨트랙트) |
 | Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager |
 | zkLogin | 100% | ⭐⭐⭐ | ✅ 완료 |
 | Lending | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
 | Staking | 70% | ⭐⭐ | ⚠️ Core 통합 대기 |
 | Prediction | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
 | Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
+| Lottery | 100% | ⭐ | ✅ 완료 |
 
-**전체 비전 부합도: 약 45%** (v0 통합 후 상승)
+**전체 비전 부합도: 약 62%** (Phase 16 v1 + Phase 11.1-11.2 완료 후)
 
 ---
 
@@ -79,7 +80,7 @@
 | Phase 5 | ✅ | Native Token (NASUN 입금/출금) | 2025-12-26 |
 | Phase 9 | ✅ | zkLogin (Google OAuth) | 2026-01-03 |
 
-### Era 2: Vertical Era ⚠️ (부분 완료)
+### Era 2: Vertical Era ✅ (완료)
 
 | Phase | 상태 | 내용 | 비전 기여도 | 완료일 |
 |-------|------|------|------------|--------|
@@ -88,18 +89,26 @@
 | Phase 8 | ✅ | Mobile & Theme | ⭐ | 2025-12-28 |
 | Phase 12 | ✅ | Lending Pool (NUSDC) | ⭐⭐ | 2026-01-01 |
 | Phase 13 | ✅ | Staking (Native) | ⭐⭐ | 2026-01-01 |
-| Phase 14 | ⚠️ MVP | Prediction Markets | ⭐⭐ | 2025-12-31 |
+| Phase 14 | ✅ | Prediction Markets | ⭐⭐ | 2026-01-04 |
 | Phase 15 | ✅ | Payments (Send, QR) | ⭐⭐ | 2025-12-28 |
-| **Phase 11** | ❌ | **Perpetuals** | ⭐⭐⭐⭐ | - |
+| Phase 17 | ✅ | Lottery (Sui Random) | ⭐ | 2026-01-09 |
 
-### Era 3: Core Era 📋 (시작 필요)
+### Era 3: Core Era ✅ (v1 완료)
 
-| Phase | 상태 | 내용 | 비전 기여도 |
-|-------|------|------|------------|
-| **Phase 16** | ❌ | **Unified Margin** | ⭐⭐⭐⭐⭐ |
-| Phase 16.1 | ❌ | Smart Account 통합 | ⭐⭐⭐⭐⭐ |
-| Phase 16.2 | ❌ | Risk Engine | ⭐⭐⭐⭐ |
-| Phase 16.3 | ❌ | Portfolio Margin | ⭐⭐⭐⭐⭐ |
+| Phase | 상태 | 내용 | 비전 기여도 | 완료일 |
+|-------|------|------|------------|--------|
+| **Phase 16** | ✅ | **Unified Margin v1** | ⭐⭐⭐⭐⭐ | 2026-01-10 |
+| Phase 16.1 | ✅ | Oracle Integration | ⭐⭐⭐⭐⭐ | 2026-01-10 |
+| Phase 16.2 | ✅ | Multi-Collateral | ⭐⭐⭐⭐⭐ | 2026-01-10 |
+| Phase 16.3 | ✅ | Position Registry + Risk Engine v1 | ⭐⭐⭐⭐⭐ | 2026-01-10 |
+| Phase 16.4 | ✅ | Liquidation Engine | ⭐⭐⭐⭐ | 2026-01-10 |
+| Phase 16.5 | ✅ | Smart Account UI | ⭐⭐⭐⭐ | 2026-01-10 |
+| **Phase 11** | 🚧 | **Perpetuals DEX** | ⭐⭐⭐⭐ | - |
+| Phase 11.1 | ✅ | perpetual.move (PerpMarket, Position) | ⭐⭐⭐ | 2026-01-10 |
+| Phase 11.2 | ✅ | funding.move (8h Funding Rate) | ⭐⭐⭐ | 2026-01-10 |
+| Phase 11.3 | 📋 | Perp Trading UI | ⭐⭐⭐ | - |
+| Phase 11.4 | 📋 | Perp Liquidation | ⭐⭐⭐ | - |
+| Phase 11.5 | 📋 | Spot-Perp Integration | ⭐⭐⭐ | - |
 
 ---
 
@@ -112,23 +121,22 @@
          ┌────────────────────┼────────────────────┐
          │                    │                    │
          │   ⭐ PRIORITY 1    │   ⭐ PRIORITY 0    │
-         │   (해야 하지만     │   (당장 해야 함)   │
-         │    시간 필요)      │                    │
+         │   (다음 단계)      │   (완료!)          │
          │                    │                    │
-         │  • Perp DEX       │  • Unified Margin  │
-         │  • Cross-Chain    │  • Smart Account   │
-         │  • Portfolio      │  • Risk Engine     │
-         │    Margin         │  • 잔고 통합 UI    │
+         │  • Perp Trading UI│  • Unified Margin ✅│
+         │  • Cross-Chain    │  • Smart Account ✅ │
+         │  • Portfolio      │  • Risk Engine ✅   │
+         │    Margin         │  • 잔고 통합 UI ✅  │
          │                    │                    │
   LOW ◄──┼────────────────────┼────────────────────┼──► HIGH
   EFFORT │                    │                    │   EFFORT
          │   PRIORITY 3      │   PRIORITY 2       │
-         │   (선택적)         │   (Core 이후)      │
+         │   (선택적)         │   (완료!)          │
          │                    │                    │
-         │  • 차트 인디케이터 │  • Oracle 통합     │
-         │  • 테마/모바일     │  • 청산 엔진       │
-         │  • Prediction     │  • 펀딩 레이트     │
-         │    시드 유동성     │  • Keeper 인프라   │
+         │  • 차트 인디케이터 │  • Oracle 통합 ✅   │
+         │  • 테마/모바일 ✅  │  • 청산 엔진 ✅     │
+         │  • Prediction ✅   │  • 펀딩 레이트 ✅   │
+         │    시드 유동성     │  • Keeper 인프라 📋│
          │                    │                    │
          └────────────────────┼────────────────────┘
                               │
@@ -163,72 +171,87 @@
 
 ---
 
-### SHORT-TERM (3-4주) - Core Foundation
+### SHORT-TERM ✅ (완료) - Core Foundation
 
-Unified Account & Margin 기초 구축 (v0부터 점진적 확장)
+Unified Account & Margin v1 구축 완료
 
 | 순서 | 작업 | 상태 | 난이도 | 설명 |
 |------|------|------|--------|------|
 | S.1 | **Unified Margin v0** | ✅ 완료 | 중 | Frontend + 온체인 배포 완료 (0x2886424f...) |
-| S.2 | **Risk Engine v0** | 📋 | 저 | 단순 잔고 체크 (balance > 0) |
-| S.3 | Smart Account UI 통합 | 📋 | 중 | Wallet + BalanceManager 병합 |
-| S.4 | Portfolio View 홈 화면 | 📋 | 중 | 모든 포지션 한눈에 |
+| S.2 | **Risk Engine v1** | ✅ 완료 | 중 | 4-Tier Threshold (IM/Warning/MM/FC) |
+| S.3 | Smart Account UI 통합 | ✅ 완료 | 중 | HeaderNetValue 구현 |
+| S.4 | Multi-Collateral | ✅ 완료 | 중 | NUSDC (0%) + NBTC (10% haircut) |
+| S.5 | Liquidation Engine | ✅ 완료 | 고 | 5% 보너스, 50% 최대 청산 |
+| S.6 | Position Registry | ✅ 완료 | 중 | 포지션 추적 + PnL 계산 |
 
-**Unified Margin 버전 로드맵:**
+**Unified Margin v1 달성:**
 
-| 버전 | 담보 자산 | 연동 상품 | 주요 기능 |
-|------|----------|----------|----------|
-| **v0** | NUSDC only | Spot + Prediction | 단일 담보 풀, 잔고 통합 |
-| **v0.5** | + NASUN, NBTC | + Lending | Multi-collateral, Haircut 적용 |
-| **v1** | 모든 토큰 | + Perp | Portfolio Margin, 헤지 인정 |
+| 버전 | 담보 자산 | 연동 상품 | 주요 기능 | 상태 |
+|------|----------|----------|----------|------|
+| **v0** | NUSDC only | Spot + Prediction | 단일 담보 풀, 잔고 통합 | ✅ 완료 |
+| **v1** | NUSDC + NBTC | + Risk Engine | Multi-collateral, Haircut, Liquidation | ✅ 완료 |
+| **v2** | 모든 토큰 | + Perp | Portfolio Margin, 헤지 인정 | 📋 예정 |
 
-**Unified Margin v0 요구사항:**
+**Unified Margin v1 구현 (contracts-margin):**
 ```move
-module pado::unified_margin {
-    struct UnifiedAccount has key {
-        id: UID,
-        owner: address,
-        // v0: NUSDC만 지원
-        nusdc_balance: Balance<NUSDC>,
-        // 사용 중인 마진
-        used_margin: u64,
-    }
+// unified_margin.move (v0.6)
+- MarginAccount: Multi-collateral (NUSDC + NBTC)
+- MarginRegistry: 전역 TVL 추적
+- public(package) functions: Liquidation 모듈 접근용
 
-    // 모든 product에서 공유
-    public fun deposit(account: &mut UnifiedAccount, coin: Coin<NUSDC>);
-    public fun withdraw(account: &mut UnifiedAccount, amount: u64): Coin<NUSDC>;
-    public fun get_available_margin(account: &UnifiedAccount): u64;
-}
+// risk_engine.move
+- 4-Tier Threshold: IM(10%), Warning(8%), MM(5%), FC(3%)
+- Haircut: NUSDC(0%), NBTC(10%)
+
+// account_positions.move
+- 포지션 추적 + 실시간 PnL 계산
+- Signed arithmetic: { value: u64, is_negative: bool }
+
+// liquidation.move
+- 5% 보너스, 50% 최대 청산 비율
+- 부분 청산 지원
 ```
-
-> **v0 설계 원칙**: 복잡성을 최소화하고 핵심 기능(잔고 통합)부터 검증
 
 ---
 
-### MID-TERM (5-8주) - Perp DEX + Risk Validation
+### MID-TERM 🚧 (진행중) - Perp DEX + Integration
 
-Unified Margin을 검증하는 첫 번째 고난도 vertical
+Unified Margin v1과 연동되는 Perpetuals DEX
 
 | 순서 | 작업 | 상태 | 난이도 | 설명 |
 |------|------|------|--------|------|
-| M.1 | Perp 마진 시스템 (Cross only) | 📋 | 고 | Unified Margin 연동 |
-| M.2 | 펀딩 레이트 메커니즘 | 📋 | 고 | 8시간 정산 |
-| M.3 | **Risk Engine v0.5** | 📋 | 중 | 마진 사용률 추적 |
-| M.4 | **Risk Engine v1** | 📋 | 고 | 청산 로직 (부분 청산) |
+| M.1 | **Perp Core Contract** | ✅ 완료 | 고 | perpetual.move (20x 레버리지) |
+| M.2 | **펀딩 레이트** | ✅ 완료 | 고 | funding.move (8시간 정산) |
+| M.3 | Perp Trading UI | 📋 | 중 | Long/Short 주문 UI |
+| M.4 | Perp Liquidation | 📋 | 중 | 청산 로직 연동 |
 | M.5 | Spot/Perp/Prediction 통합 | 📋 | 고 | 동일 마진 풀 공유 |
 
-**Risk Engine 버전 로드맵:**
+**Perpetuals DEX 구현 (contracts-perp):**
+```move
+// perpetual.move
+- PerpMarket: 20x max leverage, Isolated margin
+- PerpPosition: Long/Short 포지션 관리
+- INITIAL_MARGIN_BPS = 500 (5%)
+- MAINTENANCE_MARGIN_BPS = 250 (2.5%)
+
+// funding.move
+- 8시간 정산 (FUNDING_INTERVAL_MS = 8 * 60 * 60 * 1000)
+- MAX_FUNDING_RATE_BPS = 125 (1.25%)
+- Oracle staleness protection (MAX_ORACLE_AGE_MS = 120_000)
+- Signed arithmetic: { value: u64, is_negative: bool }
+```
+
+**Risk Engine v1 완료:**
 
 | 버전 | 주요 기능 | 트리거 | 상태 |
 |------|----------|--------|------|
-| **v0** | `balance > 0` 체크 | 주문 시 | SHORT-TERM |
-| **v0.5** | 마진 사용률 (usedMargin / totalMargin) | 주문 시 | MID-TERM |
-| **v1** | 청산 가격 계산, 부분 청산 | 가격 변동 시 | MID-TERM |
-| **v2** | 포트폴리오 상관관계 (헤지 인정) | 실시간 | LONG-TERM |
+| **v0** | `balance > 0` 체크 | 주문 시 | ✅ 완료 |
+| **v1** | 4-Tier Threshold + Liquidation | 가격 변동 시 | ✅ 완료 |
+| **v2** | 포트폴리오 상관관계 (헤지 인정) | 실시간 | 📋 예정 |
 
 **Perp DEX의 전략적 위치:**
-> **Perp DEX ≠ 별도의 새로운 제품**
-> **Perp DEX = Unified Margin의 실전 검증 수단**
+> **Perp DEX = Unified Margin v1의 실전 검증 수단**
+> Phase 11.1-11.2 완료로 Core Contract 준비 완료
 
 ---
 
@@ -299,6 +322,27 @@ Cross-product 전략 지원
 
 ---
 
+### Phase 17: Lottery ✅
+
+| 순서 | 작업 | 상태 | 완료일 |
+|------|------|------|--------|
+| 17.1 | Lottery v2 스마트 컨트랙트 배포 | ✅ | 2026-01-09 |
+| 17.2 | Sui Random 기반 난수 생성 | ✅ | 2026-01-09 |
+| 17.3 | 티켓 구매 UI (1-32 번호 선택) | ✅ | 2026-01-09 |
+| 17.4 | Quick Pick 기능 | ✅ | 2026-01-09 |
+| 17.5 | Round 관리 (생성, 마감, 추첨, 정산) | ✅ | 2026-01-09 |
+| 17.6 | Prize Claim 기능 | ✅ | 2026-01-09 |
+| 17.7 | Admin Dashboard 통합 | ✅ | 2026-01-09 |
+
+**배포 정보:**
+- Package: `0x8dce08316436ed3fa8c4a183895101ee4a4c4eb8e1dcd19e121b46ee5e256538`
+- LotteryRegistry: `0x56e1875df39be66f3c591678ff75866b6c44637c4b84e4c2767926f738ea7f16`
+- 티켓 가격: 1 NUSDC
+- 번호 범위: 1-32 (5개 선택)
+- 당첨 분배: 70% Prize Pool, 20% Rollover, 10% Treasury
+
+---
+
 ### Phase 9: Smart Account (zkLogin) ✅
 
 | 순서 | 작업 | 상태 | 완료일 |
@@ -357,61 +401,78 @@ Cross-product 전략 지원
 
 | 마일스톤 | 설명 | 비전 기여도 | 상태 |
 |----------|------|------------|------|
-| M1 | Portfolio Header UI | ⭐⭐ | 📋 |
-| M2 | Unified Margin Pool v0 | ⭐⭐⭐⭐⭐ | 📋 |
-| M3 | Perp v0 + 통합 | ⭐⭐⭐⭐ | 📋 |
-| M4 | Portfolio Margin | ⭐⭐⭐⭐⭐ | 📋 |
+| M1 | Portfolio Header UI | ⭐⭐ | ✅ 완료 |
+| M2 | Unified Margin Pool v1 | ⭐⭐⭐⭐⭐ | ✅ 완료 |
+| M3 | Perp Core Contract | ⭐⭐⭐⭐ | ✅ 완료 (11.1-11.2) |
+| M4 | Perp Trading UI | ⭐⭐⭐⭐ | 📋 |
+| M5 | Portfolio Margin (v2) | ⭐⭐⭐⭐⭐ | 📋 |
 
 ### 정성적 성공 지표
 
-- [ ] 사용자가 "두 개의 잔고"를 인지하지 않음
-- [ ] 모든 상품에서 동일한 margin pool 사용
-- [ ] Spot + Perp 헤지 시 마진 절감 체감
-- [ ] "One account, One margin pool" 실현
+- [x] 사용자가 "두 개의 잔고"를 인지하지 않음 (HeaderNetValue 통합 표시)
+- [x] Multi-collateral margin pool 구현 (NUSDC + NBTC)
+- [x] Risk Engine v1 구현 (4-Tier Threshold)
+- [x] Liquidation Engine 구현 (5% 보너스)
+- [ ] Spot + Perp 헤지 시 마진 절감 체감 (v2 예정)
+- [ ] "One account, One margin pool" 완전 실현 (Perp 통합 대기)
 
 ---
 
 ## 핵심 파일 구조
 
-### 현재 구조
+### 현재 구조 (Core Era 완료 후)
+
+```
+apps/pado/
+├── contracts/              # NBTC, NUSDC, Faucet
+├── contracts-prediction/   # Prediction Market
+├── contracts-oracle/       # DevOracle 가격 피드
+├── contracts-lending/      # Lending Pool
+├── contracts-lottery/      # Lottery (Sui Random)
+├── contracts-margin/       # ✅ Unified Margin v1 (NEW)
+│   └── sources/
+│       ├── unified_margin.move     # Multi-collateral 마진
+│       ├── risk_engine.move        # 4-Tier Risk Threshold
+│       ├── account_positions.move  # 포지션 추적 + PnL
+│       └── liquidation.move        # 청산 엔진
+├── contracts-perp/         # ✅ Perpetuals DEX (진행중)
+│   └── sources/
+│       ├── perpetual.move          # PerpMarket, PerpPosition
+│       └── funding.move            # 8시간 펀딩 레이트
+└── frontend/src/
+    ├── features/
+    │   ├── trading/          # Spot 거래 ✅
+    │   ├── portfolio/        # 포트폴리오 ✅
+    │   ├── prediction/       # 예측 시장 ✅
+    │   ├── earn/             # Staking/Lending ✅
+    │   ├── payments/         # 결제 ✅
+    │   ├── dashboard/        # 홈 대시보드 ✅
+    │   └── lottery/          # 로또 ✅
+    ├── pages/
+    │   ├── TradePage.tsx
+    │   ├── PortfolioPage.tsx
+    │   ├── PredictPage.tsx
+    │   ├── EarnPage.tsx
+    │   ├── LotteryPage.tsx
+    │   └── WalletPage.tsx
+    └── components/
+        └── common/
+```
+
+### 다음 목표 (Portfolio Margin v2)
 
 ```
 frontend/src/
 ├── features/
-│   ├── trading/          # Spot 거래 ✅
-│   ├── portfolio/        # 포트폴리오 ✅
-│   ├── prediction/       # 예측 시장 ✅
-│   ├── earn/             # Staking/Lending ✅
-│   ├── payments/         # 결제 ✅
-│   └── dashboard/        # 홈 대시보드 ✅
-├── pages/
-│   ├── TradePage.tsx
-│   ├── PortfolioPage.tsx
-│   ├── PredictPage.tsx
-│   ├── EarnPage.tsx
-│   └── WalletPage.tsx
-└── components/
-    └── common/
-```
-
-### 목표 구조 (Core Era)
-
-```
-frontend/src/
-├── features/
-│   ├── core/             # 🆕 Core 기능
-│   │   ├── unified-margin/
-│   │   ├── risk-engine/
-│   │   └── smart-account/
+│   ├── core/             # 📋 Core 기능 확장
+│   │   ├── unified-margin/  # v2: Portfolio Margin
+│   │   ├── risk-engine/     # v2: 헤지 인정
+│   │   └── smart-account/   # 계정 추상화
 │   ├── trading/          # Spot + Perp 통합
-│   ├── portfolio/        # 재설계 필요
-│   ├── prediction/
-│   ├── earn/
-│   └── payments/
-└── contracts/
-    ├── unified_margin.move  # 🆕
-    ├── perp_market.move     # 🆕
-    └── risk_engine.move     # 🆕
+│   └── perp/             # 📋 Perp Trading UI (11.3)
+└── contracts-margin/
+    └── sources/
+        └── portfolio_margin.move  # 📋 v2
 ```
 
 ---
@@ -496,8 +557,21 @@ git push origin main --tags
 | | - useUnifiedMargin 훅 (core/unified-margin) |
 | | - HeaderNetValue: Wallet + Trading 통합 표시 |
 | | - 비전 부합도: 40% → 45% 상승 |
+| 2026-01-09 | **Phase 17: Lottery 완료** |
+| | - Lottery v2 스마트 컨트랙트 배포 (Multi-Tier Prizes) |
+| | - Sui Random 기반 검증 가능한 난수 생성 |
+| | - 티켓 구매 UI (1-32, 5개 선택) |
+| | - Round lifecycle: OPEN → CLOSED → DRAWN → SETTLED |
+| | - Admin Dashboard 통합 (Prediction + Lottery) |
+| | - 비전 부합도: 45% → 48% 상승 |
+| 2026-01-10 | **Phase 16 v1 완료 + Phase 11.1-11.2 완료** |
+| | - Unified Margin v1: Multi-collateral, Risk Engine, Liquidation |
+| | - contracts-margin: unified_margin.move (v0.6), risk_engine.move, account_positions.move, liquidation.move |
+| | - Phase 11.1-11.2: Perpetuals DEX foundation (perpetual.move, funding.move) |
+| | - contracts-perp: 20x 레버리지, 8시간 펀딩 레이트 |
+| | - 비전 부합도: 48% → 62% 상승 |
 
 ---
 
 *이 문서는 PADO_VISION_VS_REALITY_ANALYSIS.md를 기반으로 전략적 방향을 반영합니다.*
-*마지막 업데이트: 2026-01-04*
+*마지막 업데이트: 2026-01-10*
