@@ -39,7 +39,7 @@
 | **Unified Margin** | **80%** | ⭐⭐⭐⭐⭐ | ✅ v1 완료 (Multi-collateral + Risk Engine + Liquidation) |
 | **Smart Account** | **70%** | ⭐⭐⭐⭐⭐ | ✅ 잔고 통합 UI 완료 |
 | **Risk Engine** | **80%** | ⭐⭐⭐⭐ | ✅ v1 완료 (4-Tier Threshold) |
-| **Perpetuals** | **50%** | ⭐⭐⭐⭐ | 🚧 11.1-11.3 완료 (컨트랙트 + UI, 마켓 생성 대기) |
+| **Perpetuals** | **60%** | ⭐⭐⭐⭐ | ✅ 11.1-11.3 완료 + BTC-PERP 마켓 활성화 |
 | Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager |
 | zkLogin | 100% | ⭐⭐⭐ | ✅ 완료 |
 | Lending | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
@@ -48,7 +48,7 @@
 | Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
 | Lottery | 100% | ⭐ | ✅ 완료 |
 
-**전체 비전 부합도: 약 65%** (Phase 16 v1 + Phase 11.1-11.3 완료 후)
+**전체 비전 부합도: 약 67%** (Phase 16 v1 + Phase 11.1-11.3 + BTC-PERP 마켓 활성화 후)
 
 ---
 
@@ -584,6 +584,12 @@ git push origin main --tags
 | | - /markets/perp 라우트 활성화 |
 | | - Header, QuickActions에 Perp 메뉴 활성화 |
 | | - 비전 부합도: 62% → 65% 상승 |
+| 2026-01-10 | **BTC-PERP Market 활성화** |
+| | - PTB 스크립트로 BTC-PERP 마켓 생성 |
+| | - Market ID: `0x0a3ba00cce5aae262ea48ca989dbdf9270addc06e796242f9c0189087c111ec2` |
+| | - Oracle 가격 연동 수정 (Table dynamic field 접근) |
+| | - ORACLE_FEEDS_TABLE_ID 상수 추가 |
+| | - 비전 부합도: 65% → 67% 상승 |
 
 ---
 
