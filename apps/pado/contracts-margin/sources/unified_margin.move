@@ -1,10 +1,11 @@
-/// Unified Margin v0.5 (Multi-Collateral)
+/// Unified Margin v0.6 (Liquidation Support)
 ///
 /// Single collateral pool for all Pado products
 /// "One Account, One Margin Pool, Every Asset Works Harder"
 ///
 /// v0: Basic deposit/withdraw functionality (NUSDC only)
 /// v0.5: Multi-collateral support (NUSDC + NBTC with haircuts)
+/// v0.6: Liquidation support (friend functions for privileged withdraw)
 /// v1: Integration with DeepBook + Prediction + Oracle
 module unified_margin::unified_margin {
     use sui::coin::{Self, Coin};
@@ -335,6 +336,55 @@ module unified_margin::unified_margin {
         if (balance_value > 0) {
             withdraw_nbtc(account, registry, balance_value, ctx);
         }
+    }
+
+    // ===== Liquidation Functions (Package-level access) =====
+
+    /// Withdraw NUSDC for liquidation (no owner check)
+    /// Only callable by liquidation module within this package
+    public(package) fun liquidation_withdraw_nusdc(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(amount > 0, EZeroAmount);
+        assert!(balance::value(&account.nusdc_balance) >= amount, EInsufficientBalance);
+
+        // Withdraw from balance
+        let withdrawn = balance::split(&mut account.nusdc_balance, amount);
+        let coin = coin::from_balance(withdrawn, ctx);
+
+        // Update statistics
+        account.total_withdrawn_usd = account.total_withdrawn_usd + amount;
+        registry.total_nusdc_tvl = registry.total_nusdc_tvl - amount;
+
+        // Transfer to liquidator (not sender)
+        transfer::public_transfer(coin, recipient);
+    }
+
+    /// Withdraw NBTC for liquidation (no owner check)
+    /// Only callable by liquidation module within this package
+    public(package) fun liquidation_withdraw_nbtc(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(amount > 0, EZeroAmount);
+        assert!(balance::value(&account.nbtc_balance) >= amount, EInsufficientBalance);
+
+        // Withdraw from balance
+        let withdrawn = balance::split(&mut account.nbtc_balance, amount);
+        let coin = coin::from_balance(withdrawn, ctx);
+
+        // Update TVL
+        registry.total_nbtc_tvl = registry.total_nbtc_tvl - amount;
+
+        // Transfer to liquidator (not sender)
+        transfer::public_transfer(coin, recipient);
     }
 
     // ===== Admin Functions =====
