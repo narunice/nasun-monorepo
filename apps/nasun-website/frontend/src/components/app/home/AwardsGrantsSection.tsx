@@ -140,7 +140,7 @@ function AwardsGrantsSection() {
 
                 return (
                   <div key={post.id} className="py-4 px-4 md:px-6 lg:px-8 h-full mx-auto max-w-xl">
-                    <div className="group h-[446px] flex flex-col bg-black/30 backdrop-blur-md rounded-2xl shadow-lg border border-nasun-c3/30 hover:border-nasun-c3 transition-all duration-300 pt-4 md:pt-5 lg:pt-6 overflow-hidden">
+                    <div className="group h-[446px] flex flex-col bg-black/50 backdrop-blur-md rounded-2xl shadow-lg border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 pt-4 md:pt-5 lg:pt-6 overflow-hidden">
                       {/* Image */}
                       {imageUrl && (
                         <div className="w-full px-4 md:px-5 lg:px-6 pb-2">
@@ -157,11 +157,11 @@ function AwardsGrantsSection() {
                       {/* Content */}
                       <div className="flex-grow flex flex-col p-4 md:p-5 lg:p-6 !pt-0">
                         {/* Title */}
-                        <h4 className="line-clamp-2 !text-lg md:!text-xl lg:!text-2xl text-nasun-white mb-2 text-left group-hover:text-nasun-c3 transition-colors ">
+                        <h4 className="line-clamp-2 !text-lg md:!text-xl lg:!text-2xl text-nasun-white mb-2 text-left group-hover:text-white transition-colors ">
                           {stripHtml(post.title.rendered)}
                         </h4>
                         {/* Divider */}
-                        <hr className="border-nasun-c3/30 mb-3" />
+                        <hr className="border-nasun-white/50 mb-3" />
                         {/* Date */}{" "}
                         <div className="flex items-center justify-between">
                           <p className=" !text-sm text-nasun-white/80">{formatDate(post.date)}</p>
