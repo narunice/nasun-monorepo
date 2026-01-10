@@ -2,7 +2,7 @@
 name = "pado_tokens"
 edition = "2024"
 version = "0.0.1"
-# published-at will be set after deployment
+published-at = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
