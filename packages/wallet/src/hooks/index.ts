@@ -44,3 +44,7 @@ export {
   initZkLogin,
 } from './useZkLogin';
 export type { UseZkLoginOptions, UseZkLoginResult } from './useZkLogin';
+
+// Token faucet support
+export { useTokenFaucet } from './useTokenFaucet';
+export type { UseTokenFaucetResult } from './useTokenFaucet';
