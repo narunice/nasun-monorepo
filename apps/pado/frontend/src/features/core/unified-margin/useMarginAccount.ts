@@ -9,8 +9,9 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useWallet, getSuiClient } from '@nasun/wallet';
+import { useWallet, useZkLogin, getSuiClient } from '@nasun/wallet';
 import type { SuiObjectChange } from '@mysten/sui/client';
+import { Transaction } from '@mysten/sui/transactions';
 import {
   getMarginAccount,
   findUserMarginAccount,
@@ -48,74 +49,118 @@ interface UseMarginAccountResult {
 
 export function useMarginAccount(): UseMarginAccountResult {
   const { account: walletAccount, status, getKeypair } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const queryClient = useQueryClient();
 
-  const [marginAccountId, setMarginAccountId] = useState<string | null>(() =>
-    walletAccount?.address ? getStoredMarginAccountId(walletAccount.address) : null
-  );
+  // Determine active wallet (zkLogin takes priority)
+  const isLocalWalletActive = status === 'unlocked' && !!walletAccount?.address;
+  const activeAddress = isZkLoggedIn ? zkState?.address : walletAccount?.address;
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+
+  const [marginAccountId, setMarginAccountId] = useState<string | null>(null);
+
+  // Reset marginAccountId when activeAddress changes
+  useEffect(() => {
+    if (activeAddress) {
+      const storedId = getStoredMarginAccountId(activeAddress);
+      setMarginAccountId(storedId);
+    } else {
+      setMarginAccountId(null);
+    }
+  }, [activeAddress]);
 
   // Find or use stored account ID
   const { data: foundAccountId, isLoading: isFinding } = useQuery({
-    queryKey: ['margin-account-id', walletAccount?.address],
+    queryKey: ['margin-account-id', activeAddress],
     queryFn: async () => {
-      if (!walletAccount?.address) return null;
+      if (!activeAddress) return null;
 
       // First check localStorage
-      const storedId = getStoredMarginAccountId(walletAccount.address);
+      const storedId = getStoredMarginAccountId(activeAddress);
       if (storedId) {
         // Verify it still exists
         const account = await getMarginAccount(storedId);
-        if (account && account.owner === walletAccount.address) {
+        if (account && account.owner === activeAddress) {
           return storedId;
         }
       }
 
       // Search on-chain
-      return findUserMarginAccount(walletAccount.address);
+      return findUserMarginAccount(activeAddress);
     },
-    enabled: status === 'unlocked' && !!walletAccount?.address,
+    enabled: isWalletConnected && !!activeAddress,
     staleTime: 30_000,
   });
 
   // Update local state when account is found
   useEffect(() => {
-    if (foundAccountId && foundAccountId !== marginAccountId && walletAccount?.address) {
+    if (foundAccountId && foundAccountId !== marginAccountId && activeAddress) {
       setMarginAccountId(foundAccountId);
-      storeMarginAccountId(walletAccount.address, foundAccountId);
+      storeMarginAccountId(activeAddress, foundAccountId);
     }
-  }, [foundAccountId, marginAccountId, walletAccount?.address]);
+  }, [foundAccountId, marginAccountId, activeAddress]);
 
-  // Fetch account data
+  // Fetch account data with owner verification
   const {
     data: account,
     isLoading: isLoadingAccount,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['margin-account', marginAccountId],
+    queryKey: ['margin-account', marginAccountId, activeAddress],
     queryFn: async () => {
-      if (!marginAccountId) return null;
-      return getMarginAccount(marginAccountId);
+      if (!marginAccountId || !activeAddress) return null;
+      const account = await getMarginAccount(marginAccountId);
+      // Owner verification - prevent displaying another user's account
+      if (account && account.owner !== activeAddress) {
+        console.error('[MarginAccount] Owner mismatch', {
+          expected: activeAddress,
+          actual: account.owner,
+          accountId: marginAccountId,
+        });
+        return null;
+      }
+      return account;
     },
-    enabled: !!marginAccountId,
+    enabled: !!marginAccountId && !!activeAddress,
     refetchInterval: 10_000,
     staleTime: 5_000,
   });
 
-  // Helper to sign and execute transaction
+  // Helper to sign and execute transaction (supports both local wallet and zkLogin)
   const signAndExecute = useCallback(
-    async (tx: ReturnType<typeof buildCreateAccountTx>) => {
-      const keypair = getKeypair();
-      if (!keypair) throw new Error('Wallet not unlocked');
+    async (tx: Transaction) => {
+      if (!activeAddress) throw new Error('Wallet not connected');
 
       const client = getSuiClient();
-      return client.signAndExecuteTransaction({
-        signer: keypair,
-        transaction: tx,
+      tx.setSender(activeAddress);
+      const bytes = await tx.build({ client });
+
+      let signature: string;
+      if (isZkLoggedIn && zkState) {
+        // zkLogin signing
+        signature = await zkSignTransaction(bytes);
+      } else {
+        // Local wallet signing
+        const keypair = getKeypair();
+        if (!keypair) throw new Error('Keypair not available');
+        const signResult = await keypair.signTransaction(bytes);
+        signature = signResult.signature;
+      }
+
+      const result = await client.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
         options: { showEffects: true, showObjectChanges: true },
       });
+
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error || 'Transaction failed');
+      }
+
+      return result;
     },
-    [getKeypair]
+    [activeAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]
   );
 
   // Create account mutation
@@ -138,10 +183,10 @@ export function useMarginAccount(): UseMarginAccountResult {
           'AddressOwner' in obj.owner
       );
 
-      if (marginAccountObj && walletAccount?.address) {
+      if (marginAccountObj && activeAddress) {
         const newAccountId = marginAccountObj.objectId;
         setMarginAccountId(newAccountId);
-        storeMarginAccountId(walletAccount.address, newAccountId);
+        storeMarginAccountId(activeAddress, newAccountId);
         return newAccountId;
       }
 
@@ -240,6 +285,7 @@ export function useMarginAccount(): UseMarginAccountResult {
     isWithdrawing: withdrawMutation.isPending || withdrawAllMutation.isPending,
 
     refetch,
-    hasAccount: !!marginAccountId,
+    // Only true if account exists AND owner matches current user
+    hasAccount: !!marginAccountId && !!account && account.owner === activeAddress,
   };
 }
