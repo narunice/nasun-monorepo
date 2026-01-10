@@ -12,7 +12,12 @@ type NasunColor =
   | "green"
   | "coral"
   | "gensol-red"
-  | "black";
+  | "black"
+  | "n1"
+  | "n2"
+  | "n3"
+  | "n4"
+  | "n5";
 
 interface DividerBoxProps {
   /** 제목 (옵셔널) - 제공하지 않으면 제목과 구분선이 표시되지 않음 */
@@ -100,8 +105,32 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     background: "bg-white/50",
     text: "text-nasun-black",
   },
+  n1: {
+    border: "border-nasun-white/50",
+    background: "bg-nasun-white/5",
+    text: "text-nasun-white",
+  },
+  n2: {
+    border: "border-nasun-c3/40",
+    background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5",
+    text: "text-nasun-white",
+  },
+  n3: {
+    border: "border-nasun-c5/40",
+    background: "bg-gray-800/30",
+    text: "text-nasun-white",
+  },
+  n4: {
+    border: "border-nasun-c4/50",
+    background: "bg-nasun-c4/10 ",
+    text: "text-nasun-white",
+  },
+  n5: {
+    border: "border-nasun-white/50",
+    background: "bg-gray-800/80 ",
+    text: "text-nasun-white",
+  },
 };
-
 /**
  * DividerBox Component
  *
@@ -119,7 +148,7 @@ export const DividerBox = ({
   description,
   children,
   className = "",
-  color = "c3",
+  color = "n2",
   titleClassName = "",
   rightTitleClassName = "",
   descriptionClassName = "",
@@ -128,7 +157,7 @@ export const DividerBox = ({
 
   return (
     <div
-      className={`p-4 md:p-6 w-full ${styles.background} rounded-lg border backdrop-blur-md backdrop-brightness-50 ${styles.border} ${className}`}
+      className={`p-4 md:p-6 lg:p-8 w-full ${styles.background} rounded-lg border backdrop-blur-lg ${styles.border} ${className}`}
     >
       {/* Title (옵셔널) - rightTitle/rightAction이 있으면 justify-between 레이아웃 */}
       {(title || rightTitle || rightAction) && (

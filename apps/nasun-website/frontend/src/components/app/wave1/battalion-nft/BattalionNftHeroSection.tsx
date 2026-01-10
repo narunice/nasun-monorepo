@@ -13,6 +13,10 @@ const TITLE_START_TIME = 1.1;
 const WORD_FADE_DURATION = 0.45;
 const TITLE_END_TIME = 4.33;
 
+// Wave title animation timing
+const WAVE_TITLE_START_TIME = 15.7;
+const WAVE_TITLE_FADE_DURATION = 0.5;
+
 /**
  * BattalionNftHeroSection 컴포넌트
  *
@@ -24,6 +28,8 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
   const [isMobile, setIsMobile] = useState(false);
   const [titleVisible, setTitleVisible] = useState(false);
   const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
+  const [waveTitleOpacity, setWaveTitleOpacity] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -47,6 +53,13 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
     onVideoReady?.();
   };
 
+  // 비디오 메타데이터 로드 핸들러 - duration 저장
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setVideoDuration(videoRef.current.duration);
+    }
+  };
+
   // 비디오 playing 핸들러 - 비디오 재생 시작
   const handleVideoPlaying = () => {
     setIsVideoPlaying(true);
@@ -59,25 +72,40 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
 
     const currentTime = video.currentTime;
 
-    if (currentTime >= TITLE_END_TIME || currentTime < TITLE_START_TIME) {
+    // "POWER YOUR DESTINY" animation
+    if (currentTime >= TITLE_START_TIME && currentTime < TITLE_END_TIME) {
+      setTitleVisible(true);
+
+      const newOpacities = [0, 1, 2].map((index) => {
+        const wordStartTime = TITLE_START_TIME + index * WORD_FADE_DURATION;
+        const wordEndTime = wordStartTime + WORD_FADE_DURATION;
+
+        if (currentTime < wordStartTime) return 0;
+        if (currentTime >= wordEndTime) return 1;
+        return (currentTime - wordStartTime) / WORD_FADE_DURATION;
+      });
+
+      setWordOpacities(newOpacities);
+    } else {
       setTitleVisible(false);
       setWordOpacities([0, 0, 0]);
-      return;
     }
 
-    setTitleVisible(true);
-
-    const newOpacities = [0, 1, 2].map((index) => {
-      const wordStartTime = TITLE_START_TIME + index * WORD_FADE_DURATION;
-      const wordEndTime = wordStartTime + WORD_FADE_DURATION;
-
-      if (currentTime < wordStartTime) return 0;
-      if (currentTime >= wordEndTime) return 1;
-      return (currentTime - wordStartTime) / WORD_FADE_DURATION;
-    });
-
-    setWordOpacities(newOpacities);
-  }, []);
+    // "WAVE 1 BATTALION" animation
+    if (
+      videoDuration > 0 &&
+      currentTime >= WAVE_TITLE_START_TIME &&
+      currentTime < videoDuration - 0.05
+    ) {
+      const fadeProgress = Math.min(
+        1,
+        (currentTime - WAVE_TITLE_START_TIME) / WAVE_TITLE_FADE_DURATION
+      );
+      setWaveTitleOpacity(fadeProgress);
+    } else {
+      setWaveTitleOpacity(0);
+    }
+  }, [videoDuration]);
 
   // Animation loop for title
   useEffect(() => {
@@ -149,6 +177,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
               preload="auto"
               onCanPlay={handleVideoCanPlay}
               onPlaying={handleVideoPlaying}
+              onLoadedMetadata={handleLoadedMetadata}
               className={videoClassName}
             >
               <source src={battalionNftVideoMobile} type="video/mp4" />
@@ -173,24 +202,34 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
 
           {/* Title Section - Below Video */}
           <div className="relative z-20 flex flex-col items-center text-center px-4 -mt-12">
-            <div className="flex flex-col items-center">
+            <div className="relative flex flex-col items-center">
+              {/* POWER YOUR DESTINY */}
+              <div className="flex flex-col items-center">
+                <h2
+                  className="!font-changeling text-3xl"
+                  style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
+                >
+                  POWER
+                </h2>
+                <h2
+                  className="!font-changeling text-3xl"
+                  style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
+                >
+                  YOUR
+                </h2>
+                <h2
+                  className="!font-changeling text-3xl"
+                  style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
+                >
+                  DESTINY
+                </h2>
+              </div>
+              {/* WAVE 1 BATTALION */}
               <h2
-                className="!font-changeling text-3xl"
-                style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
+                className="absolute inset-0 flex items-center justify-center !font-changeling text-3xl"
+                style={{ opacity: waveTitleOpacity }}
               >
-                POWER
-              </h2>
-              <h2
-                className="!font-changeling text-3xl"
-                style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
-              >
-                YOUR
-              </h2>
-              <h2
-                className="!font-changeling text-3xl"
-                style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
-              >
-                DESTINY
+                WAVE 1 BATTALION
               </h2>
             </div>
           </div>
@@ -208,6 +247,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
             preload="auto"
             onCanPlay={handleVideoCanPlay}
             onPlaying={handleVideoPlaying}
+            onLoadedMetadata={handleLoadedMetadata}
             className={videoClassName}
           >
             <source src={battalionNftVideoDesktop} type="video/mp4" />
@@ -222,25 +262,34 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
           />
 
           {/* Title Overlay */}
-          <div className="absolute bottom-[15%] left-0 right-0 flex justify-center items-baseline gap-4 z-30 ">
-            <h2
-              className="!font-changeling"
-              style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
-            >
-              POWER
-            </h2>
-            <h2
-              className="!font-changeling"
-              style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
-            >
-              YOUR
-            </h2>
-            <h2
-              className="!font-changeling"
-              style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
-            >
-              DESTINY
-            </h2>
+          <div className="absolute bottom-[23%] left-0 right-0 z-30">
+            {/* POWER YOUR DESTINY */}
+            <div className="flex justify-center items-baseline gap-4">
+              <h2
+                className="!font-changeling"
+                style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
+              >
+                POWER
+              </h2>
+              <h2
+                className="!font-changeling"
+                style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
+              >
+                YOUR
+              </h2>
+              <h2
+                className="!font-changeling"
+                style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
+              >
+                DESTINY
+              </h2>
+            </div>
+            {/* WAVE 1 BATTALION */}
+            <div className="absolute inset-0 flex justify-center items-baseline pt-6">
+              <h2 className="!font-changeling" style={{ opacity: waveTitleOpacity }}>
+                WAVE 1 BATTALION
+              </h2>
+            </div>
           </div>
         </>
       )}

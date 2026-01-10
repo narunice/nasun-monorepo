@@ -12,12 +12,10 @@ export { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 
 // Layout Boxes
 export { DividerBox } from "./DividerBox";
-export { TitledDividerBox } from "./TitledDividerBox";
 export { OuterBox } from "./OuterBox";
 export { KeyPointsBox } from "./KeyPointsBox";
 export { CtaBox } from "./CtaBox";
 export { default as CallToActionSection } from "./CallToAction";
-export { TextBox } from "./TextBox";
 
 // Typography
 export { PageTitle } from "./PageTitle";
