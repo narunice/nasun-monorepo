@@ -242,16 +242,16 @@ export function MarginAccountCard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-        <div>
-          <div className="text-theme-text-muted">Total Deposited</div>
-          <div className="text-theme-text-primary font-medium">
+      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+        <div className="min-w-0">
+          <div className="text-theme-text-muted text-xs sm:text-sm truncate">Total Deposited</div>
+          <div className="text-theme-text-primary font-medium truncate">
             {formatNusdc(account?.totalDepositedUsd)} NUSDC
           </div>
         </div>
-        <div>
-          <div className="text-theme-text-muted">Total Withdrawn</div>
-          <div className="text-theme-text-primary font-medium">
+        <div className="min-w-0">
+          <div className="text-theme-text-muted text-xs sm:text-sm truncate">Total Withdrawn</div>
+          <div className="text-theme-text-primary font-medium truncate">
             {formatNusdc(account?.totalWithdrawnUsd)} NUSDC
           </div>
         </div>
