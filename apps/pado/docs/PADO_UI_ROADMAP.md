@@ -1,23 +1,25 @@
 # Pado UI/UX 개선 로드맵
 
 > 작성일: 2025-12-26
-> 최종 업데이트: 2026-01-01
+> 최종 업데이트: 2026-01-09
 > 비전: CEX-Grade UX, DEX-Level Transparency
 
 ---
 
-## 현재 상태 요약 (2026-01-01)
+## 현재 상태 요약 (2026-01-09)
 
 ### UX 재구성 (Pitch Deck 비전 정렬)
 
 | Phase | 이름 | 상태 | 설명 |
 |-------|------|------|------|
-| UX-A | Navigation Restructure | ✅ 완료 | 5-Tab 네비게이션 (Home, Trade, Earn, Predict, Wallet) |
+| UX-A | Navigation Restructure | ✅ 완료 | 6-Tab 네비게이션 (Home, Trade, Earn, Predict, Lottery, Wallet) |
 | UX-B | Home Dashboard | ✅ 완료 | NetWorthCard, QuickActions, HotMarketsCard, PredictionHighlight |
 | UX-C | Trade Enhancement | ✅ 완료 | Simple/Pro 모드 토글, Quick Amount 버튼 ($50/$100/$250/$500/Max) |
 | UX-D | Wallet Tab | ✅ 완료 | Send/Receive/History/Settings 통합 |
 | UX-E | Earn Tab (Staking) | ✅ 완료 | Native Staking via @nasun/wallet-ui (Phase 13) |
 | UX-F | Earn Tab (Lending) | 📋 예정 | Lending + Borrowing (Phase 12) |
+| UX-G | Lottery Tab | ✅ 완료 | 주간 로또 티켓 구매, 당첨 확인 (Phase 17) |
+| UX-H | Admin Dashboard | ✅ 완료 | 통합 관리 페이지 (/admin) - Prediction + Lottery |
 
 **Trade Enhancement 컴포넌트 (UX-C)**
 - ✅ useTradeMode - Simple/Pro 모드 상태 관리 hook (localStorage 저장)
@@ -100,13 +102,30 @@
   - PositionList 컴포넌트 (포지션 목록, P&L, Sell/Claim)
   - 블록체인 동기화 피드백 ("Syncing with blockchain...")
 
+### 최근 구현 ✅ (2026-01-04 ~ 2026-01-09)
+
+- ✅ **Lottery UI (Phase 17)** - 2026-01-09
+  - 로또 메인 페이지 (/lottery)
+  - 라운드 상세 페이지 (/lottery/:roundId)
+  - LotteryRoundCard 컴포넌트 (상금 풀, 카운트다운)
+  - TicketPurchaseForm 컴포넌트 (번호 선택, Quick Pick)
+  - MyTicketList 컴포넌트 (내 티켓 목록)
+  - WinningNumbers 컴포넌트 (당첨 번호 표시)
+  - LotteryCountdown 컴포넌트 (추첨까지 남은 시간)
+- ✅ **Unified Margin UI (Phase 16)** - 2026-01-04
+  - MarginAccountCard 컴포넌트 (마진 계정 관리)
+  - HeaderNetValue 컴포넌트 (통합 잔고 표시)
+  - useUnifiedMargin hook (마진 상태 관리)
+- ✅ **Admin Dashboard 통합** - 2026-01-09
+  - /admin 통합 관리 페이지
+  - Prediction Admin 탭 (마켓 생성/해결)
+  - Lottery Admin 탭 (라운드 생성/추첨)
+- ✅ Prediction 시드 유동성 공급 완료 (2026-01-04)
+
 ### 미구현 ❌
 
-**Prediction Market**
-- ✅ ~~Sell 주문 UI 활성화~~ (완료, 2025-12-31)
-- ✅ ~~Admin 마켓 생성 페이지~~ (/predict/admin, CreateMarketForm) (완료, 2026-01-01)
-- ✅ ~~Admin 마켓 해결 UI~~ (AdminResolveModal) (완료, 2025-12-31)
-- ❌ 시드 유동성 공급 (4개 마켓 빈 오더북)
+**Lending/Staking**
+- ❌ Lending Pool UI (컨트랙트 배포 대기)
 
 ---
 
@@ -160,6 +179,25 @@
 | HotMarketsCard | `HotMarketsCard.tsx` | ✅ 완료 | 인기 마켓 목록 |
 | PredictionHighlight | `PredictionHighlight.tsx` | ✅ 완료 | 예측 시장 하이라이트 |
 | WelcomeBanner | `WelcomeBanner.tsx` | ✅ 완료 | 미연결 사용자 CTA |
+
+### Lottery 컴포넌트 (6개 완료)
+
+| 컴포넌트 | 파일 | 상태 | 설명 |
+|---------|------|------|------|
+| LotteryRoundCard | `LotteryRoundCard.tsx` | ✅ 완료 | 라운드 정보 카드 (상금 풀, 상태) |
+| TicketPurchaseForm | `TicketPurchaseForm.tsx` | ✅ 완료 | 번호 선택 UI (1-32 그리드) |
+| MyTicketList | `MyTicketList.tsx` | ✅ 완료 | 내 티켓 목록 (당첨 확인) |
+| WinningNumbers | `WinningNumbers.tsx` | ✅ 완료 | 당첨 번호 표시 |
+| LotteryCountdown | `LotteryCountdown.tsx` | ✅ 완료 | 추첨까지 카운트다운 |
+| LotteryAdminPanel | `LotteryAdminPanel.tsx` | ✅ 완료 | 관리자 라운드 관리 |
+
+### Unified Margin 컴포넌트 (3개 완료)
+
+| 컴포넌트 | 파일 | 상태 | 설명 |
+|---------|------|------|------|
+| MarginAccountCard | `MarginAccountCard.tsx` | ✅ 완료 | 마진 계정 입금/출금 |
+| HeaderNetValue | `HeaderNetValue.tsx` | ✅ 완료 | 헤더 통합 잔고 표시 |
+| useUnifiedMargin | `useUnifiedMargin.ts` | ✅ 완료 | 마진 상태 관리 hook |
 
 ---
 
