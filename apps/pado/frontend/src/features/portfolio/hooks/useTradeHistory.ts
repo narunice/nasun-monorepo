@@ -3,7 +3,7 @@
  * Fetch user's trading history and calculate statistics
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 
 export interface UserTrade {
@@ -56,11 +56,25 @@ export function useTradeHistory(): UseTradeHistoryResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const address = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const address = isZkConnected
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
   const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
+  // Clear trades immediately when address changes (prevents stale data)
+  useEffect(() => {
+    console.log('[useTradeHistory] Address changed, clearing trades:', address);
+    setTrades([]);
+    setError(null);
+  }, [address]);
+
   // Fetch trades from blockchain (simulated for now)
-  const fetchTrades = async () => {
+  const fetchTrades = useCallback(async () => {
+    console.log('[useTradeHistory] fetchTrades called with address:', address);
+
     if (!isConnected || !address) {
       setTrades([]);
       return;
@@ -85,11 +99,11 @@ export function useTradeHistory(): UseTradeHistoryResult {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isConnected, address]);
 
   useEffect(() => {
     fetchTrades();
-  }, [isConnected, address]);
+  }, [fetchTrades]);
 
   // Calculate statistics from trades
   const stats = useMemo<TradeStats>(() => {

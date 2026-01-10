@@ -45,5 +45,8 @@ export function useOpenOrders(
     enabled: !!balanceManagerId,
     refetchInterval,
     staleTime: 2000,
+    // Retry logic for RPC sync delay (newly created BM may not be indexed yet)
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 3000),
   });
 }

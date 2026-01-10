@@ -7,13 +7,38 @@ import { useState } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 interface TradeRowProps {
   trade: UserTrade;
 }
 
-function TradeRow({ trade }: TradeRowProps) {
+// Shared formatting functions
+const formatTime = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatPrice = (price: number) => {
+  if (price >= 1000) {
+    return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `$${price.toFixed(4)}`;
+};
+
+const formatQuantity = (qty: number) => {
+  if (qty < 0.0001) return qty.toExponential(2);
+  if (qty < 1) return qty.toFixed(6);
+  return qty.toFixed(4);
+};
+
+// Mobile card layout for trades
+function TradeCard({ trade }: TradeRowProps) {
   const isBuy = trade.side === 'buy';
   const sideColor = isBuy
     ? 'text-green-600 dark:text-green-400'
@@ -22,28 +47,36 @@ function TradeRow({ trade }: TradeRowProps) {
     ? 'bg-green-100 dark:bg-green-900/30'
     : 'bg-red-100 dark:bg-red-900/30';
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  return (
+    <div className="p-4 hover:bg-theme-bg-tertiary/30 transition-colors">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${sideBg} ${sideColor}`}>
+            {trade.side.toUpperCase()}
+          </span>
+          <span className="font-medium">{trade.poolName}</span>
+        </div>
+        <span className="text-xs text-theme-text-muted">{formatTime(trade.timestamp)}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-theme-text-secondary">
+          {formatQuantity(trade.quantity)} @ {formatPrice(trade.price)}
+        </span>
+        <span className="font-medium">${trade.total.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
 
-  const formatPrice = (price: number) => {
-    if (price >= 1000) {
-      return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    return `$${price.toFixed(4)}`;
-  };
-
-  const formatQuantity = (qty: number) => {
-    if (qty < 0.0001) return qty.toExponential(2);
-    if (qty < 1) return qty.toFixed(6);
-    return qty.toFixed(4);
-  };
+// Desktop table row for trades
+function TradeRow({ trade }: TradeRowProps) {
+  const isBuy = trade.side === 'buy';
+  const sideColor = isBuy
+    ? 'text-green-600 dark:text-green-400'
+    : 'text-red-600 dark:text-red-400';
+  const sideBg = isBuy
+    ? 'bg-green-100 dark:bg-green-900/30'
+    : 'bg-red-100 dark:bg-red-900/30';
 
   return (
     <tr className="hover:bg-theme-bg-tertiary/30 transition-colors">
@@ -85,10 +118,14 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
   const isConnected = status === 'unlocked' || isZkConnected;
   const displayedTrades = trades.slice(0, displayCount);
   const hasMore = displayCount < trades.length;
-  const remaining = trades.length - displayCount;
+  const isExpanded = displayCount > ITEMS_PER_PAGE;
 
   const handleLoadMore = () => {
     setDisplayCount((prev) => Math.min(prev + ITEMS_PER_PAGE, trades.length));
+  };
+
+  const handleCollapse = () => {
+    setDisplayCount(ITEMS_PER_PAGE);
   };
 
   // Embedded mode: simplified rendering without container
@@ -137,7 +174,15 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
           {displayedTrades.length} of {trades.length} trades
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile: Card layout */}
+        <div className="md:hidden divide-y divide-theme-border">
+          {displayedTrades.map((trade) => (
+            <TradeCard key={trade.id} trade={trade} />
+          ))}
+        </div>
+
+        {/* Desktop: Table layout */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-theme-text-secondary bg-theme-bg-tertiary/50">
               <tr>
@@ -156,16 +201,28 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
           </table>
         </div>
 
-        {hasMore && (
-          <div className="p-4 border-t border-theme-border">
-            <button
-              onClick={handleLoadMore}
-              className="w-full py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400
-                         bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30
-                         rounded-lg transition-colors"
-            >
-              Load More ({remaining} more)
-            </button>
+        {(hasMore || isExpanded) && (
+          <div className="p-4 border-t border-theme-border flex gap-2">
+            {hasMore && (
+              <button
+                onClick={handleLoadMore}
+                className="flex-1 py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400
+                           bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30
+                           rounded-lg transition-colors"
+              >
+                Load More
+              </button>
+            )}
+            {isExpanded && (
+              <button
+                onClick={handleCollapse}
+                className="flex-1 py-2 px-4 text-sm font-medium text-theme-text-secondary
+                           bg-theme-bg-tertiary hover:bg-theme-bg-tertiary/80
+                           rounded-lg transition-colors"
+              >
+                Collapse
+              </button>
+            )}
           </div>
         )}
       </>
@@ -240,7 +297,15 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile: Card layout */}
+      <div className="md:hidden divide-y divide-theme-border">
+        {displayedTrades.map((trade) => (
+          <TradeCard key={trade.id} trade={trade} />
+        ))}
+      </div>
+
+      {/* Desktop: Table layout */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-theme-text-secondary bg-theme-bg-tertiary/50">
             <tr>
@@ -259,16 +324,28 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
         </table>
       </div>
 
-      {hasMore && (
-        <div className="p-4 border-t border-theme-border">
-          <button
-            onClick={handleLoadMore}
-            className="w-full py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400
-                       bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30
-                       rounded-lg transition-colors"
-          >
-            Load More ({remaining} more)
-          </button>
+      {(hasMore || isExpanded) && (
+        <div className="p-4 border-t border-theme-border flex gap-2">
+          {hasMore && (
+            <button
+              onClick={handleLoadMore}
+              className="flex-1 py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400
+                         bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30
+                         rounded-lg transition-colors"
+            >
+              Load More
+            </button>
+          )}
+          {isExpanded && (
+            <button
+              onClick={handleCollapse}
+              className="flex-1 py-2 px-4 text-sm font-medium text-theme-text-secondary
+                         bg-theme-bg-tertiary hover:bg-theme-bg-tertiary/80
+                         rounded-lg transition-colors"
+            >
+              Collapse
+            </button>
+          )}
         </div>
       )}
     </div>

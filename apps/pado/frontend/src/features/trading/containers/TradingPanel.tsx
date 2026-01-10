@@ -6,10 +6,9 @@
  */
 
 import { useState } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
-import { useOrderForm } from '../context';
-import { useMarginAccount, useRiskEngine } from '../../core/unified-margin';
+import { useOrderForm, useMarket } from '../context';
 import {
   OrderForm,
   OrderConfirmModal,
@@ -17,13 +16,12 @@ import {
   OpenOrders,
   PoolInfo,
   SimpleOrderForm,
+  TradingBalanceBar,
 } from '../components';
 
 interface TradingPanelProps {
   mode?: TradeMode;
 }
-
-type FundingSource = 'trading' | 'pado';
 
 export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const isSimple = mode === 'simple';
@@ -31,10 +29,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
 
-  // Pado Balance integration
-  const { hasAccount: hasMarginAccount } = useMarginAccount();
-  const { currentMarginFormatted, canTrade, formatRequired } = useRiskEngine();
-  const [fundingSource, setFundingSource] = useState<FundingSource>('trading');
+  // Market context for base token symbol
+  const { currentPool } = useMarket();
+  const baseSymbol = currentPool.baseToken.symbol;
 
   // 오더북 데이터 (가격 정보)
   const { data: orderbookData } = useOrderbook();
@@ -46,6 +43,10 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const {
     isLoading,
     balanceManagerId,
+    isAutoDepositing,
+    autoDepositEnabled,
+    setAutoDepositEnabled,
+    lastAutoDepositError,
     handleLimitOrder,
     handleMarketOrder,
     handleCancelOrder,
@@ -54,10 +55,20 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     handleWithdraw,
   } = useOrderActions();
 
+  // Advanced settings (for manual deposit)
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   // 오픈 오더 데이터
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const orders = openOrdersData?.orders ?? [];
   const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
+
+  // Wallet balances for unified available balance (Phase 2)
+  const { data: multiBalance } = useMultiBalance();
+  const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
+  const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
+  const availableBase = walletBase + bmBalance.base;
+  const availableQuote = walletQuote + bmBalance.quote;
 
   // 주문 폼 상태 (Context)
   const {
@@ -144,15 +155,27 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           {isConnected && !balanceManagerId && (
             <div className="mb-4 p-4 bg-theme-bg-tertiary rounded-lg text-center">
               <p className="text-sm text-theme-text-secondary mb-3">
-                Enable trading to start placing orders
+                Enable Pado to start placing orders
               </p>
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                {isLoading ? 'Enabling...' : 'Enable Trading'}
+                {isLoading ? 'Enabling...' : 'Enable Pado'}
               </button>
+            </div>
+          )}
+
+          {/* Balance Bar + Faucet (shown when connected) */}
+          {isConnected && (
+            <div className="mb-4">
+              <TradingBalanceBar
+                baseSymbol={baseSymbol}
+                tradingBase={bmBalance.base}
+                tradingQuote={bmBalance.quote}
+                mode="simple"
+              />
             </div>
           )}
 
@@ -163,95 +186,124 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             onMarketSell={handleSimpleMarketSell}
             disabled={!isConnected || !balanceManagerId}
             isLoading={isLoading}
-            quoteBalance={bmBalance.quote}
-            baseBalance={bmBalance.base}
+            quoteBalance={availableQuote}
+            baseBalance={availableBase}
           />
         </div>
       </div>
     );
   }
 
-  // Pro Mode UI (original)
+  // Pro Mode UI (with auto deposit)
   return (
     <div className="space-y-4">
-      {/* Funding Source Selector */}
-      {isConnected && (
+      {/* Trading Status Bar */}
+      {isConnected && balanceManagerId && (
         <div className="bg-theme-bg-secondary rounded-lg p-4">
-          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Funding Source</h3>
-          <div className="flex gap-2 mb-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-theme-text-primary">Trading Balance</span>
+              {isAutoDepositing && (
+                <span className="text-xs text-blue-400 animate-pulse">Depositing...</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Auto Deposit Toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs text-theme-text-secondary">Auto Deposit</span>
+                <button
+                  onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
+                  className={`w-10 h-5 rounded-full transition-colors ${
+                    autoDepositEnabled ? 'bg-green-500' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      autoDepositEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </label>
+            </div>
+          </div>
+
+          {/* Balance Display */}
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex gap-4">
+              <span className="text-theme-text-secondary">
+                <span className="text-theme-text-primary font-mono">{bmBalance.base.toFixed(4)}</span> {baseSymbol}
+              </span>
+              <span className="text-theme-text-secondary">
+                <span className="text-theme-text-primary font-mono">{bmBalance.quote.toFixed(2)}</span> NUSDC
+              </span>
+            </div>
+            {/* Advanced settings toggle */}
             <button
-              onClick={() => setFundingSource('trading')}
-              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                fundingSource === 'trading'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
-              }`}
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-blue-500 hover:text-blue-400"
             >
-              Trading Balance
-            </button>
-            <button
-              onClick={() => setFundingSource('pado')}
-              disabled={!hasMarginAccount}
-              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                fundingSource === 'pado'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
-              }`}
-              title={!hasMarginAccount ? 'Enable Pado Balance in Wallet tab first' : undefined}
-            >
-              Pado {!hasMarginAccount && '🔒'}
+              {showAdvanced ? 'Hide Advanced' : 'Advanced'}
             </button>
           </div>
 
-          {/* Pado Balance hint when not enabled */}
-          {!hasMarginAccount && (
-            <p className="text-xs text-theme-text-muted mb-3">
-              💡 <a href="/wallet" className="text-blue-500 hover:text-blue-400 underline">Enable Pado Balance</a> to use funds across all features
+          {/* Auto Deposit Info */}
+          {autoDepositEnabled && !lastAutoDepositError && (
+            <p className="text-xs text-theme-text-muted mt-2">
+              Funds will be automatically moved from wallet when needed.
+            </p>
+          )}
+          {!autoDepositEnabled && (
+            <p className="text-xs text-yellow-500 mt-2">
+              Auto deposit disabled. You may need to manually add funds before trading.
             </p>
           )}
 
-          {/* Coming Soon notice for Pado Balance */}
-          {fundingSource === 'pado' && hasMarginAccount && (
-            <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <p className="text-xs text-blue-400">
-                🚀 Pado Balance funding coming in v0.5!
+          {/* Auto Deposit Error Fallback */}
+          {lastAutoDepositError && (
+            <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p className="text-xs text-red-400 mb-1">
+                Auto deposit failed: {lastAutoDepositError}
               </p>
-              <p className="text-xs text-theme-text-muted mt-1">
-                Trading Balance will be used for this trade.
-              </p>
-              <div className="mt-2 pt-2 border-t border-blue-500/20">
-                <div className="flex justify-between text-xs">
-                  <span className="text-theme-text-muted">Pado Balance:</span>
-                  <span className="text-theme-text-primary font-mono">
-                    {currentMarginFormatted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
-                  </span>
-                </div>
-                {parseFloat(amount) > 0 && midPrice > 0 && (
-                  <div className="flex justify-between text-xs mt-1">
-                    <span className="text-theme-text-muted">Required (10% buffer):</span>
-                    <span className={`font-mono ${canTrade(parseFloat(amount) * midPrice) ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {formatRequired(parseFloat(amount) * midPrice)} NUSDC
-                    </span>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => setShowAdvanced(true)}
+                className="text-xs text-blue-500 hover:text-blue-400 underline"
+              >
+                Try manual deposit
+              </button>
+            </div>
+          )}
+
+          {/* Advanced Settings (BalanceManagerCard) */}
+          {showAdvanced && (
+            <div className="mt-4 pt-4 border-t border-theme-border">
+              <h4 className="text-xs font-semibold text-theme-text-secondary mb-3">Manual Deposit/Withdraw</h4>
+              <BalanceManagerCard
+                balanceManagerId={balanceManagerId}
+                balance={bmBalance}
+                isLoading={isLoading}
+                onCreate={handleCreateBalanceManager}
+                onDeposit={handleDeposit}
+                onWithdraw={handleWithdraw}
+              />
             </div>
           )}
         </div>
       )}
 
-      {/* Trading Balance Card - 독립 카드 */}
-      {isConnected && (
+      {/* Enable Pado prompt (when no BalanceManager) */}
+      {isConnected && !balanceManagerId && (
         <div className="bg-theme-bg-secondary rounded-lg p-4">
-          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Trading Balance</h3>
-          <BalanceManagerCard
-            balanceManagerId={balanceManagerId}
-            balance={bmBalance}
-            isLoading={isLoading}
-            onCreate={handleCreateBalanceManager}
-            onDeposit={handleDeposit}
-            onWithdraw={handleWithdraw}
-          />
+          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
+          <p className="text-xs text-theme-text-muted mb-3">
+            Enable Pado to start trading. Funds will be automatically deposited when needed.
+          </p>
+          <button
+            onClick={handleCreateBalanceManager}
+            disabled={isLoading}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            {isLoading ? 'Enabling...' : 'Enable Pado'}
+          </button>
         </div>
       )}
 
@@ -263,6 +315,18 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
         {!isConnected && (
           <div className="mb-4 p-3 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
             Connect wallet to start trading
+          </div>
+        )}
+
+        {/* Balance Bar + Faucet (Pro mode - shown when connected and has BalanceManager) */}
+        {isConnected && balanceManagerId && (
+          <div className="mb-4">
+            <TradingBalanceBar
+              baseSymbol={baseSymbol}
+              tradingBase={bmBalance.base}
+              tradingQuote={bmBalance.quote}
+              mode="pro"
+            />
           </div>
         )}
 
@@ -278,6 +342,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onMarketSell={handleMarketSell}
           disabled={!isConnected || !balanceManagerId}
           isLoading={isLoading}
+          isAutoDepositing={isAutoDepositing}
           midPrice={midPrice}
           bestBid={bestBid}
           bestAsk={bestAsk}
@@ -285,6 +350,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onExecutionOptionChange={setExecutionOption}
           slippage={slippage}
           onSlippageChange={setSlippage}
+          availableQuote={availableQuote}
+          availableBase={availableBase}
         />
 
         {/* Order Confirmation Modal */}

@@ -1,6 +1,10 @@
 /**
  * WalletPage
  * Unified wallet page with Send/Receive/History/Settings tabs
+ *
+ * Phase 16.1: Added UnifiedBalanceCard for total balance overview
+ *
+ * @version 2.0.0
  */
 
 import { useState } from 'react';
@@ -9,7 +13,7 @@ import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { PaymentQRCode } from '../features/payments';
 import { TransferHistory } from '../features/portfolio/components/TransferHistory';
-import { MarginAccountCard } from '../features/core/unified-margin';
+import { UnifiedBalanceCard, MarginAccountCard } from '../features/core/unified-margin';
 
 type TabType = 'send' | 'receive' | 'history' | 'settings';
 
@@ -41,11 +45,16 @@ export function WalletPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-theme-text-primary">Wallet</h1>
         <p className="text-sm text-theme-text-secondary mt-1">
-          Send and receive tokens
+          Manage your assets across wallet, trading, and Pado Balance
         </p>
       </div>
 
-      {/* Pado Balance Account */}
+      {/* Unified Balance Overview */}
+      <div className="mb-6">
+        <UnifiedBalanceCard showBreakdown={true} />
+      </div>
+
+      {/* Pado Balance Management */}
       <div className="mb-6">
         <MarginAccountCard />
       </div>

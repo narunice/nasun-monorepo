@@ -11,13 +11,17 @@ import { CreateMarketForm, usePredictionAdmin } from '../features/prediction';
 const ADMIN_ADDRESS = '0x05eef6d318e5a824fdf763270e3a719bb0327ddf814dea29cba6c963ebdb8f21';
 
 export function PredictAdminPage() {
-  const { account } = useWallet();
-  const { state: zkState } = useZkLogin();
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { isResolver } = usePredictionAdmin();
   const navigate = useNavigate();
 
-  // Check admin for both local wallet and zkLogin
-  const walletAddress = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
   const isAdmin = walletAddress === ADMIN_ADDRESS;
 
   const handleSuccess = (digest: string) => {
