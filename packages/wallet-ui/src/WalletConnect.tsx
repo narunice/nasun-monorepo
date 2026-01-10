@@ -5,17 +5,18 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   useWallet,
   useNFTs,
   useZkLogin,
   useMultiBalance,
   useNetwork,
-  requestFaucet,
-  shortenAddress,
+  shortenAddressResponsive,
   isLockedOut,
   getLockoutRemainingMs,
   getUnlockAttemptState,
+  getAllTokens,
   LOCKOUT_TIERS,
   type NFTInfo,
   type ZkLoginProvider,
@@ -31,6 +32,7 @@ import { NFTDetail } from "./NFTDetail";
 import { StakingPanel } from "./StakingPanel";
 import { SecuritySettings } from "./SecuritySettings";
 import { SocialLoginButtons } from "./SocialLoginButtons";
+import { TokenFaucetButton } from "./TokenFaucetButton";
 
 type ViewMode =
   | "main"
@@ -205,13 +207,11 @@ interface WalletConnectProps {
 export function WalletConnect({
   dropdownPosition = "bottom",
   dropdownAlign = "right",
-  addressStartChars,
-  addressEndChars,
-  addressLength = 6,
+  // Reserved for future customization
+  addressStartChars: _addressStartChars,
+  addressEndChars: _addressEndChars,
+  addressLength: _addressLength = 6,
 }: WalletConnectProps) {
-  // Use new props if provided, otherwise fall back to deprecated addressLength
-  const startChars = addressStartChars ?? addressLength;
-  const endChars = addressEndChars ?? addressStartChars ?? addressLength;
   const {
     status,
     account,
@@ -263,7 +263,17 @@ export function WalletConnect({
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabMode>("tokens");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile viewport for centered dropdown positioning
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Fetch NFTs when unlocked (only active tab uses the data)
   // Auto-refresh every 15 seconds to catch new NFTs (e.g., after voting)
@@ -273,50 +283,22 @@ export function WalletConnect({
   });
 
   // Fetch token balances (NASUN, NBTC, NUSDC)
-  const { data: balances, isLoading: balancesLoading, refetch: refetchBalances } = useMultiBalance({
+  const { data: balances, isLoading: balancesLoading } = useMultiBalance({
     pollingInterval: 15000,
   });
 
   // Network info
-  const { networkType, isDevnet, hasFaucet } = useNetwork();
-
-  // Faucet state
-  const [isFaucetLoading, setIsFaucetLoading] = useState(false);
-  const [faucetMessage, setFaucetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // Handle faucet request
-  const handleFaucet = useCallback(async () => {
-    const address = account?.address || zkState?.address;
-    if (!address || isFaucetLoading) return;
-
-    setIsFaucetLoading(true);
-    setFaucetMessage(null);
-
-    try {
-      const success = await requestFaucet(address);
-      if (success) {
-        setFaucetMessage({ type: 'success', text: 'NASUN received!' });
-        // Refresh balance after 2 seconds
-        setTimeout(() => {
-          refetchBalances();
-          setFaucetMessage(null);
-        }, 2000);
-      } else {
-        setFaucetMessage({ type: 'error', text: 'Faucet request failed' });
-        setTimeout(() => setFaucetMessage(null), 3000);
-      }
-    } catch (err) {
-      setFaucetMessage({ type: 'error', text: 'Faucet error' });
-      setTimeout(() => setFaucetMessage(null), 3000);
-    } finally {
-      setIsFaucetLoading(false);
-    }
-  }, [account?.address, zkState?.address, isFaucetLoading, refetchBalances]);
+  const { networkType } = useNetwork();
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isInsideDesktopDropdown = dropdownRef.current?.contains(target);
+      const isInsideMobileDropdown = mobileDropdownRef.current?.contains(target);
+
+      // Only close if click is outside both desktop and mobile dropdown areas
+      if (dropdownRef.current && !isInsideDesktopDropdown && !isInsideMobileDropdown) {
         setShowDropdown(false);
         // Reset view when closing dropdown
         if (viewMode !== "create-backup") {
@@ -413,15 +395,16 @@ export function WalletConnect({
   }, [deleteWallet]);
 
   // Get button text based on status
+  // Uses responsive address display: full format on desktop, short on mobile
   const getButtonText = () => {
     // zkLogin takes priority if connected
     if (isZkLoggedIn && zkState?.address) {
-      return shortenAddress(zkState.address, startChars, endChars);
+      return shortenAddressResponsive(zkState.address, isMobile);
     }
     if (status === "disconnected") return "Get Started";
     if (status === "locked") return "Locked";
     if (status === "unlocked" && account)
-      return shortenAddress(account.address, startChars, endChars);
+      return shortenAddressResponsive(account.address, isMobile);
     return "Wallet";
   };
 
@@ -695,58 +678,37 @@ export function WalletConnect({
                     ))}
                   </div>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {/* Native token (NASUN) */}
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-700 dark:text-zinc-300">NASUN</span>
-                      <span className="font-mono text-gray-900 dark:text-white">
-                        {balances?.native?.formatted || "0"}
-                      </span>
-                    </div>
-                    {/* Additional tokens */}
-                    {Object.entries(balances?.tokens || {}).map(([symbol, token]) => (
-                      <div key={symbol} className="flex justify-between text-sm">
-                        <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
+                      <div className="flex items-center gap-2">
                         <span className="font-mono text-gray-900 dark:text-white">
-                          {token.formatted}
+                          {balances?.native?.formatted || "0"}
                         </span>
+                        <TokenFaucetButton symbol="NASUN" compact />
+                      </div>
+                    </div>
+                    {/* Additional tokens - show all registered on devnet/testnet, only with balance on mainnet */}
+                    {(networkType === 'mainnet'
+                      ? Object.entries(balances?.tokens || {})
+                      : getAllTokens()
+                          .filter((t) => t.symbol !== 'NASUN')
+                          .map((t) => [t.symbol, balances?.tokens?.[t.symbol] || { formatted: '0' }] as const)
+                    ).map(([symbol, token]) => (
+                      <div key={symbol} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-gray-900 dark:text-white">
+                            {token.formatted}
+                          </span>
+                          <TokenFaucetButton symbol={symbol} compact />
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Faucet Button (Devnet only) */}
-                {isDevnet && hasFaucet && (
-                  <button
-                    onClick={handleFaucet}
-                    disabled={isFaucetLoading}
-                    className="w-full mt-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors
-                      bg-orange-500/10 text-orange-600 dark:text-orange-400
-                      hover:bg-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed
-                      flex items-center justify-center gap-2"
-                  >
-                    {isFaucetLoading ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Requesting...
-                      </>
-                    ) : faucetMessage ? (
-                      <span className={faucetMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                        {faucetMessage.text}
-                      </span>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Get NASUN from Faucet
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
 
               <button
@@ -931,58 +893,37 @@ export function WalletConnect({
                     ))}
                   </div>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {/* Native token (NASUN) */}
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-700 dark:text-zinc-300">NASUN</span>
-                      <span className="font-mono text-gray-900 dark:text-white">
-                        {balances?.native?.formatted || "0"}
-                      </span>
-                    </div>
-                    {/* Additional tokens */}
-                    {Object.entries(balances?.tokens || {}).map(([symbol, token]) => (
-                      <div key={symbol} className="flex justify-between text-sm">
-                        <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
+                      <div className="flex items-center gap-2">
                         <span className="font-mono text-gray-900 dark:text-white">
-                          {token.formatted}
+                          {balances?.native?.formatted || "0"}
                         </span>
+                        <TokenFaucetButton symbol="NASUN" compact />
+                      </div>
+                    </div>
+                    {/* Additional tokens - show all registered on devnet/testnet, only with balance on mainnet */}
+                    {(networkType === 'mainnet'
+                      ? Object.entries(balances?.tokens || {})
+                      : getAllTokens()
+                          .filter((t) => t.symbol !== 'NASUN')
+                          .map((t) => [t.symbol, balances?.tokens?.[t.symbol] || { formatted: '0' }] as const)
+                    ).map(([symbol, token]) => (
+                      <div key={symbol} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-gray-900 dark:text-white">
+                            {token.formatted}
+                          </span>
+                          <TokenFaucetButton symbol={symbol} compact />
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Faucet Button (Devnet only) */}
-                {isDevnet && hasFaucet && (
-                  <button
-                    onClick={handleFaucet}
-                    disabled={isFaucetLoading}
-                    className="w-full mt-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors
-                      bg-orange-500/10 text-orange-600 dark:text-orange-400
-                      hover:bg-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed
-                      flex items-center justify-center gap-2"
-                  >
-                    {isFaucetLoading ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Requesting...
-                      </>
-                    ) : faucetMessage ? (
-                      <span className={faucetMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                        {faucetMessage.text}
-                      </span>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Get NASUN from Faucet
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
 
               <button
@@ -1160,15 +1101,15 @@ export function WalletConnect({
         </svg>
       </button>
 
-      {/* Dropdown */}
-      {showDropdown && (
+      {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
+      {showDropdown && !isMobile && (
         <div
           className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[9999] absolute ${
             dropdownAlign === "left"
               ? "left-0"
               : dropdownAlign === "center"
                 ? "left-1/2 -translate-x-1/2"
-                : "right-0 max-sm:right-auto max-sm:left-0"
+                : "right-0"
           } ${
             dropdownPosition === "top"
               ? "bottom-full mb-2"
@@ -1178,6 +1119,26 @@ export function WalletConnect({
           {renderDropdownContent()}
         </div>
       )}
+
+      {/* Mobile dropdown - rendered via portal to escape stacking context issues */}
+      {showDropdown &&
+        isMobile &&
+        createPortal(
+          <>
+            {/* Mobile overlay backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 z-[99998]"
+              onClick={() => setShowDropdown(false)}
+            />
+            <div
+              ref={mobileDropdownRef}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] max-w-[320px] bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg overflow-hidden z-[99999]"
+            >
+              {renderDropdownContent()}
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
