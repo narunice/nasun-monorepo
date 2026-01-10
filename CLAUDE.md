@@ -400,12 +400,15 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 ### 스마트컨트랙트 위치
 
-| 디렉토리                          | 설명                      |
-| --------------------------------- | ------------------------- |
-| `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet |
-| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트        |
-| `apps/pado/contracts-oracle/`     | DevOracle 가격 피드       |
-| `apps/pado/contracts-lending/`    | 렌딩 컨트랙트 (예정)      |
+| 디렉토리                          | 설명                                    |
+| --------------------------------- | --------------------------------------- |
+| `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet               |
+| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                      |
+| `apps/pado/contracts-oracle/`     | DevOracle 가격 피드                     |
+| `apps/pado/contracts-lending/`    | 렌딩 컨트랙트                           |
+| `apps/pado/contracts-lottery/`    | Lottery 컨트랙트 (Sui Random)           |
+| `apps/pado/contracts-margin/`     | Unified Margin v1 (Multi-collateral)    |
+| `apps/pado/contracts-perp/`       | Perpetuals DEX (진행중)                 |
 
 ### Move 빌드/배포 명령어
 
@@ -426,7 +429,7 @@ cd apps/pado/contracts
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
 ```
 
-### 배포된 컨트랙트 (Devnet) - 2026-01-04 업데이트
+### 배포된 컨트랙트 (Devnet) - 2026-01-10 업데이트
 
 #### DevOracle (가격 피드)
 
@@ -454,13 +457,29 @@ cd apps/pado/contracts
 | GlobalState (shared) | `0x29d79342...` | 예측 시장 상태   |
 | AdminCap             | `0x38a29029...` | 관리자 권한      |
 
-#### Unified Margin (NEW)
+#### Unified Margin v1 (2026-01-10 완료)
 
-| 컨트랙트                | ID              | 비고                  |
-| ----------------------- | --------------- | --------------------- |
-| unified_margin          | `0x2886424f...` | Unified Margin 패키지 |
-| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리       |
-| UpgradeCap              | `0x4781e6fd...` | 업그레이드 권한       |
+| 컨트랙트                | ID              | 비고                            |
+| ----------------------- | --------------- | ------------------------------- |
+| unified_margin          | `0x2886424f...` | Multi-collateral 마진 (v0.6)    |
+| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리                 |
+| UpgradeCap              | `0x4781e6fd...` | 업그레이드 권한                 |
+
+**모듈:**
+- `unified_margin.move` - Multi-collateral (NUSDC + NBTC), public(package) functions
+- `risk_engine.move` - 4-Tier Threshold (IM 10%, Warning 8%, MM 5%, FC 3%)
+- `account_positions.move` - 포지션 추적 + PnL 계산
+- `liquidation.move` - 5% 보너스, 50% 최대 청산 비율
+
+#### Perpetuals DEX (2026-01-10 진행중)
+
+| 컨트랙트 | ID              | 비고               |
+| -------- | --------------- | ------------------ |
+| pado_perp| 배포 대기       | Perpetual futures  |
+
+**모듈 (11.1-11.2 완료):**
+- `perpetual.move` - PerpMarket, PerpPosition (20x 레버리지, Isolated margin)
+- `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
 
 #### Governance (Nasun Website) - 2026-01-08 업데이트
 
