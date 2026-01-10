@@ -1,8 +1,8 @@
 # Nasun Explorer Roadmap
 
 > Version: v0.8.0
-> Date: 2025-12-28
-> Current Version: v0.7.0-network-charts
+> Date: 2026-01-10
+> Current Version: v0.7.1-ux-improvements
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Page | Features | Status |
 |------|----------|--------|
-| Home | Network status, TPS Trend Chart, Epoch Progress, Search, Recent TX | ✅ UPDATED |
+| Home | Search bar (top), Network status, TPS Chart, Epoch Progress, Recent TX | ✅ v0.7.1 |
 | Transactions | TX list with pagination | ✅ |
 | Transaction | TX details (gas, events, object changes, raw data) | ✅ |
 | Object | Object details + NFT media display + Package link | ✅ |
@@ -19,14 +19,36 @@
 | Validator | Validator details, staking info | ✅ |
 | Checkpoints | Checkpoint list with pagination | ✅ |
 | Checkpoint | Checkpoint details, TX list, gas summary | ✅ |
-| Package | Module list, functions, structs | ✅ NEW |
-| Wallet | Create/Unlock, Send NASUN, Faucet | ✅ |
+| Package | Module list, functions, structs | ✅ |
+| Wallet | Create/Unlock, Send NASUN, Faucet, Responsive address | ✅ v0.7.1 |
+| Header | Hamburger menu (mobile), Responsive navigation | ✅ v0.7.1 |
 
 ---
 
 ## Enhancement Roadmap
 
-### ✅ Completed (v0.5.0 - v0.6.0)
+### ✅ Completed (v0.7.1)
+
+#### 5. Mobile UX Improvements ✅
+
+**Date**: 2026-01-10
+
+**Implemented Features**:
+- **Responsive Address Display**: Mobile shows `...8677` (last 4 chars), Desktop shows `0x7d5d84...268677`
+- **Hamburger Menu**: Mobile navigation with slide-down menu
+- **Search Bar Repositioned**: Moved to top of Home page for better discovery
+- **Header Cleanup**: Hide BalanceDisplay/FaucetButton on mobile
+- **Logo Adaptation**: "Explorer" on mobile, "Nasun Explorer" on desktop
+
+**Files Changed**:
+- `packages/wallet/src/sui/client.ts`: `shortenAddressResponsive()` function
+- `packages/wallet-ui/src/WalletConnect.tsx`: Responsive address in button
+- `apps/network-explorer/src/components/Header.tsx`: Hamburger menu
+- `apps/network-explorer/src/pages/Home.tsx`: Search bar position
+
+---
+
+### ✅ Completed (v0.5.0 - v0.7.0)
 
 #### 1. Validators/Staking Page ✅
 
@@ -137,6 +159,14 @@ Phase 3 (v0.7.0) ✅ COMPLETED
 │   ├── [x] Home.tsx: Epoch Progress bar
 │   └── [x] sui-client.ts: getEpochInfo() progress/timestamps
 
+Phase 3.5 (v0.7.1) ✅ COMPLETED
+├── [x] Mobile UX Improvements
+│   ├── [x] packages/wallet: shortenAddressResponsive()
+│   ├── [x] packages/wallet-ui: WalletConnect responsive address
+│   ├── [x] Header.tsx: Hamburger menu + mobile navigation
+│   ├── [x] Header.tsx: Hide BalanceDisplay/FaucetButton on mobile
+│   └── [x] Home.tsx: Search bar moved to top
+
 Phase 4 (v0.8.0) - NEXT
 ├── [ ] Token List page
 └── [ ] Gas price history chart
@@ -193,6 +223,7 @@ src/
 
 | Version | Date | Features |
 |---------|------|----------|
+| v0.7.1 | 2026-01-10 | Mobile UX (Hamburger menu, Responsive address, Search bar top) |
 | v0.7.0 | 2025-12-28 | Network Charts (TPS Trend, Epoch Progress), Recharts |
 | v0.6.0 | 2025-12-28 | Package Explorer, Object→Package link, Header menu |
 | v0.5.0 | 2025-12-27 | Validators, Checkpoints pages |

@@ -28,6 +28,11 @@ export default function Home() {
 
   return (
     <>
+      {/* Search Bar - positioned at top for easy discovery */}
+      <section className="mb-8">
+        <SearchBar />
+      </section>
+
       {/* Network Status */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -100,11 +105,6 @@ export default function Home() {
           <TPSChart data={tpsHistory} />
           <EpochProgress epochInfo={epochInfo} />
         </div>
-      </section>
-
-      {/* Search Bar */}
-      <section className="mb-8">
-        <SearchBar />
       </section>
 
       {/* Recent Transactions */}

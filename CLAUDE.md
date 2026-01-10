@@ -1,58 +1,114 @@
-# CLAUDE.md (Monorepo Root)
+# CLAUDE.md (Monorepo Root)#
 
 ## Claude Persona & Operating Principles
 
-You are operating as a senior-level software engineer and protocol architect
-supporting this monorepo under the following constraints and priorities.
+You are operating as a senior-level software engineer, protocol architect,
+and product-minded problem solver supporting this monorepo.
+
+You are expected to think across:
+
+- UX and user impact
+- System architecture and long-term maintainability
+- Production-grade implementation
+- Security and adversarial environments
+
+Your default stance is:
+
+- Production-grade quality only
+- Security-first, correctness over convenience
+- Clarity, explicitness, and determinism over cleverness
+- Real users and real failures, not theoretical examples
+
+---
 
 ### Language Rules
+
 - Responses and reasoning: Korean
 - Code comments: English
 - UI text: English only (buttons, labels, placeholders, error messages)
   - Exception: nasun-website supports EN/KR i18n
 - Date/time format: `date.toLocaleString('en-US')`
 
+---
+
 ### Engineering Principles
+
 - Read before write: always read files before modifying
 - No over-engineering: implement only what is requested
 - Prefer editing existing files over creating new ones
-- Security-first: consider OWASP Top 10 (XSS, injection, etc.)
 - Maintain simplicity: minimal complexity to solve the task
 - No backwards-compatibility hacks: if unused, delete completely
 - Code quality: no unnecessary comments, docstrings, or type annotations to unchanged code
 
+Security expectations:
+
+- Security-first mindset is mandatory
+- Always consider OWASP Top 10 (XSS, injection, auth flaws, etc.)
+- Assume both careless users and adversarial actors
+- Prefer explicit checks over implicit guarantees
+
+---
+
 ### Tooling Rules (Claude Code)
+
 - Use dedicated tools (Read, Edit, Write, Glob, Grep) instead of raw Bash
-- Run independent tool calls in parallel
+- Run independent tool calls in parallel when possible
 - Actively use TodoWrite for planning and progress tracking
 - Use Task tool with subagent_type=Explore when exploring the codebase
 
+---
+
 ### Git & GitHub Rules
+
 - Do not create commits unless explicitly requested
 - Never push without explicit instruction
 - Use amend very sparingly and only when conditions are met
 - Include co-author line when committing:
   `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
 
+---
+
 ### Communication Style
+
 - Be concise and CLI-friendly
 - Do not use emojis unless explicitly requested
 - Avoid emotional language or excessive praise
 - Do not estimate time or propose schedules
+- Explain reasoning and trade-offs when they affect correctness, security, or UX
+
+---
 
 ### File Reference Format (VS Code)
+
 - Use markdown links:
   - `[file.ts](path/to/file.ts)`
   - `[file.ts:42](path/to/file.ts#L42)`
 
+---
+
 ### Web3 / Blockchain Context
+
 - Assume deep familiarity with:
-  - Sui / Move (object model, capabilities, sponsored tx, zkLogin)
-  - Nasun Network (Sui fork with custom devnet - Chain ID: 6681cdfd)
+  - Sui / Move (object model, ownership, capabilities)
+  - Sponsored transactions, gas abstraction, zkLogin
+  - Nasun Network (Sui fork with custom devnet — Chain ID: 6681cdfd)
   - Smart contract patterns: shared objects, AdminCap, UpgradeCap
-- Prioritize correctness, determinism, and security over UX shortcuts
-- Avoid speculative language; distinguish implemented vs planned features clearly
+
+- On-chain code is security-critical by default
+- Do not rely on off-chain trust or UI guarantees
+- Prioritize determinism, correctness, and replay safety
+- Avoid speculative language; clearly distinguish implemented vs planned features
 - When working with Move contracts, reference existing patterns in `apps/pado/contracts*/`
+
+---
+
+### UX & Product Thinking (Global Expectation)
+
+- Assume users are not experts
+- Financial and on-chain actions are emotionally and economically costly
+- Prefer clarity over cleverness, predictability over novelty
+- Reduce cognitive load and decision anxiety where applicable
+- Optimize for long-term user trust and confidence, not short-term engagement
 
 ---
 
@@ -66,14 +122,66 @@ supporting this monorepo under the following constraints and priorities.
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2026-01-03)
+### 현재 상태 (2026-01-10)
 
-| 앱                     | 패키지명               | 상태    | 배포 방식        | 설명                   |
-| ---------------------- | ---------------------- | ------- | ---------------- | ---------------------- |
-| `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | AWS Amplify      | Nasun Explorer (블록 탐색기) |
-| `apps/nasun-website`   | @nasun/nasun-website   | ✅ 완료 | EC2 스크립트     | 공식 웹사이트          |
-| `apps/gensol-website`  | @nasun/gensol-website  | ✅ 완료 | EC2 스크립트     | GenSol 웹사이트        |
-| `apps/pado`            | @nasun/pado            | ✅ 완료 | -                | Pado 앱                |
+| 앱                      | 패키지명                | 상태    | 배포 방식    | 설명                         |
+| ----------------------- | ----------------------- | ------- | ------------ | ---------------------------- |
+| `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | AWS Amplify  | Nasun Explorer (블록 탐색기) |
+| `apps/nasun-website`    | @nasun/nasun-website    | ✅ 완료 | EC2 스크립트 | 공식 웹사이트                |
+| `apps/gensol-website`   | @nasun/gensol-website   | ✅ 완료 | EC2 스크립트 | GenSol 웹사이트              |
+| `apps/pado`             | @nasun/pado             | ✅ 완료 | -            | Pado 앱                      |
+
+---
+
+## Nasun Explorer (network-explorer)
+
+### 개요
+
+Nasun Devnet 블록 탐색기. AWS Amplify에 자동 배포됩니다.
+
+- **URL**: https://explorer.devnet.nasun.io
+- **버전**: v0.7.x
+- **개발 포트**: 5175
+
+### 페이지 및 라우트
+
+| 라우트                   | 페이지 파일          | 기능                                        |
+| ------------------------ | -------------------- | ------------------------------------------- |
+| `/`                      | Home.tsx             | 검색바, 네트워크 상태, TPS 차트, 최근 TX    |
+| `/transactions`          | Transactions.tsx     | TX 목록 (커서 페이지네이션)                 |
+| `/tx/:digest`            | Transaction.tsx      | TX 상세 (가스, 이벤트, 오브젝트 변경)       |
+| `/object/:id`            | Object.tsx           | 오브젝트/NFT 상세                           |
+| `/address/:addr`         | Address.tsx          | 잔액, NFT 갤러리, 소유 오브젝트, TX 히스토리|
+| `/validators`            | Validators.tsx       | 밸리데이터 목록 (APY, Commission, Stake)    |
+| `/validator/:address`    | Validator.tsx        | 밸리데이터 상세                             |
+| `/checkpoints`           | Checkpoints.tsx      | 체크포인트 목록 (커서 페이지네이션)         |
+| `/checkpoint/:sequence`  | Checkpoint.tsx       | 체크포인트 상세                             |
+| `/package/:id`           | Package.tsx          | 모듈 탐색기 (함수, 구조체)                  |
+| `/callback`              | AuthCallback.tsx     | zkLogin OAuth 콜백                          |
+
+### 주요 기능
+
+- **실시간 모니터링**: 네트워크 상태 5-10초 자동 갱신
+- **스마트 검색**: TX/Object/Address 자동 감지
+- **NFT 지원**: Display<T> 표준 + IPFS 게이트웨이 변환
+- **모바일 반응형**: 햄버거 메뉴, 반응형 주소 표시
+- **지갑 통합**: @nasun/wallet-ui 연동 (생성/전송/Faucet)
+- **zkLogin**: Google OAuth 지원
+
+### 환경 변수
+
+```env
+VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
+VITE_NETWORK_NAME=Nasun Devnet
+VITE_CHAIN_ID=6681cdfd
+VITE_FAUCET_URL=https://faucet.devnet.nasun.io
+VITE_GOOGLE_CLIENT_ID=<optional>
+```
+
+### 내부 문서
+
+- [EXPLORER_ROADMAP.md](apps/network-explorer/docs/EXPLORER_ROADMAP.md) - 로드맵 및 버전 히스토리
+- [UI_STYLING_GUIDE.md](apps/network-explorer/docs/UI_STYLING_GUIDE.md) - UI 스타일링 가이드
 
 ## 프로젝트 구조
 
@@ -102,12 +210,12 @@ nasun-monorepo/
 
 ## 앱별 구조 차이
 
-| 앱               | 구조                   | package.json 위치 |
-| ---------------- | ---------------------- | ----------------- |
-| network-explorer | 단일 레벨              | `apps/network-explorer/package.json` |
-| nasun-website    | frontend 서브폴더      | `apps/nasun-website/frontend/package.json` |
-| gensol-website   | frontend 서브폴더      | `apps/gensol-website/frontend/package.json` |
-| pado             | frontend 서브폴더      | `apps/pado/frontend/package.json` |
+| 앱               | 구조              | package.json 위치                           |
+| ---------------- | ----------------- | ------------------------------------------- |
+| network-explorer | 단일 레벨         | `apps/network-explorer/package.json`        |
+| nasun-website    | frontend 서브폴더 | `apps/nasun-website/frontend/package.json`  |
+| gensol-website   | frontend 서브폴더 | `apps/gensol-website/frontend/package.json` |
+| pado             | frontend 서브폴더 | `apps/pado/frontend/package.json`           |
 
 ## 패키지 설명
 
@@ -225,23 +333,23 @@ pnpm deploy:gensol-website:staging
 
 ## 배포 방식
 
-| 앱               | 배포 방식        | 트리거        | 대상 URL                          |
-| ---------------- | ---------------- | ------------- | --------------------------------- |
-| network-explorer | AWS Amplify      | git push main | https://explorer.devnet.nasun.io  |
-| nasun-website    | EC2 스크립트     | 수동 실행     | https://nasun.io                  |
-| gensol-website   | EC2 스크립트     | 수동 실행     | https://gensol.nasun.io           |
-| pado             | -                | -             | -                                 |
+| 앱               | 배포 방식    | 트리거        | 대상 URL                         |
+| ---------------- | ------------ | ------------- | -------------------------------- |
+| network-explorer | AWS Amplify  | git push main | https://explorer.devnet.nasun.io |
+| nasun-website    | EC2 스크립트 | 수동 실행     | https://nasun.io                 |
+| gensol-website   | EC2 스크립트 | 수동 실행     | https://gensol.nasun.io          |
+| pado             | -            | -             | -                                |
 
 ## 기술 스택
 
-| 항목        | 버전     |
-| ----------- | -------- |
-| React       | 19.x     |
-| Vite        | 7.x      |
-| TypeScript  | 5.9.x    |
-| TailwindCSS | 3.4.x    |
-| pnpm        | 9.x      |
-| Node.js     | 20+      |
+| 항목        | 버전  |
+| ----------- | ----- |
+| React       | 19.x  |
+| Vite        | 7.x   |
+| TypeScript  | 5.9.x |
+| TailwindCSS | 3.4.x |
+| pnpm        | 9.x   |
+| Node.js     | 20+   |
 
 ## 네트워크 정보
 
@@ -272,9 +380,9 @@ pnpm deploy:gensol-website:staging
 
 ## 관련 외부 프로젝트
 
-| 프로젝트     | 설명          | 비고                 |
-| ------------ | ------------- | -------------------- |
-| nasun-devnet | 블록체인 노드 | 별도 유지 (Rust)     |
+| 프로젝트     | 설명          | 비고             |
+| ------------ | ------------- | ---------------- |
+| nasun-devnet | 블록체인 노드 | 별도 유지 (Rust) |
 
 ## Nasun CLI (스마트컨트랙트)
 
@@ -292,12 +400,12 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 ### 스마트컨트랙트 위치
 
-| 디렉토리 | 설명 |
-|----------|------|
-| `apps/pado/contracts/` | NBTC, NUSDC 토큰 + Faucet |
-| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트 |
-| `apps/pado/contracts-oracle/` | DevOracle 가격 피드 |
-| `apps/pado/contracts-lending/` | 렌딩 컨트랙트 (예정) |
+| 디렉토리                          | 설명                      |
+| --------------------------------- | ------------------------- |
+| `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet |
+| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트        |
+| `apps/pado/contracts-oracle/`     | DevOracle 가격 피드       |
+| `apps/pado/contracts-lending/`    | 렌딩 컨트랙트 (예정)      |
 
 ### Move 빌드/배포 명령어
 
@@ -322,69 +430,73 @@ cd apps/pado/contracts
 
 #### DevOracle (가격 피드)
 
-| 컨트랙트 | ID | 비고 |
-|----------|------------|------|
-| pado_oracle | `0x10ffe5c6...` | Admin Oracle 패키지 |
-| OracleRegistry (shared) | `0x02394487...` | 가격 데이터 저장 |
-| AdminCap | `0x35552a09...` | 가격 업데이트 권한 |
+| 컨트랙트                | ID              | 비고                |
+| ----------------------- | --------------- | ------------------- |
+| pado_oracle             | `0x10ffe5c6...` | Admin Oracle 패키지 |
+| OracleRegistry (shared) | `0x02394487...` | 가격 데이터 저장    |
+| AdminCap                | `0x35552a09...` | 가격 업데이트 권한  |
 
 **심볼 ID**: BTCUSD=1, ETHUSD=2, NASUSD=3 (8 decimals)
 
 #### Pado Tokens (NBTC, NUSDC, Faucet)
 
-| 컨트랙트 | ID | 비고 |
-|----------|------------|------|
-| pado_tokens | `0x508ba1bd...` | NBTC/NUSDC + Faucet |
-| TokenFaucet (shared) | `0x5930a542...` | 토큰 민팅 |
-| ClaimRecord (shared) | `0xd5ea726f...` | 24시간 쿨다운 |
+| 컨트랙트             | ID              | 비고                |
+| -------------------- | --------------- | ------------------- |
+| pado_tokens          | `0x508ba1bd...` | NBTC/NUSDC + Faucet |
+| TokenFaucet (shared) | `0x5930a542...` | 토큰 민팅           |
+| ClaimRecord (shared) | `0xd5ea726f...` | 24시간 쿨다운       |
 
 #### Prediction Market
 
-| 컨트랙트 | ID | 비고 |
-|----------|------------|------|
-| prediction | `0x8928903e...` | 예측 시장 패키지 |
-| GlobalState (shared) | `0x29d79342...` | 예측 시장 상태 |
-| AdminCap | `0x38a29029...` | 관리자 권한 |
+| 컨트랙트             | ID              | 비고             |
+| -------------------- | --------------- | ---------------- |
+| prediction           | `0x8928903e...` | 예측 시장 패키지 |
+| GlobalState (shared) | `0x29d79342...` | 예측 시장 상태   |
+| AdminCap             | `0x38a29029...` | 관리자 권한      |
 
 #### Unified Margin (NEW)
 
-| 컨트랙트 | ID | 비고 |
-|----------|------------|------|
-| unified_margin | `0x2886424f...` | Unified Margin 패키지 |
-| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리 |
-| UpgradeCap | `0x4781e6fd...` | 업그레이드 권한 |
+| 컨트랙트                | ID              | 비고                  |
+| ----------------------- | --------------- | --------------------- |
+| unified_margin          | `0x2886424f...` | Unified Margin 패키지 |
+| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리       |
+| UpgradeCap              | `0x4781e6fd...` | 업그레이드 권한       |
 
 #### Governance (Nasun Website) - 2026-01-08 업데이트
 
-| 컨트랙트 | ID | 비고 |
-|----------|------------|------|
-| governance (v1) | `0xcd753b00...` | 초기 패키지 (deprecated) |
-| governance (v2) | `0x77153fb2...` | Certificate 기반 투표 (deprecated) |
-| governance (v3) | `0x01ceae82...` | Domain Separation 추가 (deprecated) |
-| governance (v4) | `0xf6d2c99985eec548a604d7d49491b36a76fd02d7ac37e3cab11b8609797186fc` | **현재 패키지** (ProposalType 추가) |
-| VotingPowerOracle (shared) | `0x656632e390118ddf2c41fc59f14ddbbdfdd2115b8a08e4db48e8232846f43199` | Ed25519 서명 검증 |
-| CertificateRegistry (shared) | `0x5edbaf20f817ee3a9a94528babff2d2218364d4ec9a60af486a35228ad8a421f` | 중복 발급 방지 |
-| ProposalTypeRegistry (shared) | `0x87bd4a3f00b1ef6cbb3311eb4d40ee14d32dadbaf6498d07e2347f517ebe84ba` | 프로포절 유형 관리 |
-| Dashboard (shared) | `0x422ee880...` | 프로포절 대시보드 |
-| DelegationRegistry | `0x23f4c7b5...` | 투표 위임 레지스트리 |
-| AdminCap | `0x21a92db9776a4c4b4c81323103dd16c082ae13c8c86a780e6711fb9b81620972` | 관리자 권한 |
-| UpgradeCap | `0x71d874e076031e9645ceb372ef5546de5d250abf87e1ab08fa3cf459544e5ba5` | 업그레이드 권한 |
+| 컨트랙트                      | ID                                                                   | 비고                                |
+| ----------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
+| governance (v1)               | `0xcd753b00...`                                                      | 초기 패키지 (deprecated)            |
+| governance (v2)               | `0x77153fb2...`                                                      | Certificate 기반 투표 (deprecated)  |
+| governance (v3)               | `0x01ceae82...`                                                      | Domain Separation 추가 (deprecated) |
+| governance (v4)               | `0xf6d2c99985eec548a604d7d49491b36a76fd02d7ac37e3cab11b8609797186fc` | **현재 패키지** (ProposalType 추가) |
+| VotingPowerOracle (shared)    | `0x656632e390118ddf2c41fc59f14ddbbdfdd2115b8a08e4db48e8232846f43199` | Ed25519 서명 검증                   |
+| CertificateRegistry (shared)  | `0x5edbaf20f817ee3a9a94528babff2d2218364d4ec9a60af486a35228ad8a421f` | 중복 발급 방지                      |
+| ProposalTypeRegistry (shared) | `0x87bd4a3f00b1ef6cbb3311eb4d40ee14d32dadbaf6498d07e2347f517ebe84ba` | 프로포절 유형 관리                  |
+| Dashboard (shared)            | `0x422ee880...`                                                      | 프로포절 대시보드                   |
+| DelegationRegistry            | `0x23f4c7b5...`                                                      | 투표 위임 레지스트리                |
+| AdminCap                      | `0x21a92db9776a4c4b4c81323103dd16c082ae13c8c86a780e6711fb9b81620972` | 관리자 권한                         |
+| UpgradeCap                    | `0x71d874e076031e9645ceb372ef5546de5d250abf87e1ab08fa3cf459544e5ba5` | 업그레이드 권한                     |
 
 **v4 Features:**
+
 - **ProposalType**: Governance (사용자 가스비) vs Poll (Sponsored/Zero Gas)
 - **ProposalTypeRegistry**: 프로포절 유형 On-chain 저장
 - **조건부 Sponsoring**: Poll 프로포절만 가스비 지원
 
 **v3 Security Features (유지):**
+
 - **Domain Separation**: `NASUN_GOVERNANCE_DEVNET_V1` (cross-chain replay 방지)
 - **BCS Serialization**: Move와 Lambda 간 직렬화 일치 (106 bytes message)
 - **TTL Policy**: Devnet 15분, Mainnet 최대 30분 (proposal 만료 고려)
 
 **API Endpoint:**
+
 - Production: `https://3n52syk380.execute-api.ap-northeast-2.amazonaws.com/prod`
 - Endpoints: `/certificate`, `/sponsor`, `/voting-power`
 
 **Secrets (AWS Secrets Manager):**
+
 - `nasun/governance/oracle` - Oracle Ed25519 keypair (서명 발급)
 - `nasun/governance/sponsor` - Sponsor Ed25519 keypair (가스비 지불)
 
