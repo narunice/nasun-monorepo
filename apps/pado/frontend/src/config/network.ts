@@ -51,6 +51,33 @@ export const TOKENS = {
   },
 } as const;
 
+// Network Type Detection
+export type NetworkType = 'devnet' | 'testnet' | 'mainnet';
+
+/**
+ * Detect current network type based on Chain ID or RPC URL
+ */
+export function getNetworkType(): NetworkType {
+  const { rpcUrl, chainId } = NETWORK_CONFIG;
+
+  // Chain ID based detection (primary)
+  if (chainId === '6681cdfd') return 'devnet'; // Nasun Devnet
+
+  // RPC URL based detection (fallback)
+  if (rpcUrl.includes('devnet')) return 'devnet';
+  if (rpcUrl.includes('testnet')) return 'testnet';
+
+  return 'mainnet';
+}
+
+/**
+ * Check if faucet is available on current network
+ */
+export function isFaucetAvailable(): boolean {
+  const networkType = getNetworkType();
+  return networkType === 'devnet' || networkType === 'testnet';
+}
+
 // Pool Metadata
 export const POOLS = {
   NBTC_NUSDC: {
