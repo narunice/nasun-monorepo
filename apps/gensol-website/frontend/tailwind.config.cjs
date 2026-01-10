@@ -1,4 +1,4 @@
-const baseConfig = require("@nasun/tailwind-config");
+const baseConfig = require("@nasun/tailwind-config")
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -66,4 +66,4 @@ module.exports = {
       variantPrefix: "rdx",
     }),
   ],
-};
+}
