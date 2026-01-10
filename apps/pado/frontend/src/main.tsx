@@ -13,6 +13,7 @@ import { WalletProvider } from '@nasun/wallet-ui';
 import { ThemeProvider } from './providers/theme';
 import { ErrorBoundary } from './components/layout';
 import { ToastProvider } from './components/common';
+import { MarketProvider } from './features/trading/context';
 import { validateEnvWithWarning, logEnvSummary } from './utils';
 import { NETWORK_CONFIG, TOKENS } from './config/network';
 import App from './App';
@@ -45,6 +46,9 @@ configureWallet({
   faucetUrl: NETWORK_CONFIG.faucetUrl,
   sessionPersist: true, // Keep wallet unlocked during browser session
 });
+
+// Note: NASUN faucet is auto-registered by @nasun/wallet package
+// NBTC/NUSDC faucet handlers are registered in App.tsx (requires wallet signing)
 
 // Configure zkLogin (Phase 9: Smart Account v2)
 // Enables seedless onboarding via Google OAuth
@@ -90,7 +94,9 @@ createRoot(document.getElementById('root')!).render(
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
               <WalletProvider>
-                <App />
+                <MarketProvider>
+                  <App />
+                </MarketProvider>
               </WalletProvider>
             </ToastProvider>
           </QueryClientProvider>

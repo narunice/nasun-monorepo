@@ -5,3 +5,4 @@ export { OutcomeOrderForm } from './OutcomeOrderForm';
 export { PositionList } from './PositionList';
 export { AdminResolveModal } from './AdminResolveModal';
 export { CreateMarketForm } from './CreateMarketForm';
+export { PredictionAdminPanel } from './PredictionAdminPanel';

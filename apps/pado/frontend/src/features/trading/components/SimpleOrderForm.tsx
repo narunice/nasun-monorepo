@@ -16,10 +16,10 @@ interface SimpleOrderFormProps {
   onMarketSell: (baseAmount: number) => void;
   disabled: boolean;
   isLoading: boolean;
+  /** Trading balance - quote token (for Max button calculation) */
   quoteBalance?: number;
+  /** Trading balance - base token (for Max button calculation) */
   baseBalance?: number;
-  walletQuoteBalance?: string;
-  walletBaseBalance?: string;
 }
 
 export function SimpleOrderForm({
@@ -30,8 +30,6 @@ export function SimpleOrderForm({
   isLoading,
   quoteBalance = 0,
   baseBalance = 0,
-  walletQuoteBalance = '0',
-  walletBaseBalance = '0',
 }: SimpleOrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -52,6 +50,11 @@ export function SimpleOrderForm({
   const maxBuyUsd = quoteBalance;
   const maxSellUsd = baseBalance * midPrice;
 
+  // Insufficient balance check (Phase 2)
+  const insufficientForBuy = orderSide === 'buy' && usdAmount !== null && usdAmount > maxBuyUsd;
+  const insufficientForSell = orderSide === 'sell' && usdAmount !== null && usdAmount > maxSellUsd;
+  const isInsufficientBalance = insufficientForBuy || insufficientForSell;
+
   const handleQuickAmount = (amount: number) => {
     setUsdAmount(amount);
   };
@@ -70,43 +73,10 @@ export function SimpleOrderForm({
     }
   };
 
-  const isButtonDisabled = disabled || isLoading || !usdAmount || baseAmount <= 0;
+  const isButtonDisabled = disabled || isLoading || !usdAmount || baseAmount <= 0 || isInsufficientBalance;
 
   return (
     <div className="space-y-4">
-      {/* Balance Overview */}
-      <div className="p-3 bg-theme-bg-tertiary/50 rounded-lg">
-        <div className="text-xs text-theme-text-muted mb-2">Your Balance</div>
-        <div className="grid grid-cols-2 gap-3">
-          {/* Wallet Column */}
-          <div>
-            <div className="text-[10px] text-theme-text-muted mb-1">Wallet</div>
-            <div className="text-sm font-mono text-theme-text-primary">
-              {walletBaseBalance} {baseSymbol}
-            </div>
-            <div className="text-sm font-mono text-theme-text-secondary">
-              {walletQuoteBalance} {quoteSymbol}
-            </div>
-          </div>
-          {/* Trading Column */}
-          <div>
-            <div className="text-[10px] text-theme-text-muted mb-1">Trading</div>
-            <div className="text-sm font-mono text-theme-text-primary">
-              {baseBalance.toFixed(4)} {baseSymbol}
-            </div>
-            <div className="text-sm font-mono text-theme-text-secondary">
-              {quoteBalance.toFixed(2)} {quoteSymbol}
-            </div>
-          </div>
-        </div>
-        {/* Deposit hint when Trading balance is empty */}
-        {quoteBalance === 0 && baseBalance === 0 && (
-          <div className="mt-2 text-xs text-theme-text-muted">
-            Deposit to Trading balance to start trading
-          </div>
-        )}
-      </div>
-
       {/* Buy/Sell Toggle */}
       <div className="flex bg-theme-bg-tertiary rounded-lg p-1">
         <button
@@ -169,6 +139,21 @@ export function SimpleOrderForm({
               ~{baseAmount.toFixed(4)} {baseSymbol}
             </span>
           </div>
+          {/* Insufficient Balance Warning (Phase 2) */}
+          {isInsufficientBalance && (
+            <div className="pt-2 border-t border-theme-border/30">
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <span>⚠</span>
+                <span>
+                  Insufficient balance (
+                  {orderSide === 'buy'
+                    ? `${maxBuyUsd.toFixed(2)} ${quoteSymbol}`
+                    : `${maxSellUsd.toFixed(2)} ${quoteSymbol}`}
+                  {' '}available)
+                </span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 

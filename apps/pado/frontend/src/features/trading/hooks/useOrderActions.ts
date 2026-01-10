@@ -3,10 +3,12 @@
  * 주문 실행 래퍼 (useTrading + Toast 통합)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTrading } from '../useTrading';
 import { useMarket } from '../context/MarketContext';
+import { useAutoDeposit } from './useAutoDeposit';
+import { useMarginAccount } from '../../core/unified-margin/useMarginAccount';
 import type { TradeResult, OrderType } from '../types';
 import { ORDER_TYPE } from '../constants';
 import { useToast } from '../../../components/common';
@@ -16,6 +18,12 @@ import { isMarginError } from '../../../lib/risk-engine';
 export interface UseOrderActionsResult {
   isLoading: boolean;
   balanceManagerId: string | null;
+
+  // Auto deposit state
+  isAutoDepositing: boolean;
+  autoDepositEnabled: boolean;
+  setAutoDepositEnabled: (enabled: boolean) => void;
+  lastAutoDepositError: string | null;
 
   // 주문 실행
   handleLimitOrder: (
@@ -70,6 +78,22 @@ export function useOrderActions(): UseOrderActionsResult {
     withdrawAllTokens,
   } = useTrading();
 
+  // Auto deposit state (default enabled)
+  const [autoDepositEnabled, setAutoDepositEnabled] = useState(true);
+
+  // Auto deposit hook
+  const {
+    depositIfNeeded,
+    isDepositing: isAutoDepositing,
+    lastDepositError: lastAutoDepositError,
+  } = useAutoDeposit(balanceManagerId);
+
+  // Margin account for unified onboarding
+  const {
+    hasAccount: hasMarginAccount,
+    createAccount: createMarginAccount,
+  } = useMarginAccount();
+
   // Convert error message to user-friendly format
   const formatUserFriendlyError = useCallback(
     (error: string | undefined): string => {
@@ -118,7 +142,7 @@ export function useOrderActions(): UseOrderActionsResult {
     }, 2000);
   }, [queryClient]);
 
-  // 지정가 주문 실행
+  // 지정가 주문 실행 (with auto deposit)
   const handleLimitOrder = useCallback(
     async (
       type: 'buy' | 'sell',
@@ -126,6 +150,36 @@ export function useOrderActions(): UseOrderActionsResult {
       amount: number,
       orderType: OrderType = ORDER_TYPE.NO_RESTRICTION,
     ): Promise<TradeResult> => {
+      // Auto deposit if enabled
+      if (autoDepositEnabled && balanceManagerId) {
+        // Calculate required amounts
+        const requiredQuote = type === 'buy' ? price * amount : 0;
+        const requiredBase = type === 'sell' ? amount : 0;
+
+        const depositResult = await depositIfNeeded(requiredQuote, requiredBase);
+
+        if (!depositResult.success) {
+          const friendlyError = depositResult.error || 'Auto deposit failed';
+          showToast(friendlyError, 'error');
+          return {
+            success: false,
+            error: friendlyError,
+          };
+        }
+
+        // Show deposit notification if deposit occurred
+        if (depositResult.depositedAmount && depositResult.depositedAmount > 0) {
+          showToast(
+            `Auto-deposited ${depositResult.depositedAmount.toFixed(2)} NUSDC to trading`,
+            'info',
+          );
+
+          // Wait for RPC to sync new object versions after deposit
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
+      // Place the order
       const result =
         type === 'buy'
           ? await placeBuyOrder(price, amount, orderType)
@@ -142,12 +196,52 @@ export function useOrderActions(): UseOrderActionsResult {
 
       return result;
     },
-    [placeBuyOrder, placeSellOrder, showToast, refreshData, formatUserFriendlyError],
+    [
+      autoDepositEnabled,
+      balanceManagerId,
+      depositIfNeeded,
+      placeBuyOrder,
+      placeSellOrder,
+      showToast,
+      refreshData,
+      formatUserFriendlyError,
+    ],
   );
 
-  // 시장가 주문 실행
+  // 시장가 주문 실행 (with auto deposit)
   const handleMarketOrder = useCallback(
     async (type: 'buy' | 'sell', amount: number): Promise<TradeResult> => {
+      // Auto deposit if enabled
+      // For market orders, estimate required quote based on orderbook (conservative estimate)
+      if (autoDepositEnabled && balanceManagerId) {
+        // Conservative estimate: use a high price for buy orders
+        // Actual execution will use orderbook prices
+        const estimatedPrice = 100000; // Conservative max price for NBTC
+        const requiredQuote = type === 'buy' ? estimatedPrice * amount : 0;
+        const requiredBase = type === 'sell' ? amount : 0;
+
+        const depositResult = await depositIfNeeded(requiredQuote, requiredBase);
+
+        if (!depositResult.success) {
+          const friendlyError = depositResult.error || 'Auto deposit failed';
+          showToast(friendlyError, 'error');
+          return {
+            success: false,
+            error: friendlyError,
+          };
+        }
+
+        if (depositResult.depositedAmount && depositResult.depositedAmount > 0) {
+          showToast(
+            `Auto-deposited ${depositResult.depositedAmount.toFixed(2)} NUSDC to trading`,
+            'info',
+          );
+
+          // Wait for RPC to sync new object versions after deposit
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
       const rawQuantity = quantityToRaw(amount);
       const result = await placeMarketOrder({
         quantity: rawQuantity,
@@ -164,7 +258,15 @@ export function useOrderActions(): UseOrderActionsResult {
 
       return result;
     },
-    [placeMarketOrder, showToast, refreshData, formatUserFriendlyError],
+    [
+      autoDepositEnabled,
+      balanceManagerId,
+      depositIfNeeded,
+      placeMarketOrder,
+      showToast,
+      refreshData,
+      formatUserFriendlyError,
+    ],
   );
 
   // 주문 취소
@@ -192,18 +294,35 @@ export function useOrderActions(): UseOrderActionsResult {
     [cancelOrder, showToast, refreshData],
   );
 
-  // Trading 활성화 (BalanceManager 생성)
+  // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
   const handleCreateBalanceManager = useCallback(async (): Promise<TradeResult> => {
+    // Step 1: Create BalanceManager
     const result = await createBalanceManager();
 
-    if (result.success) {
-      showToast('Trading enabled!', 'success');
-    } else {
+    if (!result.success) {
       showToast(`Error: ${result.error}`, 'error');
+      return result;
+    }
+
+    // Step 2: Create MarginAccount if not exists (unified onboarding)
+    if (!hasMarginAccount) {
+      try {
+        // Wait for RPC to sync after BalanceManager creation
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await createMarginAccount();
+        showToast('Pado enabled!', 'success');
+      } catch (error) {
+        // BM succeeded but MA failed - show warning but don't fail
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.warn('[UnifiedOnboarding] MarginAccount creation failed:', errorMsg);
+        showToast('Trading enabled. Pado Balance setup failed.', 'warning');
+      }
+    } else {
+      showToast('Pado enabled!', 'success');
     }
 
     return result;
-  }, [createBalanceManager, showToast]);
+  }, [createBalanceManager, hasMarginAccount, createMarginAccount, showToast]);
 
   // Trading 잔고로 추가
   const handleDeposit = useCallback(async (): Promise<TradeResult> => {
@@ -240,6 +359,10 @@ export function useOrderActions(): UseOrderActionsResult {
   return {
     isLoading,
     balanceManagerId,
+    isAutoDepositing,
+    autoDepositEnabled,
+    setAutoDepositEnabled,
+    lastAutoDepositError,
     handleLimitOrder,
     handleMarketOrder,
     handleCancelOrder,

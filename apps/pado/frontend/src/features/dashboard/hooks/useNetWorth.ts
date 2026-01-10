@@ -2,52 +2,33 @@
  * useNetWorth
  * Calculate total net worth across all assets
  *
- * Unified Margin v0: Includes both wallet AND BalanceManager balances
- * This is the single source of truth for user's total portfolio value.
+ * Unified Margin v0.2: Includes Wallet + BalanceManager + MarginAccount balances
+ * Uses unified prices from lib/prices.ts for consistency across the app.
  *
- * TODO: Add real price oracle integration
- * Currently uses simulated prices for demonstration
+ * @version 2.0.0 (Phase 16.1)
  */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useMultiBalance } from '@nasun/wallet';
+import { useMultiBalance, useWallet, useZkLogin } from '@nasun/wallet';
 import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
+import { useMarginAccount } from '../../core/unified-margin';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
-import { POOLS } from '../../../config/network';
-
-// Simulated prices (will be replaced with real oracle data)
-const SIMULATED_PRICES: Record<string, number> = {
-  NASUN: 1.0,
-  NBTC: 45000,
-  NUSDC: 1.0,
-};
-
-// 24h price changes (simulated)
-const SIMULATED_CHANGES: Record<string, number> = {
-  NASUN: 2.5,
-  NBTC: -1.2,
-  NUSDC: 0.0,
-};
-
-// Storage key for BalanceManager ID
-const BALANCE_MANAGER_KEY = 'pado_balance_manager';
-
-function getStoredBalanceManagerId(): string | null {
-  try {
-    return localStorage.getItem(BALANCE_MANAGER_KEY);
-  } catch {
-    return null;
-  }
-}
+import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
+import { POOLS, TOKENS } from '../../../config/network';
+import {
+  type TokenSymbol,
+  getPriceChange24h,
+  calculateUsdValue,
+  calculate24hPnl,
+} from '../../../lib/prices';
 
 interface TokenBalance {
   symbol: string;
   balance: bigint;
   usdValue: number;
   change24h: number;
-  // Unified Margin v0: Track where the balance comes from
-  source?: 'wallet' | 'trading' | 'combined';
+  source?: 'wallet' | 'trading' | 'margin' | 'combined';
 }
 
 interface NetWorthData {
@@ -56,9 +37,13 @@ interface NetWorthData {
   changePercent: number;
   tokens: TokenBalance[];
   predictionValue: number;
-  // Unified Margin v0: Trading balance breakdown
+  // Unified Margin v0.2: Balance breakdown by source
   tradingBalance: {
     nbtc: number;
+    nusdc: number;
+    totalUsd: number;
+  };
+  marginBalance: {
     nusdc: number;
     totalUsd: number;
   };
@@ -66,11 +51,24 @@ interface NetWorthData {
 }
 
 export function useNetWorth(): NetWorthData {
+  // Get active wallet address
+  const { account: walletAccount, status } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const activeAddress = isZkLoggedIn ? zkState?.address : (status === 'unlocked' ? walletAccount?.address : undefined);
+
   const { data: balances, isLoading: balancesLoading } = useMultiBalance();
   const { positions, isLoading: positionsLoading } = usePredictionPositions();
 
-  // Unified Margin v0: Query BalanceManager balance (NBTC/NUSDC pool)
-  const balanceManagerId = getStoredBalanceManagerId();
+  // Unified Margin v0.2: Query MarginAccount balance
+  const {
+    account: marginAccount,
+    hasAccount: hasMarginAccount,
+    isLoading: marginLoading,
+  } = useMarginAccount();
+
+  // Query BalanceManager balance (NBTC/NUSDC pool)
+  // IMPORTANT: Use address-keyed storage to support multi-wallet
+  const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
   const { data: bmBalance, isLoading: bmLoading } = useQuery({
     queryKey: ['bm-balance-networth', balanceManagerId],
     queryFn: async () => {
@@ -87,28 +85,34 @@ export function useNetWorth(): NetWorthData {
     let totalUsdValue = 0;
     let previousDayValue = 0;
 
-    // Unified Margin v0: Track trading balances separately
+    // Trading balances (BalanceManager)
     const tradingNbtc = bmBalance?.base ?? 0;
     const tradingNusdc = bmBalance?.quote ?? 0;
-    const tradingNbtcUsd = tradingNbtc * SIMULATED_PRICES.NBTC;
-    const tradingNusdcUsd = tradingNusdc * SIMULATED_PRICES.NUSDC;
+    const tradingNbtcUsd = calculateUsdValue('NBTC', tradingNbtc);
+    const tradingNusdcUsd = calculateUsdValue('NUSDC', tradingNusdc);
     const tradingTotalUsd = tradingNbtcUsd + tradingNusdcUsd;
+
+    // Margin balance (MarginAccount - NUSDC only)
+    const marginNusdc = hasMarginAccount && marginAccount?.nusdcBalance
+      ? Number(marginAccount.nusdcBalance) / 10 ** TOKENS.NUSDC.decimals
+      : 0;
+    const marginNusdcUsd = calculateUsdValue('NUSDC', marginNusdc);
 
     // Calculate wallet token balances
     if (balances) {
       // Native token (NASUN)
       if (balances.native && balances.native.balance > 0n) {
-        const symbol = balances.native.symbol;
+        const symbol = balances.native.symbol as TokenSymbol;
         const balance = balances.native.balance;
         const decimals = balances.native.decimals;
         const amount = Number(balance) / Math.pow(10, decimals);
-        const price = SIMULATED_PRICES[symbol] || 1.0;
-        const usdValue = amount * price;
-        const change24h = SIMULATED_CHANGES[symbol] || 0;
+        const usdValue = calculateUsdValue(symbol, amount);
+        const change24h = getPriceChange24h(symbol);
+        const pnl = calculate24hPnl(symbol, usdValue);
 
         tokens.push({ symbol, balance, usdValue, change24h, source: 'wallet' });
         totalUsdValue += usdValue;
-        previousDayValue += usdValue / (1 + change24h / 100);
+        previousDayValue += usdValue - pnl;
       }
 
       // Other tokens (NBTC, NUSDC, etc.)
@@ -119,56 +123,63 @@ export function useNetWorth(): NetWorthData {
             const decimals = tokenData.decimals;
             const walletAmount = Number(balance) / Math.pow(10, decimals);
 
-            // Unified Margin v0: Add trading balance to matching tokens
+            // Add trading and margin balances to matching tokens
             let totalAmount = walletAmount;
             if (symbol === 'NBTC') {
               totalAmount += tradingNbtc;
             } else if (symbol === 'NUSDC') {
-              totalAmount += tradingNusdc;
+              totalAmount += tradingNusdc + marginNusdc;
             }
 
-            const price = SIMULATED_PRICES[symbol] || 1.0;
-            const usdValue = totalAmount * price;
-            const change24h = SIMULATED_CHANGES[symbol] || 0;
+            const tokenSymbol = symbol as TokenSymbol;
+            const usdValue = calculateUsdValue(tokenSymbol, totalAmount);
+            const change24h = getPriceChange24h(tokenSymbol);
+            const pnl = calculate24hPnl(tokenSymbol, usdValue);
 
             // Determine source for display
             const hasWallet = walletAmount > 0;
             const hasTrading = (symbol === 'NBTC' && tradingNbtc > 0) || (symbol === 'NUSDC' && tradingNusdc > 0);
-            const source = hasWallet && hasTrading ? 'combined' : hasTrading ? 'trading' : 'wallet';
+            const hasMargin = symbol === 'NUSDC' && marginNusdc > 0;
+            const sourceCount = [hasWallet, hasTrading, hasMargin].filter(Boolean).length;
+            const source: TokenBalance['source'] = sourceCount > 1 ? 'combined' : hasTrading ? 'trading' : hasMargin ? 'margin' : 'wallet';
 
             tokens.push({ symbol, balance, usdValue, change24h, source });
             totalUsdValue += usdValue;
-            previousDayValue += usdValue / (1 + change24h / 100);
+            previousDayValue += usdValue - pnl;
           }
         }
       }
 
-      // Unified Margin v0: Add trading-only tokens (if not in wallet)
+      // Add trading-only tokens (if not in wallet)
       if (!balances.tokens?.NBTC && tradingNbtc > 0) {
-        const usdValue = tradingNbtc * SIMULATED_PRICES.NBTC;
-        const change24h = SIMULATED_CHANGES.NBTC || 0;
+        const usdValue = calculateUsdValue('NBTC', tradingNbtc);
+        const change24h = getPriceChange24h('NBTC');
+        const pnl = calculate24hPnl('NBTC', usdValue);
         tokens.push({
           symbol: 'NBTC',
-          balance: BigInt(Math.round(tradingNbtc * 1e8)),
+          balance: BigInt(Math.round(tradingNbtc * 10 ** TOKENS.NBTC.decimals)),
           usdValue,
           change24h,
           source: 'trading',
         });
         totalUsdValue += usdValue;
-        previousDayValue += usdValue / (1 + change24h / 100);
+        previousDayValue += usdValue - pnl;
       }
-      if (!balances.tokens?.NUSDC && tradingNusdc > 0) {
-        const usdValue = tradingNusdc * SIMULATED_PRICES.NUSDC;
-        const change24h = SIMULATED_CHANGES.NUSDC || 0;
+      if (!balances.tokens?.NUSDC && (tradingNusdc > 0 || marginNusdc > 0)) {
+        const totalNusdc = tradingNusdc + marginNusdc;
+        const usdValue = calculateUsdValue('NUSDC', totalNusdc);
+        const change24h = getPriceChange24h('NUSDC');
+        const pnl = calculate24hPnl('NUSDC', usdValue);
+        const source: TokenBalance['source'] = tradingNusdc > 0 && marginNusdc > 0 ? 'combined' : tradingNusdc > 0 ? 'trading' : 'margin';
         tokens.push({
           symbol: 'NUSDC',
-          balance: BigInt(Math.round(tradingNusdc * 1e6)),
+          balance: BigInt(Math.round(totalNusdc * 10 ** TOKENS.NUSDC.decimals)),
           usdValue,
           change24h,
-          source: 'trading',
+          source,
         });
         totalUsdValue += usdValue;
-        previousDayValue += usdValue / (1 + change24h / 100);
+        previousDayValue += usdValue - pnl;
       }
     }
 
@@ -195,15 +206,18 @@ export function useNetWorth(): NetWorthData {
       changePercent,
       tokens,
       predictionValue,
-      // Unified Margin v0: Expose trading balance breakdown
       tradingBalance: {
         nbtc: tradingNbtc,
         nusdc: tradingNusdc,
         totalUsd: tradingTotalUsd,
       },
-      isLoading: balancesLoading || positionsLoading || bmLoading,
+      marginBalance: {
+        nusdc: marginNusdc,
+        totalUsd: marginNusdcUsd,
+      },
+      isLoading: balancesLoading || positionsLoading || bmLoading || marginLoading,
     };
-  }, [balances, positions, bmBalance, balancesLoading, positionsLoading, bmLoading]);
+  }, [balances, positions, bmBalance, marginAccount, hasMarginAccount, balancesLoading, positionsLoading, bmLoading, marginLoading]);
 
   return result;
 }

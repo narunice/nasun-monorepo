@@ -20,7 +20,12 @@ export function PaymentQRCode({ amount, token = 'NASUN', message }: PaymentQRCod
 
   // Check if connected via traditional wallet OR zkLogin
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
-  const connectedAddress = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const connectedAddress = isZkLoggedIn
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
 
   // Wallet not connected
   if (!isConnected || !connectedAddress) {

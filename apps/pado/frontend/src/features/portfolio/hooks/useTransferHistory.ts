@@ -3,7 +3,7 @@
  * Fetch user's token transfer history (send/receive)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 
 export interface TransferRecord {
@@ -30,10 +30,24 @@ export function useTransferHistory(): UseTransferHistoryResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const address = account?.address || zkState?.address;
+  // Determine active address (zkLogin takes priority)
+  const address = isZkConnected
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : undefined;
   const isConnected = (status === 'unlocked' && account) || isZkConnected;
 
-  const fetchTransfers = async () => {
+  // Clear transfers immediately when address changes (prevents stale data)
+  useEffect(() => {
+    console.log('[useTransferHistory] Address changed, clearing transfers:', address);
+    setTransfers([]);
+    setError(null);
+  }, [address]);
+
+  const fetchTransfers = useCallback(async () => {
+    console.log('[useTransferHistory] fetchTransfers called with address:', address);
+
     if (!isConnected || !address) {
       setTransfers([]);
       return;
@@ -58,11 +72,11 @@ export function useTransferHistory(): UseTransferHistoryResult {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isConnected, address]);
 
   useEffect(() => {
     fetchTransfers();
-  }, [isConnected, address]);
+  }, [fetchTransfers]);
 
   return {
     transfers,

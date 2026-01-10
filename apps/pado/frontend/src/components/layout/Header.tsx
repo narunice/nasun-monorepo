@@ -12,11 +12,21 @@ interface NavItem {
   enabled: boolean;
 }
 
+interface MarketsSubItem {
+  label: string;
+  path: string;
+  enabled: boolean;
+}
+
+const MARKETS_ITEMS: MarketsSubItem[] = [
+  { label: 'Spot', path: '/markets/spot', enabled: true },
+  { label: 'Perp', path: '/markets/perp', enabled: false },
+];
+
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Trade', path: '/trade', enabled: true },
-  { label: 'Earn', path: '/earn', enabled: true },
   { label: 'Predict', path: '/predict', enabled: true },
   { label: 'Lottery', path: '/lottery', enabled: true },
+  { label: 'Earn', path: '/earn', enabled: true },
   { label: 'Wallet', path: '/wallet', enabled: true },
 ];
 
@@ -25,7 +35,18 @@ export function Header() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMarketsOpen, setIsMarketsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const marketsRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile viewport for address shortening
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Wallet connection state
   const { status, account } = useWallet();
@@ -42,6 +63,7 @@ export function Header() {
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsMarketsOpen(false);
   }, [location.pathname]);
 
   // Close mobile menu on outside click
@@ -50,16 +72,19 @@ export function Header() {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setIsMobileMenuOpen(false);
       }
+      if (marketsRef.current && !marketsRef.current.contains(event.target as Node)) {
+        setIsMarketsOpen(false);
+      }
     };
 
-    if (isMobileMenuOpen) {
+    if (isMobileMenuOpen || isMarketsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, isMarketsOpen]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -67,6 +92,9 @@ export function Header() {
     }
     if (path === '/predict') {
       return location.pathname.startsWith('/predict');
+    }
+    if (path === '/markets') {
+      return location.pathname.startsWith('/markets') || location.pathname === '/trade';
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
@@ -90,6 +118,62 @@ export function Header() {
 
         {/* Desktop Navigation Menu */}
         <nav className="hidden md:flex items-center gap-1">
+          {/* Markets Dropdown */}
+          <div className="relative" ref={marketsRef}>
+            <button
+              onClick={() => setIsMarketsOpen(!isMarketsOpen)}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
+                isActive('/markets')
+                  ? 'text-blue-400 bg-blue-400/10'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+              }`}
+            >
+              Markets
+              <svg
+                className={`w-3 h-3 transition-transform ${isMarketsOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Markets Dropdown Menu */}
+            {isMarketsOpen && (
+              <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                {MARKETS_ITEMS.map((item) =>
+                  item.enabled ? (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={(e) => {
+                        handleNavClick(e, item.path);
+                        setIsMarketsOpen(false);
+                      }}
+                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isActive(item.path)
+                          ? 'text-blue-400 bg-blue-400/10'
+                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <span
+                      key={item.path}
+                      className="block px-4 py-2.5 text-sm text-theme-text-muted cursor-not-allowed"
+                    >
+                      {item.label}
+                      <span className="text-xs ml-1 text-purple-400">(Soon)</span>
+                    </span>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Other Nav Items */}
           {NAV_ITEMS.map((item) =>
             item.enabled ? (
               <Link
@@ -158,7 +242,12 @@ export function Header() {
           {/* Net Value (visible when connected, hidden on mobile) */}
           <HeaderNetValue />
 
-          {showWalletButton && <WalletConnect addressStartChars={2} addressEndChars={3} />}
+          {showWalletButton && (
+            <WalletConnect
+              addressStartChars={isMobile ? 0 : 2}
+              addressEndChars={3}
+            />
+          )}
 
           {/* Mobile Menu Button */}
           <div className="md:hidden relative" ref={mobileMenuRef}>
@@ -181,6 +270,41 @@ export function Header() {
             {/* Mobile Dropdown Menu */}
             {isMobileMenuOpen && (
               <nav className="absolute right-0 top-full mt-2 w-48 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                {/* Markets Section */}
+                <div className="border-b border-theme-border">
+                  <div className="px-4 py-2 text-xs font-medium text-theme-text-muted uppercase tracking-wider">
+                    Markets
+                  </div>
+                  {MARKETS_ITEMS.map((item) =>
+                    item.enabled ? (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={(e) => {
+                          handleNavClick(e, item.path);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                          isActive(item.path)
+                            ? 'text-blue-400 bg-blue-400/10'
+                            : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <span
+                        key={item.path}
+                        className="block px-4 py-2.5 text-sm text-theme-text-muted cursor-not-allowed"
+                      >
+                        {item.label}
+                        <span className="text-xs ml-1 text-purple-400">(Soon)</span>
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {/* Other Nav Items */}
                 {NAV_ITEMS.map((item) =>
                   item.enabled ? (
                     <Link

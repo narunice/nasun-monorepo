@@ -9,3 +9,9 @@ export { useOrderActions, type UseOrderActionsResult } from './useOrderActions';
 export { useTradeEvents } from './useTradeEvents';
 export { useTradeMode, type TradeMode } from './useTradeMode';
 export { useBalanceManagerBalance } from './useBalanceManagerBalance';
+export {
+  useAutoDeposit,
+  type AutoDepositResult,
+  type AutoDepositCheckResult,
+  type UseAutoDepositResult,
+} from './useAutoDeposit';
