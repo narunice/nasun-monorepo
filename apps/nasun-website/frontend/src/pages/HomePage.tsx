@@ -8,9 +8,9 @@ import { useHomePageLoading } from "../contexts/PageLoadingContext";
 import HeroSectionSkeleton from "../components/app/home/HeroSectionSkeleton";
 
 // Lazy load all sections
-const HeroSectionV3 = lazy(() => import("../components/app/home/HeroSectionV3"));
-const VisionSectionV2 = lazy(() => import("../components/app/home/VisionSectionV2"));
-const Wave1Section = lazy(() => import("../components/app/home/Wave1SectionV3"));
+const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
+const VisionSection = lazy(() => import("../components/app/home/VisionSection"));
+const Wave1Section = lazy(() => import("../components/app/home/Wave1Section"));
 const NftSaleSection = lazy(() => import("../components/app/home/NftSaleSection"));
 const AwardsGrantsSection = lazy(() => import("../components/app/home/AwardsGrantsSection"));
 const NewsEventsSection = lazy(() => import("../components/app/home/NewsEventsSection"));
@@ -33,7 +33,7 @@ export default function HomePage() {
     // Preload critical above-the-fold sections before showing footer
     // This prevents layout shift when sections load after footer appears
     await Promise.all([
-      import("../components/app/home/VisionSectionV2"),
+      import("../components/app/home/VisionSection"),
       import("../components/app/home/NewsEventsSection"),
     ]);
 
@@ -75,18 +75,15 @@ export default function HomePage() {
       <ScrollSnapContainer>
         <ErrorBoundary fallback={errorFallback}>
           <Suspense fallback={suspenseFallback}>
-            {/* HeroSectionV3: 맨 위 섹션 (개별 타이밍 애니메이션 + 트레일러) */}
+            {/* HeroSection: 맨 위 섹션 (개별 타이밍 애니메이션 + 트레일러) */}
             <ScrollSnapSection>
-              <HeroSectionV3 onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
+              <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
             </ScrollSnapSection>
 
-            {/* VisionSectionV2: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}
+            {/* VisionSection: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}
             {/* Hero 비디오 로딩 후 시작 */}
             <ScrollSnapSection>
-              <VisionSectionV2
-                shouldLoadVideo={isVideoReady}
-                onVideoReady={handleVisionVideoReady}
-              />
+              <VisionSection shouldLoadVideo={isVideoReady} onVideoReady={handleVisionVideoReady} />
             </ScrollSnapSection>
 
             {/* NewsEventsSection - 긴 컨텐츠 허용 */}
