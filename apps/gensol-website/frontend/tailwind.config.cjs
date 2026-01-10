@@ -11,7 +11,6 @@ module.exports = {
   theme: {
     fontFamily: {
       // Gensol-specific fonts (override base)
-      archivo: ['"archivo"', "sans-serif"],
       ddt: ['"ddt"', "sans-serif"],
       pirulen: ['"pirulen"', "sans-serif"],
       rajdhani: ['"rajdhani"', "sans-serif"],

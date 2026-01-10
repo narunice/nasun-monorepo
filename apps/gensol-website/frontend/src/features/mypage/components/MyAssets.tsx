@@ -6,7 +6,7 @@ export const MyAssets = () => {
   const account = useCurrentAccount()
 
   return (
-    <div className="my-4 p-8 rounded-sm bg-slate-800 shadow-md font-archivo">
+    <div className="my-4 p-8 rounded-sm bg-slate-800 shadow-md font-rubik">
       <Flex gap="4" className="flex justify-between">
         <Heading className="text-2xl font-semibold text-gray-100">MY ASSETS</Heading>
         <Flex className="items-end py-2">
