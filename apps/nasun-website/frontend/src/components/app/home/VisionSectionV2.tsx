@@ -21,8 +21,14 @@ interface VisionSectionV2Props {
  */
 function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectionV2Props) {
   const [isMobile, setIsMobile] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Handle first play event for fade-in effect (only triggers once, not on loop)
+  const handleVideoPlaying = () => {
+    setIsVideoPlaying(true);
+  };
 
   // Detect mobile device (< 1024px)
   useEffect(() => {
@@ -101,7 +107,10 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             webkit-playsinline="true"
             preload="metadata"
             x-webkit-airplay="allow"
-            className="absolute top-0 left-0 w-full h-full object-cover object-center"
+            onPlaying={handleVideoPlaying}
+            className={`absolute top-0 left-0 w-full h-full object-cover object-center transition-opacity duration-500 ${
+              isVideoPlaying ? "opacity-100" : "opacity-0"
+            }`}
           >
             <source src={videoSrc} type="video/mp4" />
           </video>

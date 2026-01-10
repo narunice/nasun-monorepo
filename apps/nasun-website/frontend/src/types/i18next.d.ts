@@ -78,66 +78,7 @@ declare module "i18next" {
       };
       products: typeof productsEN;
       web3: typeof web3EN;
-      tokenomics: typeof tokenomicsEN & {
-        network: {
-          layer1: string;
-          nsnTitle: string;
-          visionTitle: string;
-          visionDescription: string;
-        };
-        distribution: {
-          heading: string;
-          description_top: string;
-          subheading: string;
-          supply: string;
-          description_bottom: string;
-          early_contributors: string;
-          nasun_core: string;
-          testers: string;
-          community_reserve: {
-            title: string;
-          };
-          public_sales: {
-            title: string;
-          };
-        };
-        moveTogether: {
-          heading: string;
-          subtitle: string;
-          title: string;
-          description: string;
-        };
-        network_details: {
-          defi: {
-            title: string;
-            subtitle: string;
-            body1: string;
-            body2: string;
-            body3: string;
-            listTitle: string;
-            list_items: string[];
-          };
-          depin: {
-            title: string;
-            intro: string;
-            list_items: string[];
-            body1: string;
-            body2: string;
-          };
-          reinvesting: {
-            title: string;
-            body1: string;
-            body2: string;
-          };
-          inflation: {
-            title: string;
-            body1: string;
-            list_items: string[];
-            body2: string;
-            body3: string;
-          };
-        };
-      };
+      tokenomics: typeof tokenomicsEN;
       manifesto: typeof manifestoEN;
       story: typeof storyEN;
       roadmap: typeof roadmapEN;
