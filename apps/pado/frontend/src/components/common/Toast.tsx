@@ -70,11 +70,19 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onRemove }: ToastItemProps) {
   useEffect(() => {
+    // Duration varies by type: errors need more time to read
+    const duration = {
+      error: 8000,    // 8 seconds for error messages
+      warning: 6000,  // 6 seconds for warnings
+      success: 4000,  // 4 seconds for success
+      info: 5000,     // 5 seconds for info
+    }[toast.type];
+
     const timer = setTimeout(() => {
       onRemove(toast.id);
-    }, 5000);
+    }, duration);
     return () => clearTimeout(timer);
-  }, [toast.id, onRemove]);
+  }, [toast.id, toast.type, onRemove]);
 
   const bgColor = {
     success: 'bg-green-900/90 border-green-700 text-green-300',
