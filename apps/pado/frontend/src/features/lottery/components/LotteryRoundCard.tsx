@@ -159,9 +159,9 @@ export function LotteryRoundCard({
               Jackpot
             </span>
             <span className="text-theme-text-secondary">
-              {round.tier1Winners} winner{round.tier1Winners !== 1n ? 's' : ''}
+              {round.tier1Winners} winner{round.tier1Winners !== 1 ? 's' : ''}
             </span>
-            {round.tier1Winners > 0n && (
+            {round.tier1Winners > 0 && (
               <span className="text-yellow-400 font-medium">
                 ({formatNusdc(round.tier1PayoutPerWinner)} each)
               </span>
@@ -174,9 +174,9 @@ export function LotteryRoundCard({
               2nd Prize
             </span>
             <span className="text-theme-text-secondary">
-              {round.tier2Winners} winner{round.tier2Winners !== 1n ? 's' : ''}
+              {round.tier2Winners} winner{round.tier2Winners !== 1 ? 's' : ''}
             </span>
-            {round.tier2Winners > 0n && (
+            {round.tier2Winners > 0 && (
               <span className="text-blue-400 font-medium">
                 ({formatNusdc(round.tier2PayoutPerWinner)} each)
               </span>
@@ -189,9 +189,9 @@ export function LotteryRoundCard({
               3rd Prize
             </span>
             <span className="text-theme-text-secondary">
-              {round.tier3Winners} winner{round.tier3Winners !== 1n ? 's' : ''}
+              {round.tier3Winners} winner{round.tier3Winners !== 1 ? 's' : ''}
             </span>
-            {round.tier3Winners > 0n && (
+            {round.tier3Winners > 0 && (
               <span className="text-green-400 font-medium">
                 ({formatNusdc(round.tier3PayoutPerWinner)} each)
               </span>

@@ -133,22 +133,22 @@ export function LotteryRoundPage() {
               {/* Multi-tier winner summary */}
               {isSettled && (
                 <div className="mt-4 space-y-2 text-center">
-                  {round.tier1Winners > 0n && (
+                  {round.tier1Winners > 0 && (
                     <p className="text-yellow-400 font-medium">
-                      {Number(round.tier1Winners)} Jackpot winner{round.tier1Winners !== 1n ? 's' : ''}!
+                      {Number(round.tier1Winners)} Jackpot winner{round.tier1Winners !== 1 ? 's' : ''}!
                     </p>
                   )}
-                  {round.tier2Winners > 0n && (
+                  {round.tier2Winners > 0 && (
                     <p className="text-blue-400">
-                      {Number(round.tier2Winners)} 2nd prize winner{round.tier2Winners !== 1n ? 's' : ''}
+                      {Number(round.tier2Winners)} 2nd prize winner{round.tier2Winners !== 1 ? 's' : ''}
                     </p>
                   )}
-                  {round.tier3Winners > 0n && (
+                  {round.tier3Winners > 0 && (
                     <p className="text-green-400">
-                      {Number(round.tier3Winners)} 3rd prize winner{round.tier3Winners !== 1n ? 's' : ''}
+                      {Number(round.tier3Winners)} 3rd prize winner{round.tier3Winners !== 1 ? 's' : ''}
                     </p>
                   )}
-                  {round.tier1Winners === 0n && round.tier2Winners === 0n && round.tier3Winners === 0n && (
+                  {round.tier1Winners === 0 && round.tier2Winners === 0 && round.tier3Winners === 0 && (
                     <p className="text-theme-text-secondary">
                       No winners this round. Prize rolled over.
                     </p>
@@ -223,9 +223,9 @@ export function LotteryRoundPage() {
               </div>
               <div className="text-right">
                 <div className="text-yellow-400 font-medium">
-                  {Number(round.tier1Winners)} winner{round.tier1Winners !== 1n ? 's' : ''}
+                  {Number(round.tier1Winners)} winner{round.tier1Winners !== 1 ? 's' : ''}
                 </div>
-                {round.tier1Winners > 0n && (
+                {round.tier1Winners > 0 && (
                   <div className="text-sm text-theme-text-secondary">
                     {formatNusdc(round.tier1PayoutPerWinner)} NUSDC each
                   </div>
@@ -243,9 +243,9 @@ export function LotteryRoundPage() {
               </div>
               <div className="text-right">
                 <div className="text-blue-400 font-medium">
-                  {Number(round.tier2Winners)} winner{round.tier2Winners !== 1n ? 's' : ''}
+                  {Number(round.tier2Winners)} winner{round.tier2Winners !== 1 ? 's' : ''}
                 </div>
-                {round.tier2Winners > 0n && (
+                {round.tier2Winners > 0 && (
                   <div className="text-sm text-theme-text-secondary">
                     {formatNusdc(round.tier2PayoutPerWinner)} NUSDC each
                   </div>
@@ -263,9 +263,9 @@ export function LotteryRoundPage() {
               </div>
               <div className="text-right">
                 <div className="text-green-400 font-medium">
-                  {Number(round.tier3Winners)} winner{round.tier3Winners !== 1n ? 's' : ''}
+                  {Number(round.tier3Winners)} winner{round.tier3Winners !== 1 ? 's' : ''}
                 </div>
-                {round.tier3Winners > 0n && (
+                {round.tier3Winners > 0 && (
                   <div className="text-sm text-theme-text-secondary">
                     {formatNusdc(round.tier3PayoutPerWinner)} NUSDC each
                   </div>
