@@ -275,6 +275,18 @@ export function WalletConnect({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Save backup pending state to localStorage when entering backup mode
+  // This allows parent components (like HomePage) to keep the modal mounted
+  useEffect(() => {
+    if (viewMode === 'create-backup' && mnemonic) {
+      try {
+        localStorage.setItem('nasun_wallet_backup_pending', 'true');
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [viewMode, mnemonic]);
+
   // Fetch NFTs when unlocked (only active tab uses the data)
   // Auto-refresh every 15 seconds to catch new NFTs (e.g., after voting)
   const { data: nfts = [], isLoading: nftsLoading } = useNFTs({
@@ -332,6 +344,12 @@ export function WalletConnect({
 
   // After mnemonic backup confirmed
   const handleBackupConfirmed = useCallback(() => {
+    // Clear backup pending flag
+    try {
+      localStorage.removeItem('nasun_wallet_backup_pending');
+    } catch {
+      // Ignore localStorage errors
+    }
     setMnemonic(null);
     setViewMode("main");
     setShowDropdown(false);
