@@ -39,7 +39,7 @@
 | **Unified Margin** | **80%** | ⭐⭐⭐⭐⭐ | ✅ v1 완료 (Multi-collateral + Risk Engine + Liquidation) |
 | **Smart Account** | **70%** | ⭐⭐⭐⭐⭐ | ✅ 잔고 통합 UI 완료 |
 | **Risk Engine** | **80%** | ⭐⭐⭐⭐ | ✅ v1 완료 (4-Tier Threshold) |
-| **Perpetuals** | **30%** | ⭐⭐⭐⭐ | 🚧 11.1-11.2 완료 (컨트랙트) |
+| **Perpetuals** | **50%** | ⭐⭐⭐⭐ | 🚧 11.1-11.3 완료 (컨트랙트 + UI, 마켓 생성 대기) |
 | Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager |
 | zkLogin | 100% | ⭐⭐⭐ | ✅ 완료 |
 | Lending | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
@@ -48,7 +48,7 @@
 | Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
 | Lottery | 100% | ⭐ | ✅ 완료 |
 
-**전체 비전 부합도: 약 62%** (Phase 16 v1 + Phase 11.1-11.2 완료 후)
+**전체 비전 부합도: 약 65%** (Phase 16 v1 + Phase 11.1-11.3 완료 후)
 
 ---
 
@@ -107,7 +107,7 @@
 | **Phase 11** | 🚧 | **Perpetuals DEX** | ⭐⭐⭐⭐ | - |
 | Phase 11.1 | ✅ | perpetual.move (PerpMarket, Position) | ⭐⭐⭐ | 2026-01-10 |
 | Phase 11.2 | ✅ | funding.move (8h Funding Rate) | ⭐⭐⭐ | 2026-01-10 |
-| Phase 11.3 | 📋 | Perp Trading UI | ⭐⭐⭐ | - |
+| Phase 11.3 | ✅ | Perp Trading UI | ⭐⭐⭐ | 2026-01-10 |
 | Phase 11.4 | 📋 | Perp Liquidation | ⭐⭐⭐ | - |
 | Phase 11.5 | 📋 | Spot-Perp Integration | ⭐⭐⭐ | - |
 
@@ -577,6 +577,13 @@ git push origin main --tags
 | | - SimpleOrderForm (Simple mode) 잔고 부족 경고 + Faucet CTA |
 | | - "No market liquidity" 경고 UI (오더북 비어있을 때) |
 | | - 네트워크별 Faucet 버튼 표시 (devnet/testnet only) |
+| 2026-01-10 | **Phase 11.3: Perp Trading UI 완료** |
+| | - contracts-perp 배포: `0xe985134c5bec...` |
+| | - features/perp/ 모듈 생성 (types, constants, transactions, hooks, components) |
+| | - PerpTradingPanel, PerpTradePage 구현 |
+| | - /markets/perp 라우트 활성화 |
+| | - Header, QuickActions에 Perp 메뉴 활성화 |
+| | - 비전 부합도: 62% → 65% 상승 |
 
 ---
 
