@@ -152,12 +152,54 @@ export function isValidAddress(address: string): boolean {
  * Shorten address for display
  * @param address - The address to shorten
  * @param startChars - Number of characters after 0x prefix (default: 6)
+ *                     If 0, only shows end characters with "..." prefix
  * @param endChars - Number of characters at the end (default: same as startChars)
  */
 export function shortenAddress(address: string, startChars = 6, endChars?: number): string {
   if (!address) return '';
   const end = endChars ?? startChars;
+
+  // Mobile-optimized: show only last N chars when startChars is 0
+  if (startChars === 0) {
+    return `...${address.slice(-end)}`;
+  }
+
   return `${address.slice(0, startChars + 2)}...${address.slice(-end)}`;
+}
+
+/**
+ * Configuration for responsive address display
+ */
+export interface AddressDisplayConfig {
+  desktop: { start: number; end: number };
+  mobile: { start: number; end: number };
+}
+
+/**
+ * Default address display configuration
+ * - Desktop: 0x123456...abcdef (6 chars each side)
+ * - Mobile: ...cdef (only last 4 chars)
+ */
+export const DEFAULT_ADDRESS_DISPLAY: AddressDisplayConfig = {
+  desktop: { start: 6, end: 6 },
+  mobile: { start: 0, end: 4 },
+};
+
+/**
+ * Shorten address with responsive configuration
+ * Automatically selects display format based on viewport
+ * @param address - The address to shorten
+ * @param isMobile - Whether the viewport is mobile size
+ * @param config - Optional custom configuration (default: DEFAULT_ADDRESS_DISPLAY)
+ */
+export function shortenAddressResponsive(
+  address: string,
+  isMobile: boolean,
+  config: AddressDisplayConfig = DEFAULT_ADDRESS_DISPLAY
+): string {
+  if (!address) return '';
+  const { start, end } = isMobile ? config.mobile : config.desktop;
+  return shortenAddress(address, start, end);
 }
 
 // ============================================
