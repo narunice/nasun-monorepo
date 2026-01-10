@@ -4,7 +4,7 @@
  * On-chain interaction for Unified Margin contract
  * Package: 0x2886424ff9b3ed9ecdb408ea1f68ca9598efbcbf796311ad3dc33c97d31d63c7
  *
- * @version 0.1.0
+ * @version 0.5.0 (Multi-Collateral Support)
  */
 
 import { Transaction } from '@mysten/sui/transactions';
@@ -17,8 +17,28 @@ export const MARGIN_REGISTRY_ID =
   '0x57979cb0f06a61c65f0f26a41cb3c53461e4c5638bed6740797a80bbb8fe3914';
 const CLOCK_ID = '0x6';
 
+// Token types (Pado tokens package)
+export const PADO_TOKENS_PACKAGE =
+  '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489';
+export const NUSDC_TYPE = `${PADO_TOKENS_PACKAGE}::nusdc::NUSDC`;
+export const NBTC_TYPE = `${PADO_TOKENS_PACKAGE}::nbtc::NBTC`;
+
+// Supported collateral tokens
+export type CollateralToken = 'NUSDC' | 'NBTC';
+
 // Types
 export interface MarginAccountData {
+  id: string;
+  owner: string;
+  nusdcBalance: bigint;
+  nbtcBalance: bigint; // v0.5: Multi-collateral
+  totalDepositedUsd: bigint;
+  totalWithdrawnUsd: bigint;
+  createdAt: number;
+}
+
+// Backward compatible alias
+export interface MarginAccountDataLegacy {
   id: string;
   owner: string;
   nusdcBalance: bigint;
@@ -34,6 +54,10 @@ export interface MarginRegistryData {
 
 // Storage key prefix for MarginAccount ID (per-wallet)
 const MARGIN_ACCOUNT_KEY_PREFIX = 'pado_margin_account_';
+
+// Storage key prefix for BalanceManager ID (per-wallet)
+// IMPORTANT: This must be address-keyed to support multi-wallet environments
+const BALANCE_MANAGER_KEY_PREFIX = 'pado_balance_manager_';
 
 /**
  * Get storage key for a specific wallet address
@@ -75,8 +99,74 @@ export function clearMarginAccountId(walletAddress: string): void {
   }
 }
 
+// ===== BalanceManager Storage Functions =====
+
+/**
+ * Get storage key for BalanceManager for a specific wallet address
+ */
+function getBalanceManagerKey(walletAddress: string): string {
+  return `${BALANCE_MANAGER_KEY_PREFIX}${walletAddress}`;
+}
+
+/**
+ * Get stored BalanceManager ID from localStorage for a specific wallet
+ * NOTE: Migration from legacy global key was removed due to cross-contamination bug
+ * (would copy another user's BM ID to current user without ownership verification)
+ */
+export function getStoredBalanceManagerId(walletAddress: string): string | null {
+  if (!walletAddress) return null;
+
+  try {
+    // Only use address-keyed storage (no migration - prevents cross-user contamination)
+    return localStorage.getItem(getBalanceManagerKey(walletAddress));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Store BalanceManager ID in localStorage for a specific wallet
+ * NOTE: Legacy key storage was removed to prevent cross-user contamination
+ */
+export function storeBalanceManagerId(walletAddress: string, id: string): void {
+  if (!walletAddress) return;
+
+  try {
+    localStorage.setItem(getBalanceManagerKey(walletAddress), id);
+  } catch {
+    console.error('Failed to store balance manager ID');
+  }
+}
+
+/**
+ * Clear stored BalanceManager ID for a specific wallet
+ */
+export function clearBalanceManagerId(walletAddress: string): void {
+  if (!walletAddress) return;
+
+  try {
+    localStorage.removeItem(getBalanceManagerKey(walletAddress));
+  } catch {
+    console.error('Failed to clear balance manager ID');
+  }
+}
+
+/**
+ * Parse Balance field from Move object (nested structure: { fields: { value: string } })
+ */
+function parseBalanceField(field: unknown): bigint {
+  if (field && typeof field === 'object') {
+    const balanceFields = (field as { fields?: { value?: string } }).fields;
+    if (balanceFields?.value) {
+      return BigInt(balanceFields.value);
+    }
+  }
+  return 0n;
+}
+
 /**
  * Fetch MarginAccount data from chain
+ * Supports both v0 (NUSDC only) and v0.5 (Multi-collateral) accounts
  */
 export async function getMarginAccount(
   accountId: string
@@ -96,27 +186,24 @@ export async function getMarginAccount(
     const fields = result.data.content.fields as Record<string, unknown>;
     if (!fields) return null;
 
-    // Safe access for Balance<NUSDC> field (nested structure: { fields: { value: string } })
-    let nusdcBalanceValue = '0';
-    const nusdcBalanceField = fields.nusdc_balance;
-    if (nusdcBalanceField && typeof nusdcBalanceField === 'object') {
-      const balanceFields = (nusdcBalanceField as { fields?: { value?: string } }).fields;
-      if (balanceFields?.value) {
-        nusdcBalanceValue = balanceFields.value;
-      }
-    }
+    // Parse NUSDC balance
+    const nusdcBalance = parseBalanceField(fields.nusdc_balance);
 
-    // Safe access for u64 fields
-    const totalDeposited = fields.total_deposited;
-    const totalWithdrawn = fields.total_withdrawn;
+    // Parse NBTC balance (v0.5, optional for backward compatibility)
+    const nbtcBalance = parseBalanceField(fields.nbtc_balance);
+
+    // Safe access for u64 fields (support both v0 and v0.5 field names)
+    const totalDepositedUsd = fields.total_deposited_usd ?? fields.total_deposited;
+    const totalWithdrawnUsd = fields.total_withdrawn_usd ?? fields.total_withdrawn;
     const createdAt = fields.created_at;
 
     return {
       id: accountId,
       owner: String(fields.owner || ''),
-      nusdcBalance: BigInt(nusdcBalanceValue),
-      totalDeposited: BigInt(String(totalDeposited || '0')),
-      totalWithdrawn: BigInt(String(totalWithdrawn || '0')),
+      nusdcBalance,
+      nbtcBalance,
+      totalDepositedUsd: BigInt(String(totalDepositedUsd || '0')),
+      totalWithdrawnUsd: BigInt(String(totalWithdrawnUsd || '0')),
       createdAt: Number(createdAt || 0),
     };
   } catch (error) {
@@ -275,7 +362,7 @@ export function buildWithdrawTx(
 }
 
 /**
- * Build withdraw_all transaction
+ * Build withdraw_all transaction (NUSDC)
  *
  * @param marginAccountId - User's MarginAccount object ID
  */
@@ -284,6 +371,101 @@ export function buildWithdrawAllTx(marginAccountId: string): Transaction {
 
   tx.moveCall({
     target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_all`,
+    arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID)],
+  });
+
+  return tx;
+}
+
+// ===== NBTC Transaction Builders (v0.5) =====
+
+/**
+ * Build deposit_nbtc transaction
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ * @param nbtcCoinId - NBTC coin object ID to deposit
+ */
+export function buildDepositNbtcTx(
+  marginAccountId: string,
+  nbtcCoinId: string
+): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_nbtc`,
+    arguments: [
+      tx.object(marginAccountId),
+      tx.object(MARGIN_REGISTRY_ID),
+      tx.object(nbtcCoinId),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build deposit_nbtc transaction with split (for partial deposit)
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ * @param nbtcCoinId - NBTC coin object ID to split from
+ * @param amount - Amount to deposit (in smallest unit, 8 decimals)
+ */
+export function buildDepositNbtcWithSplitTx(
+  marginAccountId: string,
+  nbtcCoinId: string,
+  amount: bigint
+): Transaction {
+  const tx = new Transaction();
+
+  // Split the exact amount
+  const [depositCoin] = tx.splitCoins(tx.object(nbtcCoinId), [amount]);
+
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_nbtc`,
+    arguments: [
+      tx.object(marginAccountId),
+      tx.object(MARGIN_REGISTRY_ID),
+      depositCoin,
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build withdraw_nbtc transaction
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ * @param amount - Amount to withdraw (in smallest unit, 8 decimals)
+ */
+export function buildWithdrawNbtcTx(
+  marginAccountId: string,
+  amount: bigint
+): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_nbtc`,
+    arguments: [
+      tx.object(marginAccountId),
+      tx.object(MARGIN_REGISTRY_ID),
+      tx.pure.u64(amount),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build withdraw_all_nbtc transaction
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ */
+export function buildWithdrawAllNbtcTx(marginAccountId: string): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_all_nbtc`,
     arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID)],
   });
 
