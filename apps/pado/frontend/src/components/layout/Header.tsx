@@ -20,7 +20,7 @@ interface MarketsSubItem {
 
 const MARKETS_ITEMS: MarketsSubItem[] = [
   { label: 'Spot', path: '/markets/spot', enabled: true },
-  { label: 'Perp', path: '/markets/perp', enabled: false },
+  { label: 'Perp', path: '/markets/perp', enabled: true },
 ];
 
 const NAV_ITEMS: NavItem[] = [

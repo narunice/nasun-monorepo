@@ -15,6 +15,7 @@ export { LotteryRoundPage } from './LotteryRoundPage';
 export { LotteryAdminPage } from './LotteryAdminPage';
 export { AdminPage } from './AdminPage';
 export { PerpsComingSoonPage } from './PerpsComingSoonPage';
+export { PerpTradePage } from './PerpTradePage';
 
 // Legacy exports (for backward compatibility during migration)
 export { PortfolioPage } from './PortfolioPage';

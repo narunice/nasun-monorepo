@@ -26,7 +26,7 @@ import {
   LotteryPage,
   LotteryRoundPage,
   AdminPage,
-  PerpsComingSoonPage,
+  PerpTradePage,
 } from '../pages';
 
 export function AppRoutes() {
@@ -38,7 +38,7 @@ export function AppRoutes() {
       {/* Markets */}
       <Route path="/markets" element={<Navigate to="/markets/spot" replace />} />
       <Route path="/markets/spot" element={<TradePage />} />
-      <Route path="/markets/perp" element={<PerpsComingSoonPage />} />
+      <Route path="/markets/perp" element={<PerpTradePage />} />
 
       {/* Wallet (Send/Receive) */}
       <Route path="/wallet" element={<WalletPage />} />
