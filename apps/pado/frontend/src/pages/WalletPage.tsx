@@ -60,12 +60,12 @@ export function WalletPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-1.5 sm:gap-2 mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 px-4 text-sm font-medium rounded-lg transition-colors ${
+            className={`flex-1 py-2.5 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
               activeTab === tab.id
                 ? 'bg-blue-500 text-white'
                 : 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
