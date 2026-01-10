@@ -3,7 +3,7 @@
  * Centralized token configuration management for multi-token support
  */
 
-import type { TokenConfig } from '../types';
+import type { TokenConfig, TokenFaucetHandler } from '../types';
 
 // Token registry storage
 const tokenRegistry = new Map<string, TokenConfig>();
@@ -22,26 +22,35 @@ export const NATIVE_TOKEN: TokenConfig = {
 
 /**
  * Devnet default tokens
- * @deprecated Apps should call registerTokens() with environment-specific token types.
- * This allows token addresses to be configured via .env files without modifying package code.
+ * These tokens are auto-registered for Nasun Devnet to ensure consistent
+ * wallet UI across all apps using @nasun/wallet.
  *
- * Example usage in app's main.tsx:
- * ```typescript
- * import { registerTokens } from '@nasun/wallet';
- * registerTokens([
- *   { symbol: 'NBTC', name: 'Nasun BTC', decimals: 8, type: import.meta.env.VITE_NBTC_TYPE },
- *   { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: import.meta.env.VITE_NUSDC_TYPE },
- * ]);
- * ```
+ * Apps can override these by calling registerTokens() with custom types.
  */
-export const DEVNET_TOKENS: TokenConfig[] = [];
+export const DEVNET_TOKENS: TokenConfig[] = [
+  {
+    symbol: 'NBTC',
+    name: 'Nasun BTC',
+    decimals: 8,
+    type: '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nbtc::NBTC',
+  },
+  {
+    symbol: 'NUSDC',
+    name: 'Nasun USDC',
+    decimals: 6,
+    type: '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nusdc::NUSDC',
+  },
+];
 
 // Register native token by default (always available)
 tokenRegistry.set(NATIVE_TOKEN.symbol, NATIVE_TOKEN);
 tokensByType.set(NATIVE_TOKEN.type, NATIVE_TOKEN);
 
-// Note: DEVNET_TOKENS are no longer auto-registered.
-// Apps must call registerTokens() explicitly with environment-specific token types.
+// Auto-register devnet tokens for consistent wallet UI across all apps
+for (const token of DEVNET_TOKENS) {
+  tokenRegistry.set(token.symbol, token);
+  tokensByType.set(token.type, token);
+}
 
 /**
  * Register a new token
@@ -103,4 +112,43 @@ export function clearTokens(): void {
   // Re-register native token
   tokenRegistry.set(NATIVE_TOKEN.symbol, NATIVE_TOKEN);
   tokensByType.set(NATIVE_TOKEN.type, NATIVE_TOKEN);
+}
+
+// ============================================
+// Faucet Handler Registry
+// ============================================
+
+const faucetRegistry = new Map<string, TokenFaucetHandler>();
+
+/**
+ * Register a faucet handler for a token
+ * @param symbol Token symbol (e.g., 'NASUN', 'NBTC')
+ * @param handler Faucet handler implementation
+ */
+export function registerTokenFaucet(symbol: string, handler: TokenFaucetHandler): void {
+  faucetRegistry.set(symbol, handler);
+}
+
+/**
+ * Get faucet handler for a token
+ * @param symbol Token symbol
+ */
+export function getTokenFaucet(symbol: string): TokenFaucetHandler | undefined {
+  return faucetRegistry.get(symbol);
+}
+
+/**
+ * Check if a token has a faucet handler
+ * @param symbol Token symbol
+ */
+export function hasTokenFaucet(symbol: string): boolean {
+  return faucetRegistry.has(symbol);
+}
+
+/**
+ * Clear all faucet handlers
+ * Useful for testing
+ */
+export function clearTokenFaucets(): void {
+  faucetRegistry.clear();
 }

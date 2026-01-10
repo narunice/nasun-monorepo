@@ -2,7 +2,7 @@
  * Nasun Devnet Faucet API
  */
 
-import type { FaucetResponse } from '../types';
+import type { FaucetResponse, TokenFaucetHandler } from '../types';
 import { getWalletConfig } from './client';
 
 /**
@@ -58,3 +58,18 @@ export async function checkFaucetAvailable(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Native NASUN faucet handler
+ * Use this with registerTokenFaucet('NASUN', nativeFaucetHandler)
+ */
+export const nativeFaucetHandler: TokenFaucetHandler = {
+  request: async (address: string): Promise<boolean> => {
+    try {
+      await requestFaucet(address);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
