@@ -16,7 +16,8 @@ export const FUNDING_MODULE = 'funding';
 // ===== Market IDs (to be populated after market creation) =====
 
 /** BTC-PERP market shared object ID */
-export const PERP_MARKET_BTC = ''; // TODO: Set after create_market
+export const PERP_MARKET_BTC =
+  '0x0a3ba00cce5aae262ea48ca989dbdf9270addc06e796242f9c0189087c111ec2';
 
 // ===== Oracle Configuration =====
 

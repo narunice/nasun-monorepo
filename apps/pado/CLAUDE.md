@@ -245,8 +245,9 @@ Phase 4: Community-owned Protocol
 |------|-----|
 | Package | `0xe985134c5bec0013332e0a9ca5cbb301e982da7acf8deeaeac39856ceb603249` |
 | UpgradeCap | `0x19f09fb2fe1c4406b61d134881743e37a3cab2f8ae5b538f350025213c0fb910` |
+| BTC-PERP Market | `0x0a3ba00cce5aae262ea48ca989dbdf9270addc06e796242f9c0189087c111ec2` |
 | 모듈 | perpetual.move, funding.move |
-| 상태 | 11.1-11.3 완료, BTC-PERP 마켓 생성 대기 |
+| 상태 | 11.1-11.3 완료, BTC-PERP 활성화 완료 |
 
 ---
 

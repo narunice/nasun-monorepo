@@ -1,0 +1,16 @@
+{
+  "name": "@nasun/pado-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "create-perp-market": "tsx create-perp-market.ts"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.17.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
