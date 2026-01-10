@@ -7,10 +7,12 @@
  * @version 0.2.0 - Renamed from "Unified Margin" to "Pado Balance"
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useWallet, useMultiBalance, getSuiClient } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance, getSuiClient } from '@nasun/wallet';
 import { useMarginAccount } from './useMarginAccount';
+import { useTrading } from '../../trading/useTrading';
+import { useToast } from '../../../components/common';
 import { TOKENS } from '../../../config/network';
 
 // Format NUSDC amount (6 decimals)
@@ -25,21 +27,29 @@ function formatNusdc(amount: bigint | undefined): string {
 
 export function MarginAccountCard() {
   const { status, account: walletAccount } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { data: balances } = useMultiBalance();
+
+  // Determine active wallet address (zkLogin takes priority)
+  const activeAddress = isZkLoggedIn
+    ? zkState?.address
+    : status === 'unlocked'
+      ? walletAccount?.address
+      : undefined;
 
   // Query NUSDC coin object
   const { data: nusdcCoin } = useQuery({
-    queryKey: ['nusdc-coin', walletAccount?.address],
+    queryKey: ['nusdc-coin', activeAddress],
     queryFn: async () => {
-      if (!walletAccount?.address) return null;
+      if (!activeAddress) return null;
       const client = getSuiClient();
       const coins = await client.getCoins({
-        owner: walletAccount.address,
+        owner: activeAddress,
         coinType: TOKENS.NUSDC.type,
       });
       return coins.data[0] || null;
     },
-    enabled: !!walletAccount?.address,
+    enabled: !!activeAddress,
     staleTime: 5000,
   });
 
@@ -55,6 +65,48 @@ export function MarginAccountCard() {
     isLoading,
   } = useMarginAccount();
 
+  // Trading for unified onboarding
+  const {
+    balanceManagerId,
+    createBalanceManager,
+  } = useTrading();
+
+  const { showToast } = useToast();
+
+  // Unified onboarding state
+  const [isEnablingPado, setIsEnablingPado] = useState(false);
+
+  // Unified onboarding: Enable Pado (MarginAccount + BalanceManager)
+  const handleEnablePado = useCallback(async () => {
+    setIsEnablingPado(true);
+    try {
+      // Step 1: Create MarginAccount
+      await createAccount();
+
+      // Step 2: Create BalanceManager if not exists
+      if (!balanceManagerId) {
+        try {
+          // Wait for RPC to sync after MarginAccount creation
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await createBalanceManager();
+          showToast('Pado enabled!', 'success');
+        } catch (bmError) {
+          // MA succeeded but BM failed - show warning but don't fail
+          const errorMsg = bmError instanceof Error ? bmError.message : 'Unknown error';
+          console.warn('[UnifiedOnboarding] BalanceManager creation failed:', errorMsg);
+          showToast('Pado Balance enabled. Trading setup failed.', 'warning');
+        }
+      } else {
+        showToast('Pado enabled!', 'success');
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Error: ${errorMsg}`, 'error');
+    } finally {
+      setIsEnablingPado(false);
+    }
+  }, [createAccount, balanceManagerId, createBalanceManager, showToast]);
+
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
@@ -62,7 +114,7 @@ export function MarginAccountCard() {
   const [error, setError] = useState<string | null>(null);
   const [showGasWarning, setShowGasWarning] = useState(false);
 
-  const isConnected = status === 'unlocked' && walletAccount;
+  const isConnected = (status === 'unlocked' && walletAccount) || isZkLoggedIn;
 
   // Get wallet balances
   const nusdcBalance = balances?.tokens?.NUSDC;
@@ -142,25 +194,26 @@ export function MarginAccountCard() {
     );
   }
 
-  // No account - show create button
+  // No account - show create button (unified onboarding)
   if (!hasAccount) {
+    const isEnabling = isEnablingPado || isCreating;
     return (
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-theme-text-primary">
-              Pado Balance
+              Enable Pado
             </h3>
             <p className="text-sm text-theme-text-secondary mt-1">
-              Enable Pado Balance to use funds across Trading, Predictions, and more
+              Enable Pado to use funds across Trading, Predictions, and more
             </p>
           </div>
           <button
-            onClick={() => createAccount()}
-            disabled={isCreating}
+            onClick={handleEnablePado}
+            disabled={isEnabling}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isCreating ? 'Enabling...' : 'Enable Pado Balance'}
+            {isEnabling ? 'Enabling...' : 'Enable Pado'}
           </button>
         </div>
       </div>
@@ -193,13 +246,13 @@ export function MarginAccountCard() {
         <div>
           <div className="text-theme-text-muted">Total Deposited</div>
           <div className="text-theme-text-primary font-medium">
-            {formatNusdc(account?.totalDeposited)} NUSDC
+            {formatNusdc(account?.totalDepositedUsd)} NUSDC
           </div>
         </div>
         <div>
           <div className="text-theme-text-muted">Total Withdrawn</div>
           <div className="text-theme-text-primary font-medium">
-            {formatNusdc(account?.totalWithdrawn)} NUSDC
+            {formatNusdc(account?.totalWithdrawnUsd)} NUSDC
           </div>
         </div>
       </div>
