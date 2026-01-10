@@ -166,7 +166,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
           <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-[55%] px-4 lg:px-0">
             {/* LEADERBOARD Box */}
             <div className={`w-full ${dividerBoxWrapperStyles}`}>
-              <DividerBox title={t("wave1.leaderboard.title")} color="white" className="shadow-lg">
+              <DividerBox title={t("wave1.leaderboard.title")} color="n1" className="shadow-lg">
                 <p className="text-nasun-white/90">{t("wave1.leaderboard.description")}</p>
                 <div className="flex justify-end">
                   <ActionLink to="/wave1/leaderboard-info" variant="action" className="px-6 py-3">
@@ -180,7 +180,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             <div className={`w-full ${dividerBoxWrapperStyles}`}>
               <DividerBox
                 title={t("wave1.battalionNft.title")}
-                color="white"
+                color="n1"
                 className=" shadow-lg"
               >
                 <p className="text-nasun-white/90">{t("wave1.battalionNft.description")}</p>
@@ -196,7 +196,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             <div className={`w-full ${dividerBoxWrapperStyles}`}>
               <DividerBox
                 title={t("wave1.earlyContributor.title")}
-                color="white"
+                color="n1"
                 className="shadow-lg"
               >
                 <p className="text-nasun-white/90">{t("wave1.earlyContributor.description")}</p>
