@@ -30,7 +30,7 @@ export const ORACLE_SYMBOL = {
 
 /** Oracle Registry shared object ID */
 export const ORACLE_REGISTRY_ID =
-  '0x02394487bbe5f77ee3bd6067c9d32a6fa6c4baf421ddc425dd84e8a4e69b86d4';
+  '0x023944875d36fe148facf696cc00b6c4a850074556890e547dcd61f5d8710b9b';
 
 // ===== Contract Constants (mirrored from perpetual.move) =====
 

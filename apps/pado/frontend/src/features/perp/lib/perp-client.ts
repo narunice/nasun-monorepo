@@ -7,7 +7,6 @@
 import { getSuiClient } from '../../../lib/sui-client';
 import {
   PERP_PACKAGE_ID,
-  ORACLE_REGISTRY_ID,
   PRICE_DECIMALS,
   MAINTENANCE_MARGIN_BPS,
   BPS,
@@ -168,8 +167,12 @@ export async function fetchUserPositionsWithMetrics(
 
 // ===== Oracle Queries =====
 
+// Table ID within OracleRegistry (extracted from feeds.id)
+const ORACLE_FEEDS_TABLE_ID =
+  '0x94d81c6a5737f02b56e3c052afcecd9c92ac3ddc0589460f68bcc01a5fe35d6b';
+
 /**
- * Fetch oracle price for a symbol
+ * Fetch oracle price for a symbol using dynamic field access
  * @param symbolId - 1=BTC, 2=ETH, 3=NASUN
  */
 export async function fetchOraclePrice(symbolId: number): Promise<{
@@ -180,10 +183,12 @@ export async function fetchOraclePrice(symbolId: number): Promise<{
   const client = getSuiClient();
 
   try {
-    const response = await client.getObject({
-      id: ORACLE_REGISTRY_ID,
-      options: {
-        showContent: true,
+    // Access Table entries via dynamic fields
+    const response = await client.getDynamicFieldObject({
+      parentId: ORACLE_FEEDS_TABLE_ID,
+      name: {
+        type: 'u64',
+        value: symbolId.toString(),
       },
     });
 
@@ -191,37 +196,17 @@ export async function fetchOraclePrice(symbolId: number): Promise<{
       return null;
     }
 
-    // Parse oracle registry to find the price entry
-    // The structure depends on how DevOracle stores prices
     const fields = response.data.content.fields as {
-      prices: {
+      value: {
         fields: {
-          contents: Array<{
-            fields: {
-              key: string;
-              value: {
-                fields: {
-                  price: string;
-                  timestamp: string;
-                  decimals: string;
-                };
-              };
-            };
-          }>;
+          price: string;
+          timestamp: string;
+          decimals: string;
         };
       };
     };
 
-    const priceEntries = fields.prices?.fields?.contents || [];
-    const entry = priceEntries.find(
-      (e) => e.fields.key === symbolId.toString(),
-    );
-
-    if (!entry) {
-      return null;
-    }
-
-    const priceData = entry.fields.value.fields;
+    const priceData = fields.value.fields;
     const price = Number(priceData.price) / PRICE_DECIMALS;
     const timestamp = Number(priceData.timestamp);
     const now = Date.now();
