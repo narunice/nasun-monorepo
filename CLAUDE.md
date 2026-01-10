@@ -145,19 +145,19 @@ Nasun Devnet 블록 탐색기. AWS Amplify에 자동 배포됩니다.
 
 ### 페이지 및 라우트
 
-| 라우트                   | 페이지 파일          | 기능                                        |
-| ------------------------ | -------------------- | ------------------------------------------- |
-| `/`                      | Home.tsx             | 검색바, 네트워크 상태, TPS 차트, 최근 TX    |
-| `/transactions`          | Transactions.tsx     | TX 목록 (커서 페이지네이션)                 |
-| `/tx/:digest`            | Transaction.tsx      | TX 상세 (가스, 이벤트, 오브젝트 변경)       |
-| `/object/:id`            | Object.tsx           | 오브젝트/NFT 상세                           |
-| `/address/:addr`         | Address.tsx          | 잔액, NFT 갤러리, 소유 오브젝트, TX 히스토리|
-| `/validators`            | Validators.tsx       | 밸리데이터 목록 (APY, Commission, Stake)    |
-| `/validator/:address`    | Validator.tsx        | 밸리데이터 상세                             |
-| `/checkpoints`           | Checkpoints.tsx      | 체크포인트 목록 (커서 페이지네이션)         |
-| `/checkpoint/:sequence`  | Checkpoint.tsx       | 체크포인트 상세                             |
-| `/package/:id`           | Package.tsx          | 모듈 탐색기 (함수, 구조체)                  |
-| `/callback`              | AuthCallback.tsx     | zkLogin OAuth 콜백                          |
+| 라우트                  | 페이지 파일      | 기능                                         |
+| ----------------------- | ---------------- | -------------------------------------------- |
+| `/`                     | Home.tsx         | 검색바, 네트워크 상태, TPS 차트, 최근 TX     |
+| `/transactions`         | Transactions.tsx | TX 목록 (커서 페이지네이션)                  |
+| `/tx/:digest`           | Transaction.tsx  | TX 상세 (가스, 이벤트, 오브젝트 변경)        |
+| `/object/:id`           | Object.tsx       | 오브젝트/NFT 상세                            |
+| `/address/:addr`        | Address.tsx      | 잔액, NFT 갤러리, 소유 오브젝트, TX 히스토리 |
+| `/validators`           | Validators.tsx   | 밸리데이터 목록 (APY, Commission, Stake)     |
+| `/validator/:address`   | Validator.tsx    | 밸리데이터 상세                              |
+| `/checkpoints`          | Checkpoints.tsx  | 체크포인트 목록 (커서 페이지네이션)          |
+| `/checkpoint/:sequence` | Checkpoint.tsx   | 체크포인트 상세                              |
+| `/package/:id`          | Package.tsx      | 모듈 탐색기 (함수, 구조체)                   |
+| `/callback`             | AuthCallback.tsx | zkLogin OAuth 콜백                           |
 
 ### 주요 기능
 
@@ -355,18 +355,20 @@ pnpm deploy:gensol-website:staging
 
 모든 앱이 외부 폰트 서비스 의존성을 제거하고 자체 호스팅으로 전환했습니다.
 
-| 앱               | 기본 폰트          | 보조 폰트          | 호스팅 방식 |
-| ---------------- | ------------------ | ------------------ | ----------- |
-| nasun-website    | Rubik (영문)       | Pretendard (한글)  | 자체 호스팅 |
-| gensol-website   | Rubik              | -                  | 자체 호스팅 |
-| pado             | Rubik              | -                  | 자체 호스팅 |
-| network-explorer | Rubik              | -                  | 자체 호스팅 |
+| 앱               | 기본 폰트    | 보조 폰트         | 호스팅 방식 |
+| ---------------- | ------------ | ----------------- | ----------- |
+| nasun-website    | Rubik (영문) | Pretendard (한글) | 자체 호스팅 |
+| gensol-website   | Rubik        | -                 | 자체 호스팅 |
+| pado             | Rubik        | -                 | 자체 호스팅 |
+| network-explorer | Rubik        | -                 | 자체 호스팅 |
 
 **폰트 파일 위치:**
+
 - `apps/{app}/frontend/public/fonts/{font-family}/` - WOFF2 파일들
 - `@font-face` 선언: `apps/{app}/frontend/src/index.css`
 
 **이점:**
+
 - 외부 CDN 의존성 제거
 - 로딩 성능 향상
 - CSP 정책 강화 가능
@@ -420,15 +422,15 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 ### 스마트컨트랙트 위치
 
-| 디렉토리                          | 설명                                    |
-| --------------------------------- | --------------------------------------- |
-| `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet               |
-| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                      |
-| `apps/pado/contracts-oracle/`     | DevOracle 가격 피드                     |
-| `apps/pado/contracts-lending/`    | 렌딩 컨트랙트                           |
-| `apps/pado/contracts-lottery/`    | Lottery 컨트랙트 (Sui Random)           |
-| `apps/pado/contracts-margin/`     | Unified Margin v1 (Multi-collateral)    |
-| `apps/pado/contracts-perp/`       | Perpetuals DEX (진행중)                 |
+| 디렉토리                          | 설명                                 |
+| --------------------------------- | ------------------------------------ |
+| `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet            |
+| `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                   |
+| `apps/pado/contracts-oracle/`     | DevOracle 가격 피드                  |
+| `apps/pado/contracts-lending/`    | 렌딩 컨트랙트                        |
+| `apps/pado/contracts-lottery/`    | Lottery 컨트랙트 (Sui Random)        |
+| `apps/pado/contracts-margin/`     | Unified Margin v1 (Multi-collateral) |
+| `apps/pado/contracts-perp/`       | Perpetuals DEX (진행중)              |
 
 ### Move 빌드/배포 명령어
 
@@ -479,13 +481,14 @@ cd apps/pado/contracts
 
 #### Unified Margin v1 (2026-01-10 완료)
 
-| 컨트랙트                | ID              | 비고                            |
-| ----------------------- | --------------- | ------------------------------- |
-| unified_margin          | `0x2886424f...` | Multi-collateral 마진 (v0.6)    |
-| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리                 |
-| UpgradeCap              | `0x4781e6fd...` | 업그레이드 권한                 |
+| 컨트랙트                | ID              | 비고                         |
+| ----------------------- | --------------- | ---------------------------- |
+| unified_margin          | `0x2886424f...` | Multi-collateral 마진 (v0.6) |
+| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리              |
+| UpgradeCap              | `0x4781e6fd...` | 업그레이드 권한              |
 
 **모듈:**
+
 - `unified_margin.move` - Multi-collateral (NUSDC + NBTC), public(package) functions
 - `risk_engine.move` - 4-Tier Threshold (IM 10%, Warning 8%, MM 5%, FC 3%)
 - `account_positions.move` - 포지션 추적 + PnL 계산
@@ -493,11 +496,12 @@ cd apps/pado/contracts
 
 #### Perpetuals DEX (2026-01-10 진행중)
 
-| 컨트랙트 | ID              | 비고               |
-| -------- | --------------- | ------------------ |
-| pado_perp| 배포 대기       | Perpetual futures  |
+| 컨트랙트  | ID        | 비고              |
+| --------- | --------- | ----------------- |
+| pado_perp | 배포 대기 | Perpetual futures |
 
 **모듈 (11.1-11.2 완료):**
+
 - `perpetual.move` - PerpMarket, PerpPosition (20x 레버리지, Isolated margin)
 - `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
 
