@@ -3,6 +3,7 @@ import type { ExecutionOption } from '../context';
 import { useMarket } from '../context/MarketContext';
 import { SlippageSettings } from './SlippageSettings';
 import { PriceSuggestions } from './PriceSuggestions';
+import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { validateQuantity, validatePrice, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
 
 export type OrderModeType = 'limit' | 'market';
@@ -32,6 +33,9 @@ interface OrderFormProps {
   // Balance info for hints and warnings (Phase 2)
   availableQuote?: number;
   availableBase?: number;
+  // Insufficient balance CTA callbacks (Phase 16.1c)
+  onFaucetQuote?: () => void;
+  onFaucetBase?: () => void;
 }
 
 // Execution Option 설명
@@ -63,6 +67,8 @@ export function OrderForm({
   onSlippageChange,
   availableQuote = 0,
   availableBase = 0,
+  onFaucetQuote,
+  onFaucetBase,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -275,9 +281,9 @@ export function OrderForm({
         </div>
       )}
 
-      {/* Balance Hints & Warnings (Phase 2) */}
+      {/* Balance Hints & Warnings (Phase 16.1c - with CTA) */}
       {total > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {/* Buy hint - shows required quote */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-theme-text-muted">Buy requires:</span>
@@ -285,17 +291,20 @@ export function OrderForm({
               {total.toFixed(2)} {quoteSymbol}
             </span>
           </div>
+          {/* Insufficient quote balance prompt with CTA */}
           {insufficientForBuy && (
-            <p className="text-xs text-red-400 flex items-center gap-1">
-              <span>⚠</span>
-              <span>Insufficient {quoteSymbol} balance ({availableQuote.toFixed(2)} available)</span>
-            </p>
+            <InsufficientBalancePrompt
+              tokenSymbol={quoteSymbol}
+              requiredAmount={total}
+              availableAmount={availableQuote}
+              onFaucet={onFaucetQuote}
+            />
           )}
         </div>
       )}
 
       {amountNum > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {/* Sell hint - shows required base */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-theme-text-muted">Sell requires:</span>
@@ -303,11 +312,14 @@ export function OrderForm({
               {amountNum.toFixed(4)} {baseSymbol}
             </span>
           </div>
+          {/* Insufficient base balance prompt with CTA */}
           {insufficientForSell && (
-            <p className="text-xs text-red-400 flex items-center gap-1">
-              <span>⚠</span>
-              <span>Insufficient {baseSymbol} balance ({availableBase.toFixed(4)} available)</span>
-            </p>
+            <InsufficientBalancePrompt
+              tokenSymbol={baseSymbol}
+              requiredAmount={amountNum}
+              availableAmount={availableBase}
+              onFaucet={onFaucetBase}
+            />
           )}
         </div>
       )}

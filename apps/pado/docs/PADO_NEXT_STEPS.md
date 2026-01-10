@@ -103,6 +103,7 @@
 | Phase 16.3 | ✅ | Position Registry + Risk Engine v1 | ⭐⭐⭐⭐⭐ | 2026-01-10 |
 | Phase 16.4 | ✅ | Liquidation Engine | ⭐⭐⭐⭐ | 2026-01-10 |
 | Phase 16.5 | ✅ | Smart Account UI | ⭐⭐⭐⭐ | 2026-01-10 |
+| Phase 16.1c | ✅ | Risk Engine UI Integration | ⭐⭐⭐ | 2026-01-10 |
 | **Phase 11** | 🚧 | **Perpetuals DEX** | ⭐⭐⭐⭐ | - |
 | Phase 11.1 | ✅ | perpetual.move (PerpMarket, Position) | ⭐⭐⭐ | 2026-01-10 |
 | Phase 11.2 | ✅ | funding.move (8h Funding Rate) | ⭐⭐⭐ | 2026-01-10 |
@@ -570,6 +571,12 @@ git push origin main --tags
 | | - Phase 11.1-11.2: Perpetuals DEX foundation (perpetual.move, funding.move) |
 | | - contracts-perp: 20x 레버리지, 8시간 펀딩 레이트 |
 | | - 비전 부합도: 48% → 62% 상승 |
+| 2026-01-10 | **Phase 16.1c: Risk Engine UI Integration 완료** |
+| | - InsufficientBalancePrompt 컴포넌트 생성 |
+| | - OrderForm (Pro mode) 잔고 부족 경고 + Faucet CTA |
+| | - SimpleOrderForm (Simple mode) 잔고 부족 경고 + Faucet CTA |
+| | - "No market liquidity" 경고 UI (오더북 비어있을 때) |
+| | - 네트워크별 Faucet 버튼 표시 (devnet/testnet only) |
 
 ---
 

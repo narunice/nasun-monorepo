@@ -12,3 +12,4 @@ export { MarketSelector } from './MarketSelector';
 export { SimpleOrderForm } from './SimpleOrderForm';
 export { QuickAmountButtons } from './QuickAmountButtons';
 export { TradingBalanceBar } from './TradingBalanceBar';
+export { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
