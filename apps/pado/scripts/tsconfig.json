@@ -1,0 +1,11 @@
+{
+  "extends": "@nasun/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022"
+  },
+  "include": ["./*.ts"]
+}
