@@ -54,7 +54,7 @@ Pado는 이 분절을 해결합니다:
 | Phase 8 | ✅ 완료 | Mobile & Theme | 모바일 반응형, 다크/라이트 테마 |
 | Phase 9 | ✅ 완료 | Smart Account v2 | zkLogin 인증, 시드리스 온보딩 (2026-01-03) |
 | Phase 10 | 📋 계획 | Cross-Chain Vaults | BTC, ETH 등 외부 자산 Vault 통합 |
-| Phase 11 | 🚧 진행중 | Perpetuals | 무기한 선물 거래 (11.1-11.2 완료) |
+| Phase 11 | 🚧 진행중 | Perpetuals | 무기한 선물 거래 (11.1-11.3 완료, 마켓 생성 대기) |
 | Phase 12 | 📋 계획 | Lending & Borrowing | 통합 대출 프로토콜 |
 | Phase 13 | 📋 계획 | Staking | NAS 토큰 스테이킹 |
 | Phase 14 | ✅ 완료 | Prediction Markets | 예측 시장 + 시드 유동성 |
@@ -240,11 +240,13 @@ Phase 4: Community-owned Protocol
 | MarginRegistry | `0x57979cb0...` |
 | UpgradeCap | `0x4781e6fd...` |
 
-**Perpetuals DEX** (2026-01-10 진행중):
+**Perpetuals DEX** (2026-01-10, Phase 11.1-11.3 완료):
 | 항목 | 값 |
 |------|-----|
-| Package | contracts-perp (배포 대기) |
+| Package | `0xe985134c5bec0013332e0a9ca5cbb301e982da7acf8deeaeac39856ceb603249` |
+| UpgradeCap | `0x19f09fb2fe1c4406b61d134881743e37a3cab2f8ae5b538f350025213c0fb910` |
 | 모듈 | perpetual.move, funding.move |
+| 상태 | 11.1-11.3 완료, BTC-PERP 마켓 생성 대기 |
 
 ---
 
@@ -364,15 +366,16 @@ cd deepbookv3 && nasun client publish --gas-budget 500000000
 - Liquidation Engine: 5% 보너스, 50% 최대 청산 비율
 - Smart Account UI: Wallet + Trading 잔고 통합 표시
 
-### Perpetuals (Phase 11) 🚧 진행중
-**완료된 작업 (11.1-11.2):**
+### Perpetuals (Phase 11) 🚧 진행중 (11.1-11.3 완료)
+**완료된 작업 (11.1-11.3):**
 - PerpMarket 구조체: 20x 최대 레버리지, Isolated Margin
 - PerpPosition: Long/Short 포지션 관리
 - Funding Rate: 8시간 정산, 1.25% 최대 레이트
 - Oracle Staleness Protection: 2분 최대 허용
+- Perp Trading UI: features/perp/ 모듈, /markets/perp 라우트
 
-**예정된 작업 (11.3-11.5):**
-- Perp Trading UI
+**예정된 작업 (11.4-11.5):**
+- BTC-PERP 마켓 생성 (PTB 스크립트)
 - Perp Liquidation
 - Spot-Perp Integration
 
