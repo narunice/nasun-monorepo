@@ -4,6 +4,7 @@ import visionVideoPcMP4 from "../../../assets/videos/home-vision-wave-light-desk
 import visionVideoMobileMP4 from "../../../assets/videos/home-vision-wave-light-mobile.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Button } from "@/components/ui/button";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface VisionSectionV2Props {
   shouldLoadVideo?: boolean;
@@ -95,7 +96,10 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
   return (
     <SectionLayout className="relative min-h-screen">
       {/* Background video container - full browser width */}
-      <div ref={containerRef} className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full bg-nasun-white">
+      <div
+        ref={containerRef}
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full bg-nasun-white"
+      >
         {shouldLoadVideo && (
           <video
             key={videoSrc}
@@ -120,31 +124,35 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
       {/* Content */}
       <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4">
         {/* Keywords */}
-        <div className="flex flex-col items-center gap-1 md:gap-2 mb-8 md:mb-12 mt-4 md:mt-6 lg:mt-8">
-          {keywords.map((keyword) => (
-            <h4
-              key={keyword}
-              className="!font-eurostile  text-nasun-black/80  uppercase leading-snug"
-            >
-              {keyword}
-            </h4>
-          ))}
-        </div>
-
+        <FadeInUp>
+          <div className="flex flex-col items-center gap-1 md:gap-2 mb-8 md:mb-12 mt-4 md:mt-6 lg:mt-8">
+            {keywords.map((keyword) => (
+              <h4
+                key={keyword}
+                className="!font-eurostile  text-nasun-black/90 uppercase leading-snug"
+              >
+                {keyword}
+              </h4>
+            ))}
+          </div>
+        </FadeInUp>
         {/* CTA Button */}
-        <Button
-          variant="default"
-          size="xl"
-          asChild
-          className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
-        >
-          <Link to="/wave1/battalion-nft">WAVE 1 BATTALION</Link>
-        </Button>
-
+        <FadeInUp delay="0.2s">
+          <Button
+            variant="default"
+            size="xl"
+            asChild
+            className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
+          >
+            <Link to="/wave1/battalion-nft">WAVE 1 BATTALION</Link>
+          </Button>
+        </FadeInUp>
         {/* Tagline */}
-        <p className="font-medium text-base/snug md:text-lg/snug xl:text-xl/snug text-nasun-black/70 text-center max-w-3xl">
-          Building the next generation of global IP through coordinated creation.
-        </p>
+        <FadeInUp delay="0.4s">
+          <p className="font-medium text-base/snug md:text-lg/snug xl:text-xl/snug text-nasun-black/80 text-center max-w-3xl">
+            Building the next generation of global IP through coordinated creation.
+          </p>
+        </FadeInUp>
       </div>
     </SectionLayout>
   );

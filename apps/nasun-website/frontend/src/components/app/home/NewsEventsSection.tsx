@@ -119,7 +119,7 @@ function NewsEventsSection() {
                 return (
                   <div key={post.id} className="px-2">
                     {/* 수평 카드 레이아웃 */}
-                    <div className="group flex flex-col md:flex-row bg-black backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-c3/30 hover:border-nasun-c3 transition-all duration-300">
+                    <div className="group flex flex-col md:flex-row bg-black/50 backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300">
                       {/* 좌측: 이미지 */}
                       <div className="md:w-1/2 md:self-stretch overflow-hidden">
                         {imageUrl ? (
