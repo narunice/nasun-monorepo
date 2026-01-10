@@ -8,6 +8,7 @@ import {
   useWallet,
   type TokenBalance,
 } from '@nasun/wallet';
+import { TokenFaucetButton } from './TokenFaucetButton';
 
 interface MultiBalanceDisplayProps {
   // Only show specific tokens (default: all registered tokens)
@@ -18,6 +19,8 @@ interface MultiBalanceDisplayProps {
   className?: string;
   // Show native token (NASUN)
   showNative?: boolean;
+  // Show faucet buttons (only visible on devnet/testnet)
+  showFaucet?: boolean;
 }
 
 export function MultiBalanceDisplay({
@@ -25,6 +28,7 @@ export function MultiBalanceDisplay({
   compact = false,
   className = '',
   showNative = true,
+  showFaucet = false,
 }: MultiBalanceDisplayProps) {
   const { status } = useWallet();
   const { data: balances, isLoading, error, refetch } = useMultiBalance();
@@ -94,9 +98,10 @@ export function MultiBalanceDisplay({
     return (
       <div className={`flex items-center gap-3 ${className}`}>
         {tokensToShow.map((token) => (
-          <div key={token.symbol} className="flex items-center gap-1">
+          <div key={token.symbol} className="flex items-center gap-1.5">
             <span className="text-sm font-medium text-white">{token.formatted}</span>
             <span className="text-xs text-blue-400">{token.symbol}</span>
+            {showFaucet && <TokenFaucetButton symbol={token.symbol} compact />}
           </div>
         ))}
       </div>
@@ -107,11 +112,12 @@ export function MultiBalanceDisplay({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       {tokensToShow.map((token) => (
-        <div key={token.symbol} className="flex flex-col gap-1">
+        <div key={token.symbol} className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-bold text-white">{token.formatted}</span>
             <span className="text-sm text-blue-400 font-medium">{token.symbol}</span>
           </div>
+          {showFaucet && <TokenFaucetButton symbol={token.symbol} compact />}
         </div>
       ))}
 

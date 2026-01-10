@@ -144,6 +144,17 @@ export interface TokenConfig {
   icon?: string;
 }
 
+// Token faucet handler for requesting test tokens
+// Supports two modes:
+// 1. request() - Simple HTTP API call (NASUN native faucet)
+// 2. buildTransaction() - Move transaction that requires wallet signing (NBTC/NUSDC)
+export interface TokenFaucetHandler {
+  /** Request tokens via HTTP API. Returns true on success, false on failure. */
+  request?: (address: string) => Promise<boolean>;
+  /** Build a Move transaction for faucet. Used for tokens that require signing. */
+  buildTransaction?: () => import('@mysten/sui/transactions').Transaction;
+}
+
 // Individual token balance
 export interface TokenBalance {
   symbol: string;

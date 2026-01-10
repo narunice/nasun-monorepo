@@ -27,6 +27,7 @@ export { WalletConnect } from './WalletConnect';
 export { BalanceDisplay } from './BalanceDisplay';
 export { SendTransaction } from './SendTransaction';
 export { FaucetButton } from './FaucetButton';
+export { TokenFaucetButton } from './TokenFaucetButton';
 export { MnemonicBackup } from './MnemonicBackup';
 export { ImportWallet } from './ImportWallet';
 export { ExportPrivateKey } from './ExportPrivateKey';
