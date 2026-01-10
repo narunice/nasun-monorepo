@@ -86,7 +86,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
       : selectedToken;
 
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg min-w-[320px]">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   // Confirmation screen
   if (showConfirm) {
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg min-w-[320px]">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Confirm Transfer</h3>
 
         <div className="space-y-3 mb-4">
@@ -260,7 +260,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas;
 
   return (
-    <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg min-w-[320px]">
+    <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Send Token</h3>
         {onClose && (
