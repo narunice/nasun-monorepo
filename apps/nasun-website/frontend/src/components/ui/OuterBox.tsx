@@ -29,7 +29,12 @@ type ColorVariant =
   | "scarlet"
   | "coral"
   | "gensol-red"
-  | "white";
+  | "white"
+  | "n1"
+  | "n2"
+  | "n3"
+  | "n4"
+  | "n5";
 
 const variantStyles: Record<ColorVariant, string> = {
   default: "border-nasun-c5/50 bg-nasun-c6/90", // 현재 기본값 (c5 border + c6 bg)
@@ -43,22 +48,23 @@ const variantStyles: Record<ColorVariant, string> = {
   scarlet: "border-nasun-scarlet/50 bg-[#320900]/90",
   coral: "border-nasun-coral/50 bg-[#330a0a]/90",
   "gensol-red": "border-nasun-gensol-red/50 bg-nasun-gensol-shade/90",
+  n1: "border-nasun-white/50 bg-nasun-white/5",
+  n2: "border-nasun-c3/40 bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5",
+  n3: "border-nasun-c5/40 bg-gray-800/30",
+  n4: "border-nasun-c4/50 bg-nasun-c4/10",
+  n5: "border-nasun-white/50 bg-gray-800/80",
 };
 
 interface OuterBoxProps {
   children: ReactNode;
   className?: string;
-  variant?: ColorVariant;
+  color?: ColorVariant;
 }
 
-export const OuterBox: React.FC<OuterBoxProps> = ({
-  children,
-  className = "",
-  variant = "default",
-}) => {
+export const OuterBox: React.FC<OuterBoxProps> = ({ children, className = "", color = "n1" }) => {
   return (
     <div
-      className={`backdrop-blur-md rounded-xl shadow-lg border ${variantStyles[variant]} px-4 md:px-5 lg:px-6 py-3 md:py-4 lg:py-5 ${className}`}
+      className={`backdrop-blur-lg rounded-xl shadow-lg border ${variantStyles[color]} px-4 md:px-6 lg:px-8 py-3 md:py-4 lg:py-5 ${className}`}
     >
       {children}
     </div>

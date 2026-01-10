@@ -13,7 +13,7 @@ function KeyBenefitsSection() {
     <SectionLayout className="!pt-0 ">
       <div className="max-w-5xl mx-auto ">
         {/* Section Title - Right aligned */}
-        <SectionTitle as="h3" className="text-right font-medium">
+        <SectionTitle as="h3" className="text-right font-medium uppercase">
           {t("keyBenefits.title")}
         </SectionTitle>
 
@@ -22,8 +22,8 @@ function KeyBenefitsSection() {
           {/* Tokens / Multipliers Card */}
           <DividerBox
             title={t("keyBenefits.tokensCard.title")}
-            color="c3"
-            titleClassName="text-nasun-c3"
+            color="n1"
+            titleClassName="!text-nasun-c1"
             className=""
           >
             <div className="space-y-6 text-nasun-white/80">
@@ -59,8 +59,8 @@ function KeyBenefitsSection() {
           {/* Early Access Card */}
           <DividerBox
             title={t("keyBenefits.earlyAccessCard.title")}
-            color="c3"
-            titleClassName="text-nasun-c3 "
+            color="n1"
+            titleClassName="!text-nasun-c1 "
             className=""
           >
             <div className="space-y-6 text-nasun-white/80">

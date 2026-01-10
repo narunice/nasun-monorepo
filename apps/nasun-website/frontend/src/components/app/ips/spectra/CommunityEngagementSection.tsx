@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "../../../layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import SectionTitle from "@/components/ui/SectionTitle";
-import progressVideo from "@/assets/videos/Progress-Video-rf29.mp4";
+import progressVideo from "@/assets/videos/Progress-Video-rf28.mp4";
 
 function CommunityEngagementSection() {
   const { t } = useTranslation("spectra");
