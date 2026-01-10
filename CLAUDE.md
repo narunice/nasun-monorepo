@@ -351,6 +351,26 @@ pnpm deploy:gensol-website:staging
 | pnpm        | 9.x   |
 | Node.js     | 20+   |
 
+### 폰트 시스템 (2026-01-10 업데이트)
+
+모든 앱이 외부 폰트 서비스 의존성을 제거하고 자체 호스팅으로 전환했습니다.
+
+| 앱               | 기본 폰트          | 보조 폰트          | 호스팅 방식 |
+| ---------------- | ------------------ | ------------------ | ----------- |
+| nasun-website    | Rubik (영문)       | Pretendard (한글)  | 자체 호스팅 |
+| gensol-website   | Rubik              | -                  | 자체 호스팅 |
+| pado             | Rubik              | -                  | 자체 호스팅 |
+| network-explorer | Rubik              | -                  | 자체 호스팅 |
+
+**폰트 파일 위치:**
+- `apps/{app}/frontend/public/fonts/{font-family}/` - WOFF2 파일들
+- `@font-face` 선언: `apps/{app}/frontend/src/index.css`
+
+**이점:**
+- 외부 CDN 의존성 제거
+- 로딩 성능 향상
+- CSP 정책 강화 가능
+
 ## 네트워크 정보
 
 | Spec           | Value                            |

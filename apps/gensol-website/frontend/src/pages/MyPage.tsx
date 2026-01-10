@@ -21,7 +21,7 @@ const MyPage = () => {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <Flex className="flex justify-between">
-        <h1 className="text-4xl font-bold font-archivo px-8 self-center">My Account</h1>
+        <h1 className="text-4xl font-bold font-rubik px-8 self-center">My Account</h1>
         <Flex direction="row" gap="2" wrap="wrap" align="center" justify="end" className="py-3">
           <div className="w-fit">
             <ConnectButton className="font-ddt !rounded-md !bg-sf-orange text-lg !text-black uppercase tracking-wide hover:!bg-orange-700 hover:!text-gray-300 ease-in-out transition-colors" />
@@ -29,7 +29,7 @@ const MyPage = () => {
         </Flex>
       </Flex>
 
-      <div className="my-4 p-8 rounded-sm bg-slate-800 shadow-md font-archivo">
+      <div className="my-4 p-8 rounded-sm bg-slate-800 shadow-md font-rubik">
         <UserInfo
           user={user}
           walletAddress={walletAddress}
