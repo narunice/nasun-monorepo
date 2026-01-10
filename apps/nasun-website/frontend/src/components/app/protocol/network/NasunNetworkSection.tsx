@@ -36,7 +36,7 @@ function NasunNetworkSection() {
 
             {/* Vision Section - DividerBox */}
             <DividerBox
-              color="c3"
+              color="n1"
               title={t("network.visionTitle")}
               className="font-semibold"
               titleClassName="text-nasun-c3"

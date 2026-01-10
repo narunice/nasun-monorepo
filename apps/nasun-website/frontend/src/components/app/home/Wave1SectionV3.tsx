@@ -178,11 +178,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
 
             {/* BATTALION NFT Box */}
             <div className={`w-full ${dividerBoxWrapperStyles}`}>
-              <DividerBox
-                title={t("wave1.battalionNft.title")}
-                color="n1"
-                className=" shadow-lg"
-              >
+              <DividerBox title={t("wave1.battalionNft.title")} color="n1" className=" shadow-lg">
                 <p className="text-nasun-white/90">{t("wave1.battalionNft.description")}</p>
                 <div className="flex justify-end">
                   <ActionLink to="/wave1/battalion-nft" variant="action" className=" px-6 py-3">

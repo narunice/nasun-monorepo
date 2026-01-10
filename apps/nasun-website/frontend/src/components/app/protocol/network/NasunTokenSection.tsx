@@ -13,25 +13,25 @@ interface TokenUseCase {
 const tokenUses: TokenUseCase[] = [
   {
     key: "staking",
-    color: "c1",
+    color: "n1",
     gradient: "!bg-gradient-to-r from-nasun-c2/10 to-nasun-c1/10",
     titleClassName: "!text-nasun-c1",
   },
   {
     key: "fee",
-    color: "c1",
+    color: "n1",
     gradient: "!bg-gradient-to-r from-nasun-c1/10 to-nasun-c2/10",
     titleClassName: "!text-nasun-c1",
   },
   {
     key: "transfer",
-    color: "c1",
+    color: "n1",
     gradient: "!bg-gradient-to-r from-nasun-c2/10 to-nasun-c1/10",
     titleClassName: "!text-nasun-c1",
   },
   {
     key: "governance",
-    color: "c1",
+    color: "n1",
     gradient: "!bg-gradient-to-r from-nasun-c1/10 to-nasun-c2/10",
     titleClassName: "!text-nasun-c1",
   },
