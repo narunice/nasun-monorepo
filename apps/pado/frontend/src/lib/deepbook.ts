@@ -623,7 +623,7 @@ export function formatMinPrice(pool: PoolConfig): string {
  */
 export function validateQuantity(amount: number, pool: PoolConfig): ValidationResult {
   if (!amount || amount <= 0) {
-    return { valid: false, message: 'Please enter a quantity' };
+    return { valid: false, message: 'Enter quantity to continue' };
   }
 
   const minQty = getMinQuantity(pool);
@@ -633,7 +633,7 @@ export function validateQuantity(amount: number, pool: PoolConfig): ValidationRe
   if (remainder > minQty * 0.001 && remainder < minQty * 0.999) {
     return {
       valid: false,
-      message: `Quantity must be a multiple of ${minQty} ${pool.baseToken.symbol}`,
+      message: `Quantity: min ${minQty}, increments of ${minQty} ${pool.baseToken.symbol}`,
     };
   }
 
@@ -647,7 +647,7 @@ export function validateQuantity(amount: number, pool: PoolConfig): ValidationRe
  */
 export function validatePrice(price: number, pool: PoolConfig): ValidationResult {
   if (!price || price <= 0) {
-    return { valid: false, message: 'Please enter a price' };
+    return { valid: false, message: 'Enter price to continue' };
   }
 
   const minPrice = getMinPrice(pool);
@@ -657,7 +657,7 @@ export function validatePrice(price: number, pool: PoolConfig): ValidationResult
   if (remainder > minPrice * 0.001 && remainder < minPrice * 0.999) {
     return {
       valid: false,
-      message: `Price must be a multiple of $${minPrice}`,
+      message: `Price: min $${minPrice}, increments of $${minPrice}`,
     };
   }
 

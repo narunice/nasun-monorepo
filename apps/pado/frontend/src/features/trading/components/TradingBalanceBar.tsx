@@ -62,7 +62,7 @@ export function TradingBalanceBar({
   if (!isConnected) {
     return (
       <div className="flex items-center justify-center px-3 py-2 bg-theme-bg-tertiary/50 rounded-lg text-sm text-theme-text-muted">
-        Connect wallet to view balance
+        Connect wallet to start trading
       </div>
     );
   }
@@ -116,7 +116,7 @@ export function TradingBalanceBar({
         <div className="px-3 pb-2">
           <p className="text-[10px] text-theme-text-muted flex items-center gap-1">
             <span>ⓘ</span>
-            <span>Includes wallet (auto-deposited when needed)</span>
+            <span>Shows total available (wallet + trading). Auto-deposits when you trade.</span>
           </p>
         </div>
       )}
