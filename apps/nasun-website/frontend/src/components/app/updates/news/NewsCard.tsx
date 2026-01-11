@@ -2,7 +2,6 @@
 import { Link } from "react-router-dom";
 import { Post } from "../../../types/post.d";
 import { Tag } from "../../../ui/tag";
-import { ActionLink } from "../../../ui/ActionLink";
 
 interface NewsCardProps {
   post: Post;

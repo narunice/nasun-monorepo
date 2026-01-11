@@ -17,13 +17,13 @@
     "awards": "AWARDS",
     "grants": "GRANTS",
     "footer": "Each competition was sponsored by the South Korean government and evaluated by industry leaders and experts in entertainment, gaming, finance, Web3, and emerging technologies.",
-    "readMore": "Read more"
+    "readMore": "Read more ↗"
   },
   "newsEvents": {
     "title": "NEWS & EVENTS",
     "subtitle": "LATEST UPDATES FROM NASUN",
     "footer": "Stay updated with the latest news, announcements, and events from the Nasun community.",
-    "readMore": "Read more"
+    "readMore": "Read more ↗"
   },
   "joinUs": {
     "title": "JOIN US AND GET INVOLVED",
@@ -92,7 +92,7 @@
     "leaderboard": {
       "title": "Leaderboard",
       "description": "Climb the Ranks Early and meaningful contribution is recognized. Top contributors share in the launch reward pool and a chance to receive a Genesis NFT.",
-      "cta": "Get Started"
+      "cta": "Get Started ↗"
     },
     "leader": {
       "title": "If you're a leader",
@@ -100,14 +100,14 @@
       "cta": "Get started →"
     },
     "battalionNft": {
-      "title": "Battalion NFT (Free Mint)",
+      "title": "Battalion NFT Free Mint",
       "description": "The Gateway Pass Mint your free pass to unlock Genesis NFT multipliers, eligibility for exclusive giveaways, and early testing access.",
-      "cta": "Get Started"
+      "cta": "Get Started ↗"
     },
     "earlyContributor": {
       "title": "Early Contributors",
       "description": "Lasting Status Lead in Wave 1 to earn a rare Brigadier NFT with exclusive utilities and long-term recognition.",
-      "cta": "Get Started"
+      "cta": "Get Started ↗"
     }
   },
   "nftSale": {

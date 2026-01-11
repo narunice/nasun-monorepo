@@ -10,7 +10,7 @@ export const buttonVariants = cva(
         default: "bg-nasun-black/90 text-nasun-white hover:bg-nasun-black",
 
         // Default Reverse: NASUN 색상 반전 모노톤 스타일
-        defaultReverse: "bg-nasun-white/75 text-nasun-black hover:bg-gray-200/80",
+        defaultReverse: "bg-nasun-white/70  text-nasun-black hover:bg-gray-100/80",
 
         // Scarlet: Solid red button
         scarlet: "bg-nasun-scarlet text-nasun-white hover:bg-nasun-scarlet/80",
@@ -25,7 +25,7 @@ export const buttonVariants = cva(
         c3: "bg-nasun-c3 text-nasun-black hover:bg-nasun-c3/80",
 
         // Ocean: Solid ocean button (c4)
-        c4: "bg-nasun-c4 text-nasun-white hover:brightness-110",
+        c4: "bg-nasun-c4 text-nasun-black hover:bg-sky-500",
 
         //  (c5)
         c5: "bg-nasun-c5 text-nasun-white hover:bg-nasun-c5/80",
@@ -106,8 +106,8 @@ export const buttonVariants = cva(
         // Ghost: 기존 유지
         ghost: "text-nasun-white hover:bg-nasun-c5/20",
 
-        // Link: Dark Blue 색상 (가독성 최적화)
-        link: "text-nasun-white/80 underline-offset-4 underline hover:text-sky-200 ",
+        // Link
+        link: "text-nasun-white/80 underline-offset-4 underline hover:text-nasun-c1 ",
 
         // Action: (어두운 배경용)
         action: "bg-nasun-c4/20 hover:bg-nasun-c5/20 text-white capitalize",

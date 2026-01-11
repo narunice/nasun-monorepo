@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Post } from "../../../types/post.d";
 import { Tag } from "../../../ui/tag";
-import { ActionLink } from "../../../ui/ActionLink";
+import { Button } from "../../../ui/button";
 
 interface NewsCardProps {
   post: Post;
@@ -77,13 +77,11 @@ export default function NewsCard({ post }: NewsCardProps) {
           <p className="text-gray-400 text-sm line-clamp-3 flex-grow">{excerpt}</p>
 
           {/* Read More button */}
-          <ActionLink
-            to={`/news-events/${post.slug}`}
-            state={{ from: "/news" }}
-            className="self-end mt-4 px-4 py-2"
-          >
-            Read More
-          </ActionLink>
+          <Button asChild variant="action" className="self-end mt-4 px-4 py-2">
+            <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }}>
+              Read More
+            </Link>
+          </Button>
         </div>
       </article>
     </Link>
