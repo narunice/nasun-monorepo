@@ -883,3 +883,50 @@ export {
   getProofRemainingTime,
   proofExpiresWithin,
 } from './core/zkid';
+
+// ZK-ID Credential
+export type {
+  RawCredential,
+  CredentialData,
+  EncryptedCredential,
+  CredentialEntry,
+} from './core/zkid';
+
+export {
+  encryptCredential,
+  decryptCredential,
+  isCredentialExpired as isZKIDCredentialExpired,
+  getCredentialRemainingTime as getZKIDCredentialRemainingTime,
+  validateRawCredential,
+  getStoredCredentials as getZKIDCredentials,
+  storeCredential as storeZKIDCredential,
+  getCredentialById as getZKIDCredentialById,
+  getCredentialsByType as getZKIDCredentialsByType,
+  updateCredentialLastUsed as updateZKIDCredentialLastUsed,
+  removeCredential as removeZKIDCredential,
+  removeExpiredCredentials as removeExpiredZKIDCredentials,
+  clearAllCredentials as clearAllZKIDCredentials,
+  generateCredentialId as generateZKIDCredentialId,
+} from './core/zkid';
+
+// ZK-ID Store
+export {
+  useZKIDStore,
+  useZKIDProof,
+  useZKIDLoading,
+  useZKIDError,
+  useZKIDAnyLoading,
+  useZKIDAllProofs,
+} from './stores/zkidStore';
+
+// ZK-ID Hook
+export { useZKID, initZKID, type UseZKIDOptions, type UseZKIDResult } from './hooks/useZKID';
+
+// ZK-ID Link Integration
+export {
+  validateClaimWithZKID,
+  hasZKIDConditions,
+  getZKIDConditions,
+} from './core/link/claim';
+
+export type { ZKIDAgeThreshold, ZKIDKYCLevel } from './core/link/types';

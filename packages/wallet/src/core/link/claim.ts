@@ -3,13 +3,16 @@
  *
  * Handles claiming tokens from link URLs.
  * Decrypts ephemeral keys and executes transfers.
+ * Supports ZK-ID conditions for gated claims (P2-4).
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import type { LinkData, ClaimResult, ClaimValidation } from './types';
+import type { LinkData, ClaimResult, ClaimValidation, ClaimCondition } from './types';
 import { deserializeLinkConfig } from './types';
 import { recoverKeypair, verifyPassword } from './crypto';
 import { getSuiClient } from '../../sui/client';
+import type { ZKIDProof } from '../zkid/types';
+import { verifyAgainstCondition, type ZKIDConditionCheck } from '../zkid/verifier';
 
 /** Native token type */
 const NATIVE_TOKEN_TYPE = '0x2::sui::SUI';
@@ -415,4 +418,132 @@ export function getClaimStatus(linkData: LinkData): {
         canClaim: false,
       };
   }
+}
+
+// ============================================
+// ZK-ID Claim Validation (P2-4)
+// ============================================
+
+/**
+ * Validate claim with ZK-ID proof support
+ *
+ * Extended validation that supports ZK-ID conditions:
+ * - zkid-age: Age verification
+ * - zkid-kyc: KYC verification
+ * - zkid-unique: Unique claim (Sybil resistance)
+ *
+ * @param linkData - Link data to validate
+ * @param password - Password if required
+ * @param zkidProof - ZK-ID proof for gated conditions
+ * @returns Validation result
+ */
+export async function validateClaimWithZKID(
+  linkData: LinkData,
+  password?: string,
+  zkidProof?: ZKIDProof
+): Promise<ClaimValidation> {
+  // First, run standard validation
+  const baseValidation = await validateClaim(linkData, password);
+  if (!baseValidation.canClaim) {
+    return baseValidation;
+  }
+
+  const config = deserializeLinkConfig(linkData.config);
+
+  // Check ZK-ID conditions
+  if (config.conditions && config.conditions.length > 0) {
+    for (const condition of config.conditions) {
+      // Skip non-ZK-ID conditions (already handled by validateClaim)
+      if (!isZKIDCondition(condition)) {
+        continue;
+      }
+
+      // ZK-ID proof required
+      if (!zkidProof) {
+        return {
+          canClaim: false,
+          reason: getZKIDConditionMessage(condition),
+        };
+      }
+
+      // Convert to ZKIDConditionCheck format
+      const zkidCondition = toZKIDConditionCheck(condition);
+      if (!zkidCondition) {
+        return {
+          canClaim: false,
+          reason: `Unsupported condition type: ${condition.type}`,
+        };
+      }
+
+      // Verify proof against condition
+      const result = await verifyAgainstCondition(zkidProof, zkidCondition);
+      if (!result.valid) {
+        return {
+          canClaim: false,
+          reason: result.reason || `ZK-ID verification failed for ${condition.type}`,
+        };
+      }
+    }
+  }
+
+  return baseValidation;
+}
+
+/**
+ * Check if condition is a ZK-ID condition
+ */
+function isZKIDCondition(condition: ClaimCondition): boolean {
+  return condition.type.startsWith('zkid-');
+}
+
+/**
+ * Convert ClaimCondition to ZKIDConditionCheck
+ */
+function toZKIDConditionCheck(
+  condition: ClaimCondition
+): ZKIDConditionCheck | null {
+  switch (condition.type) {
+    case 'zkid-age':
+      return { type: 'zkid-age', threshold: condition.threshold };
+    case 'zkid-kyc':
+      return { type: 'zkid-kyc', level: condition.level };
+    case 'zkid-unique':
+      return { type: 'zkid-unique', contextId: condition.contextId };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Get user-friendly message for ZK-ID condition
+ */
+function getZKIDConditionMessage(condition: ClaimCondition): string {
+  switch (condition.type) {
+    case 'zkid-age':
+      return `Age verification required (${condition.threshold}+)`;
+    case 'zkid-kyc':
+      return `KYC verification required (${condition.level} level)`;
+    case 'zkid-unique':
+      return 'Identity verification required (one claim per person)';
+    default:
+      return 'ZK-ID verification required';
+  }
+}
+
+/**
+ * Check if link has ZK-ID conditions
+ */
+export function hasZKIDConditions(linkData: LinkData): boolean {
+  const config = deserializeLinkConfig(linkData.config);
+  if (!config.conditions) return false;
+  return config.conditions.some(isZKIDCondition);
+}
+
+/**
+ * Get ZK-ID conditions from link
+ */
+export function getZKIDConditions(linkData: LinkData): ClaimCondition[] {
+  const config = deserializeLinkConfig(linkData.config);
+  if (!config.conditions) return [];
+  return config.conditions.filter(isZKIDCondition);
 }

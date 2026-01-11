@@ -486,26 +486,35 @@ P1 is **fully completed**. All five major features are implemented and tested:
 |-------|------|------|
 | Phase 1 | types.ts, prover.ts | ✅ 완료 |
 | Phase 2 | verifier.ts, nullifier.ts | ✅ 완료 |
-| Phase 3 | credential.ts, zkidStore.ts | 🔄 진행중 |
-| Phase 4 | useZKID.ts (React Hook) | ⏳ 대기 |
-| Phase 5 | Nasun Link v2 통합 | ⏳ 대기 |
-| Phase 6 | 추가 테스트 | ⏳ 대기 |
+| Phase 3 | credential.ts, zkidStore.ts | ✅ 완료 |
+| Phase 4 | useZKID.ts (React Hook) | ✅ 완료 |
+| Phase 5 | Nasun Link v2 통합 | ✅ 완료 |
+| Phase 6 | 추가 테스트 | ⏳ 추후 |
 
 ### 9.4. 파일 구조
 
 ```
-packages/wallet/src/core/zkid/
-├── types.ts           # ✅ ZK-ID 타입 정의
-├── prover.ts          # ✅ Prover client
-├── verifier.ts        # ✅ Proof verification
-├── nullifier.ts       # ✅ Nullifier utilities (Domain Separation)
-├── credential.ts      # 🔄 Credential management
-└── index.ts           # ✅ Module exports
+packages/wallet/src/
+├── core/zkid/
+│   ├── types.ts           # ✅ ZK-ID 타입 정의
+│   ├── prover.ts          # ✅ Prover client
+│   ├── verifier.ts        # ✅ Proof verification
+│   ├── nullifier.ts       # ✅ Nullifier utilities (Domain Separation)
+│   ├── credential.ts      # ✅ Credential management (AES-256-GCM)
+│   └── index.ts           # ✅ Module exports
+├── stores/
+│   └── zkidStore.ts       # ✅ Zustand store
+├── hooks/
+│   └── useZKID.ts         # ✅ React hook
+└── core/link/
+    ├── types.ts           # ✅ ClaimCondition 확장
+    └── claim.ts           # ✅ validateClaimWithZKID
 ```
 
 ### 9.5. 테스트 현황
 
 - **총 테스트**: 60개 (zkid.test.ts)
+- **전체 테스트**: 452개 통과
 - **보안 시나리오**: Proof Replay, Nullifier Attacks, Context Manipulation, Prover Security
 
 ### 9.6. ClaimCondition 확장 (Nasun Link v2 연동)
