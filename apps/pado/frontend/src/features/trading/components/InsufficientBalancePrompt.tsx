@@ -52,7 +52,7 @@ export function InsufficientBalancePrompt({
             Available: {availableAmount.toFixed(2)} {tokenSymbol}
           </p>
           <p className="text-xs text-theme-text-muted mt-1">
-            Get {tokenSymbol} from your wallet to continue.
+            Get {tokenSymbol} from Faucet in your wallet.
           </p>
         </div>
       </div>

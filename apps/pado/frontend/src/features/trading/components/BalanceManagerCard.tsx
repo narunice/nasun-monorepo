@@ -30,7 +30,7 @@ export function BalanceManagerCard({
     return (
       <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded">
         <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
-          Trading balance required. Enable trading to place orders.
+          Enable Trading to start placing orders.
         </p>
         <button
           onClick={onCreate}
@@ -71,7 +71,7 @@ export function BalanceManagerCard({
         </button>
       </div>
       <p className="text-xs text-theme-text-secondary mt-1 text-center">
-        Add funds to trade, return to wallet when done
+        Deposit to trade. Withdraw anytime to your wallet.
       </p>
     </div>
   );

@@ -111,7 +111,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
             </div>
             {amount && parsedAmount < MIN_DEPOSIT && (
               <p className="text-xs text-red-500 mt-1">
-                Minimum deposit is 1 NUSDC
+                Min deposit: 1 NUSDC
               </p>
             )}
           </div>

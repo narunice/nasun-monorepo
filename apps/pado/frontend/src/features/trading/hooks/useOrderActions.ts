@@ -109,12 +109,12 @@ export function useOrderActions(): UseOrderActionsResult {
 
       // Gas-related errors
       if (parsed.errorType === 'GAS_REQUIRED') {
-        return parsed.message + ' Get NASUN from your wallet.';
+        return 'Not enough NASUN for gas. Get NASUN from Faucet in your wallet.';
       }
 
       // Quantity error
       if (error.includes('ORDER_INFO-2') || error.includes('lot size')) {
-        return `Quantity must be a multiple of ${minQty} ${baseSymbol} (e.g., ${minQty}, ${minQty * 10}, ${minQty * 100})`;
+        return `Invalid quantity. Use ${minQty}, ${minQty * 10}, ${minQty * 100}... ${baseSymbol} (multiples of ${minQty})`;
       }
 
       // Price error
@@ -124,17 +124,17 @@ export function useOrderActions(): UseOrderActionsResult {
 
       // Insufficient balance
       if (error.includes('BM-3') || error.includes('Insufficient balance')) {
-        return 'Insufficient balance. Add funds from your wallet and try again.';
+        return 'Not enough balance. Get tokens from Faucet in your wallet.';
       }
 
       // Insufficient margin (Pado Balance)
       if (isMarginError(error)) {
-        return 'Insufficient margin. Deposit more NUSDC from your wallet or reduce trade size.';
+        return 'Not enough margin. Deposit more NUSDC or reduce order size.';
       }
 
       // Post-only error
       if (error.includes('POOL-6') || error.includes('cross the book')) {
-        return 'Post-only order would execute immediately. Please adjust the price.';
+        return 'Post-only rejected: order would fill immediately. Adjust price further from market.';
       }
 
       return error;
