@@ -122,7 +122,7 @@ Security expectations:
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2026-01-10)
+### 현재 상태 (2026-01-11)
 
 | 앱                      | 패키지명                | 상태    | 배포 방식    | 설명                         |
 | ----------------------- | ----------------------- | ------- | ------------ | ---------------------------- |
@@ -430,7 +430,7 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 | `apps/pado/contracts-lending/`    | 렌딩 컨트랙트                        |
 | `apps/pado/contracts-lottery/`    | Lottery 컨트랙트 (Sui Random)        |
 | `apps/pado/contracts-margin/`     | Unified Margin v1 (Multi-collateral) |
-| `apps/pado/contracts-perp/`       | Perpetuals DEX (진행중)              |
+| `apps/pado/contracts-perp/`       | Perpetuals DEX (Phase 11.4 완료)     |
 
 ### Move 빌드/배포 명령어
 
@@ -494,16 +494,18 @@ cd apps/pado/contracts
 - `account_positions.move` - 포지션 추적 + PnL 계산
 - `liquidation.move` - 5% 보너스, 50% 최대 청산 비율
 
-#### Perpetuals DEX (2026-01-10 진행중)
+#### Perpetuals DEX (2026-01-10 Phase 11.4 완료)
 
-| 컨트랙트  | ID        | 비고              |
-| --------- | --------- | ----------------- |
-| pado_perp | 배포 대기 | Perpetual futures |
+| 컨트랙트    | ID                     | 비고               |
+| ----------- | ---------------------- | ------------------ |
+| pado_perp   | `0x4e2a36299ce4...`    | Perpetual futures  |
+| BTC-PERP    | `0x0a3ba00cce5a...`    | BTC 무기한 마켓    |
 
-**모듈 (11.1-11.2 완료):**
+**모듈 (11.1-11.4 완료):**
 
 - `perpetual.move` - PerpMarket, PerpPosition (20x 레버리지, Isolated margin)
 - `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
+- `liquidation.move` - 청산 엔진 (5% 보너스)
 
 #### Governance (Nasun Website) - 2026-01-08 업데이트
 

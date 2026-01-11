@@ -274,11 +274,11 @@ apps/pado/
 ├── CLAUDE.md                     # 이 파일
 ├── README.md                     # 프로젝트 소개
 ├── docs/
-│   ├── PADO_IMPLEMENTATION_PLAN.md  # 구현 계획서
-│   ├── PADO_NEXT_STEPS.md           # 다음 단계 계획
-│   ├── PADO_UI_ROADMAP.md           # UI 로드맵
-│   ├── PREDICTION_LIQUIDITY_PLAN.md # 예측 시장 유동성 계획
-│   └── LOTTERY.md                   # 로또 기능 문서
+│   ├── PADO_IMPLEMENTATION_PLAN.md    # 구현 계획서
+│   ├── PADO_NEXT_STEPS.md             # 다음 단계 계획
+│   ├── PADO_UI_ROADMAP.md             # UI 로드맵
+│   ├── TRADE-UI-BENCHMARK-IMPROVEMENT-PLAN.md # Trade UI 벤치마킹
+│   └── LOTTERY.md                     # 로또 기능 문서
 ├── contracts/                    # Move 스마트 컨트랙트
 │   ├── sources/                 # Pado 테스트 토큰 패키지
 │   │   ├── nbtc.move           # 테스트 BTC 토큰
@@ -368,18 +368,18 @@ cd deepbookv3 && nasun client publish --gas-budget 500000000
 - Liquidation Engine: 5% 보너스, 50% 최대 청산 비율
 - Smart Account UI: Wallet + Trading 잔고 통합 표시
 
-### Perpetuals (Phase 11) 🚧 진행중 (11.1-11.3 완료)
-**완료된 작업 (11.1-11.3):**
+### Perpetuals (Phase 11) ✅ 완료 (11.1-11.4)
+**완료된 작업 (11.1-11.4):**
 - PerpMarket 구조체: 20x 최대 레버리지, Isolated Margin
 - PerpPosition: Long/Short 포지션 관리
 - Funding Rate: 8시간 정산, 1.25% 최대 레이트
 - Oracle Staleness Protection: 2분 최대 허용
 - Perp Trading UI: features/perp/ 모듈, /markets/perp 라우트
+- BTC-PERP 마켓 생성 완료
+- Perp Liquidation Engine + Keeper 서비스
 
-**예정된 작업 (11.4-11.5):**
-- BTC-PERP 마켓 생성 (PTB 스크립트)
-- Perp Liquidation
-- Spot-Perp Integration
+**예정된 작업 (11.5):**
+- Spot-Perp Integration (Unified Margin v2)
 
 ### Lending & Borrowing (Phase 12) 📋 계획
 - 공급/대출 프로토콜
