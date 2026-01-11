@@ -1,14 +1,9 @@
 /**
  * InsufficientBalancePrompt
  *
- * Shows insufficient balance warning with actionable CTA buttons:
- * - Deposit from wallet (if funds available)
- * - Get from Faucet (devnet/testnet only)
- *
- * @version 1.0.0 (Phase 16.1c)
+ * Shows insufficient balance warning with actionable guidance.
+ * Guides users to get tokens from their wallet.
  */
-
-import { isFaucetAvailable } from '../../../config/network';
 
 interface InsufficientBalancePromptProps {
   /** Token symbol (e.g., NUSDC, NBTC) */
@@ -17,12 +12,6 @@ interface InsufficientBalancePromptProps {
   requiredAmount: number;
   /** Current available balance */
   availableAmount: number;
-  /** Callback when user clicks deposit */
-  onDeposit?: () => void;
-  /** Callback when user clicks faucet */
-  onFaucet?: () => void;
-  /** Whether deposit is available (user has wallet funds) */
-  canDeposit?: boolean;
   /** Custom message override */
   message?: string;
 }
@@ -31,13 +20,9 @@ export function InsufficientBalancePrompt({
   tokenSymbol,
   requiredAmount,
   availableAmount,
-  onDeposit,
-  onFaucet,
-  canDeposit = false,
   message,
 }: InsufficientBalancePromptProps) {
   const shortfall = requiredAmount - availableAmount;
-  const showFaucet = isFaucetAvailable();
 
   // Don't render if no shortfall
   if (shortfall <= 0) return null;
@@ -66,28 +51,9 @@ export function InsufficientBalancePrompt({
           <p className="text-xs text-theme-text-muted mt-0.5">
             Available: {availableAmount.toFixed(2)} {tokenSymbol}
           </p>
-
-          {/* CTA Buttons */}
-          {(canDeposit || showFaucet) && (
-            <div className="flex gap-2 mt-2">
-              {canDeposit && onDeposit && (
-                <button
-                  onClick={onDeposit}
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
-                >
-                  Deposit from Wallet
-                </button>
-              )}
-              {showFaucet && onFaucet && (
-                <button
-                  onClick={onFaucet}
-                  className="px-3 py-1.5 text-xs font-medium bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded transition-colors"
-                >
-                  Get from Faucet
-                </button>
-              )}
-            </div>
-          )}
+          <p className="text-xs text-theme-text-muted mt-1">
+            Get {tokenSymbol} from your wallet to continue.
+          </p>
         </div>
       </div>
     </div>

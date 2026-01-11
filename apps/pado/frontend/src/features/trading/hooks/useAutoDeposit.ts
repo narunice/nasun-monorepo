@@ -25,17 +25,29 @@ import type { PoolConfig } from '../types';
 export interface AutoDepositResult {
   success: boolean;
   error?: string;
-  depositedAmount?: number;
+  depositedQuoteAmount?: number;
+  depositedBaseAmount?: number;
   digest?: string;
 }
 
 export interface AutoDepositCheckResult {
   needsDeposit: boolean;
-  requiredAmount: number;
-  availableInWallet: number;
-  availableInBm: number;
+  // Quote token info (NUSDC)
+  requiredQuoteAmount: number;
+  availableQuoteInWallet: number;
+  availableQuoteInBm: number;
+  quoteShortfall: number;
+  canAffordQuote: boolean;
+  needsQuoteDeposit: boolean;
+  // Base token info (NBTC)
+  requiredBaseAmount: number;
+  availableBaseInWallet: number;
+  availableBaseInBm: number;
+  baseShortfall: number;
+  canAffordBase: boolean;
+  needsBaseDeposit: boolean;
+  // Combined
   canAfford: boolean;
-  shortfall: number;
 }
 
 export interface UseAutoDepositResult {
@@ -87,11 +99,22 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
       if (!walletAddress) {
         return {
           needsDeposit: false,
-          requiredAmount: 0,
-          availableInWallet: 0,
-          availableInBm: 0,
+          // Quote token info
+          requiredQuoteAmount,
+          availableQuoteInWallet: 0,
+          availableQuoteInBm: 0,
+          quoteShortfall: requiredQuoteAmount,
+          canAffordQuote: false,
+          needsQuoteDeposit: requiredQuoteAmount > 0,
+          // Base token info
+          requiredBaseAmount,
+          availableBaseInWallet: 0,
+          availableBaseInBm: 0,
+          baseShortfall: requiredBaseAmount,
+          canAffordBase: false,
+          needsBaseDeposit: requiredBaseAmount > 0,
+          // Combined
           canAfford: false,
-          shortfall: requiredQuoteAmount,
         };
       }
 
@@ -136,17 +159,28 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
       const needsDeposit = needsQuoteDeposit || needsBaseDeposit;
 
       // Can we afford the trade with wallet + BM combined?
-      const canAffordQuote = totalQuoteAvailable >= requiredQuoteAmount;
+      const canAffordQuote = requiredQuoteAmount <= 0 || totalQuoteAvailable >= requiredQuoteAmount;
       const canAffordBase = requiredBaseAmount <= 0 || totalBaseAvailable >= requiredBaseAmount;
       const canAfford = canAffordQuote && canAffordBase;
 
       return {
         needsDeposit,
-        requiredAmount: requiredQuoteAmount,
-        availableInWallet: walletQuoteBalance,
-        availableInBm: bmQuoteBalance,
+        // Quote token info
+        requiredQuoteAmount,
+        availableQuoteInWallet: walletQuoteBalance,
+        availableQuoteInBm: bmQuoteBalance,
+        quoteShortfall,
+        canAffordQuote,
+        needsQuoteDeposit,
+        // Base token info
+        requiredBaseAmount,
+        availableBaseInWallet: walletBaseBalance,
+        availableBaseInBm: bmBaseBalance,
+        baseShortfall,
+        canAffordBase,
+        needsBaseDeposit,
+        // Combined
         canAfford,
-        shortfall: quoteShortfall,
       };
     },
     [walletAddress, currentPool, bmBalance]
@@ -318,12 +352,19 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
 
       if (!check.needsDeposit) {
         // BM has enough balance, no deposit needed
-        return { success: true, depositedAmount: 0 };
+        return { success: true, depositedQuoteAmount: 0, depositedBaseAmount: 0 };
       }
 
       if (!check.canAfford) {
-        // Not enough total balance
-        const error = `Insufficient balance. Need ${check.shortfall.toFixed(2)} more NUSDC.`;
+        // Not enough total balance - show correct token name
+        let error = '';
+        if (!check.canAffordQuote && check.requiredQuoteAmount > 0) {
+          error = `Insufficient NUSDC. Need ${check.quoteShortfall.toFixed(2)} more.`;
+        } else if (!check.canAffordBase && check.requiredBaseAmount > 0) {
+          error = `Insufficient NBTC. Need ${check.baseShortfall.toFixed(4)} more.`;
+        } else {
+          error = 'Insufficient balance.';
+        }
         setLastDepositError(error);
         return { success: false, error };
       }
@@ -333,10 +374,8 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
 
       try {
         // Add 5% buffer to avoid rounding issues
-        const quoteToDeposit = check.shortfall * 1.05;
-        const baseToDeposit = requiredBaseAmount > bmBalance.base
-          ? (requiredBaseAmount - bmBalance.base) * 1.05
-          : 0;
+        const quoteToDeposit = check.quoteShortfall > 0 ? check.quoteShortfall * 1.05 : 0;
+        const baseToDeposit = check.baseShortfall > 0 ? check.baseShortfall * 1.05 : 0;
 
         const tx = await buildDepositExactAmount(
           balanceManagerId,
@@ -360,7 +399,8 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
 
           return {
             success: true,
-            depositedAmount: quoteToDeposit,
+            depositedQuoteAmount: quoteToDeposit > 0 ? quoteToDeposit : undefined,
+            depositedBaseAmount: baseToDeposit > 0 ? baseToDeposit : undefined,
             digest: result.digest,
           };
         } else {

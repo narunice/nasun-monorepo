@@ -21,10 +21,6 @@ interface SimpleOrderFormProps {
   quoteBalance?: number;
   /** Trading balance - base token (for Max button calculation) */
   baseBalance?: number;
-  /** Faucet callback for quote token (Phase 16.1c) */
-  onFaucetQuote?: () => void;
-  /** Faucet callback for base token (Phase 16.1c) */
-  onFaucetBase?: () => void;
 }
 
 export function SimpleOrderForm({
@@ -35,8 +31,6 @@ export function SimpleOrderForm({
   isLoading,
   quoteBalance = 0,
   baseBalance = 0,
-  onFaucetQuote,
-  onFaucetBase,
 }: SimpleOrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -148,13 +142,12 @@ export function SimpleOrderForm({
         />
       </div>
 
-      {/* Zero Balance Warning with Faucet CTA (Phase 16.1c) */}
+      {/* Zero Balance Warning */}
       {orderSide === 'buy' && quoteBalance <= 0 && (
         <InsufficientBalancePrompt
           tokenSymbol={quoteSymbol}
           requiredAmount={50}
           availableAmount={quoteBalance}
-          onFaucet={onFaucetQuote}
           message={`Get ${quoteSymbol} to start trading`}
         />
       )}
@@ -163,7 +156,6 @@ export function SimpleOrderForm({
           tokenSymbol={baseSymbol}
           requiredAmount={0.001}
           availableAmount={baseBalance}
-          onFaucet={onFaucetBase}
           message={`Get ${baseSymbol} to start selling`}
         />
       )}
@@ -183,14 +175,13 @@ export function SimpleOrderForm({
               ~{baseAmount.toFixed(4)} {baseSymbol}
             </span>
           </div>
-          {/* Insufficient Balance Warning with CTA (Phase 16.1c) */}
+          {/* Insufficient Balance Warning */}
           {insufficientForBuy && (
             <div className="pt-2 border-t border-theme-border/30">
               <InsufficientBalancePrompt
                 tokenSymbol={quoteSymbol}
                 requiredAmount={usdAmount}
                 availableAmount={quoteBalance}
-                onFaucet={onFaucetQuote}
               />
             </div>
           )}
@@ -200,7 +191,6 @@ export function SimpleOrderForm({
                 tokenSymbol={baseSymbol}
                 requiredAmount={usdAmount / midPrice}
                 availableAmount={baseBalance}
-                onFaucet={onFaucetBase}
               />
             </div>
           )}

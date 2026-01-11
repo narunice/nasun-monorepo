@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
-import { useOrderbook, useOpenOrders, useOrderActions, useFaucet, type TradeMode } from '../hooks';
+import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm, useMarket } from '../context';
 import {
   OrderForm,
@@ -63,15 +63,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const orders = openOrdersData?.orders ?? [];
   const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
 
-  // Wallet balances for unified available balance (Phase 2)
+  // Wallet balances for unified available balance
   const { data: multiBalance } = useMultiBalance();
   const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
   const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
-
-  // Faucet handlers for insufficient balance CTA (Phase 16.1c)
-  const { handleNbtcFaucet, handleNusdcFaucet } = useFaucet();
 
   // 주문 폼 상태 (Context)
   const {
@@ -82,6 +79,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     getOrderType,
     slippage,
     setSlippage,
+    oneClickEnabled,
+    setOneClickEnabled,
     isConfirmModalOpen,
     pendingOrderType,
     setPrice,
@@ -90,6 +89,30 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     closeConfirmModal,
     resetForm,
   } = useOrderForm();
+
+  // One-Click 주문 핸들러 (확인 모달 스킵)
+  const handleOneClickOrder = async (type: 'buy' | 'sell') => {
+    if (!price || !amount) return;
+
+    const priceNum = parseFloat(price);
+    const amountNum = parseFloat(amount);
+    const orderType = getOrderType();
+
+    const result = await handleLimitOrder(type, priceNum, amountNum, orderType);
+
+    if (result.success) {
+      resetForm();
+    }
+  };
+
+  // 주문 버튼 클릭 핸들러 (One-Click 또는 Modal)
+  const handleOrderClick = (type: 'buy' | 'sell') => {
+    if (oneClickEnabled) {
+      handleOneClickOrder(type);
+    } else {
+      openConfirmModal(type);
+    }
+  };
 
   // 지정가 주문 실행
   const handleConfirmOrder = async () => {
@@ -191,8 +214,6 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             isLoading={isLoading}
             quoteBalance={availableQuote}
             baseBalance={availableBase}
-            onFaucetQuote={handleNusdcFaucet}
-            onFaucetBase={baseSymbol === 'NBTC' ? handleNbtcFaucet : undefined}
           />
         </div>
       </div>
@@ -212,7 +233,23 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
                 <span className="text-xs text-blue-400 animate-pulse">Depositing...</span>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              {/* One-Click Trading Toggle */}
+              <label className="flex items-center gap-2 cursor-pointer" title="Execute orders immediately without confirmation">
+                <span className="text-xs text-theme-text-secondary">One-Click</span>
+                <button
+                  onClick={() => setOneClickEnabled(!oneClickEnabled)}
+                  className={`w-10 h-5 rounded-full transition-colors ${
+                    oneClickEnabled ? 'bg-purple-500' : 'bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                      oneClickEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </label>
               {/* Auto Deposit Toggle */}
               <label className="flex items-center gap-2 cursor-pointer">
                 <span className="text-xs text-theme-text-secondary">Auto Deposit</span>
@@ -251,8 +288,15 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             </button>
           </div>
 
+          {/* One-Click Trading Warning */}
+          {oneClickEnabled && (
+            <p className="text-xs text-purple-400 mt-2">
+              One-Click enabled: Orders execute immediately without confirmation.
+            </p>
+          )}
+
           {/* Auto Deposit Info */}
-          {autoDepositEnabled && !lastAutoDepositError && (
+          {autoDepositEnabled && !lastAutoDepositError && !oneClickEnabled && (
             <p className="text-xs text-theme-text-muted mt-2">
               Funds will be automatically moved from wallet when needed.
             </p>
@@ -341,8 +385,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           amount={amount}
           onPriceChange={setPrice}
           onAmountChange={setAmount}
-          onBuy={() => openConfirmModal('buy')}
-          onSell={() => openConfirmModal('sell')}
+          onBuy={() => handleOrderClick('buy')}
+          onSell={() => handleOrderClick('sell')}
           onMarketBuy={handleMarketBuy}
           onMarketSell={handleMarketSell}
           disabled={!isConnected || !balanceManagerId}
@@ -357,8 +401,6 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onSlippageChange={setSlippage}
           availableQuote={availableQuote}
           availableBase={availableBase}
-          onFaucetQuote={handleNusdcFaucet}
-          onFaucetBase={baseSymbol === 'NBTC' ? handleNbtcFaucet : undefined}
         />
 
         {/* Order Confirmation Modal */}
