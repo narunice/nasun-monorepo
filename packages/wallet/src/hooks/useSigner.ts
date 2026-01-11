@@ -3,14 +3,19 @@
  *
  * Unified interface for accessing the current signer.
  * Automatically registers/unregisters signers based on wallet and zkLogin state.
+ * Supports multi-chain with automatic EVM signer registration.
  */
 
-import { useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useEffect, useCallback, useSyncExternalStore, useState } from 'react';
 import { SignerManager } from '../core/signer/SignerManager';
 import { LocalSigner } from '../core/signer/adapters/LocalSigner';
 import { ZkLoginSigner } from '../core/signer/adapters/ZkLoginSigner';
+import { EVMSigner } from '../core/signer/adapters/EVMSigner';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
+import { useChain } from './useChain';
+import { hasEVMWallet, unlockEVMWallet } from '../core/evm/keystore';
+import { getSessionPassword } from '../sui/client';
 import type { SignerAdapter, SignerType } from '../core/signer/types';
 
 /**
@@ -54,6 +59,10 @@ export function useSigner(): UseSignerResult {
   // Get wallet state
   const { status, account, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const { chain, isEVM, isMove } = useChain();
+
+  // Track EVM wallet unlock state
+  const [evmUnlocked, setEvmUnlocked] = useState(false);
 
   // Subscribe to SignerManager changes
   const snapshot = useSyncExternalStore(
@@ -92,6 +101,59 @@ export function useSigner(): UseSignerResult {
       }
     }
   }, [isZkLoggedIn, zkState]);
+
+  // Register/unregister EVMSigner based on EVM chain and wallet state
+  useEffect(() => {
+    const registerEVMSigner = async () => {
+      // Only register EVM signer when EVM chain is selected and wallet exists
+      if (!isEVM || !hasEVMWallet()) {
+        if (SignerManager.has('evm')) {
+          SignerManager.unregister('evm');
+          setEvmUnlocked(false);
+        }
+        return;
+      }
+
+      // Try to unlock EVM wallet with session password
+      const sessionPassword = getSessionPassword();
+      if (!sessionPassword) {
+        // No session password available, EVM wallet stays locked
+        if (SignerManager.has('evm')) {
+          SignerManager.unregister('evm');
+          setEvmUnlocked(false);
+        }
+        return;
+      }
+
+      try {
+        const account = await unlockEVMWallet(sessionPassword);
+        const chainId = chain.chainId;
+        if (chainId) {
+          SignerManager.register(new EVMSigner(account, chainId));
+          setEvmUnlocked(true);
+        }
+      } catch (err) {
+        console.warn('[useSigner] Failed to unlock EVM wallet:', err);
+        if (SignerManager.has('evm')) {
+          SignerManager.unregister('evm');
+          setEvmUnlocked(false);
+        }
+      }
+    };
+
+    registerEVMSigner();
+  }, [isEVM, chain.chainId, status]); // Re-run when chain changes or wallet status changes
+
+  // Auto-switch to appropriate signer when chain changes
+  useEffect(() => {
+    if (isEVM && SignerManager.has('evm')) {
+      SignerManager.switchTo('evm');
+    } else if (isMove && SignerManager.has('local')) {
+      SignerManager.switchTo('local');
+    } else if (isMove && SignerManager.has('zklogin')) {
+      SignerManager.switchTo('zklogin');
+    }
+  }, [isEVM, isMove, evmUnlocked, snapshot.available.length]);
 
   // Switch signer callback
   const switchSigner = useCallback((type: SignerType) => {

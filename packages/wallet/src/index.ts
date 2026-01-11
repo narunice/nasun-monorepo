@@ -374,7 +374,80 @@ export { SignerManager } from './core/signer/SignerManager';
 export type { SignerManagerSnapshot } from './core/signer/SignerManager';
 
 // Signer Adapters
-export { LocalSigner, ZkLoginSigner } from './core/signer/adapters';
+export { LocalSigner, ZkLoginSigner, EVMSigner } from './core/signer/adapters';
+
+// ============================================
+// Multi-Chain Support (P1)
+// ============================================
+
+// Chain Configuration
+export {
+  CHAINS,
+  DEFAULT_CHAIN_ID,
+  getChain,
+  getAllChains,
+  getEVMChains,
+  getMoveChains,
+  getChainByEvmId,
+} from './config/chains';
+export type {
+  ChainType,
+  ChainConfig,
+  NativeCurrency,
+  AAConfig,
+} from './config/chains';
+
+// Chain Hook
+export {
+  useChain,
+  useChainStore,
+  useCurrentChainId,
+  useIsEVMChain,
+  useIsMoveChain,
+} from './hooks/useChain';
+export type { UseChainResult } from './hooks/useChain';
+
+// EVM Balance Hook
+export {
+  useEVMBalance,
+  useRefreshEVMBalance,
+} from './hooks/useEVMBalance';
+export type {
+  EVMBalance,
+  UseEVMBalanceResult,
+} from './hooks/useEVMBalance';
+
+// EVM Transaction Hook
+export { useEVMTransaction } from './hooks/useEVMTransaction';
+export type {
+  EVMTransferRequest,
+  EVMContractCallRequest,
+  EVMTransactionResult,
+  UseEVMTransactionResult,
+} from './hooks/useEVMTransaction';
+
+// EVM Utilities
+export {
+  // Client
+  getEVMClient,
+  getViemChain,
+  clearClientCache,
+  getEVMClientById,
+  // Wallet
+  deriveEVMAccount,
+  createEVMAccountFromPrivateKey,
+  getPrivateKeyFromHDAccount,
+  isValidEVMAddress,
+  shortenEVMAddress,
+  // Keystore
+  createEVMWalletFromMnemonic,
+  createEVMWalletFromPrivateKey,
+  unlockEVMWallet,
+  getStoredEVMAddress,
+  deleteEVMWallet,
+  hasEVMWallet,
+} from './core/evm';
+export type { EVMWalletState } from './core/evm';
 
 // ============================================
 // Auto-register Token Faucets (Devnet)
