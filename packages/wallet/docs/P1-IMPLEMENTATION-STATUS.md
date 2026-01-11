@@ -138,7 +138,7 @@ See: [P2-WALLETCONNECT-V2.md](./P2-WALLETCONNECT-V2.md)
 
 ---
 
-## 4. EVM Account Abstraction [PENDING]
+## 4. EVM Account Abstraction [NEXT PRIORITY]
 
 ### Overview
 
@@ -156,7 +156,12 @@ ERC-4337 Account Abstraction enables:
 ### Key Components
 - `SmartAccountSigner` adapter
 - `useSmartAccount` hook
-- Paymaster integration
+- Bundler/Paymaster clients
+- SimpleSmartAccount factory
+
+### Detailed Implementation Plan
+
+See: [P3-EVM-ACCOUNT-ABSTRACTION.md](./P3-EVM-ACCOUNT-ABSTRACTION.md)
 
 ---
 
@@ -225,6 +230,7 @@ packages/wallet/src/
 |--------|-------------|------|
 | `744886a` | Before multi-chain implementation | 2026-01-11 |
 | `a505156` | Before WalletConnect implementation | 2026-01-11 |
+| `0c2c0b1` | WalletConnect v2 complete | 2026-01-11 |
 
 ---
 
