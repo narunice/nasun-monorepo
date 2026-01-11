@@ -151,7 +151,7 @@ export function OrderForm({
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm text-theme-text-secondary">Price ({quoteSymbol})</label>
-            <span className="text-xs text-theme-text-muted">min: ${minPrice}</span>
+            <span className="text-xs text-theme-text-muted">Min ${minPrice}</span>
           </div>
           <PriceSuggestions
             midPrice={midPrice || 0}
@@ -186,7 +186,7 @@ export function OrderForm({
             </span>
           </div>
           <p className="text-xs text-theme-text-muted mt-1">
-            Executes immediately at best available price
+            Fills at best market price
           </p>
         </div>
       )}
@@ -200,7 +200,7 @@ export function OrderForm({
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="text-sm text-theme-text-secondary">Amount ({baseSymbol})</label>
-          <span className="text-xs text-theme-text-muted">min: {minQuantity} {baseSymbol}</span>
+          <span className="text-xs text-theme-text-muted">Min {minQuantity}</span>
         </div>
         <input
           type="number"

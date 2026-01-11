@@ -138,8 +138,8 @@ export function StakingSection() {
 
           <div className="mt-4 pt-4 border-t border-theme-border">
             <p className="text-xs text-theme-text-muted">
-              <span className="text-yellow-500">Note:</span> Minimum stake is 1 NASUN.
-              Keep some NASUN unstaked for transaction fees.
+              <span className="text-yellow-500">Note:</span> Min stake: 1 NASUN.
+              Keep some unstaked for gas fees.
             </p>
           </div>
         </div>

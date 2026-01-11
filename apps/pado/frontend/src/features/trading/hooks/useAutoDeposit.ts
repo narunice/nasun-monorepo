@@ -356,14 +356,14 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
       }
 
       if (!check.canAfford) {
-        // Not enough total balance - show correct token name
+        // Not enough total balance - show correct token name with Faucet guidance
         let error = '';
         if (!check.canAffordQuote && check.requiredQuoteAmount > 0) {
-          error = `Insufficient NUSDC. Need ${check.quoteShortfall.toFixed(2)} more.`;
+          error = `Not enough NUSDC. Get ${check.quoteShortfall.toFixed(2)} more from Faucet in your wallet.`;
         } else if (!check.canAffordBase && check.requiredBaseAmount > 0) {
-          error = `Insufficient NBTC. Need ${check.baseShortfall.toFixed(4)} more.`;
+          error = `Not enough NBTC. Get ${check.baseShortfall.toFixed(4)} more from Faucet in your wallet.`;
         } else {
-          error = 'Insufficient balance.';
+          error = 'Not enough balance. Use Faucet in your wallet to get tokens.';
         }
         setLastDepositError(error);
         return { success: false, error };

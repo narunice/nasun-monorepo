@@ -122,7 +122,7 @@ export function SimpleOrderForm({
             <div>
               <p className="text-sm font-medium text-yellow-400">No market liquidity</p>
               <p className="text-xs text-theme-text-muted mt-1">
-                The orderbook is empty. Place a limit order in Pro mode or wait for liquidity.
+                No market liquidity yet. Switch to Pro mode to place limit orders.
               </p>
             </div>
           </div>
@@ -148,7 +148,7 @@ export function SimpleOrderForm({
           tokenSymbol={quoteSymbol}
           requiredAmount={50}
           availableAmount={quoteBalance}
-          message={`Get ${quoteSymbol} to start trading`}
+          message={`Get ${quoteSymbol} from Faucet in your wallet to start`}
         />
       )}
       {orderSide === 'sell' && baseBalance <= 0 && (
@@ -156,7 +156,7 @@ export function SimpleOrderForm({
           tokenSymbol={baseSymbol}
           requiredAmount={0.001}
           availableAmount={baseBalance}
-          message={`Get ${baseSymbol} to start selling`}
+          message={`Get ${baseSymbol} from Faucet in your wallet to sell`}
         />
       )}
 
@@ -218,7 +218,7 @@ export function SimpleOrderForm({
 
       {/* Info Text */}
       <p className="text-xs text-theme-text-muted text-center">
-        Market order executes at best available price
+        Fills at best available price
       </p>
     </div>
   );
