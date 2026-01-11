@@ -14,7 +14,6 @@ import { ORDER_TYPE } from '../constants';
 import { useToast } from '../../../components/common';
 import { quantityToRaw, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
 import { isMarginError } from '../../../lib/risk-engine';
-import { isFaucetAvailable } from '../../../config/network';
 import { parseError } from '../utils/errorParser';
 
 export interface UseOrderActionsResult {
@@ -108,12 +107,9 @@ export function useOrderActions(): UseOrderActionsResult {
       // Parse error to get type
       const parsed = parseError(error);
 
-      // Gas-related errors with faucet guidance
+      // Gas-related errors
       if (parsed.errorType === 'GAS_REQUIRED') {
-        const faucetMsg = isFaucetAvailable()
-          ? ' Get NASUN from the faucet in your wallet.'
-          : '';
-        return parsed.message + faucetMsg;
+        return parsed.message + ' Get NASUN from your wallet.';
       }
 
       // Quantity error
@@ -128,12 +124,12 @@ export function useOrderActions(): UseOrderActionsResult {
 
       // Insufficient balance
       if (error.includes('BM-3') || error.includes('Insufficient balance')) {
-        return 'Insufficient balance. Add funds to trading balance and try again.';
+        return 'Insufficient balance. Add funds from your wallet and try again.';
       }
 
       // Insufficient margin (Pado Balance)
       if (isMarginError(error)) {
-        return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
+        return 'Insufficient margin. Deposit more NUSDC from your wallet or reduce trade size.';
       }
 
       // Post-only error
@@ -181,12 +177,23 @@ export function useOrderActions(): UseOrderActionsResult {
         }
 
         // Show deposit notification if deposit occurred
-        if (depositResult.depositedAmount && depositResult.depositedAmount > 0) {
+        const hasQuoteDeposit = depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
+        const hasBaseDeposit = depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
+
+        if (hasQuoteDeposit) {
           showToast(
-            `Auto-deposited ${depositResult.depositedAmount.toFixed(2)} NUSDC to trading`,
+            `Auto-deposited ${depositResult.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`,
             'info',
           );
+        }
+        if (hasBaseDeposit) {
+          showToast(
+            `Auto-deposited ${depositResult.depositedBaseAmount!.toFixed(4)} NBTC to trading`,
+            'info',
+          );
+        }
 
+        if (hasQuoteDeposit || hasBaseDeposit) {
           // Wait for RPC to sync new object versions after deposit
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
@@ -244,12 +251,23 @@ export function useOrderActions(): UseOrderActionsResult {
           };
         }
 
-        if (depositResult.depositedAmount && depositResult.depositedAmount > 0) {
+        const hasQuoteDeposit = depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
+        const hasBaseDeposit = depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
+
+        if (hasQuoteDeposit) {
           showToast(
-            `Auto-deposited ${depositResult.depositedAmount.toFixed(2)} NUSDC to trading`,
+            `Auto-deposited ${depositResult.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`,
             'info',
           );
+        }
+        if (hasBaseDeposit) {
+          showToast(
+            `Auto-deposited ${depositResult.depositedBaseAmount!.toFixed(4)} NBTC to trading`,
+            'info',
+          );
+        }
 
+        if (hasQuoteDeposit || hasBaseDeposit) {
           // Wait for RPC to sync new object versions after deposit
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }

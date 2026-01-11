@@ -8,15 +8,11 @@
  * - Unified balance (Wallet + Trading combined)
  * - Auto-deposit hint for reduced financial anxiety
  * - Expandable breakdown (click to see split)
- * - Inline Faucet buttons with tooltips (NBTC, NUSDC)
  * - Pro mode: In Orders display
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
-import { useFaucet } from '../hooks';
-
-type FaucetConfirmState = 'none' | 'nbtc' | 'nusdc';
 
 interface TradingBalanceBarProps {
   /** Base token symbol (e.g., 'NBTC', 'NASUN') */
@@ -42,24 +38,6 @@ export function TradingBalanceBar({
   mode = 'simple',
 }: TradingBalanceBarProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [faucetConfirm, setFaucetConfirm] = useState<FaucetConfirmState>('none');
-
-  // Detect mobile viewport for double-click protection
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Auto-reset confirmation after 3 seconds
-  useEffect(() => {
-    if (faucetConfirm !== 'none') {
-      const timer = setTimeout(() => setFaucetConfirm('none'), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [faucetConfirm]);
 
   // Wallet connection state
   const { status, account } = useWallet();
@@ -68,33 +46,6 @@ export function TradingBalanceBar({
 
   // Wallet balances
   const { data: multiBalance, isLoading: isWalletLoading } = useMultiBalance();
-
-  // Faucet handlers
-  const {
-    isNbtcLoading,
-    isNusdcLoading,
-    handleNbtcFaucet,
-    handleNusdcFaucet,
-  } = useFaucet();
-
-  // Mobile faucet click handlers with double-click protection
-  const handleNbtcClick = () => {
-    if (isMobile && faucetConfirm !== 'nbtc') {
-      setFaucetConfirm('nbtc');
-      return;
-    }
-    setFaucetConfirm('none');
-    handleNbtcFaucet();
-  };
-
-  const handleNusdcClick = () => {
-    if (isMobile && faucetConfirm !== 'nusdc') {
-      setFaucetConfirm('nusdc');
-      return;
-    }
-    setFaucetConfirm('none');
-    handleNusdcFaucet();
-  };
 
   // Calculate wallet balances
   const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
@@ -143,56 +94,21 @@ export function TradingBalanceBar({
           </span>
         </div>
 
-        {/* Faucet Buttons + Breakdown Toggle */}
-        <div className="flex items-center gap-2">
-          {/* NBTC Faucet (only for NBTC market) */}
-          {baseSymbol === 'NBTC' && (
-            <button
-              onClick={handleNbtcClick}
-              disabled={isNbtcLoading}
-              title={faucetConfirm === 'nbtc' ? 'Tap again to confirm' : 'Get test NBTC (Devnet)'}
-              className={`px-2 py-0.5 text-xs font-medium rounded transition-colors
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         ${faucetConfirm === 'nbtc'
-                           ? 'bg-orange-500/40 text-orange-300 ring-1 ring-orange-400/50'
-                           : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
-                         }`}
-            >
-              {isNbtcLoading ? '...' : faucetConfirm === 'nbtc' ? 'Confirm?' : '+NBTC'}
-            </button>
-          )}
-
-          {/* NUSDC Faucet */}
-          <button
-            onClick={handleNusdcClick}
-            disabled={isNusdcLoading}
-            title={faucetConfirm === 'nusdc' ? 'Tap again to confirm' : 'Get test NUSDC (Devnet)'}
-            className={`px-2 py-0.5 text-xs font-medium rounded transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       ${faucetConfirm === 'nusdc'
-                         ? 'bg-purple-500/40 text-purple-300 ring-1 ring-purple-400/50'
-                         : 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
-                       }`}
+        {/* Breakdown Toggle */}
+        <button
+          onClick={() => setShowBreakdown(!showBreakdown)}
+          className="p-1 text-theme-text-muted hover:text-theme-text-primary transition-colors"
+          title={showBreakdown ? 'Hide breakdown' : 'Show breakdown'}
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showBreakdown ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            {isNusdcLoading ? '...' : faucetConfirm === 'nusdc' ? 'Confirm?' : '+NUSDC'}
-          </button>
-
-          {/* Breakdown Toggle */}
-          <button
-            onClick={() => setShowBreakdown(!showBreakdown)}
-            className="p-1 text-theme-text-muted hover:text-theme-text-primary transition-colors"
-            title={showBreakdown ? 'Hide breakdown' : 'Show breakdown'}
-          >
-            <svg
-              className={`w-4 h-4 transition-transform ${showBreakdown ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        </div>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
 
       {/* Auto-deposit Hint (shown when collapsed) */}
