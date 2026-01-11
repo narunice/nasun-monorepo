@@ -13,20 +13,20 @@ function NasunNetworkSection() {
     <SectionLayout>
       {/* Content Box - Semi-transparent container (Founders NFT style) */}
       <div className="max-w-5xl w-full mx-auto">
-        <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-10 xl:py-12">
-          <OuterBox variant="default" className="">
+        <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-6 xl:py-8">
+          <OuterBox color="n2" className="">
             {/* Main Title */}
             <SectionTitle
               as="h2"
-              className="font-medium uppercase text-center mb-2 md:mb-3 lg:mb-4 xl:mb-5"
+              className="font-medium uppercase text-center mb-0 md:mb-1 lg:mb-2 xl:mb-3"
             >
               {t("network.nsnTitle")}
             </SectionTitle>
 
             {/* Layer 1 Protocol */}
             <div className="flex flex-col gap-1 items-center mb-6 lg:mb-8">
-              <h4 className="text-nasun-c3/90 font-semibold -mb-1">{t("network.layer1")}</h4>
-              <h4 className="text-nasun-c3/90 font-semibold">{t("network.subtitle")}</h4>
+              <h4 className="text-nasun-c4 font-semibold -mb-1">{t("network.layer1")}</h4>
+              <h4 className="text-nasun-c4 font-semibold">{t("network.subtitle")}</h4>
             </div>
 
             <div className="mb-6 md:mb-7 lg:mb-8 xl:mb-10">
@@ -36,9 +36,9 @@ function NasunNetworkSection() {
 
             {/* Vision Section - DividerBox */}
             <DividerBox
-              color="n1"
+              color="n2"
               title={t("network.visionTitle")}
-              className="font-semibold"
+              className="font-semibold  "
               titleClassName="text-nasun-c3"
             >
               <p className="text-nasun-white/80 whitespace-pre-line">
@@ -48,7 +48,7 @@ function NasunNetworkSection() {
 
             {/* Button */}
             <div className="pt-6 md:pt-8 text-center">
-              <Button variant="c3" size="xl" className="">
+              <Button variant="defaultReverse" size="xl" className="">
                 {t("network.buttonText")}
               </Button>
             </div>

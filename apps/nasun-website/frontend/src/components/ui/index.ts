@@ -46,7 +46,6 @@ export { PageLoading } from "./PageLoading";
 export { InlineLoading } from "./InlineLoading";
 
 // Navigation & Links
-export { ActionLink } from "./ActionLink";
 export { default as Pagination } from "./Pagination";
 
 // Tags & Badges

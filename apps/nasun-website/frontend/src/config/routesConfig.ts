@@ -94,6 +94,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.protocolOverview",
           path: "/protocol/overview",
           element: Pages.ProtocolOverview,
+          disabled: true, // Coming Soon
         },
       ],
     },

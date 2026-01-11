@@ -6,6 +6,7 @@ import nftCanyonsMobileMP4 from "../../../assets/videos/Homepage-Founders-Nft-Ca
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface NftSaleSectionProps {
   shouldLoadVideo?: boolean;
@@ -107,24 +108,21 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
         {/* 모바일: 타이틀 상단, 카드 하단 (justify-between), 데스크톱: 우측 배치 */}
         <div className="min-h-screen flex flex-col w-full lg:w-fit lg:justify-center items-center mt-80 md:mt-64 lg:mt-[25%] pb-8 lg:pt-14 lg:pb-0 px-14 gap-4">
           {/* GENESIS NFT 타이틀 - 가운데 정렬 */}
-          <SectionTitle
-            as="h3"
-            className="font-medium  !font-eurostile !text-nasun-white text-center"
-          >
-            {t("nftSale.title")}
-          </SectionTitle>
-
-          {/* Join Us 버튼 */}
-          <div className="w-full flex justify-center">
-            <Button
-              asChild
-              size="xl"
-              variant="c1"
-              className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"
+          <FadeInUp>
+            <SectionTitle
+              as="h3"
+              className="font-medium  !font-eurostile !text-nasun-white text-center"
             >
-              <Link to="/genesis-nft">{t("nftSale.moreInfo")}</Link>
-            </Button>
-          </div>
+              {t("nftSale.title")}
+            </SectionTitle>
+
+            {/* Join Us 버튼 */}
+            <div className="w-full flex justify-center pt-4 lg:pt-6">
+              <Button asChild size="xl" variant="defaultReverse" className="">
+                <Link to="/genesis-nft">{t("nftSale.moreInfo")}</Link>
+              </Button>
+            </div>
+          </FadeInUp>
         </div>
       </div>
     </SectionLayout>

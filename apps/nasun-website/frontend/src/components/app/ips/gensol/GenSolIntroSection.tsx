@@ -8,6 +8,7 @@ import { DividerBox } from "../../../ui/DividerBox";
 // 배경 이미지
 import bgImageDesktop from "../../../../assets/images/spectra-plant-raid.webp";
 import bgImageMobile from "../../../../assets/images/spectra-plant-raid-mobile.webp";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**
  * GenSolIntroSection 컴포넌트
@@ -94,11 +95,13 @@ function GenSolIntroSection() {
       {/* 콘텐츠 */}
       <div className="relative z-20 max-w-8xl w-full min-h-screen h-full flex flex-col mx-auto pt-[60%] sm:pt-[50%] md:pt-[35%] pb-12 md:pb-16 px-10 md:px-12 lg:px-20 justify-start ">
         {/* 제목 + 설명 (우측 정렬) */}
-        <div className="max-w-[950px] ml-auto text-right ">
-          <SectionTitle as="h2" className="font-semibold uppercase !mb-0 lg:!mb-1">
-            {t("narrative.title")}
-          </SectionTitle>
-          <p className="text-nasun-white/80  ml-auto">{t("narrative.description")}</p>
+        <div className="max-w-[1000px] ml-auto text-right ">
+          <FadeInUp>
+            <SectionTitle as="h2" className="font-semibold uppercase !mb-0 lg:!mb-1">
+              {t("narrative.title")}
+            </SectionTitle>
+            <p className="text-nasun-white/80  ml-auto">{t("narrative.description")}</p>
+          </FadeInUp>
         </div>
 
         {/* 구분선 */}

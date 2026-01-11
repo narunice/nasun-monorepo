@@ -9,7 +9,7 @@ interface ActionLinkProps {
   className?: string;
   showArrow?: boolean;
   state?: Record<string, unknown>;
-  variant?: "action" | "actionDark";
+  variant?: "action" | "actionDark" | "link";
 }
 
 /**

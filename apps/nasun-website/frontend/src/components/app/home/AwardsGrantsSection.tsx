@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -7,7 +8,6 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { SectionLayout } from "../../layout/SectionLayout";
 import { SectionTitle } from "../../ui/SectionTitle";
 import { Button } from "../../ui/button";
-import { ActionLink } from "../../ui/ActionLink";
 import usePosts, { WP_CATEGORIES } from "../../../hooks/wordpress/usePosts";
 
 const CustomArrow = ({
@@ -19,15 +19,13 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg  hover:bg-black  transition-all border border-nasun-white/50 hover:border-white ${
-      direction === "left"
-        ? "left-4 md:-left-6 lg:-left-8 xl:-left-10"
-        : "right-4 md:-right-6 lg:-right-8 xl:-right-10"
+    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg hover:bg-black transition-all border border-nasun-white/50 hover:border-white ${
+      direction === "left" ? "-left-14" : "-right-14"
     }`}
     aria-label={direction === "left" ? "Previous awards" : "Next awards"}
   >
     {direction === "left" ? (
-      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/60  transition-all" />
+      <ChevronLeftIcon className="w-6 h-6 text-nasun-white/60 transition-all" />
     ) : (
       <ChevronRightIcon className="w-6 h-6 text-nasun-white/60 transition-all" />
     )}
@@ -82,7 +80,6 @@ function AwardsGrantsSection() {
         settings: {
           slidesToShow: 1,
           slidesToScroll: 1,
-          arrows: false,
         },
       },
     ],
@@ -139,7 +136,7 @@ function AwardsGrantsSection() {
                 const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
 
                 return (
-                  <div key={post.id} className="py-4 px-4 md:px-6 lg:px-8 h-full mx-auto max-w-xl">
+                  <Link key={post.id} to={`/awards-grants/${post.slug}`} className="block py-4 px-4 md:px-6 lg:px-8 h-full mx-auto max-w-xl">
                     <div className="group h-[446px] flex flex-col bg-black/50 backdrop-blur-md rounded-2xl shadow-lg border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 pt-4 md:pt-5 lg:pt-6 overflow-hidden">
                       {/* Image */}
                       {imageUrl && (
@@ -172,13 +169,13 @@ function AwardsGrantsSection() {
                         </p>
                         {/* Read More */}
                         <div className="flex justify-end pt-0 md:pt-2 mb-0 md:-mb-2">
-                          <ActionLink to={`/awards-grants/${post.slug}`}>
+                          <span className="text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
                             {t("awardsGrants.readMore")}
-                          </ActionLink>
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </Slider>
