@@ -812,3 +812,74 @@ export {
   formatEvmSignature,
   parseVValue,
 } from './core/ledger/evm-ledger';
+
+// ============================================
+// ZK-ID Module (P2-4)
+// ============================================
+
+// ZK-ID Types
+export type {
+  ZKClaimType,
+  AgeThreshold,
+  KYCLevel,
+  CredentialSource,
+  ZKProofPoints,
+  NullifierInput,
+  ClaimContext,
+  ZKIDProof,
+  ZKIDClaim,
+  ProverType,
+  ProverCapabilities,
+  ZKProofInput,
+  ZKProofParams,
+  ZKProofOutput,
+  ZKProver,
+  ZKIDVerificationResult,
+  NullifierRegistry,
+  ZKIDConfig,
+  ZKClaimRequirement,
+  ZKIDProofEntry,
+  ZKIDLoadingState,
+  ZKIDErrorState,
+  ZKIDErrorCode,
+} from './core/zkid';
+
+export { ZKIDError } from './core/zkid';
+
+// ZK-ID Prover
+export {
+  configureZKID,
+  getZKIDConfig,
+  generateAgeProof,
+  generateKYCProof,
+  generateUniqueProof,
+  createRemoteProver,
+  createMockProver,
+  getProver,
+} from './core/zkid';
+
+// ZK-ID Nullifier
+export {
+  calculateNullifier,
+  isValidNullifier,
+  createNullifierInput,
+  InMemoryNullifierRegistry,
+  APIBackedNullifierRegistry,
+  NULLIFIER_DOMAINS,
+  parseDomain,
+} from './core/zkid';
+
+// ZK-ID Verifier
+export {
+  verifyProof,
+  validateProofStructure,
+  validateContext,
+  verifyAgainstCondition,
+  type ZKIDConditionCheck,
+  setDefaultNullifierRegistry,
+  getDefaultNullifierRegistry,
+  registerNullifier,
+  isProofExpired,
+  getProofRemainingTime,
+  proofExpiresWithin,
+} from './core/zkid';
