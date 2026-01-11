@@ -1,11 +1,10 @@
 /**
  * useStakeTransaction Hook
- * Stake and Unstake operations
+ * Stake and Unstake operations using unified Signer abstraction
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet } from './useWallet';
-import { useZkLogin } from './useZkLogin';
+import { useSigner } from './useSigner';
 import { useRefreshStaking } from './useStaking';
 import { useRefreshBalance } from './useBalance';
 import { getSuiClient, parseAmount, isValidAddress } from '../sui/client';
@@ -77,14 +76,9 @@ interface UseStakeTransactionReturn {
 }
 
 export function useStakeTransaction(): UseStakeTransactionReturn {
-  const { status, account, getKeypair } = useWallet();
-  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const { signer, address, isConnected } = useSigner();
   const refreshStaking = useRefreshStaking();
   const refreshBalance = useRefreshBalance();
-
-  // Determine if connected via traditional wallet or zkLogin
-  const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn;
-  const connectedAddress = account?.address || zkState?.address;
 
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,8 +86,8 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
 
   const stake = useCallback(
     async (request: StakeRequest): Promise<StakeTransactionResult> => {
-      // Validate wallet state (traditional wallet OR zkLogin)
-      if (!isWalletConnected || !connectedAddress) {
+      // Validate signer state
+      if (!signer || !address || !isConnected) {
         const err = 'Wallet is not connected';
         setError(err);
         throw new Error(err);
@@ -121,43 +115,24 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         throw new Error(err);
       }
 
-      // For traditional wallet, get keypair
-      const keypair = !isZkLoggedIn ? getKeypair() : null;
-      if (!isZkLoggedIn && !keypair) {
-        const err = 'Keypair not available';
-        setError(err);
-        throw new Error(err);
-      }
-
       setIsPending(true);
       setError(null);
 
       try {
         const suiClient = getSuiClient();
         const tx = buildStakeTransaction(amountInMist, request.validatorAddress);
+        tx.setSender(address);
 
-        // Sign and execute transaction
-        let result;
-        if (isZkLoggedIn && zkSignTransaction) {
-          // zkLogin signing flow
-          tx.setSender(connectedAddress);
-          const txBytes = await tx.build({ client: suiClient });
-          const signature = await zkSignTransaction(txBytes);
-          result = await suiClient.executeTransactionBlock({
-            transactionBlock: txBytes,
-            signature,
-            options: { showEffects: true },
-          });
-        } else if (keypair) {
-          // Traditional wallet signing
-          result = await suiClient.signAndExecuteTransaction({
-            signer: keypair,
-            transaction: tx,
-            options: { showEffects: true },
-          });
-        } else {
-          throw new Error('No signing method available');
-        }
+        // Build and sign transaction
+        const txBytes = await tx.build({ client: suiClient });
+        const { signature } = await signer.sign(txBytes);
+
+        // Execute transaction
+        const result = await suiClient.executeTransactionBlock({
+          transactionBlock: txBytes,
+          signature,
+          options: { showEffects: true },
+        });
 
         const txResult: StakeTransactionResult = {
           digest: result.digest,
@@ -198,13 +173,13 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         throw new Error(message);
       }
     },
-    [isWalletConnected, connectedAddress, isZkLoggedIn, zkSignTransaction, getKeypair, refreshStaking, refreshBalance]
+    [signer, address, isConnected, refreshStaking, refreshBalance]
   );
 
   const unstake = useCallback(
     async (request: UnstakeRequest): Promise<StakeTransactionResult> => {
-      // Validate wallet state (traditional wallet OR zkLogin)
-      if (!isWalletConnected || !connectedAddress) {
+      // Validate signer state
+      if (!signer || !address || !isConnected) {
         const err = 'Wallet is not connected';
         setError(err);
         throw new Error(err);
@@ -217,43 +192,24 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         throw new Error(err);
       }
 
-      // For traditional wallet, get keypair
-      const keypair = !isZkLoggedIn ? getKeypair() : null;
-      if (!isZkLoggedIn && !keypair) {
-        const err = 'Keypair not available';
-        setError(err);
-        throw new Error(err);
-      }
-
       setIsPending(true);
       setError(null);
 
       try {
         const suiClient = getSuiClient();
         const tx = buildUnstakeTransaction(request.stakedSuiId);
+        tx.setSender(address);
 
-        // Sign and execute transaction
-        let result;
-        if (isZkLoggedIn && zkSignTransaction) {
-          // zkLogin signing flow
-          tx.setSender(connectedAddress);
-          const txBytes = await tx.build({ client: suiClient });
-          const signature = await zkSignTransaction(txBytes);
-          result = await suiClient.executeTransactionBlock({
-            transactionBlock: txBytes,
-            signature,
-            options: { showEffects: true },
-          });
-        } else if (keypair) {
-          // Traditional wallet signing
-          result = await suiClient.signAndExecuteTransaction({
-            signer: keypair,
-            transaction: tx,
-            options: { showEffects: true },
-          });
-        } else {
-          throw new Error('No signing method available');
-        }
+        // Build and sign transaction
+        const txBytes = await tx.build({ client: suiClient });
+        const { signature } = await signer.sign(txBytes);
+
+        // Execute transaction
+        const result = await suiClient.executeTransactionBlock({
+          transactionBlock: txBytes,
+          signature,
+          options: { showEffects: true },
+        });
 
         const txResult: StakeTransactionResult = {
           digest: result.digest,
@@ -292,7 +248,7 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         throw err;
       }
     },
-    [isWalletConnected, connectedAddress, isZkLoggedIn, zkSignTransaction, getKeypair, refreshStaking, refreshBalance]
+    [signer, address, isConnected, refreshStaking, refreshBalance]
   );
 
   const clearError = useCallback(() => setError(null), []);
