@@ -8,6 +8,7 @@ import { PerpMarketProvider, usePerpMarketContext } from '../context/PerpMarketC
 import { PerpOrderForm } from '../components/PerpOrderForm';
 import { PerpPositionList } from '../components/PerpPositionList';
 import { PerpMarketInfo } from '../components/PerpMarketInfo';
+import { LiquidationWarning } from '../components/LiquidationWarning';
 import { PERP_MARKET_BTC } from '../constants';
 
 interface PerpTradingPanelProps {
@@ -97,6 +98,9 @@ function PerpTradingPanelInner() {
 
   return (
     <div className="space-y-4">
+      {/* Liquidation Warning */}
+      <LiquidationWarning />
+
       {/* Notification */}
       {notification && (
         <div

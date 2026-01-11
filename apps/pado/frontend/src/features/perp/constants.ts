@@ -5,13 +5,14 @@
 
 // ===== Package & Object IDs =====
 
-/** Deployed pado_perp package ID */
+/** Deployed pado_perp package ID (v2 with liquidation) */
 export const PERP_PACKAGE_ID =
-  '0xe985134c5bec0013332e0a9ca5cbb301e982da7acf8deeaeac39856ceb603249';
+  '0x4e2a36299ce4b17ecbd3c4049fa99aae77afeb193a0724c4ad738765072be2e5';
 
 /** Module names */
 export const PERP_MODULE = 'perpetual';
 export const FUNDING_MODULE = 'funding';
+export const LIQUIDATION_MODULE = 'liquidation';
 
 // ===== Market IDs (to be populated after market creation) =====
 
@@ -66,6 +67,12 @@ export const MAINTENANCE_MARGIN_BPS = 250;
 
 /** Funding interval (8 hours in milliseconds) */
 export const FUNDING_INTERVAL_MS = 8 * 60 * 60 * 1000;
+
+/** Liquidation bonus for liquidators (5% = 500 bps) */
+export const LIQUIDATION_BONUS_BPS = 500;
+
+/** Minimum liquidation bonus in NUSDC units (0.1 NUSDC) */
+export const MIN_LIQUIDATION_BONUS = 100_000;
 
 // ===== Leverage Options =====
 
