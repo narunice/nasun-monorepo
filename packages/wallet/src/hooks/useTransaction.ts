@@ -1,11 +1,11 @@
 /**
  * Nasun Wallet Transaction Hook
- * NASUN token transfer functionality
+ * NASUN token transfer functionality using unified Signer abstraction
  */
 
 import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet } from './useWallet';
+import { useSigner } from './useSigner';
 import { useRefreshBalance } from './useBalance';
 import { getSuiClient, parseAmount, isValidAddress } from '../sui/client';
 import type { TransactionRequest, TransactionResult } from '../types';
@@ -23,7 +23,7 @@ interface UseTransactionReturn {
 }
 
 export function useTransaction(): UseTransactionReturn {
-  const { status, account, getKeypair } = useWallet();
+  const { signer, address, isConnected } = useSigner();
   const refreshBalance = useRefreshBalance();
 
   const [isPending, setIsPending] = useState(false);
@@ -32,9 +32,9 @@ export function useTransaction(): UseTransactionReturn {
 
   const sendTransaction = useCallback(
     async (request: TransactionRequest): Promise<TransactionResult> => {
-      // Validate wallet state
-      if (status !== 'unlocked' || !account) {
-        const err = 'Wallet is not unlocked';
+      // Validate signer state
+      if (!signer || !address || !isConnected) {
+        const err = 'Wallet is not connected';
         setError(err);
         throw new Error(err);
       }
@@ -54,30 +54,29 @@ export function useTransaction(): UseTransactionReturn {
         throw new Error(err);
       }
 
-      // Get keypair
-      const keypair = getKeypair();
-      if (!keypair) {
-        const err = 'Keypair not available';
-        setError(err);
-        throw new Error(err);
-      }
-
       setIsPending(true);
       setError(null);
 
       try {
         // Create transaction
         const tx = new Transaction();
+        tx.setSender(address);
 
         // Split coins and transfer
         const [coin] = tx.splitCoins(tx.gas, [amountInSoe]);
         tx.transferObjects([coin], request.to);
 
-        // Sign and execute transaction
+        // Build transaction bytes
         const suiClient = getSuiClient();
-        const result = await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: tx,
+        const txBytes = await tx.build({ client: suiClient });
+
+        // Sign using unified signer interface
+        const { signature } = await signer.sign(txBytes);
+
+        // Execute transaction
+        const result = await suiClient.executeTransactionBlock({
+          transactionBlock: txBytes,
+          signature,
           options: {
             showEffects: true,
           },
@@ -119,7 +118,7 @@ export function useTransaction(): UseTransactionReturn {
         throw err;
       }
     },
-    [status, account, getKeypair, refreshBalance]
+    [signer, address, isConnected, refreshBalance]
   );
 
   const clearError = useCallback(() => {

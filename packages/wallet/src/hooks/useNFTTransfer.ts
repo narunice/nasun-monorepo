@@ -1,10 +1,10 @@
 /**
  * Nasun Wallet NFT Transfer Hook
- * Transfer NFTs to other addresses
+ * Transfer NFTs to other addresses using unified Signer abstraction
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet } from './useWallet';
+import { useSigner } from './useSigner';
 import { useRefreshNFTs } from './useNFTs';
 import { getSuiClient, isValidAddress } from '../sui/client';
 import { buildNFTTransferTransaction } from '../sui/nft';
@@ -24,7 +24,7 @@ interface UseNFTTransferReturn {
 }
 
 export function useNFTTransfer(): UseNFTTransferReturn {
-  const { status, account, getKeypair } = useWallet();
+  const { signer, address, isConnected } = useSigner();
   const refreshNFTs = useRefreshNFTs();
 
   const [isPending, setIsPending] = useState(false);
@@ -33,9 +33,9 @@ export function useNFTTransfer(): UseNFTTransferReturn {
 
   const transferNFT = useCallback(
     async (request: NFTTransferRequest): Promise<TransactionResult> => {
-      // Validate wallet state
-      if (status !== 'unlocked' || !account) {
-        const err = 'Wallet is not unlocked';
+      // Validate signer state
+      if (!signer || !address || !isConnected) {
+        const err = 'Wallet is not connected';
         setError(err);
         throw new Error(err);
       }
@@ -54,14 +54,6 @@ export function useNFTTransfer(): UseNFTTransferReturn {
         throw new Error(err);
       }
 
-      // Get keypair
-      const keypair = getKeypair();
-      if (!keypair) {
-        const err = 'Keypair not available';
-        setError(err);
-        throw new Error(err);
-      }
-
       setIsPending(true);
       setError(null);
 
@@ -70,11 +62,16 @@ export function useNFTTransfer(): UseNFTTransferReturn {
 
         // Build transfer transaction
         const tx = buildNFTTransferTransaction(request.objectId, request.to);
+        tx.setSender(address);
 
-        // Sign and execute transaction
-        const result = await suiClient.signAndExecuteTransaction({
-          signer: keypair,
-          transaction: tx,
+        // Build and sign transaction
+        const txBytes = await tx.build({ client: suiClient });
+        const { signature } = await signer.sign(txBytes);
+
+        // Execute transaction
+        const result = await suiClient.executeTransactionBlock({
+          transactionBlock: txBytes,
+          signature,
           options: {
             showEffects: true,
           },
@@ -116,7 +113,7 @@ export function useNFTTransfer(): UseNFTTransferReturn {
         throw err;
       }
     },
-    [status, account, getKeypair, refreshNFTs]
+    [signer, address, isConnected, refreshNFTs]
   );
 
   const clearError = useCallback(() => {
