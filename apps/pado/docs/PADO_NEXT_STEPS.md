@@ -39,7 +39,7 @@
 | **Unified Margin** | **80%** | ⭐⭐⭐⭐⭐ | ✅ v1 완료 (Multi-collateral + Risk Engine + Liquidation) |
 | **Smart Account** | **70%** | ⭐⭐⭐⭐⭐ | ✅ 잔고 통합 UI 완료 |
 | **Risk Engine** | **80%** | ⭐⭐⭐⭐ | ✅ v1 완료 (4-Tier Threshold) |
-| **Perpetuals** | **60%** | ⭐⭐⭐⭐ | ✅ 11.1-11.3 완료 + BTC-PERP 마켓 활성화 |
+| **Perpetuals** | **80%** | ⭐⭐⭐⭐ | ✅ Phase 11.4 완료 (청산 엔진 + Keeper) |
 | Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager |
 | zkLogin | 100% | ⭐⭐⭐ | ✅ 완료 |
 | Lending | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
@@ -48,7 +48,7 @@
 | Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
 | Lottery | 100% | ⭐ | ✅ 완료 |
 
-**전체 비전 부합도: 약 67%** (Phase 16 v1 + Phase 11.1-11.3 + BTC-PERP 마켓 활성화 후)
+**전체 비전 부합도: 약 72%** (Phase 16 v1 + Phase 11.4 완료 후)
 
 ---
 
@@ -104,11 +104,11 @@
 | Phase 16.4 | ✅ | Liquidation Engine | ⭐⭐⭐⭐ | 2026-01-10 |
 | Phase 16.5 | ✅ | Smart Account UI | ⭐⭐⭐⭐ | 2026-01-10 |
 | Phase 16.1c | ✅ | Risk Engine UI Integration | ⭐⭐⭐ | 2026-01-10 |
-| **Phase 11** | 🚧 | **Perpetuals DEX** | ⭐⭐⭐⭐ | - |
+| **Phase 11** | ✅ | **Perpetuals DEX** | ⭐⭐⭐⭐ | 2026-01-10 |
 | Phase 11.1 | ✅ | perpetual.move (PerpMarket, Position) | ⭐⭐⭐ | 2026-01-10 |
 | Phase 11.2 | ✅ | funding.move (8h Funding Rate) | ⭐⭐⭐ | 2026-01-10 |
 | Phase 11.3 | ✅ | Perp Trading UI | ⭐⭐⭐ | 2026-01-10 |
-| Phase 11.4 | 📋 | Perp Liquidation | ⭐⭐⭐ | - |
+| Phase 11.4 | ✅ | Perp Liquidation + Keeper | ⭐⭐⭐ | 2026-01-10 |
 | Phase 11.5 | 📋 | Spot-Perp Integration | ⭐⭐⭐ | - |
 
 ---
@@ -137,7 +137,7 @@
          │  • 차트 인디케이터 │  • Oracle 통합 ✅   │
          │  • 테마/모바일 ✅  │  • 청산 엔진 ✅     │
          │  • Prediction ✅   │  • 펀딩 레이트 ✅   │
-         │    시드 유동성     │  • Keeper 인프라 📋│
+         │    시드 유동성     │  • Keeper 인프라 ✅│
          │                    │                    │
          └────────────────────┼────────────────────┘
                               │
