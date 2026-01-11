@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import './setup';
 import { parseAmount, formatBalance, isValidAddress } from '../sui/client';
 import { getToken, registerToken, clearTokens, NATIVE_TOKEN } from '../config/tokens';
