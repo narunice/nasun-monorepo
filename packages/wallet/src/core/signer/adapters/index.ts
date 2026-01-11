@@ -6,3 +6,4 @@
 
 export { LocalSigner } from './LocalSigner';
 export { ZkLoginSigner } from './ZkLoginSigner';
+export { EVMSigner } from './EVMSigner';

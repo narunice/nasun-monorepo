@@ -2,15 +2,16 @@
  * Signer Abstraction Layer Types
  *
  * Provides a unified interface for different signing methods:
- * - Local (Ed25519 keypair)
- * - zkLogin (OAuth + ZK proof)
+ * - Local (Ed25519 keypair) - Nasun/Sui
+ * - EVM (secp256k1) - Ethereum, Base, Arbitrum
+ * - zkLogin (OAuth + ZK proof) - Nasun/Sui
  * - Ledger (hardware wallet) - P2
  * - Smart Account (ERC-4337 AA) - P1 (after multi-chain)
  * - MPC (multi-party computation) - P3
  */
 
 /** Supported signer types */
-export type SignerType = 'local' | 'ledger' | 'mpc' | 'zklogin' | 'smart-account';
+export type SignerType = 'local' | 'evm' | 'ledger' | 'mpc' | 'zklogin' | 'smart-account';
 
 /** Result of a signing operation */
 export interface SignatureResult {
