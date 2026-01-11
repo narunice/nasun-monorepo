@@ -4,6 +4,7 @@ import { PageLayout } from "../../../components/layout/PageLayout";
 
 import { Button } from "../../../components/ui/button";
 import ErrorBoundary from "../../../components/layout/ErrorBoundary";
+import OverviewSkeleton from "../../../components/app/ips/gensol/OverviewSkeleton";
 
 // Lazy load section components
 const KoreanConnectionSection = lazy(
@@ -29,7 +30,7 @@ export default function OverviewPage() {
     <ErrorBoundary>
       <PageLayout>
         <div className="max-w-8xl mx-auto">
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<OverviewSkeleton />}>
             <KoreanConnectionSection />
             <StoryBasedMarketingSection />
             <GlobalMarketSection />

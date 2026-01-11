@@ -1,13 +1,14 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import wave1VideoPcMP4 from "../../../assets/videos/home-wave1-wave-light-desktop.mp4";
 import wave1VideoMobileMP4 from "../../../assets/videos/home-wave1-wave-light-mobile.mp4";
 import leaderboardDesktop from "../../../assets/images/leaderboard-ss.jpg";
 import leaderboardMobile from "../../../assets/images/leaderboard-ss2.jpg";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { ActionLink } from "../../ui/ActionLink";
 import { DividerBox } from "@/components/ui/DividerBox";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface Wave1SectionV3Props {
   shouldLoadVideo?: boolean;
@@ -137,75 +138,93 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
           }}
         />
       </div>
-
       {/* Content */}
-      <div className="relative z-20 h-full">
-        {/* WAVE 1 Title */}
-        <SectionTitle
-          as="h2"
-          color="black"
-          className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-4 sm:mt-8 md:mt-14 lg:mt-18 xl:mt-20"
-        >
-          {t("wave1.title")}
-        </SectionTitle>
+      <FadeInUp>
+        <div className="relative z-20 h-full">
+          {/* WAVE 1 Title */}
+          <SectionTitle
+            as="h2"
+            color="black"
+            className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-4 sm:mt-8 md:mt-14 lg:mt-18 xl:mt-20"
+          >
+            {t("wave1.title")}
+          </SectionTitle>
 
-        {/* Content - Centered layout */}
-        <div className="flex flex-col lg:flex-row-reverse lg:gap-8 mb-6 md:mb-12 lg:mb-14 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto">
-          {/* Leaderboard image (mobile: top, desktop: right) */}
-          <div className="flex items-center justify-center w-full lg:w-[45%] px-4 lg:px-0">
-            <div className="group h-full flex items-center w-full lg:w-auto">
-              <img
-                src={leaderboardImage}
-                alt="Leaderboard Preview"
-                className="w-full lg:w-auto lg:max-h-full lg:h-full object-contain rounded-lg lg:rounded-none"
-              />
-            </div>
-          </div>
-
-          {/* DividerBox cards (mobile: bottom, desktop: left) */}
-          <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-[55%] px-4 lg:px-0">
-            {/* LEADERBOARD Box */}
-            <div className={`w-full ${dividerBoxWrapperStyles}`}>
-              <DividerBox title={t("wave1.leaderboard.title")} color="n1" className="shadow-lg">
-                <p className="text-nasun-white/90">{t("wave1.leaderboard.description")}</p>
-                <div className="flex justify-end">
-                  <ActionLink to="/wave1/leaderboard-info" variant="action" className="px-6 py-3">
-                    {t("wave1.leaderboard.cta")}
-                  </ActionLink>
-                </div>
-              </DividerBox>
+          {/* Content - Centered layout */}
+          <div className="flex flex-col lg:flex-row-reverse lg:gap-8 mb-6 md:mb-12 lg:mb-14 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto">
+            {/* Leaderboard image (mobile: top, desktop: right) */}
+            <div className="flex items-center justify-center w-full lg:w-[45%] px-4 lg:px-0">
+              <div className="group h-full flex items-center w-full lg:w-auto">
+                <img
+                  src={leaderboardImage}
+                  alt="Leaderboard Preview"
+                  className="w-full lg:w-auto lg:max-h-full lg:h-full object-contain rounded-lg lg:rounded-none"
+                />
+              </div>
             </div>
 
-            {/* BATTALION NFT Box */}
-            <div className={`w-full ${dividerBoxWrapperStyles}`}>
-              <DividerBox title={t("wave1.battalionNft.title")} color="n1" className=" shadow-lg">
-                <p className="text-nasun-white/90">{t("wave1.battalionNft.description")}</p>
-                <div className="flex justify-end">
-                  <ActionLink to="/wave1/battalion-nft" variant="action" className=" px-6 py-3">
-                    {t("wave1.battalionNft.cta")}
-                  </ActionLink>
-                </div>
-              </DividerBox>
-            </div>
-
-            {/* EARLY CONTRIBUTOR Box */}
-            <div className={`w-full ${dividerBoxWrapperStyles}`}>
-              <DividerBox
-                title={t("wave1.earlyContributor.title")}
-                color="n1"
-                className="shadow-lg"
+            {/* DividerBox cards (mobile: bottom, desktop: left) */}
+            <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-[55%] px-4 lg:px-0">
+              {/* LEADERBOARD Box */}
+              <Link
+                to="/wave1/leaderboard-info"
+                className={`block w-full group ${dividerBoxWrapperStyles}`}
               >
-                <p className="text-nasun-white/90">{t("wave1.earlyContributor.description")}</p>
-                <div className="flex justify-end">
-                  <ActionLink to="/wave1/early-contributors" variant="action" className="px-6 py-3">
-                    {t("wave1.earlyContributor.cta")}
-                  </ActionLink>
-                </div>
-              </DividerBox>
+                <DividerBox
+                  title={t("wave1.leaderboard.title")}
+                  color="n1"
+                  className="!bg-nasun-black !p-4 md:!p-5 lg:!p-6  transition-colors"
+                >
+                  <p className="">{t("wave1.leaderboard.description")}</p>
+                  <div className="flex justify-end">
+                    <span className=" text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                      {t("wave1.leaderboard.cta")}
+                    </span>
+                  </div>
+                </DividerBox>
+              </Link>
+
+              {/* BATTALION NFT Box */}
+              <Link
+                to="/wave1/battalion-nft"
+                className={`block w-full group ${dividerBoxWrapperStyles}`}
+              >
+                <DividerBox
+                  title={t("wave1.battalionNft.title")}
+                  color="n1"
+                  className="!bg-nasun-black !p-4 md:!p-5 lg:!p-6 transition-colors"
+                >
+                  <p className="">{t("wave1.battalionNft.description")}</p>
+                  <div className="flex justify-end">
+                    <span className=" text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                      {t("wave1.battalionNft.cta")}
+                    </span>
+                  </div>
+                </DividerBox>
+              </Link>
+
+              {/* EARLY CONTRIBUTOR Box */}
+              <Link
+                to="/wave1/early-contributors"
+                className={`block w-full group ${dividerBoxWrapperStyles}`}
+              >
+                <DividerBox
+                  title={t("wave1.earlyContributor.title")}
+                  color="n1"
+                  className="!bg-nasun-black !p-4 md:!p-5 lg:!p-6  transition-colors"
+                >
+                  <p className="">{t("wave1.earlyContributor.description")}</p>
+                  <div className="flex justify-end">
+                    <span className=" text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                      {t("wave1.earlyContributor.cta")}
+                    </span>
+                  </div>
+                </DividerBox>
+              </Link>
             </div>
           </div>
-        </div>
-      </div>
+        </div>{" "}
+      </FadeInUp>
     </SectionLayout>
   );
 }

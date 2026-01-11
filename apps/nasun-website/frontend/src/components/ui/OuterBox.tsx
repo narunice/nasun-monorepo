@@ -64,7 +64,7 @@ interface OuterBoxProps {
 export const OuterBox: React.FC<OuterBoxProps> = ({ children, className = "", color = "n1" }) => {
   return (
     <div
-      className={`backdrop-blur-lg rounded-xl shadow-lg border ${variantStyles[color]} px-4 md:px-6 lg:px-8 py-3 md:py-4 lg:py-5 ${className}`}
+      className={`backdrop-blur-lg rounded-xl shadow-lg border ${variantStyles[color]} p-4 md:p-6 lg:p-8 ${className}`}
     >
       {children}
     </div>

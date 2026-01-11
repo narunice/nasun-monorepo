@@ -47,7 +47,7 @@ interface DividerBoxProps {
 const colorStyles: Record<NasunColor, { border: string; background: string; text: string }> = {
   white: {
     border: "border-nasun-white/70",
-    background: "bg-nasun-black/70",
+    background: "bg-nasun-white/70",
     text: "text-nasun-white",
   },
   scarlet: {
@@ -101,18 +101,18 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-gensol-red",
   },
   black: {
-    border: "border-nasun-black/70",
-    background: "bg-white/50",
-    text: "text-nasun-black",
+    border: "border-nasun-black/50",
+    background: "bg-nasun-black/80",
+    text: "text-nasun-white",
   },
   n1: {
-    border: "border-nasun-white/50",
+    border: "border-nasun-white/40",
     background: "bg-nasun-white/5",
     text: "text-nasun-white",
   },
   n2: {
     border: "border-nasun-c3/40",
-    background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5",
+    background: "bg-nasun-c3/10",
     text: "text-nasun-white",
   },
   n3: {
@@ -121,12 +121,12 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-white",
   },
   n4: {
-    border: "border-nasun-c4/50",
+    border: "border-nasun-c4/40",
     background: "bg-nasun-c4/10 ",
     text: "text-nasun-white",
   },
   n5: {
-    border: "border-nasun-white/50",
+    border: "border-nasun-white/40",
     background: "bg-gray-800/80 ",
     text: "text-nasun-white",
   },
@@ -178,12 +178,14 @@ export const DividerBox = ({
       )}
 
       {/* Divider (title이 있을 때만 표시) */}
-      {(title || rightTitle || rightAction) && <hr className={`${styles.border} mb-3 md:mb-4`} />}
+      {(title || rightTitle || rightAction) && (
+        <hr className={`${styles.border} mb-3 md:mb-4 lg:mb-5`} />
+      )}
 
       {/* Description (옵셔널) */}
       {description && (
         <p
-          className={`text-center md:text-left text-nasun-white/85 text-base mb-3 md:mb-4 ${descriptionClassName}`}
+          className={`text-center md:text-left text-nasun-white/85 mb-3 md:mb-4 lg:mb-5 ${descriptionClassName}`}
         >
           {description}
         </p>

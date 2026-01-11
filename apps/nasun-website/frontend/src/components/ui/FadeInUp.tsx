@@ -32,7 +32,6 @@ export const FadeInUp = ({ children, className = "", delay = "0.1s" }: Props) =>
       ref={ref}
       className={`${className} opacity-0 translate-y-[8px]`}
       style={{
-        willChange: "opacity, transform",
         animationDelay: delay,
       }}
     >

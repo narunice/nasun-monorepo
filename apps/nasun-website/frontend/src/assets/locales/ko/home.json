@@ -18,13 +18,13 @@
     "awards": "수상",
     "grants": "지원금",
     "footer": "각 경진대회는 한국 정부의 후원을 받았으며, 엔터테인먼트, 게임, 금융, Web3 및 신기술 분야의 업계 리더와 전문가들에 의해 심사되었습니다.",
-    "readMore": "더 읽기"
+    "readMore": "더 읽기 ↗"
   },
   "newsEvents": {
     "title": "뉴스 & 이벤트",
     "subtitle": "나선의 최신 소식",
     "footer": "나선 커뮤니티의 최신 뉴스, 공지사항, 이벤트 소식을 확인하세요.",
-    "readMore": "더 읽기"
+    "readMore": "더 읽기 ↗"
   },
   "joinUs": {
     "title": "함께 이 여정에 참여해보세요",
@@ -93,22 +93,22 @@
     "leaderboard": {
       "title": "리더보드",
       "description": "리더보드에 참여하여 보상, 독점 액세스, 성장하는 커뮤니티 내에서의 인정을 받으세요.",
-      "cta": "시작하기"
+      "cta": "시작하기 ↗"
     },
     "leader": {
       "title": "관련 커뮤니티나 업계의 리더이거나",
       "description": " 활발한 참여자라면, Wave 1 기여자로 함께하시길 초대합니다.",
-      "cta": "시작하기 →"
+      "cta": "시작하기 ↗"
     },
     "battalionNft": {
       "title": "배틀리온 NFT",
       "description": "NFT를 민팅하고 캠페인에 참여하세요.",
-      "cta": "시작하기"
+      "cta": "시작하기 ↗"
     },
     "earlyContributor": {
       "title": "초기 기여자",
       "description": "초기 기여자로 함께하세요.",
-      "cta": "시작하기"
+      "cta": "시작하기 ↗"
     }
   },
   "nftSale": {

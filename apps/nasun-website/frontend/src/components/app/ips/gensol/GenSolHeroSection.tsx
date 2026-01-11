@@ -5,6 +5,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 // 배경 이미지
 import bgImageDesktop from "../../../../assets/images/robot-arena-hq.webp";
 import bgImageMobile from "../../../../assets/images/robot-arena-mobile.webp";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**
  * GenSolHeroSection 컴포넌트
@@ -52,12 +53,15 @@ function GenSolHeroSection() {
       </div>
 
       {/* 데스크톱 콘텐츠 - 중앙 하단 */}
+
       <div className="hidden lg:block absolute inset-x-0 bottom-[14%] z-20 text-center px-12 lg:px-20">
         <div className="items-center mx-auto">
-          <h1 className="font-bold !font-rubik text-nasun-white mb-6">{t("hero.title")}</h1>
-          <p className=" text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
-            {t("hero.description")}
-          </p>
+          <FadeInUp>
+            <h1 className="font-bold !font-rubik text-nasun-white mb-6">{t("hero.title")}</h1>
+            <p className=" text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
+              {t("hero.description")}
+            </p>
+          </FadeInUp>
         </div>
       </div>
 
