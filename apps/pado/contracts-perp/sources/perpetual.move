@@ -658,6 +658,93 @@ module pado_perp::perpetual {
         balance::value(&market.fee_pool)
     }
 
+    public fun get_position_market_id(position: &PerpPosition): ID {
+        position.market_id
+    }
+
+    // ===== Liquidation Support (package-only) =====
+
+    /// Execute liquidation - can only be called by liquidation module
+    /// Returns the liquidator bonus as a Coin
+    public(package) fun execute_liquidation(
+        market: &mut PerpMarket,
+        position: PerpPosition,
+        current_price: u64,
+        liquidator_bonus: u64,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        let _now = sui::clock::timestamp_ms(clock);
+
+        // Update open interest
+        if (position.is_long) {
+            market.open_interest_long = market.open_interest_long - position.size;
+        } else {
+            market.open_interest_short = market.open_interest_short - position.size;
+        };
+
+        // Calculate P&L
+        let (pnl_value, pnl_negative) = calculate_position_pnl(&position, current_price);
+        let collateral_value = balance::value(&position.collateral);
+
+        // Destroy position and extract collateral
+        let PerpPosition {
+            id,
+            market_id: _,
+            owner: _,
+            is_long: _,
+            size: _,
+            entry_price: _,
+            mut collateral,
+            leverage: _,
+            entry_funding_value: _,
+            entry_funding_negative: _,
+            realized_pnl_value: _,
+            realized_pnl_negative: _,
+            created_at: _,
+            last_updated: _,
+        } = position;
+
+        object::delete(id);
+
+        // Calculate remaining equity after P&L
+        let _remaining = if (pnl_negative) {
+            if (pnl_value >= collateral_value) { 0 } else { collateral_value - pnl_value }
+        } else {
+            collateral_value
+        };
+
+        // If there's profit, we don't add it (position was liquidated due to losses)
+        // Handle loss by reducing collateral
+        if (pnl_negative && pnl_value > 0 && pnl_value < collateral_value) {
+            let loss_balance = balance::split(&mut collateral, pnl_value);
+            balance::join(&mut market.insurance_fund, loss_balance);
+        };
+
+        // Extract liquidator bonus
+        let bonus_amount = if (liquidator_bonus > 0 && balance::value(&collateral) >= liquidator_bonus) {
+            liquidator_bonus
+        } else {
+            balance::value(&collateral)
+        };
+
+        let liquidator_coin = if (bonus_amount > 0) {
+            let bonus_balance = balance::split(&mut collateral, bonus_amount);
+            coin::from_balance(bonus_balance, ctx)
+        } else {
+            coin::from_balance(balance::zero(), ctx)
+        };
+
+        // Send remaining collateral to insurance fund
+        if (balance::value(&collateral) > 0) {
+            balance::join(&mut market.insurance_fund, collateral);
+        } else {
+            balance::destroy_zero(collateral);
+        };
+
+        liquidator_coin
+    }
+
     // ===== Test Functions =====
 
     #[test_only]

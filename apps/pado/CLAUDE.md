@@ -54,7 +54,7 @@ Pado는 이 분절을 해결합니다:
 | Phase 8 | ✅ 완료 | Mobile & Theme | 모바일 반응형, 다크/라이트 테마 |
 | Phase 9 | ✅ 완료 | Smart Account v2 | zkLogin 인증, 시드리스 온보딩 (2026-01-03) |
 | Phase 10 | 📋 계획 | Cross-Chain Vaults | BTC, ETH 등 외부 자산 Vault 통합 |
-| Phase 11 | 🚧 진행중 | Perpetuals | 무기한 선물 거래 (11.1-11.3 완료, 마켓 생성 대기) |
+| Phase 11 | ✅ 완료 | Perpetuals | 무기한 선물 거래 + 청산 엔진 (11.1-11.4 완료) |
 | Phase 12 | 📋 계획 | Lending & Borrowing | 통합 대출 프로토콜 |
 | Phase 13 | 📋 계획 | Staking | NAS 토큰 스테이킹 |
 | Phase 14 | ✅ 완료 | Prediction Markets | 예측 시장 + 시드 유동성 |
@@ -240,14 +240,14 @@ Phase 4: Community-owned Protocol
 | MarginRegistry | `0x57979cb0...` |
 | UpgradeCap | `0x4781e6fd...` |
 
-**Perpetuals DEX** (2026-01-10, Phase 11.1-11.3 완료):
+**Perpetuals DEX** (2026-01-10, Phase 11.4 완료):
 | 항목 | 값 |
 |------|-----|
-| Package | `0xe985134c5bec0013332e0a9ca5cbb301e982da7acf8deeaeac39856ceb603249` |
+| Package (v2) | `0x4e2a36299ce4b17ecbd3c4049fa99aae77afeb193a0724c4ad738765072be2e5` |
 | UpgradeCap | `0x19f09fb2fe1c4406b61d134881743e37a3cab2f8ae5b538f350025213c0fb910` |
 | BTC-PERP Market | `0x0a3ba00cce5aae262ea48ca989dbdf9270addc06e796242f9c0189087c111ec2` |
-| 모듈 | perpetual.move, funding.move |
-| 상태 | 11.1-11.3 완료, BTC-PERP 활성화 완료 |
+| 모듈 | perpetual.move, funding.move, liquidation.move |
+| 상태 | Phase 11.4 완료 (청산 엔진 + Keeper 서비스) |
 
 ---
 
@@ -294,10 +294,11 @@ apps/pado/
 │       ├── risk_engine.move     # Risk Engine v1 (4-Tier Threshold)
 │       ├── account_positions.move # 포지션 추적 + PnL
 │       └── liquidation.move     # 청산 엔진 (5% 보너스)
-├── contracts-perp/              # Perpetuals DEX (NEW, 진행중)
+├── contracts-perp/              # Perpetuals DEX (Phase 11.4 완료)
 │   └── sources/
 │       ├── perpetual.move       # PerpMarket, PerpPosition (20x 레버리지)
-│       └── funding.move         # 8시간 펀딩 레이트
+│       ├── funding.move         # 8시간 펀딩 레이트
+│       └── liquidation.move     # 청산 엔진 (5% 보너스)
 └── deepbookv3/                  # DeepBook V3 (git submodule)
 └── frontend/                    # Frontend (Vite + React)
     └── src/
