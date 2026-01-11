@@ -460,9 +460,10 @@ P1 is **fully completed**. All five major features are implemented and tested:
 
 ---
 
-## 9. ZK-ID Module [PLANNED] (P2 Standard #4)
+## 9. ZK-ID Module [IN PROGRESS] (P2 Standard #4)
 
-> 다음 구현 예정. 상세 계획: `.claude/plans/velvet-snacking-nygaard.md`
+> 상세 계획: `.claude/plans/velvet-snacking-nygaard.md`
+> Phase 1-2 완료 (2026-01-11)
 
 ### 9.1. 개요
 
@@ -471,19 +472,43 @@ P1 is **fully completed**. All five major features are implemented and tested:
 - **KYC Verification**: 개인 데이터 노출 없이 KYC 완료 증명
 - **Unique Claim**: Nullifier 기반 Sybil resistance (1인 1회 클레임)
 
-### 9.2. 파일 구조
+### 9.2. 설계 원칙 (리뷰어 피드백 반영)
+
+1. **Proof Capability 추상화**: ZKClaimType = `age_over | kyc_completed | unique_claim | custom`
+2. **Domain Separation**: `nullifier = hash(secret, domain, actionId)`
+3. **Prover Abstraction**: ZKProver 인터페이스로 Local/Remote/Hybrid 스왑 가능
+4. **ClaimContext 도입**: 캠페인/체인/시간 컨텍스트 포함
+5. **Security-First Testing**: 공격 시나리오 테스트 포함
+
+### 9.3. 구현 현황
+
+| Phase | 내용 | 상태 |
+|-------|------|------|
+| Phase 1 | types.ts, prover.ts | ✅ 완료 |
+| Phase 2 | verifier.ts, nullifier.ts | ✅ 완료 |
+| Phase 3 | credential.ts, zkidStore.ts | 🔄 진행중 |
+| Phase 4 | useZKID.ts (React Hook) | ⏳ 대기 |
+| Phase 5 | Nasun Link v2 통합 | ⏳ 대기 |
+| Phase 6 | 추가 테스트 | ⏳ 대기 |
+
+### 9.4. 파일 구조
 
 ```
 packages/wallet/src/core/zkid/
-├── types.ts           # ZK-ID 타입 정의
-├── prover.ts          # Prover client
-├── verifier.ts        # Proof verification
-├── nullifier.ts       # Nullifier utilities
-├── credential.ts      # Credential management
-└── index.ts           # Module exports
+├── types.ts           # ✅ ZK-ID 타입 정의
+├── prover.ts          # ✅ Prover client
+├── verifier.ts        # ✅ Proof verification
+├── nullifier.ts       # ✅ Nullifier utilities (Domain Separation)
+├── credential.ts      # 🔄 Credential management
+└── index.ts           # ✅ Module exports
 ```
 
-### 9.3. ClaimCondition 확장 (Nasun Link v2 연동)
+### 9.5. 테스트 현황
+
+- **총 테스트**: 60개 (zkid.test.ts)
+- **보안 시나리오**: Proof Replay, Nullifier Attacks, Context Manipulation, Prover Security
+
+### 9.6. ClaimCondition 확장 (Nasun Link v2 연동)
 
 ```typescript
 // 새로운 ZK-ID 조건 타입
@@ -492,14 +517,14 @@ packages/wallet/src/core/zkid/
 | { type: 'zkid-unique'; contextId: string }
 ```
 
-### 9.4. 핵심 Hook
+### 9.7. 핵심 Hook (Phase 4 예정)
 
 ```typescript
 export function useZKID(): {
   proveAge: (credential, threshold, commitment) => Promise<ZKIDProof>;
   proveKYC: (credential, level, commitment) => Promise<ZKIDProof>;
   proveUnique: (credential, contextId, commitment) => Promise<ZKIDProof>;
-  hasValidProof: (type: ZKIDProofType) => boolean;
+  hasValidProof: (type: ZKClaimType) => boolean;
   verify: (proof: ZKIDProof) => Promise<boolean>;
 }
 ```
