@@ -204,7 +204,7 @@ describe('useAddressStatus', () => {
   });
 
   it('should return status for address', async () => {
-    const { useAddressBook, useAddressStatus } = await import('../hooks/useAddressBook');
+    const { useAddressBook } = await import('../hooks/useAddressBook');
     const store = useAddressBook.getState();
 
     store.recordTransaction('0x1234', 'Alice');
