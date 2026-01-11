@@ -450,6 +450,64 @@ export {
 export type { EVMWalletState } from './core/evm';
 
 // ============================================
+// WalletConnect v2 (P1)
+// ============================================
+
+// WalletConnect Hook
+export {
+  useWalletConnect,
+  useWalletConnectSessionCount,
+  useWalletConnectInitialized,
+} from './hooks/useWalletConnect';
+export type { UseWalletConnectResult } from './hooks/useWalletConnect';
+
+// WalletConnect Client
+export { WalletConnectClient } from './core/walletconnect';
+
+// WalletConnect Handlers
+export {
+  handleWCRequest,
+  getRequestDescription,
+} from './core/walletconnect';
+
+// WalletConnect Namespaces
+export {
+  EIP155_NAMESPACE,
+  SUI_NAMESPACE,
+  EVM_METHODS,
+  SUI_METHODS,
+  buildEIP155Namespace,
+  buildSuiNamespace,
+  buildSessionNamespaces,
+  canSatisfyProposal,
+  getChainIdFromCAIP2,
+  isEVMChainId,
+  isSuiChainId,
+  getAllSupportedChainIds,
+} from './core/walletconnect';
+
+// WalletConnect Types
+export type {
+  WalletConnectConfig,
+  WCMethod,
+  EVMMethod,
+  SuiMethod,
+  WCRequest,
+  EVMTransactionParams,
+  SuiTransactionParams,
+  WalletConnectState,
+  WCEvent,
+  WCEventListener,
+  DAppMetadata,
+} from './core/walletconnect';
+
+export {
+  getDAppMetadata,
+  parseChainId,
+  formatAccountId,
+} from './core/walletconnect';
+
+// ============================================
 // Auto-register Token Faucets (Devnet)
 // ============================================
 // This ensures all apps using @nasun/wallet get faucet support for all tokens

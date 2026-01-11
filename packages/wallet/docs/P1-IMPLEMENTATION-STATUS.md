@@ -13,7 +13,7 @@ P1 priorities focus on making the wallet production-ready with multi-chain suppo
 |---------|--------|-----------------|
 | Signer Abstraction Layer | **COMPLETED** | 2026-01-11 |
 | Multi-chain Support (EVM) | **COMPLETED** | 2026-01-11 |
-| WalletConnect v2 | PENDING | - |
+| WalletConnect v2 | **COMPLETED** | 2026-01-11 |
 | EVM Account Abstraction | PENDING | - |
 | Nasun Link v2 | PENDING | - |
 
@@ -96,45 +96,43 @@ P1 priorities focus on making the wallet production-ready with multi-chain suppo
 
 ---
 
-## 3. WalletConnect v2 [NEXT PRIORITY]
+## 3. WalletConnect v2 [COMPLETED]
 
-### Overview
+### What Was Implemented
 
-WalletConnect v2 enables Nasun Wallet to connect to external dApps as a mobile/web wallet, and allows external WalletConnect-compatible wallets to connect to Nasun dApps.
+**Core Module:**
+- `WalletConnectClient` singleton for SignClient lifecycle management
+- Event-driven architecture with subscription pattern
+- CAIP-2/10 compliant chain and account identifiers
 
-### Architecture
+**Files Created:**
+- `core/walletconnect/types.ts` - WC type definitions
+- `core/walletconnect/namespaces.ts` - EIP-155 and Sui namespace builders
+- `core/walletconnect/client.ts` - SignClient wrapper
+- `core/walletconnect/handlers.ts` - Request handlers
+- `core/walletconnect/index.ts` - Module exports
+- `hooks/useWalletConnect.ts` - React hook
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Nasun Wallet                          │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │              WalletConnect Module                │   │
-│  │  ┌─────────────┐    ┌──────────────────────┐   │   │
-│  │  │  Provider   │    │   Session Manager    │   │   │
-│  │  │  (Sign)     │    │   (Persistence)      │   │   │
-│  │  └─────────────┘    └──────────────────────┘   │   │
-│  │  ┌─────────────┐    ┌──────────────────────┐   │   │
-│  │  │  Request    │    │   Event Handler      │   │   │
-│  │  │  Handler    │    │   (Notifications)    │   │   │
-│  │  └─────────────┘    └──────────────────────┘   │   │
-│  └─────────────────────────────────────────────────┘   │
-│                           │                             │
-│                    useSigner()                          │
-│                           │                             │
-│              ┌────────────┴────────────┐               │
-│              │                         │               │
-│         LocalSigner              EVMSigner             │
-└──────────────────────────────────────────────────────┘
-                           │
-                    WalletConnect
-                      Relay Server
-                           │
-                    ┌──────┴──────┐
-                    │             │
-                  dApp 1       dApp 2
-```
+**Supported Methods:**
 
-### Implementation Plan
+| Namespace | Methods |
+|-----------|---------|
+| EIP-155 (EVM) | personal_sign, eth_sign, eth_signTypedData_v4, eth_sendTransaction, eth_signTransaction, wallet_switchEthereumChain |
+| Sui | sui_signTransaction, sui_signAndExecuteTransaction, sui_signMessage |
+
+**Features:**
+- Multi-chain support (EVM + Sui)
+- Session proposal approval/rejection
+- Request handling with signer integration
+- Session lifecycle management (create, update, delete)
+- dApp metadata extraction
+
+**Dependencies Added:**
+- `@walletconnect/sign-client`
+- `@walletconnect/types`
+- `@walletconnect/utils`
+
+### Detailed Documentation
 
 See: [P2-WALLETCONNECT-V2.md](./P2-WALLETCONNECT-V2.md)
 
@@ -183,16 +181,16 @@ Claimable links for onboarding:
 ```
 packages/wallet/src/
 ├── config/
-│   ├── chains.ts          # Multi-chain config [NEW]
+│   ├── chains.ts          # Multi-chain config
 │   ├── networks.ts        # Nasun network types
 │   └── tokens.ts          # Token registry
 ├── core/
-│   ├── evm/               # EVM utilities [NEW]
+│   ├── evm/               # EVM utilities
 │   │   ├── client.ts
 │   │   ├── keystore.ts
 │   │   ├── wallet.ts
 │   │   └── index.ts
-│   ├── signer/            # Signer abstraction [NEW]
+│   ├── signer/            # Signer abstraction
 │   │   ├── types.ts
 │   │   ├── SignerManager.ts
 │   │   └── adapters/
@@ -200,19 +198,21 @@ packages/wallet/src/
 │   │       ├── ZkLoginSigner.ts
 │   │       ├── EVMSigner.ts
 │   │       └── index.ts
-│   ├── walletconnect/     # WalletConnect [PLANNED]
+│   ├── walletconnect/     # WalletConnect v2
+│   │   ├── types.ts
+│   │   ├── namespaces.ts
 │   │   ├── client.ts
-│   │   ├── session.ts
-│   │   └── handlers.ts
+│   │   ├── handlers.ts
+│   │   └── index.ts
 │   ├── crypto.ts
 │   ├── keystore.ts
 │   └── zklogin.ts
 ├── hooks/
-│   ├── useChain.ts        # Chain selection [NEW]
-│   ├── useEVMBalance.ts   # EVM balance [NEW]
-│   ├── useEVMTransaction.ts # EVM TX [NEW]
-│   ├── useSigner.ts       # Unified signer [NEW]
-│   ├── useWalletConnect.ts # WC hook [PLANNED]
+│   ├── useChain.ts        # Chain selection
+│   ├── useEVMBalance.ts   # EVM balance
+│   ├── useEVMTransaction.ts # EVM TX
+│   ├── useSigner.ts       # Unified signer
+│   ├── useWalletConnect.ts # WC hook
 │   └── ... (existing hooks)
 └── index.ts               # Updated exports
 ```
@@ -224,11 +224,11 @@ packages/wallet/src/
 | Commit | Description | Date |
 |--------|-------------|------|
 | `744886a` | Before multi-chain implementation | 2026-01-11 |
+| `a505156` | Before WalletConnect implementation | 2026-01-11 |
 
 ---
 
 ## Next Steps
 
-1. **Immediate**: WalletConnect v2 implementation
-2. **After WC**: EVM Account Abstraction
-3. **Parallel**: Nasun Link v2 (can be developed independently)
+1. **Immediate**: EVM Account Abstraction
+2. **Parallel**: Nasun Link v2 (can be developed independently)
