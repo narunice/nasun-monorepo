@@ -30,12 +30,9 @@ interface OrderFormProps {
   // Slippage (Market)
   slippage?: number;
   onSlippageChange?: (value: number) => void;
-  // Balance info for hints and warnings (Phase 2)
+  // Balance info for hints and warnings
   availableQuote?: number;
   availableBase?: number;
-  // Insufficient balance CTA callbacks (Phase 16.1c)
-  onFaucetQuote?: () => void;
-  onFaucetBase?: () => void;
 }
 
 // Execution Option 설명
@@ -67,8 +64,6 @@ export function OrderForm({
   onSlippageChange,
   availableQuote = 0,
   availableBase = 0,
-  onFaucetQuote,
-  onFaucetBase,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -291,13 +286,12 @@ export function OrderForm({
               {total.toFixed(2)} {quoteSymbol}
             </span>
           </div>
-          {/* Insufficient quote balance prompt with CTA */}
+          {/* Insufficient quote balance prompt */}
           {insufficientForBuy && (
             <InsufficientBalancePrompt
               tokenSymbol={quoteSymbol}
               requiredAmount={total}
               availableAmount={availableQuote}
-              onFaucet={onFaucetQuote}
             />
           )}
         </div>
@@ -312,13 +306,12 @@ export function OrderForm({
               {amountNum.toFixed(4)} {baseSymbol}
             </span>
           </div>
-          {/* Insufficient base balance prompt with CTA */}
+          {/* Insufficient base balance prompt */}
           {insufficientForSell && (
             <InsufficientBalancePrompt
               tokenSymbol={baseSymbol}
               requiredAmount={amountNum}
               availableAmount={availableBase}
-              onFaucet={onFaucetBase}
             />
           )}
         </div>
