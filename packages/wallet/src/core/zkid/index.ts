@@ -111,3 +111,35 @@ export {
   getProofRemainingTime,
   proofExpiresWithin,
 } from './verifier';
+
+// ============================================
+// Credential Management
+// ============================================
+
+export type {
+  RawCredential,
+  CredentialData,
+  EncryptedCredential,
+  CredentialEntry,
+} from './credential';
+
+export {
+  // Encryption
+  encryptCredential,
+  decryptCredential,
+  // Validation
+  isCredentialExpired,
+  getCredentialRemainingTime,
+  validateRawCredential,
+  // Storage
+  getStoredCredentials,
+  storeCredential,
+  getCredentialById,
+  getCredentialsByType,
+  updateCredentialLastUsed,
+  removeCredential,
+  removeExpiredCredentials,
+  clearAllCredentials,
+  // Utilities
+  generateCredentialId,
+} from './credential';
