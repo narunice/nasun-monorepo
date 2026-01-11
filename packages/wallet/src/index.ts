@@ -347,6 +347,36 @@ export {
 } from './core/passkey';
 
 // ============================================
+// Signer Abstraction Layer (P1)
+// ============================================
+
+// Signer Hook
+export {
+  useSigner,
+  useSignerAddress,
+  useIsSignerConnected,
+} from './hooks/useSigner';
+export type { UseSignerResult } from './hooks/useSigner';
+
+// Signer Types
+export type {
+  SignerType,
+  SignerAdapter,
+  SignerCapabilities,
+  SignatureResult,
+  SignerEvent,
+  SignerEventListener,
+} from './core/signer/types';
+export { DEFAULT_CAPABILITIES } from './core/signer/types';
+
+// Signer Manager
+export { SignerManager } from './core/signer/SignerManager';
+export type { SignerManagerSnapshot } from './core/signer/SignerManager';
+
+// Signer Adapters
+export { LocalSigner, ZkLoginSigner } from './core/signer/adapters';
+
+// ============================================
 // Auto-register Token Faucets (Devnet)
 // ============================================
 // This ensures all apps using @nasun/wallet get faucet support for all tokens
