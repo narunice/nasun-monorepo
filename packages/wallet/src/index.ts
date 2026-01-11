@@ -508,6 +508,98 @@ export {
 } from './core/walletconnect';
 
 // ============================================
+// ERC-4337 Account Abstraction (P1)
+// ============================================
+
+// Smart Account Hook
+export {
+  useSmartAccount,
+  useSmartAccountAddress,
+  useIsSmartAccountDeployed,
+} from './hooks/useSmartAccount';
+export type { UseSmartAccountResult } from './hooks/useSmartAccount';
+
+// Smart Account Signer
+export { SmartAccountSigner } from './core/signer/adapters/SmartAccountSigner';
+
+// AA Core Utilities
+export {
+  // Bundler
+  getBundlerClient,
+  getEntryPoint,
+  getDefaultEntryPoint,
+  clearBundlerClients,
+  isBundlerReachable,
+  // Paymaster
+  getPaymasterClient,
+  clearPaymasterClients,
+  hasPaymaster,
+  // Account
+  getSimpleSmartAccount,
+  getSmartAccountAddress,
+  isAccountDeployed,
+  getSmartAccountState,
+  clearAccountCache,
+  getCachedAccount,
+} from './core/aa';
+
+// AA Types
+export type {
+  SmartAccountType,
+  SmartAccountState,
+  SmartAccountTxRequest,
+  BatchCall,
+  PaymasterMode,
+  UserOperationReceipt,
+  BundlerConfig,
+  PaymasterConfig,
+  SmartAccountOptions,
+  UserOperationGasEstimate,
+  // P2: Gasless by Default types
+  GasCostEstimate,
+  PaymasterStrategy,
+  SponsorshipCondition,
+  PaymasterContext,
+  // P2: Session Key types
+  SessionKeyPermission,
+  SessionKeyConfig,
+  SessionKeyState,
+  SessionKeyValidation,
+} from './core/aa/types';
+
+// P2: Gas Utilities
+export {
+  getGasPrices,
+  formatGasEstimate,
+} from './core/aa/bundler';
+
+// P2: Session Key Manager
+export {
+  SessionKeyManager,
+  createERC20TransferPermission,
+  createNativeTransferPermission,
+  createContractPermission,
+} from './core/aa/session-keys';
+
+// P2: Session Key Signer
+export { SessionKeySigner } from './core/signer/adapters/SessionKeySigner';
+
+// P2: Gasless Transaction Hook
+export {
+  useGaslessTransaction,
+  useIsGaslessAvailable,
+} from './hooks/useGaslessTransaction';
+export type { UseGaslessTransactionResult } from './hooks/useGaslessTransaction';
+
+// P2: Session Key Hook
+export {
+  useSessionKey,
+  useActiveSessionCount,
+  useSessionKeyValidation,
+} from './hooks/useSessionKey';
+export type { UseSessionKeyResult } from './hooks/useSessionKey';
+
+// ============================================
 // Auto-register Token Faucets (Devnet)
 // ============================================
 // This ensures all apps using @nasun/wallet get faucet support for all tokens
@@ -523,3 +615,200 @@ registerTokenFaucet('NASUN', nativeFaucetHandler);
 // NBTC/NUSDC - Token faucet (Move contract, requires signing)
 registerTokenFaucet('NBTC', nbtcFaucetHandler);
 registerTokenFaucet('NUSDC', nusdcFaucetHandler);
+
+// ============================================
+// Nasun Link v2 (P1)
+// ============================================
+
+// Nasun Link Hooks
+export {
+  useNasunLink,
+  useClaimFromUrl,
+  useLinkStatus,
+  useLinkBalance,
+} from './hooks/useNasunLink';
+export type { UseNasunLinkResult } from './hooks/useNasunLink';
+
+// Nasun Link Utilities
+export {
+  // Generator
+  createLink,
+  createBatchLinks,
+  estimateLinkCreationGas,
+  validateLinkConfig,
+  // Claim
+  claimLink,
+  validateClaim,
+  parseLinkUrl,
+  buildLinkUrl,
+  checkLinkBalance,
+  getClaimStatus,
+  // Crypto
+  generateEphemeralKeypair,
+  generateSecret,
+  generateLinkId,
+  encryptPayload,
+  decryptPayload,
+  recoverKeypair,
+  hashPassword,
+  verifyPassword,
+} from './core/link';
+
+// Nasun Link Types
+export type {
+  LinkType,
+  LinkStatus,
+  LinkCoinType,
+  LinkConfig,
+  SerializableLinkConfig,
+  LinkData,
+  LinkURL,
+  ClaimResult,
+  ClaimValidation,
+  ClaimCondition,
+  CreateLinkRequest,
+  CreateLinkResponse,
+  LinkStorage,
+} from './core/link/types';
+
+export { serializeLinkConfig, deserializeLinkConfig } from './core/link/types';
+
+// ============================================
+// Payment UX (P2)
+// ============================================
+
+// Payment Hooks
+export { usePayment, useCanPay } from './hooks/usePayment';
+export type { UsePaymentOptions, UsePaymentResult } from './hooks/usePayment';
+
+export { usePaymentIntent } from './hooks/usePaymentIntent';
+export type { UsePaymentIntentResult, WCRequest } from './hooks/usePaymentIntent';
+
+export { usePaymentLink, usePaymentLinkFromUrl } from './hooks/usePaymentLink';
+export type { UsePaymentLinkOptions, UsePaymentLinkResult } from './hooks/usePaymentLink';
+
+export { usePaymentQR, useQRCodeForUrl } from './hooks/usePaymentQR';
+export type { UsePaymentQROptions, UsePaymentQRResult } from './hooks/usePaymentQR';
+
+// Payment Types
+export type {
+  PaymentChainType,
+  PaymentIntentStatus,
+  PaymentStatus,
+  PaymentMetadata,
+  PaymentIntent,
+  MovePaymentRequest,
+  EVMPaymentRequest,
+  PaymentRequest,
+  PaymentResult,
+  PaymentLink,
+  ParsedPaymentLink,
+  PaymentValidationError,
+  PaymentValidationWarning,
+  RecipientStatus,
+  PaymentValidation,
+} from './core/payment/types';
+
+export {
+  DEFAULT_INTENT_TTL_MS,
+  NASUN_COIN_TYPE,
+  DEFAULT_TOKEN_SYMBOL,
+  URL_PARAMS,
+} from './core/payment/types';
+
+// Payment Validation
+export {
+  isValidMoveChainAddress,
+  // Note: isValidEVMAddress already exported from ./core/evm
+  isValidPaymentAddress,
+  validateAmount,
+  checkSufficientBalance,
+  detectWarnings,
+  validateMovePayment,
+  validateEVMPayment,
+  validatePayment,
+  formatValidationErrors,
+  formatValidationWarnings,
+} from './core/payment/validation';
+
+// Payment Link Utilities
+export {
+  buildPaymentUrl,
+  generatePaymentLink,
+  parsePaymentLink,
+  parseCurrentUrl,
+  intentToUrlParams,
+  intentToRequest,
+  parsedLinkToIntent,
+  generateIntentId,
+  encodePaymentData,
+  decodePaymentData,
+  formatPaymentLinkForSharing,
+} from './core/payment/link';
+
+// Payment QR Code Utilities
+export type { QRCodeOptions, QRCodeResult } from './core/payment/qr';
+
+export {
+  generateQRCodeDataUrl,
+  generateQRCodeSVG,
+  generateQRCode,
+  generatePaymentQRCode,
+  isValidQRCodeContent,
+  estimateQRVersion,
+  getRecommendedQRSize,
+} from './core/payment/qr';
+
+// ============================================
+// Ledger Integration (P2-3)
+// ============================================
+
+// Ledger Hook
+export { useLedger, useIsLedgerActive } from './hooks/useLedger';
+export type { UseLedgerResult } from './hooks/useLedger';
+
+// Ledger Signer
+export { LedgerSigner } from './core/signer/adapters/LedgerSigner';
+export type { LedgerAccountOptions } from './core/signer/adapters/LedgerSigner';
+
+// Ledger Types
+export type {
+  LedgerConnectionStatus,
+  LedgerErrorCode,
+  LedgerDeviceInfo,
+  LedgerChainType,
+  LedgerSignerOptions,
+  LedgerAddressResult,
+} from './core/ledger/types';
+
+export {
+  LedgerError,
+  LEDGER_DERIVATION_PATHS,
+} from './core/ledger/types';
+
+// Ledger Transport Utilities
+export {
+  isWebHIDSupported,
+  createTransport,
+  closeTransport,
+  parseLedgerError,
+  getLedgerErrorMessage,
+} from './core/ledger/transport';
+
+// Ledger Chain Utilities
+export {
+  createSuiLedgerClient,
+  deriveSuiAddress,
+  getSuiAddress,
+  signSuiTransaction,
+  signSuiPersonalMessage,
+} from './core/ledger/sui-ledger';
+
+export {
+  createEvmLedgerClient,
+  getEvmAddress,
+  signEvmTransaction,
+  signEvmPersonalMessage,
+  formatEvmSignature,
+  parseVValue,
+} from './core/ledger/evm-ledger';

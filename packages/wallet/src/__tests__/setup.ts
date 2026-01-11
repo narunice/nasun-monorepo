@@ -46,6 +46,15 @@ const cryptoSubtleMock = {
     const dataArray = new Uint8Array(data);
     return dataArray.slice(0, -16).buffer;
   }),
+  digest: vi.fn().mockImplementation(async (_algorithm: string, data: ArrayBuffer) => {
+    // Simple hash simulation - create a deterministic 32-byte hash
+    const dataArray = new Uint8Array(data);
+    const result = new Uint8Array(32);
+    for (let i = 0; i < dataArray.length; i++) {
+      result[i % 32] ^= dataArray[i];
+    }
+    return result.buffer;
+  }),
 };
 
 const cryptoMock = {

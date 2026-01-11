@@ -30,7 +30,9 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@ledgerhq/types-devices": "^6.27.0",
     "@nasun/tsconfig": "workspace:*",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.0",
     "@vitest/coverage-v8": "^2.1.9",
     "happy-dom": "^15.11.7",
@@ -38,9 +40,14 @@
     "vitest": "^2.1.9"
   },
   "dependencies": {
+    "@ledgerhq/hw-app-eth": "^7.1.1",
+    "@ledgerhq/hw-transport-webhid": "^6.30.11",
+    "@mysten/ledgerjs-hw-app-sui": "^0.7.0",
     "@walletconnect/sign-client": "^2.23.1",
     "@walletconnect/types": "^2.23.1",
     "@walletconnect/utils": "^2.23.1",
+    "permissionless": "^0.3.2",
+    "qrcode": "^1.5.4",
     "viem": "^2.21.0",
     "zod": "^4.1.11"
   }

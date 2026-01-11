@@ -57,4 +57,14 @@ export class LocalSigner implements SignerAdapter {
   getPublicKey(): string {
     return this.keypair.getPublicKey().toBase64();
   }
+
+  /**
+   * Get the underlying Ed25519 keypair
+   *
+   * Use with caution - exposes the private key.
+   * Required for operations that need direct keypair access.
+   */
+  getKeypair(): Ed25519Keypair {
+    return this.keypair;
+  }
 }
