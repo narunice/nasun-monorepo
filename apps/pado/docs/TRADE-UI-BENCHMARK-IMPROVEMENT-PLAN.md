@@ -267,6 +267,20 @@
    - Gas 부족: "Get NASUN from your wallet"
    - 잔액 부족: "Add funds from your wallet"
 
+### Phase 2.7: Message UX Optimization (Completed)
+11. [x] **에러/안내 메시지 전면 개선** - Devnet 환경에 맞춘 Faucet 안내
+   - InsufficientBalancePrompt: "Get {token} from Faucet in your wallet"
+   - useAutoDeposit: "Not enough {token}. Get X more from Faucet in your wallet."
+   - useOrderActions: "Not enough balance. Get tokens from Faucet in your wallet."
+   - deepbook.ts: "Enter quantity/price to continue", "Min ${value}, increments of ${value}"
+12. [x] **문구 톤 개선** - 친근하고 간결한 표현
+   - "Insufficient" → "Not enough"
+   - "Please enter" → "Enter to continue"
+   - "Minimum" → "Min"
+   - SimpleOrderForm: "Fills at best available price"
+   - BalanceManagerCard: "Deposit to trade. Withdraw anytime to your wallet."
+   - DepositForm/StakingSection: "Min stake/deposit: 1 {token}"
+
 ### Phase 3: Advanced Features - Perp DEX
 11. [ ] TP/SL Settings (Perp 주문 시)
 12. [ ] Cross/Isolated Mode UI (Perp)
@@ -434,12 +448,13 @@ interface BottomTabPanelProps {
 | P2 | One-Click Trading | Low | Medium | 2 | ✅ |
 | P1 | Faucet UI Removal | Low | High | 2.6 | ✅ |
 | P1 | Error Message Improvement | Low | Medium | 2.6 | ✅ |
+| P1 | Message UX Optimization | Low | High | 2.7 | ✅ |
 | P2 | TP/SL Settings | Medium-High | Medium | 3 | - |
 | P2 | Cross/Isolated Mode | Medium | Medium | 3 | - |
 | P3 | Depth Heatmap | Medium | Low | 4 | - |
 | P3 | Hidden Orders | High | Low | 4 | - |
 
 **Confirmed Approach**:
-- Phase 1-2.6 완료 (Spot DEX 개선 + UI 정리)
+- Phase 1-2.7 완료 (Spot DEX 개선 + UI 정리 + 메시지 UX 최적화)
 - Phase 3 (Perp DEX) 진행 예정
 - Phase 4 (Heatmap, Hidden Orders)는 후속 검토
