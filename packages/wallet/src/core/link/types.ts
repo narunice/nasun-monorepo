@@ -15,12 +15,22 @@ export type LinkStatus = 'active' | 'claimed' | 'expired' | 'cancelled';
 /** Coin type for link */
 export type LinkCoinType = 'NASUN' | '0x2::sui::SUI' | string;
 
+/** Age threshold for ZK-ID */
+export type ZKIDAgeThreshold = 18 | 21 | 25;
+
+/** KYC level for ZK-ID */
+export type ZKIDKYCLevel = 'basic' | 'advanced' | 'full';
+
 /** Claim condition types */
 export type ClaimCondition =
   | { type: 'none' }
   | { type: 'password'; hash: string }
   | { type: 'twitter'; handle: string }
-  | { type: 'email'; domain: string };
+  | { type: 'email'; domain: string }
+  // ZK-ID conditions (P2-4)
+  | { type: 'zkid-age'; threshold: ZKIDAgeThreshold }
+  | { type: 'zkid-kyc'; level: ZKIDKYCLevel }
+  | { type: 'zkid-unique'; contextId: string };
 
 /** Link configuration */
 export interface LinkConfig {
