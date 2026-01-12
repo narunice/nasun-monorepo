@@ -181,7 +181,38 @@ function analyze_leaderboard_changes() {
     echo ""
 }
 
-# 4. OAuth 토큰 갱신 상태 확인
+# 4. OAuth 토큰 계정 검증 (Twitter API 호출)
+function verify_oauth_account() {
+    local profile=$1
+    local env_name=$2
+    local env_flag=$3  # "dev" or "prod"
+    print_subheader "[$env_name] OAuth 2.0 토큰 계정 검증 (Twitter API)"
+
+    local CDK_DIR="/home/naru/my_apps/nasun-monorepo/apps/nasun-website/cdk"
+
+    echo "🔍 Twitter API를 통해 인증된 계정을 검증합니다..."
+
+    # Run verify-oauth-token.ts with appropriate AWS profile
+    local verify_cmd="npx tsx scripts/verify-oauth-token.ts --env=$env_flag"
+    if [ "$profile" != "default" ]; then
+        verify_cmd="AWS_PROFILE=$profile $verify_cmd"
+    fi
+
+    # Execute and capture exit code (don't fail the whole script)
+    set +e
+    (cd "$CDK_DIR" && eval "$verify_cmd")
+    local exit_code=$?
+    set -e
+
+    if [ $exit_code -ne 0 ]; then
+        echo ""
+        echo "❌ 토큰 계정 검증 실패! 재인증이 필요할 수 있습니다."
+        echo "   참고: apps/nasun-website/cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md"
+    fi
+    echo ""
+}
+
+# 5. OAuth 토큰 갱신 상태 확인
 function check_oauth_token_status() {
     local profile=$1
     local env_name=$2
@@ -261,6 +292,7 @@ if [ -n "$EXECUTION_ARN" ]; then
 fi
 analyze_leaderboard_changes "default" "개발 환경"
 check_oauth_token_status "default" "개발 환경" "DEV_ALARMS" "$DEV_SECRET_NAME"
+verify_oauth_account "default" "개발 환경" "dev"
 
 
 # 2. 프로덕션 환경 점검
@@ -272,5 +304,6 @@ if [ -n "$EXECUTION_ARN" ]; then
 fi
 analyze_leaderboard_changes "nasun-prod" "프로덕션 환경"
 check_oauth_token_status "nasun-prod" "프로덕션 환경" "PROD_ALARMS" "$PROD_SECRET_NAME"
+verify_oauth_account "nasun-prod" "프로덕션 환경" "prod"
 
 print_header "점검 완료"
