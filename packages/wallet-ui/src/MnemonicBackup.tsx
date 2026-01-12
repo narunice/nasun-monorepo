@@ -14,15 +14,18 @@ interface MnemonicBackupProps {
 export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackupProps) {
   const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const words = mnemonic.split(' ');
 
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(mnemonic);
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 5000);
     } catch {
-      // Ignore clipboard access failure
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 5000);
     }
   }, [mnemonic]);
 
@@ -53,9 +56,11 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
       {/* Copy button */}
       <button
         onClick={handleCopy}
-        className={`w-full mb-4 px-3 py-2 text-sm rounded transition-colors flex items-center justify-center gap-2 ${
+        className={`w-full mb-2 px-3 py-2 text-sm rounded transition-colors flex items-center justify-center gap-2 ${
           copied
             ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+            : copyError
+            ? 'bg-red-500/20 text-red-600 dark:text-red-400'
             : 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white'
         }`}
       >
@@ -66,6 +71,13 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
             </svg>
             Copied to clipboard
           </>
+        ) : copyError ? (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Copy failed - select and copy manually
+          </>
         ) : (
           <>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,6 +87,13 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
           </>
         )}
       </button>
+
+      {copyError && (
+        <p className="text-xs text-center text-gray-500 dark:text-zinc-400 mb-4">
+          Select the words above and use Ctrl+C (or Cmd+C) to copy
+        </p>
+      )}
+      {!copyError && <div className="mb-2" />}
 
       {/* Warning messages */}
       <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-500/50 rounded p-3 mb-4">

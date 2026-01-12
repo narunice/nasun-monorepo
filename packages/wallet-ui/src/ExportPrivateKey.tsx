@@ -16,6 +16,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
   const handleExport = useCallback(async () => {
@@ -43,9 +44,11 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
     try {
       await navigator.clipboard.writeText(privateKey);
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 3000);
     } catch {
-      // Ignore clipboard access failure
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 5000);
     }
   }, [privateKey]);
 
@@ -114,6 +117,13 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
           </div>
         </div>
 
+        {/* Copy error message */}
+        {copyError && (
+          <p className="text-xs text-center text-red-500 dark:text-red-400 mb-2">
+            Copy failed. Select the key above and use Ctrl+C (or Cmd+C)
+          </p>
+        )}
+
         {/* Buttons */}
         <div className="flex gap-2">
           <button
@@ -121,6 +131,8 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
             className={`flex-1 py-2 flex items-center justify-center gap-2 rounded transition-colors ${
               copied
                 ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                : copyError
+                ? 'bg-red-500/20 text-red-600 dark:text-red-400'
                 : 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white'
             }`}
           >
@@ -130,6 +142,13 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Copied
+              </>
+            ) : copyError ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Copy failed
               </>
             ) : (
               <>

@@ -55,6 +55,9 @@ export type { CopyableAddressProps } from './CopyableAddress';
 export { SecuritySettings } from './SecuritySettings';
 export { AddressBookPanel } from './AddressBookPanel';
 
+// Payment components
+export { ReceivePanel } from './ReceivePanel';
+
 // zkLogin components
 export { SocialLoginButtons, SocialLoginIconButtons } from './SocialLoginButtons';
 export type { SocialLoginButtonsProps } from './SocialLoginButtons';
@@ -70,3 +73,53 @@ export { NetworkBadge } from './NetworkBadge';
 export type { NetworkBadgeProps } from './NetworkBadge';
 export { NetworkSelector } from './NetworkSelector';
 export type { NetworkSelectorProps } from './NetworkSelector';
+
+// Clear Signing components
+export {
+  TransactionPreview,
+  StatusBadge,
+  ActionsList,
+  BalancePreview,
+  SafetyChecklist,
+  ErrorMessage,
+  GenericErrorMessage,
+  getStatusLabel,
+  getStatusTooltip,
+  getActionConfig,
+  getActionIcon,
+  getSafetyCheckSummary,
+  getErrorMessage,
+} from './clear-signing';
+export type {
+  TransactionPreviewProps,
+  StatusBadgeProps,
+  ActionsListProps,
+  BalancePreviewProps,
+  SafetyChecklistProps,
+  ErrorMessageProps,
+  GenericError,
+} from './clear-signing';
+
+// Ledger components
+export {
+  LedgerConnect,
+  LedgerSigningPrompt,
+  LedgerSigningIndicator,
+  LedgerErrorDisplay,
+  LedgerAddressSelector,
+  LedgerAddressDropdown,
+  LedgerBrowserWarning,
+  isWebHIDSupported,
+  getLedgerErrorMessage,
+} from './ledger';
+export type {
+  LedgerConnectProps,
+  LedgerSigningPromptProps,
+  LedgerErrorDisplayProps,
+  LedgerAddressSelectorProps,
+  LedgerAddress,
+} from './ledger';
+
+// Shared components
+export { Tooltip, InlineTooltip } from './shared';
+export type { TooltipProps, InlineTooltipProps } from './shared';

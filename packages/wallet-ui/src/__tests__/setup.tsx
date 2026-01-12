@@ -21,6 +21,17 @@ vi.mock('@nasun/wallet', () => ({
   })),
   useWalletStatus: vi.fn(() => 'disconnected'),
   useWalletAccount: vi.fn(() => null),
+  // zkLogin hooks
+  useZkLogin: vi.fn(() => ({
+    isConnected: false,
+    isLoading: false,
+    address: null,
+    proof: null,
+    state: 'disconnected',
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    signTransaction: vi.fn(),
+  })),
   useBalance: vi.fn(() => ({
     data: { totalBalance: '0', formattedBalance: '0', coinCount: 0 },
     isLoading: false,
@@ -42,6 +53,14 @@ vi.mock('@nasun/wallet', () => ({
     error: null,
     result: null,
     reset: vi.fn(),
+  })),
+  useTokenTransaction: vi.fn(() => ({
+    sendTokenTransaction: vi.fn(),
+    isPending: false,
+    error: null,
+    lastResult: null,
+    clearError: vi.fn(),
+    clearResult: vi.fn(),
   })),
   // Address book hooks
   useAddressBook: vi.fn(() => ({
@@ -150,6 +169,49 @@ vi.mock('@nasun/wallet', () => ({
     autoLockMinutes: 15,
     confirmLargeTransactions: true,
     largeTransactionThreshold: 100,
+  },
+  // Clear Signing utilities
+  getRiskLevelClass: vi.fn((level: string) => `risk-${level}`),
+  getActionIconClass: vi.fn((icon: string) => `icon-${icon}`),
+  formatTransaction: vi.fn(() => ({
+    title: 'Send Tokens',
+    description: 'Transfer 100 USDC to recipient',
+    category: 'transfer',
+    riskLevel: 'low',
+    actions: [
+      { type: 'send', label: 'Send', value: '0x1234...', icon: 'arrow-up' },
+    ],
+    gasCost: '0.003 NASUN',
+    isSponsored: false,
+  })),
+  assessRisk: vi.fn(() => ({
+    overallRisk: 'low',
+    factors: [],
+    score: 10,
+    requiresExtraConfirmation: false,
+  })),
+  // Ledger utilities
+  useLedger: vi.fn(() => ({
+    status: 'disconnected',
+    deviceInfo: null,
+    address: null,
+    publicKey: null,
+    derivationPath: null,
+    error: null,
+    isConnected: false,
+    isConnecting: false,
+    isSupported: true,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    setAccountIndex: vi.fn(),
+    accountIndex: 0,
+    clearError: vi.fn(),
+  })),
+  useIsLedgerActive: vi.fn(() => false),
+  isWebHIDSupported: vi.fn(() => true),
+  LEDGER_DERIVATION_PATHS: {
+    SUI: (account = 0) => `m/44'/784'/0'/0'/${account}'`,
+    EVM: (account = 0) => `44'/60'/0'/0/${account}`,
   },
 }));
 
