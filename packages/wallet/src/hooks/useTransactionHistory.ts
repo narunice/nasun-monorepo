@@ -264,8 +264,8 @@ async function fetchTransactionHistory(
       });
     }
 
-    // Check if there are more results (either query has more pages or we have more merged results)
-    const hasMore = sentResponse.hasNextPage || receivedResponse.hasNextPage || allTxs.length > limit;
+    // Check if there are more results (any query has more pages or we have more merged results)
+    const hasMore = sentResponse.hasNextPage || receivedByToAddress.hasNextPage || receivedByRecipient.hasNextPage || allTxs.length > limit;
 
     return {
       data: items,
