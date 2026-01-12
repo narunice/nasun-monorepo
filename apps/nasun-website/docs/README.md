@@ -1,8 +1,8 @@
 # NASUN Website 문서
 
 **프로젝트**: NASUN Website (nasun.io)
-**최종 업데이트**: 2025-12-03
-**버전**: 3.2.0 (Feature Implementation & Cleanup)
+**최종 업데이트**: 2026-01-12
+**버전**: 3.3.0 (Document Consolidation)
 
 ---
 
@@ -56,7 +56,7 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 - **API Gateway**: bb4zdy0rwe
 - **Target Account**: @Naru010110
 - **Target User ID**: 1863020068785004544
-- **Secret**: nasun-twitter-tokens-dev
+- **Secret**: nasun-twitter-tokens
 - **URL**:
   - 로컬: http://localhost:5174
   - Staging: https://staging.nasun.io
@@ -65,8 +65,8 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 **용도**: 실제 서비스
 - **AWS 계정**: 466841130170
 - **API Gateway**: bumvhwfbj4
-- **Target Account**: @Nasun_io
-- **Target User ID**: 1936784207453507584
+- **Target Account**: @GenSol_io
+- **Target User ID**: 1725466995565752320
 - **Secret**: nasun-twitter-tokens-prod
 - **URL**: https://nasun.io
 
@@ -129,13 +129,14 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ---
 
-#### 3. OAuth Token Replacement
-**목표**: 개발/프로덕션 환경별 OAuth 토큰 분리
+#### 3. OAuth Token Management
+**목표**: 개발/프로덕션 환경별 OAuth 토큰 관리
 - ✅ AWS 계정 분리
 - ✅ X API 프로덕션 앱 생성
 - ✅ 토큰 갱신 모니터링 시스템 구축
+- ✅ 계정 검증 스크립트 및 일일 점검 통합
 
-**문서**: [OAUTH_TOKEN_REPLACEMENT_COMPREHENSIVE_REPORT.md](./OAUTH_TOKEN_REPLACEMENT_COMPREHENSIVE_REPORT.md)
+**문서**: [../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md](../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md)
 
 ---
 
@@ -162,9 +163,9 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 - **[LEADERBOARD_FEATURE_COMPLETION_HISTORY.md](./LEADERBOARD_FEATURE_COMPLETION_HISTORY.md)**
   Phase 1-5 리더보드 기능 완료 히스토리
 
-#### Quote Tweet 분석
-- **[QUOTE_TWEET_PASSIVE_COLLECTION_COMPLETION_REPORT.md](./QUOTE_TWEET_PASSIVE_COLLECTION_COMPLETION_REPORT.md)**
-  Quote Tweet 수집 메커니즘 및 Passive Collection 버그 수정
+#### OAuth Token Management
+- **[../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md](../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md)** ⭐ **통합 문서**
+  OAuth 2.0 토큰 관리, 계정 검증, 일일 점검 통합 가이드
 
 ### 🎨 NFT Event 시스템
 
@@ -198,14 +199,12 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ---
 
-## 유지된 핵심 문서 (16개)
+## 유지된 핵심 문서 (14개)
 
-### 1. 종합 완료 보고서 (5개)
-- LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md (NEW)
-- TOP_CLIMBERS_SPOTLIGHT_FEATURE.md (NEW)
-- OAUTH_TOKEN_REPLACEMENT_COMPREHENSIVE_REPORT.md
+### 1. 종합 완료 보고서 (3개)
+- LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md
+- TOP_CLIMBERS_SPOTLIGHT_FEATURE.md
 - PAGINATION_COMPREHENSIVE_COMPLETION_REPORT.md
-- LIKES_COLLECTION_BUG_COMPREHENSIVE_REPORT.md
 
 ### 2. 개발 가이드 (4개)
 - BUILD_CONFIGURATION_GUIDE.md
@@ -218,17 +217,34 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 - LEADERBOARD_MECHANISM_GUIDE.md
 - LEADERBOARD_FEATURE_COMPLETION_HISTORY.md
 - LEADERBOARD_SCORING-METRICS_v2.3.md
-- QUOTE_TWEET_PASSIVE_COLLECTION_COMPLETION_REPORT.md
-- NFT_EVENT_COMPREHENSIVE_GUIDE.md (Updated)
+- LEADERBOARD_EVENT_ADDITION_GUIDE.md
+- TARGET_ACCOUNT_ID_MIGRATION_ANALYSIS.md
+- NFT_EVENT_COMPREHENSIVE_GUIDE.md
 
-### 4. 인덱스 (1개)
+### 4. OAuth 토큰 관리 (cdk/docs/)
+- ../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md (통합 문서)
+
+### 5. 인덱스 (1개)
 - README.md
 
 ---
 
 ## 문서 버전 히스토리
 
-### v3.2.0 (2025-12-03) - 문서 정리 및 최신화 ⭐ **최신**
+### v3.3.0 (2026-01-12) - 리더보드 문서 통합/정리 ⭐ **최신**
+- ✅ **삭제된 문서 (8개)**:
+  - `LEADERBOARD_EVENT3_IMPLEMENTATION_PLAN.md` (구현 완료)
+  - `LIKES_COLLECTION_BUG_COMPREHENSIVE_REPORT.md` (해결 완료)
+  - `QUOTE_TWEET_PASSIVE_COLLECTION_COMPLETION_REPORT.md` (구현 완료)
+  - `PASSIVE_ENGAGEMENT_DISCREPANCY_INVESTIGATION.md` (조사 완료)
+  - `OAUTH_TOKEN_RECOVERY_AND_MONITORING_REPORT.md` (복구 완료)
+  - `OAUTH_TOKEN_REPLACEMENT_COMPREHENSIVE_REPORT.md` (마이그레이션 완료)
+  - `PIPELINE_EXECUTION_REPORT_20251031.md` (특정 날짜 리포트)
+  - `OAUTH_TOKEN_MANAGEMENT_GUIDE.md` (cdk/docs로 통합)
+- ✅ **OAuth 문서 통합**: `../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md`로 통합
+- ✅ **환경 정보 업데이트**: Production 타겟 계정 (@GenSol_io), Secret 이름 수정
+
+### v3.2.0 (2025-12-03) - 문서 정리 및 최신화
 - ✅ **신규 문서 추가**:
   - `LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md`
   - `TOP_CLIMBERS_SPOTLIGHT_FEATURE.md`
