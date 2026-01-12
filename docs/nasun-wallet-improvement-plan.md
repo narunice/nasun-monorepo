@@ -1,16 +1,17 @@
-# 나선 지갑 (Nasun Wallet) 개선 기획안
+# Nasun Account OS - 개선 기획안
 
-> 작성일: 2026-01-11 (v2.0 - 리뷰 반영)
+> 작성일: 2026-01-12 (v2.3 - P2-4 ZK-ID, P2-5 Clear Signing 완료)
 > 기준: 2026년 블록체인 지갑 시장 트렌드 분석
+> **컨셉**: Account Execution Layer for Web3
 > **중요**: Nasun Network는 Sui 포크 기반의 **독립 블록체인**입니다.
 > **전략**: 멀티체인 지갑으로 일반 Web3 사용자를 확보한 후, Nasun Network로 유입시키는 "지갑 먼저" 전략
-> **목표**: zkLogin + AA + MPC를 결합한 **차세대 지갑 레퍼런스**
+> **목표**: zkLogin + AA + MPC를 결합한 **차세대 Account OS 레퍼런스**
 
 ---
 
 ## 0. 현재 구현 상태
 
-### 완료된 Phase (2026-01-03 기준)
+### 완료된 Phase (2026-01-12 기준)
 
 | Phase | 기능 | 상태 | 완료일 |
 |-------|------|------|--------|
@@ -21,32 +22,57 @@
 | Phase 5 | 보안 기능 | 🔄 부분 완료 | - |
 | Phase 6 | 멀티 지갑 | ⏳ 대기 | - |
 | Phase 7 | zkLogin | ✅ 완료 | 2026-01-03 |
+| **P1** | **Signer 추상화** | ✅ 완료 | 2026-01-11 |
+| **P1** | **멀티체인 (EVM)** | ✅ 완료 | 2026-01-11 |
+| **P1** | **WalletConnect v2** | ✅ 완료 | 2026-01-11 |
+| **P1** | **EVM Account Abstraction** | ✅ 완료 | 2026-01-11 |
+| **P1** | **Nasun Link v2** | ✅ 완료 | 2026-01-11 |
+| **P2-3** | **Ledger Integration** | ✅ 완료 | 2026-01-11 |
+| **P2-4** | **ZK-ID Module** | ✅ 완료 | 2026-01-12 |
+| **P2-5** | **Clear Signing** | ✅ 완료 | 2026-01-12 |
 
 ### @nasun/wallet (Core Package)
 
 | 카테고리 | 상태 | 테스트 수 |
 |----------|------|-----------|
 | Wallet Create/Lock/Unlock | ✅ | 17 |
-| Balance Query | ✅ | 26 |
+| Balance Query | ✅ | 30 |
 | Native Token Transfer | ✅ | - |
-| Multi-Token Transfer | ✅ | - |
-| Token Registry | ✅ | 17 |
-| Staking/Unstaking | ✅ | - |
+| Multi-Token Transfer | ✅ | 20 |
+| Token Registry | ✅ | 15 |
+| Staking/Unstaking | ✅ | 14 |
 | Validator Query | ✅ | - |
-| NFT Query/Transfer | ✅ | 20 |
-| Address Book | ✅ | - |
+| NFT Query/Transfer | ✅ | 23 |
+| Address Book | ✅ | 18 |
 | Transaction Simulation | ✅ | - |
-| Encryption/Crypto | ✅ | 18 |
+| Encryption/Crypto | ✅ | 15 |
 | zkLogin | ✅ | - |
-| **총 테스트** | - | **103** |
+| **Signer Abstraction** | ✅ | - |
+| **Multi-chain (EVM)** | ✅ | - |
+| **WalletConnect v2** | ✅ | - |
+| **Account Abstraction** | ✅ | 86 |
+| **Nasun Link v2** | ✅ | 54 |
+| **Payment UX** | ✅ | 43 |
+| **Ledger Integration** | ✅ | 32 |
+| **ZK-ID Module** | ✅ | 79 |
+| **Clear Signing** | ✅ | 70 |
+| **총 테스트** | - | **541** |
 
-**Hooks (12개):**
+**Hooks (26개):**
 - Core: `useWallet`, `useBalance`, `useTransaction`
 - Multi-Token: `useMultiBalance`, `useTokenTransaction`
 - Staking: `useValidators`, `useStaking`, `useStakeTransaction`
 - NFT: `useNFTs`, `useNFTTransfer`
 - Security: `useAddressBook`, `useAddressStatus`
-- zkLogin: `useZkLogin`
+- zkLogin: `useZkLogin`, `usePasskey`
+- **Signer**: `useSigner`
+- **Multi-chain**: `useNetwork`, `useChain`, `useEVMBalance`, `useEVMTransaction`
+- **WalletConnect**: `useWalletConnect`
+- **AA**: `useSmartAccount`, `useSessionKey`, `useGaslessTransaction`
+- **Link**: `useNasunLink`
+- **Payment**: `usePayment`, `usePaymentIntent`, `usePaymentLink`
+- **Ledger**: `useLedger`
+- **ZK-ID**: `useZKID`
 
 ### @nasun/wallet-ui (UI Package)
 
@@ -96,23 +122,23 @@
 | 기능 | 시장 트렌드 (2026) | 나선 지갑 현재 | Gap | 우선순위 |
 |------|-------------------|---------------|-----|----------|
 | **시드프레이즈 없는 온보딩** | zkLogin, MPC, 멀티카드 백업 | ✅ zkLogin, Passkey 완료 | 낮음 | - |
-| **멀티체인 지원** | EVM, Solana, Sui 등 | ❌ Nasun만 | 높음 | P1 |
-| **EVM Account Abstraction** | ERC-4337, Smart Account | ❌ 미지원 | **매우 높음** | **P1** |
-| **WalletConnect** | 표준 지원 | ❌ 미지원 | 높음 | P1 |
-| **Signer 추상화** | Local/Ledger/MPC 통합 | ❌ 미지원 | 높음 | P1 |
-| **하드웨어 지갑 연동** | Ledger, Trezor, Keystone 등 | ❌ 미지원 | 높음 | P2 |
-| **결제 UX** | Intent 기반, 가스 대납 | ❌ 미지원 | 높음 | P2 |
-| **ZK-ID / SSI** | DID/VC + ZK Proof | ❌ 미지원 | 중간 | P2 |
+| **멀티체인 지원** | EVM, Solana, Sui 등 | ✅ EVM 11개 체인 완료 | **해소됨** | ~~P1~~ |
+| **EVM Account Abstraction** | ERC-4337, Smart Account | ✅ ERC-4337 완료 | **해소됨** | ~~P1~~ |
+| **WalletConnect** | 표준 지원 | ✅ WC v2 완료 | **해소됨** | ~~P1~~ |
+| **Signer 추상화** | Local/Ledger/MPC 통합 | ✅ 완료 (Local/zkLogin/EVM/AA) | **해소됨** | ~~P1~~ |
+| **하드웨어 지갑 연동** | Ledger, Trezor, Keystone 등 | ✅ Ledger 완료 | **해소됨** | ~~P2~~ |
+| **결제 UX** | Intent 기반, 가스 대납 | ✅ Payment UX 완료 | **해소됨** | ~~P2~~ |
+| **ZK-ID / SSI** | DID/VC + ZK Proof | ✅ ZK-ID Module 완료 | **해소됨** | ~~P2~~ |
+| **Clear Signing** | Ledger 도입 | ✅ Clear Signing 완료 | **해소됨** | ~~P4~~ |
 | **NFT 관리** | 갤러리, 잠금, Instant Sell | ✅ 갤러리, 전송 완료 | 중간 | P3 |
 | **DApp 브라우저** | 내장 브라우저 | ❌ 미지원 | 중간 | P3 |
 | **크로스체인 스왑/브릿지** | Wormhole, 내장 브릿지 | ❌ 미지원 | 중간 | P3 |
-| **MPC 보안** | Zengo, Binance 등 도입 | ❌ 미지원 | 중간 | P3 |
+| **MPC Security Mode** | Zengo, Binance 등 도입 | ❌ 미지원 | 중간 | P3 |
 | **멀티시그** | Backpack, Ledger 등 | ❌ 미지원 | 중간 | P3 |
 | **Recovery Center** | 소셜 복구, 상속 | ❌ 미지원 | 중간 | P3 |
 | **토큰 스왑** | DEX 집계, 내장 스왑 | ⚠️ 기본 지원 | 중간 | P3 |
 | **실시간 알림** | 트랜잭션 알림, 가격 알림 | ❌ 미지원 | 중간 | P4 |
 | **포트폴리오 대시보드** | 자산 추적, PnL, 차트 | ⚠️ 기본 잔액만 | 중간 | P3 |
-| **Clear Signing** | Ledger 도입 | ❌ 미지원 | 중간 | P4 |
 
 ### 1.2. 나선 지갑의 강점 (선두 그룹)
 
@@ -124,7 +150,10 @@
 | ✅ 스테이킹 | 검증자 목록, APY, 포지션 관리 완료 | 상위권 |
 | ✅ NFT | 갤러리, 전송, Display 표준 지원 | 상위권 |
 | ✅ 멀티토큰 | 토큰 레지스트리, Faucet 연동 | 상위권 |
-| ✅ 테스트 커버리지 | 103+ 단위 테스트 | **선두** |
+| ✅ 테스트 커버리지 | 541+ 단위 테스트 | **선두** |
+| ✅ ZK-ID Module | 성인/KYC/유니크 증명 지원 | **선두** |
+| ✅ Clear Signing | 트랜잭션 디코딩/리스크 평가 | **선두** |
+| ✅ Ledger Integration | 하드웨어 지갑 연동 | 상위권 |
 
 ### 1.3. 핵심 Gap 요약 (선도 레벨 달성을 위한)
 
@@ -216,13 +245,17 @@ useRecoveryCenter(): {
 | **NFT 컬렉션 잠금** | 도난 방지 잠금 기능 | 1주 |
 | **포트폴리오 대시보드** | 멀티체인 자산 추적, PnL, 차트 | 2주 |
 | **DEX 집계 스왑** | 최적 경로 스왑 | 2주 |
-| **MPC Signer 구현** | Signer 추상화에 MPC Adapter 추가 | 3주 |
+| **MPC Security Mode** | MPCSigner + "보안 모드" UI (프리미엄 보안 티어) | 3주 |
 | **DApp 브라우저** | 내장 Web3 브라우저 | 2주 |
 
 **예상 결과물**:
 ```typescript
-// MPC (아키텍처는 P1에서 준비됨)
-useMPCSigner(): MPCSignerAdapter
+// MPC Security Mode (아키텍처는 P1에서 준비됨)
+useSecurityMode(): {
+  mode: 'standard' | 'enhanced' | 'mpc';
+  enableMPC(): Promise<void>;
+  mpcSigner: MPCSignerAdapter | null;
+}
 
 // 기존 + 향상
 usePortfolio(): MultiChainPortfolio
@@ -380,9 +413,10 @@ useSwitchChain(chainId: string): Promise<void>
 useChainBalance(chainId: string): Balance
 ```
 
-### 3.4. [P1] Nasun Link v2 (온보딩 캠페인 엔진)
+### 3.4. [P1] Nasun Link v2 - Growth Engine
 
-**배경**: 단순 전송 기능이 아닌 **Web3 온보딩 인프라**.
+**배경**: 단순 전송 기능이 아닌 **Web3 온보딩/캠페인 인프라**.
+**포지셔닝**: Growth Engine - 사용자 확보의 핵심 무기.
 zkLogin과 결합하여 Sui 계열에서 **유일한 포지션** 확보.
 
 **v1 → v2 확장**:
@@ -626,16 +660,23 @@ RecoveryStatus        // 복구 진행 상태
 
 ---
 
-## 핵심 메시지 (v2.0)
+## 핵심 메시지 (v2.2 - Account OS)
 
-나선 지갑은 **"zkLogin + AA + MPC를 결합한 차세대 지갑 레퍼런스"**로서:
+Nasun Account OS는 **"zkLogin + AA + MPC를 결합한 차세대 Account Execution Layer"**로서:
 
-- **Signer 추상화**로 Local/Ledger/MPC를 동일 인터페이스로 다룸
-- **EVM AA**로 가스 대납, 세션 키 등 2026년형 UX 제공
-- **Nasun Link v2**로 ZK 조건부 온보딩 캠페인 인프라 구축
-- **멀티체인 지원**으로 일반 Web3 사용자를 먼저 확보
+### 아키텍처 강점 (A+ 등급)
+- **SignerAdapter 추상화**로 Local/Ledger/MPC/AA를 동일 인터페이스로 다룸
+- **멀티체인 지원** (11개 EVM 체인)으로 일반 Web3 사용자 확보
+- **ERC-4337 AA**로 가스 대납, 세션 키 등 2026년형 UX 제공
+
+### 전략적 포지셔닝
+- **Account OS**: 단순 지갑이 아닌 "Account Execution Layer"
+- **Nasun Link v2 (Growth Engine)**: ZK 조건부 온보딩 캠페인 인프라
+- **MPC Security Mode**: 프리미엄 보안 티어 (단순 기능이 아닌 모드)
+
+### 비즈니스 가치
 - 사용자가 자연스럽게 **Nasun Network의 잠재 사용자**로 전환
-- **기술적으로 기억되는 지갑**이 될 수 있음
+- **기술적으로 기억되는 Account OS**가 될 수 있음
 
 ---
 
@@ -645,3 +686,6 @@ RecoveryStatus        // 복구 진행 상태
 |------|------|----------|
 | v1.0 | 2026-01-11 | 초안 작성 |
 | v2.0 | 2026-01-11 | 리뷰 반영: AA, Signer 추상화, ZK-ID, Recovery Center, Nasun Link v2 추가 |
+| v2.1 | 2026-01-11 | **P1 완료**: Signer 추상화, 멀티체인(EVM), WalletConnect v2, EVM AA, Nasun Link v2 |
+| v2.2 | 2026-01-11 | **위상 재정의**: Account OS 브랜딩, MPC Security Mode, Nasun Link Growth Engine |
+| v2.3 | 2026-01-12 | **P2 완료**: Ledger Integration, ZK-ID Module, Clear Signing (541 테스트) |

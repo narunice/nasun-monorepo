@@ -830,3 +830,228 @@ describe('ZK-ID Security', () => {
     });
   });
 });
+
+// ============================================
+// Phase 6: Link Integration Tests
+// ============================================
+
+import {
+  validateClaimWithZKID,
+  hasZKIDConditions,
+  getZKIDConditions,
+} from '../core/link/claim';
+import type { LinkData, SerializableLinkConfig } from '../core/link/types';
+
+describe('ZK-ID Link Integration (Phase 6)', () => {
+  // Helper to create mock link data
+  function createMockLinkData(
+    conditions: SerializableLinkConfig['conditions'] = []
+  ): LinkData {
+    return {
+      id: 'test-link-123',
+      creator: '0x' + 'a'.repeat(64),
+      ephemeralAddress: '0x' + 'b'.repeat(64),
+      encryptedPayload: 'encrypted-payload',
+      config: {
+        type: 'single',
+        coinType: 'NASUN',
+        amount: '1000000000',
+        conditions,
+      },
+      status: 'active',
+      claimCount: 0,
+      createdAt: Date.now(),
+    };
+  }
+
+  describe('hasZKIDConditions', () => {
+    it('should return false for link without conditions', () => {
+      const linkData = createMockLinkData();
+      expect(hasZKIDConditions(linkData)).toBe(false);
+    });
+
+    it('should return false for link with only password condition', () => {
+      const linkData = createMockLinkData([
+        { type: 'password', hash: 'abc123' },
+      ]);
+      expect(hasZKIDConditions(linkData)).toBe(false);
+    });
+
+    it('should return true for link with zkid-age condition', () => {
+      const linkData = createMockLinkData([{ type: 'zkid-age', threshold: 18 }]);
+      expect(hasZKIDConditions(linkData)).toBe(true);
+    });
+
+    it('should return true for link with zkid-kyc condition', () => {
+      const linkData = createMockLinkData([
+        { type: 'zkid-kyc', level: 'basic' },
+      ]);
+      expect(hasZKIDConditions(linkData)).toBe(true);
+    });
+
+    it('should return true for link with zkid-unique condition', () => {
+      const linkData = createMockLinkData([
+        { type: 'zkid-unique', contextId: 'campaign-1' },
+      ]);
+      expect(hasZKIDConditions(linkData)).toBe(true);
+    });
+
+    it('should return true for mixed conditions with zkid', () => {
+      const linkData = createMockLinkData([
+        { type: 'password', hash: 'abc123' },
+        { type: 'zkid-age', threshold: 21 },
+      ]);
+      expect(hasZKIDConditions(linkData)).toBe(true);
+    });
+  });
+
+  describe('getZKIDConditions', () => {
+    it('should return empty array for link without zkid conditions', () => {
+      const linkData = createMockLinkData([
+        { type: 'password', hash: 'abc123' },
+      ]);
+      expect(getZKIDConditions(linkData)).toEqual([]);
+    });
+
+    it('should return only zkid conditions', () => {
+      const linkData = createMockLinkData([
+        { type: 'password', hash: 'abc123' },
+        { type: 'zkid-age', threshold: 18 },
+        { type: 'zkid-kyc', level: 'advanced' },
+      ]);
+
+      const conditions = getZKIDConditions(linkData);
+      expect(conditions).toHaveLength(2);
+      expect(conditions[0].type).toBe('zkid-age');
+      expect(conditions[1].type).toBe('zkid-kyc');
+    });
+  });
+
+  describe('validateClaimWithZKID', () => {
+    let registry: InMemoryNullifierRegistry;
+
+    beforeEach(() => {
+      registry = new InMemoryNullifierRegistry();
+      setDefaultNullifierRegistry(registry);
+    });
+
+    it('should pass validation for link without conditions', async () => {
+      const linkData = createMockLinkData();
+      const result = await validateClaimWithZKID(linkData);
+
+      expect(result.canClaim).toBe(true);
+    });
+
+    it('should require age proof for zkid-age condition', async () => {
+      const linkData = createMockLinkData([{ type: 'zkid-age', threshold: 18 }]);
+      const result = await validateClaimWithZKID(linkData);
+
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('Age verification required');
+      expect(result.reason).toContain('18+');
+    });
+
+    it('should require kyc proof for zkid-kyc condition', async () => {
+      const linkData = createMockLinkData([
+        { type: 'zkid-kyc', level: 'advanced' },
+      ]);
+      const result = await validateClaimWithZKID(linkData);
+
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('KYC verification required');
+      expect(result.reason).toContain('advanced');
+    });
+
+    it('should require unique proof for zkid-unique condition', async () => {
+      const linkData = createMockLinkData([
+        { type: 'zkid-unique', contextId: 'campaign-1' },
+      ]);
+      const result = await validateClaimWithZKID(linkData);
+
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('Identity verification required');
+    });
+
+    it('should pass with valid age proof', async () => {
+      const linkData = createMockLinkData([{ type: 'zkid-age', threshold: 18 }]);
+      const proof = createValidProof({ type: 'age_over' });
+
+      const result = await validateClaimWithZKID(linkData, undefined, proof);
+      expect(result.canClaim).toBe(true);
+    });
+
+    it('should reject with wrong proof type', async () => {
+      const linkData = createMockLinkData([{ type: 'zkid-age', threshold: 18 }]);
+      const proof = createValidProof({ type: 'kyc_completed' }); // Wrong type
+
+      const result = await validateClaimWithZKID(linkData, undefined, proof);
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('Expected age_over');
+    });
+
+    it('should reject expired link even with valid proof', async () => {
+      const linkData = createMockLinkData([{ type: 'zkid-age', threshold: 18 }]);
+      linkData.config.expiresAt = Date.now() - 1000; // Expired
+
+      const proof = createValidProof({ type: 'age_over' });
+      const result = await validateClaimWithZKID(linkData, undefined, proof);
+
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('expired');
+    });
+
+    it('should reject claimed link', async () => {
+      const linkData = createMockLinkData([{ type: 'zkid-age', threshold: 18 }]);
+      linkData.status = 'claimed';
+
+      const proof = createValidProof({ type: 'age_over' });
+      const result = await validateClaimWithZKID(linkData, undefined, proof);
+
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('claimed');
+    });
+
+    it('should validate unique claim with unused nullifier', async () => {
+      const linkData = createMockLinkData([
+        { type: 'zkid-unique', contextId: 'campaign-1' },
+      ]);
+      const proof = createValidProof({
+        type: 'unique_claim',
+        nullifier: 'd'.repeat(64),
+      });
+
+      const result = await validateClaimWithZKID(linkData, undefined, proof);
+      expect(result.canClaim).toBe(true);
+    });
+
+    it('should reject unique claim with used nullifier', async () => {
+      const nullifier = 'e'.repeat(64);
+      await registry.register(nullifier);
+
+      const linkData = createMockLinkData([
+        { type: 'zkid-unique', contextId: 'campaign-1' },
+      ]);
+      const proof = createValidProof({
+        type: 'unique_claim',
+        nullifier,
+      });
+
+      const result = await validateClaimWithZKID(linkData, undefined, proof);
+      expect(result.canClaim).toBe(false);
+      expect(result.reason).toContain('already been used');
+    });
+
+    it('should validate multiple conditions', async () => {
+      const linkData = createMockLinkData([
+        { type: 'zkid-age', threshold: 21 },
+        { type: 'zkid-kyc', level: 'basic' },
+      ]);
+
+      // Only age proof - should fail on KYC
+      const ageProof = createValidProof({ type: 'age_over' });
+      const result1 = await validateClaimWithZKID(linkData, undefined, ageProof);
+      expect(result1.canClaim).toBe(false);
+      // Note: First condition passes, second fails - may see age or kyc error
+    });
+  });
+});

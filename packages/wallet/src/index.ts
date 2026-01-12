@@ -930,3 +930,70 @@ export {
 } from './core/link/claim';
 
 export type { ZKIDAgeThreshold, ZKIDKYCLevel } from './core/link/types';
+
+// ============================================
+// Clear Signing (P2-5)
+// ============================================
+
+// Clear Signing Types
+export type {
+  TxChainType,
+  TxCategory,
+  TxRiskLevel,
+  DecodedTx,
+  MoveDecodedTx,
+  EVMDecodedTx,
+  MoveCall,
+  MoveArg,
+  MoveArgType,
+  EVMCall,
+  EVMParam,
+  TokenBalanceChange,
+  NFTChange,
+  ApprovalChange,
+  SimulationResult,
+  RiskFactor,
+  RiskCategory,
+  RiskAssessment,
+  TxSummary,
+  TxAction,
+  TxActionType,
+  TxActionIcon,
+  ClearSigningRequest,
+  ClearSigningResponse,
+  KnownContract,
+  ContractType,
+  ContractRegistry,
+  ClearSigningConfig,
+  ClearSigningErrorCode,
+} from './core/clear-signing';
+
+export { ClearSigningError, DEFAULT_CLEAR_SIGNING_CONFIG } from './core/clear-signing';
+
+// Clear Signing Decoder
+export {
+  decodeTx,
+  configureClearSigning,
+  getClearSigningConfig,
+  bytesToHex,
+  hexToBytes,
+  bytesToBigInt,
+  decodeMoveArg,
+  decodeAddress,
+  isValidAddress as isClearSigningValidAddress,
+  shortenAddress as clearSigningShortenAddress,
+} from './core/clear-signing';
+
+// Clear Signing Formatter
+export {
+  formatTransaction,
+  assessRisk,
+  setFormatterConfig,
+  formatAmount,
+  formatGasCost,
+  formatUSD,
+  formatBalanceChange,
+  getActionIconClass,
+  getRiskLevelClass,
+  getCategoryIconClass,
+} from './core/clear-signing';
