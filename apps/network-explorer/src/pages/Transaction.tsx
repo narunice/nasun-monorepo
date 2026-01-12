@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getTransaction } from '../lib/sui-client';
@@ -104,23 +105,14 @@ export default function Transaction() {
             <SectionBox title={`Events (${tx.events.length})`} color="c4">
               <div className="space-y-2">
                 {tx.events.map((event, idx) => (
-                  <div key={idx} className="bg-nasun-c6/60 border border-nasun-c4/30 rounded-lg p-3">
-                    <div className="text-sm text-nasun-white/60 mb-1">{formatObjectType(event.type)}</div>
-                    <pre className="text-xs overflow-auto bg-nasun-c6/80 p-2 rounded text-nasun-white/80">
-                      {JSON.stringify(event.parsedJson, null, 2)}
-                    </pre>
-                  </div>
+                  <EventCard key={idx} type={event.type} data={event.parsedJson} />
                 ))}
               </div>
             </SectionBox>
           )}
 
           {/* Raw Data */}
-          <SectionBox title="Raw Transaction Data" color="c6">
-            <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c5/30 p-4 rounded-lg max-h-96 text-nasun-white/80">
-              {JSON.stringify(tx, null, 2)}
-            </pre>
-          </SectionBox>
+          <RawDataSection data={tx} />
         </div>
       )}
     </>
@@ -142,4 +134,98 @@ function getChangeTypeColor(type: string) {
     default:
       return 'bg-nasun-c6/60 text-nasun-white/60';
   }
+}
+
+function EventCard({ type, data }: { type: string; data: unknown }) {
+  const [copied, setCopied] = useState(false);
+  const jsonString = JSON.stringify(data, null, 2);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(jsonString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div className="bg-nasun-c6/60 border border-nasun-c4/30 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-sm text-nasun-white/60">{formatObjectType(type)}</div>
+        <button
+          onClick={handleCopy}
+          className="px-2 py-1 text-xs font-medium rounded transition-all duration-200 bg-nasun-c4/30 hover:bg-nasun-c4/50 text-nasun-white/70 hover:text-nasun-white"
+        >
+          {copied ? (
+            <span className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Copied
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy
+            </span>
+          )}
+        </button>
+      </div>
+      <pre className="text-xs overflow-auto bg-nasun-c6/80 p-2 rounded text-nasun-white/80 custom-scrollbar max-h-48">
+        {jsonString}
+      </pre>
+    </div>
+  );
+}
+
+function RawDataSection({ data }: { data: unknown }) {
+  const [copied, setCopied] = useState(false);
+  const jsonString = JSON.stringify(data, null, 2);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(jsonString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <SectionBox title="Raw Transaction Data" color="c6">
+      <div className="relative">
+        {/* Copy button - positioned inside JSON area, top-right */}
+        <button
+          onClick={handleCopy}
+          className="absolute top-2 right-4 z-10 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-nasun-c5/40 hover:bg-nasun-c5/60 text-nasun-white/80 hover:text-nasun-white border border-nasun-c5/30"
+        >
+          {copied ? (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Copied
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy
+            </span>
+          )}
+        </button>
+
+        {/* JSON content with custom scrollbar and top padding for button space */}
+        <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c5/30 pt-12 pb-4 px-4 rounded-lg max-h-96 text-nasun-white/80 custom-scrollbar">
+          {jsonString}
+        </pre>
+      </div>
+    </SectionBox>
+  );
 }
