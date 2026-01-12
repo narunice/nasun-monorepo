@@ -9,7 +9,7 @@ function GamesSection() {
   return (
     <SectionLayout className="">
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
           {t("games.title")}
         </SectionTitle>
 

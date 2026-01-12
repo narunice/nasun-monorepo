@@ -16,6 +16,15 @@ module.exports = {
         // Default UI font (Rubik)
         'sans': ['Rubik', 'system-ui', 'sans-serif'],
       },
+      fontSize: {
+        // Compact typography scale for trading UI
+        'trading-xs': ['10px', { lineHeight: '14px' }],
+        'trading-sm': ['11px', { lineHeight: '16px' }],
+        'trading-base': ['12px', { lineHeight: '18px' }],
+        'trading-md': ['13px', { lineHeight: '20px' }],
+        'trading-lg': ['14px', { lineHeight: '20px' }],
+        'trading-xl': ['18px', { lineHeight: '24px' }],
+      },
       colors: {
         // Pado brand colors (Teal → Mint/Lime gradient)
         'pado': {
@@ -37,6 +46,13 @@ module.exports = {
         'theme-success': 'var(--color-success)',
         'theme-error': 'var(--color-error)',
         'theme-warning': 'var(--color-warning)',
+        // Trading-specific colors (subtle bid/ask)
+        'trading-bid': 'var(--color-bid)',
+        'trading-bid-muted': 'var(--color-bid-muted)',
+        'trading-bid-bg': 'var(--color-bid-bg)',
+        'trading-ask': 'var(--color-ask)',
+        'trading-ask-muted': 'var(--color-ask-muted)',
+        'trading-ask-bg': 'var(--color-ask-bg)',
       },
     },
   },

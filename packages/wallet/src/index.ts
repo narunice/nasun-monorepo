@@ -203,7 +203,10 @@ export type {
   NFTQueryOptions,
   NFTQueryResult,
   NFTTransferRequest,
+  NFTSortBy,
 } from './types/nft';
+
+export { DEFAULT_NFT_SORT } from './types/nft';
 
 // NFT Utilities
 export {
@@ -997,3 +1000,27 @@ export {
   getRiskLevelClass,
   getCategoryIconClass,
 } from './core/clear-signing';
+
+// ============================================
+// Transaction History (P2-6)
+// ============================================
+
+// Transaction History Hooks
+export {
+  useTransactionHistory,
+  useRefreshTransactionHistory,
+  useInvalidateTransactionHistory,
+} from './hooks/useTransactionHistory';
+export type {
+  UseTransactionHistoryOptions,
+  UseTransactionHistoryResult,
+} from './hooks/useTransactionHistory';
+
+// Transaction History Types
+export type {
+  TransactionDirection,
+  TokenTransfer,
+  TransactionHistoryItem,
+  TransactionHistoryOptions,
+  TransactionHistoryResult,
+} from './types';

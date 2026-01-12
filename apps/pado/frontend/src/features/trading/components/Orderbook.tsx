@@ -1,3 +1,9 @@
+/**
+ * Orderbook Component
+ * Vertical layout: Asks (top, reversed) → Spread → Bids (bottom)
+ * Benchmark: Hyperliquid, Asterdex, Lighter common pattern
+ */
+
 import { useState, useMemo } from 'react';
 import type { Orderbook as OrderbookType } from '../../../lib/deepbook';
 
@@ -6,9 +12,11 @@ type DepthLevel = 5 | 10 | 20;
 interface OrderbookProps {
   orderbook: OrderbookType;
   onPriceClick?: (price: number) => void;
+  showSpread?: boolean;
+  compact?: boolean;
 }
 
-export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
+export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact = false }: OrderbookProps) {
   const [depthLevel, setDepthLevel] = useState<DepthLevel>(10);
 
   const handlePriceClick = (price: number) => {
@@ -17,12 +25,28 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
     }
   };
 
-  // 표시할 호가 수 제한
+  // Limit display depth
   const displayedBids = orderbook.bids.slice(0, depthLevel);
   const displayedAsks = orderbook.asks.slice(0, depthLevel);
 
-  // 누적 물량 계산 (Depth Chart용)
-  const { maxBidCumulative, maxAskCumulative, bidCumulatives, askCumulatives } = useMemo(() => {
+  // Reverse asks for vertical display (best ask at bottom, near spread)
+  const reversedAsks = useMemo(() => [...displayedAsks].reverse(), [displayedAsks]);
+
+  // Spread calculation
+  const spreadInfo = useMemo(() => {
+    const bestBid = displayedBids[0]?.price ?? 0;
+    const bestAsk = displayedAsks[0]?.price ?? 0;
+    if (bestBid === 0 || bestAsk === 0) return null;
+
+    const spread = bestAsk - bestBid;
+    const midPrice = (bestAsk + bestBid) / 2;
+    const spreadPercent = midPrice > 0 ? (spread / midPrice) * 100 : 0;
+
+    return { spread, spreadPercent, midPrice };
+  }, [displayedBids, displayedAsks]);
+
+  // Cumulative calculations for depth visualization
+  const { maxCumulative, bidCumulatives, askCumulatives } = useMemo(() => {
     let bidSum = 0;
     const bidCumulatives = displayedBids.map((level) => {
       bidSum += level.quantity;
@@ -40,118 +64,126 @@ export function Orderbook({ orderbook, onPriceClick }: OrderbookProps) {
     const maxTotal = Math.max(maxBid, maxAsk);
 
     return {
-      maxBidCumulative: maxTotal,
-      maxAskCumulative: maxTotal,
+      maxCumulative: maxTotal,
       bidCumulatives,
       askCumulatives,
     };
   }, [displayedBids, displayedAsks]);
 
+  // Reversed ask cumulatives for display
+  const reversedAskCumulatives = useMemo(() => [...askCumulatives].reverse(), [askCumulatives]);
+
+  const rowHeight = compact ? 'py-px' : 'py-0.5';
+  const fontSize = compact ? 'text-trading-xs' : 'text-trading-sm';
+
   return (
-    <div className="space-y-2">
-      {/* Depth Level Selector */}
-      <div className="flex justify-end gap-1">
-        {([5, 10, 20] as DepthLevel[]).map((level) => (
-          <button
-            key={level}
-            onClick={() => setDepthLevel(level)}
-            className={`px-2 py-0.5 text-xs rounded transition-colors ${
-              depthLevel === level
-                ? 'bg-blue-600 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-border'
-            }`}
-          >
-            {level}
-          </button>
-        ))}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <span className={`${fontSize} text-theme-text-muted font-medium`}>Order Book</span>
+        <div className="flex gap-1">
+          {([5, 10, 20] as DepthLevel[]).map((level) => (
+            <button
+              key={level}
+              onClick={() => setDepthLevel(level)}
+              className={`px-1.5 py-0.5 text-trading-xs rounded transition-colors ${
+                depthLevel === level
+                  ? 'bg-theme-accent text-white'
+                  : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+              }`}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
-        {/* Bids */}
-        <div>
-          <h3 className="text-sm font-medium text-green-600 dark:text-green-400 mb-2">Bids (Buy)</h3>
-          <div className="bg-theme-bg-tertiary rounded p-2 sm:p-3 h-48 sm:h-64 overflow-y-auto">
-            <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
-              <span>Price</span>
-              <span>Amount</span>
-            </div>
-            {displayedBids.length > 0 ? (
-              <div className="space-y-0.5">
-                {displayedBids.map((level, i) => {
-                  const depthPercent = maxBidCumulative > 0
-                    ? (bidCumulatives[i] / maxBidCumulative) * 100
-                    : 0;
+      {/* Column Headers */}
+      <div className={`grid grid-cols-3 gap-1 ${fontSize} text-theme-text-muted mb-1 pb-1 border-b border-theme-border`}>
+        <span>Price</span>
+        <span className="text-right">Size</span>
+        <span className="text-right">Total</span>
+      </div>
 
-                  return (
-                    <div
-                      key={i}
-                      className={`relative text-xs flex justify-between text-green-600 dark:text-green-400 py-0.5 ${
-                        onPriceClick ? 'cursor-pointer hover:brightness-125' : ''
-                      }`}
-                      onClick={() => handlePriceClick(level.price)}
-                    >
-                      {/* Depth Bar */}
-                      <div
-                        className="absolute right-0 top-0 bottom-0 bg-green-500/20"
-                        style={{ width: `${depthPercent}%` }}
-                      />
-                      {/* Content */}
-                      <span className="relative z-10 font-mono">${level.price.toFixed(2)}</span>
-                      <span className="relative z-10 font-mono">{level.quantity.toFixed(4)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center text-theme-text-muted mt-20">
-                No bids yet
-              </div>
-            )}
+      {/* Asks (reversed - best ask at bottom) */}
+      <div className="flex-1 overflow-y-auto flex flex-col justify-end">
+        {reversedAsks.length > 0 ? (
+          <div className="space-y-px">
+            {reversedAsks.map((level, i) => {
+              const originalIndex = displayedAsks.length - 1 - i;
+              const cumulative = reversedAskCumulatives[i];
+              const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
+
+              return (
+                <div
+                  key={i}
+                  className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${
+                    onPriceClick ? 'cursor-pointer hover:bg-trading-ask-bg' : ''
+                  }`}
+                  onClick={() => handlePriceClick(level.price)}
+                >
+                  {/* Depth Bar (right-aligned for asks) */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 bg-trading-ask-bg"
+                    style={{ width: `${depthPercent}%` }}
+                  />
+                  {/* Content */}
+                  <span className="relative z-10 font-mono text-trading-ask">{level.price.toFixed(2)}</span>
+                  <span className="relative z-10 font-mono text-right text-theme-text-secondary">{level.quantity.toFixed(4)}</span>
+                  <span className="relative z-10 font-mono text-right text-theme-text-muted">{cumulative.toFixed(4)}</span>
+                </div>
+              );
+            })}
           </div>
+        ) : (
+          <div className={`text-center text-theme-text-muted ${fontSize} py-4`}>No asks</div>
+        )}
+      </div>
+
+      {/* Spread / Mid Price */}
+      {showSpread && spreadInfo && (
+        <div className="flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded">
+          <span className="text-trading-xl font-bold text-theme-text-primary font-mono">
+            {spreadInfo.midPrice.toFixed(2)}
+          </span>
+          <span className="text-trading-xs text-theme-text-muted">
+            Spread: <span className="font-mono">{spreadInfo.spread.toFixed(2)}</span> ({spreadInfo.spreadPercent.toFixed(3)}%)
+          </span>
         </div>
+      )}
 
-        {/* Asks */}
-        <div>
-          <h3 className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">Asks (Sell)</h3>
-          <div className="bg-theme-bg-tertiary rounded p-2 sm:p-3 h-48 sm:h-64 overflow-y-auto">
-            <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
-              <span>Price</span>
-              <span>Amount</span>
-            </div>
-            {displayedAsks.length > 0 ? (
-              <div className="space-y-0.5">
-                {displayedAsks.map((level, i) => {
-                  const depthPercent = maxAskCumulative > 0
-                    ? (askCumulatives[i] / maxAskCumulative) * 100
-                    : 0;
+      {/* Bids (best bid at top) */}
+      <div className="flex-1 overflow-y-auto">
+        {displayedBids.length > 0 ? (
+          <div className="space-y-px">
+            {displayedBids.map((level, i) => {
+              const cumulative = bidCumulatives[i];
+              const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
 
-                  return (
-                    <div
-                      key={i}
-                      className={`relative text-xs flex justify-between text-red-600 dark:text-red-400 py-0.5 ${
-                        onPriceClick ? 'cursor-pointer hover:brightness-125' : ''
-                      }`}
-                      onClick={() => handlePriceClick(level.price)}
-                    >
-                      {/* Depth Bar */}
-                      <div
-                        className="absolute left-0 top-0 bottom-0 bg-red-500/20"
-                        style={{ width: `${depthPercent}%` }}
-                      />
-                      {/* Content */}
-                      <span className="relative z-10 font-mono">${level.price.toFixed(2)}</span>
-                      <span className="relative z-10 font-mono">{level.quantity.toFixed(4)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center text-theme-text-muted mt-20">
-                No asks yet
-              </div>
-            )}
+              return (
+                <div
+                  key={i}
+                  className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${
+                    onPriceClick ? 'cursor-pointer hover:bg-trading-bid-bg' : ''
+                  }`}
+                  onClick={() => handlePriceClick(level.price)}
+                >
+                  {/* Depth Bar (right-aligned for bids) */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 bg-trading-bid-bg"
+                    style={{ width: `${depthPercent}%` }}
+                  />
+                  {/* Content */}
+                  <span className="relative z-10 font-mono text-trading-bid">{level.price.toFixed(2)}</span>
+                  <span className="relative z-10 font-mono text-right text-theme-text-secondary">{level.quantity.toFixed(4)}</span>
+                  <span className="relative z-10 font-mono text-right text-theme-text-muted">{cumulative.toFixed(4)}</span>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className={`text-center text-theme-text-muted ${fontSize} py-4`}>No bids</div>
+        )}
       </div>
     </div>
   );

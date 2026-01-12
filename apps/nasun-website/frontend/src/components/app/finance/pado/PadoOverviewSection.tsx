@@ -21,7 +21,7 @@ function PadoOverviewSection() {
         </PageTitle>
 
         {/* Subtitle Box */}
-        <OuterBox variant="white" className="mb-8 md:mb-10 lg:mb-12">
+        <OuterBox color="n1" className="mb-8 md:mb-10 lg:mb-12">
           <p className="text-nasun-white font-medium text-lg md:text-xl text-center">
             {t("main.subtitle")}
           </p>
@@ -29,7 +29,7 @@ function PadoOverviewSection() {
             {t("main.tagline")}
           </p>
           <Button
-            variant="c1"
+            variant="c3"
             size="xl"
             className="flex w-fit items-center gap-2 mt-4 mx-auto"
             asChild
@@ -43,7 +43,7 @@ function PadoOverviewSection() {
 
         {/* 1. Overview Section */}
         <div className="mb-8 md:mb-10 lg:mb-12 ">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.overview.title")}
           </SectionTitle>
 
@@ -56,7 +56,7 @@ function PadoOverviewSection() {
 
         {/* 2. Account Model and User Access */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.accountModel.title")}
           </SectionTitle>
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
@@ -78,7 +78,7 @@ function PadoOverviewSection() {
 
         {/* 3. Cross-Chain Asset Access */}
         <div className="mb-10 md:mb-12 lg:mb-14">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.crossChain.title")}
           </SectionTitle>
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
@@ -100,7 +100,7 @@ function PadoOverviewSection() {
 
         {/* 4. Stablecoins */}
         <div className="">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.stablecoins.title")}
           </SectionTitle>
 

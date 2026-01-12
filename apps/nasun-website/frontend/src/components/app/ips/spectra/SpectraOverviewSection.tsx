@@ -10,13 +10,13 @@ function SpectraOverviewSection() {
   return (
     <SectionLayout className="">
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("overview.title")}
         </SectionTitle>
 
         {/* Game Specifications */}
 
-        <OuterBox variant="default" className="mb-2 md:mb-4 lg:mb-6">
+        <OuterBox color="n1" className="mb-2 md:mb-4 lg:mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-nasun-white/80">
             <div>
               <span className="text-nasun-c1 font-medium">Genre:</span> {t("overview.specs.genre")}

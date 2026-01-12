@@ -79,9 +79,7 @@ export const StrategyOverviewSection = () => {
           {t("metrics.title")}
         </SectionTitle>
 
-        <p className="text-nasun-white/80 font-medium mb-2 md:mb-2 lg:mb-3">
-          {t("metrics.intro")}
-        </p>
+        <p className="text-nasun-white/80 font-medium mb-2 md:mb-2 lg:mb-3">{t("metrics.intro")}</p>
 
         <div className="mb-6 md:mb-8">
           <Table variant="c4">
@@ -113,7 +111,7 @@ export const StrategyOverviewSection = () => {
           </Table>
         </div>
 
-        <OuterBox variant="default" className="space-y-4 mb-16 md:mb-20">
+        <OuterBox color="n1" className="space-y-4 mb-16 md:mb-20">
           <p className="text-nasun-white/85 text-lg leading-relaxed">{t("metrics.conclusion1")}</p>
           <p className="text-nasun-white text-lg md:text-xl font-semibold">
             {t("metrics.conclusion2")}

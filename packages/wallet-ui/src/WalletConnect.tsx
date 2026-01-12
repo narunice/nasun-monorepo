@@ -38,6 +38,7 @@ import { SocialLoginButtons } from "./SocialLoginButtons";
 import { TokenFaucetButton } from "./TokenFaucetButton";
 import { AddressBookPanel } from "./AddressBookPanel";
 import { ReceivePanel } from "./ReceivePanel";
+import { TransactionHistoryPanel } from "./TransactionHistoryPanel";
 import {
   LedgerConnect,
   LedgerBrowserWarning,
@@ -203,7 +204,7 @@ function LockedStateUI({
   );
 }
 
-type TabMode = "tokens" | "nfts";
+type TabMode = "tokens" | "nfts" | "history";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -893,6 +894,16 @@ export function WalletConnect({
             >
               NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
             </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "history"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              History
+            </button>
           </div>
 
           {/* Tokens tab content */}
@@ -1065,6 +1076,13 @@ export function WalletConnect({
             </div>
           )}
 
+          {/* History tab content */}
+          {activeTab === "history" && (
+            <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
+              <TransactionHistoryPanel hideHeader limit={10} />
+            </div>
+          )}
+
           {/* NFT Detail Modal for zkLogin */}
           {selectedNFT && (
             <NFTDetail
@@ -1137,6 +1155,16 @@ export function WalletConnect({
               }`}
             >
               NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "history"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              History
             </button>
           </div>
 
@@ -1355,6 +1383,13 @@ export function WalletConnect({
             </div>
           )}
 
+          {/* History tab content */}
+          {activeTab === "history" && (
+            <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
+              <TransactionHistoryPanel hideHeader limit={10} />
+            </div>
+          )}
+
           {/* NFT Detail Modal */}
           {selectedNFT && (
             <NFTDetail
@@ -1399,7 +1434,7 @@ export function WalletConnect({
       {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
       {showDropdown && !isMobile && (
         <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute ${
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute w-[320px] overflow-hidden ${
             dropdownAlign === "left"
               ? "left-0"
               : dropdownAlign === "center"
@@ -1427,7 +1462,7 @@ export function WalletConnect({
             />
             <div
               ref={mobileDropdownRef}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] max-w-[320px] bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] max-w-[320px] max-h-[85vh] overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]"
             >
               {renderDropdownContent()}
             </div>

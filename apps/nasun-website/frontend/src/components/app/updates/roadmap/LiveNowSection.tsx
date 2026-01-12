@@ -37,8 +37,8 @@ export const LiveNowSection = () => {
   const liveNow = t("liveNow", { returnObjects: true }) as LiveNowData;
 
   return (
-    <SectionLayout className="!max-w-6xl gap-8 md:gap-10 xl:gap-12">
-      <OuterBox variant="default" className="bg-nasun-c6/40">
+    <SectionLayout className="!max-w-7xl gap-8 md:gap-10 xl:gap-12">
+      <OuterBox color="n1" className="bg-nasun-c6/40">
         {/* Header with pulse animation */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

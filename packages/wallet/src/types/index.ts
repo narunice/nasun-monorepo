@@ -326,3 +326,64 @@ export {
   isWebAuthnSupported,
   isPlatformAuthenticatorAvailable,
 } from './passkey';
+
+// ============================================
+// Transaction History Types
+// ============================================
+
+/** Direction of a transaction relative to the wallet */
+export type TransactionDirection = 'in' | 'out';
+
+/** Individual token transfer within a transaction */
+export interface TokenTransfer {
+  /** Token type (coin type) */
+  tokenType: string;
+  /** Token symbol if known (NASUN, NBTC, NUSDC) */
+  symbol?: string;
+  /** Amount in display units */
+  amount: string;
+  /** Raw amount in minimum units */
+  rawAmount: string;
+  /** Direction relative to wallet owner */
+  direction: TransactionDirection;
+}
+
+/** Transaction history item */
+export interface TransactionHistoryItem {
+  /** Transaction digest */
+  digest: string;
+  /** Timestamp in milliseconds */
+  timestamp: number;
+  /** Transaction status */
+  status: 'success' | 'failure';
+  /** Primary direction (based on gas payer) */
+  direction: TransactionDirection;
+  /** Token transfers in this transaction */
+  transfers: TokenTransfer[];
+  /** Counterparty addresses (sender if in, recipients if out) */
+  counterparties: string[];
+  /** Gas used in minimum units */
+  gasUsed?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
+/** Transaction history query options */
+export interface TransactionHistoryOptions {
+  /** Maximum number of transactions to fetch */
+  limit?: number;
+  /** Cursor for pagination */
+  cursor?: string;
+  /** Filter by direction */
+  direction?: TransactionDirection;
+}
+
+/** Transaction history query result */
+export interface TransactionHistoryResult {
+  /** List of transactions */
+  data: TransactionHistoryItem[];
+  /** Whether there are more results */
+  hasNextPage: boolean;
+  /** Cursor for next page */
+  nextCursor?: string;
+}

@@ -16,7 +16,9 @@ interface UseFollowerCountResult {
 
 const FOLLOWER_COUNT_API = import.meta.env.VITE_FOLLOWER_COUNT_API;
 const CACHE_KEY = "nasun_follower_count";
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간 캐시 (팔로워 수는 실시간 업데이트 불필요)
+const PERMANENT_KEY = "nasun_follower_permanent";
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24-hour cache
+const FALLBACK_COUNT = 1000;
 
 interface CachedData {
   count: number;
@@ -42,9 +44,24 @@ const setCachedData = (count: number): void => {
   try {
     const data: CachedData = { count, timestamp: Date.now() };
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    // Also save to permanent cache (never expires)
+    localStorage.setItem(PERMANENT_KEY, JSON.stringify(data));
   } catch {
-    // 캐시 저장 오류 무시
+    // Ignore cache save errors
   }
+};
+
+const getPermanentData = (): number | null => {
+  try {
+    const cached = localStorage.getItem(PERMANENT_KEY);
+    if (cached) {
+      const data = JSON.parse(cached) as CachedData;
+      return data.count;
+    }
+  } catch {
+    // Ignore cache errors
+  }
+  return null;
 };
 
 /**
@@ -74,10 +91,11 @@ export const useFollowerCount = (): UseFollowerCountResult => {
         return;
       }
 
-      // API 엔드포인트가 설정되지 않은 경우
+      // API endpoint not configured - use fallback chain
       if (!FOLLOWER_COUNT_API || FOLLOWER_COUNT_API.includes("PLACEHOLDER")) {
-        console.warn("[useFollowerCount] API endpoint not configured");
-        setCount(null);
+        console.warn("[useFollowerCount] API endpoint not configured, using fallback");
+        const permanentCount = getPermanentData();
+        setCount(permanentCount ?? FALLBACK_COUNT);
         setLoading(false);
         return;
       }
@@ -101,8 +119,16 @@ export const useFollowerCount = (): UseFollowerCountResult => {
       } catch (err) {
         console.error("[useFollowerCount] Failed to fetch follower count:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
-        // 에러 발생 시 null 유지 (실제 값만 표시)
-        setCount(null);
+
+        // Fallback chain: permanent cache -> hardcoded fallback (never show 0)
+        const permanentCount = getPermanentData();
+        if (permanentCount !== null) {
+          console.warn("[useFollowerCount] Using permanent cache:", permanentCount);
+          setCount(permanentCount);
+        } else {
+          console.warn("[useFollowerCount] Using fallback value:", FALLBACK_COUNT);
+          setCount(FALLBACK_COUNT);
+        }
       } finally {
         setLoading(false);
       }

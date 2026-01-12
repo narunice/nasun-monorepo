@@ -524,7 +524,8 @@ export class CommonStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/get-follower-count/dist"),
       timeout: cdk.Duration.seconds(30),
       environment: {
-        TARGET_USERNAME: process.env.TARGET_USERNAME || "Nasun_io",
+        TARGET_USER_ID: "1725466995565752320",
+        TARGET_USERNAME: process.env.TARGET_USERNAME || "Nasun_io", // For logging only
         TWITTER_TOKENS_SECRET_NAME: process.env.TWITTER_TOKENS_SECRET_NAME || "nasun-twitter-tokens",
       },
       logGroup: new logs.LogGroup(this, "GetFollowerCountLambdaLogGroup", {

@@ -24,17 +24,13 @@ function PadoFeaturesArchitectureSection() {
 
         {/* 5. Trading and Market Structure */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.trading.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c2 font-medium">
-              {t("main.trading.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80">
-              {t("main.trading.content")}
-            </p>
+            <h5 className="text-nasun-c2 font-medium">{t("main.trading.subtitle")}</h5>
+            <p className="text-nasun-white/80">{t("main.trading.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -51,17 +47,13 @@ function PadoFeaturesArchitectureSection() {
 
         {/* 6. Capital Efficiency and Risk Management */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.capitalEfficiency.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c3 font-medium">
-              {t("main.capitalEfficiency.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80">
-              {t("main.capitalEfficiency.content")}
-            </p>
+            <h5 className="text-nasun-c3 font-medium">{t("main.capitalEfficiency.subtitle")}</h5>
+            <p className="text-nasun-white/80">{t("main.capitalEfficiency.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -80,14 +72,12 @@ function PadoFeaturesArchitectureSection() {
 
         {/* 7. Lending, Borrowing, and Staking */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.lending.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">
-              {t("main.lending.content")}
-            </p>
+            <p className="text-nasun-white/80">{t("main.lending.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -98,25 +88,19 @@ function PadoFeaturesArchitectureSection() {
               ))}
             </div>
 
-            <p className="text-nasun-white/90 font-medium">
-              {t("main.lending.conclusion")}
-            </p>
+            <p className="text-nasun-white/90 font-medium">{t("main.lending.conclusion")}</p>
           </div>
         </div>
 
         {/* 8. Payments and Transfers */}
         <div className="mb-10 md:mb-12 lg:mb-14">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.payments.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c3 font-medium">
-              {t("main.payments.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80">
-              {t("main.payments.content")}
-            </p>
+            <h5 className="text-nasun-c3 font-medium">{t("main.payments.subtitle")}</h5>
+            <p className="text-nasun-white/80">{t("main.payments.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -127,9 +111,7 @@ function PadoFeaturesArchitectureSection() {
               ))}
             </div>
 
-            <p className="text-nasun-white/90 font-medium">
-              {t("main.payments.conclusion")}
-            </p>
+            <p className="text-nasun-white/90 font-medium">{t("main.payments.conclusion")}</p>
           </div>
         </div>
 
@@ -137,17 +119,13 @@ function PadoFeaturesArchitectureSection() {
 
         {/* 9. Object-Based Financial Architecture */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.objectBased.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <h5 className="text-nasun-c2 font-medium">
-              {t("main.objectBased.subtitle")}
-            </h5>
-            <p className="text-nasun-white/80">
-              {t("main.objectBased.content")}
-            </p>
+            <h5 className="text-nasun-c2 font-medium">{t("main.objectBased.subtitle")}</h5>
+            <p className="text-nasun-white/80">{t("main.objectBased.content")}</p>
 
             {/* Object Types Grid - sub-content in boxes */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -171,15 +149,13 @@ function PadoFeaturesArchitectureSection() {
               />
             </div>
 
-            <p className="text-nasun-white/90 font-medium">
-              {t("main.objectBased.conclusion")}
-            </p>
+            <p className="text-nasun-white/90 font-medium">{t("main.objectBased.conclusion")}</p>
           </div>
         </div>
 
         {/* 10. Trust Model, Governance, and Security */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.trustModel.title")}
           </SectionTitle>
 
@@ -222,33 +198,27 @@ function PadoFeaturesArchitectureSection() {
 
         {/* 11. Comparative Positioning */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.comparative.title")}
           </SectionTitle>
 
-          <p className="text-nasun-white/80">
-            {t("main.comparative.content")}
-          </p>
+          <p className="text-nasun-white/80">{t("main.comparative.content")}</p>
         </div>
 
         {/* 12. Summary */}
         <div className="">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("main.summary.title")}
           </SectionTitle>
 
-          <OuterBox variant="white" className="">
+          <OuterBox color="n1" className="">
             <div className="flex items-center gap-3 mb-4">
               <Sparkles className="w-6 h-6 text-nasun-white" />
               <span className="text-nasun-white font-semibold text-lg">Key Takeaway</span>
             </div>
             <div className="space-y-4">
-              <p className="text-nasun-white/90 font-medium">
-                {t("main.summary.content")}
-              </p>
-              <p className="text-nasun-white/80">
-                {t("main.summary.p2")}
-              </p>
+              <p className="text-nasun-white/90 font-medium">{t("main.summary.content")}</p>
+              <p className="text-nasun-white/80">{t("main.summary.p2")}</p>
             </div>
           </OuterBox>
         </div>

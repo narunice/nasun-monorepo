@@ -78,21 +78,37 @@
   --pado-3: #5ee1e4;
   --pado-4: #86f3b7;
   --pado-5: #d2f6a2;
+
+  /* Trading-specific colors (light mode) */
+  --color-bid: #16a34a;
+  --color-bid-muted: rgba(22, 163, 74, 0.7);
+  --color-bid-bg: rgba(22, 163, 74, 0.1);
+  --color-ask: #dc2626;
+  --color-ask-muted: rgba(220, 38, 38, 0.7);
+  --color-ask-bg: rgba(220, 38, 38, 0.1);
 }
 
 .dark {
-  /* Dark Theme */
-  --color-bg-primary: #111111;
-  --color-bg-secondary: #1f1f1f;
-  --color-bg-tertiary: #2d2d2d;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #a1a1a1;
-  --color-text-muted: #6b6b6b;
-  --color-border: #3d3d3d;
-  --color-accent: #3bb9d8; /* pado-2 (brighter for dark mode) */
+  /* Dark Theme - Subtle, Professional Trading UI */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #111111;
+  --color-bg-tertiary: #1a1a1a;
+  --color-text-primary: #e5e5e5;
+  --color-text-secondary: #a3a3a3;
+  --color-text-muted: #737373;
+  --color-border: #2a2a2a;
+  --color-accent: #3b82f6; /* Unified blue accent */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
+
+  /* Trading-specific colors (subtle) */
+  --color-bid: #16a34a;
+  --color-bid-muted: rgba(22, 163, 74, 0.6);
+  --color-bid-bg: rgba(22, 163, 74, 0.08);
+  --color-ask: #dc2626;
+  --color-ask-muted: rgba(220, 38, 38, 0.6);
+  --color-ask-bg: rgba(220, 38, 38, 0.08);
 }
 
 :root {

@@ -4,9 +4,17 @@
  */
 
 import { useState } from 'react';
-import { useNFTs, type NFTInfo } from '@nasun/wallet';
+import { useNFTs, DEFAULT_NFT_SORT, type NFTInfo, type NFTSortBy } from '@nasun/wallet';
 import { NFTCard } from './NFTCard';
 import { NFTDetail } from './NFTDetail';
+
+/** Sort option labels for dropdown */
+const SORT_OPTIONS: { value: NFTSortBy; label: string }[] = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'oldest', label: 'Oldest First' },
+  { value: 'name_asc', label: 'Name A-Z' },
+  { value: 'name_desc', label: 'Name Z-A' },
+];
 
 interface NFTGalleryProps {
   /** Number of columns in the grid */
@@ -19,10 +27,14 @@ interface NFTGalleryProps {
   emptyMessage?: string;
   /** Hide header */
   hideHeader?: boolean;
+  /** Hide sort dropdown */
+  hideSort?: boolean;
   /** Custom class name */
   className?: string;
   /** Auto-refresh interval in milliseconds (default: 30000 = 30 seconds) */
   refetchInterval?: number;
+  /** Initial sort order */
+  defaultSortBy?: NFTSortBy;
 }
 
 export function NFTGallery({
@@ -31,12 +43,16 @@ export function NFTGallery({
   limit = 0,
   emptyMessage = 'No NFTs found',
   hideHeader = false,
+  hideSort = false,
   className = '',
   refetchInterval = 30000,
+  defaultSortBy = DEFAULT_NFT_SORT,
 }: NFTGalleryProps) {
+  const [sortBy, setSortBy] = useState<NFTSortBy>(defaultSortBy);
   const { data: nfts, isLoading, error, refetch } = useNFTs({
     limit: limit || 50,
     refetchInterval,
+    sortBy,
   });
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
 
@@ -135,20 +151,37 @@ export function NFTGallery({
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             My NFTs ({nfts.length})
           </h3>
-          <button
-            onClick={() => refetch()}
-            className="text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            title="Refresh"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Sort dropdown */}
+            {!hideSort && nfts.length > 1 && (
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as NFTSortBy)}
+                className="text-xs px-2 py-1 bg-gray-100 dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
+            {/* Refresh button */}
+            <button
+              onClick={() => refetch()}
+              className="text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              title="Refresh"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 

@@ -82,7 +82,9 @@ const MetricCard = ({ value, label, color, icon, delay }: MetricCardProps) => (
     <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${color} mb-3`}>
       {icon}
     </div>
-    <div className={`text-3xl md:text-4xl font-bold ${color.replace("bg-", "text-").replace("/20", "")}`}>
+    <div
+      className={`text-3xl md:text-4xl font-bold ${color.replace("bg-", "text-").replace("/20", "")}`}
+    >
       <CountingNumber value={value} delay={delay + 0.3} />
     </div>
     <p className="text-nasun-white/60 text-sm mt-1">{label}</p>
@@ -118,7 +120,7 @@ export const RoadmapMetricsSection = () => {
 
   return (
     <SectionLayout className="!max-w-6xl !py-0">
-      <OuterBox variant="default" className="bg-nasun-c6/40">
+      <OuterBox color="n1" className="bg-nasun-c6/40">
         <div className="grid grid-cols-3 gap-4 md:gap-8">
           {metrics.map((metric) => (
             <MetricCard key={metric.label} {...metric} />
