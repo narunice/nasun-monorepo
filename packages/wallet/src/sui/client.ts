@@ -177,11 +177,11 @@ export interface AddressDisplayConfig {
 
 /**
  * Default address display configuration
- * - Desktop: 0x1234...cdef (4 chars each side)
- * - Mobile: ...cdef (only last 4 chars)
+ * - Desktop: 0xc2...cdb8 (2 chars + 4 chars)
+ * - Mobile: ...cdb8 (only last 4 chars)
  */
 export const DEFAULT_ADDRESS_DISPLAY: AddressDisplayConfig = {
-  desktop: { start: 4, end: 4 },
+  desktop: { start: 2, end: 4 },
   mobile: { start: 0, end: 4 },
 };
 
