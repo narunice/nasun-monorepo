@@ -294,6 +294,9 @@ export function WalletConnect({
   const [nftSortBy, setNftSortBy] = useState<NFTSortBy>("newest");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [nftCursor, setNftCursor] = useState<string | undefined>(undefined);
+  const [accumulatedNfts, setAccumulatedNfts] = useState<NFTInfo[]>([]);
+  const [sendRecipient, setSendRecipient] = useState<string | undefined>(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -319,11 +322,38 @@ export function WalletConnect({
 
   // Fetch NFTs when unlocked (only active tab uses the data)
   // Auto-refresh every 15 seconds to catch new NFTs (e.g., after voting)
-  const { data: nfts = [], isLoading: nftsLoading } = useNFTs({
-    limit: 20,
-    refetchInterval: 15000,
+  const { data: nfts = [], isLoading: nftsLoading, hasNextPage: nftsHasNextPage, nextCursor: nftsNextCursor } = useNFTs({
+    limit: 50,
+    cursor: nftCursor,
+    refetchInterval: nftCursor ? undefined : 15000, // Disable auto-refresh when loading more
     sortBy: nftSortBy,
   });
+
+  // Accumulate NFTs when loading more pages
+  useEffect(() => {
+    if (nftCursor === undefined) {
+      // First load or sort changed - replace all
+      setAccumulatedNfts(nfts);
+    } else if (nfts.length > 0) {
+      // Loading more - append to existing
+      setAccumulatedNfts(prev => {
+        const existingIds = new Set(prev.map(n => n.objectId));
+        const newNfts = nfts.filter(n => !existingIds.has(n.objectId));
+        return [...prev, ...newNfts];
+      });
+    }
+  }, [nfts, nftCursor]);
+
+  // Reset cursor when sort changes (Effect 1 handles data replacement when cursor is undefined)
+  useEffect(() => {
+    setNftCursor(undefined);
+  }, [nftSortBy]);
+
+  const handleLoadMoreNfts = () => {
+    if (nftsNextCursor) {
+      setNftCursor(nftsNextCursor);
+    }
+  };
 
   // Fetch token balances (NASUN, NBTC, NUSDC)
   const { data: balances, isLoading: balancesLoading } = useMultiBalance({
@@ -570,10 +600,14 @@ export function WalletConnect({
       return (
         <div className="p-2 w-full sm:w-[320px]">
           <SendTransaction
-            onClose={() => setViewMode("main")}
-            onSuccess={() => {
-              // Optionally return to main view on success
+            onClose={() => {
+              setViewMode("main");
+              setSendRecipient(undefined);
             }}
+            onSuccess={() => {
+              setSendRecipient(undefined);
+            }}
+            initialRecipient={sendRecipient}
           />
         </div>
       );
@@ -595,7 +629,15 @@ export function WalletConnect({
 
     // Address book view
     if (viewMode === "address-book") {
-      return <AddressBookPanel onClose={() => setViewMode("main")} />;
+      return (
+        <AddressBookPanel
+          onClose={() => setViewMode("main")}
+          onSend={(address) => {
+            setSendRecipient(address);
+            setViewMode("send");
+          }}
+        />
+      );
     }
 
     // Receive view
@@ -1019,31 +1061,13 @@ export function WalletConnect({
                 </svg>
                 Address Book
               </button>
-
-              <button
-                onClick={() => {
-                  zkLogout();
-                  setShowDropdown(false);
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-                Disconnect
-              </button>
             </div>
           )}
 
           {/* NFTs tab content */}
           {activeTab === "nfts" && (
             <div className="p-3">
-              {nftsLoading ? (
+              {nftsLoading && accumulatedNfts.length === 0 ? (
                 <div className="grid grid-cols-3 gap-2">
                   {[...Array(6)].map((_, i) => (
                     <div
@@ -1052,7 +1076,7 @@ export function WalletConnect({
                     />
                   ))}
                 </div>
-              ) : nfts.length === 0 ? (
+              ) : accumulatedNfts.length === 0 ? (
                 <div className="text-center py-6">
                   <svg
                     className="w-10 h-10 text-gray-400 dark:text-zinc-600 mx-auto mb-2"
@@ -1085,10 +1109,20 @@ export function WalletConnect({
                     </select>
                   </div>
                   <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
-                    {nfts.map((nft) => (
+                    {accumulatedNfts.map((nft) => (
                       <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
                     ))}
                   </div>
+                  {/* Load More button */}
+                  {nftsHasNextPage && (
+                    <button
+                      onClick={handleLoadMoreNfts}
+                      disabled={nftsLoading}
+                      className="w-full mt-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
+                    >
+                      {nftsLoading ? 'Loading...' : 'Load More NFTs'}
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -1111,6 +1145,27 @@ export function WalletConnect({
               }}
             />
           )}
+
+          {/* Disconnect Button */}
+          <div className="border-t border-gray-200 dark:border-zinc-700">
+            <button
+              onClick={() => {
+                zkLogout();
+                setShowDropdown(false);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              Disconnect
+            </button>
+          </div>
 
           {/* Network Selector */}
           <div className="border-t border-gray-200 dark:border-zinc-700">
@@ -1326,46 +1381,13 @@ export function WalletConnect({
                 </svg>
                 Security Settings
               </button>
-
-              <button
-                onClick={() => {
-                  lockWallet();
-                  setShowDropdown(false);
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-                Lock
-              </button>
-
-              <button
-                onClick={handleDelete}
-                className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-                Delete Wallet
-              </button>
             </div>
           )}
 
           {/* NFTs tab content */}
           {activeTab === "nfts" && (
             <div className="p-3">
-              {nftsLoading ? (
+              {nftsLoading && accumulatedNfts.length === 0 ? (
                 <div className="grid grid-cols-3 gap-2">
                   {[...Array(6)].map((_, i) => (
                     <div
@@ -1374,7 +1396,7 @@ export function WalletConnect({
                     />
                   ))}
                 </div>
-              ) : nfts.length === 0 ? (
+              ) : accumulatedNfts.length === 0 ? (
                 <div className="text-center py-6">
                   <svg
                     className="w-10 h-10 text-gray-400 dark:text-zinc-600 mx-auto mb-2"
@@ -1407,10 +1429,20 @@ export function WalletConnect({
                     </select>
                   </div>
                   <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
-                    {nfts.map((nft) => (
+                    {accumulatedNfts.map((nft) => (
                       <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
                     ))}
                   </div>
+                  {/* Load More button */}
+                  {nftsHasNextPage && (
+                    <button
+                      onClick={handleLoadMoreNfts}
+                      disabled={nftsLoading}
+                      className="w-full mt-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
+                    >
+                      {nftsLoading ? 'Loading...' : 'Load More NFTs'}
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -1433,6 +1465,41 @@ export function WalletConnect({
               }}
             />
           )}
+
+          {/* Lock & Delete Wallet */}
+          <div className="border-t border-gray-200 dark:border-zinc-700">
+            <button
+              onClick={() => {
+                lockWallet();
+                setShowDropdown(false);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              Lock
+            </button>
+            <button
+              onClick={handleDelete}
+              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete Wallet
+            </button>
+          </div>
 
           {/* Network Selector */}
           <div className="border-t border-gray-200 dark:border-zinc-700">
