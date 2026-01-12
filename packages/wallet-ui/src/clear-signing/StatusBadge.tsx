@@ -43,7 +43,7 @@ interface StatusConfig {
 const STATUS_CONFIG: Record<TxRiskLevel, StatusConfig> = {
   low: {
     label: 'Verified',
-    shortLabel: '✓',
+    shortLabel: '',
     icon: '✓',
     tooltip: 'This transaction has been verified as safe',
     styles: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30',
@@ -104,7 +104,9 @@ export function StatusBadge({
       `}
     >
       <span className="flex-shrink-0">{config.icon}</span>
-      <span>{variant === 'compact' ? config.shortLabel : config.label}</span>
+      {(variant === 'compact' ? config.shortLabel : config.label) && (
+        <span>{variant === 'compact' ? config.shortLabel : config.label}</span>
+      )}
       {showScore && score !== undefined && (
         <span className="opacity-75">({score})</span>
       )}
