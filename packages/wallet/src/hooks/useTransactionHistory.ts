@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { getSuiClient } from '../sui/client';
-import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
+import { getTokenByType } from '../config/tokens';
 import type {
   TransactionHistoryItem,
   TransactionHistoryOptions,
@@ -116,8 +116,7 @@ function formatAmount(amount: bigint, decimals: number): string {
 function extractCounterparties(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transaction: any,
-  ownerAddress: string,
-  direction: TransactionDirection
+  ownerAddress: string
 ): string[] {
   const counterparties: string[] = [];
 
@@ -227,7 +226,7 @@ async function fetchTransactionHistory(
       }
 
       // Extract counterparties
-      const counterparties = extractCounterparties(tx, address, direction);
+      const counterparties = extractCounterparties(tx, address);
 
       // Gas used
       const gasUsed = tx.effects?.gasUsed
