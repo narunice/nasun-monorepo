@@ -71,7 +71,7 @@ export function TokenFaucetButton({
             ? 'bg-green-500/20 text-green-400'
             : message?.type === 'error'
             ? 'bg-red-500/20 text-red-400'
-            : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+            : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
           }
           disabled:opacity-50 disabled:cursor-not-allowed
           ${className}`}
@@ -102,7 +102,7 @@ export function TokenFaucetButton({
           ? 'bg-green-500/20 text-green-400'
           : message?.type === 'error'
           ? 'bg-red-500/20 text-red-400'
-          : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
+          : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
         }
         disabled:opacity-50 disabled:cursor-not-allowed
         flex items-center gap-1.5

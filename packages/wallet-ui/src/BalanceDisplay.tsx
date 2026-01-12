@@ -56,7 +56,7 @@ export function BalanceDisplay({ compact = false, className = '' }: BalanceDispl
     return (
       <div className={`flex items-center gap-1 ${className}`}>
         <span className="text-sm font-medium text-gray-900 dark:text-white">{balance.formattedBalance}</span>
-        <span className="text-xs text-blue-400">NASUN</span>
+        <span className="text-xs text-gray-500 dark:text-zinc-400">NASUN</span>
       </div>
     );
   }
