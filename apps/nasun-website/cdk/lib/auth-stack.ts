@@ -8,6 +8,7 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as logs from 'aws-cdk-lib/aws-logs';
 
 // Security: CORS 허용 도메인 목록
+// Note: Devnet 환경이므로 localhost 개발 서버도 허용
 const ALLOWED_ORIGINS = [
   'https://nasun.io',
   'https://www.nasun.io',
@@ -16,7 +17,11 @@ const ALLOWED_ORIGINS = [
   'https://staging.gensol.io',
   'https://pado.finance',
   'https://staging.pado.finance',
-  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'] : []),
+  // Localhost development servers (devnet only)
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
 ];
 
 export interface AuthStackProps extends cdk.StackProps {
