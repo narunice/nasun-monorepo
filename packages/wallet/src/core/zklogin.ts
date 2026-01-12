@@ -246,8 +246,16 @@ export function parseJwt(jwt: string): {
 } {
   const [headerB64, payloadB64] = jwt.split('.');
 
-  const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
-  const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+  // Helper to decode base64 with proper UTF-8 support
+  // atob() alone doesn't handle UTF-8 - it treats each byte as Latin-1
+  const decodeBase64Utf8 = (base64: string): string => {
+    const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  };
+
+  const header = JSON.parse(decodeBase64Utf8(headerB64));
+  const payload = JSON.parse(decodeBase64Utf8(payloadB64));
 
   return { header, payload };
 }
