@@ -408,3 +408,33 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Custom scrollbar - subtle and modern */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(148, 225, 211, 0.4), rgba(61, 126, 169, 0.4));
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(148, 225, 211, 0.6), rgba(61, 126, 169, 0.6));
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox custom scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 225, 211, 0.4) rgba(0, 0, 0, 0.2);
+}
