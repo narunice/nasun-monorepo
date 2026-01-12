@@ -35,14 +35,14 @@ function PadoComplianceSection() {
             {/* Sub-sections in cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <DividerBox
-                color="c4"
-                titleClassName="text-nasun-c4"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.regulatoryLandscape.privacy.title")}
                 description={t("compliance.regulatoryLandscape.privacy.content")}
               />
               <DividerBox
-                color="c4"
-                titleClassName="text-nasun-c4"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.regulatoryLandscape.riskAligned.title")}
                 description={t("compliance.regulatoryLandscape.riskAligned.content")}
               />
@@ -66,14 +66,14 @@ function PadoComplianceSection() {
             {/* Jurisdictions in cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <DividerBox
-                color="c3"
-                titleClassName="text-nasun-c3"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.jurisdictional.singapore.title")}
                 description={t("compliance.jurisdictional.singapore.content")}
               />
               <DividerBox
-                color="c3"
-                titleClassName="text-nasun-c3"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.jurisdictional.unitedStates.title")}
                 description={t("compliance.jurisdictional.unitedStates.content")}
               />
@@ -97,20 +97,20 @@ function PadoComplianceSection() {
             {/* Standards in cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <DividerBox
-                color="c5"
-                titleClassName="text-nasun-c5"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.protocolLevel.verifiability.title")}
                 description={t("compliance.protocolLevel.verifiability.content")}
               />
               <DividerBox
-                color="c5"
-                titleClassName="text-nasun-c5"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.protocolLevel.riskEnforcement.title")}
                 description={t("compliance.protocolLevel.riskEnforcement.content")}
               />
               <DividerBox
-                color="c5"
-                titleClassName="text-nasun-c5"
+                color="n1"
+                titleClassName="text-nasun-n1"
                 title={t("compliance.protocolLevel.decentralization.title")}
                 description={t("compliance.protocolLevel.decentralization.content")}
               />
