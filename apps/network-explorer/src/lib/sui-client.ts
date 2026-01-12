@@ -89,7 +89,7 @@ export async function getObject(objectId: string) {
   }
 }
 
-export async function getAddressInfo(address: string) {
+export async function getAddressInfo(address: string, cursor?: string | null) {
   try {
     const [allBalances, ownedObjects] = await Promise.all([
       suiClient.getAllBalances({ owner: address }),
@@ -97,6 +97,7 @@ export async function getAddressInfo(address: string) {
         owner: address,
         options: { showContent: true, showType: true, showDisplay: true },
         limit: 50,
+        cursor: cursor || undefined,
       }),
     ]);
 
@@ -107,9 +108,31 @@ export async function getAddressInfo(address: string) {
       balance: nativeBalance || { totalBalance: '0', coinType: '0x2::sui::SUI', coinObjectCount: 0 },
       allBalances, // 모든 토큰 잔액
       ownedObjects: ownedObjects.data,
+      hasNextPage: ownedObjects.hasNextPage,
+      nextCursor: ownedObjects.nextCursor,
     };
   } catch (error) {
     console.error('Failed to get address info:', error);
+    return null;
+  }
+}
+
+export async function loadMoreObjects(address: string, cursor: string) {
+  try {
+    const ownedObjects = await suiClient.getOwnedObjects({
+      owner: address,
+      options: { showContent: true, showType: true, showDisplay: true },
+      limit: 50,
+      cursor,
+    });
+
+    return {
+      ownedObjects: ownedObjects.data,
+      hasNextPage: ownedObjects.hasNextPage,
+      nextCursor: ownedObjects.nextCursor,
+    };
+  } catch (error) {
+    console.error('Failed to load more objects:', error);
     return null;
   }
 }
