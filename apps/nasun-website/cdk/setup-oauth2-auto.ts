@@ -16,17 +16,40 @@ import * as path from 'path';
 import * as http from 'http';
 import * as url from 'url';
 
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+// Load environment-specific .env file based on NODE_ENV
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
+dotenv.config({ path: path.resolve(__dirname, envFile) });
+console.log(`Loading environment from: ${envFile}`);
 
 import { createAuthorizationRequest, exchangeCodeForToken, calculateTokenExpiry } from './lambda-src/x-leaderboard/src/utils/oauth2-helper';
 import { getEnvConfigV2 } from './lambda-src/x-leaderboard/src/utils/env';
 import { SecretsManagerClient, GetSecretValueCommand, UpdateSecretCommand } from '@aws-sdk/client-secrets-manager';
 
 async function main() {
-    const PORT = 5174; // 5175는 frontend가 사용 중
+  const PORT = 5174;
+  const LOCAL_CALLBACK_URI = `http://localhost:${PORT}/callback`;
+
   const config = getEnvConfigV2();
+  // Override redirect URI to use local callback server (always required for setup script)
+  config.oauth2RedirectUri = LOCAL_CALLBACK_URI;
+
+  // Environment detection
+  const environment = process.env.ENVIRONMENT || process.env.NODE_ENV || 'development';
+  const targetUsername = process.env.X_TARGET_USERNAME || process.env.TARGET_USERNAME || 'Naru010110';
+  const targetUserId = process.env.X_TARGET_USER_ID || process.env.TARGET_USER_ID || '';
+  const secretName = process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens';
 
   console.log('🚀 OAuth 2.0 완전 자동 설정 시작...\n');
+
+  // Environment info banner
+  console.log('━'.repeat(60));
+  console.log('  ENVIRONMENT INFORMATION');
+  console.log('━'.repeat(60));
+  console.log(`  Environment:    ${environment.toUpperCase()}`);
+  console.log(`  Target Account: @${targetUsername} (${targetUserId || 'ID not set'})`);
+  console.log(`  Secret Name:    ${secretName}`);
+  console.log('━'.repeat(60) + '\n');
 
   // 1. Authorization Request 생성
   const authRequest = createAuthorizationRequest(config);
@@ -34,16 +57,19 @@ async function main() {
   console.log('📋 OAuth 2.0 설정:');
   console.log(`   Client ID: ${config.oauth2ClientId}`);
   console.log(`   Redirect URI: ${config.oauth2RedirectUri}`);
-  console.log(`   Scopes: tweet.read users.read bookmark.read offline.access\n`);
+  console.log(`   Scopes: tweet.read users.read follows.read offline.access like.read list.read\n`);
 
   console.log('🔗 브라우저에서 다음 URL을 열어주세요:\n');
   console.log(authRequest.authorizationUrl);
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   // 2. 로컬 HTTP 서버 시작
-    console.log(`\n[주의] 아래 주소는 브라우저에 입력하는 주소가 아닙니다. 스크립트가 내부적으로 사용하는 주소입니다.`);
-    console.log(`[주의] 콜백 대기 서버: h_ttp://localhost:${PORT}/callback (내부용)\n`);
-  console.log('👤 @Naru010110 계정으로 로그인하고 권한을 승인해주세요...\n');
+  console.log(`[주의] 아래 주소는 브라우저에 입력하는 주소가 아닙니다.`);
+  console.log(`[주의] 콜백 대기 서버: http://localhost:${PORT}/callback (내부용)\n`);
+  console.log(`\n${'!'.repeat(60)}`);
+  console.log(`  IMPORTANT: Log in as @${targetUsername} in your browser!`);
+  console.log(`${'!'.repeat(60)}\n`);
+  console.log(`👤 @${targetUsername} 계정으로 로그인하고 권한을 승인해주세요...\n`);
 
   const server = http.createServer();
 
@@ -102,7 +128,7 @@ async function main() {
           const secretsClient = new SecretsManagerClient({ region: 'ap-northeast-2' });
 
           const getSecretResponse = await secretsClient.send(
-            new GetSecretValueCommand({ SecretId: 'nasun-twitter-tokens' })
+            new GetSecretValueCommand({ SecretId: secretName })
           );
 
           const currentValue = JSON.parse(getSecretResponse.SecretString || '{}');
@@ -123,7 +149,7 @@ async function main() {
 
           await secretsClient.send(
             new UpdateSecretCommand({
-              SecretId: 'nasun-twitter-tokens',
+              SecretId: secretName,
               SecretString: JSON.stringify(updatedValue, null, 2)
             })
           );
@@ -144,11 +170,27 @@ async function main() {
             const meData = await meResponse.json();
             username = meData.data.username;
             name = meData.data.name;
+            const userId = meData.data.id;
 
-            console.log(`✅ 토큰 소유자: @${username} (${name})\n`);
+            console.log(`✅ 토큰 소유자: @${username} (${name})`);
+            console.log(`   User ID: ${userId}\n`);
 
-            if (username !== 'Naru010110') {
-              console.warn('⚠️ 경고: 토큰이 @Naru010110 계정이 아닙니다!');
+            // Account mismatch check
+            const isMatch = username.toLowerCase() === targetUsername.toLowerCase() ||
+                           (targetUserId && userId === targetUserId);
+
+            if (!isMatch) {
+              console.log('\n' + '!'.repeat(60));
+              console.log('  ERROR: ACCOUNT MISMATCH DETECTED!');
+              console.log('!'.repeat(60));
+              console.log(`  Expected: @${targetUsername} (${targetUserId || 'ID not set'})`);
+              console.log(`  Actual:   @${username} (${userId})`);
+              console.log('!'.repeat(60));
+              console.log('\n  The token was saved, but it belongs to the WRONG account!');
+              console.log('  Liking Users API will NOT work with this token.');
+              console.log('  Please re-run this script and log in as @' + targetUsername + '\n');
+            } else {
+              console.log('✅ Account verified: Token matches target account\n');
             }
           }
 
