@@ -6,21 +6,12 @@ import { Button } from "../../../components/ui/button";
 import ErrorBoundary from "../../../components/layout/ErrorBoundary";
 import OverviewSkeleton from "../../../components/app/ips/gensol/OverviewSkeleton";
 
-// Lazy load section components
-const KoreanConnectionSection = lazy(
-  () => import("../../../components/app/ips/gensol/KoreanConnectionSection")
+// Lazy load section components (2 sections total)
+const IntroSection = lazy(
+  () => import("../../../components/app/ips/gensol/IntroSection")
 );
-const StoryBasedMarketingSection = lazy(
-  () => import("../../../components/app/ips/gensol/StoryBasedMarketingSection")
-);
-const GlobalMarketSection = lazy(
-  () => import("../../../components/app/ips/gensol/GlobalMarketSection")
-);
-const OverarchingSection = lazy(
-  () => import("../../../components/app/ips/gensol/OverarchingSection")
-);
-const FanCommunitySection = lazy(
-  () => import("../../../components/app/ips/gensol/FanCommunitySection")
+const ContentSection = lazy(
+  () => import("../../../components/app/ips/gensol/ContentSection")
 );
 
 export default function OverviewPage() {
@@ -31,11 +22,8 @@ export default function OverviewPage() {
       <PageLayout>
         <div className="max-w-8xl mx-auto">
           <Suspense fallback={<OverviewSkeleton />}>
-            <KoreanConnectionSection />
-            <StoryBasedMarketingSection />
-            <GlobalMarketSection />
-            <OverarchingSection />
-            <FanCommunitySection />
+            <IntroSection />
+            <ContentSection />
           </Suspense>
 
           <div className="py-16 flex justify-center">

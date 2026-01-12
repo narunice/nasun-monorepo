@@ -23,12 +23,12 @@
     "p2": "Because the live-action and feature film projects will be casting famous actors and actresses, it will afford many marketing potentialities beyond the Web3-bubble by accessing entertainment outlets and social media communities like Youtube channels and Twitter accounts focused on movies and narrative content."
   },
   "globalMarket": {
-    "title": "Global Market",
-    "p1": "Even though we will initially collaborate with filmmakers from South Korea, Gen Sol is a sci-fi project, so its premise will be culturally neutral, and its intended audience will be global.",
-    "p2": "Narrative content and games will be in English, all except the first live-action series which will cast Korean stars for some of the main roles and so could be a mix of English and Korean(subtitled)."
+    "title": "Global Audience",
+    "p1": "Although Gen Sol will initially collaborate with South Korean creators, the project is designed for a global audience. As a science fiction universe, its themes, conflicts, and mythology are culturally neutral and universally accessible.",
+    "p2": "All narrative content and games will be primarily in English, with the exception of the first live-action series, which may feature a mix of English and Korean dialogue with subtitles, reflecting its partial Korean cast."
   },
   "overarching": {
-    "title": "Overarching Narrative",
+    "title": "A Unified Narrative Universe",
     "intro": "Everything will revolve around the main sci-fi setting.",
     "p1": "The feature film and flagship game will deal directly with an overarching narrative of competing in the V Games for control of the Vertex Zone, the source of all spectra.",
     "p2": "The live-action series and the first tournament games will reveal not only the dramatic and suspenseful competition leading up to the V Games but also the political power plays behind the scenes.",
@@ -37,7 +37,7 @@
     "p5": "Because of the unified narrative and aesthetic ambitions of Gen Sol, both the narrative content and games will grow from the same seeds of story ideations and visual conceptualizations."
   },
   "narrative": {
-    "title": "Narrative",
+    "title": "Narrative Content",
     "description": "From Emperors of intergalactic civilizations to petty thieves, all are bound by one obsession: Spectra—the unholy fuel that runs all of the Gen Sol Galaxy. To possess enough is to command wealth, power and even the holy grail of eternal life.",
     "category1": {
       "title": "FEATURE FILMS & FLAGSHIP",

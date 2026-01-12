@@ -4,14 +4,14 @@ import { SectionLayout } from "../../../../layout/SectionLayout";
 import SectionTitle from "../../../../ui/SectionTitle";
 
 /**
- * OverviewSection - Spectra Heist Story Overview
+ * OverviewSection - The Heist Story Overview
  *
  * Consolidated section containing:
  * - Planning Intent
  * - Summary
  */
 function OverviewSection() {
-  const { t } = useTranslation("spectraHeist");
+  const { t } = useTranslation("heist");
 
   return (
     <SectionLayout className="">

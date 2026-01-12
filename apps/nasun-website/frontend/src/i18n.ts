@@ -19,8 +19,8 @@ import enIpsGenSol from "./assets/locales/en/genSol.json";
 import koIpsGenSol from "./assets/locales/ko/genSol.json";
 import enIpsSpectra from "./assets/locales/en/spectra.json";
 import koIpsSpectra from "./assets/locales/ko/spectra.json";
-import enIpsSpectraHeist from "./assets/locales/en/spectraHeist.json";
-import koIpsSpectraHeist from "./assets/locales/ko/spectraHeist.json";
+import enIpsHeist from "./assets/locales/en/heist.json";
+import koIpsHeist from "./assets/locales/ko/heist.json";
 
 import enOpportunities from "./assets/locales/en/opportunities.json";
 import koOpportunities from "./assets/locales/ko/opportunities.json";
@@ -67,7 +67,7 @@ i18n
         wePop: enIpsWePop,
         genSol: enIpsGenSol,
         spectra: enIpsSpectra,
-        spectraHeist: enIpsSpectraHeist,
+        heist: enIpsHeist,
 
         opportunities: enOpportunities,
         grants: enGrants,
@@ -93,7 +93,7 @@ i18n
         wePop: koIpsWePop,
         genSol: koIpsGenSol,
         spectra: koIpsSpectra,
-        spectraHeist: koIpsSpectraHeist,
+        heist: koIpsHeist,
 
         opportunities: koOpportunities,
         grants: koGrants,
@@ -128,7 +128,7 @@ i18n
       "wePop",
       "genSol",
       "spectra",
-      "spectraHeist",
+      "heist",
       "opportunities",
       "grants",
 

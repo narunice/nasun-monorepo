@@ -47,7 +47,7 @@ function PadoOverviewSection() {
             {t("main.tagline")}
           </p>
           <Button
-            variant="c3"
+            variant="defaultReverse"
             size="xl"
             className="flex w-fit items-center gap-2 mt-4 mx-auto"
             asChild

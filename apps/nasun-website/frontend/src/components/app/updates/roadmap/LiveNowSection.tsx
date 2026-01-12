@@ -38,7 +38,7 @@ export const LiveNowSection = () => {
 
   return (
     <SectionLayout className="!max-w-7xl gap-8 md:gap-10 xl:gap-12">
-      <OuterBox color="n1" className="bg-nasun-c6/40">
+      <OuterBox color="n1" className="">
         {/* Header with pulse animation */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -47,13 +47,13 @@ export const LiveNowSection = () => {
           viewport={{ once: true }}
           className="flex items-center gap-3 mb-2"
         >
+          <h4 className="font-bold  tracking-wide">{liveNow.title}</h4>
           <div className="relative">
             <Zap className="w-6 h-6 text-green-500" />
             <span className="absolute inset-0 animate-ping">
               <Zap className="w-6 h-6 text-green-500 opacity-50" />
             </span>
           </div>
-          <h4 className="font-bold text-green-500 tracking-wide">{liveNow.title}</h4>
         </motion.div>
 
         <motion.p
@@ -75,9 +75,10 @@ export const LiveNowSection = () => {
         >
           <DividerBox
             title={liveNow.nasun.title}
-            color="c5"
+            color="n3"
+            className="bg-gray-900/50"
             rightAction={
-              <Button variant="c4" size="xs" asChild>
+              <Button variant="defaultReverse" size="xs" asChild>
                 <a
                   href="https://explorer.devnet.nasun.io/"
                   target="_blank"

@@ -5,7 +5,7 @@ import SectionTitle from "../../../../ui/SectionTitle";
 import { Button } from "../../../../ui/button";
 
 /**
- * ProductionSection - Spectra Heist Production & Business
+ * ProductionSection - The Heist Production & Business
  *
  * Consolidated section containing:
  * - Creative Challenge
@@ -13,7 +13,7 @@ import { Button } from "../../../../ui/button";
  * - NDA Contact
  */
 function ProductionSection() {
-  const { t } = useTranslation("spectraHeist");
+  const { t } = useTranslation("heist");
 
   return (
     <SectionLayout className="">
