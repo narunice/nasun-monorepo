@@ -10,10 +10,11 @@ import { CopyableAddress } from './CopyableAddress';
 interface AddressBookPanelProps {
   onClose?: () => void;
   onSelect?: (address: string) => void;
+  onSend?: (address: string) => void;
   compact?: boolean;
 }
 
-export function AddressBookPanel({ onClose, onSelect, compact = false }: AddressBookPanelProps) {
+export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }: AddressBookPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingAddress, setEditingAddress] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
@@ -206,9 +207,23 @@ export function AddressBookPanel({ onClose, onSelect, compact = false }: Address
                       autoFocus
                     />
                   ) : (
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {entry.label || shortenAddress(entry.address)}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {entry.label || shortenAddress(entry.address)}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEdit(entry.address, entry.label);
+                        }}
+                        className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors flex-shrink-0"
+                        title="Edit name"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </div>
                   )}
                 </div>
                 <span className="text-xs text-gray-500 dark:text-zinc-400">
@@ -253,12 +268,14 @@ export function AddressBookPanel({ onClose, onSelect, compact = false }: Address
                   </>
                 ) : (
                   <>
-                    <button
-                      onClick={() => handleStartEdit(entry.address, entry.label)}
-                      className="px-2 py-1 text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white border border-gray-300 dark:border-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500 rounded transition-colors"
-                    >
-                      Edit
-                    </button>
+                    {onSend && (
+                      <button
+                        onClick={() => onSend(entry.address)}
+                        className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                      >
+                        Send
+                      </button>
+                    )}
                     <button
                       onClick={() => handleToggleTrust(entry.address, entry.isTrusted)}
                       className={`px-2 py-1 text-xs rounded transition-colors ${

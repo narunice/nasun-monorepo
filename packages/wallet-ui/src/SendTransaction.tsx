@@ -29,12 +29,14 @@ interface SendTransactionProps {
   onSuccess?: (digest: string) => void;
   // Initial token symbol (defaults to NASUN)
   defaultToken?: string;
+  // Initial recipient address (from Address Book)
+  initialRecipient?: string;
 }
 
 // Minimum gas balance required for non-native token transfers
 const MIN_GAS_BALANCE = 0.01;
 
-export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: SendTransactionProps) {
+export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', initialRecipient }: SendTransactionProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
@@ -43,7 +45,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
     useTokenTransaction();
   const { recordTransaction } = useAddressBook();
 
-  const [recipient, setRecipient] = useState('');
+  const [recipient, setRecipient] = useState(initialRecipient || '');
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState(defaultToken);
   const [showConfirm, setShowConfirm] = useState(false);
