@@ -111,8 +111,8 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-white",
   },
   n2: {
-    border: "border-nasun-c3/40",
-    background: "bg-nasun-c3/10",
+    border: "border-nasun-white/10",
+    background: "bg-gray-800",
     text: "text-nasun-white",
   },
   n3: {
@@ -121,13 +121,13 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-white",
   },
   n4: {
-    border: "border-nasun-c4/40",
+    border: "border-nasun-c4/50",
     background: "bg-nasun-c4/10 ",
     text: "text-nasun-white",
   },
   n5: {
-    border: "border-nasun-white/40",
-    background: "bg-gray-800/80 ",
+    border: "border-nasun-c3/40",
+    background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  ",
     text: "text-nasun-white",
   },
 };

@@ -4,7 +4,7 @@ import { SectionLayout } from "../../../../layout/SectionLayout";
 import SectionTitle from "../../../../ui/SectionTitle";
 
 function CharactersSection() {
-  const { t } = useTranslation("spectraHeist");
+  const { t } = useTranslation("heist");
 
   return (
     <SectionLayout className="">

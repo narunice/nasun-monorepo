@@ -7,17 +7,17 @@ import { PageTitle } from "@/components/ui/PageTitle";
 
 // Lazy load section components (3 sections total)
 const OverviewSection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/OverviewSection")
+  () => import("../../../components/app/ips/gensol/heist/OverviewSection")
 );
 const CharactersSection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/CharactersSection")
+  () => import("../../../components/app/ips/gensol/heist/CharactersSection")
 );
 const ProductionSection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/ProductionSection")
+  () => import("../../../components/app/ips/gensol/heist/ProductionSection")
 );
 
-export default function SpectraHeistPage() {
-  const { t } = useTranslation("spectraHeist");
+export default function HeistPage() {
+  const { t } = useTranslation("heist");
 
   return (
     <ErrorBoundary>

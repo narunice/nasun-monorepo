@@ -28,9 +28,9 @@ function PowerOfStoriesSection() {
 
       {/* 콘텐츠 */}
       <div className="relative z-10 w-full max-w-5xl mx-auto ">
-        <OuterBox color="default" className="w-full bg-nasun-c6/50 mt-10 mb-16 ">
+        <OuterBox color="n1" className="w-full bg-nasun-c6/50 mt-10 mb-16 ">
           {/* 섹션 타이틀 */}
-          <SectionTitle as="h2" className="!font-rubik text-center uppercase mb-8 md:mb-10 ">
+          <SectionTitle as="h3" className="!font-rubik text-center uppercase mb-8 md:mb-10 ">
             {t("powerOfStories.title")}
           </SectionTitle>
 

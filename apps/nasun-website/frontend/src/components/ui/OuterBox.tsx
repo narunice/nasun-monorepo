@@ -48,11 +48,11 @@ const variantStyles: Record<ColorVariant, string> = {
   scarlet: "border-nasun-scarlet/50 bg-[#320900]/90",
   coral: "border-nasun-coral/50 bg-[#330a0a]/90",
   "gensol-red": "border-nasun-gensol-red/50 bg-nasun-gensol-shade/90",
-  n1: "border-nasun-white/50 bg-nasun-white/5",
-  n2: "border-nasun-c3/40 bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5",
-  n3: "border-nasun-c5/40 bg-gray-800/30",
-  n4: "border-nasun-c4/50 bg-nasun-c4/10",
-  n5: "border-nasun-white/50 bg-gray-800/80",
+  n1: "border-nasun-white/40 bg-nasun-white/5", // white style
+  n2: "bg-gray-800 border-nasun-white/10", // token distribution label style
+  n3: "bg-gray-800/30 border-nasun-c5/40", // compact card style
+  n4: "border-nasun-c4/50 bg-nasun-c4/10", // climber card style
+  n5: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  border-nasun-c3/40", // dashboard hero style
 };
 
 interface OuterBoxProps {

@@ -20,47 +20,27 @@ export default function RiderProcessCardsSection() {
           </SectionTitle>
           {/* First Row: 2 cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-7 lg:gap-8 mb-6">
-            <DividerBox
-              title={t("processCards.screenplay.title")}
-              color="c1"
-              titleClassName="text-nasun-c1"
-            >
+            <DividerBox title={t("processCards.screenplay.title")} color="n1" titleClassName="">
               <p className="text-nasun-white/80">{t("processCards.screenplay.description")}</p>
             </DividerBox>
 
-            <DividerBox
-              title={t("processCards.development.title")}
-              color="c2"
-              titleClassName="text-nasun-c2"
-            >
+            <DividerBox title={t("processCards.development.title")} color="n2" titleClassName="">
               <p className="text-nasun-white/80">{t("processCards.development.description")}</p>
             </DividerBox>
           </div>
           {/* Second Row: 1 full-width card */}
           <div className="mb-6">
-            <DividerBox
-              title={t("processCards.preProduction.title")}
-              color="c3"
-              titleClassName="text-nasun-c3"
-            >
+            <DividerBox title={t("processCards.preProduction.title")} color="n3" titleClassName="">
               <p className="text-nasun-white/80">{t("processCards.preProduction.description")}</p>
             </DividerBox>
           </div>
           {/* Third Row: 2 cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-7 lg:gap-8">
-            <DividerBox
-              title={t("processCards.postProduction.title")}
-              color="c4"
-              titleClassName="text-nasun-c4"
-            >
+            <DividerBox title={t("processCards.postProduction.title")} color="n4" titleClassName="">
               <p className="text-nasun-white/80">{t("processCards.postProduction.description")}</p>
             </DividerBox>
 
-            <DividerBox
-              title={t("processCards.marketing.title")}
-              color="c5"
-              titleClassName="text-nasun-c5"
-            >
+            <DividerBox title={t("processCards.marketing.title")} color="n5" titleClassName="">
               <p className="text-nasun-white/80">{t("processCards.marketing.description")}</p>
             </DividerBox>
           </div>
