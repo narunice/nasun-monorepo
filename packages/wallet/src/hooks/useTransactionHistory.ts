@@ -160,7 +160,8 @@ async function fetchTransactionHistory(
 
   try {
     // Query sent and received transactions in parallel
-    const [sentResponse, receivedResponse] = await Promise.all([
+    // Use FromAddress for sent, and both ToAddress and Recipient for received
+    const [sentResponse, receivedByToAddress, receivedByRecipient] = await Promise.all([
       client.queryTransactionBlocks({
         filter: { FromAddress: address },
         options: {
@@ -180,14 +181,25 @@ async function fetchTransactionHistory(
         },
         order: 'descending',
         limit: perQueryLimit,
-      }),
+      }).catch(() => ({ data: [], hasNextPage: false })), // Fallback if not supported
+      // Recipient filter catches TransferObjects recipients
+      client.queryTransactionBlocks({
+        filter: { Recipient: address } as Parameters<typeof client.queryTransactionBlocks>[0]['filter'],
+        options: {
+          showBalanceChanges: true,
+          showEffects: true,
+          showInput: true,
+        },
+        order: 'descending',
+        limit: perQueryLimit,
+      }).catch(() => ({ data: [], hasNextPage: false })), // Fallback if not supported
     ]);
 
-    // Merge and deduplicate by digest
+    // Merge and deduplicate by digest from all three queries
     const seenDigests = new Set<string>();
     const allTxs = [];
 
-    for (const tx of [...sentResponse.data, ...receivedResponse.data]) {
+    for (const tx of [...sentResponse.data, ...receivedByToAddress.data, ...receivedByRecipient.data]) {
       if (!seenDigests.has(tx.digest)) {
         seenDigests.add(tx.digest);
         allTxs.push(tx);
