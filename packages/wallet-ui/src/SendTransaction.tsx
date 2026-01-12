@@ -113,7 +113,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
             <CopyableAddress
               value={lastResult.digest}
               label="Transaction Digest"
-              shorten={12}
+              shorten={8}
               showCopy
               showExplorer
               explorerType="tx"
