@@ -181,7 +181,7 @@ export interface AddressDisplayConfig {
  * - Mobile: ...cdef (only last 4 chars)
  */
 export const DEFAULT_ADDRESS_DISPLAY: AddressDisplayConfig = {
-  desktop: { start: 6, end: 6 },
+  desktop: { start: 4, end: 4 },
   mobile: { start: 0, end: 4 },
 };
 
