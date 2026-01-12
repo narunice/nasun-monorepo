@@ -11,6 +11,27 @@ const mockUseWallet = vi.fn();
 // Mock @nasun/wallet
 vi.mock('@nasun/wallet', () => ({
   useWallet: () => mockUseWallet(),
+  useZkLogin: vi.fn(() => ({
+    isConnected: false,
+    isLoading: false,
+    address: null,
+    proof: null,
+    state: null,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    signTransaction: vi.fn(),
+  })),
+  useLedger: vi.fn(() => ({
+    status: 'disconnected',
+    address: null,
+    isConnected: false,
+    accountIndex: 0,
+    setAccountIndex: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    error: null,
+    clearError: vi.fn(),
+  })),
   useTokenTransaction: vi.fn(() => ({
     sendTokenTransaction: mockSendTokenTransaction,
     isPending: false,

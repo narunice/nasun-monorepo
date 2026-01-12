@@ -86,6 +86,19 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
 
         // For native token (NASUN/SUI), use tx.gas
         if (request.tokenType === NATIVE_TOKEN.type) {
+          // Check native balance before transfer
+          const balance = await suiClient.getBalance({ owner: address });
+          const totalNative = BigInt(balance.totalBalance);
+          // Reserve some for gas (0.01 NASUN = 10_000_000 in minimum units)
+          const gasReserve = BigInt(10_000_000);
+          const availableForTransfer = totalNative > gasReserve ? totalNative - gasReserve : BigInt(0);
+
+          if (amountInMinUnit > availableForTransfer) {
+            throw new Error(
+              `Insufficient NASUN balance. Available for transfer: ${Number(availableForTransfer) / 1e9} NASUN (after gas reserve)`
+            );
+          }
+
           const [coin] = tx.splitCoins(tx.gas, [amountInMinUnit]);
           tx.transferObjects([coin], request.to);
         } else {

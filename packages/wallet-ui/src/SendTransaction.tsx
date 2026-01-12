@@ -1,6 +1,7 @@
 /**
  * Nasun Wallet Token Transfer UI
  * Supports multi-token transfers (NASUN, NBTC, NUSDC, etc.)
+ * Enhanced with Clear Signing UI elements for transaction clarity
  */
 
 import { useState } from 'react';
@@ -9,6 +10,7 @@ import {
   useMultiBalance,
   useWallet,
   useZkLogin,
+  useLedger,
   isValidAddress,
   getAllTokens,
   getTokenByType,
@@ -18,6 +20,9 @@ import {
 } from '@nasun/wallet';
 import { TokenSelector } from './TokenSelector';
 import { CopyableAddress } from './CopyableAddress';
+import { LedgerSigningPrompt } from './ledger';
+import { StatusBadge } from './clear-signing';
+import { Tooltip } from './shared';
 
 interface SendTransactionProps {
   onClose?: () => void;
@@ -32,6 +37,7 @@ const MIN_GAS_BALANCE = 0.01;
 export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: SendTransactionProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const { isConnected: isLedgerConnected } = useLedger();
   const { data: balances } = useMultiBalance();
   const { sendTokenTransaction, isPending, error, lastResult, clearError, clearResult } =
     useTokenTransaction();
@@ -41,6 +47,8 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState(defaultToken);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isLedgerSigning, setIsLedgerSigning] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   // Address book status (must be after recipient state declaration)
   const addressStatus = useAddressStatus(recipient);
@@ -144,11 +152,24 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   // Check if this is a new address (never sent to before)
   const isNewAddress = isValidAddress(recipient) && !addressStatus.isKnown;
 
+  // Determine risk level for Clear Signing status badge
+  const getRiskLevel = () => {
+    if (addressStatus.entry?.isTrusted) return 'low' as const;
+    if (addressStatus.isKnown) return 'low' as const;
+    return 'medium' as const;
+  };
+
   // Confirmation screen
   if (showConfirm) {
+    const riskLevel = getRiskLevel();
+
     return (
       <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Confirm Transfer</h3>
+        {/* Header with Status Badge */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
+          <StatusBadge level={riskLevel} variant="compact" />
+        </div>
 
         <div className="space-y-3 mb-4">
           {/* New address warning */}
@@ -208,6 +229,60 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
               </p>
             )}
           </div>
+
+          {/* Expandable Transaction Details */}
+          <div className="border-t border-gray-300 dark:border-zinc-600 pt-2">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowDetails(!showDetails)}
+              onKeyDown={(e) => e.key === 'Enter' && setShowDetails(!showDetails)}
+              className="w-full flex items-center justify-between text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors py-1 cursor-pointer"
+            >
+              <span className="flex items-center gap-1">
+                Transaction Details
+                <Tooltip content="Technical information about this transaction" size="xs" />
+              </span>
+              <span className="text-xs">{showDetails ? '▲' : '▼'}</span>
+            </div>
+
+            {showDetails && (
+              <div className="mt-2 space-y-2 text-xs bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-zinc-400">Type</span>
+                  <span className="text-gray-900 dark:text-white">Token Transfer</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-zinc-400">Token</span>
+                  <span className="text-gray-900 dark:text-white font-mono">{selectedToken}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-zinc-400">Network</span>
+                  <span className="text-gray-900 dark:text-white">Nasun Devnet</span>
+                </div>
+                {selectedToken !== 'NASUN' && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-zinc-400">Token Type</span>
+                    <span className="text-gray-900 dark:text-white font-mono text-[10px] truncate max-w-[180px]">
+                      {tokenConfig.type}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-zinc-400">Sender</span>
+                  <span className="text-gray-900 dark:text-white font-mono">
+                    {connectedAddress?.slice(0, 8)}...{connectedAddress?.slice(-6)}
+                  </span>
+                </div>
+                {addressStatus.entry?.isTrusted && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-zinc-400">Recipient Status</span>
+                    <span className="text-green-600 dark:text-green-400">Trusted Address</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -230,6 +305,10 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
           <button
             onClick={async () => {
               try {
+                // Show Ledger signing prompt if using hardware wallet
+                if (isLedgerConnected) {
+                  setIsLedgerSigning(true);
+                }
                 const result = await sendTokenTransaction({
                   to: recipient,
                   amount,
@@ -242,6 +321,8 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
                 }
               } catch {
                 // Error is stored in state
+              } finally {
+                setIsLedgerSigning(false);
               }
             }}
             disabled={isPending}
@@ -250,6 +331,14 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
             {isPending ? 'Sending...' : 'Confirm'}
           </button>
         </div>
+
+        {/* Ledger signing prompt overlay */}
+        <LedgerSigningPrompt
+          isOpen={isLedgerSigning}
+          signingType="transaction"
+          onCancel={() => setIsLedgerSigning(false)}
+          cancellable={false}
+        />
       </div>
     );
   }
@@ -257,7 +346,10 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
   // Input form
   const isValidRecipient = recipient.length === 0 || isValidAddress(recipient);
   const isValidAmount = amount.length === 0 || (parseFloat(amount) > 0 && !isNaN(parseFloat(amount)));
-  const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas;
+  const availableBalance = parseFloat(getSelectedBalance() || '0');
+  const enteredAmount = parseFloat(amount) || 0;
+  const hasEnoughBalance = enteredAmount <= availableBalance;
+  const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas && hasEnoughBalance;
 
   return (
     <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
@@ -358,6 +450,11 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN' }: 
           />
           {!isValidAmount && (
             <p className="text-xs text-red-400 mt-1">Please enter a valid amount</p>
+          )}
+          {isValidAmount && amount && !hasEnoughBalance && (
+            <p className="text-xs text-red-400 mt-1">
+              Insufficient balance. Available: {getSelectedBalance()} {selectedToken}
+            </p>
           )}
         </div>
 
