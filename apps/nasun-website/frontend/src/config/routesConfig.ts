@@ -7,11 +7,7 @@ import { TFunction } from "i18next";
 export const Pages = {
   Home: lazy(() => import("../pages/HomePage")),
   VisionStrategy: lazy(() => import("../pages/about/StrategyPage")),
-  VisionProducts: lazy(() => import("../pages/_legacy/ProductsPage")),
-  VisionWeb3: lazy(() => import("../pages/_legacy/Web3Page")),
   VisionNetwork: lazy(() => import("../pages/protocol/NetworkPage")),
-  VisionManifesto: lazy(() => import("../pages/_legacy/ManifestoPage")),
-  VisionStory: lazy(() => import("../pages/_legacy/StoryPage")),
   IPs: lazy(() => import("../pages/IPsPage")),
   IPsGenSol: lazy(() => import("../pages/ips/gensol/GenSolMainPage")),
   IPsGenSolOverview: lazy(() => import("../pages/ips/gensol/OverviewPage")),

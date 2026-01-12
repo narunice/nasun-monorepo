@@ -9,16 +9,8 @@ import enHome from "./assets/locales/en/home.json";
 import koHome from "./assets/locales/ko/home.json";
 import enVisionStrategy from "./assets/locales/en/strategy.json";
 import koVisionStrategy from "./assets/locales/ko/strategy.json";
-import enVisionProducts from "./assets/locales/en/products.json";
-import koVisionProducts from "./assets/locales/ko/products.json";
-import enVisionWeb3 from "./assets/locales/en/web3.json";
-import koVisionWeb3 from "./assets/locales/ko/web3.json";
 import enVisionTokenomics from "./assets/locales/en/tokenomics.json";
 import koVisionTokenomics from "./assets/locales/ko/tokenomics.json";
-import enVisionManifesto from "./assets/locales/en/manifesto.json";
-import koVisionManifesto from "./assets/locales/ko/manifesto.json";
-import enVisionStory from "./assets/locales/en/story.json";
-import koVisionStory from "./assets/locales/ko/story.json";
 import enIpsRiderStudio from "./assets/locales/en/riderStudio.json";
 import koIpsRiderStudio from "./assets/locales/ko/riderStudio.json";
 import enIpsWePop from "./assets/locales/en/wePop.json";
@@ -70,11 +62,7 @@ i18n
         common: enCommon,
         home: enHome,
         strategy: enVisionStrategy,
-        products: enVisionProducts,
-        web3: enVisionWeb3,
         tokenomics: enVisionTokenomics,
-        manifesto: enVisionManifesto,
-        story: enVisionStory,
         riderStudio: enIpsRiderStudio,
         wePop: enIpsWePop,
         genSol: enIpsGenSol,
@@ -100,11 +88,7 @@ i18n
         common: koCommon,
         home: koHome,
         strategy: koVisionStrategy,
-        products: koVisionProducts,
-        web3: koVisionWeb3,
         tokenomics: koVisionTokenomics,
-        manifesto: koVisionManifesto,
-        story: koVisionStory,
         riderStudio: koIpsRiderStudio,
         wePop: koIpsWePop,
         genSol: koIpsGenSol,
