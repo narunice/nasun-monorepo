@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getObject } from '../lib/sui-client';
@@ -126,9 +127,7 @@ export default function ObjectPage() {
           {/* Content */}
           {obj.data?.content && (
             <SectionBox title="Content" color="c3">
-              <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c3/30 p-4 rounded-lg max-h-96 text-nasun-white/80">
-                {JSON.stringify(obj.data.content, null, 2)}
-              </pre>
+              <JsonBlock data={obj.data.content} borderColor="border-nasun-c3/30" />
             </SectionBox>
           )}
 
@@ -158,9 +157,7 @@ export default function ObjectPage() {
 
           {/* Raw Data */}
           <SectionBox title="Raw Object Data" color="c6">
-            <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c5/30 p-4 rounded-lg max-h-96 text-nasun-white/80">
-              {JSON.stringify(obj, null, 2)}
-            </pre>
+            <JsonBlock data={obj} borderColor="border-nasun-c5/30" />
           </SectionBox>
         </div>
       )}
@@ -186,4 +183,51 @@ function getOwnerLink(owner: any): string | undefined {
   if ('AddressOwner' in owner) return `/address/${owner.AddressOwner}`;
   if ('ObjectOwner' in owner) return `/object/${owner.ObjectOwner}`;
   return undefined;
+}
+
+// Reusable JSON block with copy button
+function JsonBlock({ data, borderColor = 'border-nasun-c5/30' }: { data: unknown; borderColor?: string }) {
+  const [copied, setCopied] = useState(false);
+  const jsonString = JSON.stringify(data, null, 2);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(jsonString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div className="relative">
+      {/* Copy button - positioned inside JSON area, top-right */}
+      <button
+        onClick={handleCopy}
+        className="absolute top-2 right-4 z-10 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-nasun-c5/40 hover:bg-nasun-c5/60 text-nasun-white/80 hover:text-nasun-white border border-nasun-c5/30"
+      >
+        {copied ? (
+          <span className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Copied
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Copy
+          </span>
+        )}
+      </button>
+
+      {/* JSON content with custom scrollbar and top padding for button space */}
+      <pre className={`text-xs overflow-auto bg-nasun-c6/60 border ${borderColor} pt-12 pb-4 px-4 rounded-lg max-h-96 text-nasun-white/80 custom-scrollbar`}>
+        {jsonString}
+      </pre>
+    </div>
+  );
 }

@@ -1,6 +1,7 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getAddressInfo, getAddressTransactions } from '../lib/sui-client';
+import { getAddressInfo, getAddressTransactions, loadMoreObjects } from '../lib/sui-client';
 import { formatBalance, formatObjectType } from '../lib/format';
 import { isNFTObject } from '../lib/media';
 import InfoRow from '../components/InfoRow';
@@ -8,6 +9,7 @@ import NFTCard from '../components/NFTCard';
 import { CoinSymbol } from '../components/CoinSymbol';
 import { SectionBox } from '../components/ui/SectionBox';
 import { Card } from '../components/ui/Card';
+import type { SuiObjectResponse } from '@mysten/sui/client';
 
 function formatTimestamp(timestampMs: string | number | null | undefined) {
   if (!timestampMs) return '-';
@@ -51,6 +53,11 @@ function formatTokenBalance(balance: string, coinType: string): string {
 export default function Address() {
   const { addr } = useParams<{ addr: string }>();
 
+  // State for pagination
+  const [accumulatedObjects, setAccumulatedObjects] = useState<SuiObjectResponse[]>([]);
+  const [objectCursor, setObjectCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const { data: addressInfo, isLoading, error } = useQuery({
     queryKey: ['address', addr],
     queryFn: () => getAddressInfo(addr!),
@@ -62,6 +69,42 @@ export default function Address() {
     queryFn: () => getAddressTransactions(addr!, 20),
     enabled: !!addr,
   });
+
+  // Initialize accumulated objects when addressInfo changes
+  useEffect(() => {
+    if (addressInfo?.ownedObjects) {
+      setAccumulatedObjects(addressInfo.ownedObjects);
+      setObjectCursor(addressInfo.nextCursor || null);
+    }
+  }, [addressInfo]);
+
+  // Reset state when address changes
+  useEffect(() => {
+    setAccumulatedObjects([]);
+    setObjectCursor(null);
+  }, [addr]);
+
+  // Load more objects handler
+  const handleLoadMore = useCallback(async () => {
+    if (!addr || !objectCursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const result = await loadMoreObjects(addr, objectCursor);
+      if (result) {
+        setAccumulatedObjects(prev => {
+          const existingIds = new Set(prev.map(o => o.data?.objectId));
+          const newObjects = result.ownedObjects.filter(o => !existingIds.has(o.data?.objectId));
+          return [...prev, ...newObjects];
+        });
+        setObjectCursor(result.nextCursor || null);
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [addr, objectCursor, isLoadingMore]);
+
+  const hasNextPage = objectCursor !== null;
 
   return (
     <>
@@ -91,7 +134,7 @@ export default function Address() {
                 />
                 <InfoRow
                   label="Owned Objects"
-                  value={`${addressInfo.ownedObjects?.length || 0} objects`}
+                  value={`${accumulatedObjects.length}${hasNextPage ? '+' : ''} objects`}
                 />
               </div>
             </SectionBox>
@@ -131,18 +174,18 @@ export default function Address() {
                 return { fields: c.fields as Record<string, unknown> };
               };
 
-              const nftObjects = addressInfo.ownedObjects?.filter(obj =>
+              const nftObjects = accumulatedObjects.filter(obj =>
                 isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content))
-              ) || [];
-              const otherObjects = addressInfo.ownedObjects?.filter(obj =>
+              );
+              const otherObjects = accumulatedObjects.filter(obj =>
                 !isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content))
-              ) || [];
+              );
 
               return (
                 <>
                   {/* NFTs Section */}
                   {nftObjects.length > 0 && (
-                    <SectionBox title={`NFTs (${nftObjects.length})`} color="c4">
+                    <SectionBox title={`NFTs (${nftObjects.length}${hasNextPage ? '+' : ''})`} color="c4">
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {nftObjects.map((obj, idx) => (
                           <NFTCard
@@ -154,43 +197,65 @@ export default function Address() {
                           />
                         ))}
                       </div>
+                      {/* Load More button */}
+                      {hasNextPage && (
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={isLoadingMore}
+                          className="w-full mt-4 py-2 text-nasun-c4 hover:bg-nasun-c4/10 rounded border border-nasun-c4/30 transition-colors disabled:opacity-50"
+                        >
+                          {isLoadingMore ? 'Loading...' : 'Load More Objects'}
+                        </button>
+                      )}
                     </SectionBox>
                   )}
 
                   {/* Other Objects Section */}
-                  <SectionBox title={`Other Objects (${otherObjects.length})`} color="c3">
+                  <SectionBox title={`Other Objects (${otherObjects.length}${hasNextPage ? '+' : ''})`} color="c3">
                     {otherObjects.length > 0 ? (
-                      <div className="overflow-x-auto rounded-lg border border-nasun-c3/30">
-                        <table className="w-full">
-                          <thead className="bg-nasun-c6/60 border-b border-nasun-c3/30">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Object ID</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Type</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Version</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-nasun-c3/20">
-                            {otherObjects.map((obj, idx) => (
-                              <tr key={obj.data?.objectId ?? idx} className="hover:bg-nasun-c3/10 transition-colors">
-                                <td className="px-4 py-3">
-                                  <Link
-                                    to={`/object/${obj.data?.objectId}`}
-                                    className="font-mono text-sm text-nasun-c4 hover:underline"
-                                  >
-                                    {truncateId(obj.data?.objectId ?? '')}
-                                  </Link>
-                                </td>
-                                <td className="px-4 py-3 text-nasun-white/60 text-sm max-w-xs truncate">
-                                  {formatObjectType(obj.data?.type ?? undefined)}
-                                </td>
-                                <td className="px-4 py-3 text-nasun-white/60 font-mono">
-                                  {obj.data?.version || '-'}
-                                </td>
+                      <>
+                        <div className="overflow-x-auto rounded-lg border border-nasun-c3/30">
+                          <table className="w-full">
+                            <thead className="bg-nasun-c6/60 border-b border-nasun-c3/30">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Object ID</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Type</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Version</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody className="divide-y divide-nasun-c3/20">
+                              {otherObjects.map((obj, idx) => (
+                                <tr key={obj.data?.objectId ?? idx} className="hover:bg-nasun-c3/10 transition-colors">
+                                  <td className="px-4 py-3">
+                                    <Link
+                                      to={`/object/${obj.data?.objectId}`}
+                                      className="font-mono text-sm text-nasun-c4 hover:underline"
+                                    >
+                                      {truncateId(obj.data?.objectId ?? '')}
+                                    </Link>
+                                  </td>
+                                  <td className="px-4 py-3 text-nasun-white/60 text-sm max-w-xs truncate">
+                                    {formatObjectType(obj.data?.type ?? undefined)}
+                                  </td>
+                                  <td className="px-4 py-3 text-nasun-white/60 font-mono">
+                                    {obj.data?.version || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {/* Load More button */}
+                        {hasNextPage && (
+                          <button
+                            onClick={handleLoadMore}
+                            disabled={isLoadingMore}
+                            className="w-full mt-4 py-2 text-nasun-c3 hover:bg-nasun-c3/10 rounded border border-nasun-c3/30 transition-colors disabled:opacity-50"
+                          >
+                            {isLoadingMore ? 'Loading...' : 'Load More Objects'}
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <div className="text-nasun-white/60 text-center py-8">
                         No objects owned by this address
