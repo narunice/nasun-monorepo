@@ -12,17 +12,25 @@ interface PositionData {
 function HiresSection() {
   const { t } = useTranslation("spectra");
 
-  const positions: { key: string; data: PositionData }[] = [
-    { key: "artist2d", data: t("hires.positions.artist2d", { returnObjects: true }) as PositionData },
-    { key: "artist3d", data: t("hires.positions.artist3d", { returnObjects: true }) as PositionData },
-    { key: "ueDesigner", data: t("hires.positions.ueDesigner", { returnObjects: true }) as PositionData },
-    { key: "ueProgrammer", data: t("hires.positions.ueProgrammer", { returnObjects: true }) as PositionData },
-  ];
+  const positionKeys = ["artist2d", "artist3d", "ueDesigner", "ueProgrammer"];
+
+  const positions = positionKeys
+    .map((key) => {
+      const data = t(`hires.positions.${key}` as any, { // eslint-disable-line @typescript-eslint/no-explicit-any
+        returnObjects: true,
+      }) as unknown as PositionData;
+
+      if (!data || typeof data !== "object" || !Array.isArray(data.work)) {
+        return null;
+      }
+      return { key, data };
+    })
+    .filter((p): p is { key: string; data: PositionData } => p !== null);
 
   return (
     <SectionLayout className="">
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("hires.title")}
         </SectionTitle>
 

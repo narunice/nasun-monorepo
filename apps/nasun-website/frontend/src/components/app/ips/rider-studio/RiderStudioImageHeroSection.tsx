@@ -4,6 +4,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 
 // 배경 이미지
 import bgImage from "../../../../assets/images/Firefly_Remove only the single camera and tripod at the far left edge of the image. _Do not r 609126.png";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**
  * RiderStudioImageHeroSection 컴포넌트
@@ -37,7 +38,9 @@ function RiderStudioImageHeroSection() {
       {/* 콘텐츠 - 중앙 하단 */}
       <div className="absolute inset-x-0 bottom-[8%] md:bottom-[10%] z-20 text-center px-6 md:px-12 lg:px-20">
         <div className="items-center mx-auto">
-          <PageTitle as="h1">RIDER STUDIO</PageTitle>
+          <FadeInUp>
+            <PageTitle as="h1">RIDER STUDIO</PageTitle>
+          </FadeInUp>
         </div>
       </div>
     </SectionLayout>

@@ -110,7 +110,7 @@ export function Header() {
 
   return (
     <header className="border-b border-theme-border px-3 sm:px-4 md:px-6 py-3 md:py-4">
-      <div className="flex items-center justify-between max-w-7xl mx-auto gap-2">
+      <div className="flex items-center justify-between gap-2">
         {/* Logo Wordmark - Click to go Home */}
         <Link to="/" className="hover:opacity-80 transition-opacity">
           <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pado-2">PADO</h1>

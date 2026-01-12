@@ -33,15 +33,9 @@ export default function App() {
     <div className="min-h-screen bg-theme-bg-primary text-theme-text-primary">
       <Header />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* Main Content - No max-width for full-width trading experience */}
+      <main className="px-3 sm:px-4 py-4 sm:py-6">
         <AppRoutes />
-
-        {/* Network Info */}
-        <div className="mt-8 text-center text-sm text-theme-text-muted">
-          <p>Connected to Nasun Devnet</p>
-          <p className="font-mono text-xs">{NETWORK_CONFIG.rpcUrl}</p>
-        </div>
       </main>
     </div>
   );

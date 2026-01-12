@@ -13,7 +13,7 @@ function KoreanConnectionSection() {
       <PageTitle>{t("pageTitle")}</PageTitle>
 
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
           {t("koreanConnection.title")}
         </SectionTitle>
         <div className="space-y-4 md:space-y-6">

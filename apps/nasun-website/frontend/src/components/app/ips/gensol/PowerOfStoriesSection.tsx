@@ -28,7 +28,7 @@ function PowerOfStoriesSection() {
 
       {/* 콘텐츠 */}
       <div className="relative z-10 w-full max-w-5xl mx-auto ">
-        <OuterBox variant="default" className="w-full bg-nasun-c6/50 mt-10 mb-16 ">
+        <OuterBox color="default" className="w-full bg-nasun-c6/50 mt-10 mb-16 ">
           {/* 섹션 타이틀 */}
           <SectionTitle as="h2" className="!font-rubik text-center uppercase mb-8 md:mb-10 ">
             {t("powerOfStories.title")}
@@ -40,7 +40,7 @@ function PowerOfStoriesSection() {
 
             <p className="">{t("powerOfStories.paragraph2")}</p>
 
-            <p className="">{t("powerOfStories.paragraph3")}</p>
+            <p className="">{t("powerOfStories.paragraph4")}</p>
 
             {/* 강조 문단 */}
             <blockquote className="border-l-4 border-nasun-c1 pl-6 py-2 my-8 font-rubik font-light italic text-nasun-white">

@@ -17,7 +17,7 @@ function OpportunitiesSection() {
       </PageTitle>
 
       {/* First Box - Join Our Team */}
-      <OuterBox variant="default" className="bg-nasun-c6/40">
+      <OuterBox color="n1" className="bg-nasun-c6/40">
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("joinTeam.heading")}</h4>
           <h5 className="text-nasun-c1">{t("joinTeam.subheading")}</h5>
@@ -66,7 +66,7 @@ function OpportunitiesSection() {
       </OuterBox>
       <div className="h-8 md:h-10 lg:h-12 xl:h-14"></div>
       {/* Second Box - Build Your Project */}
-      <OuterBox variant="default" className="bg-nasun-c6/40">
+      <OuterBox color="n1" className="bg-nasun-c6/40">
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("buildProject.heading")}</h4>
           <h5 className="text-nasun-c4">{t("buildProject.subheading")}</h5>

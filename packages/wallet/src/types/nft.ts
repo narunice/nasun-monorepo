@@ -73,3 +73,15 @@ export interface NFTTransferRequest {
   /** Recipient address */
   to: string;
 }
+
+/**
+ * NFT sorting options
+ * - newest: Most recently updated (by version) first
+ * - oldest: Oldest (by version) first
+ * - name_asc: Alphabetical A-Z
+ * - name_desc: Alphabetical Z-A
+ */
+export type NFTSortBy = 'newest' | 'oldest' | 'name_asc' | 'name_desc';
+
+/** Default sort order */
+export const DEFAULT_NFT_SORT: NFTSortBy = 'newest';

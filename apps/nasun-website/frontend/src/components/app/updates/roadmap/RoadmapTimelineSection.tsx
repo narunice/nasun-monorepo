@@ -26,8 +26,8 @@ const RoadmapItemCard = ({ item, index }: RoadmapItemCardProps) => {
         item.status === "completed"
           ? "bg-green-500/5"
           : item.status === "in-progress"
-          ? "bg-nasun-c1/5"
-          : "bg-nasun-white/5"
+            ? "bg-nasun-c1/5"
+            : "bg-nasun-white/5"
       }`}
     >
       {showStatus && (
@@ -58,7 +58,14 @@ interface YearSectionProps {
   index: number;
 }
 
-const YearSection = ({ year, description, web3Items, contentItems, financeItems, index }: YearSectionProps) => {
+const YearSection = ({
+  year,
+  description,
+  web3Items,
+  contentItems,
+  financeItems,
+  index,
+}: YearSectionProps) => {
   const { t } = useTranslation("roadmap");
 
   // Ensure items are arrays (fallback to empty array)
@@ -73,7 +80,7 @@ const YearSection = ({ year, description, web3Items, contentItems, financeItems,
       transition={{ duration: 0.5, delay: index * 0.1 }}
       viewport={{ once: true }}
     >
-      <OuterBox variant="default" className="bg-nasun-c6/40">
+      <OuterBox color="n1" className="bg-nasun-c6/40">
         {/* Year Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-6">
           <div className="flex items-center gap-4">

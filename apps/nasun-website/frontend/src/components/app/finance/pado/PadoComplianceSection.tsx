@@ -19,24 +19,18 @@ function PadoComplianceSection() {
 
         {/* Intro */}
         <div className="space-y-4 md:space-y-5 lg:space-y-6 mb-8 md:mb-10 lg:mb-12">
-          <p className="text-nasun-white/80">
-            {t("compliance.intro")}
-          </p>
-          <p className="text-nasun-white/90 font-medium">
-            {t("compliance.philosophy")}
-          </p>
+          <p className="text-nasun-white/80">{t("compliance.intro")}</p>
+          <p className="text-nasun-white/90 font-medium">{t("compliance.philosophy")}</p>
         </div>
 
         {/* 1. Operating in a Maturing Global Regulatory Landscape */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("compliance.regulatoryLandscape.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">
-              {t("compliance.regulatoryLandscape.content")}
-            </p>
+            <p className="text-nasun-white/80">{t("compliance.regulatoryLandscape.content")}</p>
 
             {/* Sub-sections in cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -62,14 +56,12 @@ function PadoComplianceSection() {
 
         {/* 2. Jurisdictional Strategy and Foundation Alignment */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("compliance.jurisdictional.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">
-              {t("compliance.jurisdictional.content")}
-            </p>
+            <p className="text-nasun-white/80">{t("compliance.jurisdictional.content")}</p>
 
             {/* Jurisdictions in cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -95,14 +87,12 @@ function PadoComplianceSection() {
 
         {/* 3. Protocol-Level Standards and Self-Governance */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
             {t("compliance.protocolLevel.title")}
           </SectionTitle>
 
           <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">
-              {t("compliance.protocolLevel.content")}
-            </p>
+            <p className="text-nasun-white/80">{t("compliance.protocolLevel.content")}</p>
 
             {/* Standards in cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -133,20 +123,16 @@ function PadoComplianceSection() {
         </div>
 
         {/* Our Objective */}
-        <OuterBox variant="white" className="">
+        <OuterBox color="n1" className="">
           <div className="flex items-center gap-3 mb-4">
             <Target className="w-6 h-6 text-nasun-white" />
-            <h3 className="text-nasun-white font-semibold text-lg">
+            <h4 className="text-nasun-white font-semibold text-lg">
               {t("compliance.objective.title")}
-            </h3>
+            </h4>
           </div>
           <div className="space-y-4">
-            <p className="text-nasun-white/90 font-medium">
-              {t("compliance.objective.content")}
-            </p>
-            <p className="text-nasun-white/80 italic">
-              {t("compliance.objective.closing")}
-            </p>
+            <p className="text-nasun-white/90 font-medium">{t("compliance.objective.content")}</p>
+            <p className="text-nasun-white/80 italic">{t("compliance.objective.closing")}</p>
           </div>
         </OuterBox>
       </div>

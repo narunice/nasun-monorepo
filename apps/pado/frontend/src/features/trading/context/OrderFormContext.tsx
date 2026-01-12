@@ -34,6 +34,10 @@ export interface OrderFormContextType {
   slippage: number;
   setSlippage: (value: number) => void;
 
+  // One-Click Trading
+  oneClickEnabled: boolean;
+  setOneClickEnabled: (enabled: boolean) => void;
+
   // 확인 모달 상태
   isConfirmModalOpen: boolean;
   pendingOrderType: 'buy' | 'sell';
@@ -56,6 +60,9 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
 
   // 슬리피지 상태 (Market) - 기본값 0.5%
   const [slippage, setSlippage] = useState(0.5);
+
+  // One-Click Trading 상태 (기본값: false)
+  const [oneClickEnabled, setOneClickEnabled] = useState(false);
 
   // OrderType 변환
   const getOrderType = useCallback((): OrderType => {
@@ -96,6 +103,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         getOrderType,
         slippage,
         setSlippage,
+        oneClickEnabled,
+        setOneClickEnabled,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,

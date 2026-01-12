@@ -8,7 +8,7 @@ function AwardsSection() {
 
   return (
     <SectionLayout className="!max-w-6xl gap-8 md:gap-10 xl:gap-12">
-      <OuterBox variant="default" className=" ">
+      <OuterBox color="n1" className=" ">
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("heading1")}</h4>
           <h5 className="text-nasun-c4 font-medium">{t("heading2")}</h5>

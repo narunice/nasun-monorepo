@@ -48,3 +48,14 @@ export type { UseZkLoginOptions, UseZkLoginResult } from './useZkLogin';
 // Token faucet support
 export { useTokenFaucet } from './useTokenFaucet';
 export type { UseTokenFaucetResult } from './useTokenFaucet';
+
+// Transaction history
+export {
+  useTransactionHistory,
+  useRefreshTransactionHistory,
+  useInvalidateTransactionHistory,
+} from './useTransactionHistory';
+export type {
+  UseTransactionHistoryOptions,
+  UseTransactionHistoryResult,
+} from './useTransactionHistory';
