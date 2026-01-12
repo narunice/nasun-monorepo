@@ -49,20 +49,51 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 /**
+ * Format amount for compact display (max 8 chars)
+ */
+function formatCompactAmount(amount: string): string {
+  const num = parseFloat(amount);
+  if (isNaN(num)) return amount;
+
+  // For very small numbers, show up to 5 decimal places
+  if (Math.abs(num) < 0.001) {
+    return num.toFixed(5);
+  }
+  // For small numbers, show up to 4 decimal places
+  if (Math.abs(num) < 1) {
+    return num.toFixed(4);
+  }
+  // For medium numbers, show up to 2 decimal places
+  if (Math.abs(num) < 1000) {
+    return num.toFixed(2);
+  }
+  // For large numbers, use K/M notation
+  if (Math.abs(num) >= 1000000) {
+    return (num / 1000000).toFixed(2) + 'M';
+  }
+  if (Math.abs(num) >= 1000) {
+    return (num / 1000).toFixed(2) + 'K';
+  }
+  return amount;
+}
+
+/**
  * Single transfer item display
  */
 function TransferItem({ transfer }: { transfer: TokenTransfer }) {
   const isIn = transfer.direction === 'in';
   const symbol = transfer.symbol || 'Token';
+  const compactAmount = formatCompactAmount(transfer.amount);
 
   return (
     <span
       className={`inline-flex items-center gap-1 ${
         isIn ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
       }`}
+      title={`${transfer.amount} ${symbol}`}
     >
       <span>{isIn ? '+' : '-'}</span>
-      <span className="font-medium">{transfer.amount}</span>
+      <span className="font-medium">{compactAmount}</span>
       <span className="text-gray-600 dark:text-zinc-400">{symbol}</span>
     </span>
   );
@@ -89,9 +120,9 @@ function TransactionItem({
       onClick={() => onClick?.(tx.digest)}
       className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors border-b border-gray-100 dark:border-zinc-700 last:border-b-0"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2">
         {/* Direction icon and label */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center ${
               isIn
@@ -133,7 +164,7 @@ function TransactionItem({
         </div>
 
         {/* Amount and time */}
-        <div className="text-right min-w-0 flex-shrink-0">
+        <div className="text-right flex-shrink-0">
           {hasTransfers ? (
             <div className="space-y-0.5 whitespace-nowrap">
               {tx.transfers.slice(0, 2).map((transfer, i) => (

@@ -20,6 +20,7 @@ import {
   getAllTokens,
   LOCKOUT_TIERS,
   type NFTInfo,
+  type NFTSortBy,
   type ZkLoginProvider,
   type LedgerConnectionStatus,
   type LedgerErrorCode,
@@ -117,7 +118,7 @@ function LockedStateUI({
   };
 
   return (
-    <div className="p-4 w-full sm:w-[280px]">
+    <div className="p-4 w-full ">
       <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Unlock Wallet</h3>
 
       {isLocked && (
@@ -290,6 +291,7 @@ export function WalletConnect({
   const [showDropdown, setShowDropdown] = useState(false);
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabMode>("tokens");
+  const [nftSortBy, setNftSortBy] = useState<NFTSortBy>("newest");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -320,6 +322,7 @@ export function WalletConnect({
   const { data: nfts = [], isLoading: nftsLoading } = useNFTs({
     limit: 20,
     refetchInterval: 15000,
+    sortBy: nftSortBy,
   });
 
   // Fetch token balances (NASUN, NBTC, NUSDC)
@@ -483,7 +486,7 @@ export function WalletConnect({
     // Create wallet form
     if (viewMode === "create") {
       return (
-        <div className="p-4 w-full sm:w-[280px]">
+        <div className="p-4 w-full ">
           <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
             Create New Wallet
           </h3>
@@ -613,7 +616,7 @@ export function WalletConnect({
       };
 
       return (
-        <div className="py-3 px-4 w-full sm:w-[280px]">
+        <div className="py-3 px-4 w-full ">
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setViewMode("main")}
@@ -660,7 +663,7 @@ export function WalletConnect({
     // Ledger address select view (account index selector)
     if (viewMode === "ledger-select") {
       return (
-        <div className="py-3 px-4 w-full sm:w-[280px]">
+        <div className="py-3 px-4 w-full ">
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setViewMode("main")}
@@ -719,7 +722,7 @@ export function WalletConnect({
     // Ledger connected state (no software wallet)
     if (isLedgerConnected && ledgerAddress && status === "disconnected" && !isZkLoggedIn) {
       return (
-        <div className="w-full sm:w-[280px]">
+        <div className="w-full ">
           {/* Ledger Address header */}
           <div className="px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
             <div className="flex items-center gap-2 mb-2">
@@ -784,7 +787,7 @@ export function WalletConnect({
     // Disconnected state - show social login and create/import options
     if (status === "disconnected" && !isZkLoggedIn && !isLedgerConnected) {
       return (
-        <div className="py-3 px-4 w-full sm:w-[280px]">
+        <div className="py-3 px-4 w-full ">
           {/* Social Login Section */}
           <div className="mb-4">
             <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 text-center">
@@ -838,7 +841,7 @@ export function WalletConnect({
     // zkLogin connected state
     if (isZkLoggedIn && zkState) {
       return (
-        <div className="w-full sm:w-[280px]">
+        <div className="w-full ">
           {/* User info header */}
           <div className="px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
             <div className="flex items-center gap-3 mb-2">
@@ -959,7 +962,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("send")}
-                className="w-full px-3 py-2 text-left text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -974,7 +977,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("receive")}
-                className="w-full px-3 py-2 text-left text-sm text-purple-600 dark:text-purple-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -989,7 +992,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("staking")}
-                className="w-full px-3 py-2 text-left text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1067,11 +1070,26 @@ export function WalletConnect({
                   <p className="text-sm text-gray-500 dark:text-zinc-400">No NFTs found</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
-                  {nfts.map((nft) => (
-                    <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
-                  ))}
-                </div>
+                <>
+                  {/* Sort dropdown */}
+                  <div className="flex justify-end mb-2">
+                    <select
+                      value={nftSortBy}
+                      onChange={(e) => setNftSortBy(e.target.value as NFTSortBy)}
+                      className="text-xs px-2 py-1 bg-transparent border border-gray-200 dark:border-zinc-600 rounded text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="name_asc">Name A-Z</option>
+                      <option value="name_desc">Name Z-A</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
+                    {nfts.map((nft) => (
+                      <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -1120,7 +1138,7 @@ export function WalletConnect({
     // Unlocked state - show wallet menu with tabs
     if (status === "unlocked" && account) {
       return (
-        <div className="w-full sm:w-[280px]">
+        <div className="w-full ">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
             <span className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">Connected Address</span>
@@ -1221,7 +1239,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("send")}
-                className="w-full px-3 py-2 text-left text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1236,7 +1254,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("receive")}
-                className="w-full px-3 py-2 text-left text-sm text-purple-600 dark:text-purple-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1251,7 +1269,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("staking")}
-                className="w-full px-3 py-2 text-left text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1374,11 +1392,26 @@ export function WalletConnect({
                   <p className="text-sm text-gray-500 dark:text-zinc-400">No NFTs found</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
-                  {nfts.map((nft) => (
-                    <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
-                  ))}
-                </div>
+                <>
+                  {/* Sort dropdown */}
+                  <div className="flex justify-end mb-2">
+                    <select
+                      value={nftSortBy}
+                      onChange={(e) => setNftSortBy(e.target.value as NFTSortBy)}
+                      className="text-xs px-2 py-1 bg-transparent border border-gray-200 dark:border-zinc-600 rounded text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="name_asc">Name A-Z</option>
+                      <option value="name_desc">Name Z-A</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
+                    {nfts.map((nft) => (
+                      <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}
