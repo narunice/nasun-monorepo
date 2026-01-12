@@ -33,7 +33,10 @@ const LeaderboardInfoSection: React.FC = () => {
 
       {/* Introduction Box */}
       <div className="max-w-5xl mx-auto mb-8">
-        <OuterBox variant="default" className="text-center bg-gradient-to-r from-nasun-c5/20 to-nasun-c4/40 border-1 border-nasun-c5  ">
+        <OuterBox
+          color="n1"
+          className="text-center bg-gradient-to-r from-nasun-c5/20 to-nasun-c4/40 border-1 border-nasun-c5  "
+        >
           <h4 className="text-nasun-white font-medium ">{t("info.intro.title")}</h4>
           <h5 className="text-nasun-white/75 pt-2">
             {t("info.intro.description")}{" "}

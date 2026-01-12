@@ -34,7 +34,10 @@ const TeamCard: React.FC<TeamCardProps> = ({
   const descriptionArray = Array.isArray(description) ? description : [description];
 
   return (
-    <OuterBox variant="default" className={`flex flex-col md:flex-row gap-8 md:gap-12 bg-nasun-c6/40 ${className}`}>
+    <OuterBox
+      color="n1"
+      className={`flex flex-col md:flex-row gap-8 md:gap-12 bg-nasun-c6/40 ${className}`}
+    >
       {/* Left Column - Profile */}
       <div className="md:w-1/4 flex flex-col items-center md:items-start">
         {/* Profile Image */}

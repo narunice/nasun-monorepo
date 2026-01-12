@@ -25,7 +25,7 @@ function CommunityEngagementSection() {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="pt-2 mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="pt-2 mb-2 md:mb-3 lg:mb-4">
           {t("communityEngagement.title")}
         </SectionTitle>
 

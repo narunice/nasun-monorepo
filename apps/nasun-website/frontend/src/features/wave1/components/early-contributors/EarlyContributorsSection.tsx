@@ -29,7 +29,10 @@ export const EarlyContributorsSection: React.FC = () => {
         </PageTitle>
 
         {/* Main Intro Box */}
-        <OuterBox variant="default" className="max-w-4xl mx-auto border-nasun-c4 !bg-nasun-c4/10 mb-4 md:mb-6 lg:mb-8 xl:mb-10">
+        <OuterBox
+          color="n1"
+          className="max-w-4xl mx-auto border-nasun-c4 !bg-nasun-c4/10 mb-4 md:mb-6 lg:mb-8 xl:mb-10"
+        >
           <h6 className="text-nasun-white/80 text-center">
             <span className="text-nasun-c4 font-medium">{t("intro.highlight")}</span>
             {t("intro.rest")}
@@ -96,7 +99,7 @@ export const EarlyContributorsSection: React.FC = () => {
         </DividerBox>
 
         {/* Philosophy Section */}
-        <OuterBox variant="default" className="bg-nasun-c6/50 mt-16">
+        <OuterBox color="n1" className="bg-nasun-c6/50 mt-16">
           <div className="space-y-4 text-nasun-white/80 leading-relaxed">
             {philosophyParagraphs.map((paragraph, index) => (
               <p key={index}>{paragraph}</p>

@@ -130,26 +130,26 @@ export const RoadmapIntroSection = () => {
     {
       value: `${yearsBuilding}`,
       label: t("metrics.years"),
-      color: "bg-nasun-c3/20",
-      icon: <Calendar className="w-6 h-6 text-nasun-c3" />,
+      color: "bg-nasun-c4/20",
+      icon: <Calendar className="w-6 h-6 text-nasun-c4" />,
       delay: 0.1,
     },
     {
       value: `${communityCount}+`,
       label: t("metrics.community"),
-      color: "bg-nasun-c1/20",
-      icon: <Users className="w-6 h-6 text-nasun-c1" />,
+      color: "bg-nasun-c4/20",
+      icon: <Users className="w-6 h-6 text-nasun-c4" />,
       delay: 0.2,
     },
   ];
 
   return (
-    <SectionLayout className="!max-w-6xl gap-8 md:gap-10 xl:gap-12">
+    <SectionLayout className="!max-w-7xl gap-8 md:gap-10 xl:gap-12">
       <PageTitle as="h2" align="center">
         {t("title")}
       </PageTitle>
 
-      <OuterBox variant="default" className="bg-nasun-c6/40">
+      <OuterBox color="n1" className="">
         {/* Heading */}
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("intro.heading")}</h4>

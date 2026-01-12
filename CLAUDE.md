@@ -280,6 +280,14 @@ import { WalletProvider, WalletConnect, BalanceDisplay } from '@nasun/wallet-ui'
 <BalanceDisplay compact />
 ```
 
+**Disabled Features (2026-01-12):**
+
+| Feature | Status | Reason | Re-enable |
+|---------|--------|--------|-----------|
+| Add Hardware Key (Ledger) | Hidden | Not production ready | `WalletConnect.tsx` line ~810, ViewMode `ledger-connect` |
+
+Note: Ledger 관련 코드(`ledger/` 폴더, ViewMode, hooks)는 보존되어 있음. UI 버튼만 비활성화.
+
 ### @nasun/tsconfig
 
 공유 TypeScript 설정:

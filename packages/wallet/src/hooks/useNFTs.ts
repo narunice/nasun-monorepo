@@ -3,11 +3,13 @@
  * Query NFTs owned by the connected wallet (supports both regular wallet and zkLogin)
  */
 
+import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { getOwnedNFTs } from '../sui/nft';
-import type { NFTInfo, NFTQueryOptions } from '../types/nft';
+import type { NFTInfo, NFTQueryOptions, NFTSortBy } from '../types/nft';
+import { DEFAULT_NFT_SORT } from '../types/nft';
 
 // Query key prefix for NFT queries
 const NFT_QUERY_KEY = 'nasun-wallet-nfts';
@@ -17,6 +19,8 @@ export interface UseNFTsOptions extends NFTQueryOptions {
   enabled?: boolean;
   /** Refetch interval in milliseconds */
   refetchInterval?: number;
+  /** Sort order */
+  sortBy?: NFTSortBy;
 }
 
 export interface UseNFTsResult {
@@ -35,13 +39,57 @@ export interface UseNFTsResult {
 }
 
 /**
+ * Sort NFTs based on the given sort option
+ */
+function sortNFTs(nfts: NFTInfo[], sortBy: NFTSortBy): NFTInfo[] {
+  const sorted = [...nfts];
+
+  switch (sortBy) {
+    case 'newest':
+      // Sort by version descending (higher version = more recent)
+      return sorted.sort((a, b) => {
+        const versionA = BigInt(a.version);
+        const versionB = BigInt(b.version);
+        return versionB > versionA ? 1 : versionB < versionA ? -1 : 0;
+      });
+
+    case 'oldest':
+      // Sort by version ascending
+      return sorted.sort((a, b) => {
+        const versionA = BigInt(a.version);
+        const versionB = BigInt(b.version);
+        return versionA > versionB ? 1 : versionA < versionB ? -1 : 0;
+      });
+
+    case 'name_asc':
+      // Sort by name A-Z
+      return sorted.sort((a, b) => {
+        const nameA = a.display.name?.toLowerCase() || '';
+        const nameB = b.display.name?.toLowerCase() || '';
+        return nameA.localeCompare(nameB);
+      });
+
+    case 'name_desc':
+      // Sort by name Z-A
+      return sorted.sort((a, b) => {
+        const nameA = a.display.name?.toLowerCase() || '';
+        const nameB = b.display.name?.toLowerCase() || '';
+        return nameB.localeCompare(nameA);
+      });
+
+    default:
+      return sorted;
+  }
+}
+
+/**
  * Hook to query NFTs owned by the connected wallet
  * Supports both regular wallet and zkLogin
  */
 export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
   const { account, status } = useWallet();
   const { state: zkLoginState, isConnected: isZkConnected } = useZkLogin();
-  const { enabled = true, refetchInterval, limit, cursor } = options;
+  const { enabled = true, refetchInterval, limit, cursor, sortBy = DEFAULT_NFT_SORT } = options;
 
   // Use wallet address or zkLogin address
   const ownerAddress = account?.address || zkLoginState?.address;
@@ -62,8 +110,14 @@ export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
     staleTime: 10000, // 10 seconds (reduced from 30s for faster updates)
   });
 
+  // Sort NFTs client-side (Sui API doesn't support sorting)
+  const sortedData = useMemo(() => {
+    const rawData = query.data?.data || [];
+    return sortNFTs(rawData, sortBy);
+  }, [query.data?.data, sortBy]);
+
   return {
-    data: query.data?.data || [],
+    data: sortedData,
     isLoading: query.isLoading,
     error: query.error ? String(query.error) : null,
     hasNextPage: query.data?.hasNextPage || false,

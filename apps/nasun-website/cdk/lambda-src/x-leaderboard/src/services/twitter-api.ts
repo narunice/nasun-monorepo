@@ -577,16 +577,15 @@ export class TwitterApiService {
 
           console.log(`📄 [Page ${pageCount}] Fetching ${pageSize} tweets${nextToken ? ' (pagination_token: ' + nextToken.substring(0, 20) + '...)' : ''}`);
 
-          const tweets = await authClient.v2.userTimeline(userId, {
-            max_results: pageSize,
-            start_time: startTime,
-            end_time: endTime,
-            exclude: ['retweets'], // ✅ 리트윗만 제외, 답글 포함!
-            'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'lang', 'referenced_tweets', 'conversation_id'],
-            expansions: ['referenced_tweets.id'],
-            pagination_token: nextToken
-          });
-
+                      const tweets = await authClient.v2.userTimeline(userId, {
+                      max_results: pageSize,
+                      start_time: startTime,
+                      end_time: endTime,
+                      // exclude: ['retweets'], // ❌ X API 이슈 회피: 수동 필터링으로 전환
+                      'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'lang', 'referenced_tweets', 'conversation_id'],
+                      expansions: ['referenced_tweets.id'],
+                      pagination_token: nextToken
+                    });
           console.log(`[DEBUG] X API Response Meta: ${JSON.stringify(tweets.data.meta)}`);
 
           const pageTweets = tweets.data.data || [];
@@ -605,7 +604,12 @@ export class TwitterApiService {
 
         console.log(`🎯 [${authType}] 총 ${allTweets.length}개 트윗 조회 완료 (${pageCount} 페이지)`);
 
-        return allTweets.map((tweet: any) => {
+        return allTweets
+          .filter((tweet: any) => {
+            // 순수 리트윗 필터링
+            return !tweet.referenced_tweets?.some((ref: any) => ref.type === 'retweeted');
+          })
+          .map((tweet: any) => {
           /**
            * 트윗 분류 로직 (2025-10-28 수정):
            *
@@ -673,7 +677,7 @@ export class TwitterApiService {
               max_results: pageSize,
               start_time: startTime,
               end_time: endTime,
-              exclude: ['retweets'], // 리트윗만 제외
+              // exclude: ['retweets'], // ❌ X API 이슈 회피: 수동 필터링으로 전환
               'tweet.fields': ['created_at', 'public_metrics', 'author_id', 'lang', 'referenced_tweets', 'conversation_id'],
               expansions: ['referenced_tweets.id'],
               pagination_token: nextToken
@@ -695,7 +699,12 @@ export class TwitterApiService {
 
           console.log(`🎯 [Bearer Token] 총 ${allTweets.length}개 트윗 조회 완료 (${pageCount} 페이지)`);
 
-          return allTweets.map((tweet: any) => {
+          return allTweets
+            .filter((tweet: any) => {
+              // 순수 리트윗 필터링
+              return !tweet.referenced_tweets?.some((ref: any) => ref.type === 'retweeted');
+            })
+            .map((tweet: any) => {
             // 🔧 Fix: Quote Reply 지원 (referenced_tweets.type 확인)
             // Quote Tweet (Pure Quote + Quote Reply)은 답글이 아님
             const isQuoteTweet = tweet.referenced_tweets?.some(

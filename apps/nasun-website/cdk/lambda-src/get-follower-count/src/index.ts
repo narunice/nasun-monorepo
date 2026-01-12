@@ -9,8 +9,10 @@ import { TwitterApi } from "twitter-api-v2";
 const secretsClient = new SecretsManagerClient({ region: "ap-northeast-2" });
 
 // 환경 변수
-const TARGET_USERNAME = process.env.TARGET_USERNAME;
+const TARGET_USER_ID = process.env.TARGET_USER_ID || "1725466995565752320";
+const TARGET_USERNAME = process.env.TARGET_USERNAME; // For logging only
 const TWITTER_TOKENS_SECRET_NAME = process.env.TWITTER_TOKENS_SECRET_NAME || "nasun-twitter-tokens";
+const FALLBACK_COUNT = 1000;
 
 // 캐시 (Lambda 실행 간 유지)
 let cachedFollowerCount: number | null = null;
@@ -49,29 +51,27 @@ async function getTwitterSecrets(): Promise<TwitterSecrets> {
 }
 
 /**
- * Twitter API로 팔로워 수 조회
+ * Twitter API로 팔로워 수 조회 (User ID 기반 - 핸들 변경에 안전)
  */
 async function fetchFollowerCount(secrets: TwitterSecrets): Promise<number> {
-  if (!TARGET_USERNAME) {
-    throw new Error("TARGET_USERNAME environment variable is not set");
-  }
-
-  console.log(`[GET_FOLLOWER_COUNT] Fetching follower count for @${TARGET_USERNAME}`);
+  console.log(`[GET_FOLLOWER_COUNT] Fetching follower count for User ID: ${TARGET_USER_ID}`);
 
   // OAuth 2.0 방식으로 API 호출 (User Context - X API 정책 변경으로 필수)
   const client = new TwitterApi(secrets.oauth2UserAccessToken);
 
-  const user = await client.v2.userByUsername(TARGET_USERNAME, {
-    "user.fields": ["public_metrics"],
+  // User ID 기반 조회 (핸들 변경에도 안전)
+  const user = await client.v2.user(TARGET_USER_ID, {
+    "user.fields": ["public_metrics", "username"],
   });
 
   if (!user.data) {
-    throw new Error(`User not found: @${TARGET_USERNAME}`);
+    throw new Error(`User not found: ID ${TARGET_USER_ID}`);
   }
 
   const followersCount = user.data.public_metrics?.followers_count ?? 0;
+  const username = user.data.username || TARGET_USERNAME || "unknown";
 
-  console.log(`[GET_FOLLOWER_COUNT] @${TARGET_USERNAME} has ${followersCount} followers`);
+  console.log(`[GET_FOLLOWER_COUNT] @${username} (ID: ${TARGET_USER_ID}) has ${followersCount} followers`);
 
   return followersCount;
 }
@@ -144,12 +144,17 @@ export const handler = async () => {
       };
     }
 
+    // Return fallback count instead of error (never show 0)
+    console.log(`[GET_FOLLOWER_COUNT] Returning fallback value: ${FALLBACK_COUNT}`);
     return {
-      statusCode: 500,
+      statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
-        error: "Failed to fetch follower count",
-        message: err instanceof Error ? err.message : "Unknown error",
+        count: FALLBACK_COUNT,
+        username: TARGET_USERNAME || "Nasun_io",
+        cached: false,
+        fallback: true,
+        updatedAt: new Date().toISOString(),
       }),
     };
   }

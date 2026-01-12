@@ -9,15 +9,13 @@ function NarrativeSection() {
   return (
     <SectionLayout className="">
       <div className="max-w-4xl mx-auto">
-        <SectionTitle as="h3" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
           {t("narrative.title")}
         </SectionTitle>
 
         {/* Animation Series */}
         <div className="mb-8 md:mb-10 lg:mb-12">
-          <h4 className="text-xl font-semibold mb-4 md:mb-6">
-            {t("narrative.animation.title")}
-          </h4>
+          <h4 className="text-xl font-semibold mb-4 md:mb-6">{t("narrative.animation.title")}</h4>
           <div className="space-y-4 md:space-y-6">
             <p>{t("narrative.animation.p1")}</p>
             <p>{t("narrative.animation.p2")}</p>

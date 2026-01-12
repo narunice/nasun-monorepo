@@ -167,7 +167,7 @@ async function main() {
           let name = 'Unknown';
 
           if (meResponse.ok) {
-            const meData = await meResponse.json();
+            const meData = await meResponse.json() as { data: { username: string; name: string; id: string } };
             username = meData.data.username;
             name = meData.data.name;
             const userId = meData.data.id;

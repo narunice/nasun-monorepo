@@ -58,6 +58,9 @@ export { AddressBookPanel } from './AddressBookPanel';
 // Payment components
 export { ReceivePanel } from './ReceivePanel';
 
+// Transaction History components
+export { TransactionHistoryPanel } from './TransactionHistoryPanel';
+
 // zkLogin components
 export { SocialLoginButtons, SocialLoginIconButtons } from './SocialLoginButtons';
 export type { SocialLoginButtonsProps } from './SocialLoginButtons';
