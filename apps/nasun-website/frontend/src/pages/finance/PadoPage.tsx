@@ -4,13 +4,10 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import PadoHeroSectionSkeleton from "../../components/app/finance/pado/PadoHeroSectionSkeleton";
 
-// Lazy load all section components
+// Lazy load section components (3 sections total)
 const PadoHeroSection = lazy(() => import("../../components/app/finance/pado/PadoHeroSection"));
 const PadoOverviewSection = lazy(
   () => import("../../components/app/finance/pado/PadoOverviewSection")
-);
-const PadoFeaturesArchitectureSection = lazy(
-  () => import("../../components/app/finance/pado/PadoFeaturesArchitectureSection")
 );
 const PadoComplianceSection = lazy(
   () => import("../../components/app/finance/pado/PadoComplianceSection")
@@ -36,7 +33,6 @@ export default function PadoPage() {
     // Preload critical sections
     await Promise.all([
       import("../../components/app/finance/pado/PadoOverviewSection"),
-      import("../../components/app/finance/pado/PadoFeaturesArchitectureSection"),
       import("../../components/app/finance/pado/PadoComplianceSection"),
     ]);
 
@@ -64,7 +60,6 @@ export default function PadoPage() {
         {isVideoReady && (
           <>
             <PadoOverviewSection />
-            <PadoFeaturesArchitectureSection />
             <PadoComplianceSection />
           </>
         )}

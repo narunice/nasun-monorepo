@@ -5,21 +5,15 @@ import { SectionLayout } from "../../../components/layout/SectionLayout";
 import ErrorBoundary from "../../../components/layout/ErrorBoundary";
 import { PageTitle } from "@/components/ui/PageTitle";
 
-// Lazy load section components
-const PlanningIntentSection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/PlanningIntentSection")
-);
-const SummarySection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/SummarySection")
+// Lazy load section components (3 sections total)
+const OverviewSection = lazy(
+  () => import("../../../components/app/ips/gensol/spectraHeist/OverviewSection")
 );
 const CharactersSection = lazy(
   () => import("../../../components/app/ips/gensol/spectraHeist/CharactersSection")
 );
-const CreativeChallengeSection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/CreativeChallengeSection")
-);
-const CommercializationSection = lazy(
-  () => import("../../../components/app/ips/gensol/spectraHeist/CommercializationSection")
+const ProductionSection = lazy(
+  () => import("../../../components/app/ips/gensol/spectraHeist/ProductionSection")
 );
 
 export default function SpectraHeistPage() {
@@ -33,11 +27,9 @@ export default function SpectraHeistPage() {
         </SectionLayout>
 
         <Suspense fallback={null}>
-          <PlanningIntentSection />
-          <SummarySection />
+          <OverviewSection />
           <CharactersSection />
-          <CreativeChallengeSection />
-          <CommercializationSection />
+          <ProductionSection />
         </Suspense>
       </PageLayout>
     </ErrorBoundary>
