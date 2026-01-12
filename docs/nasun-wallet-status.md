@@ -1,12 +1,17 @@
-# 나선 지갑 (Nasun Wallet) 구현 상태 문서
+# Nasun Account OS - 구현 상태 문서
 
-> 최종 업데이트: 2026-01-11
+> 최종 업데이트: 2026-01-12 (P2-4 ZK-ID, P2-5 Clear Signing 완료)
 
 ## 소개
 
-나선 모노레포의 앱들은 나선 지갑 패키지인 `@nasun/wallet`과 `@nasun/wallet-ui`를 공통으로 사용하여 지갑 기능을 제공합니다.
+나선 모노레포의 앱들은 **Nasun Account OS** 패키지인 `@nasun/wallet`과 `@nasun/wallet-ui`를 공통으로 사용하여 지갑 기능을 제공합니다.
 
-나선 지갑은 나선 블록체인을 위한 안전하고 기능이 풍부한 지갑 라이브러리로, **코어 로직**과 **UI 컴포넌트**를 분리하여 모듈화된 구조를 가지고 있습니다.
+**Nasun Account OS**는 단순 지갑을 넘어 **Account Execution Layer for Web3**를 지향합니다.
+- **SignerAdapter 추상화**: Local/zkLogin/EVM/AA를 동일 인터페이스로 통합
+- **멀티체인 지원**: Move (Nasun) + EVM 11개 체인
+- **Growth Engine**: Nasun Link v2를 통한 온보딩/캠페인 인프라
+
+아키텍처적으로 **2026년 상위권 지갑**의 내부 구조를 갖추고 있습니다 (A+ 등급).
 
 ---
 
@@ -60,7 +65,7 @@
 
 ```
 packages/wallet/src/
-├── hooks/                    # React Hooks (15개)
+├── hooks/                    # React Hooks (23개)
 │   ├── useWallet.ts          # 코어 상태 관리 (Zustand)
 │   ├── useBalance.ts         # 네이티브 토큰 잔액
 │   ├── useMultiBalance.ts    # 멀티 토큰 잔액
@@ -75,33 +80,88 @@ packages/wallet/src/
 │   ├── useNetwork.ts         # 네트워크 감지
 │   ├── useTokenFaucet.ts     # 토큰 Faucet
 │   ├── useZkLogin.ts         # zkLogin 인증
-│   └── usePasskey.ts         # WebAuthn 패스키
-├── core/                     # 코어 로직 (5개)
+│   ├── usePasskey.ts         # WebAuthn 패스키
+│   ├── useSigner.ts          # [P1] 통합 Signer 훅
+│   ├── useChain.ts           # [P1] 체인 선택
+│   ├── useEVMBalance.ts      # [P1] EVM 잔액 조회
+│   ├── useEVMTransaction.ts  # [P1] EVM 트랜잭션
+│   ├── useWalletConnect.ts   # [P1] WalletConnect v2
+│   ├── useSmartAccount.ts    # [P1] ERC-4337 Smart Account
+│   ├── useNasunLink.ts       # [P1] Nasun Link v2
+│   ├── useLedger.ts          # [P2-3] Ledger 연동
+│   └── useZKID.ts            # [P2-4] ZK-ID 훅
+├── core/                     # 코어 로직
 │   ├── crypto.ts             # 암호화 (니모닉, 암호화)
 │   ├── keystore.ts           # 키 저장소 (AES-256-GCM)
 │   ├── rate-limit.ts         # 브루트포스 보호
 │   ├── zklogin.ts            # zkLogin 유틸리티
-│   └── passkey.ts            # WebAuthn 유틸리티
-├── sui/                      # Sui 블록체인 유틸리티 (5개)
+│   ├── passkey.ts            # WebAuthn 유틸리티
+│   ├── signer/               # [P1] Signer 추상화
+│   │   ├── types.ts          # SignerAdapter 인터페이스
+│   │   ├── SignerManager.ts  # Signer 상태 관리
+│   │   └── adapters/         # Signer 구현체
+│   │       ├── LocalSigner.ts
+│   │       ├── ZkLoginSigner.ts
+│   │       ├── EVMSigner.ts
+│   │       └── SmartAccountSigner.ts
+│   ├── evm/                  # [P1] EVM 유틸리티
+│   │   ├── client.ts         # viem PublicClient
+│   │   ├── wallet.ts         # BIP-44 키 파생
+│   │   └── keystore.ts       # EVM 키 저장소
+│   ├── walletconnect/        # [P1] WalletConnect v2
+│   │   ├── types.ts
+│   │   ├── client.ts
+│   │   ├── namespaces.ts
+│   │   └── handlers.ts
+│   ├── aa/                   # [P1] Account Abstraction
+│   │   ├── types.ts
+│   │   ├── account.ts
+│   │   ├── bundler.ts
+│   │   └── paymaster.ts
+│   ├── link/                 # [P1] Nasun Link v2
+│   │   ├── types.ts
+│   │   ├── crypto.ts
+│   │   ├── generator.ts
+│   │   └── claim.ts
+│   ├── zkid/                 # [P2-4] ZK-ID Module
+│   │   ├── types.ts          # ZKClaimType, Prover 인터페이스
+│   │   ├── prover.ts         # 증명 생성 (Local/Remote)
+│   │   ├── nullifier.ts      # Domain Separation 무효화자
+│   │   ├── verifier.ts       # 증명 검증
+│   │   ├── credential.ts     # 암호화된 크레덴셜 저장
+│   │   └── index.ts
+│   ├── clear-signing/        # [P2-5] Clear Signing
+│   │   ├── types.ts          # 트랜잭션 디코딩 타입
+│   │   ├── decoder.ts        # Move/EVM 디코더
+│   │   ├── formatter.ts      # 휴먼 리더블 포맷터
+│   │   └── index.ts
+│   └── ledger/               # [P2-3] Ledger Integration
+│       ├── types.ts
+│       ├── transport.ts
+│       ├── sui-ledger.ts
+│       └── evm-ledger.ts
+├── sui/                      # Sui 블록체인 유틸리티
 │   ├── client.ts             # RPC 클라이언트
 │   ├── faucet.ts             # 네이티브 토큰 Faucet
 │   ├── tokenFaucet.ts        # 멀티 토큰 Faucet
 │   ├── staking.ts            # 스테이킹 RPC
 │   └── nft.ts                # NFT 쿼리 & 전송
-├── config/                   # 설정 (3개)
+├── config/                   # 설정
 │   ├── tokens.ts             # 토큰 레지스트리
 │   ├── networks.ts           # 네트워크 정의
+│   ├── chains.ts             # [P1] 멀티체인 설정 (11개 체인)
 │   └── index.ts              # 설정 Export
-├── types/                    # TypeScript 타입 (6개)
+├── types/                    # TypeScript 타입
 │   ├── index.ts              # 메인 타입
 │   ├── staking.ts            # 스테이킹 타입
 │   ├── nft.ts                # NFT 타입
 │   ├── zklogin.ts            # zkLogin 타입
 │   ├── passkey.ts            # 패스키 타입
 │   └── schemas.ts            # Zod 스키마
-├── stores/                   # Zustand 스토어 (1개)
-│   └── zkLoginStore.ts       # zkLogin 상태 관리
-├── __tests__/                # 단위 테스트 (11개 파일)
+├── stores/                   # Zustand 스토어
+│   ├── zkLoginStore.ts       # zkLogin 상태 관리
+│   └── zkidStore.ts          # [P2-4] ZK-ID 상태 관리
+├── __tests__/                # 단위 테스트 (16개 파일, 541개 테스트)
 └── index.ts                  # 메인 Export
 ```
 
@@ -210,7 +270,99 @@ packages/wallet-ui/src/
 | Nasun Devnet | ✅ 완료 | 기본 네트워크 | Chain ID: 6681cdfd |
 | 네트워크 감지 | ✅ 완료 | `useNetwork()` | 동적 감지 |
 | 네트워크 전환기 | ✅ 완료 | `NetworkSelector` | UI 드롭다운 |
-| 멀티체인 | ⏳ 계획됨 | Phase 9 | Sui 메인넷 지원 예정 |
+| **멀티체인 (EVM)** | ✅ 완료 | `useChain()` | [P1] 11개 체인 지원 |
+
+### [P1] Signer 추상화
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| SignerAdapter 인터페이스 | ✅ 완료 | `core/signer/types.ts` | 통합 서명 인터페이스 |
+| LocalSigner | ✅ 완료 | Ed25519 키페어 | Sui/Move용 |
+| ZkLoginSigner | ✅ 완료 | Google OAuth | 기존 zkLogin 통합 |
+| EVMSigner | ✅ 완료 | viem secp256k1 | EVM 체인용 |
+| SmartAccountSigner | ✅ 완료 | ERC-4337 | AA용 |
+| SignerManager | ✅ 완료 | 싱글톤 관리자 | 활성 Signer 관리 |
+| useSigner Hook | ✅ 완료 | React 통합 | 자동 Signer 등록 |
+
+### [P1] 멀티체인 (EVM) 지원
+
+| 체인 | Chain ID | AA 지원 | 테스트넷 |
+|------|----------|---------|---------|
+| Ethereum | 1 | ✅ | - |
+| Base | 8453 | ✅ | - |
+| Arbitrum | 42161 | ✅ | - |
+| Sepolia | 11155111 | ✅ | ✅ |
+| Base Sepolia | 84532 | ✅ | ✅ |
+| Arbitrum Sepolia | 421614 | ✅ | ✅ |
+| Optimism Sepolia | 11155420 | ✅ | ✅ |
+| Polygon Amoy | 80002 | ✅ | ✅ |
+| Linea Sepolia | 59141 | ✅ | ✅ |
+| Holesky | 17000 | ❌ | ✅ |
+
+### [P1] WalletConnect v2
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| SignClient 초기화 | ✅ 완료 | `WalletConnectClient` | 싱글톤 |
+| 세션 관리 | ✅ 완료 | 승인/거부/연결 해제 | CAIP-10 준수 |
+| EIP-155 네임스페이스 | ✅ 완료 | personal_sign, eth_sendTransaction 등 | EVM 지원 |
+| Sui 네임스페이스 | ✅ 완료 | sui_signTransaction 등 | Move 지원 |
+| useWalletConnect Hook | ✅ 완료 | React 통합 | 이벤트 기반 |
+
+### [P1] EVM Account Abstraction
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| SimpleSmartAccount | ✅ 완료 | ERC-4337 | Pimlico 연동 |
+| Bundler 클라이언트 | ✅ 완료 | `core/aa/bundler.ts` | UserOp 전송 |
+| Paymaster | ✅ 완료 | `core/aa/paymaster.ts` | 가스 대납 |
+| useSmartAccount Hook | ✅ 완료 | React 통합 | 배포/전송 |
+
+### [P1] Nasun Link v2
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| 링크 타입 | ✅ 완료 | single, multi, first-n | 다양한 수령 방식 |
+| 암호화 | ✅ 완료 | AES-256-GCM + PBKDF2 | URL-safe secret |
+| 링크 생성 | ✅ 완료 | `createLink()` | Ephemeral keypair |
+| 클레임 검증 | ✅ 완료 | `validateClaim()` | 상태/만료/조건 |
+| 비밀번호 조건 | ✅ 완료 | SHA-256 해시 | 조건부 클레임 |
+| useNasunLink Hook | ✅ 완료 | React 통합 | 생성/클레임/상태 |
+
+### [P2-3] Ledger Integration
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| WebHID Transport | ✅ 완료 | `createTransport()` | 브라우저 지원 |
+| Sui Ledger Client | ✅ 완료 | `createSuiLedgerClient()` | BIP-44 경로 |
+| EVM Ledger Client | ✅ 완료 | `createEvmLedgerClient()` | EIP-155 서명 |
+| LedgerSigner | ✅ 완료 | SignerAdapter 구현 | 통합 인터페이스 |
+| useLedger Hook | ✅ 완료 | React 통합 | 연결/서명/상태 |
+
+### [P2-4] ZK-ID Module
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| Proof Capability 추상화 | ✅ 완료 | `ZKClaimType` | age/kyc/unique/custom |
+| Domain Separation | ✅ 완료 | `nullifier.ts` | cross-context 방지 |
+| Prover 추상화 | ✅ 완료 | `ZKProver` 인터페이스 | Local/Remote/Hybrid |
+| ClaimContext | ✅ 완료 | 캠페인/체인/시간 바운딩 | 링크 v2 연동 |
+| 크레덴셜 암호화 | ✅ 완료 | AES-256-GCM | localStorage 저장 |
+| Nullifier Registry | ✅ 완료 | InMemory/API | 재사용 방지 |
+| useZKID Hook | ✅ 완료 | React 통합 | proveAge/KYC/Unique |
+| Link Integration | ✅ 완료 | `validateClaimWithZKID()` | zkid-age/kyc/unique 조건 |
+
+### [P2-5] Clear Signing
+
+| 기능 | 상태 | 구현체 | 비고 |
+|------|------|--------|------|
+| Move TX 디코딩 | ✅ 완료 | `decodeTx()` | PTB 구조 파싱 |
+| EVM TX 디코딩 | ✅ 완료 | `decodeTx()` | RLP/EIP-1559 지원 |
+| 휴먼 리더블 포맷 | ✅ 완료 | `formatTransaction()` | 액션/요약/가스 |
+| 리스크 평가 | ✅ 완료 | `assessRisk()` | 4단계 (low~critical) |
+| 무제한 Approval 경고 | ✅ 완료 | `RiskFactor` | critical 리스크 |
+| 대규모 전송 경고 | ✅ 완료 | 설정 가능 임계값 | USD 기준 |
+| 시뮬레이션 통합 | ✅ 완료 | `SimulationResult` | 잔액 변화 표시 |
 
 ---
 
@@ -275,23 +427,29 @@ packages/wallet-ui/src/
 
 | 항목 | 수치 |
 |------|------|
-| 총 테스트 | 103+ |
-| 테스트 파일 | 11개 |
-| 테스트 LOC | ~1,964줄 |
+| 총 테스트 | **541** |
+| 테스트 파일 | 16개 |
+| 테스트 LOC | ~5,500줄 |
 
 **모듈별 분류:**
 
 | 모듈 | 테스트 수 |
 |------|----------|
-| Crypto | 18 (암호화, 니모닉, 키생성) |
+| Crypto | 15 (암호화, 니모닉, 키생성) |
 | Keystore | 17 (저장소, 가져오기, 내보내기) |
-| Tokens | 17 (레지스트리, 커스텀 토큰) |
-| Client | 26 (잔액 쿼리, 주소 유틸) |
-| NFT | 20 (쿼리, 전송, 표시) |
-| Rate Limiting | ~10 |
-| Address Book | ~10 |
-| Staking | ~8 |
-| Token Transaction | ~8 |
+| Tokens | 15 (레지스트리, 커스텀 토큰) |
+| Client | 30 (잔액 쿼리, 주소 유틸) |
+| NFT | 23 (쿼리, 전송, 표시) |
+| Rate Limiting | 22 |
+| Address Book | 18 |
+| Staking | 14 |
+| Token Transaction | 20 |
+| **Account Abstraction** | **86** |
+| **Nasun Link v2** | **54** |
+| **Payment** | **43** |
+| **Ledger** | **32** |
+| **ZK-ID** | **79** |
+| **Clear Signing** | **70** |
 | Sanity | 3 |
 
 ### @nasun/wallet-ui 테스트 스위트
@@ -326,7 +484,7 @@ pnpm test:coverage
 
 ### @nasun/wallet 주요 Export
 
-**Hooks (15개):**
+**Hooks (23개):**
 
 ```typescript
 // 코어
@@ -338,8 +496,14 @@ useNFTs, useNFTTransfer
 // 스테이킹
 useValidators, useStaking, useStakeTransaction
 
-// 기타
+// 보안 & 인증
 useAddressBook, useNetwork, useTokenFaucet, useZkLogin, usePasskey
+
+// [P1] Signer & 멀티체인
+useSigner, useChain, useEVMBalance, useEVMTransaction
+
+// [P1] WalletConnect & AA & Link
+useWalletConnect, useSmartAccount, useNasunLink
 ```
 
 **유틸리티 (50+개):**
@@ -423,12 +587,12 @@ PasskeyCredential, PasskeyWalletState
 - **설명**: 사용자당 여러 지갑 계정 관리
 - **영향**: 급하지 않음 - 현재 단일 지갑 모델
 
-### 3. 멀티체인 지원
+### 3. ~~멀티체인 지원~~ (완료)
 
-- **상태**: ⏳ 계획됨 (Phase 9)
-- **설명**: EVM 체인, Sui 메인넷 호환성
-- **현재**: Nasun Devnet만 지원
-- **영향**: 급하지 않음 - Devnet 우선 전략
+- **상태**: ✅ 완료 (P1)
+- **설명**: EVM 11개 체인 지원 완료
+- **구현**: Ethereum, Base, Arbitrum + 8개 테스트넷
+- **참고**: Solana, Sui 메인넷은 향후 확장 예정
 
 ### 4. 세션 지속성 보안
 
