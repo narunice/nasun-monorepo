@@ -33,6 +33,15 @@ tweet.read users.read follows.read offline.access like.read list.read
 - `like.read`: Required for Liking Users API
 - `offline.access`: Required for Refresh Token
 
+### Token Validity Periods
+
+| Token Type | Validity | Renewal Method |
+|------------|----------|----------------|
+| OAuth 2.0 Access Token | **2 hours** | Auto-refresh via Refresh Token |
+| OAuth 2.0 Refresh Token | **6 months** | Manual re-authentication |
+| OAuth 1.0a Tokens | Permanent (until revoked) | Manual reissue |
+| Bearer Token | Permanent (until app deleted) | Regenerate in X Developer Portal |
+
 ---
 
 ## Checklist: OAuth 2.0 Token Re-authentication
@@ -212,6 +221,23 @@ If Secrets Manager update fails after receiving new tokens:
 - Old refresh token is already invalidated
 - New refresh token is lost
 - **Manual re-authentication required**
+
+### CloudWatch Monitoring
+
+**Lambda Function**: `nasun-refresh-oauth2-token`
+- Execution: EventBridge scheduler triggers every 90 minutes
+- Refresh condition: Access Token expires within 60 minutes
+
+**Alarms**:
+- `NASUN-OAuth토큰-갱신실패` (Development)
+- `nasun-oauth2-token-refresh-failure` (Both)
+- `nasun-oauth2-invalid-refresh-token` (Both)
+- Trigger: 2 consecutive errors within 10 minutes
+- Action: SNS Topic `nasun-monitoring-alerts`
+
+**Dashboard**: `NASUN-Operations-Monitoring`
+- OAuth 2.0 Token Refresh execution status
+- Token refresh execution duration
 
 ---
 
