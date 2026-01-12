@@ -15,7 +15,7 @@ import riderStudioEN from "../assets/locales/en/ipsRiderStudio.json";
 import wePopEN from "../assets/locales/en/wePop.json";
 import genSolEN from "../assets/locales/en/gensol.json";
 import spectraEN from "../assets/locales/en/spectra.json";
-import spectraHeistEN from "../assets/locales/en/spectraHeist.json";
+import heistEN from "../assets/locales/en/heist.json";
 
 import roadmapEN from "../assets/locales/en/roadmap.json";
 import opportunitiesEN from "../assets/locales/en/opportunities.json";
@@ -87,7 +87,7 @@ declare module "i18next" {
       wePop: typeof wePopEN;
       genSol: typeof genSolEN;
       spectra: typeof spectraEN;
-      spectraHeist: typeof spectraHeistEN;
+      heist: typeof heistEN;
 
       opportunities: typeof opportunitiesEN;
       team: typeof teamEN;

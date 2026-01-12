@@ -13,9 +13,9 @@ export const filmsContent = {
     },
   },
 
-  spectraHeist: {
+  heist: {
     category: "ANIMATION SERIES 001",
-    title: "THE SPECTRA HEIST",
+    title: "THE HEIST",
     paragraphs: [
       "Josen embarks on a desperate mission to save his little girl, Naro, who has been kidnapped by sinister forces in order to blackmail him into stealing a rare form of Spectra energy from the Dorakken Empire. To accomplish this, Josen must enlist the help of the most infamous criminal in the Ark Galaxy, known as the Kid.",
       "In a thrilling, suspenseful story following the footsteps of classic action films like 'Taken' and the 'Man from Nowhere,' Josen and the Kid become interlocked in a battle of wits and strength spiraling into a shocking conclusion as they attempt to pull off the ultimate heist.",

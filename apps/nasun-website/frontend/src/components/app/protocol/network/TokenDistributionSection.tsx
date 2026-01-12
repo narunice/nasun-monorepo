@@ -10,6 +10,7 @@ import {
   type DistributionSubItem,
 } from "../../../../constants/pageContent/vision";
 import { useTokenChart } from "./TokenDistribution/useTokenChart";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 // Chart.js 등록
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
@@ -94,53 +95,56 @@ function TokenDistributionSection() {
 
   return (
     <SectionLayout className="!max-w-6xl">
-      <PageTitle as="h2" align="center">
-        {t("distribution.heading")}
-      </PageTitle>
+      <FadeInUp>
+        <PageTitle as="h2" align="center">
+          {t("distribution.heading")}
+        </PageTitle>
 
-      {/* Main Container */}
+        {/* Main Container */}
 
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
-        {/* Chart */}
-        <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
-          <div className="relative h-[340px] md:h-[460px]">
-            <Doughnut ref={chartRef} data={chartData} options={chartOptions} />
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+          {/* Chart */}
+          <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
+            <div className="relative h-[340px] md:h-[460px]">
+              <Doughnut ref={chartRef} data={chartData} options={chartOptions} />
 
-            {/* Center Text */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <p className="text-nasun-white/80 uppercase tracking-wider">
-                {t("distribution.supply")}
-              </p>
-              <h6 className="text-nasun-white">10,000,000,000</h6>
-              <p className="text-nasun-white/80">NSN</p>
+              {/* Center Text */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                <p className="text-nasun-white/80 uppercase tracking-wider">
+                  {t("distribution.supply")}
+                </p>
+                <h6 className="text-nasun-white">10,000,000,000</h6>
+                <p className="text-nasun-white/80">NSN</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Labels */}
-        <div className="w-full lg:w-1/2 space-y-3">
-          {/* Subheading */}
-          <h6 className="text-nasun-white/80 font-medium  uppercase tracking-wider pl-4">
-            {t("distribution.subheading")}
-          </h6>
-          {distributionData.map((item, index) => {
-            return (
-              <DistributionLabel
-                key={item.name}
-                title={translatedLabels[index]}
-                amount={item.amount}
-                percentage={item.value}
-                color={colors[index]?.border || "#ffffff"}
-              />
-            );
-          })}
+          {/* Labels */}
+          <div className="w-full lg:w-1/2 space-y-3">
+            {/* Subheading */}
+            <h6 className="text-nasun-white/80 font-medium  uppercase tracking-wider pl-4">
+              {t("distribution.subheading")}
+            </h6>
+            {distributionData.map((item, index) => {
+              return (
+                <DistributionLabel
+                  key={item.name}
+                  title={translatedLabels[index]}
+                  amount={item.amount}
+                  percentage={item.value}
+                  color={colors[index]?.border || "#ffffff"}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-      {/* Bottom Description */}
-      <p className="text-center text-nasun-white/80 max-w-3xl mx-auto mt-16 whitespace-pre-line ">
-        {t("distribution.description_bottom")}
-      </p>
+      </FadeInUp>
+      <FadeInUp>
+        {/* Bottom Description */}
+        <p className="text-center text-nasun-white/80 max-w-3xl mx-auto mt-16 whitespace-pre-line ">
+          {t("distribution.description_bottom")}
+        </p>
+      </FadeInUp>
     </SectionLayout>
   );
 }
