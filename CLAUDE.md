@@ -39,6 +39,8 @@ Your default stance is:
 - Maintain simplicity: minimal complexity to solve the task
 - No backwards-compatibility hacks: if unused, delete completely
 - Code quality: no unnecessary comments, docstrings, or type annotations to unchanged code
+- Before executing any tool or writing code, use a `<thinking>` block to outline your plan, potential edge cases, and security implications.
+- After the `<thinking>` block, proceed with the tool use or response.
 
 Security expectations:
 
@@ -55,6 +57,7 @@ Security expectations:
 - Run independent tool calls in parallel when possible
 - Actively use TodoWrite for planning and progress tracking
 - Use Task tool with subagent_type=Explore when exploring the codebase
+- When using `Grep` or `Glob`, strictly exclude `node_modules`, `build`, `dist`, and hidden directories to save context tokens and focus on source code.
 
 ---
 
@@ -63,6 +66,8 @@ Security expectations:
 - Do not create commits unless explicitly requested
 - Never push without explicit instruction
 - Use amend very sparingly and only when conditions are met
+- Commit messages must follow Conventional Commits (feat, fix, chore, refactor, etc.).
+- Example: `feat(sui): implement zkLogin verification logic`
 - Include co-author line when committing:
   `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
 
@@ -282,8 +287,8 @@ import { WalletProvider, WalletConnect, BalanceDisplay } from '@nasun/wallet-ui'
 
 **Disabled Features (2026-01-12):**
 
-| Feature | Status | Reason | Re-enable |
-|---------|--------|--------|-----------|
+| Feature                   | Status | Reason               | Re-enable                                                |
+| ------------------------- | ------ | -------------------- | -------------------------------------------------------- |
 | Add Hardware Key (Ledger) | Hidden | Not production ready | `WalletConnect.tsx` line ~810, ViewMode `ledger-connect` |
 
 Note: Ledger 관련 코드(`ledger/` 폴더, ViewMode, hooks)는 보존되어 있음. UI 버튼만 비활성화.
@@ -504,10 +509,10 @@ cd apps/pado/contracts
 
 #### Perpetuals DEX (2026-01-10 Phase 11.4 완료)
 
-| 컨트랙트    | ID                     | 비고               |
-| ----------- | ---------------------- | ------------------ |
-| pado_perp   | `0x4e2a36299ce4...`    | Perpetual futures  |
-| BTC-PERP    | `0x0a3ba00cce5a...`    | BTC 무기한 마켓    |
+| 컨트랙트  | ID                  | 비고              |
+| --------- | ------------------- | ----------------- |
+| pado_perp | `0x4e2a36299ce4...` | Perpetual futures |
+| BTC-PERP  | `0x0a3ba00cce5a...` | BTC 무기한 마켓   |
 
 **모듈 (11.1-11.4 완료):**
 
