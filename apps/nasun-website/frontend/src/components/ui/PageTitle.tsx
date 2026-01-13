@@ -35,7 +35,7 @@ export const PageTitle: React.FC<PageTitleProps> = ({
   const alignmentClass = align === "center" ? "text-center" : "text-left";
 
   return (
-    <div className="flex flex-col gap-3 mt-12 mb-6 md:mb-8 lg:mb-10 xl:mb-12">
+    <div className="flex flex-col mt-12 mb-6 md:mb-8 lg:mb-10 xl:mb-12">
       <Component
         className={`${alignmentClass} uppercase font-medium ${textColor} ${className}`.trim()}
       >

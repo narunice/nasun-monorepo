@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import { SectionTitle } from "../../../ui/SectionTitle";
-import { OuterBox } from "../../../ui/OuterBox";
-import { Button } from "../../../ui/button";
+import { SectionLayout } from "../../layout/SectionLayout";
+import { SectionTitle } from "../../ui/SectionTitle";
+import { OuterBox } from "../../ui/OuterBox";
+import { Button } from "../../ui/button";
 import { Map, Compass } from "lucide-react";
 
 interface PipelineStep {

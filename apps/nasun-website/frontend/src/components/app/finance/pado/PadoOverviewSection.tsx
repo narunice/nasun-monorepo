@@ -31,106 +31,106 @@ function PadoOverviewSection() {
   }) as string[];
 
   return (
-    <SectionLayout className="">
-      <div className="max-w-5xl mx-auto">
-        {/* ========== MAIN TITLE ========== */}
-        <PageTitle as="h2" className=" uppercase mb-2 md:mb-3 lg:mb-4">
-          {t("main.title")}
-        </PageTitle>
+    <SectionLayout className="!pt-0 !max-w-6xl">
+      {/* ========== MAIN TITLE ========== */}
+      <PageTitle as="h2">{t("main.title")}</PageTitle>
 
-        {/* Subtitle Box */}
-        <OuterBox color="n1" className="mb-8 md:mb-10 lg:mb-12">
-          <p className="text-nasun-white font-medium text-lg md:text-xl text-center">
-            {t("main.subtitle")}
-          </p>
-          <p className="text-nasun-white/80 max-w-[650px] mx-auto text-base md:text-lg text-center mt-3">
-            {t("main.tagline")}
-          </p>
-          <Button
-            variant="defaultReverse"
-            size="xl"
-            className="flex w-fit items-center gap-2 mt-4 mx-auto"
-            asChild
-          >
-            <a href="https://staging.pado.finance/" target="_blank" rel="noopener noreferrer">
-              Pado Open Alpha
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </Button>
-        </OuterBox>
+      {/* Subtitle Box */}
+      <OuterBox color="w1" padding="md" className="mb-8 md:mb-10 lg:mb-12">
+        <p className="text-nasun-white font-medium text-lg md:text-xl text-center">
+          {t("main.subtitle")}
+        </p>
+        <p className="max-w-[650px] mx-auto text-base md:text-lg text-center mt-3">
+          {t("main.tagline")}
+        </p>
+        <Button
+          variant="c1"
+          size="lg"
+          className="flex w-fit items-center gap-2 mt-4 mx-auto"
+          asChild
+        >
+          <a href="https://staging.pado.finance/" target="_blank" rel="noopener noreferrer">
+            Pado Open Alpha
+            <ExternalLink className="w-4 h-4 ml-1" />
+          </a>
+        </Button>
+      </OuterBox>
 
-        {/* ========== OVERVIEW SECTION (1-4) ========== */}
+      {/* ========== OVERVIEW SECTION (1-4) ========== */}
 
-        {/* 1. Overview Section */}
-        <div className="mb-8 md:mb-10 lg:mb-12 ">
-          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
+      {/* 1. Overview Section */}
+      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+        <section>
+          <SectionTitle as="h4" className="uppercase ">
             {t("main.overview.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">{t("main.overview.content")}</p>
-            <p className="text-nasun-white/80">{t("main.overview.p2")}</p>
-            <p className="text-nasun-white/80">{t("main.overview.p3")}</p>
+          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
+            <p className="">{t("main.overview.content")}</p>
+            <p className="">{t("main.overview.p2")}</p>
+            <p className="">{t("main.overview.p3")}</p>
           </div>
-        </div>
+        </section>
 
         {/* 2. Account Model and User Access */}
-        <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
+        <section>
+          <SectionTitle as="h4" className="uppercase ">
             {t("main.accountModel.title")}
           </SectionTitle>
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.accountModel.subtitle")}</h5>
-            <p className="text-nasun-white/80">{t("main.accountModel.content")}</p>
+            <p className="">{t("main.accountModel.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               {accountFeatures.map((feature, index) => (
-                <DividerBox key={index} color="n1">
-                  <p className="text-nasun-white/80">{feature}</p>
+                <DividerBox key={index} color="n1" padding="sm">
+                  <p className="">{feature}</p>
                 </DividerBox>
               ))}
             </div>
 
             <p className="text-nasun-white/90 font-medium">{t("main.accountModel.conclusion")}</p>
           </div>
-        </div>
+        </section>
 
         {/* 3. Cross-Chain Asset Access */}
-        <div className="mb-8 md:mb-10 lg:mb-12">
-          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
+        <section>
+          <SectionTitle as="h4" className="uppercase ">
             {t("main.crossChain.title")}
           </SectionTitle>
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.crossChain.subtitle")}</h5>
-            <p className="text-nasun-white/80 ">{t("main.crossChain.content")}</p>
+            <p className=" ">{t("main.crossChain.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               {crossChainFeatures.map((feature, index) => (
-                <DividerBox key={index} color="n1">
-                  <p className="text-nasun-white/80 ">{feature}</p>
+                <DividerBox key={index} color="n1" padding="sm">
+                  <p className=" ">{feature}</p>
                 </DividerBox>
               ))}
             </div>
 
             <p className="text-nasun-white/90 font-medium">{t("main.crossChain.conclusion")}</p>
           </div>
-        </div>
+        </section>
 
         {/* 4. Stablecoins */}
-        <div className="mb-10 md:mb-12 lg:mb-14">
-          <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
+        <section>
+          <SectionTitle as="h4" className="uppercase ">
             {t("main.stablecoins.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.stablecoins.subtitle")}</h5>
-            <p className="text-nasun-white/80 ">{t("main.stablecoins.content")}</p>
-            <p className="text-nasun-white/80 ">{t("main.stablecoins.p2")}</p>
-            <p className="text-nasun-white/80 ">{t("main.stablecoins.p3")}</p>
+            <p className=" ">{t("main.stablecoins.content")}</p>
+            <p className=" ">{t("main.stablecoins.p2")}</p>
+            <p className=" ">{t("main.stablecoins.p3")}</p>
           </div>
-        </div>
+        </section>
 
         {/* ========== FEATURES SECTION (5-8) ========== */}
 
@@ -140,15 +140,15 @@ function PadoOverviewSection() {
             {t("main.trading.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.trading.subtitle")}</h5>
-            <p className="text-nasun-white/80">{t("main.trading.content")}</p>
+            <p className="">{t("main.trading.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               {tradingFeatures.map((feature, index) => (
-                <DividerBox key={index} color="n1">
-                  <p className="text-nasun-white/80">{feature}</p>
+                <DividerBox key={index} color="n1" padding="sm">
+                  <p className="">{feature}</p>
                 </DividerBox>
               ))}
             </div>
@@ -163,15 +163,15 @@ function PadoOverviewSection() {
             {t("main.capitalEfficiency.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.capitalEfficiency.subtitle")}</h5>
-            <p className="text-nasun-white/80">{t("main.capitalEfficiency.content")}</p>
+            <p className="">{t("main.capitalEfficiency.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               {capitalFeatures.map((feature, index) => (
-                <DividerBox key={index} color="n1">
-                  <p className="text-nasun-white/80">{feature}</p>
+                <DividerBox key={index} color="n1" padding="sm">
+                  <p className="">{feature}</p>
                 </DividerBox>
               ))}
             </div>
@@ -188,14 +188,14 @@ function PadoOverviewSection() {
             {t("main.lending.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
-            <p className="text-nasun-white/80">{t("main.lending.content")}</p>
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
+            <p className="">{t("main.lending.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               {lendingFeatures.map((feature, index) => (
-                <DividerBox key={index} color="n1">
-                  <p className="text-nasun-white/80">{feature}</p>
+                <DividerBox key={index} color="n1" padding="sm">
+                  <p className="">{feature}</p>
                 </DividerBox>
               ))}
             </div>
@@ -210,15 +210,15 @@ function PadoOverviewSection() {
             {t("main.payments.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.payments.subtitle")}</h5>
-            <p className="text-nasun-white/80">{t("main.payments.content")}</p>
+            <p className="">{t("main.payments.content")}</p>
 
             {/* Features in cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               {paymentFeatures.map((feature, index) => (
-                <DividerBox key={index} color="n1">
-                  <p className="text-nasun-white/80">{feature}</p>
+                <DividerBox key={index} color="n1" padding="sm">
+                  <p className="">{feature}</p>
                 </DividerBox>
               ))}
             </div>
@@ -235,26 +235,26 @@ function PadoOverviewSection() {
             {t("main.objectBased.title")}
           </SectionTitle>
 
-          <div className="space-y-4 md:space-y-5 lg:space-y-6">
+          <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <h5 className="text-nasun-c1 font-medium">{t("main.objectBased.subtitle")}</h5>
-            <p className="text-nasun-white/80">{t("main.objectBased.content")}</p>
+            <p className="">{t("main.objectBased.content")}</p>
 
             {/* Object Types Grid - sub-content in boxes */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <DividerBox
-                color="n1"
+                color="c1"
                 titleClassName="text-nasun-n1"
                 title="Collateral Objects"
                 description={t("main.objectBased.objects.collateral")}
               />
               <DividerBox
-                color="n1"
+                color="c1"
                 titleClassName="text-nasun-n1"
                 title="Position Objects"
                 description={t("main.objectBased.objects.position")}
               />
               <DividerBox
-                color="n1"
+                color="c1"
                 titleClassName="text-nasun-n1"
                 title="Market Objects"
                 description={t("main.objectBased.objects.market")}
@@ -275,7 +275,7 @@ function PadoOverviewSection() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Vault Governance */}
             <DividerBox
-              color="n1"
+              color="c1"
               titleClassName="text-nasun-n1"
               title={t("main.trustModel.vaultGovernance.title")}
               description={t("main.trustModel.vaultGovernance.content")}
@@ -292,7 +292,7 @@ function PadoOverviewSection() {
 
             {/* Governance Path */}
             <DividerBox
-              color="n1"
+              color="c1"
               titleClassName="text-nasun-n1"
               title={t("main.trustModel.governancePath.title")}
               description={t("main.trustModel.governancePath.content")}
@@ -300,7 +300,7 @@ function PadoOverviewSection() {
 
             {/* Account Recovery */}
             <DividerBox
-              color="n1"
+              color="c1"
               titleClassName="text-nasun-n1"
               title={t("main.trustModel.accountRecovery.title")}
               description={t("main.trustModel.accountRecovery.content")}
@@ -314,7 +314,7 @@ function PadoOverviewSection() {
             {t("main.comparative.title")}
           </SectionTitle>
 
-          <p className="text-nasun-white/80">{t("main.comparative.content")}</p>
+          <p className="">{t("main.comparative.content")}</p>
         </div>
 
         {/* 12. Summary */}
@@ -323,14 +323,14 @@ function PadoOverviewSection() {
             {t("main.summary.title")}
           </SectionTitle>
 
-          <OuterBox color="n1" className="">
+          <OuterBox color="c3" className="">
             <div className="flex items-center gap-3 mb-4">
               <Sparkles className="w-6 h-6 text-nasun-white" />
               <span className="text-nasun-white font-semibold text-lg">Key Takeaway</span>
             </div>
             <div className="space-y-4">
               <p className="text-nasun-white/90 font-medium">{t("main.summary.content")}</p>
-              <p className="text-nasun-white/80">{t("main.summary.p2")}</p>
+              <p className="">{t("main.summary.p2")}</p>
             </div>
           </OuterBox>
         </div>
