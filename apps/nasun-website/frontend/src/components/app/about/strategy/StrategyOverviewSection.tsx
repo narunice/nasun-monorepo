@@ -75,7 +75,7 @@ export const StrategyOverviewSection = () => {
         {/* ========== 1. Metrics Section ========== */}
         <PageTitle>{t("hero.title")}</PageTitle>
 
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("metrics.title")}
         </SectionTitle>
 
@@ -119,12 +119,12 @@ export const StrategyOverviewSection = () => {
         </OuterBox>
 
         {/* ========== 2. CoreProblem Section ========== */}
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4 whitespace-pre-line">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4 whitespace-pre-line">
           {t("coreProblem.title")}
         </SectionTitle>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 md:mb-8">
-          <OuterBox variant="c3" className="h-full">
+          <OuterBox color="c3" className="h-full">
             <h4 className="text-nasun-c3 font-semibold text-lg mb-4">
               {t("coreProblem.excelAt.title")}
             </h4>
@@ -138,7 +138,7 @@ export const StrategyOverviewSection = () => {
             </ul>
           </OuterBox>
 
-          <OuterBox variant="c1" className="h-full">
+          <OuterBox color="c1" className="h-full">
             <h4 className="text-nasun-c1 font-semibold text-lg mb-4">
               {t("coreProblem.struggleWith.title")}
             </h4>
@@ -158,12 +158,12 @@ export const StrategyOverviewSection = () => {
         </p>
 
         {/* ========== 3. WhyNow Section ========== */}
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("whyNow.title")}
         </SectionTitle>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 md:mb-8">
-          <OuterBox variant="c1" className="h-full">
+          <OuterBox color="c1" className="h-full">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="w-5 h-5 text-nasun-c1" />
               <h4 className="text-nasun-c1 font-semibold text-lg">
@@ -180,7 +180,7 @@ export const StrategyOverviewSection = () => {
             </ul>
           </OuterBox>
 
-          <OuterBox variant="c3" className="h-full">
+          <OuterBox color="c3" className="h-full">
             <div className="flex items-center gap-3 mb-4">
               <Target className="w-5 h-5 text-nasun-c3" />
               <h4 className="text-nasun-c3 font-semibold text-lg">
@@ -203,11 +203,11 @@ export const StrategyOverviewSection = () => {
         </p>
 
         {/* ========== 4. Thesis Section ========== */}
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4 whitespace-pre-line">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4 whitespace-pre-line">
           {t("thesis.title")}
         </SectionTitle>
 
-        <OuterBox variant="white" className="py-5 md:py-6 mb-16 md:mb-20">
+        <OuterBox color="white" className="py-5 md:py-6 mb-16 md:mb-20">
           <div className="flex items-center gap-3 mb-6">
             <Lightbulb className="w-6 h-6 text-nasun-white" />
             <span className="text-nasun-white font-semibold text-lg">Core Thesis</span>
@@ -237,7 +237,7 @@ export const StrategyOverviewSection = () => {
         </OuterBox>
 
         {/* ========== 5. WhyNetwork Section ========== */}
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("whyNetwork.title")}
         </SectionTitle>
 
@@ -265,11 +265,11 @@ export const StrategyOverviewSection = () => {
         </p>
 
         {/* ========== 6. Soul Section ========== */}
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("soul.title")}
         </SectionTitle>
 
-        <OuterBox variant="c6" className="py-5 md:py-6">
+        <OuterBox color="c6" className="py-5 md:py-6">
           <div className="flex items-center gap-3 mb-6">
             <Heart className="w-6 h-6 text-nasun-c4" />
             <span className="text-nasun-c4 font-semibold text-lg">Our Vision</span>

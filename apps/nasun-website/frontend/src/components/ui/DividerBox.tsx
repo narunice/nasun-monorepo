@@ -56,7 +56,7 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-scarlet",
   },
   c1: {
-    border: "border-nasun-c1",
+    border: "border-nasun-c1/50",
     background: "bg-nasun-c1/10",
     text: "text-nasun-c1",
   },

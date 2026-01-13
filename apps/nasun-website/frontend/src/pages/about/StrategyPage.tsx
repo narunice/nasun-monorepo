@@ -10,11 +10,17 @@ const StrategyOverviewSection = lazy(
 const StrategyExecutionSection = lazy(
   () => import("../../components/app/about/strategy/StrategyExecutionSection")
 );
+const StrategyOverviewV2 = lazy(
+  () => import("../../components/app/about/strategy/StrategyOverviewV2")
+);
 
 function StrategyPage() {
   return (
     <ErrorBoundary>
       <PageLayout>
+        <Suspense fallback={<SectionLoading showLayout={false} />}>
+          <StrategyOverviewV2 />
+        </Suspense>
         <Suspense fallback={<SectionLoading showLayout={false} />}>
           <StrategyOverviewSection />
         </Suspense>
