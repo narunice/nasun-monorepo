@@ -42,11 +42,11 @@ type PaddingVariant = "md" | "sm";
 const variantStyles: Record<ColorVariant, string> = {
   default: "border-nasun-c5/50 bg-nasun-c6/90", // 현재 기본값 (c5 border + c6 bg)
   white: "border-nasun-white/50 bg-nasun-white/5",
-  c1: "border-nasun-c1/50 bg-[#312107]/90",
-  c2: "border-nasun-c2/50 bg-[#312d20]/90",
-  c3: "border-nasun-c3/50 bg-[#1d2d2a]/90",
-  c4: "border-nasun-c4/50 bg-[#0d1b25]/90",
-  c5: "border-nasun-c5/50 bg-[#081427]/90",
+  c1: "border-nasun-c1/50 bg-[#312107]/40",
+  c2: "border-nasun-c2/50 bg-[#312d20]/40",
+  c3: "border-nasun-c3/50 bg-[#1d2d2a]/40",
+  c4: "border-nasun-c4/50 bg-[#0d1b25]/40",
+  c5: "border-nasun-c5/50 bg-[#081427]/40",
   c6: "border-nasun-c6/50 bg-nasun-c6/90",
   scarlet: "border-nasun-scarlet/50 bg-[#320900]/90",
   coral: "border-nasun-coral/50 bg-[#330a0a]/90",

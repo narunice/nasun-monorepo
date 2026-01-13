@@ -23,8 +23,8 @@ function DevelopmentSection() {
   const beyondItems = t("beyondPrototype.items", { returnObjects: true }) as ItemData[];
 
   return (
-    <SectionLayout className="">
-      <div className="max-w-4xl mx-auto">
+    <SectionLayout className="!max-w-6xl ">
+      <div className="mx-auto">
         {/* Current State */}
         <div className="mb-8 md:mb-10 lg:mb-12">
           <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">

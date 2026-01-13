@@ -4,14 +4,9 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import PadoHeroSectionSkeleton from "../../components/app/finance/pado/PadoHeroSectionSkeleton";
 
-// Lazy load section components (3 sections total)
-const PadoHeroSection = lazy(() => import("../../components/app/finance/pado/PadoHeroSection"));
-const PadoOverviewSection = lazy(
-  () => import("../../components/app/finance/pado/PadoOverviewSection")
-);
-const PadoComplianceSection = lazy(
-  () => import("../../components/app/finance/pado/PadoComplianceSection")
-);
+// Lazy load section components (4 sections total)
+const UnifiedOnchain = lazy(() => import("@/components/app/finance/pado/UnifiedOnchain"));
+const PadoHeroSection = lazy(() => import("@/components/app/finance/pado/PadoHeroSection"));
 
 /**
  * PadoPage 컴포넌트
@@ -31,10 +26,7 @@ export default function PadoPage() {
     setIsVideoReady(true);
 
     // Preload critical sections
-    await Promise.all([
-      import("../../components/app/finance/pado/PadoOverviewSection"),
-      import("../../components/app/finance/pado/PadoComplianceSection"),
-    ]);
+    await Promise.all([import("../../components/app/finance/pado/UnifiedOnchain")]);
 
     // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
     requestAnimationFrame(() => {
@@ -59,8 +51,7 @@ export default function PadoPage() {
         {/* 비디오 준비 후 렌더링하여 레이아웃 시프트 방지 */}
         {isVideoReady && (
           <>
-            <PadoOverviewSection />
-            <PadoComplianceSection />
+            <UnifiedOnchain />
           </>
         )}
       </Suspense>
