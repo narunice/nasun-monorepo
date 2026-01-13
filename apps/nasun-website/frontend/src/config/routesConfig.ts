@@ -370,6 +370,16 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.LeaderboardInfo,
         },
         {
+          name: "navigation.leaderboard",
+          path: "/wave1/leaderboard",
+          element: Pages.Leaderboard,
+        },
+        {
+          name: "navigation.genesisNft",
+          path: "/wave1/genesis-nft",
+          element: Pages.GenesisNft,
+        },
+        {
           name: "navigation.contests",
           path: "/wave1/contests",
           element: Pages.BattalionNft, // Placeholder - disabled anyway
@@ -384,11 +394,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   },
 
   genesisNft: {
-    path: "/genesis-nft",
+    path: "/wave1/genesis-nft",
     component: Pages.GenesisNft,
     navItem: {
       name: "navigation.genesisNft",
-      path: "/genesis-nft",
+      path: "/wave1/genesis-nft",
+      hidden: true,
     },
     meta: {
       title: "Genesis NFT - NASUN",
@@ -397,11 +408,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   },
 
   leaderboard: {
-    path: "/leaderboard",
+    path: "/wave1/leaderboard",
     component: Pages.Leaderboard,
     navItem: {
       name: "navigation.leaderboard",
-      path: "/leaderboard",
+      path: "/wave1/leaderboard",
+      hidden: true,
     },
     meta: {
       title: "Leaderboard - NASUN",

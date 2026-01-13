@@ -1,6 +1,6 @@
 import React from "react";
-import { NFTTiers } from "../../../types/genesisNFTs.d";
-import { getTierDisplayName } from "../../../utils/nftUtils";
+import { NFTTiers } from "../../../../types/genesisNFTs.d";
+import { getTierDisplayName } from "../../../../utils/nftUtils";
 
 interface TierBadgeProps {
   tier: NFTTiers;

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NFT_COLLECTION } from "../../../constants/pageContent/genesisNFTTiers";
-import { NFTTiers, TierData } from "../../../types/genesisNFTs.d";
-import { usePayAndMintSuiNFT } from "../../../hooks/PayAndMintNFT/usePayAndMintSuiNFT";
+import { NFT_COLLECTION } from "../../../../constants/pageContent/genesisNFTTiers";
+import { NFTTiers, TierData } from "../../../../types/genesisNFTs.d";
+import { usePayAndMintSuiNFT } from "../../../../hooks/PayAndMintNFT/usePayAndMintSuiNFT";
 import { useCurrentWallet as useCurrentSuiWallet } from "@mysten/dapp-kit";
 import { PriceConverter } from "./PriceConverter";
-import { ConnectSuiWallet } from "../../features/wallets/ConnectSuiWallet";
+import { ConnectSuiWallet } from "../../../features/wallets/ConnectSuiWallet";
 import { toast } from "react-toastify";
-import { Button } from "../../ui/button";
+import { Button } from "../../../ui/button";
 
 interface PayAndMintNftCardProps {
   tierData?: TierData;
