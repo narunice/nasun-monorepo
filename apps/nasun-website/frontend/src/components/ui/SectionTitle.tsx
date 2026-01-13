@@ -37,7 +37,11 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
     black: "text-nasun-black/90",
   };
 
-  return <Component className={`${colorClasses[color]} ${className}`.trim()}>{children}</Component>;
+  return (
+    <Component className={`${colorClasses[color]} mb-2 md:mb-3 lg:mb-4 ${className}`.trim()}>
+      {children}
+    </Component>
+  );
 };
 
 export default SectionTitle;

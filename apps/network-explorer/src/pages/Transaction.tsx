@@ -1,23 +1,27 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getTransaction } from '../lib/sui-client';
-import { formatObjectType, formatSoe } from '../lib/format';
-import InfoRow from '../components/InfoRow';
-import { SectionBox } from '../components/ui/SectionBox';
-import { Card } from '../components/ui/Card';
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getTransaction } from "../lib/sui-client";
+import { formatObjectType, formatSoe } from "../lib/format";
+import InfoRow from "../components/InfoRow";
+import { SectionBox } from "../components/ui/SectionBox";
+import { Card } from "../components/ui/Card";
 
 function formatTimestamp(timestampMs: string | number | null | undefined) {
-  if (!timestampMs) return '-';
+  if (!timestampMs) return "-";
   const date = new Date(Number(timestampMs));
-  return date.toLocaleString('en-US');
+  return date.toLocaleString("en-US");
 }
 
 export default function Transaction() {
   const { digest } = useParams<{ digest: string }>();
 
-  const { data: tx, isLoading, error } = useQuery({
-    queryKey: ['transaction', digest],
+  const {
+    data: tx,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["transaction", digest],
     queryFn: () => getTransaction(digest!),
     enabled: !!digest,
   });
@@ -44,10 +48,19 @@ export default function Transaction() {
           <SectionBox title="Overview" color="c4">
             <div className="grid grid-cols-1 gap-4">
               <InfoRow label="Digest" value={tx.digest} mono copyable />
-              <InfoRow label="Status" value={tx.effects?.status?.status || '-'} status={tx.effects?.status?.status} />
+              <InfoRow
+                label="Status"
+                value={tx.effects?.status?.status || "-"}
+                status={tx.effects?.status?.status}
+              />
               <InfoRow label="Timestamp" value={formatTimestamp(tx.timestampMs)} />
-              <InfoRow label="Checkpoint" value={tx.checkpoint || '-'} />
-              <InfoRow label="Sender" value={tx.transaction?.data?.sender || '-'} mono link={`/address/${tx.transaction?.data?.sender}`} />
+              <InfoRow label="Checkpoint" value={tx.checkpoint || "-"} />
+              <InfoRow
+                label="Sender"
+                value={tx.transaction?.data?.sender || "-"}
+                mono
+                link={`/address/${tx.transaction?.data?.sender}`}
+              />
             </div>
           </SectionBox>
 
@@ -55,19 +68,31 @@ export default function Transaction() {
           <SectionBox title="Gas" color="c5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card variant="c5" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Gas Budget</div>
-                <div className="font-mono text-nasun-white">{formatSoe(tx.transaction?.data?.gasData?.budget)}</div>
+                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">
+                  Gas Budget
+                </div>
+                <div className="font-mono text-nasun-white">
+                  {formatSoe(tx.transaction?.data?.gasData?.budget)}
+                </div>
               </Card>
               <Card variant="c5" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Gas Price</div>
-                <div className="font-mono text-nasun-white">{formatSoe(tx.transaction?.data?.gasData?.price)}</div>
+                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">
+                  Gas Price
+                </div>
+                <div className="font-mono text-nasun-white">
+                  {formatSoe(tx.transaction?.data?.gasData?.price)}
+                </div>
               </Card>
               <Card variant="c5" className="p-4">
                 <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Gas Used</div>
                 <div className="font-mono text-nasun-white">
                   {tx.effects?.gasUsed
-                    ? formatSoe(BigInt(tx.effects.gasUsed.computationCost) + BigInt(tx.effects.gasUsed.storageCost) - BigInt(tx.effects.gasUsed.storageRebate))
-                    : '-'}
+                    ? formatSoe(
+                        BigInt(tx.effects.gasUsed.computationCost) +
+                          BigInt(tx.effects.gasUsed.storageCost) -
+                          BigInt(tx.effects.gasUsed.storageRebate)
+                      )
+                    : "-"}
                 </div>
               </Card>
             </div>
@@ -78,18 +103,26 @@ export default function Transaction() {
             <SectionBox title={`Object Changes (${tx.objectChanges.length})`} color="c3">
               <div className="space-y-2">
                 {tx.objectChanges.map((change, idx) => (
-                  <div key={idx} className="bg-nasun-c6/60 border border-nasun-c3/30 rounded-lg p-3 flex items-center justify-between">
+                  <div
+                    key={idx}
+                    className="bg-nasun-c6/60 border border-nasun-c3/30 rounded-lg p-3 flex items-center justify-between"
+                  >
                     <div>
-                      <span className={`px-2 py-1 rounded text-xs mr-2 ${getChangeTypeColor(change.type)}`}>
+                      <span
+                        className={`px-2 py-1 rounded text-xs mr-2 ${getChangeTypeColor(change.type)}`}
+                      >
                         {change.type}
                       </span>
-                      {'objectId' in change && (
-                        <Link to={`/object/${change.objectId}`} className="font-mono text-sm text-nasun-c4 hover:underline">
+                      {"objectId" in change && (
+                        <Link
+                          to={`/object/${change.objectId}`}
+                          className="font-mono text-sm text-nasun-c4 hover:underline"
+                        >
                           {change.objectId}
                         </Link>
                       )}
                     </div>
-                    {'objectType' in change && (
+                    {"objectType" in change && (
                       <span className="text-nasun-white/60 text-sm truncate max-w-xs">
                         {formatObjectType(change.objectType)}
                       </span>
@@ -121,18 +154,18 @@ export default function Transaction() {
 
 function getChangeTypeColor(type: string) {
   switch (type) {
-    case 'created':
-      return 'bg-nasun-c3/30 text-nasun-c3';
-    case 'mutated':
-      return 'bg-nasun-c4/30 text-nasun-c4';
-    case 'deleted':
-      return 'bg-nasun-c1/30 text-nasun-c1';
-    case 'wrapped':
-      return 'bg-nasun-c5/30 text-nasun-c5';
-    case 'published':
-      return 'bg-nasun-c2/30 text-nasun-c1';
+    case "created":
+      return "bg-nasun-c3/30 text-nasun-c3";
+    case "mutated":
+      return "bg-nasun-c4/30 text-nasun-c4";
+    case "deleted":
+      return "bg-nasun-c1/30 text-nasun-c1";
+    case "wrapped":
+      return "bg-nasun-c5/30 text-nasun-c5";
+    case "published":
+      return "bg-nasun-c2/30 text-nasun-c1";
     default:
-      return 'bg-nasun-c6/60 text-nasun-white/60';
+      return "bg-nasun-c6/60 text-nasun-white/60";
   }
 }
 
@@ -146,7 +179,7 @@ function EventCard({ type, data }: { type: string; data: unknown }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -161,14 +194,24 @@ function EventCard({ type, data }: { type: string; data: unknown }) {
           {copied ? (
             <span className="flex items-center gap-1">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Copied
             </span>
           ) : (
             <span className="flex items-center gap-1">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
               </svg>
               Copy
             </span>
@@ -192,7 +235,7 @@ function RawDataSection({ data }: { data: unknown }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -202,19 +245,29 @@ function RawDataSection({ data }: { data: unknown }) {
         {/* Copy button - positioned inside JSON area, top-right */}
         <button
           onClick={handleCopy}
-          className="absolute top-2 right-4 z-10 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-nasun-c5/40 hover:bg-nasun-c5/60 text-nasun-white/80 hover:text-nasun-white border border-nasun-c5/30"
+          className="absolute top-2 right-4 z-10 px-3 py-1.5 mr-2 text-xs font-medium rounded-md transition-all duration-200 bg-nasun-c5/40 hover:bg-nasun-c5/60 text-nasun-white/80 hover:text-nasun-white border border-nasun-c5/30"
         >
           {copied ? (
             <span className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Copied
             </span>
           ) : (
             <span className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
               </svg>
               Copy
             </span>
