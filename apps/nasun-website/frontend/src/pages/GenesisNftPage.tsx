@@ -3,36 +3,27 @@ import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { useTranslation } from "react-i18next";
 import { usePageLoading } from "../contexts/PageLoadingContext";
-import GenesisNftHeroSkeleton from "../components/app/sale/GenesisNftHeroSkeleton";
+import { useIsMobile } from "../hooks/useIsMobile";
+import GenesisNftHeroSkeleton from "../components/app/wave1/genesisNft/GenesisNftHeroSkeleton";
 import genesisVideoDesktop from "../assets/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
 import genesisVideoMobile from "../assets/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
 
-const GenesisNftHeroSection = lazy(() => import("../components/app/sale/GenesisNftHeroSection"));
-const KeyBenefitsSection = lazy(() => import("../components/app/sale/KeyBenefitsSection"));
-// const SaleHeroSection = lazy(() => import("../components/app/sale/SaleHeroSection"));
-// const NFTSaleSection = lazy(() => import("../components/app/sale/NFTSaleSection"));
-// const TiersComparisonSection = lazy(() => import("../components/app/sale/TiersComparisonSection"));
+const GenesisNftHeroSection = lazy(() => import("../components/app/wave1/genesisNft/GenesisNftHeroSection"));
+const KeyBenefitsSection = lazy(() => import("../components/app/wave1/genesisNft/KeyBenefitsSection"));
+// const SaleHeroSection = lazy(() => import("../components/app/wave1/genesisNft/SaleHeroSection"));
+// const NFTSaleSection = lazy(() => import("../components/app/wave1/genesisNft/NFTSaleSection"));
+// const TiersComparisonSection = lazy(() => import("../components/app/wave1/genesisNft/TiersComparisonSection"));
 // const ButtonShowcaseSection = lazy(() => import("../components/app/home/ButtonShowcaseSection"));
 
 const GenesisNftPage = () => {
   const { t } = useTranslation("common");
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const [isVideoReady, setIsVideoReady] = useState(false);
   const { setIsPageReady } = usePageLoading();
 
   useEffect(() => {
     setIsPageReady(false);
   }, [setIsPageReady]);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const handleCanPlay = useCallback(() => {
     setIsVideoReady(true);

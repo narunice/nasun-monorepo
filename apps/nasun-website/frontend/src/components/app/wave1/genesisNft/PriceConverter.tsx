@@ -1,8 +1,8 @@
 import React from "react";
-import { useCoinPrice } from "../../../hooks/PayAndMintNFT/useCoinPrice";
+import { useCoinPrice } from "../../../../hooks/PayAndMintNFT/useCoinPrice";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { Button } from "../../ui/button";
+import { Button } from "../../../ui/button";
 
 interface PriceConverterProps {
   usdPrice: number;

@@ -2,18 +2,18 @@
 
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
-import { useTierSupplyCount } from "../../../../hooks/PayAndMintNFT/useTierSupplyCount";
+import { useTierSupplyCount } from "../../../../../hooks/PayAndMintNFT/useTierSupplyCount";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogOverlay,
   DialogTitle,
-} from "../../../ui/dialog"; // Use project's custom Dialog component
-import { NFTMintedEvent } from "../../../../types/genesisNFTs.d";
-import { getMaxSupply } from "../../../../utils/nftUtils";
-import { Button } from "../../../ui/button";
-import { InlineLoading } from "../../../ui/InlineLoading";
+} from "../../../../ui/dialog"; // Use project's custom Dialog component
+import { NFTMintedEvent } from "../../../../../types/genesisNFTs.d";
+import { getMaxSupply } from "../../../../../utils/nftUtils";
+import { Button } from "../../../../ui/button";
+import { InlineLoading } from "../../../../ui/InlineLoading";
 
 interface BaseNFTMintedModalProps {
   open: boolean;

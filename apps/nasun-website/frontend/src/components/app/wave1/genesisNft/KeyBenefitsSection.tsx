@@ -1,10 +1,10 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { SectionLayout } from "../../layout/SectionLayout";
-import { DividerBox } from "../../ui/DividerBox";
-import { SectionTitle } from "../../ui/SectionTitle";
-import { JoinWhitelistButton } from "../../whitelist/JoinWhitelistButton";
-import { Button } from "../../ui/button";
+import { SectionLayout } from "../../../layout/SectionLayout";
+import { DividerBox } from "../../../ui/DividerBox";
+import { SectionTitle } from "../../../ui/SectionTitle";
+import { JoinWhitelistButton } from "../../../whitelist/JoinWhitelistButton";
+import { Button } from "../../../ui/button";
 
 function KeyBenefitsSection() {
   const { t } = useTranslation("sale");
