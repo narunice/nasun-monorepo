@@ -122,7 +122,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
             /* Mobile: Bottom Center */
             bottom-[15%] sm:bottom-[30%] left-0 right-0 
             /* Desktop: Right Center */
-            md:bottom-[20%] lg:bottom-[20%] xl:bottom-[30%] md:left-auto md:right-[12%] lg:right-[15%] xl:right-[15%] md:-translate-y-1/2
+            md:bottom-[20%] lg:bottom-[20%] xl:bottom-[30%] md:pl-[35%] lg:pl-[38%] xl:pl-[41%] md:-translate-y-1/2
             /* Alignment */
             flex flex-col items-center 
             text-center
@@ -133,7 +133,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
             <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
               of Financial Autonomy
             </h4>
-            <Button variant="defaultReverse" size="lg" asChild className="mt-5">
+            <Button variant="c1" size="lg" asChild className="mt-5">
               <Link
                 to={import.meta.env.VITE_PADO_ALPHA_URL}
                 target="_blank"

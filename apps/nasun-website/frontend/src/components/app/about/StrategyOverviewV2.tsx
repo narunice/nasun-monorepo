@@ -1,14 +1,14 @@
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { DividerBox } from "../../../../components/ui/DividerBox";
-import { PageTitle } from "../../../../components/ui/PageTitle";
-import { SectionTitle } from "../../../../components/ui/SectionTitle";
+import { DividerBox } from "@/components/ui/DividerBox";
+import { PageTitle } from "@/components/ui/PageTitle";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Infinity as InfinityIcon, Network, Users } from "lucide-react";
 
 const StrategyOverviewV2 = () => {
   return (
     <SectionLayout className="!max-w-6xl">
       {/* Page Title */}
-      <PageTitle className="normal-case flex flex-col items-center">
+      <PageTitle className="normal-case flex flex-col">
         <span>NASUN: A Unified Vision</span>
         <span className="font-normal text-xl/tight md:text-2xl/tight lg:text-3xl/tight tracking-wide text-nasun-white ">
           for the Next Era of Creation
@@ -88,7 +88,7 @@ const StrategyOverviewV2 = () => {
 
           <div className="grid grid-cols-1 gap-8 mt-2 md:mt-3 lg:mt-4">
             <DividerBox
-              color="n1"
+              color="w1"
               className=""
               titleClassName="!text-nasun-c1"
               icon={<InfinityIcon className="w-5 h-5 text-nasun-c1" />}
@@ -110,7 +110,7 @@ const StrategyOverviewV2 = () => {
             </DividerBox>
 
             <DividerBox
-              color="n1"
+              color="w1"
               titleClassName="!text-nasun-c1"
               icon={<Network className="w-5 h-5 text-nasun-c1" />}
               title="The Network as an Economic Backbone"
@@ -138,7 +138,7 @@ const StrategyOverviewV2 = () => {
             </DividerBox>
 
             <DividerBox
-              color="n1"
+              color="w1"
               titleClassName="!text-nasun-c1"
               icon={<Users className="w-5 h-5 text-nasun-c1" />}
               title="A Seamless, Human-First Experience"

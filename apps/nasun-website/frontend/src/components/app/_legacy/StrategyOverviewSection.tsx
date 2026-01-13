@@ -1,14 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import { SectionTitle } from "../../../ui/SectionTitle";
-import { OuterBox } from "../../../ui/OuterBox";
-import { DividerBox } from "../../../ui/DividerBox";
+import { SectionLayout } from "../../layout/SectionLayout";
+import { SectionTitle } from "../../ui/SectionTitle";
+import { OuterBox } from "../../ui/OuterBox";
+import { DividerBox } from "../../ui/DividerBox";
 import { PageTitle } from "@/components/ui/PageTitle";
-import { Table } from "../../../ui/table/Table";
-import { TableHeader } from "../../../ui/table/TableHeader";
-import { TableBody } from "../../../ui/table/TableBody";
-import { TableRow } from "../../../ui/table/TableRow";
-import { TableCell } from "../../../ui/table/TableCell";
+import { Table } from "../../ui/table/Table";
+import { TableHeader } from "../../ui/table/TableHeader";
+import { TableBody } from "../../ui/table/TableBody";
+import { TableRow } from "../../ui/table/TableRow";
+import { TableCell } from "../../ui/table/TableCell";
 import {
   CheckCircle,
   XCircle,

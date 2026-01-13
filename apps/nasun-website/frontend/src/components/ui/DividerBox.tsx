@@ -61,8 +61,8 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-scarlet",
   },
   c1: {
-    border: "border-nasun-c1/50",
-    background: "bg-nasun-c1/5",
+    border: "border-nasun-c1/50 hover:border-nasun-c1/40 transition-colors",
+    background: "bg-nasun-c1/5 hover:bg-nasun-c1/10 transition-colors",
     text: "text-nasun-c1",
   },
   c2: {
@@ -71,8 +71,8 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-c2",
   },
   c3: {
-    border: "border-nasun-c3",
-    background: "bg-nasun-c3/10",
+    border: "border-nasun-c3/50 hover:border-nasun-c3/40 transition-colors",
+    background: "bg-nasun-c3/10 hover:bg-nasun-c3/5 transition-colors",
     text: "text-nasun-c3",
   },
   c4: {
@@ -111,8 +111,8 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-white",
   },
   n1: {
-    border: "border-nasun-white/40",
-    background: "bg-nasun-white/5",
+    border: "border-nasun-white/40 hover:border-nasun-white/50 transition-colors",
+    background: "bg-nasun-white/5 hover:bg-nasun-white/10 transition-colors",
     text: "text-nasun-white",
   },
   n2: {
