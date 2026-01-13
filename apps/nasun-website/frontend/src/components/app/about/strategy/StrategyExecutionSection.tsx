@@ -25,7 +25,7 @@ export const StrategyExecutionSection = () => {
     <SectionLayout className="">
       <div className="max-w-5xl mx-auto">
         {/* ========== 1. Pipeline Section ========== */}
-        <SectionTitle as="h3" className="mb-2 md:mb-3 lg:mb-4">
+        <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
           {t("pipeline.title")}
         </SectionTitle>
 
@@ -35,7 +35,7 @@ export const StrategyExecutionSection = () => {
 
         <div className="space-y-4 md:space-y-6 mb-6 md:mb-8">
           {steps.map((step) => (
-            <OuterBox key={step.number} variant="c4" className="h-full">
+            <OuterBox key={step.number} color="c4" className="h-full">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-nasun-c4 text-nasun-black font-bold text-lg flex items-center justify-center">
                   {step.number}
@@ -56,7 +56,7 @@ export const StrategyExecutionSection = () => {
         {/* ========== 2. TheWay Section ========== */}
         <div className="flex items-center gap-3 mb-2 md:mb-3 lg:mb-4">
           <Compass className="w-6 h-6 text-nasun-white" />
-          <SectionTitle as="h3" className="!mb-0">
+          <SectionTitle as="h4" className="!mb-0">
             {t("theWay.title")}
           </SectionTitle>
         </div>
@@ -65,7 +65,7 @@ export const StrategyExecutionSection = () => {
           {t("theWay.intro")}
         </p>
 
-        <OuterBox variant="white" className="mb-6 md:mb-8">
+        <OuterBox color="white" className="mb-6 md:mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             {/* Left Column: Items 1-6 */}
             <ul className="flex flex-col gap-4">
