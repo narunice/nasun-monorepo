@@ -6,6 +6,7 @@ import waldenVideoMobile from "../../../../assets/videos/Walden-Dex-Token-Mobile
 import { Button } from "@/components/ui";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface PadoHeroSectionProps {
   onVideoReady?: () => void;
@@ -18,6 +19,7 @@ interface PadoHeroSectionProps {
  * Pado 페이지의 Hero 섹션 - 반응형 배경 동영상과 텍스트+아이콘
  */
 function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
+  const { t } = useTranslation("pado");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -122,16 +124,16 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
             /* Mobile: Bottom Center */
             bottom-[15%] sm:bottom-[30%] left-0 right-0 
             /* Desktop: Right Center */
-            md:bottom-[20%] lg:bottom-[20%] xl:bottom-[30%] md:pl-[35%] lg:pl-[38%] xl:pl-[41%] md:-translate-y-1/2
+            md:bottom-[15%] lg:bottom-[15%] xl:bottom-[20%] 2xl:bottom-[25%] md:pl-[35%] lg:pl-[38%] xl:pl-[41%] md:-translate-y-1/2
             /* Alignment */
             flex flex-col items-center 
             text-center
             px-4
             pointer-events-auto"
           >
-            <h2 className="">The Next Wave</h2>
+            <h2 className="">{t("hero.tagline")}</h2>
             <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
-              of Financial Autonomy
+              {t("hero.subTagline")}
             </h4>
             <Button variant="c1" size="lg" asChild className="mt-5">
               <Link
@@ -139,7 +141,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Pado Open Alpha
+                {t("hero.button")}
                 <ExternalLink className="w-4 h-4 ml-2" />
               </Link>
             </Button>

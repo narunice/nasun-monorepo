@@ -28,7 +28,7 @@ export const SectionLayout = React.forwardRef<
   ) => (
     <section
       ref={ref}
-      className={`w-full max-w-9xl h-full relative flex flex-col mx-auto items-center justify-center px-6 md:px-8 lg:px-10 xl:px-12 py-4 md:py-6 lg:py-8 xl:py-10 ${className}`}
+      className={`w-full max-w-9xl h-full relative flex flex-col mx-auto items-center justify-center px-8 md:px-12 lg:px-16 xl:px-20 py-4 md:py-6 lg:py-8 xl:py-10 ${className}`}
       {...rest}
     >
       <div className="w-full">

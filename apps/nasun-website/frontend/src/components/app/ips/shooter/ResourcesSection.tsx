@@ -50,7 +50,7 @@ function ResourcesSection() {
 
   const categories = categoryKeys
     .map((key) => {
-      const data = t(`foundersNftFunds.categories.${key}` as any, { // eslint-disable-line @typescript-eslint/no-explicit-any
+      const data = t(`foundersNftFunds.categories.${key}` as never, {
         returnObjects: true,
       }) as unknown as CategoryData;
 
@@ -66,7 +66,7 @@ function ResourcesSection() {
 
   const positions = positionKeys
     .map((key) => {
-      const data = t(`hires.positions.${key}` as any, { // eslint-disable-line @typescript-eslint/no-explicit-any
+      const data = t(`hires.positions.${key}` as never, {
         returnObjects: true,
       }) as unknown as PositionData;
 
@@ -91,8 +91,8 @@ function ResourcesSection() {
   ];
 
   return (
-    <SectionLayout className="">
-      <div className="max-w-4xl mx-auto">
+    <SectionLayout className="!max-w-6xl ">
+      <div className=" mx-auto">
         {/* Genesis NFT Funds */}
         <div className="mb-8 md:mb-10 lg:mb-12">
           <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
@@ -163,11 +163,15 @@ function ResourcesSection() {
 
           <div className="space-y-8 md:space-y-10">
             {phaseKeys.map((phaseKey, phaseIndex) => {
-              const phaseData = t(`schedule.phases.${phaseKey}` as any, { // eslint-disable-line @typescript-eslint/no-explicit-any
+              const phaseData = t(`schedule.phases.${phaseKey}` as never, {
                 returnObjects: true,
               }) as unknown as PhaseData;
 
-              if (!phaseData || typeof phaseData !== "object" || !Array.isArray(phaseData.sections)) {
+              if (
+                !phaseData ||
+                typeof phaseData !== "object" ||
+                !Array.isArray(phaseData.sections)
+              ) {
                 return null;
               }
 

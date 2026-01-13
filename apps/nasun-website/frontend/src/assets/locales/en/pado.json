@@ -1,6 +1,8 @@
 {
   "hero": {
-    "tagline": "The Next Wave"
+    "tagline": "The Next Wave",
+    "subTagline": "of Financial Autonomy",
+    "button": "Pado Open Alpha"
   },
   "main": {
     "title": "Pado: Unified Onchain Finance",
@@ -242,6 +244,125 @@
     "closing": {
       "p1": "Join the initiative and shape the future of Pado.",
       "p2": "Together, we build a more open and accessible financial system."
+    }
+  },
+  "unifiedOnchain": {
+    "pageTitle": "Pado: The Unified Onchain Finance Layer",
+    "subtitle": {
+      "text": "Built on Nasun. Performance without custody. Control without compromise.",
+      "button": "Pado Open Alpha"
+    },
+    "section1": {
+      "title": "1. Executive Summary",
+      "p1": "Decentralized finance today is fragmented. Users bridge assets across chains, manage multiple wallets, and allocate capital into isolated protocols for trading, lending, or payments. This fragmentation reduces capital efficiency, increases operational risk, and limits adoption.",
+      "p2": "<0>Pado</0> unifies these functions into a single onchain financial system. Built on <0>Nasun</0>, an object-oriented, high-performance blockchain derived from Sui, Pado consolidates spot markets, derivatives, lending, staking, prediction markets, and payments into one <0>Smart Account</0> governed by a <0>Unified Risk Engine</0>.",
+      "p3": "By modeling assets and positions as programmable objects and executing them in parallel, Pado delivers exchange-grade performance while preserving non-custodial control, transparency, and onchain verifiability."
+    },
+    "section2": {
+      "title": "2. The One-Account Experience",
+      "intro": "Pado replaces fragmented wallets and seed phrases with a single non-custodial smart account using Nasun’s native account abstraction.",
+      "box1": {
+        "title": "Seedless Onboarding",
+        "content": "Accounts are created via <0>zkLogin</0>, enabling authentication through existing OpenID providers while preserving user privacy."
+      },
+      "box2": {
+        "title": "Hardware-Grade Authorization",
+        "content": "Transactions are authorized using <0>Passkeys</0> (FaceID, TouchID, hardware-backed credentials). Private keys are never exposed to the application layer."
+      },
+      "box3": {
+        "title": "Programmable Permissions",
+        "content": "Users can define <0>session-level permissions</0>, enabling high-frequency activity under constrained authority while reserving full authentication for sensitive actions."
+      },
+      "conclusion": "All financial activity occurs through this account, creating a unified and auditable financial state per user."
+    },
+    "section3": {
+      "title": "3. Object-Oriented Markets and Parallel Execution",
+      "intro": "Nasun treats assets, positions, and markets as independent onchain objects rather than shared global state.",
+      "box1": "<0>Parallel Execution:</0> Independent objects execute simultaneously, allowing high throughput across multiple markets without network-wide contention.",
+      "box2": "<0>Atomic Composition:</0> Complex strategies such as supplying collateral, opening a derivatives position, and transferring funds execute as a single deterministic transaction.",
+      "box3": "<0>Low Latency Settlement:</0> Transactions finalize in sub-second intervals, enabling a responsive, exchange-like trading experience.",
+      "box4": "<0>DAG-based Consensus:</0> Ensures fair ordering, significantly reducing the surface area for MEV and front-running.",
+      "conclusion": "This object-based execution model enables composability without sacrificing performance or safety."
+    },
+    "section4": {
+      "title": "4. Unified Risk and Margin Engine",
+      "intro": "At the core of Pado is a <0>portfolio-level risk engine</0> that evaluates risk per <0>Account Object</0>, not per protocol.",
+      "box": {
+        "item1": "<0>Cross-Product Collateral:</0> Assets may secure multiple positions across trading and lending, subject to protocol-defined risk parameters.",
+        "listTitle": "Tiered Risk Weights:",
+        "list": [
+          "<0>Tier 1:</0> High-liquidity assets such as BTC and ETH",
+          "<0>Tier 2:</0> Lower-liquidity or volatile assets",
+          "<0>Tier 3:</0> Prediction market positions, isolated and excluded from cross-collateralization"
+        ],
+        "item2": "<0>Deterministic Liquidation:</0> Margin health updates in real time, with transparent, protocol-enforced liquidation rules designed to prevent bad debt accumulation."
+      },
+      "conclusion": "This framework improves capital efficiency while maintaining strict, verifiable risk controls."
+    },
+    "section5": {
+      "title": "5. Native Lending, Borrowing, and Staking",
+      "intro": "Lending and staking are native states of the account, not external applications.",
+      "box1": {
+        "title": "Yield-Bearing Collateral",
+        "content": "Idle assets can be allocated to lending pools while continuing to contribute to margin health."
+      },
+      "box2": {
+        "title": "Integrated Borrowing",
+        "content": "Users may access atomic, intra-transaction credit or long-term borrowing directly within their account."
+      },
+      "box3": {
+        "title": "Staking Visibility",
+        "content": "Staked network assets remain visible to the risk engine and governance logic."
+      },
+      "conclusion": "All positions interact programmatically, enabling compound strategies without asset transfers or custody changes."
+    },
+    "section6": {
+      "title": "6. Programmable Cross-Chain Asset Access",
+      "intro": "Pado integrates external assets through <0>auditable programmable vaults</0>.",
+      "list": [
+        "Assets are locked in chain-specific vaults governed by MPC and threshold signatures.",
+        "Nasun-native representations are issued 1:1 and recorded as onchain objects.",
+        "Vault state, issuance, and redemption conditions are publicly verifiable."
+      ],
+      "conclusion": "This design enables external liquidity to participate in Nasun’s high-performance environment without relying on opaque intermediaries."
+    },
+    "section7": {
+      "title": "7. Insurance and Extreme Risk Management",
+      "intro": "Pado includes a protocol-level <0>Insurance Fund</0> to mitigate extreme market events and operational failures.",
+      "list": [
+        "Funded via a fixed percentage (e.g., 10%) of protocol trading fees and a portion of liquidation spreads.",
+        "Activated under predefined conditions such as oracle failures or extreme volatility.",
+        "Governed transparently with onchain rules and parameter controls.",
+        "Utilizes a multi-oracle consensus with circuit breakers."
+      ],
+      "conclusion": "This mechanism provides an additional layer of systemic resilience beyond margin enforcement."
+    },
+    "section8": {
+      "title": "8. Compliance and Global Readiness",
+      "intro": "Pado is designed to be <0>regulatory-compatible by architecture</0>, without compromising non-custodial control.",
+      "list": [
+        "<0>Selective Disclosure:</0> Zero-knowledge proofs enable users to attest to jurisdictional or eligibility requirements without revealing personal data.",
+        "<0>Onchain Transparency:</0> Margin logic, liquidations, interest rates, and insurance mechanisms are continuously auditable.",
+        "<0>Progressive Governance:</0> Protocol parameters transition from foundation stewardship toward DAO-based control as the system matures."
+      ],
+      "conclusion": "This approach aligns with emerging global standards while preserving user sovereignty."
+    },
+    "section9": {
+      "title": "9. The Result",
+      "intro": "Pado establishes a new standard for onchain finance:",
+      "box1": {
+        "title": "One Account",
+        "content": "A single, secure financial identity"
+      },
+      "box2": {
+        "title": "One Margin System",
+        "content": "Portfolio-level capital efficiency across products"
+      },
+      "box3": {
+        "title": "One Execution Layer",
+        "content": "Atomic, parallel, and fully onchain"
+      },
+      "conclusion": "By combining Nasun’s object-oriented architecture with deterministic risk management and non-custodial design, Pado delivers a financial system that is performant, transparent, and built for global scale."
     }
   }
 }
