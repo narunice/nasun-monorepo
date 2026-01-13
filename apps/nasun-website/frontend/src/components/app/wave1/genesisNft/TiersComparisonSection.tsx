@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { SectionLayout } from "../../layout/SectionLayout";
-import { NFT_COLLECTION } from "../../../constants/pageContent/genesisNFTTiers";
-import { NFTTiers } from "../../../types/genesisNFTs.d";
-import { getTierDisplayName } from "../../../utils/nftUtils";
+import { SectionLayout } from "../../../layout/SectionLayout";
+import { NFT_COLLECTION } from "../../../../constants/pageContent/genesisNFTTiers";
+import { NFTTiers } from "../../../../types/genesisNFTs.d";
+import { getTierDisplayName } from "../../../../utils/nftUtils";
 import { TierCard } from "./TierCard";
 
 function TiersComparisonSection() {

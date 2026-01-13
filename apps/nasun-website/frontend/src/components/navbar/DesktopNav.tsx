@@ -31,7 +31,7 @@ export default function DesktopNav({ navItems }: Props) {
   };
 
   return (
-    <div className="hidden xl:flex flex-1 items-center justify-between gap-1 xl:gap-3 2xl:gap-6">
+    <div className="hidden lg:flex flex-1 items-center justify-around gap-1 lg:gap-3 2xl:gap-6">
       {navItems.map((item) => (
         <div key={item.name}>
           {item.subMenu ? (
@@ -62,7 +62,9 @@ export default function DesktopNav({ navItems }: Props) {
                         </div>
 
                         {/* 인라인 하위 메뉴 (항상 표시, 왼쪽 border-l) */}
-                        <div className={`${DESKTOP_NAVIGATION_STYLES.nestedSubMenuWrapper.base} mb-2`}>
+                        <div
+                          className={`${DESKTOP_NAVIGATION_STYLES.nestedSubMenuWrapper.base} mb-2`}
+                        >
                           {subItem.subMenu.map((nestedItem) => (
                             <DropdownMenu.Item
                               key={nestedItem.name}
@@ -110,7 +112,10 @@ export default function DesktopNav({ navItems }: Props) {
                           >
                             <span className="flex items-center gap-2">
                               {subItem.name}
-                              <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs opacity-70" />
+                              <FontAwesomeIcon
+                                icon={faArrowUpRightFromSquare}
+                                className="text-xs opacity-70"
+                              />
                             </span>
                           </a>
                         ) : (

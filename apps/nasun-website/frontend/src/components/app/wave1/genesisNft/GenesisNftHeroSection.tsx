@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { SectionTitle } from "../../ui/SectionTitle";
-import { DividerBox } from "../../ui/DividerBox";
-import { OuterBox } from "../../ui/OuterBox";
+import { SectionTitle } from "../../../ui/SectionTitle";
+import { DividerBox } from "../../../ui/DividerBox";
+import { OuterBox } from "../../../ui/OuterBox";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 
 function GenesisNftHeroSection() {

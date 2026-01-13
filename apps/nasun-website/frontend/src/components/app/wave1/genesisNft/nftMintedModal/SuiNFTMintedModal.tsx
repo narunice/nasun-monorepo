@@ -1,10 +1,10 @@
 // /src/components/app/sale/nftMintedModal/SuiNFTMintedModal.tsx
 import { useState, useEffect } from "react";
-import { useNetworkVariable } from "../../../../config/suiNetworkConfig";
+import { useNetworkVariable } from "../../../../../config/suiNetworkConfig";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { BaseNFTMintedModal } from "./BaseNFTMintedModal";
-import { NFTMintedEvent } from "../../../../types/genesisNFTs.d";
-import { useSuiNFTMintedEvents } from "../../../../hooks/NFTMintedEvents/useSuiNFTMintedEvents";
+import { NFTMintedEvent } from "../../../../../types/genesisNFTs.d";
+import { useSuiNFTMintedEvents } from "../../../../../hooks/NFTMintedEvents/useSuiNFTMintedEvents";
 
 interface SuiNFTMintedModalProps {
   networkName: string;

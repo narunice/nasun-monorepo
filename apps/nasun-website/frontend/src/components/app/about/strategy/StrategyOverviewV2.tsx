@@ -2,6 +2,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "../../../../components/ui/DividerBox";
 import { PageTitle } from "../../../../components/ui/PageTitle";
 import { SectionTitle } from "../../../../components/ui/SectionTitle";
+import { Infinity as InfinityIcon, Network, Users } from "lucide-react";
 
 const StrategyOverviewV2 = () => {
   return (
@@ -17,7 +18,7 @@ const StrategyOverviewV2 = () => {
       <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
         {/* Section 1: The Core Challenge */}
         <section>
-          <SectionTitle as="h4" className=" ">
+          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4 ">
             1. The Core Challenge: Creation Without Value Accrual
           </SectionTitle>
           <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
@@ -69,7 +70,7 @@ const StrategyOverviewV2 = () => {
 
         {/* Section 2: Our Solution */}
         <section>
-          <SectionTitle as="h4" className=" ">
+          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4 ">
             2. Our Solution: The Nasun Framework
           </SectionTitle>
           <div className="space-y-2 md:space-y-3 lg:space-y-4">
@@ -90,7 +91,8 @@ const StrategyOverviewV2 = () => {
               color="n1"
               className=""
               titleClassName="!text-nasun-c1"
-              title="I. Turning Fleeting Energy into Persistent Value"
+              icon={<InfinityIcon className="w-5 h-5 text-nasun-c1" />}
+              title="Turning Fleeting Energy into Persistent Value"
             >
               <div className="space-y-4 text-nasun-white/90 text-lg font-light">
                 <p>Today, creative energy is scattered across feeds, chats, and platforms.</p>
@@ -110,7 +112,8 @@ const StrategyOverviewV2 = () => {
             <DividerBox
               color="n1"
               titleClassName="!text-nasun-c1"
-              title="II. The Network as an Economic Backbone"
+              icon={<Network className="w-5 h-5 text-nasun-c1" />}
+              title="The Network as an Economic Backbone"
             >
               <div className="space-y-4 text-nasun-white/90 text-lg font-light">
                 <p>
@@ -137,7 +140,8 @@ const StrategyOverviewV2 = () => {
             <DividerBox
               color="n1"
               titleClassName="!text-nasun-c1"
-              title="III. A Seamless, Human-First Experience"
+              icon={<Users className="w-5 h-5 text-nasun-c1" />}
+              title="A Seamless, Human-First Experience"
             >
               <div className="space-y-4 text-nasun-white/90 text-lg font-light">
                 <p>We believe technology should feel invisible.</p>
@@ -208,25 +212,25 @@ const StrategyOverviewV2 = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 md:mt-3 lg:mt-4">
-            <DividerBox color="c1" className="" titleClassName="" title="1. Signal Aggregation">
+            <DividerBox color="c1" title="1. Signal Aggregation">
               <p className="text-nasun-white/90 text-lg font-light">
                 AI systems assist in identifying ideas, themes, and creative directions that show
                 sustained resonance across the community.
               </p>
             </DividerBox>
-            <DividerBox color="c1" className="" titleClassName="" title="2. Open Collaboration">
+            <DividerBox color="c1" title="2. Open Collaboration">
               <p className="text-nasun-white/90 text-lg font-light">
                 Creative development unfolds in public, with ideas evolving through discussion,
                 experimentation, and feedback.
               </p>
             </DividerBox>
-            <DividerBox color="c1" className="" titleClassName="" title="3. Proposal Formation">
+            <DividerBox color="c1" title="3. Proposal Formation">
               <p className="text-nasun-white/90 text-lg font-light">
                 High-signal outcomes are refined into actionable proposals, supported by AI-assisted
                 synthesis while preserving human authorship and review.
               </p>
             </DividerBox>
-            <DividerBox color="c1" className="" titleClassName="" title="4. On-Chain Execution">
+            <DividerBox color="c1" title="4. On-Chain Execution">
               <p className="text-nasun-white/90 text-lg font-light">
                 Final decisions are executed through the Nasun layer, making outcomes verifiable,
                 enforceable, and transparent.

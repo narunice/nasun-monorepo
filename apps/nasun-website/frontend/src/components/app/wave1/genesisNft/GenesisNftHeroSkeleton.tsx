@@ -1,4 +1,4 @@
-import { InlineLoading } from "../../ui/InlineLoading";
+import { InlineLoading } from "../../../ui/InlineLoading";
 
 export default function GenesisNftHeroSkeleton() {
   return (
