@@ -17,7 +17,10 @@ type NasunColor =
   | "n2"
   | "n3"
   | "n4"
-  | "n5";
+  | "n5"
+  | "w1";
+
+type PaddingVariant = "md" | "sm";
 
 interface DividerBoxProps {
   /** 제목 (옵셔널) - 제공하지 않으면 제목과 구분선이 표시되지 않음 */
@@ -42,6 +45,8 @@ interface DividerBoxProps {
   rightTitleClassName?: string;
   /** Description 커스텀 클래스 (색상 오버라이드 등) */
   descriptionClassName?: string;
+  /** 패딩 설정 (기본값: md) */
+  padding?: PaddingVariant;
 }
 
 const colorStyles: Record<NasunColor, { border: string; background: string; text: string }> = {
@@ -57,7 +62,7 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
   },
   c1: {
     border: "border-nasun-c1/50",
-    background: "bg-nasun-c1/10",
+    background: "bg-nasun-c1/5",
     text: "text-nasun-c1",
   },
   c2: {
@@ -130,7 +135,18 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  ",
     text: "text-nasun-white",
   },
+  w1: {
+    border: "border-nasun-white/40",
+    background: "bg-nasun-gray/70",
+    text: "text-nasun-white",
+  },
 };
+
+const paddingStyles: Record<PaddingVariant, string> = {
+  md: "px-4 md:px-6 lg:px-8 py-3 md:py-5 lg:py-7",
+  sm: "px-4 md:px-5 lg:px-6 py-3 md:py-4 lg:py-5",
+};
+
 /**
  * DividerBox Component
  *
@@ -152,12 +168,14 @@ export const DividerBox = ({
   titleClassName = "",
   rightTitleClassName = "",
   descriptionClassName = "",
+  padding = "md",
 }: DividerBoxProps) => {
   const styles = colorStyles[color];
+  const paddingClass = paddingStyles[padding];
 
   return (
     <div
-      className={`p-4 md:p-6 lg:p-8 w-full ${styles.background} rounded-lg border backdrop-blur-lg ${styles.border} ${className}`}
+      className={`${paddingClass} w-full ${styles.background} rounded-lg border backdrop-blur-lg ${styles.border} ${className}`}
     >
       {/* Title (옵셔널) - rightTitle/rightAction이 있으면 justify-between 레이아웃 */}
       {(title || rightTitle || rightAction) && (

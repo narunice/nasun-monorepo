@@ -34,7 +34,10 @@ type ColorVariant =
   | "n2"
   | "n3"
   | "n4"
-  | "n5";
+  | "n5"
+  | "w1";
+
+type PaddingVariant = "md" | "sm";
 
 const variantStyles: Record<ColorVariant, string> = {
   default: "border-nasun-c5/50 bg-nasun-c6/90", // 현재 기본값 (c5 border + c6 bg)
@@ -53,18 +56,32 @@ const variantStyles: Record<ColorVariant, string> = {
   n3: "bg-gray-800/30 border-nasun-c5/40", // compact card style
   n4: "border-nasun-c4/50 bg-nasun-c4/10", // climber card style
   n5: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  border-nasun-c3/40", // dashboard hero style
+  w1: "border-nasun-white/40 bg-nasun-gray/70",
+};
+
+const paddingStyles: Record<PaddingVariant, string> = {
+  md: "px-4 md:px-6 lg:px-8 py-3 md:py-5 lg:py-7",
+  sm: "px-4 md:px-5 lg:px-6 py-3 md:py-4 lg:py-5",
 };
 
 interface OuterBoxProps {
   children: ReactNode;
   className?: string;
   color?: ColorVariant;
+  padding?: PaddingVariant;
 }
 
-export const OuterBox: React.FC<OuterBoxProps> = ({ children, className = "", color = "n1" }) => {
+export const OuterBox: React.FC<OuterBoxProps> = ({
+  children,
+  className = "",
+  color = "n1",
+  padding = "md",
+}) => {
+  const paddingClass = paddingStyles[padding];
+
   return (
     <div
-      className={`backdrop-blur-lg rounded-xl shadow-lg border ${variantStyles[color]} p-4 md:p-6 lg:p-8 ${className}`}
+      className={`${paddingClass} backdrop-blur-lg rounded-xl shadow-lg border ${variantStyles[color]} ${className}`}
     >
       {children}
     </div>
