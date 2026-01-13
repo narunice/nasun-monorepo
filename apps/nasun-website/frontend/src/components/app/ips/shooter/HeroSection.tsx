@@ -18,11 +18,11 @@ function HeroSection() {
   const { t } = useTranslation("spectra");
 
   return (
-    <SectionLayout className="">
+    <SectionLayout className="!max-w-6xl">
       {/* Page Title + Video + Community Engagement */}
       <PageTitle>{t("pageTitle")}</PageTitle>
 
-      <div className="max-w-4xl mx-auto -mt-4 mb-6">
+      <div className=" mx-auto -mt-4 mb-6">
         <video
           src={progressVideo}
           autoPlay
@@ -34,7 +34,7 @@ function HeroSection() {
         />
       </div>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <SectionTitle as="h4" className="pt-2 mb-2 md:mb-3 lg:mb-4">
           {t("communityEngagement.title")}
         </SectionTitle>
