@@ -7,6 +7,7 @@ module.exports = {
     // Base backgrounds and text
     white: "#faf7f4", // Default background (warm white)
     black: "#191615", // Default text (warm dark)
+    gray: "#242424", // Dark gray for UI components
 
     // Point colors (brand accents)
     scarlet: "#fa3102", // Main point color
