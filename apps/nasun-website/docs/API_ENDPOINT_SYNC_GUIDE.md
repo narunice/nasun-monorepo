@@ -1,8 +1,8 @@
 # API 엔드포인트 자동 동기화 가이드
 
 **작성일**: 2025-10-24
-**최종 업데이트**: 2025-10-31 ✅ **API Gateway ID 고정 설명 추가**
-**버전**: 2.1.0
+**최종 업데이트**: 2026-01-14 ✅ **API Gateway ID 고정 설명 추가 및 개별 스택 수동 동기화 가이드 보강**
+**버전**: 2.2.0
 
 CDK 백엔드 배포 후 API Gateway 엔드포인트가 변경될 때, 프론트엔드 `.env` 파일을 **환경별로** 자동 업데이트하는 시스템입니다.
 
@@ -22,6 +22,7 @@ CDK 백엔드 배포 후 API Gateway 엔드포인트가 변경될 때, 프론트
 3. [사용 방법](#사용-방법)
 4. [아키텍처](#아키텍처)
 5. [트러블슈팅](#트러블슈팅)
+6. [수동 동기화 가이드 (비상시)](#수동-동기화-가이드-비상시)
 
 ---
 
@@ -467,6 +468,49 @@ chmod +x cdk/scripts/deploy-all-with-sync.sh
 # .env 파일 쓰기 권한 확인
 ls -la frontend/.env*
 chmod 644 frontend/.env.*
+```
+
+---
+
+## 6. 수동 동기화 가이드 (비상시)
+
+스크립트 실행이 실패하거나 개별 스택만 빠르게 업데이트해야 할 경우, CDK 배포 로그를 보고 직접 `.env` 파일을 수정할 수 있습니다.
+
+### 1. CDK Outputs 확인
+
+CDK 배포가 완료되면 터미널에 `Outputs:` 섹션이 표시됩니다.
+
+```bash
+# 예시: NftEventStack 배포 결과
+Outputs:
+NftEventStack.ApiGatewayUrl = https://jrrge0lqtk.execute-api.ap-northeast-2.amazonaws.com/prod/
+NftEventStack.RegisterEndpoint = https://jrrge0lqtk.execute-api.ap-northeast-2.amazonaws.com/prod/event/register
+...
+```
+
+### 2. .env 파일 수정
+
+확인한 URL을 프론트엔드 환경 설정 파일(`frontend/.env.development` 또는 `frontend/.env.production`)에 직접 복사합니다.
+
+**주요 매핑 테이블:**
+
+| Stack | CDK Output Key | .env Variable Name | 예시 값 (Prod) |
+|-------|----------------|-------------------|---------------|
+| **NftEventStack** | `ApiGatewayUrl` | `VITE_BATTALION_NFT_API` | `https://jrrge0lqtk.../prod` |
+| **AuthStack** | `TwitterAuthApiUrl` | `VITE_TWITTER_AUTH_API` | `https://br30jspm8j.../prod/auth/twitter` |
+| **AuthStack** | `MetaMaskAuthApiUrl` | `VITE_METAMASK_AUTH_API` | `https://gtzq164xhb.../prod/auth/metamask` |
+| **CommonStack** | `JoinWhitelistApiUrl` | `VITE_JOIN_WHITELIST_API` | `https://shx1fpd8qi.../prod/` |
+| **CommonStack** | `UserProfileApiUrl` | `VITE_USER_PROFILE_API` | `https://aanboqet5i.../prod/` |
+
+> ⚠️ **주의**: URL 끝의 슬래시(`/`) 포함 여부를 기존 값과 동일하게 맞춰주세요.
+
+### 3. 프론트엔드 재빌드 (필수)
+
+`.env` 파일을 수정한 후에는 반드시 프론트엔드를 재빌드해야 변경 사항이 반영됩니다.
+
+```bash
+cd frontend
+npm run build
 ```
 
 ---
