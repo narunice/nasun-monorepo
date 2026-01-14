@@ -8,6 +8,8 @@ import { Button } from "../../../components/ui/button";
 import { Tag } from "../../../components/ui/tag";
 import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
 import { Table, TableBody, TableRow, TableCell } from "../../ui/table";
+import { useWallet, useZkLogin } from "@nasun/wallet";
+import { WalletConnect } from "@nasun/wallet-ui";
 
 type UserInfoProps = {
   user: UserData | null;
@@ -19,6 +21,11 @@ const UserInfo = ({ user, isLoading, error }: UserInfoProps) => {
   const { t } = useTranslation(["myAccount", "common"]);
   const updateUserProfile = useUserStore((state) => state.updateUserProfile);
   const [isLinking, setIsLinking] = useState(false);
+
+  // Nasun Wallet hooks
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
   const [linkError, setLinkError] = useState<string | null>(null);
 
   // Use the unified MetaMask connection hook for linking
@@ -298,6 +305,35 @@ const UserInfo = ({ user, isLoading, error }: UserInfoProps) => {
 
       <Table variant="c3">
         <TableBody>
+          {/* Nasun Wallet */}
+          <TableRow variant="c3">
+            <TableCell align="center" className="w-[30%]">
+              <div className="flex items-center justify-center gap-2">
+                <img
+                  src="/nasun_symbol_white.svg"
+                  alt="Nasun Wallet"
+                  className="w-5 h-5"
+                />
+                <span>Nasun Wallet</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-col gap-2 items-start">
+                <WalletConnect dropdownPosition="bottom" dropdownAlign="left" />
+                <p className="text-xs text-nasun-c4/80">
+                  * This is a prototype on Devnet. The network may be reset at any time.
+                </p>
+              </div>
+            </TableCell>
+            <TableCell align="center" className="w-[15%]">
+              {isNasunConnected ? (
+                <Tag variant="filledC3" size="sm">
+                  {t("userInfo.connected") || "Connected"}
+                </Tag>
+              ) : null}
+            </TableCell>
+          </TableRow>
+
           {/* MetaMask Account - Always displayed */}
           <TableRow variant="c3">
             <TableCell align="center" className="w-[30%]">
