@@ -297,12 +297,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.Founders,
         },
         {
-          name: "navigation.aboutTeam",
-          path: "/about/team",
-          element: Pages.AboutTeam,
-          disabled: true, // Coming Soon
-        },
-        {
           name: "navigation.opportunities",
           path: "/about/opportunities",
           element: Pages.Opportunities,
@@ -311,6 +305,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.strategy",
           path: "/about/strategy",
           element: Pages.VisionStrategy,
+        },
+        {
+          name: "navigation.aboutTeam",
+          path: "/about/team",
+          element: Pages.AboutTeam,
+          disabled: true, // Coming Soon
         },
       ],
     },
