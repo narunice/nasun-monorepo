@@ -90,61 +90,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           removeExpression = 'REMOVE twitterHandle, twitterId, profileImageUrl';
         }
       } else if (providerKey === 'metamask') {
-        // MetaMask unlink requires signature verification for security
-        const requestBody = JSON.parse(event.body || '{}');
-        const { walletAddress, signature, nonce } = requestBody;
-
-        if (!walletAddress || !signature || !nonce) {
-          return {
-            statusCode: 400,
-            headers: corsHeaders,
-            body: JSON.stringify({
-              message: 'walletAddress, signature, and nonce are required for MetaMask unlink',
-            }),
-          };
-        }
-
-        // Verify that the wallet address matches the linked account
-        const linkedWalletAddress = linkedAccounts[providerKey].walletAddress;
-        if (walletAddress.toLowerCase() !== linkedWalletAddress.toLowerCase()) {
-          return {
-            statusCode: 400,
-            headers: corsHeaders,
-            body: JSON.stringify({
-              message: 'Wallet address does not match the linked account',
-            }),
-          };
-        }
-
-        // Verify signature
-        const { verifySignature, generateUnlinkMessage } = require('./utils/ethersUtils');
-        const message = generateUnlinkMessage(walletAddress, nonce);
-
-        try {
-          const isValid = await verifySignature(message, signature, walletAddress);
-
-          if (!isValid) {
-            return {
-              statusCode: 401,
-              headers: corsHeaders,
-              body: JSON.stringify({
-                message: 'Invalid signature. Unlink cancelled.',
-              }),
-            };
-          }
-        } catch (error: any) {
-          console.error('Signature verification error:', error);
-          return {
-            statusCode: 500,
-            headers: corsHeaders,
-            body: JSON.stringify({
-              message: 'Signature verification failed',
-              error: error.message,
-            }),
-          };
-        }
-
-        // Signature verified, proceed with unlinking
+        // MetaMask unlink signature verification REMOVED for better UX
+        // Users should be able to unlink lost wallets without signing
+        // Authentication is already handled by API Gateway (or identity check)
         removeExpression = 'REMOVE walletAddress';
       }
 
