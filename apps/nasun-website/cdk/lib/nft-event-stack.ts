@@ -29,7 +29,11 @@ const ALLOWED_ORIGINS = [
   'https://staging.gensol.io',
   'https://pado.finance',
   'https://staging.pado.finance',
-  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'] : []),
+  // Localhost development servers
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
 ];
 
 export class NftEventStack extends cdk.Stack {
