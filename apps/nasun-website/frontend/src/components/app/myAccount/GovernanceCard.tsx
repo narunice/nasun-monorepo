@@ -8,7 +8,6 @@
 import { FC } from "react";
 import { Link } from "react-router-dom";
 import { useWallet, useZkLogin } from "@nasun/wallet";
-import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useDelegation } from "@/features/governance/hooks/useDelegation";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
@@ -31,9 +30,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   // Calculate voting power components
   const basePower = votingPower?.leaderboardScore || 1;
   const nftBonus = nftVerification?.nftBonus || 0;
-  const delegatedPower = delegationState?.delegatorCount
-    ? delegationState.delegatorCount * 100
-    : 0;
+  const delegatedPower = delegationState?.delegatorCount ? delegationState.delegatorCount * 100 : 0;
   const totalPower = basePower + nftBonus + delegatedPower;
 
   if (!isConnected) {
@@ -44,7 +41,6 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
           <p className="text-nasun-white/50 text-center">
             Connect Nasun Wallet to view governance activity
           </p>
-          <WalletConnect />
         </div>
       </DashboardCard>
     );
@@ -66,11 +62,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
       <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <StatCard
-          label="Voting Power"
-          value={totalPower.toLocaleString()}
-          className="!p-3"
-        />
+        <StatCard label="Voting Power" value={totalPower.toLocaleString()} className="!p-3" />
         <StatCard
           label="Participation"
           value={`${stats.participationRate.toFixed(0)}%`}
@@ -80,24 +72,17 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
       {/* Recent Votes */}
       <div className="space-y-2">
-        <h6 className="font-medium text-nasun-white/60 uppercase">
-          Recent Votes
-        </h6>
+        <h6 className="font-medium text-nasun-white/60 uppercase">Recent Votes</h6>
         {history.length > 0 ? (
           <div className="space-y-2">
             {history.map((vote) => (
-              <div
-                key={vote.proposalId}
-                className="flex items-center justify-between"
-              >
+              <div key={vote.proposalId} className="flex items-center justify-between">
                 <span className="truncate max-w-[150px] text-nasun-white/80">
                   {vote.proposalTitle}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded text-sm font-medium ${
-                    vote.voteYes
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
+                    vote.voteYes ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
                   }`}
                 >
                   {vote.voteYes ? "Yes" : "No"}

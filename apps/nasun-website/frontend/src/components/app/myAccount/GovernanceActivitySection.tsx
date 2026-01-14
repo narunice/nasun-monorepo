@@ -49,15 +49,12 @@ export const GovernanceActivitySection: FC<GovernanceActivitySectionProps> = ({
               <TableRow variant="c3" isLast>
                 <TableCell className="w-full">
                   <p className="py-2 text-center text-nasun-white/70">
-                    Connect your wallet to view governance activity
+                    Connect Nasun Wallet to view governance status
                   </p>
                 </TableCell>
               </TableRow>
             </TableBody>
           </Table>
-          <div className="absolute top-1/2 right-4 -translate-y-1/2 z-[9999]">
-            <WalletConnect />
-          </div>
         </div>
       );
     }

@@ -25,6 +25,8 @@ import {
   onAccountsChanged,
   removeListener,
 } from "../../../utils/metamaskUtils";
+import { useWallet, useZkLogin } from "@nasun/wallet";
+import { WalletConnect } from "@nasun/wallet-ui";
 
 interface ProfileHeroCardProps {
   className?: string;
@@ -54,11 +56,7 @@ const AccountIcons: Record<string, React.ReactNode> = {
     </svg>
   ),
   metamask: <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-4 h-4" />,
-  nasun: (
-    <div className="w-4 h-4 bg-nasun-c4 rounded-full flex items-center justify-center text-[10px] text-white font-bold">
-      N
-    </div>
-  ),
+  nasun: <img src="/nasun_symbol_white.svg" alt="Nasun Wallet" className="w-4 h-4" />,
 };
 
 // Unified Account Item Component
@@ -67,9 +65,10 @@ interface AccountItemProps {
   identifier?: string;
   statusBadge?: React.ReactNode;
   actions: React.ReactNode[];
+  children?: React.ReactNode;
 }
 
-const AccountItem: FC<AccountItemProps> = ({ provider, identifier, statusBadge, actions }) => {
+const AccountItem: FC<AccountItemProps> = ({ provider, identifier, statusBadge, actions, children }) => {
   const labels: Record<string, string> = {
     twitter: "X (Twitter)",
     google: "Google",
@@ -78,27 +77,30 @@ const AccountItem: FC<AccountItemProps> = ({ provider, identifier, statusBadge, 
   };
 
   return (
-    <div className="flex items-center gap-3 py-3 px-4 bg-gray-800/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-      {/* Icon */}
-      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full">
-        {AccountIcons[provider]}
-      </div>
+    <div className="flex flex-col py-3 px-4 bg-gray-800/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+      <div className="flex items-center gap-3">
+        {/* Icon */}
+        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full">
+          {AccountIcons[provider]}
+        </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-nasun-white">{labels[provider]}</span>
+            {statusBadge}
+          </div>
+          <div className="text-xs text-nasun-white/50 truncate">
+            {identifier || "Not linked"}
+          </div>
+        </div>
+
+        {/* Actions */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-nasun-white">{labels[provider]}</span>
-          {statusBadge}
-        </div>
-        <div className="text-xs text-nasun-white/50 truncate">
-          {identifier || "Not linked"}
+          {actions}
         </div>
       </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        {actions}
-      </div>
+      {children && <div className="mt-2 pl-11">{children}</div>}
     </div>
   );
 };
@@ -111,6 +113,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
+
+  // Nasun Wallet Hooks
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
+  const nasunWalletAddress = account?.address;
 
   // Voting power & Stats
   const { votingPower, nftVerification } = useVotingPower();
@@ -164,7 +172,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
     onAccountsChanged(handleAccountsChanged);
 
     return () => {
-      removeListener('accountsChanged', handleAccountsChanged);
+      removeListener('accountsChanged', handleAccountsChanged as (...args: unknown[]) => void);
     };
   }, []);
 
@@ -207,6 +215,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
     </span>
   );
 
+  const ConnectedBadge = () => (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-nasun-c3/10 text-nasun-c3 text-[10px] font-medium border border-nasun-c3/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-nasun-c3" />
+      Connected
+    </span>
+  );
+
   // ------------------------------------------------------------------
   // Link/Unlink Handlers
   // ------------------------------------------------------------------
@@ -232,6 +247,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       authUrl.searchParams.append("prompt", "select_account");
       window.location.href = authUrl.toString();
     } catch (err) {
+      logger.error("Failed to link Google account:", err);
       alert("Failed to link Google account");
       setIsLinking(false);
     }
@@ -253,6 +269,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       localStorage.setItem("auth_provider_preference", "Twitter");
       window.location.href = data.authUrl;
     } catch (err) {
+      logger.error("Failed to link Twitter account:", err);
       alert("Failed to link Twitter account");
       setIsLinking(false);
     }
@@ -279,6 +296,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       }
       alert(`${provider} account unlinked successfully!`);
     } catch (err) {
+      logger.error(`Failed to unlink ${provider} account:`, err);
       alert(`Failed to unlink ${provider} account`);
     } finally {
       setIsLinking(false);
@@ -394,7 +412,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   // Case 2: Linked but Inactive or Different -> Activate/Switch Button
                   (!isMetaMaskActive) ? (
                     <div key="actions" className="flex gap-2">
-                      <Button size="xs" variant="outline" onClick={handleActivateMetaMask}>
+                      <Button size="xs" variant="filledOutlineC4" onClick={handleActivateMetaMask}>
                         {isDifferentWalletActive ? "Switch" : "Activate"}
                       </Button>
                       {!isMetaMaskPrimary && (
@@ -409,14 +427,19 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ]}
               />
 
-              {/* 4. Nasun Wallet (Placeholder) */}
+              {/* 4. Nasun Wallet */}
               <AccountItem
                 provider="nasun"
-                identifier="Coming Soon"
+                identifier={isNasunConnected && nasunWalletAddress ? `${nasunWalletAddress.slice(0, 6)}...${nasunWalletAddress.slice(-4)}` : "Not connected"}
+                statusBadge={isNasunConnected ? <ConnectedBadge /> : undefined}
                 actions={[
-                  <Button key="link" size="xs" variant="ghost" disabled className="opacity-50">Link</Button>
+                  <WalletConnect key="connect" dropdownPosition="bottom" dropdownAlign="right" />
                 ]}
-              />
+              >
+                <p className="text-[10px] text-nasun-c4/80 leading-relaxed">
+                  * This is a prototype on Devnet. The network may be reset at any time.
+                </p>
+              </AccountItem>
 
             </div>
           </div>
