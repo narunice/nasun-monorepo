@@ -55,7 +55,7 @@ function FeaturesSection() {
             {t("mainFactors.title")}
           </SectionTitle>
 
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <ul className="space-y-1 md:space-y-2 lg:space-y-3">
               {mainFactorItems.map((item, index) => (
                 <li key={index} className="flex">
@@ -75,7 +75,7 @@ function FeaturesSection() {
 
           <div className="space-y-4 md:space-y-6">
             <p>{t("tournaments.intro")}</p>
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <ul className="space-y-1 md:space-y-2 lg:space-y-3">
                 {tournamentItems.map((item, index) => (
                   <li key={index} className="flex">

@@ -103,7 +103,7 @@ function ResourcesSection() {
             {categories.map(({ key, data }) => (
               <div key={key}>
                 <h4 className="text-lg font-semibold mb-2 md:mb-3">{data.title}</h4>
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-4xl mx-auto">
                   <ul className="space-y-1 md:space-y-2 lg:space-y-3">
                     {data.items.map((item, index) => (
                       <li key={index} className="flex">
