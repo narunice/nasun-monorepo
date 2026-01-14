@@ -152,6 +152,9 @@ export function useMetaMaskConnection(
           JSON.stringify(updatedProfile)
         );
 
+        // Auto-connect dApp session after successful linking
+        await connectWallet();
+
         onSuccess?.(address);
       }
     } catch (error) {
