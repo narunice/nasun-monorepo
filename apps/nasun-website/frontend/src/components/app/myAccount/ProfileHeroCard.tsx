@@ -2,10 +2,11 @@
  * ProfileHeroCard Component
  *
  * Hero card for user profile display at the top of My Account dashboard.
- * Shows avatar, username, connected accounts with Link/Unlink buttons, and key stats.
+ * Shows avatar, username, and a unified "Connected Accounts" section
+ * managing both social logins and wallet connections.
  */
 
-import { FC, useState, useCallback } from "react";
+import { FC, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "../../../store/userStore";
@@ -18,13 +19,19 @@ import { DashboardCard } from "../../ui/DashboardCard";
 import { Button } from "../../ui/button";
 import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
 import logger from "../../../lib/logger";
+import {
+  getConnectedWallet,
+  connectWallet,
+  onAccountsChanged,
+  removeListener,
+} from "../../../utils/metamaskUtils";
 
 interface ProfileHeroCardProps {
   className?: string;
 }
 
-// Social account icons
-const SocialIcons: Record<string, React.ReactNode> = {
+// Account icons
+const AccountIcons: Record<string, React.ReactNode> = {
   twitter: <img src="/X_logo_2023.svg.png" alt="X" className="w-4 h-4 dark:invert" />,
   google: (
     <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -47,62 +54,51 @@ const SocialIcons: Record<string, React.ReactNode> = {
     </svg>
   ),
   metamask: <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-4 h-4" />,
+  nasun: (
+    <div className="w-4 h-4 bg-nasun-c4 rounded-full flex items-center justify-center text-[10px] text-white font-bold">
+      N
+    </div>
+  ),
 };
 
-// Social account item with Link/Unlink button
-interface SocialAccountItemProps {
-  provider: "twitter" | "google" | "metamask";
-  isConnected: boolean;
-  isPrimary: boolean;
-  displayValue?: string;
-  onLink: () => void;
-  onUnlink: () => void;
-  isLinking: boolean;
+// Unified Account Item Component
+interface AccountItemProps {
+  provider: "twitter" | "google" | "metamask" | "nasun";
+  identifier?: string;
+  statusBadge?: React.ReactNode;
+  actions: React.ReactNode[];
 }
 
-const SocialAccountItem: FC<SocialAccountItemProps> = ({
-  provider,
-  isConnected,
-  isPrimary,
-  displayValue,
-  onLink,
-  onUnlink,
-  isLinking,
-}) => {
+const AccountItem: FC<AccountItemProps> = ({ provider, identifier, statusBadge, actions }) => {
   const labels: Record<string, string> = {
-    twitter: "X",
+    twitter: "X (Twitter)",
     google: "Google",
     metamask: "MetaMask",
+    nasun: "Nasun Wallet",
   };
 
   return (
-    <div className="flex items-center gap-2 py-2 px-3 bg-gray-800/80 rounded-lg">
+    <div className="flex items-center gap-3 py-3 px-4 bg-gray-800/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
       {/* Icon */}
-      {SocialIcons[provider]}
-      {/* Label */}
-      <span className="text-nasun-white">{labels[provider]}</span>
-      {/* Display value */}
-      {isConnected && displayValue && (
-        <span className="text-nasun-white/60 truncate max-w-[120px]">{displayValue}</span>
-      )}
-      {/* Checkmark */}
-      {isConnected && <span className="text-green-400">✓</span>}
-      {/* Spacer */}
-      <div className="flex-1" />
-      {/* Action button */}
-      {isPrimary ? (
-        <span className="text-sm text-nasun-c3 bg-nasun-c3/20 px-2 py-0.5 rounded whitespace-nowrap">
-          Logged in
-        </span>
-      ) : isConnected ? (
-        <Button variant="filledOutlineScarlet" size="xs" onClick={onUnlink} disabled={isLinking}>
-          {isLinking ? "..." : "Unlink"}
-        </Button>
-      ) : (
-        <Button variant="filledOutlineC4" size="xs" onClick={onLink} disabled={isLinking}>
-          {isLinking ? "..." : "Link"}
-        </Button>
-      )}
+      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full">
+        {AccountIcons[provider]}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-nasun-white">{labels[provider]}</span>
+          {statusBadge}
+        </div>
+        <div className="text-xs text-nasun-white/50 truncate">
+          {identifier || "Not linked"}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        {actions}
+      </div>
     </div>
   );
 };
@@ -114,14 +110,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
+  const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
 
-  // Voting power data
+  // Voting power & Stats
   const { votingPower, nftVerification } = useVotingPower();
   const { delegationState } = useDelegation();
   const { stats } = useVoteHistory(1);
 
-  // Get current rank from API
+  // Rank History
   const twitterHandle = user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle;
   const { data: rankHistory } = useUserRankHistory({
     username: twitterHandle || "",
@@ -130,57 +126,92 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
     enabled: !!twitterHandle,
   });
 
-  // MetaMask connection hook for linking
-  const { handleConnect: handleMetaMaskConnect, isConnecting: isMetaMaskConnecting } =
+  // MetaMask Connection Logic
+  const { handleConnect: handleLinkMetaMask, isConnecting: isMetaMaskLinking } =
     useMetaMaskConnection({
       mode: "link",
-      onSuccess: (address) => {
-        logger.info("MetaMask wallet linked successfully:", address);
-        alert(t("userInfo.linkMetaMaskSuccess") || "MetaMask wallet linked successfully!");
+      onSuccess: async (address) => {
+        logger.info("MetaMask wallet linked:", address);
+        alert(t("userInfo.linkMetaMaskSuccess") || "MetaMask wallet linked and activated!");
+        // Update active wallet state immediately
+        setActiveWalletAddress(address.toLowerCase());
       },
       onError: (error) => {
         logger.error("Failed to link MetaMask account:", error);
-        setLinkError(error.message || "Failed to link MetaMask account");
+        alert(error.message || "Failed to link MetaMask account");
       },
     });
+
+  // Monitor MetaMask State
+  useEffect(() => {
+    const checkWallet = async () => {
+      const address = await getConnectedWallet();
+      if (address) {
+        setActiveWalletAddress(address.toLowerCase());
+      }
+    };
+
+    checkWallet();
+
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length > 0) {
+        setActiveWalletAddress(accounts[0].toLowerCase());
+      } else {
+        setActiveWalletAddress(null);
+      }
+    };
+
+    onAccountsChanged(handleAccountsChanged);
+
+    return () => {
+      removeListener('accountsChanged', handleAccountsChanged);
+    };
+  }, []);
+
+  const handleActivateMetaMask = async () => {
+    try {
+      const address = await connectWallet();
+      setActiveWalletAddress(address.toLowerCase());
+    } catch (error) {
+      console.error("Failed to activate MetaMask:", error);
+    }
+  };
 
   const handleImageError = useCallback(() => setImageError(true), []);
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
 
-  // Get user info
+  // Display Name & Avatar
   const displayName = user?.username || user?.twitterHandle || user?.email?.split("@")[0] || "User";
   const profileImageUrl = user?.profileImageUrl;
 
-  // Determine connected accounts
-  const isTwitterConnected = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
-  const isGoogleConnected = user?.provider === "Google" || !!user?.linkedAccounts?.google;
-  const isMetaMaskConnected = user?.provider === "MetaMask" || !!user?.linkedAccounts?.metamask;
+  // ------------------------------------------------------------------
+  // Helper: Status Badges
+  // ------------------------------------------------------------------
+  const ActiveBadge = () => (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-medium border border-green-500/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+      Active
+    </span>
+  );
 
-  // Primary providers
-  const isTwitterPrimary = user?.provider === "Twitter" && !user?.linkedAccounts?.twitter;
-  const isGooglePrimary = user?.provider === "Google" && !user?.linkedAccounts?.google;
-  const isMetaMaskPrimary = user?.provider === "MetaMask" && !user?.linkedAccounts?.metamask;
+  const LoggedInBadge = () => (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-[10px] font-medium border border-nasun-c4/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-nasun-c4" />
+      Logged in
+    </span>
+  );
 
-  // Calculate stats
-  const basePower = votingPower?.leaderboardScore || 1;
-  const nftBonus = nftVerification?.nftBonus || 0;
-  const delegatedPower = delegationState?.delegatorCount ? delegationState.delegatorCount * 100 : 0;
-  const totalVotingPower = basePower + nftBonus + delegatedPower;
+  const LinkedBadge = () => (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 text-[10px] font-medium">
+      Linked
+    </span>
+  );
 
-  // Get current rank from API data
-  const currentRank = rankHistory?.history[0]?.rank ? `#${rankHistory.history[0].rank}` : "-";
-
-  // NFT status
-  const hasNft = nftBonus > 0;
-  const nftStatus = hasNft ? "Verified" : "-";
-
-  // Participation rate
-  const participationRate = `${stats.participationRate.toFixed(0)}%`;
-
-  // Link/Unlink handlers
+  // ------------------------------------------------------------------
+  // Link/Unlink Handlers
+  // ------------------------------------------------------------------
   const handleLinkGoogle = async () => {
     setIsLinking(true);
-    setLinkError(null);
     try {
       const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
       const redirectUri = `${window.location.origin}/callback`;
@@ -188,10 +219,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
 
       sessionStorage.setItem(
         "google_link_session",
-        JSON.stringify({
-          primaryIdentityId: user?.identityId,
-          isLinking: true,
-        })
+        JSON.stringify({ primaryIdentityId: user?.identityId, isLinking: true })
       );
       localStorage.setItem("auth_provider_preference", "Google");
 
@@ -204,59 +232,43 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       authUrl.searchParams.append("prompt", "select_account");
       window.location.href = authUrl.toString();
     } catch (err) {
-      logger.error("Failed to start Google linking:", err);
-      setLinkError(err instanceof Error ? err.message : "Failed to link Google account");
+      alert("Failed to link Google account");
       setIsLinking(false);
     }
   };
 
   const handleLinkTwitter = async () => {
     setIsLinking(true);
-    setLinkError(null);
     try {
       const twitterAuthApi = import.meta.env.VITE_TWITTER_AUTH_API;
-      if (!twitterAuthApi) throw new Error("Twitter Auth API is not configured");
-
       const response = await fetch(`${twitterAuthApi}/login?link=true`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-      if (!response.ok) throw new Error("Failed to initialize Twitter OAuth");
-
       const data = await response.json();
       sessionStorage.setItem(
         "twitter_link_session",
-        JSON.stringify({
-          sessionId: data.sessionId,
-          state: data.state,
-          primaryIdentityId: user?.identityId,
-        })
+        JSON.stringify({ sessionId: data.sessionId, state: data.state, primaryIdentityId: user?.identityId })
       );
       localStorage.setItem("auth_provider_preference", "Twitter");
       window.location.href = data.authUrl;
     } catch (err) {
-      logger.error("Failed to start Twitter linking:", err);
-      setLinkError(err instanceof Error ? err.message : "Failed to link Twitter account");
+      alert("Failed to link Twitter account");
       setIsLinking(false);
     }
   };
 
-  const handleLinkMetaMask = async () => {
-    setLinkError(null);
-    await handleMetaMaskConnect();
-  };
-
-  const handleUnlinkGoogle = async () => {
-    if (!confirm(t("userInfo.confirmUnlinkGoogle") || "Unlink Google account?")) return;
+  const unlinkAccount = async (provider: string) => {
+    if (!confirm(`Unlink ${provider} account?`)) return;
     setIsLinking(true);
     try {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       const response = await fetch(`${linkAccountApi}/unlink`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ primaryIdentityId: user?.identityId, provider: "google" }),
+        body: JSON.stringify({ primaryIdentityId: user?.identityId, provider: provider.toLowerCase() }),
       });
-      if (!response.ok) throw new Error("Failed to unlink Google account");
+      if (!response.ok) throw new Error("Failed to unlink");
 
       const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
       const profileResponse = await fetch(`${userProfileApi}?identityId=${user?.identityId}`);
@@ -265,203 +277,166 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
         updateUserProfile(updatedProfile);
         localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
       }
-      alert(t("userInfo.unlinkGoogleSuccess") || "Google account unlinked successfully!");
+      alert(`${provider} account unlinked successfully!`);
     } catch (err) {
-      logger.error("Failed to unlink Google:", err);
-      setLinkError(err instanceof Error ? err.message : "Failed to unlink Google account");
+      alert(`Failed to unlink ${provider} account`);
     } finally {
       setIsLinking(false);
     }
   };
 
-  const handleUnlinkTwitter = async () => {
-    if (!confirm(t("userInfo.confirmUnlinkTwitter") || "Unlink Twitter account?")) return;
-    setIsLinking(true);
-    try {
-      const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
-      const response = await fetch(`${linkAccountApi}/unlink`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ primaryIdentityId: user?.identityId, provider: "twitter" }),
-      });
-      if (!response.ok) throw new Error("Failed to unlink Twitter account");
+  // ------------------------------------------------------------------
+  // Data Preparation
+  // ------------------------------------------------------------------
+  if (!user) return <DashboardCard variant="hero" className={className}>Loading...</DashboardCard>;
 
-      const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
-      const profileResponse = await fetch(`${userProfileApi}?identityId=${user?.identityId}`);
-      if (profileResponse.ok) {
-        const updatedProfile = await profileResponse.json();
-        updateUserProfile(updatedProfile);
-        localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
-      }
-      alert(t("userInfo.unlinkTwitterSuccess") || "Twitter account unlinked successfully!");
-    } catch (err) {
-      logger.error("Failed to unlink Twitter:", err);
-      setLinkError(err instanceof Error ? err.message : "Failed to unlink Twitter account");
-    } finally {
-      setIsLinking(false);
-    }
-  };
+  // Providers
+  const isTwitterPrimary = user.provider === "Twitter";
+  const isGooglePrimary = user.provider === "Google";
+  const isMetaMaskPrimary = user.provider === "MetaMask";
 
-  const handleUnlinkMetaMask = async () => {
-    if (!confirm(t("userInfo.confirmUnlinkMetaMask") || "Unlink MetaMask wallet?")) return;
-    setIsLinking(true);
-    try {
-      const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
-      const response = await fetch(`${linkAccountApi}/unlink`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ primaryIdentityId: user?.identityId, provider: "metamask" }),
-      });
-      if (!response.ok) throw new Error("Failed to unlink MetaMask wallet");
+  // Linked Data
+  const twitterData = isTwitterPrimary ? user : user.linkedAccounts?.twitter;
+  const googleData = isGooglePrimary ? user : user.linkedAccounts?.google;
+  const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask;
 
-      const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
-      const profileResponse = await fetch(`${userProfileApi}?identityId=${user?.identityId}`);
-      if (profileResponse.ok) {
-        const updatedProfile = await profileResponse.json();
-        updateUserProfile(updatedProfile);
-        localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
-      }
-      alert(t("userInfo.unlinkMetaMaskSuccess") || "MetaMask wallet unlinked successfully!");
-    } catch (err) {
-      logger.error("Failed to unlink MetaMask:", err);
-      setLinkError(err instanceof Error ? err.message : "Failed to unlink MetaMask wallet");
-    } finally {
-      setIsLinking(false);
-    }
-  };
-
-  // Display values
-  const twitterDisplayValue = isTwitterPrimary
-    ? user?.twitterHandle && `@${user.twitterHandle}`
-    : user?.linkedAccounts?.twitter?.twitterHandle &&
-      `@${user.linkedAccounts.twitter.twitterHandle}`;
-  const googleDisplayValue = isGooglePrimary ? user?.email : user?.linkedAccounts?.google?.email;
-  const metamaskDisplayValue = isMetaMaskPrimary
-    ? user?.walletAddress && `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-    : user?.linkedAccounts?.metamask?.walletAddress &&
-      `${user.linkedAccounts.metamask.walletAddress.slice(0, 6)}...${user.linkedAccounts.metamask.walletAddress.slice(-4)}`;
-
-  if (!user) {
-    return (
-      <DashboardCard variant="hero" className={className}>
-        <div className="flex items-center justify-center py-8">
-          <p className="text-nasun-white/50">Loading profile...</p>
-        </div>
-      </DashboardCard>
-    );
-  }
+  // MetaMask Status Logic
+  const isMetaMaskLinked = !!metamaskData;
+  const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
+  const isMetaMaskActive = isMetaMaskLinked && activeWalletAddress === linkedWalletAddress;
+  const isDifferentWalletActive = isMetaMaskLinked && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
 
   return (
     <DashboardCard variant="hero" className={className}>
-      <h5 className="uppercase text-nasun-white mb-4">USER PROFILE</h5>
-
-      {/* Error display */}
-      {linkError && (
-        <div className="mb-4 p-2 bg-red-900/30 text-red-300 text-sm rounded-lg">{linkError}</div>
-      )}
-
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left: Avatar, Name, Social Accounts */}
-        <div className="flex-1">
-          <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="relative flex-shrink-0">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Left: User Info & Accounts */}
+        <div className="flex-1 space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
               {profileImageUrl && !imageError ? (
-                <>
-                  {!imageLoaded && (
-                    <div className="absolute inset-0 w-16 h-16 rounded-xl bg-nasun-c5 animate-pulse flex items-center justify-center">
-                      <span className="text-nasun-white text-xl font-medium">
-                        {displayName.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <img
-                    src={profileImageUrl}
-                    alt={displayName}
-                    className={`w-16 h-16 rounded-2xl object-cover ${
-                      imageLoaded ? "opacity-100" : "opacity-0"
-                    }`}
-                    onError={handleImageError}
-                    onLoad={handleImageLoad}
-                  />
-                </>
+                <img
+                  src={profileImageUrl}
+                  alt={displayName}
+                  className={`w-16 h-16 rounded-2xl object-cover bg-gray-800 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
+                />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-nasun-c4 to-nasun-c5 flex items-center justify-center">
-                  <span className="text-nasun-white text-2xl font-medium">
-                    {displayName.charAt(0).toUpperCase()}
-                  </span>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nasun-c4 to-nasun-c5 flex items-center justify-center text-white text-2xl font-bold">
+                  {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
-
-            {/* Name and Handle */}
-            <div className="flex-1">
-              <p className="font-semibold text-nasun-white/90">{displayName}</p>
-              {twitterHandle && <p className="text-nasun-white/60 text-sm">@{twitterHandle}</p>}
+            <div>
+              <h2 className="text-xl font-bold text-white">{displayName}</h2>
+              <p className="text-nasun-white/60 text-sm">
+                Rank <span className="text-nasun-c4 font-bold">{rankHistory?.history[0]?.rank ? `#${rankHistory.history[0].rank}` : "-"}</span>
+              </p>
             </div>
           </div>
 
-          {/* Social Accounts with Link/Unlink */}
-          <div className="mt-4 space-y-2">
-            <SocialAccountItem
-              provider="twitter"
-              isConnected={isTwitterConnected}
-              isPrimary={isTwitterPrimary}
-              displayValue={twitterDisplayValue || undefined}
-              onLink={handleLinkTwitter}
-              onUnlink={handleUnlinkTwitter}
-              isLinking={isLinking}
-            />
-            <SocialAccountItem
-              provider="google"
-              isConnected={isGoogleConnected}
-              isPrimary={isGooglePrimary}
-              displayValue={googleDisplayValue || undefined}
-              onLink={handleLinkGoogle}
-              onUnlink={handleUnlinkGoogle}
-              isLinking={isLinking}
-            />
-            <SocialAccountItem
-              provider="metamask"
-              isConnected={isMetaMaskConnected}
-              isPrimary={isMetaMaskPrimary}
-              displayValue={metamaskDisplayValue || undefined}
-              onLink={handleLinkMetaMask}
-              onUnlink={handleUnlinkMetaMask}
-              isLinking={isLinking || isMetaMaskConnecting}
-            />
+          {/* Connected Accounts List */}
+          <div>
+            <h5 className="text-xs font-bold text-nasun-white/40 uppercase tracking-wider mb-3">Connected Accounts</h5>
+            <div className="space-y-2">
+              
+              {/* 1. X (Twitter) */}
+              <AccountItem
+                provider="twitter"
+                identifier={twitterData?.twitterHandle ? `@${twitterData.twitterHandle}` : undefined}
+                statusBadge={isTwitterPrimary ? <LoggedInBadge /> : (twitterData ? <LinkedBadge /> : undefined)}
+                actions={[
+                  !twitterData ? (
+                    <Button key="link" size="xs" variant="filledOutlineC4" onClick={handleLinkTwitter} disabled={isLinking}>Link</Button>
+                  ) : !isTwitterPrimary ? (
+                    <Button key="unlink" size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("Twitter")} disabled={isLinking}>Unlink</Button>
+                  ) : null
+                ]}
+              />
+
+              {/* 2. Google */}
+              <AccountItem
+                provider="google"
+                identifier={googleData?.email}
+                statusBadge={isGooglePrimary ? <LoggedInBadge /> : (googleData ? <LinkedBadge /> : undefined)}
+                actions={[
+                  !googleData ? (
+                    <Button key="link" size="xs" variant="filledOutlineC4" onClick={handleLinkGoogle} disabled={isLinking}>Link</Button>
+                  ) : !isGooglePrimary ? (
+                    <Button key="unlink" size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("Google")} disabled={isLinking}>Unlink</Button>
+                  ) : null
+                ]}
+              />
+
+              {/* 3. MetaMask */}
+              <AccountItem
+                provider="metamask"
+                identifier={
+                  isMetaMaskLinked 
+                    ? `${linkedWalletAddress?.slice(0, 6)}...${linkedWalletAddress?.slice(-4)}`
+                    : "Not linked"
+                }
+                statusBadge={
+                  isMetaMaskActive ? <ActiveBadge /> : 
+                  isDifferentWalletActive ? <span className="text-[10px] text-yellow-500 font-medium bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">Different wallet active</span> :
+                  isMetaMaskLinked ? <span className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">Inactive</span> : undefined
+                }
+                actions={[
+                  // Case 1: Not Linked -> Link Button with detected address hint
+                  !isMetaMaskLinked ? (
+                    <Button key="link" size="xs" variant="filledOutlineC4" onClick={handleLinkMetaMask} disabled={isMetaMaskLinking || isLinking}>
+                      {isMetaMaskLinking 
+                        ? "Linking..." 
+                        : `Link Wallet${activeWalletAddress ? ` (${activeWalletAddress.slice(0, 6)}...)` : ""}`}
+                    </Button>
+                  ) : 
+                  // Case 2: Linked but Inactive or Different -> Activate/Switch Button
+                  (!isMetaMaskActive) ? (
+                    <div key="actions" className="flex gap-2">
+                      <Button size="xs" variant="outline" onClick={handleActivateMetaMask}>
+                        {isDifferentWalletActive ? "Switch" : "Activate"}
+                      </Button>
+                      {!isMetaMaskPrimary && (
+                        <Button size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("MetaMask")} disabled={isLinking}>Unlink</Button>
+                      )}
+                    </div>
+                  ) : 
+                  // Case 3: Active -> Unlink only (if not primary)
+                  (!isMetaMaskPrimary) ? (
+                    <Button key="unlink" size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("MetaMask")} disabled={isLinking}>Unlink</Button>
+                  ) : null
+                ]}
+              />
+
+              {/* 4. Nasun Wallet (Placeholder) */}
+              <AccountItem
+                provider="nasun"
+                identifier="Coming Soon"
+                actions={[
+                  <Button key="link" size="xs" variant="ghost" disabled className="opacity-50">Link</Button>
+                ]}
+              />
+
+            </div>
           </div>
         </div>
 
-        {/* Right: Compact Stats */}
-        <div className="lg:w-64 flex flex-col justify-center">
-          <div className="grid grid-cols-2 gap-3">
-            {/* Rank */}
-            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
-              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">Rank</p>
-              <p className="text-lg font-bold text-nasun-white">{currentRank}</p>
-            </div>
-            {/* Voting Power */}
-            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
-              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">Power</p>
-              <p className="text-lg font-bold text-nasun-white">
-                {totalVotingPower.toLocaleString()}
-              </p>
-            </div>
-            {/* NFT Status */}
-            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
-              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">NFT</p>
-              <p
-                className={`text-lg font-bold ${hasNft ? "text-nasun-c3" : "text-nasun-white/50"}`}
-              >
-                {nftStatus}
-              </p>
-            </div>
-            {/* Participation */}
-            <div className="bg-gray-800/80 rounded-lg p-3 text-center">
-              <p className="text-sm text-nasun-white/60 uppercase tracking-wide">Vote</p>
-              <p className="text-lg font-bold text-nasun-white">{participationRate}</p>
-            </div>
+        {/* Right: Stats (Same as before) */}
+        <div className="lg:w-64 flex flex-col gap-3 pt-2">
+          <div className="bg-gray-800/60 rounded-xl p-4 border border-white/5">
+            <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">Voting Power</p>
+            <p className="text-2xl font-bold text-white">{(votingPower?.leaderboardScore || 0 + (nftVerification?.nftBonus || 0) + (delegationState?.delegatorCount || 0) * 100).toLocaleString()}</p>
+          </div>
+          <div className="bg-gray-800/60 rounded-xl p-4 border border-white/5">
+            <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">Participation</p>
+            <p className="text-2xl font-bold text-white">{stats.participationRate.toFixed(0)}%</p>
+          </div>
+          <div className="bg-gray-800/60 rounded-xl p-4 border border-white/5">
+            <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">NFT Status</p>
+            <p className={`text-xl font-bold ${nftVerification?.nftBonus ? "text-nasun-c3" : "text-nasun-white/40"}`}>
+              {nftVerification?.nftBonus ? "Verified" : "Not Verified"}
+            </p>
           </div>
         </div>
       </div>

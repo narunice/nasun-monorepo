@@ -17,7 +17,6 @@ import { SectionLoading, PageTitle } from "../components/ui";
 
 // Dashboard Card Components
 import { ProfileHeroCard } from "../components/app/myAccount/ProfileHeroCard";
-import { WalletConnectionBar } from "../components/app/myAccount/WalletConnectionBar";
 import { RankHistoryCard } from "../components/app/myAccount/RankHistoryCard";
 import { GovernanceCard } from "../components/app/myAccount/GovernanceCard";
 import { CompactNftStatus } from "../components/app/myAccount/CompactNftStatus";
@@ -120,17 +119,10 @@ const MyAccountPage = () => {
 
         {/* Bento Grid Dashboard Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        {/* Profile Hero Card - Left (2 cols on lg) */}
+        {/* Profile Hero Card - Top Full Width */}
         <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
           <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-2" />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Wallet Connection Bar - Right (1 col on lg) */}
-        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-          <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <WalletConnectionBar className="col-span-1 md:col-span-2 lg:col-span-1" />
+            <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-3" />
           </Suspense>
         </ErrorBoundary>
 
