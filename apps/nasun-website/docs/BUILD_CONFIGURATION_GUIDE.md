@@ -1,7 +1,7 @@
 # 빌드/배포 설정 가이드
 
 > **작성일**: 2025-10-05
-> **최종 업데이트**: 2025-10-31 ✅ **TTL 설정 및 트러블슈팅 섹션 추가**
+> **최종 업데이트**: 2026-01-14 ✅ **환경별 시크릿 분리 및 CORS 설정 개선**
 > **목적**: 프로젝트의 모든 빌드 및 배포 설정 파일 관리 + 배포 실패 방지
 
 ---
@@ -15,7 +15,7 @@
 5. [🔍 배포 후 최종 검증 (필수!)](#-배포-후-최종-검증-필수)
 6. [📦 Lambda 패키징 구조 가이드](#-lambda-패키징-구조-가이드)
 7. [🛠️ 긴급 수동 배포 가이드](#️-긴급-수동-배포-가이드)
-8. [🕐 TTL 설정 및 트러블슈팅](#-ttl-time-to-live-설정-및-트러블슈팅) ⭐ **NEW!**
+8. [🕐 TTL 설정 및 트러블슈팅](#-ttl-time-to-live-설정-및-트러블슈팅)
 
 ---
 
@@ -101,6 +101,8 @@ pnpm deploy:prod
 
 #### 1. AuthStack (트위터 로그인 관련 변경 시)
 
+> **Secrets Manager 시크릿이 환경에 따라 `nasun-twitter-tokens` (Dev)와 `nasun-twitter-tokens-prod` (Prod)로 자동 분기됩니다.**
+
 **개발 환경 배포:**
 ```bash
 # 1. .env 확인/설정
@@ -114,8 +116,8 @@ npm install
 npm run build
 cd ../../
 
-# 3. AuthStack 배포
-pnpm cdk deploy AuthStack --require-approval never
+# 3. AuthStack 배포 (NODE_ENV 명시)
+NODE_ENV=development pnpm cdk deploy AuthStack --require-approval never
 ```
 
 **프로덕션 환경 배포:**
@@ -131,8 +133,8 @@ npm install
 npm run build
 cd ../../
 
-# 3. AuthStack 배포 (Profile 지정)
-pnpm cdk deploy AuthStack --profile nasun-prod --require-approval never
+# 3. AuthStack 배포 (Profile 지정 + NODE_ENV 명시)
+NODE_ENV=production pnpm cdk deploy AuthStack --profile nasun-prod --require-approval never
 ```
 
 #### 2. CommonStack (공통 인프라 변경 시)
@@ -186,6 +188,8 @@ pnpm cdk deploy CdkStack --profile nasun-prod --require-approval never
 
 #### 4. NftEventStack (NFT 이벤트 관련 변경 시)
 
+> **로컬 개발 편의를 위해 `localhost` CORS가 모든 환경에서 허용되도록 설정되었습니다.**
+
 **개발 환경 배포:**
 ```bash
 # 1. .env 확인/설정
@@ -198,7 +202,7 @@ npm run rebuild  # 또는 npm run clean && npm run build
 cd ../../../
 
 # 3. NftEventStack 배포
-pnpm cdk deploy NftEventStack --require-approval never
+NODE_ENV=development pnpm cdk deploy NftEventStack --require-approval never
 ```
 
 **프로덕션 환경 배포:**
@@ -208,7 +212,7 @@ cp .env.production .env
 cd lambda-src/nft-event/verify-eligibility
 npm run rebuild
 cd ../../../
-pnpm cdk deploy NftEventStack --profile nasun-prod --require-approval never
+NODE_ENV=production pnpm cdk deploy NftEventStack --profile nasun-prod --require-approval never
 ```
 
 **⚠️ 중요**: `verify-eligibility` Lambda는 **TypeScript로 작성**되어 있으므로, 소스 수정 후 **반드시 `npm run rebuild`** 를 실행해야 합니다.
