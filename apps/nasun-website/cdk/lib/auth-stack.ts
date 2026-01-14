@@ -34,7 +34,11 @@ export class AuthStack extends cdk.Stack {
 
     const twitterSessionsTable = dynamodb.Table.fromTableName(this, "TwitterOAuthSessionsTable", "TwitterOAuthSessions");
 
-    const twitterTokensSecret = secretsmanager.Secret.fromSecretNameV2(this, "TwitterTokensSecret", "nasun-twitter-tokens");
+    // Determine secret name based on environment
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secretName = isProduction ? 'nasun-twitter-tokens-prod' : 'nasun-twitter-tokens';
+
+    const twitterTokensSecret = secretsmanager.Secret.fromSecretNameV2(this, "TwitterTokensSecret", secretName);
 
     // Twitter OAuth Authentication Lambda
     const twitterLoginFunction = new lambda.Function(this, 'TwitterLoginFunction', {
@@ -44,7 +48,7 @@ export class AuthStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/auth-twitter"),
       timeout: cdk.Duration.seconds(30),
       environment: {
-        SECRET_NAME: 'nasun-twitter-tokens',
+        SECRET_NAME: secretName,
         SESSIONS_TABLE_NAME: twitterSessionsTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
