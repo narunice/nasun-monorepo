@@ -8,7 +8,6 @@ import { DividerBox } from "../../../ui/DividerBox";
 // 배경 이미지
 import bgImageDesktop from "../../../../assets/images/spectra-plant-raid.webp";
 import bgImageMobile from "../../../../assets/images/spectra-plant-raid-mobile.webp";
-import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**
  * GenSolIntroSection 컴포넌트
@@ -96,42 +95,37 @@ function GenSolIntroSection() {
       <div className="relative z-20 max-w-8xl w-full min-h-screen h-full flex flex-col mx-auto pt-[60%] sm:pt-[50%] md:pt-[35%] pb-12 md:pb-16 px-10 md:px-12 lg:px-20 justify-start ">
         {/* 제목 + 설명 (우측 정렬) */}
         <div className="max-w-[1000px] ml-auto text-right ">
-          <FadeInUp>
-            <SectionTitle as="h2" className="font-semibold uppercase !mb-0 lg:!mb-1">
-              {t("narrative.title")}
-            </SectionTitle>
-            <p className="text-nasun-white/80  ml-auto">{t("narrative.description")}</p>
-          </FadeInUp>
+          <SectionTitle as="h2" className="font-semibold uppercase !mb-0 lg:!mb-1">
+            {t("narrative.title")}
+          </SectionTitle>
+          <p className="text-nasun-white/80  ml-auto">{t("narrative.description")}</p>
         </div>
 
         {/* 구분선 */}
-        <div className="border-t border-nasun-gensol-red my-6 lg:my-8 xl:my-10 max-w-8xl mx-auto w-full" />
+        <div className="border-t border-nasun-c1 my-6 lg:my-8 xl:my-10 max-w-8xl mx-auto w-full" />
 
         {/* 3개 카테고리 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-10 max-w-7xl mx-auto w-full">
           <DividerBox
             title={t("narrative.category1.title")}
             description={t("narrative.category1.description")}
-            color="gensol-red"
-            titleClassName="text-left text-nasun-gensol-red"
+            color="c1"
           />
           <DividerBox
             title={t("narrative.category2.title")}
             description={t("narrative.category2.description")}
-            color="gensol-red"
-            titleClassName="text-left text-nasun-gensol-red"
+            color="c1"
           />
           <DividerBox
             title={t("narrative.category3.title")}
             description={t("narrative.category3.description")}
-            color="gensol-red"
-            titleClassName="text-left text-nasun-gensol-red"
+            color="c1"
           />
         </div>
 
         {/* WEBSITE 버튼 */}
         <div className="flex justify-center mt-8 md:mt-10">
-          <Button variant="gensol-red" size="2xl" className="" asChild>
+          <Button variant="c1" size="xl" className="" asChild>
             <a href={import.meta.env.VITE_GENSOL_URL} target="_blank" rel="noopener noreferrer">
               {t("narrative.button")}
             </a>
