@@ -1,6 +1,50 @@
 # Twitter OAuth Lambda
 
-Twitter OAuth 2.0 인증을 처리하는 Lambda 함수입니다.
+Twitter(X) OAuth 2.0 인증을 처리하는 Lambda 함수입니다.
+
+## 🔒 아키텍처: 사용자/운영자 경로 완전 분리 (2026-01-15)
+
+### 두 가지 인증 경로
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  👤 사용자 경로 (auth-twitter) ← 이 Lambda                       │
+│  ─────────────────────────────────────────────────────────────  │
+│  목적: 웹사이트 로그인, Battalion NFT 이벤트 참여                │
+│  Credentials: 환경 변수 (OAUTH2_CLIENT_ID/SECRET)               │
+│  Secrets Manager: ❌ 접근 권한 없음                              │
+│  토큰 저장: ❌ 저장 안 함                                        │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  👨‍💼 운영자 경로 (x-leaderboard Lambda들)                         │
+│  ─────────────────────────────────────────────────────────────  │
+│  목적: 리더보드 데이터 수집, 커뮤니티 통계                        │
+│  Credentials: Secrets Manager (oauth2.userAccessToken)          │
+│  Secrets Manager: ✅ Read/Write 권한                            │
+│  토큰 자동 갱신: SecureTokenManager                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### ⚠️ 중요: 경로 혼합 금지
+
+- 이 Lambda(auth-twitter)는 **Secrets Manager에 접근하면 안 됩니다**
+- `getTwitterSecrets()` 호출은 **절대 금지**
+- 모든 credentials는 **환경 변수**에서 직접 읽어야 합니다:
+  ```typescript
+  const TWITTER_CLIENT_ID = process.env.OAUTH2_CLIENT_ID;
+  const TWITTER_CLIENT_SECRET = process.env.OAUTH2_CLIENT_SECRET;
+  ```
+
+### 버그 히스토리 (2026-01-15 수정)
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| 401 Unauthorized | Content-Type 헤더 누락 | twitter-api.ts에 헤더 추가 |
+| SECRET_NAME 에러 | login.ts가 getTwitterSecrets() 호출 | 환경 변수로 변경 |
+| 토큰 덮어쓰기 | 경로 미분리 | 완전 분리 구현 |
+
+---
 
 ## ⚠️ 중요: 배포 전 필수 사항
 
@@ -160,20 +204,22 @@ pnpm cdk deploy CdkStack --require-approval never
 
 Lambda 함수는 다음 환경 변수를 사용합니다:
 
-- `SECRET_NAME`: `nasun-twitter-tokens` (Secrets Manager에 저장된 Twitter API 키)
-- `SESSIONS_TABLE_NAME`: OAuth 세션을 저장하는 DynamoDB 테이블
-- `USER_PROFILES_TABLE`: 사용자 프로필을 저장하는 DynamoDB 테이블
-- `COGNITO_IDENTITY_POOL_ID`: Cognito Identity Pool ID
-- `COGNITO_DEVELOPER_PROVIDER_NAME`: `nasun.io` (Cognito 개발자 제공자 이름)
-- `OAUTH2_CLIENT_ID`: Twitter OAuth 클라이언트 ID
-- `OAUTH2_CLIENT_SECRET`: Twitter OAuth 클라이언트 시크릿
+| 환경 변수 | 설명 | 소스 |
+|----------|------|------|
+| `OAUTH2_CLIENT_ID` | X App OAuth 클라이언트 ID | CDK .env |
+| `OAUTH2_CLIENT_SECRET` | X App OAuth 클라이언트 시크릿 | CDK .env |
+| `SESSIONS_TABLE_NAME` | OAuth 세션 DynamoDB 테이블 | CDK 자동 설정 |
+| `USER_PROFILES_TABLE` | 사용자 프로필 DynamoDB 테이블 | CDK 자동 설정 |
+| `COGNITO_IDENTITY_POOL_ID` | Cognito Identity Pool ID | CDK .env |
+| `COGNITO_DEVELOPER_PROVIDER_NAME` | `nasun.io` | CDK 하드코딩 |
 
-이 환경 변수들은 `cdk-stack.ts`에서 자동으로 설정됩니다.
+이 환경 변수들은 `auth-stack.ts`에서 설정됩니다.
 
-**⚠️ 중요**:
-- Secret 이름은 반드시 `nasun-twitter-tokens`이어야 합니다 (v2 없음!)
-- AWS Secrets Manager에 동일한 이름의 Secret이 존재해야 합니다
-- Secret 이름 불일치 시 `Could not retrieve secrets` 에러 발생
+**⚠️ 중요 (2026-01-15 변경)**:
+- ~~`SECRET_NAME`~~ 환경 변수는 **더 이상 사용하지 않습니다**
+- Secrets Manager 접근 권한이 **제거되었습니다**
+- 모든 credentials는 **환경 변수**에서 직접 읽습니다
+- 이는 운영자 경로(x-leaderboard)와의 완전 분리를 위한 의도적 설계입니다
 
 ## API 엔드포인트
 
@@ -272,6 +318,47 @@ npm run build
 cd ../..
 pnpm cdk deploy CdkStack --require-approval never --force
 ```
+
+### 문제: 401 Unauthorized 에러 (X API 토큰 교환 실패)
+
+**증상:**
+- X 인증 창은 정상적으로 뜸
+- 사용자가 인증 완료 후 콜백에서 401 에러 발생
+
+**원인 (2026-01-15 수정됨):**
+- twitter-api.ts에서 `Content-Type: application/x-www-form-urlencoded` 헤더 누락
+- X API가 request body를 파싱하지 못함
+
+**해결책:**
+이미 수정됨. 만약 재발 시:
+```typescript
+// twitter-api.ts - exchangeCodeForToken()
+headers: {
+  'Content-Type': 'application/x-www-form-urlencoded',  // 필수!
+  'Authorization': `Basic ${credentials}`,
+},
+```
+
+### 문제: SECRET_NAME 환경 변수 에러
+
+**증상:**
+```json
+{"error":"Internal Server Error","message":"SECRET_NAME environment variable not set."}
+```
+
+**원인:**
+- login.ts 또는 callback.ts에서 `getTwitterSecrets()` 호출
+- 2026-01-15 이후 auth-twitter Lambda는 Secrets Manager 접근 권한이 없음
+
+**해결책:**
+1. `getTwitterSecrets()` import 및 호출 제거
+2. 환경 변수에서 직접 읽도록 변경:
+   ```typescript
+   const TWITTER_CLIENT_ID = process.env.OAUTH2_CLIENT_ID;
+   const TWITTER_CLIENT_SECRET = process.env.OAUTH2_CLIENT_SECRET;
+   ```
+3. TypeScript 재빌드: `npm run build`
+4. CDK 재배포
 
 ## 재발 방지
 

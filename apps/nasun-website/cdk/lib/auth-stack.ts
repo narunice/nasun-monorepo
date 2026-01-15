@@ -48,7 +48,7 @@ export class AuthStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/auth-twitter"),
       timeout: cdk.Duration.seconds(30),
       environment: {
-        SECRET_NAME: secretName,
+        // Note: SECRET_NAME removed - user auth uses env vars only (separated from operator path)
         SESSIONS_TABLE_NAME: twitterSessionsTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
@@ -62,9 +62,9 @@ export class AuthStack extends cdk.Stack {
       }),
     });
 
-    // Grant Secrets Manager read permission
-    twitterTokensSecret.grantRead(twitterLoginFunction);
-    twitterTokensSecret.grantWrite(twitterLoginFunction);
+    // Note: Secrets Manager permissions removed for auth-twitter Lambda
+    // User auth path now uses environment variables only (separated from operator/leaderboard path)
+    // x-leaderboard Lambdas retain Secrets Manager access for operator tokens
 
     // Grant DynamoDB permissions
     twitterSessionsTable.grantReadWriteData(twitterLoginFunction);

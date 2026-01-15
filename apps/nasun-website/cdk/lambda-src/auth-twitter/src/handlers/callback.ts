@@ -1,6 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
-import { getTwitterSecrets } from '../utils/secrets';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
@@ -38,19 +37,11 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       };
     }
 
-    // Get secrets from Secrets Manager
-    const secrets = await getTwitterSecrets();
-
-    if (!secrets) {
-      throw new Error('Failed to retrieve Twitter secrets from Secrets Manager');
-    }
-
-    const oauth2 = typeof secrets.oauth2 === 'string' ? JSON.parse(secrets.oauth2) : secrets.oauth2;
-    const TWITTER_CLIENT_ID = oauth2?.clientId;
-    const TWITTER_CLIENT_SECRET = oauth2?.clientSecret;
-
-    // Get environment variables
+    // Get credentials from environment variables (not Secrets Manager)
+    // This separates user auth path from operator path (x-leaderboard)
     const {
+      OAUTH2_CLIENT_ID: TWITTER_CLIENT_ID,
+      OAUTH2_CLIENT_SECRET: TWITTER_CLIENT_SECRET,
       SESSIONS_TABLE_NAME,
       USER_PROFILES_TABLE,
       COGNITO_IDENTITY_POOL_ID,
@@ -94,7 +85,8 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     }
 
     // 2. Exchange authorization code for access token
-    const redirectUri = (session as any).redirectUri || oauth2?.redirectUri || 'https://nasun.io/callback';
+    // Use session's redirectUri (set by login handler) or fallback to default
+    const redirectUri = (session as any).redirectUri || 'https://nasun.io/callback';
     console.log('Using redirect URI for token exchange:', redirectUri);
 
     const tokenResponse = await twitterAPI.exchangeCodeForToken(
