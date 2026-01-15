@@ -40,10 +40,11 @@ export class TwitterAPI {
     const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
     
     const response: AxiosResponse<TwitterTokenResponse> = await axios.post(
-      'https://api.twitter.com/2/oauth2/token',
+      'https://api.x.com/2/oauth2/token',
       new URLSearchParams({
-        code,
         grant_type: 'authorization_code',
+        client_id: this.clientId,
+        code,
         redirect_uri: redirectUri,
         code_verifier: verifier,
       }),
