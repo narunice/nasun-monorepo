@@ -1,5 +1,4 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { getTwitterSecrets } from '../utils/secrets';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateSessionId } from '../utils/pkce';
@@ -22,17 +21,10 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
   }
 
   try {
-    // Get secrets from Secrets Manager
-    const secrets = await getTwitterSecrets();
-
-    if (!secrets) {
-      throw new Error('Failed to retrieve Twitter secrets from Secrets Manager');
-    }
-
+    // Get credentials from environment variables (not Secrets Manager)
+    // This separates user auth path from operator path (x-leaderboard)
     const TWITTER_CLIENT_ID = process.env.OAUTH2_CLIENT_ID;
     const TWITTER_CLIENT_SECRET = process.env.OAUTH2_CLIENT_SECRET;
-
-    // Get other environment variables
     const { SESSIONS_TABLE_NAME, TWITTER_REDIRECT_URI } = process.env;
 
     if (!TWITTER_CLIENT_ID || !TWITTER_CLIENT_SECRET || !SESSIONS_TABLE_NAME) {
