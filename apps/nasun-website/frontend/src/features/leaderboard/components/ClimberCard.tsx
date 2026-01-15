@@ -165,7 +165,10 @@ const ClimberCard: React.FC<ClimberCardProps> = memo(({ climber, rank, onViewInL
           <span className="text-sm text-gray-400">
             {t("topClimbers.scoreIncrease", "Score Increase")}
           </span>
-          <span className="text-sm text-gray-200">+{climber.scoreIncrease.toLocaleString()}</span>
+          <span className="text-sm text-gray-200">
+            {climber.scoreIncrease > 0 ? "+" : ""}
+            {climber.scoreIncrease.toLocaleString()}
+          </span>
         </div>
 
         {/* 퍼센트 증가율 */}
@@ -173,7 +176,10 @@ const ClimberCard: React.FC<ClimberCardProps> = memo(({ climber, rank, onViewInL
           <span className="text-sm  text-gray-400">
             {t("topClimbers.percentageIncrease", "Percentage")}
           </span>
-          <span className="text-sm text-gray-200">+{climber.percentageIncrease.toFixed(1)}%</span>
+          <span className="text-sm text-gray-200">
+            {climber.percentageIncrease > 0 ? "+" : ""}
+            {climber.percentageIncrease.toFixed(1)}%
+          </span>
         </div>
 
         {/* 현재 점수 */}
