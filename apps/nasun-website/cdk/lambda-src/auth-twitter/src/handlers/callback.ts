@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
-import { getTwitterSecrets, updateTwitterSecrets } from '../utils/secrets';
+import { getTwitterSecrets } from '../utils/secrets';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
@@ -102,28 +102,6 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       session.codeVerifier,
       redirectUri
     );
-
-    // 3. If a new refresh token is issued, save it to Secrets Manager for future use
-    if (tokenResponse.refresh_token) {
-      console.log('New refresh token received. Updating Secrets Manager...');
-      try {
-                const expiresIn = tokenResponse.expires_in ?? 7200; // Default to 2 hours
-        const expiresAt = new Date(Date.now() + (expiresIn * 1000));
-        const newOauth2Data = {
-          ...oauth2,
-          userAccessToken: tokenResponse.access_token,
-          refreshToken: tokenResponse.refresh_token,
-          expiresAt: expiresAt.getTime(),
-          lastRefreshed: new Date().toISOString(),
-          scope: tokenResponse.scope,
-        };
-        await updateTwitterSecrets(newOauth2Data);
-      } catch (updateError) {
-        // Log the error but don't fail the whole login flow for the user.
-        // This is critical: if this fails, the user can still log in, but the next auto-refresh might fail.
-        console.error('CRITICAL: Failed to update new refresh token in Secrets Manager. Manual update will be required later.', updateError);
-      }
-    }
 
     // 4. Get user information from Twitter
     const twitterUser = await twitterAPI.getUserInfo(tokenResponse.access_token);
