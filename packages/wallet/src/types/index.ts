@@ -387,3 +387,19 @@ export interface TransactionHistoryResult {
   /** Cursor for next page */
   nextCursor?: string;
 }
+
+// ============================================
+// Portfolio Types
+// ============================================
+
+export type {
+  TokenPrice,
+  PriceProvider,
+  TokenAsset,
+  ChainPortfolio,
+  PortfolioSummary,
+  ERC20TokenConfig,
+  PortfolioConfig,
+  UsePortfolioOptions,
+  UsePortfolioResult,
+} from './portfolio';
