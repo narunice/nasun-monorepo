@@ -41,11 +41,13 @@ import { AddressBookPanel } from "./AddressBookPanel";
 import { ReceivePanel } from "./ReceivePanel";
 import { TransactionHistoryPanel } from "./TransactionHistoryPanel";
 import { PortfolioPanel } from "./PortfolioPanel";
+import { NasunLinkWizard } from "./NasunLinkWizard";
 import {
   LedgerConnect,
   LedgerBrowserWarning,
   LedgerErrorDisplay,
 } from "./ledger";
+import { useAdvancedMode } from "./stores";
 
 type ViewMode =
   | "main"
@@ -62,7 +64,8 @@ type ViewMode =
   | "ledger-connect" // Ledger connection flow
   | "ledger-select" // Ledger address selection
   | "address-book" // Address book management
-  | "portfolio"; // Portfolio dashboard
+  | "portfolio" // Portfolio dashboard
+  | "nasun-link"; // Nasun Link creation
 
 /**
  * Locked state UI with rate limiting countdown
@@ -268,6 +271,9 @@ export function WalletConnect({
     error: ledgerError,
     clearError: clearLedgerError,
   } = useLedger();
+
+  // UI Settings (Advanced mode)
+  const isAdvancedMode = useAdvancedMode();
 
   // Track which provider is loading
   const [loadingProvider, setLoadingProvider] = useState<ZkLoginProvider | null>(null);
@@ -640,6 +646,20 @@ export function WalletConnect({
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Portfolio</h3>
           </div>
           <PortfolioPanel />
+        </div>
+      );
+    }
+
+    // Nasun Link view
+    if (viewMode === "nasun-link") {
+      return (
+        <div className="py-3 px-4 w-full sm:w-[360px]">
+          <NasunLinkWizard
+            onCancel={() => setViewMode("main")}
+            onSuccess={() => {
+              // Stay on success screen, user can click Done to go back
+            }}
+          />
         </div>
       );
     }
@@ -1085,6 +1105,21 @@ export function WalletConnect({
               </button>
 
               <button
+                onClick={() => setViewMode("nasun-link")}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+                Create Link
+              </button>
+
+              <button
                 onClick={() => setViewMode("address-book")}
                 className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
@@ -1390,6 +1425,21 @@ export function WalletConnect({
               </button>
 
               <button
+                onClick={() => setViewMode("nasun-link")}
+                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+                Create Link
+              </button>
+
+              <button
                 onClick={() => setViewMode("export")}
                 className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
@@ -1433,6 +1483,44 @@ export function WalletConnect({
                 </svg>
                 Security Settings
               </button>
+
+              {/* Advanced Mode Features */}
+              {isAdvancedMode && (
+                <>
+                  <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+                  <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
+                    Developer
+                  </p>
+
+                  {/* Account Info */}
+                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Account Type:</span>
+                      <span className="text-gray-700 dark:text-zinc-300">
+                        {isZkLoggedIn ? 'zkLogin' : isLedgerConnected ? 'Ledger' : 'Local'}
+                      </span>
+                    </div>
+                    {account?.address && (
+                      <div className="flex justify-between">
+                        <span>Full Address:</span>
+                        <span className="font-mono text-[10px] text-gray-700 dark:text-zinc-300 break-all max-w-[180px] text-right">
+                          {account.address}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Network Info */}
+                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span>Network:</span>
+                      <span className="text-gray-700 dark:text-zinc-300 capitalize">
+                        {networkType || 'devnet'}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

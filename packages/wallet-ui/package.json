@@ -21,7 +21,8 @@
   "peerDependencies": {
     "@nasun/wallet": "workspace:*",
     "react": "^18.0.0 || ^19.0.0",
-    "tailwindcss": "^3.4.0"
+    "tailwindcss": "^3.4.0",
+    "zustand": "^4.5.0 || ^5.0.0"
   },
   "devDependencies": {
     "@nasun/tailwind-config": "workspace:*",
