@@ -47,6 +47,10 @@ export { ValidatorList } from './ValidatorList';
 export { StakingStatus } from './StakingStatus';
 export { StakingPanel } from './StakingPanel';
 
+// Portfolio components
+export { PortfolioPanel } from './PortfolioPanel';
+export type { PortfolioPanelProps } from './PortfolioPanel';
+
 // Utility components
 export { CopyableAddress } from './CopyableAddress';
 export type { CopyableAddressProps } from './CopyableAddress';

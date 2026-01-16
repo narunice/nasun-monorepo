@@ -1024,3 +1024,42 @@ export type {
   TransactionHistoryOptions,
   TransactionHistoryResult,
 } from './types';
+
+// ============================================
+// Portfolio Dashboard (P3)
+// ============================================
+
+// Portfolio Hooks
+export {
+  usePortfolio,
+  useRefreshPortfolio,
+  usePortfolioTotalValue,
+  usePortfolio24hChange,
+  configurePortfolio,
+  getPortfolioConfig,
+} from './hooks/usePortfolio';
+
+// Portfolio Types
+export type {
+  TokenPrice,
+  PriceProvider,
+  TokenAsset,
+  ChainPortfolio,
+  PortfolioSummary,
+  ERC20TokenConfig,
+  PortfolioConfig,
+  UsePortfolioOptions,
+  UsePortfolioResult,
+} from './types/portfolio';
+
+// Price Provider
+export { DefaultPriceProvider } from './core/portfolio/price-provider';
+export type { DefaultPriceProviderOptions } from './core/portfolio/price-provider';
+
+// ERC-20 Utilities
+export {
+  getERC20Balance,
+  getERC20Balances,
+  getERC20Metadata,
+} from './core/evm/erc20';
+export type { ERC20Balance } from './core/evm/erc20';

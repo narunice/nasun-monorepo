@@ -31,3 +31,10 @@ export {
   getStoredEVMAddress,
   deleteEVMWallet,
 } from './keystore';
+
+export {
+  getERC20Balance,
+  getERC20Balances,
+  getERC20Metadata,
+} from './erc20';
+export type { ERC20Balance } from './erc20';
