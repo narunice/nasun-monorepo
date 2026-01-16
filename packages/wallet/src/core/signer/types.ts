@@ -11,7 +11,7 @@
  */
 
 /** Supported signer types */
-export type SignerType = 'local' | 'evm' | 'ledger' | 'mpc' | 'zklogin' | 'smart-account';
+export type SignerType = 'local' | 'evm' | 'ledger' | 'mpc' | 'zklogin' | 'smart-account' | 'session-key';
 
 /** Result of a signing operation */
 export interface SignatureResult {

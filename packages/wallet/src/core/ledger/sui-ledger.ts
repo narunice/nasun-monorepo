@@ -27,7 +27,7 @@ export async function createSuiLedgerClient(
   try {
     // Dynamic import to reduce bundle size
     const SuiLedgerClient = (await import('@mysten/ledgerjs-hw-app-sui')).default;
-    return new SuiLedgerClient(transport as unknown as Parameters<typeof SuiLedgerClient>[0]);
+    return new SuiLedgerClient(transport as unknown as ConstructorParameters<typeof SuiLedgerClient>[0]);
   } catch (error) {
     throw new LedgerError(
       'Failed to initialize Sui Ledger app. Please ensure the Sui app is installed.',

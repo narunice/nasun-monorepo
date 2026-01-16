@@ -13,7 +13,6 @@ import {
   type ZKProofInput,
   type ZKProofOutput,
   type ProverCapabilities,
-  type ZKClaimType,
   type ZKIDProof,
   type ZKIDClaim,
   type AgeThreshold,

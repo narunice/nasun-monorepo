@@ -184,7 +184,7 @@ async function fetchTransactionHistory(
       }).catch(() => ({ data: [], hasNextPage: false })), // Fallback if not supported
       // Recipient filter catches TransferObjects recipients
       client.queryTransactionBlocks({
-        filter: { Recipient: address } as Parameters<typeof client.queryTransactionBlocks>[0]['filter'],
+        filter: { Recipient: address } as unknown as Parameters<typeof client.queryTransactionBlocks>[0]['filter'],
         options: {
           showBalanceChanges: true,
           showEffects: true,

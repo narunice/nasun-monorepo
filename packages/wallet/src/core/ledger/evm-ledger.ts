@@ -26,7 +26,7 @@ export async function createEvmLedgerClient(
   try {
     // Dynamic import to reduce bundle size
     const Eth = (await import('@ledgerhq/hw-app-eth')).default;
-    return new Eth(transport as unknown as Parameters<typeof Eth>[0]);
+    return new Eth(transport as unknown as ConstructorParameters<typeof Eth>[0]);
   } catch (error) {
     throw new LedgerError(
       'Failed to initialize Ethereum Ledger app. Please ensure the Ethereum app is installed.',
@@ -140,7 +140,7 @@ export function formatEvmSignature(v: string, r: string, s: string): string {
  * @param chainId - Chain ID for EIP-155
  * @returns Adjusted v value
  */
-export function parseVValue(vString: string, chainId: number): number {
+export function parseVValue(vString: string, _chainId: number): number {
   const v = parseInt(vString, 16);
 
   // EIP-155: v = chainId * 2 + 35 or chainId * 2 + 36

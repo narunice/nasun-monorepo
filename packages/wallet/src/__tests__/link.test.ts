@@ -4,7 +4,7 @@
  * Tests for URL-based token distribution system.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Types
 import type {
@@ -13,12 +13,9 @@ import type {
   LinkCoinType,
   LinkConfig,
   LinkData,
-  LinkURL,
   ClaimResult,
-  ClaimValidation,
   ClaimCondition,
   SerializableLinkConfig,
-  CreateLinkResult,
 } from '../core/link/types';
 
 import { serializeLinkConfig, deserializeLinkConfig } from '../core/link/types';
@@ -47,7 +44,6 @@ import {
   validateClaim,
   parseLinkUrl,
   getClaimStatus,
-  checkLinkBalance,
 } from '../core/link/claim';
 
 // ======================================
@@ -72,8 +68,8 @@ describe('Link Types', () => {
   describe('LinkCoinType', () => {
     it('should define coin types', () => {
       const types: LinkCoinType[] = [
-        { type: 'native', symbol: 'NASUN', decimals: 9 },
-        { type: 'coin', coinType: '0x123::token::TOKEN', symbol: 'TOKEN', decimals: 6 },
+        'NASUN',
+        '0x123::token::TOKEN',
       ];
       expect(types).toHaveLength(2);
     });
@@ -83,7 +79,7 @@ describe('Link Types', () => {
     it('should define valid link config structure', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         maxClaims: 1,
         expiresAt: Date.now() + 86400000,
@@ -98,11 +94,11 @@ describe('Link Types', () => {
     it('should accept link config with conditions', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         conditions: [
           { type: 'password', hash: 'abc123' },
-          { type: 'twitter', tweetId: '12345' },
+          { type: 'twitter', handle: 'example_user' },
         ],
       };
 
@@ -114,7 +110,7 @@ describe('Link Types', () => {
     it('should define valid claim conditions', () => {
       const conditions: ClaimCondition[] = [
         { type: 'password', hash: 'hash123' },
-        { type: 'twitter', tweetId: '12345' },
+        { type: 'twitter', handle: 'example_user' },
         { type: 'email', domain: 'example.com' },
       ];
 
@@ -126,9 +122,10 @@ describe('Link Types', () => {
     it('should define valid link data structure', () => {
       const data: LinkData = {
         id: 'link123',
+        creator: '0xCreator1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         config: {
           type: 'single',
-          coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+          coinType: 'NASUN',
           amount: '1000000000',
         },
         ephemeralAddress: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
@@ -161,7 +158,7 @@ describe('Link Types', () => {
     it('should serialize and deserialize link config', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         maxClaims: 1,
         message: 'Test',
@@ -179,7 +176,7 @@ describe('Link Types', () => {
     it('should convert bigint to string when serializing', () => {
       const config: LinkConfig = {
         type: 'multi',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 9999999999999n,
         maxClaims: 10,
       };
@@ -388,7 +385,7 @@ describe('Link Generator', () => {
     it('should validate correct single link config', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
       };
 
@@ -401,7 +398,7 @@ describe('Link Generator', () => {
     it('should reject zero amount', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 0n,
       };
 
@@ -414,7 +411,7 @@ describe('Link Generator', () => {
     it('should reject negative amount', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: -1n,
       };
 
@@ -427,7 +424,7 @@ describe('Link Generator', () => {
     it('should validate multi link requires maxClaims', () => {
       const config: LinkConfig = {
         type: 'multi',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         // Missing maxClaims
       };
@@ -441,7 +438,7 @@ describe('Link Generator', () => {
     it('should validate first-n link requires maxClaims', () => {
       const config: LinkConfig = {
         type: 'first-n',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         // Missing maxClaims
       };
@@ -455,7 +452,7 @@ describe('Link Generator', () => {
     it('should accept valid multi link config', () => {
       const config: LinkConfig = {
         type: 'multi',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         maxClaims: 10,
       };
@@ -468,7 +465,7 @@ describe('Link Generator', () => {
     it('should reject expired link', () => {
       const config: LinkConfig = {
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         expiresAt: Date.now() - 1000, // Already expired
       };
@@ -504,9 +501,10 @@ describe('Claim Processor', () => {
   describe('validateClaim', () => {
     const createBaseLink = (): LinkData => ({
       id: 'testlink12345678',
+      creator: '0xCreator1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
       config: serializeLinkConfig({
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
       }),
       ephemeralAddress: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
@@ -538,7 +536,7 @@ describe('Claim Processor', () => {
       const expiredLink = createBaseLink();
       expiredLink.config = serializeLinkConfig({
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         expiresAt: Date.now() - 1000,
       });
@@ -563,7 +561,7 @@ describe('Claim Processor', () => {
       const multiLink = createBaseLink();
       multiLink.config = serializeLinkConfig({
         type: 'multi',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         maxClaims: 10,
       });
@@ -578,7 +576,7 @@ describe('Claim Processor', () => {
       const exhaustedLink = createBaseLink();
       exhaustedLink.config = serializeLinkConfig({
         type: 'multi',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         maxClaims: 10,
       });
@@ -595,7 +593,7 @@ describe('Claim Processor', () => {
       const protectedLink = createBaseLink();
       protectedLink.config = serializeLinkConfig({
         type: 'single',
-        coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+        coinType: 'NASUN',
         amount: 1000000000n,
         conditions: [{ type: 'password', hash }],
       });
@@ -635,9 +633,10 @@ describe('Claim Processor', () => {
     it('should return status object for active link', () => {
       const linkData: LinkData = {
         id: 'test123',
+        creator: '0xCreator1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         config: serializeLinkConfig({
           type: 'single',
-          coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+          coinType: 'NASUN',
           amount: 1000000000n,
         }),
         ephemeralAddress: '0x123',
@@ -656,9 +655,10 @@ describe('Claim Processor', () => {
     it('should detect multi link with remaining claims', () => {
       const linkData: LinkData = {
         id: 'test123',
+        creator: '0xCreator1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         config: serializeLinkConfig({
           type: 'multi',
-          coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+          coinType: 'NASUN',
           amount: 1000000000n,
           maxClaims: 10,
         }),
@@ -678,9 +678,10 @@ describe('Claim Processor', () => {
     it('should detect exhausted multi link', () => {
       const linkData: LinkData = {
         id: 'test123',
+        creator: '0xCreator1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         config: serializeLinkConfig({
           type: 'multi',
-          coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+          coinType: 'NASUN',
           amount: 1000000000n,
           maxClaims: 10,
         }),
@@ -733,7 +734,7 @@ describe('Link Integration', () => {
     const baseUrl = 'https://app.nasun.io';
     const config = serializeLinkConfig({
       type: 'single',
-      coinType: { type: 'native', symbol: 'NASUN', decimals: 9 },
+      coinType: 'NASUN',
       amount: 1000000000n,
     });
     const payload = btoa(JSON.stringify(config)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -781,7 +782,7 @@ describe('Link Integration', () => {
   it('should serialize and deserialize configs correctly', () => {
     const originalConfig: LinkConfig = {
       type: 'multi',
-      coinType: { type: 'coin', coinType: '0x123::token::TOKEN', symbol: 'TOKEN', decimals: 6 },
+      coinType: '0x123::token::TOKEN',
       amount: 5000000n,
       maxClaims: 100,
       expiresAt: Date.now() + 86400000,

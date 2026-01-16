@@ -15,11 +15,9 @@ import {
   type ZKIDProof,
   type ZKIDVerificationResult,
   type ClaimContext,
-  type ZKIDConfig,
   type AgeThreshold,
   type KYCLevel,
   type NullifierRegistry,
-  ZKIDError,
 } from './types';
 import { getZKIDConfig } from './prover';
 import { isValidNullifier, InMemoryNullifierRegistry } from './nullifier';
@@ -272,7 +270,7 @@ export type ZKIDConditionCheck =
  */
 function verifyAgeCondition(
   proof: ZKIDProof,
-  requiredThreshold: AgeThreshold
+  _requiredThreshold: AgeThreshold
 ): ZKIDVerificationResult {
   if (proof.type !== 'age_over') {
     return {
@@ -294,7 +292,7 @@ function verifyAgeCondition(
  */
 function verifyKYCCondition(
   proof: ZKIDProof,
-  requiredLevel: KYCLevel
+  _requiredLevel: KYCLevel
 ): ZKIDVerificationResult {
   if (proof.type !== 'kyc_completed') {
     return {
@@ -313,7 +311,7 @@ function verifyKYCCondition(
  */
 async function verifyUniqueCondition(
   proof: ZKIDProof,
-  expectedContextId: string,
+  _expectedContextId: string,
   registry?: NullifierRegistry
 ): Promise<ZKIDVerificationResult> {
   if (proof.type !== 'unique_claim') {

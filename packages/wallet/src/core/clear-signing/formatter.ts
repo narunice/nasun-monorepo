@@ -19,9 +19,7 @@ import type {
   TxRiskLevel,
   RiskAssessment,
   RiskFactor,
-  RiskCategory,
   TokenBalanceChange,
-  ApprovalChange,
   SimulationResult,
   ClearSigningConfig,
 } from './types';
@@ -374,7 +372,7 @@ function generateEVMTitle(
 function generateEVMActions(
   call: EVMCall | undefined,
   value: bigint,
-  to: string,
+  _to: string,
   simulation?: SimulationResult
 ): TxAction[] {
   const actions: TxAction[] = [];

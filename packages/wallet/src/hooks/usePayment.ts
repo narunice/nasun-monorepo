@@ -123,7 +123,7 @@ export interface UsePaymentResult {
  */
 export function usePayment(options?: UsePaymentOptions): UsePaymentResult {
   const { signer, address, isConnected } = useSigner();
-  const { chain, isEVM, isMove } = useChain();
+  const { chain } = useChain();
   const { createIntent } = usePaymentIntent();
   const { recordTransaction, isKnownAddress, isTrustedAddress, getEntry } = useAddressBook();
 
@@ -138,7 +138,6 @@ export function usePayment(options?: UsePaymentOptions): UsePaymentResult {
   const { sendTransfer: sendEVMTransfer } = useEVMTransaction();
   const {
     sendTransaction: sendGaslessTransaction,
-    isSponsored,
     isAvailable: isGaslessAvailable,
   } = useGaslessTransaction(options?.paymasterApiKey);
 

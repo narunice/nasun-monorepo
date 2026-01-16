@@ -4,16 +4,12 @@
  * Tests for transaction decoding, formatting, and risk assessment.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   // Types
-  type DecodedTx,
   type MoveDecodedTx,
   type EVMDecodedTx,
-  type MoveCall,
   type SimulationResult,
-  type TxSummary,
-  type RiskAssessment,
   // Error
   ClearSigningError,
   DEFAULT_CLEAR_SIGNING_CONFIG,
@@ -28,7 +24,6 @@ import {
   // Formatter
   formatTransaction,
   assessRisk,
-  setFormatterConfig,
   formatAmount,
   formatGasCost,
   formatUSD,

@@ -22,7 +22,6 @@ import {
   type NFTInfo,
   type NFTSortBy,
   type ZkLoginProvider,
-  type LedgerConnectionStatus,
   type LedgerErrorCode,
 } from "@nasun/wallet";
 import { NetworkSelector } from "./NetworkSelector";
@@ -269,7 +268,6 @@ export function WalletConnect({
     connect: ledgerConnect,
     disconnect: ledgerDisconnect,
     error: ledgerError,
-    clearError: clearLedgerError,
   } = useLedger();
 
   // UI Settings (Advanced mode)
