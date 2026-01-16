@@ -6,6 +6,9 @@
  * - 중복: "이미 제출된 주소입니다" + Withdraw/Close 버튼
  * - 에러: 에러 메시지 표시 + Close 버튼
  * - 로딩: 스피너 표시
+ *
+ * UI follows Nasun design system with DividerBox components
+ * and semantic HTML tags (h5, h6, p) for typography.
  */
 
 import { useTranslation } from "react-i18next";
@@ -20,9 +23,12 @@ import {
 } from "../ui/dialog";
 import type { WhitelistModalProps } from "../../types/whitelist";
 import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { InlineLoading } from "../ui";
+import { DividerBox, InlineLoading } from "../ui";
 
 const METAMASK_INSTALL_URL = "https://metamask.io/download/";
+
+// Common DialogContent className for glassmorphism effect
+const dialogContentClassName = "sm:max-w-md bg-nasun-c6/90 border-nasun-c5 backdrop-blur-lg rounded-xl";
 
 export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onProceed }: WhitelistModalProps) {
   const { t } = useTranslation("common");
@@ -80,76 +86,69 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "intro") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-5 h-5" />
-              {t("whitelist.modal.intro.title")}
+            <DialogTitle className="flex items-center gap-3">
+              <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
+              <h5 className="text-nasun-white">{t("whitelist.modal.intro.title")}</h5>
             </DialogTitle>
-            <DialogDescription>{t("whitelist.modal.intro.description")}</DialogDescription>
+            <DialogDescription>
+              <p>{t("whitelist.modal.intro.description")}</p>
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* 절차 안내 */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-sm font-medium">
+          <div className="space-y-5 py-4">
+            {/* Steps */}
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-nasun-c1/20 text-nasun-c1 flex items-center justify-center font-medium">
                   1
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {t("whitelist.modal.intro.step1.title")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("whitelist.modal.intro.step1.description")}
-                  </p>
+                  <h6 className="text-nasun-c1 !normal-case">{t("whitelist.modal.intro.step1.title")}</h6>
+                  <p className="text-nasun-white/70">{t("whitelist.modal.intro.step1.description")}</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-sm font-medium">
+              <div className="flex items-start gap-4">
+                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-nasun-c1/20 text-nasun-c1 flex items-center justify-center font-medium">
                   2
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {t("whitelist.modal.intro.step2.title")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("whitelist.modal.intro.step2.description")}
-                  </p>
+                  <h6 className="text-nasun-c1 !normal-case">{t("whitelist.modal.intro.step2.title")}</h6>
+                  <p className="text-nasun-white/70">{t("whitelist.modal.intro.step2.description")}</p>
                 </div>
               </div>
             </div>
 
-            {/* 안심 안내 */}
-            <div className="rounded-lg bg-blue-950/50 border border-blue-900/50 p-3">
-              <p className="text-xs text-blue-200">
-                ℹ️ {t("whitelist.modal.intro.notice")}
+            {/* Notice Box */}
+            <DividerBox color="c4" padding="sm">
+              <p className="flex items-start gap-2">
+                <span>ℹ️</span>
+                <span>{t("whitelist.modal.intro.notice")}</span>
               </p>
-            </div>
+            </DividerBox>
 
-            {/* MetaMask 설치 링크 */}
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                {t("whitelist.modal.intro.noMetaMask")}{" "}
-                <a
-                  href={METAMASK_INSTALL_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-400 hover:text-orange-300 underline"
-                >
-                  {t("whitelist.modal.intro.installLink")}
-                </a>
-              </p>
-            </div>
+            {/* MetaMask Install Link */}
+            <p className="text-center text-nasun-white/70">
+              {t("whitelist.modal.intro.noMetaMask")}{" "}
+              <a
+                href={METAMASK_INSTALL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-nasun-c1 hover:text-nasun-c2 underline"
+              >
+                {t("whitelist.modal.intro.installLink")}
+              </a>
+            </p>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col sm:flex-row gap-3">
             <Button variant="outlineC1" onClick={handleClose} className="w-full sm:w-auto">
               {t("whitelist.modal.intro.cancel")}
             </Button>
-            <Button onClick={handleProceed} className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600">
-              <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-5 h-5 mr-1" />
+            <Button variant="c1" onClick={handleProceed} className="w-full sm:w-auto">
+              <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-5 h-5 mr-2" />
               {t("whitelist.modal.intro.proceed")}
             </Button>
           </DialogFooter>
@@ -164,24 +163,29 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "connecting") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-3 text-nasun-c1">
               <InlineLoading size="md" />
-              {t("whitelist.modal.connecting.title")}
+              <h5>{t("whitelist.modal.connecting.title")}</h5>
             </DialogTitle>
             <DialogDescription>
-              {walletAddress
-                ? t("whitelist.modal.connecting.checking")
-                : t("whitelist.modal.connecting.description")}
+              <p>
+                {walletAddress
+                  ? t("whitelist.modal.connecting.checking")
+                  : t("whitelist.modal.connecting.description")}
+              </p>
             </DialogDescription>
           </DialogHeader>
 
           {walletAddress && (
             <div className="py-4">
-              <p className="text-sm text-muted-foreground">
-                Wallet: <span className="font-mono">{formatWalletAddress(walletAddress)}</span>
-              </p>
+              <DividerBox color="c1" padding="sm">
+                <p className="flex items-center gap-2">
+                  <span>🦊</span>
+                  <span>Wallet: <code className="text-nasun-c1 font-mono">{formatWalletAddress(walletAddress)}</code></span>
+                </p>
+              </DividerBox>
             </div>
           )}
         </DialogContent>
@@ -195,20 +199,25 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "signing") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-3 text-nasun-c2">
               <InlineLoading size="md" />
-              {t("whitelist.modal.signing.title")}
+              <h5>{t("whitelist.modal.signing.title")}</h5>
             </DialogTitle>
-            <DialogDescription>{t("whitelist.modal.signing.description")}</DialogDescription>
+            <DialogDescription>
+              <p>{t("whitelist.modal.signing.description")}</p>
+            </DialogDescription>
           </DialogHeader>
 
           {walletAddress && (
             <div className="py-4">
-              <p className="text-sm text-muted-foreground">
-                Wallet: <span className="font-mono">{formatWalletAddress(walletAddress)}</span>
-              </p>
+              <DividerBox color="c2" padding="sm">
+                <p className="flex items-center gap-2">
+                  <span>✍️</span>
+                  <span>Wallet: <code className="text-nasun-c2 font-mono">{formatWalletAddress(walletAddress)}</code></span>
+                </p>
+              </DividerBox>
             </div>
           )}
         </DialogContent>
@@ -222,20 +231,25 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "submitting") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-3 text-nasun-c4">
               <InlineLoading size="md" />
-              {t("whitelist.modal.submitting.title")}
+              <h5>{t("whitelist.modal.submitting.title")}</h5>
             </DialogTitle>
-            <DialogDescription>{t("whitelist.modal.submitting.description")}</DialogDescription>
+            <DialogDescription>
+              <p>{t("whitelist.modal.submitting.description")}</p>
+            </DialogDescription>
           </DialogHeader>
 
           {walletAddress && (
             <div className="py-4">
-              <p className="text-sm text-muted-foreground">
-                Wallet: <span className="font-mono">{formatWalletAddress(walletAddress)}</span>
-              </p>
+              <DividerBox color="c4" padding="sm">
+                <p className="flex items-center gap-2">
+                  <span>📤</span>
+                  <span>Wallet: <code className="text-nasun-c4 font-mono">{formatWalletAddress(walletAddress)}</code></span>
+                </p>
+              </DividerBox>
             </div>
           )}
         </DialogContent>
@@ -249,38 +263,40 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "success") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-400">
+            <DialogTitle className="flex items-center gap-3 text-nasun-c3">
               <CheckCircle2 className="h-6 w-6" />
-              {t("whitelist.modal.success.title")}
+              <h5>{t("whitelist.modal.success.title")}</h5>
             </DialogTitle>
-            <DialogDescription>{t("whitelist.modal.success.description")}</DialogDescription>
+            <DialogDescription>
+              <p>{t("whitelist.modal.success.description")}</p>
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-green-950 p-4">
-              <p className="text-sm font-medium text-green-100">
-                {t("whitelist.modal.success.walletAddress")}
-              </p>
-              <p className="text-sm font-mono text-green-300 break-all mt-1">{walletAddress}</p>
-            </div>
+            <DividerBox
+              color="c3"
+              icon={<CheckCircle2 className="w-5 h-5" />}
+              title={t("whitelist.modal.success.walletAddress")}
+              padding="sm"
+            >
+              <code className="text-nasun-c3 break-all font-mono">{walletAddress}</code>
+            </DividerBox>
 
             {joinedAt && (
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  {t("whitelist.modal.success.joinedAt")}:{" "}
-                  <span className="font-medium">{formatDate(joinedAt)}</span>
-                </p>
-              </div>
+              <p className="text-center text-nasun-white/80">
+                {t("whitelist.modal.success.joinedAt")}:{" "}
+                <strong className="text-nasun-white">{formatDate(joinedAt)}</strong>
+              </p>
             )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outlineC1" onClick={handleWithdrawClick} className="w-full sm:w-auto">
+          <DialogFooter className="flex-col sm:flex-row gap-3">
+            <Button variant="outlineC3" onClick={handleWithdrawClick} className="w-full sm:w-auto">
               {t("whitelist.modal.success.withdraw")}
             </Button>
-            <Button onClick={handleClose} className="w-full sm:w-auto">
+            <Button variant="c3" onClick={handleClose} className="w-full sm:w-auto">
               {t("whitelist.modal.success.close")}
             </Button>
           </DialogFooter>
@@ -295,38 +311,40 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "already_joined") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-blue-400">
+            <DialogTitle className="flex items-center gap-3 text-nasun-c4">
               <AlertCircle className="h-6 w-6" />
-              {t("whitelist.modal.alreadyJoined.title")}
+              <h5>{t("whitelist.modal.alreadyJoined.title")}</h5>
             </DialogTitle>
-            <DialogDescription>{t("whitelist.modal.alreadyJoined.description")}</DialogDescription>
+            <DialogDescription>
+              <p>{t("whitelist.modal.alreadyJoined.description")}</p>
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-blue-950 p-4">
-              <p className="text-sm font-medium text-blue-100">
-                {t("whitelist.modal.alreadyJoined.walletAddress")}
-              </p>
-              <p className="text-sm font-mono text-blue-300 break-all mt-1">{walletAddress}</p>
-            </div>
+            <DividerBox
+              color="c4"
+              icon={<AlertCircle className="w-5 h-5" />}
+              title={t("whitelist.modal.alreadyJoined.walletAddress")}
+              padding="sm"
+            >
+              <code className="text-nasun-c4 break-all font-mono">{walletAddress}</code>
+            </DividerBox>
 
             {joinedAt && (
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  {t("whitelist.modal.alreadyJoined.joinedAt")}:{" "}
-                  <span className="font-medium">{formatDate(joinedAt)}</span>
-                </p>
-              </div>
+              <p className="text-center text-nasun-white/80">
+                {t("whitelist.modal.alreadyJoined.joinedAt")}:{" "}
+                <strong className="text-nasun-white">{formatDate(joinedAt)}</strong>
+              </p>
             )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outlineC1" onClick={handleWithdrawClick} className="w-full sm:w-auto">
+          <DialogFooter className="flex-col sm:flex-row gap-3">
+            <Button variant="outlineC4" onClick={handleWithdrawClick} className="w-full sm:w-auto">
               {t("whitelist.modal.alreadyJoined.withdraw")}
             </Button>
-            <Button onClick={handleClose} className="w-full sm:w-auto">
+            <Button variant="c4" onClick={handleClose} className="w-full sm:w-auto">
               {t("whitelist.modal.alreadyJoined.close")}
             </Button>
           </DialogFooter>
@@ -341,45 +359,47 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "already_withdrawn") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-blue-400">
+            <DialogTitle className="flex items-center gap-3 text-nasun-c4">
               <AlertCircle className="h-6 w-6" />
-              {t("whitelist.modal.alreadyWithdrawn.title")}
+              <h5>{t("whitelist.modal.alreadyWithdrawn.title")}</h5>
             </DialogTitle>
             <DialogDescription>
-              {t("whitelist.modal.alreadyWithdrawn.description")}
+              <p>{t("whitelist.modal.alreadyWithdrawn.description")}</p>
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-blue-950 p-4">
-              <p className="text-sm font-medium text-blue-100">
-                {t("whitelist.modal.alreadyWithdrawn.walletAddress")}
-              </p>
-              <p className="text-sm font-mono text-blue-300 break-all mt-1">
+            <DividerBox
+              color="c4"
+              title={t("whitelist.modal.alreadyWithdrawn.walletAddress")}
+              padding="sm"
+            >
+              <code className="text-nasun-c4 break-all font-mono">
                 {walletAddress ? formatWalletAddress(walletAddress) : "N/A"}
-              </p>
-            </div>
+              </code>
+            </DividerBox>
 
             {modalData.withdrawnAt && (
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  {t("whitelist.modal.alreadyWithdrawn.withdrawnAt")}:{" "}
-                  <span className="font-medium">{formatDate(modalData.withdrawnAt)}</span>
-                </p>
-              </div>
+              <p className="text-center text-nasun-white/80">
+                {t("whitelist.modal.alreadyWithdrawn.withdrawnAt")}:{" "}
+                <strong className="text-nasun-white">{formatDate(modalData.withdrawnAt)}</strong>
+              </p>
             )}
 
             {walletAddress && (
-              <div className="rounded-lg bg-blue-950 p-3 text-xs text-blue-200">
-                💡 Wallet: {walletAddress}
-              </div>
+              <DividerBox color="c4" padding="sm">
+                <p className="flex items-center gap-2">
+                  <span>💡</span>
+                  <span>Wallet: {walletAddress}</span>
+                </p>
+              </DividerBox>
             )}
           </div>
 
           <DialogFooter>
-            <Button onClick={handleClose} className="w-full">
+            <Button variant="c4" onClick={handleClose} className="w-full">
               {t("whitelist.modal.alreadyWithdrawn.close")}
             </Button>
           </DialogFooter>
@@ -394,36 +414,38 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
   if (state === "error") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-400">
+            <DialogTitle className="flex items-center gap-3 text-nasun-coral">
               <XCircle className="h-6 w-6" />
-              {t("whitelist.modal.error.title")}
+              <h5>{t("whitelist.modal.error.title")}</h5>
             </DialogTitle>
-            <DialogDescription>{t("whitelist.modal.error.description")}</DialogDescription>
+            <DialogDescription>
+              <p>{t("whitelist.modal.error.description")}</p>
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-red-950 p-4">
-              <p className="text-sm font-medium text-red-100 mb-2">
-                {t("whitelist.modal.error.errorMessage")}
-              </p>
-              <p className="text-sm text-red-300">
+            <DividerBox
+              color="coral"
+              icon={<XCircle className="w-5 h-5" />}
+              title={t("whitelist.modal.error.errorMessage")}
+              padding="sm"
+            >
+              <p className="text-nasun-coral">
                 {error || "An unexpected error occurred. Please try again."}
               </p>
-            </div>
+            </DividerBox>
 
             {walletAddress && (
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  Wallet: <span className="font-mono">{formatWalletAddress(walletAddress)}</span>
-                </p>
-              </div>
+              <p className="text-center text-nasun-white/80">
+                Wallet: <code className="text-nasun-white font-mono">{formatWalletAddress(walletAddress)}</code>
+              </p>
             )}
           </div>
 
           <DialogFooter>
-            <Button onClick={handleClose} className="w-full">
+            <Button variant="coral" onClick={handleClose} className="w-full">
               {t("whitelist.modal.error.close")}
             </Button>
           </DialogFooter>
