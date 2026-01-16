@@ -17,7 +17,6 @@ import type {
   TxCategory,
   TxChainType,
   ClearSigningConfig,
-  ContractRegistry,
 } from './types';
 import { ClearSigningError, DEFAULT_CLEAR_SIGNING_CONFIG } from './types';
 

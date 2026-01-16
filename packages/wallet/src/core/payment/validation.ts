@@ -5,7 +5,7 @@
  * balance checks, and security warnings.
  */
 
-import { isValidAddress as isValidMoveAddress, parseAmount } from '../../sui/client';
+import { isValidAddress as isValidMoveAddress } from '../../sui/client';
 import { isAddress as isValidEVMAddressViem, getAddress } from 'viem';
 import type {
   PaymentRequest,

@@ -6,7 +6,7 @@
  * - Security scenario tests (attack prevention)
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   // Types
   ZKIDError,
@@ -19,8 +19,6 @@ import {
   getZKIDConfig,
   createMockProver,
   generateAgeProof,
-  generateKYCProof,
-  generateUniqueProof,
   // Nullifier
   calculateNullifier,
   isValidNullifier,

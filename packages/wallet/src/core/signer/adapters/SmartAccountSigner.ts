@@ -387,7 +387,7 @@ export class SmartAccountSigner implements SignerAdapter {
    * Estimate gas without paymaster (user pays)
    * @internal
    */
-  private async estimateGasWithoutPaymaster(tx: SmartAccountTxRequest): Promise<GasCostEstimate> {
+  private async estimateGasWithoutPaymaster(_tx: SmartAccountTxRequest): Promise<GasCostEstimate> {
     const gasPrices = await getGasPrices(this.chain);
     const defaultGas = 500000n;
     const costInWei = defaultGas * gasPrices.maxFeePerGas;

@@ -685,7 +685,7 @@ export { usePayment, useCanPay } from './hooks/usePayment';
 export type { UsePaymentOptions, UsePaymentResult } from './hooks/usePayment';
 
 export { usePaymentIntent } from './hooks/usePaymentIntent';
-export type { UsePaymentIntentResult, WCRequest } from './hooks/usePaymentIntent';
+export type { UsePaymentIntentResult, PaymentWCRequest } from './hooks/usePaymentIntent';
 
 export { usePaymentLink, usePaymentLinkFromUrl } from './hooks/usePaymentLink';
 export type { UsePaymentLinkOptions, UsePaymentLinkResult } from './hooks/usePaymentLink';

@@ -81,7 +81,7 @@ import {
   SessionKeyState,
   SessionKeyValidation,
 } from '../core/aa/types';
-import { getBundlerClient, getGasPrices, formatGasEstimate } from '../core/aa/bundler';
+import { getBundlerClient, formatGasEstimate } from '../core/aa/bundler';
 import { getPaymasterClient } from '../core/aa/paymaster';
 import {
   getSimpleSmartAccount,
@@ -97,7 +97,6 @@ import {
   createContractPermission,
 } from '../core/aa/session-keys';
 import { SmartAccountSigner } from '../core/signer/adapters/SmartAccountSigner';
-import { SessionKeySigner } from '../core/signer/adapters/SessionKeySigner';
 import type { EVMSigner } from '../core/signer/adapters/EVMSigner';
 
 // Test chain configuration with AA support
@@ -810,7 +809,6 @@ describe('P2: Gas Price Utilities', () => {
       preVerificationGas: 50000n,
       verificationGasLimit: 100000n,
       maxFeePerGas: 25000000000n,
-      maxPriorityFeePerGas: 1000000000n,
     });
 
     expect(result.totalGas).toBe(200000n);
@@ -824,7 +822,6 @@ describe('P2: Gas Price Utilities', () => {
       preVerificationGas: 0n,
       verificationGasLimit: 0n,
       maxFeePerGas: 0n,
-      maxPriorityFeePerGas: 0n,
     });
 
     expect(result.totalGas).toBe(0n);

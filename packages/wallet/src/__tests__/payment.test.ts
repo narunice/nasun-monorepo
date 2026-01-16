@@ -4,8 +4,10 @@
  * Tests for payment types, validation, links, and QR code generation.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import './setup';
+
+import type { PaymentIntentStatus, PaymentChainType } from '../core/payment/types';
 
 // ============================================
 // Type Tests
@@ -13,19 +15,17 @@ import './setup';
 
 describe('Payment Types', () => {
   describe('PaymentIntent', () => {
-    it('should define correct payment intent structure', async () => {
-      const { PaymentIntentStatus } = await import('../core/payment/types');
+    it('should define correct payment intent structure', () => {
       // Type check - this is compile-time validation
-      const status: (typeof PaymentIntentStatus)[number] = 'pending';
+      const status: PaymentIntentStatus = 'pending';
       expect(['pending', 'processing', 'completed', 'failed', 'expired', 'cancelled']).toContain(
         status
       );
     });
 
-    it('should define correct chain types', async () => {
-      const { PaymentChainType } = await import('../core/payment/types');
+    it('should define correct chain types', () => {
       // Type check - compile time
-      const chainType: 'move' | 'evm' = 'move';
+      const chainType: PaymentChainType = 'move';
       expect(['move', 'evm']).toContain(chainType);
     });
   });

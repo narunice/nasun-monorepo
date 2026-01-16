@@ -21,15 +21,14 @@ import type {
   PaymentIntent,
   PaymentRequest,
   PaymentChainType,
-  ParsedPaymentLink,
 } from '../core/payment/types';
 
 // ============================================
 // Types
 // ============================================
 
-/** WalletConnect request (simplified for parsing) */
-export interface WCRequest {
+/** WalletConnect request (simplified for payment parsing) */
+export interface PaymentWCRequest {
   method: string;
   params?: unknown[];
   chainId?: string;
@@ -44,7 +43,7 @@ export interface UsePaymentIntentResult {
   /** Parse intent from URL search params */
   parseFromUrl: (url: string) => PaymentIntent | null;
   /** Parse intent from WalletConnect request */
-  parseFromWCRequest: (request: WCRequest) => PaymentIntent | null;
+  parseFromWCRequest: (request: PaymentWCRequest) => PaymentIntent | null;
   /** Convert intent to payment request for execution */
   toRequest: (intent: PaymentIntent) => PaymentRequest;
   /** Serialize intent to URL params */
@@ -85,7 +84,7 @@ export interface UsePaymentIntentResult {
  * ```
  */
 export function usePaymentIntent(): UsePaymentIntentResult {
-  const { chainId, isEVM, chain } = useChain();
+  const { chainId, isEVM } = useChain();
 
   const currentChainType = useMemo<PaymentChainType>(
     () => (isEVM ? 'evm' : 'move'),
@@ -155,7 +154,7 @@ export function usePaymentIntent(): UsePaymentIntentResult {
    * Supports eth_sendTransaction and sui_signAndExecuteTransaction
    */
   const parseFromWCRequest = useCallback(
-    (request: WCRequest): PaymentIntent | null => {
+    (request: PaymentWCRequest): PaymentIntent | null => {
       try {
         const id = generateIntentId();
         const now = Date.now();

@@ -85,7 +85,7 @@ export interface UseLedgerResult {
  * - Connection lifecycle
  */
 export function useLedger(): UseLedgerResult {
-  const { chain, isEVM, isMove } = useChain();
+  const { chain, isEVM } = useChain();
 
   const [status, setStatus] = useState<LedgerConnectionStatus>('disconnected');
   const [deviceInfo, setDeviceInfo] = useState<LedgerDeviceInfo | null>(null);

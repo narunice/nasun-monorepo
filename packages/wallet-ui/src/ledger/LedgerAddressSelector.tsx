@@ -285,10 +285,9 @@ export function LedgerAddressDropdown({
   selectedIndex,
   onSelect,
   addresses,
-  chainType,
   isLoading,
   className = '',
-}: Omit<LedgerAddressSelectorProps, 'showBalance' | 'onLoadMore' | 'hasMore'>) {
+}: Omit<LedgerAddressSelectorProps, 'showBalance' | 'onLoadMore' | 'hasMore' | 'chainType'>) {
   const [isOpen, setIsOpen] = React.useState(false);
   const selectedAddress = addresses.find((a) => a.index === selectedIndex);
 

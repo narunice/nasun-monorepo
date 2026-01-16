@@ -20,7 +20,6 @@ import {
 } from '../core/zkid/types';
 import {
   configureZKID as coreConfigureZKID,
-  getZKIDConfig,
   generateAgeProof,
   generateKYCProof,
   generateUniqueProof,
@@ -34,9 +33,8 @@ import {
   decryptCredential,
   getCredentialById,
   updateCredentialLastUsed,
-  type EncryptedCredential,
 } from '../core/zkid/credential';
-import { calculateNullifier, createNullifierInput } from '../core/zkid/nullifier';
+import { createNullifierInput } from '../core/zkid/nullifier';
 
 // ============================================
 // Configuration

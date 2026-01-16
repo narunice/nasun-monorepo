@@ -15,7 +15,6 @@ import { SessionKeySigner } from '../core/signer/adapters/SessionKeySigner';
 import type {
   SessionKeyConfig,
   SessionKeyState,
-  SessionKeyPermission,
   SessionKeyValidation,
   SmartAccountTxRequest,
 } from '../core/aa/types';

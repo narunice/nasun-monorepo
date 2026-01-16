@@ -61,6 +61,20 @@ export type { LinkClaimPageProps } from './LinkClaimPage';
 export { AdvancedToggle } from './AdvancedToggle';
 export type { AdvancedToggleProps } from './AdvancedToggle';
 
+// Advanced Mode components
+export { SessionKeyPanel } from './SessionKeyPanel';
+export type { SessionKeyPanelProps } from './SessionKeyPanel';
+export { ZKIDManager } from './ZKIDManager';
+export type { ZKIDManagerProps } from './ZKIDManager';
+export { ChainSelector } from './ChainSelector';
+export type { ChainSelectorProps } from './ChainSelector';
+
+// Onboarding components
+export { PurposeSelector } from './PurposeSelector';
+export type { PurposeSelectorProps } from './PurposeSelector';
+export { SecurityProgress } from './SecurityProgress';
+export type { SecurityProgressProps } from './SecurityProgress';
+
 // Utility components
 export { CopyableAddress } from './CopyableAddress';
 export type { CopyableAddressProps } from './CopyableAddress';
