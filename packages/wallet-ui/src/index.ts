@@ -51,6 +51,16 @@ export { StakingPanel } from './StakingPanel';
 export { PortfolioPanel } from './PortfolioPanel';
 export type { PortfolioPanelProps } from './PortfolioPanel';
 
+// Nasun Link components
+export { NasunLinkWizard } from './NasunLinkWizard';
+export type { NasunLinkWizardProps } from './NasunLinkWizard';
+export { LinkClaimPage } from './LinkClaimPage';
+export type { LinkClaimPageProps } from './LinkClaimPage';
+
+// Settings components
+export { AdvancedToggle } from './AdvancedToggle';
+export type { AdvancedToggleProps } from './AdvancedToggle';
+
 // Utility components
 export { CopyableAddress } from './CopyableAddress';
 export type { CopyableAddressProps } from './CopyableAddress';
@@ -130,3 +140,33 @@ export type {
 // Shared components
 export { Tooltip, InlineTooltip } from './shared';
 export type { TooltipProps, InlineTooltipProps } from './shared';
+
+// UI Settings (stores and hooks)
+export {
+  useUISettingsStore,
+  useAdvancedMode,
+  useToggleAdvancedMode,
+  useUserPurpose,
+  useHasCompletedOnboarding,
+  useNavigation,
+  useCurrentSection,
+  useCurrentView,
+  useUISettings,
+} from './stores';
+export type { UseUISettingsResult } from './stores';
+
+// Navigation types
+export type {
+  Section,
+  HomeView,
+  SendView,
+  InvestView,
+  NFTView,
+  ActivityView,
+  SettingsView,
+  OnboardingView,
+  View,
+  NavigationState,
+  UserPurpose,
+} from './types';
+export { DEFAULT_VIEWS, LEGACY_VIEW_MODE_MAP } from './types';

@@ -4,6 +4,7 @@
  */
 
 import { useSecuritySettings, DEFAULT_SECURITY_SETTINGS } from '@nasun/wallet';
+import { AdvancedToggle } from './AdvancedToggle';
 
 interface SecuritySettingsProps {
   onClose?: () => void;
@@ -141,6 +142,12 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
             </select>
           </div>
         )}
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 dark:border-zinc-700 my-4" />
+
+        {/* Advanced Mode Toggle */}
+        <AdvancedToggle />
 
         {/* Security tips */}
         <div className="bg-gray-100 dark:bg-zinc-700/50 rounded p-3 mt-4">
