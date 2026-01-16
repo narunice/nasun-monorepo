@@ -52,7 +52,7 @@ describe('ValidatorList', () => {
       render(
         <ValidatorList
           onSelect={() => {}}
-          selectedAddress={selectedAddress}
+          selected={selectedAddress}
         />
       );
 

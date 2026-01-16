@@ -26,7 +26,6 @@ import {
   type SuiLedgerClientInterface,
   type EvmLedgerClientInterface,
   LedgerError,
-  LEDGER_DERIVATION_PATHS,
 } from '../../ledger/types';
 import { closeTransport, parseLedgerError } from '../../ledger/transport';
 import {

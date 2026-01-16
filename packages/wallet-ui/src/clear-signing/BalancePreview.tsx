@@ -19,7 +19,6 @@ import type {
   ApprovalChange,
 } from '@nasun/wallet';
 import { Tooltip } from '../shared';
-import * as React from 'react';
 
 export interface BalancePreviewProps {
   /** Simulation result from Clear Signing */

@@ -5,6 +5,10 @@
 
 import { useSecuritySettings, DEFAULT_SECURITY_SETTINGS } from '@nasun/wallet';
 import { AdvancedToggle } from './AdvancedToggle';
+import { ChainSelector } from './ChainSelector';
+import { SessionKeyPanel } from './SessionKeyPanel';
+import { ZKIDManager } from './ZKIDManager';
+import { useAdvancedMode } from './stores';
 
 interface SecuritySettingsProps {
   onClose?: () => void;
@@ -28,6 +32,7 @@ const THRESHOLD_OPTIONS = [
 
 export function SecuritySettings({ onClose }: SecuritySettingsProps) {
   const { security, updateSecuritySettings } = useSecuritySettings();
+  const isAdvancedMode = useAdvancedMode();
 
   const handleAutoLockChange = (minutes: number) => {
     updateSecuritySettings({ autoLockMinutes: minutes });
@@ -148,6 +153,20 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
 
         {/* Advanced Mode Toggle */}
         <AdvancedToggle />
+
+        {/* Advanced Mode Features */}
+        {isAdvancedMode && (
+          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
+            {/* Chain Selector */}
+            <ChainSelector size="sm" />
+
+            {/* Session Keys */}
+            <SessionKeyPanel compact />
+
+            {/* ZK-ID Proofs */}
+            <ZKIDManager compact />
+          </div>
+        )}
 
         {/* Security tips */}
         <div className="bg-gray-100 dark:bg-zinc-700/50 rounded p-3 mt-4">

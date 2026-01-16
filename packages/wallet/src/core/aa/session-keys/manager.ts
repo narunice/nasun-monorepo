@@ -489,7 +489,7 @@ export class SessionKeyManager {
  */
 export function createERC20TransferPermission(
   tokenAddress: Address,
-  maxAmount?: bigint
+  _maxAmount?: bigint
 ): SessionKeyPermission {
   return {
     target: tokenAddress,
