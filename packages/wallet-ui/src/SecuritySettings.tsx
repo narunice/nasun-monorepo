@@ -53,7 +53,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
   };
 
   return (
-    <div className="p-4 min-w-[300px]">
+    <div className="p-4 w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">

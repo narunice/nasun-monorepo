@@ -18,6 +18,8 @@ import {
   deleteKeystore,
   getStoredAddress,
 } from '../core/keystore';
+import { createEVMWalletFromMnemonic, deleteEVMWallet } from '../core/evm';
+import { clearAddressBook } from './useAddressBook';
 import { getPublicKeyFromKeypair, getAddressFromKeypair, getSecretKeyFromKeypair } from '../core/crypto';
 import { saveSessionPassword, getSessionPassword, clearSessionPassword } from '../sui/client';
 
@@ -173,6 +175,13 @@ export const useWallet = create<WalletStore>((set, get) => ({
     currentKeypair = null;
     clearSessionPassword();
     deleteKeystore();
+    deleteEVMWallet();
+    clearAddressBook();
+
+    // Reset UI settings to defaults
+    localStorage.removeItem('nasun-wallet-ui-settings');
+    localStorage.removeItem('nasun-wallet-chain');
+
     set({
       status: 'disconnected',
       account: null,
@@ -191,6 +200,14 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
       // Save to session for auto-unlock on page refresh
       saveSessionPassword(password);
+
+      // Auto-create EVM wallet from the same mnemonic
+      try {
+        const evmAddress = await createEVMWalletFromMnemonic(mnemonic, password);
+        console.log('[Wallet] EVM wallet created:', evmAddress);
+      } catch (evmError) {
+        console.warn('[Wallet] Failed to auto-create EVM wallet:', evmError);
+      }
 
       const account: WalletAccount = {
         address,
@@ -220,6 +237,14 @@ export const useWallet = create<WalletStore>((set, get) => ({
       // Save to session for auto-unlock on page refresh
       saveSessionPassword(password);
 
+      // Auto-create EVM wallet from the same mnemonic
+      try {
+        const evmAddress = await createEVMWalletFromMnemonic(mnemonic, password);
+        console.log('[Wallet] EVM wallet created:', evmAddress);
+      } catch (evmError) {
+        console.warn('[Wallet] Failed to auto-create EVM wallet:', evmError);
+      }
+
       const account: WalletAccount = {
         address,
         publicKey: getPublicKeyFromKeypair(keypair),
@@ -246,6 +271,14 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
       // Save to session for auto-unlock on page refresh
       saveSessionPassword(password);
+
+      // Auto-create EVM wallet from the same mnemonic
+      try {
+        const evmAddress = await createEVMWalletFromMnemonic(mnemonic, password);
+        console.log('[Wallet] EVM wallet created:', evmAddress);
+      } catch (evmError) {
+        console.warn('[Wallet] Failed to auto-create EVM wallet:', evmError);
+      }
 
       const account: WalletAccount = {
         address,

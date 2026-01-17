@@ -38,6 +38,9 @@ interface AddressBookStore {
 
   // Get all entries
   getAllEntries: () => AddressBookEntry[];
+
+  // Clear all entries (for wallet deletion)
+  clearAll: () => void;
 }
 
 export const useAddressBook = create<AddressBookStore>()(
@@ -173,6 +176,15 @@ export const useAddressBook = create<AddressBookStore>()(
       getAllEntries: () => {
         return Object.values(get().addressBook.entries);
       },
+
+      clearAll: () => {
+        set({
+          addressBook: {
+            entries: {},
+            updatedAt: Date.now(),
+          },
+        });
+      },
     }),
     {
       name: STORAGE_KEY,
@@ -180,6 +192,14 @@ export const useAddressBook = create<AddressBookStore>()(
     }
   )
 );
+
+/**
+ * Clear address book (for wallet deletion)
+ * Can be called outside of React components
+ */
+export function clearAddressBook(): void {
+  useAddressBook.getState().clearAll();
+}
 
 // Convenience hook for checking address status
 export function useAddressStatus(address: string) {

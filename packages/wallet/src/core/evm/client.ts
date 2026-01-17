@@ -14,6 +14,10 @@ import {
   mainnet,
   base,
   arbitrum,
+  sepolia,
+  holesky,
+  optimismSepolia,
+  lineaSepolia,
   baseSepolia,
   arbitrumSepolia,
 } from 'viem/chains';
@@ -29,6 +33,10 @@ const VIEM_CHAINS: Record<string, Chain> = {
   ethereum: mainnet,
   base: base,
   arbitrum: arbitrum,
+  sepolia: sepolia,
+  holesky: holesky,
+  'optimism-sepolia': optimismSepolia,
+  'linea-sepolia': lineaSepolia,
   'base-sepolia': baseSepolia,
   'arbitrum-sepolia': arbitrumSepolia,
 };
@@ -81,7 +89,7 @@ export function getEVMClient(chainConfig: ChainConfig): PublicClient {
 
   const client = createPublicClient({
     chain,
-    transport: http(chainConfig.rpcUrl),
+    transport: http(chainConfig.rpcUrl, { timeout: 15_000 }),
     batch: {
       multicall: true,
     },

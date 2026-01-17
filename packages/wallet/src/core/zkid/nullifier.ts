@@ -132,13 +132,22 @@ export class InMemoryNullifierRegistry implements NullifierRegistry {
  * Stores nullifiers on a backend server for persistence.
  */
 export class APIBackedNullifierRegistry implements NullifierRegistry {
+  private readonly apiUrl: string;
+  private readonly options?: {
+    timeout?: number;
+    headers?: Record<string, string>;
+  };
+
   constructor(
-    private readonly apiUrl: string,
-    private readonly options?: {
+    apiUrl: string,
+    options?: {
       timeout?: number;
       headers?: Record<string, string>;
     }
-  ) {}
+  ) {
+    this.apiUrl = apiUrl;
+    this.options = options;
+  }
 
   async check(nullifier: string): Promise<boolean> {
     const controller = new AbortController();

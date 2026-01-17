@@ -442,13 +442,18 @@ export type ClearSigningErrorCode =
 
 /** Clear signing error */
 export class ClearSigningError extends Error {
+  readonly code: ClearSigningErrorCode;
+  readonly cause?: unknown;
+
   constructor(
-    public readonly code: ClearSigningErrorCode,
+    code: ClearSigningErrorCode,
     message: string,
-    public readonly cause?: unknown
+    cause?: unknown
   ) {
     super(message);
     this.name = 'ClearSigningError';
+    this.code = code;
+    this.cause = cause;
   }
 }
 
