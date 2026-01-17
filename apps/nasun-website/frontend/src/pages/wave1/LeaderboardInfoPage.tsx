@@ -1,13 +1,20 @@
-import React from "react";
+import { Suspense, lazy } from "react";
 import { PageLayout } from "../../components/layout/PageLayout";
-import LeaderboardInfoSection from "../../components/app/wave1/leaderboard-info/LeaderboardInfoSection";
+import ErrorBoundary from "../../components/layout/ErrorBoundary";
+import { SectionLoading } from "@/components/ui/SectionLoading";
 
-const LeaderboardInfoPage: React.FC = () => {
+const LeaderboardInfoSection = lazy(
+  () => import("../../components/app/wave1/leaderboard-info/LeaderboardInfoSection")
+);
+
+export default function LeaderboardInfoPage() {
   return (
-    <PageLayout>
-      <LeaderboardInfoSection />
-    </PageLayout>
+    <ErrorBoundary>
+      <PageLayout>
+        <Suspense fallback={<SectionLoading fullScreen />}>
+          <LeaderboardInfoSection />
+        </Suspense>
+      </PageLayout>
+    </ErrorBoundary>
   );
-};
-
-export default LeaderboardInfoPage;
+}

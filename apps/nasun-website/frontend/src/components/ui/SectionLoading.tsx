@@ -20,13 +20,21 @@ interface SectionLoadingProps {
   className?: string;
   /** SectionLayout 래퍼 사용 여부 (default: true) */
   showLayout?: boolean;
+  /** h-screen 높이로 표시 - 페이지 Suspense fallback용 (default: false) */
+  fullScreen?: boolean;
 }
 
 /**
  * SectionLoading
  *
  * @example
- * // Suspense fallback (SectionLayout 포함)
+ * // 페이지 Suspense fallback (h-screen, layout shift 방지)
+ * <Suspense fallback={<SectionLoading fullScreen />}>
+ *   <LazyPageContent />
+ * </Suspense>
+ *
+ * @example
+ * // 섹션 Suspense fallback (SectionLayout 포함)
  * <Suspense fallback={<SectionLoading />}>
  *   <Component />
  * </Suspense>
@@ -34,20 +42,21 @@ interface SectionLoadingProps {
  * @example
  * // 컴포넌트 내부 로딩 (SectionLayout 제외)
  * {isLoading && <SectionLoading showLayout={false} />}
- *
- * @example
- * // 커스텀 메시지
- * <SectionLoading message="데이터를 불러오는 중..." />
  */
 export const SectionLoading: React.FC<SectionLoadingProps> = ({
   message,
   className = "",
   showLayout = true,
+  fullScreen = false,
 }) => {
   const { t } = useTranslation("common");
 
+  const containerClass = fullScreen
+    ? "h-screen flex items-center justify-center bg-nasun-black"
+    : "text-center py-8";
+
   const content = (
-    <div className={`text-center py-8 ${className}`}>
+    <div className={`${containerClass} ${className}`}>
       <div className="flex justify-center items-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-100"></div>
         <span className="ml-3 text-base text-nasun-white">
@@ -56,6 +65,10 @@ export const SectionLoading: React.FC<SectionLoadingProps> = ({
       </div>
     </div>
   );
+
+  if (fullScreen) {
+    return content;
+  }
 
   return showLayout ? <SectionLayout>{content}</SectionLayout> : content;
 };

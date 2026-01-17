@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { Suspense } from "react";
 import { SectionLayout } from "../components/layout/SectionLayout";
+import { SectionLoading } from "../components/ui/SectionLoading";
 
 const LeaderboardPage = () => {
   const { t } = useTranslation(["leaderboard", "common"]);
@@ -17,9 +18,7 @@ const LeaderboardPage = () => {
           </SectionLayout>
         }
       >
-        {/* Suspense fallback removed to prevent duplicate loading UI */}
-        {/* CumulativeLeaderboard has its own LoadingState component */}
-        <Suspense fallback={null}>
+        <Suspense fallback={<SectionLoading fullScreen />}>
           <Leaderboard showAdvancedFeatures={true} />
         </Suspense>
       </ErrorBoundary>

@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
+import { SectionLoading } from "@/components/ui/SectionLoading";
 
 // Lazy load section components
 const GenSolHeroSection = lazy(() => import("@/components/app/ips/gensol/main/GenSolHeroSection"));
@@ -14,7 +15,7 @@ export default function GenSolMainPage() {
     <ErrorBoundary>
       <PageLayout className="!pt-0">
         {/* Hero Section */}
-        <Suspense fallback={null}>
+        <Suspense fallback={<SectionLoading fullScreen />}>
           <GenSolHeroSection />
         </Suspense>
 
