@@ -77,25 +77,29 @@ export function useEVMBalance(address?: string): UseEVMBalanceResult {
         return null;
       }
 
-      const client = getEVMClient(chain);
-      const rawBalance = await client.getBalance({
-        address: address as `0x${string}`,
-      });
+      try {
+        const client = getEVMClient(chain);
+        const rawBalance = await client.getBalance({
+          address: address as `0x${string}`,
+        });
 
-      const { decimals, symbol } = chain.nativeCurrency;
-      const formatted = formatUnits(rawBalance, decimals);
+        const { decimals, symbol } = chain.nativeCurrency;
+        const formatted = formatUnits(rawBalance, decimals);
 
-      // Create display string with max 6 decimal places
-      const displayDecimals = Math.min(6, decimals);
-      const display = parseFloat(formatted).toFixed(displayDecimals);
+        // Create display string with max 6 decimal places
+        const displayDecimals = Math.min(6, decimals);
+        const display = parseFloat(formatted).toFixed(displayDecimals);
 
-      return {
-        raw: rawBalance,
-        formatted,
-        display,
-        symbol,
-        decimals,
-      };
+        return {
+          raw: rawBalance,
+          formatted,
+          display,
+          symbol,
+          decimals,
+        };
+      } catch (err) {
+        throw err;
+      }
     },
     enabled: isEVM && !!address,
     staleTime: 10_000, // 10 seconds

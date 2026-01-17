@@ -281,12 +281,15 @@ export type ZKIDErrorCode =
  * ZK-ID Error class
  */
 export class ZKIDError extends Error {
+  readonly code: ZKIDErrorCode;
+
   constructor(
-    public readonly code: ZKIDErrorCode,
+    code: ZKIDErrorCode,
     message: string
   ) {
     super(message);
     this.name = 'ZKIDError';
+    this.code = code;
   }
 }
 

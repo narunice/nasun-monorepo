@@ -101,7 +101,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
   };
 
   return (
-    <div className={`${compact ? 'p-3' : 'p-4'} min-w-[320px] max-w-[400px]`}>
+    <div className={`${compact ? 'p-3' : 'p-4'} w-full`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
