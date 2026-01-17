@@ -4,38 +4,20 @@
 [move]
 version = 4
 
-[pinned.nasun-devnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863" }
-use_environment = "nasun-devnet"
+[pinned.devnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "caeb21b13ef6e26cd8c5e48be520bcf0598d48c3" }
+use_environment = "devnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
-[pinned.nasun-devnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "ad937889f2f99bc666b05aaeadccb0d3d7d1f863" }
-use_environment = "nasun-devnet"
-manifest_digest = "518E3A3B71FC55CAAD005026C6A6DE447A4F23EFEB0F0E9949A4E3CB9132D8ED"
+[pinned.devnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "caeb21b13ef6e26cd8c5e48be520bcf0598d48c3" }
+use_environment = "devnet"
+manifest_digest = "E2EF92175C2575B1EA85274B70A9CFD8DE08662B35A68669746BBE7BAC06C17A"
 deps = { MoveStdlib = "MoveStdlib" }
 
-[pinned.nasun-devnet.governance]
+[pinned.devnet.governance]
 source = { root = true }
-use_environment = "nasun-devnet"
-manifest_digest = "7A98416A2607F79F1CB4ACB621E05468217D0FCDF56F1CBA8ECEDEAAC000B472"
-deps = { std = "MoveStdlib", sui = "Sui" }
-
-[pinned.testnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "b62fe4118e50eebe148644a3373a9f547c10a00d" }
-use_environment = "testnet"
-manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
-deps = {}
-
-[pinned.testnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "b62fe4118e50eebe148644a3373a9f547c10a00d" }
-use_environment = "testnet"
-manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
-deps = { MoveStdlib = "MoveStdlib" }
-
-[pinned.testnet.governance]
-source = { root = true }
-use_environment = "testnet"
-manifest_digest = "B536A1977A06616FD61FB060991F079C9FBF4AB5A270D78AF20BC82257791A4D"
+use_environment = "devnet"
+manifest_digest = "F3ADA041CE7F9950229C05AF761C83492EE457D92CA4E0AF391D8A7BFD525C01"
 deps = { Sui = "Sui" }
