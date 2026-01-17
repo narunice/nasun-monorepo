@@ -76,7 +76,7 @@ function OverviewHeroSection() {
 
         {/* Narrative */}
         <section>
-          <SectionTitle as="h4" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h3" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
             {t("narrative.title")}
           </SectionTitle>
 
@@ -127,7 +127,7 @@ function OverviewHeroSection() {
 
         {/* Games */}
         <section>
-          <SectionTitle as="h4" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
+          <SectionTitle as="h3" className="uppercase text-center mb-2 md:mb-3 lg:mb-4">
             {t("games.title")}
           </SectionTitle>
 
