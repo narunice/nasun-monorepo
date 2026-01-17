@@ -74,25 +74,28 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
 
   const renderChainItem = (
     chain: ChainConfig,
-    isEnabled: boolean,
+    sectionEnabled: boolean,
     disabledReason?: string
   ) => {
     const isSelected = currentChain.id === chain.id;
+    const isChainDisabled = chain.disabled || !sectionEnabled;
 
     return (
       <button
         key={chain.id}
         onClick={(e) => {
           e.stopPropagation();
-          console.log('[Button] Clicked chain:', chain.id, 'isEnabled:', isEnabled);
-          handleSelect(chain.id, isEnabled);
+          if (!isChainDisabled) {
+            console.log('[Button] Clicked chain:', chain.id, 'isEnabled:', sectionEnabled);
+            handleSelect(chain.id, true);
+          }
         }}
-        disabled={!isEnabled}
+        disabled={isChainDisabled}
         className={`
           w-full px-4 py-3 text-left flex items-center justify-between
           transition-colors text-sm rounded-lg mb-1
           ${
-            isEnabled
+            !isChainDisabled
               ? 'hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer'
               : 'cursor-not-allowed opacity-50'
           }
@@ -111,15 +114,27 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
               ${
                 isSelected
                   ? 'bg-blue-500'
-                  : isEnabled
+                  : !isChainDisabled
                     ? 'border-2 border-gray-300 dark:border-zinc-600'
                     : 'border-2 border-gray-200 dark:border-zinc-700'
               }
             `}
           />
           <div>
-            <span className="font-medium">{chain.name}</span>
-            {chain.testnet && (
+            <span className="font-medium">
+              {chain.name}
+              {chain.disabled && (
+                <span className="ml-1 text-gray-400 dark:text-zinc-500 font-normal">
+                  (Soon)
+                </span>
+              )}
+            </span>
+            {chain.devnet && (
+              <span className="ml-2 text-xs text-amber-500 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded font-medium">
+                Devnet
+              </span>
+            )}
+            {chain.testnet && !chain.devnet && (
               <span className="ml-2 text-xs text-gray-400 dark:text-zinc-500">
                 Testnet
               </span>
@@ -127,8 +142,8 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           </div>
         </div>
 
-        {/* Badge for disabled chains */}
-        {!isEnabled && disabledReason && (
+        {/* Badge for disabled sections (e.g. Advanced Mode required) */}
+        {!sectionEnabled && disabledReason && (
           <span className="text-xs text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
             {disabledReason}
           </span>

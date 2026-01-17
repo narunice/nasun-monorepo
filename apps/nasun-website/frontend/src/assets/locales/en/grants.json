@@ -25,7 +25,7 @@
             "GSRlogo.svg",
             "PGLabs-dark.png",
             "solanaLogo.png",
-            "BusanITAgency.png"
+            "BusanITAgency-light.png"
           ]
         }
       },
@@ -41,7 +41,12 @@
           "Operated by Zephyrus Lab"
         ],
         "logos": {
-          "dark": ["kocca_dark.jpg", "BIPA-negative.jpg", "BusanContentCenter.png", "zephyrus.png"]
+          "dark": [
+            "kocca_dark.jpg",
+            "BusanITAgency-light.png",
+            "BusanContentCenter.png",
+            "zephyrus.png"
+          ]
         }
       },
       {
@@ -56,7 +61,7 @@
           "Partnered with Visual Dart"
         ],
         "logos": {
-          "dark": ["BIPA-negative.jpg", "BeAbleLab-logo.png", "VisualDart.png"]
+          "dark": ["BusanITAgency-light.png", "BeAbleLab-logo.png", "VisualDart.png"]
         }
       },
       {
@@ -71,7 +76,12 @@
           "Operated by Zephyrus Lab"
         ],
         "logos": {
-          "dark": ["kocca_dark.jpg", "BIPA-negative.jpg", "BusanContentCenter.png", "zephyrus.png"]
+          "dark": [
+            "kocca_dark.jpg",
+            "BusanITAgency-light.png",
+            "BusanContentCenter.png",
+            "zephyrus.png"
+          ]
         }
       },
       {
@@ -85,7 +95,7 @@
           "Organized by Busan IT Industry Promotion Agency"
         ],
         "logos": {
-          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "BIPA-negative.jpg"]
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "BusanITAgency-light.png"]
         }
       },
       {
@@ -99,7 +109,12 @@
           "Organized by Busan IT Industry Promotion Agency"
         ],
         "logos": {
-          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+          "dark": [
+            "MinistryofCulture.png",
+            "kocca_dark.jpg",
+            "Busan.png",
+            "BusanITAgency-light.png"
+          ]
         }
       },
       {
@@ -130,7 +145,7 @@
         "logos": {
           "dark": [
             "nipaLogo.png",
-            "BIPA-negative.jpg",
+            "BusanITAgency-light.png",
             "uipa_logo.png",
             "kntechno-ci-dark.png",
             "kait-logo-dark.png"
@@ -148,7 +163,12 @@
           "Organized by Busan IT Industry Promotion Agency"
         ],
         "logos": {
-          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+          "dark": [
+            "MinistryofCulture.png",
+            "kocca_dark.jpg",
+            "Busan.png",
+            "BusanITAgency-light.png"
+          ]
         }
       },
       {
@@ -162,7 +182,12 @@
           "Organized by Korea Creative Content Agency"
         ],
         "logos": {
-          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+          "dark": [
+            "MinistryofCulture.png",
+            "kocca_dark.jpg",
+            "Busan.png",
+            "BusanITAgency-light.png"
+          ]
         }
       }
     ]
