@@ -19,7 +19,7 @@ const CLOCK_ID = '0x6';
 
 // Token types (Pado tokens package)
 export const PADO_TOKENS_PACKAGE =
-  '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489';
+  '0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8';
 export const NUSDC_TYPE = `${PADO_TOKENS_PACKAGE}::nusdc::NUSDC`;
 export const NBTC_TYPE = `${PADO_TOKENS_PACKAGE}::nbtc::NBTC`;
 
