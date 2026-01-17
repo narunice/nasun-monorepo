@@ -80,7 +80,7 @@ const YearSection = ({
       transition={{ duration: 0.5, delay: index * 0.1 }}
       viewport={{ once: true }}
     >
-      <OuterBox color="c5" className="">
+      <OuterBox color="default" className="bg-nasun-c6/40">
         {/* Year Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-6">
           <div className="flex items-center gap-4">
@@ -94,7 +94,7 @@ const YearSection = ({
         {/* Three Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Web3 Track */}
-          <DividerBox color="c5" title={t("tracks.web3.title")} titleClassName="">
+          <DividerBox color="c5" title={t("tracks.web3.title")} titleClassName="text-nasun-c5">
             <ul className="space-y-2">
               {safeWeb3Items.map((item, i) => (
                 <RoadmapItemCard key={item.id} item={item} index={i} />
@@ -103,7 +103,7 @@ const YearSection = ({
           </DividerBox>
 
           {/* Content Track */}
-          <DividerBox color="c3" title={t("tracks.content.title")} titleClassName="">
+          <DividerBox color="c3" title={t("tracks.content.title")} titleClassName="text-nasun-c3">
             <ul className="space-y-2">
               {safeContentItems.map((item, i) => (
                 <RoadmapItemCard key={item.id} item={item} index={i} />
@@ -112,7 +112,7 @@ const YearSection = ({
           </DividerBox>
 
           {/* Finance Track */}
-          <DividerBox color="c1" title={t("tracks.finance.title")} titleClassName="">
+          <DividerBox color="c1" title={t("tracks.finance.title")} titleClassName="text-nasun-c1">
             <ul className="space-y-2">
               {safeFinanceItems.map((item, i) => (
                 <RoadmapItemCard key={item.id} item={item} index={i} />

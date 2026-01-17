@@ -149,7 +149,7 @@ export const RoadmapIntroSection = () => {
         {t("title")}
       </PageTitle>
 
-      <OuterBox color="c5" className="">
+      <OuterBox color="default" className="bg-nasun-c6/40">
         {/* Heading */}
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("intro.heading")}</h4>
