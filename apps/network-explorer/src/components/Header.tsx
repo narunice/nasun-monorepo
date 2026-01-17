@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { networkConfig } from '../lib/sui-client';
-import { useWalletStatus } from '@nasun/wallet';
-import { WalletConnect, BalanceDisplay, FaucetButton } from '@nasun/wallet-ui';
+import { WalletConnect } from '@nasun/wallet-ui';
 
 interface HeaderProps {
   showNetworkName?: boolean;
 }
 
 export default function Header({ showNetworkName = false }: HeaderProps) {
-  const walletStatus = useWalletStatus();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -62,14 +60,6 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               <div className="text-sm text-slate-400 hidden sm:block">
                 {networkConfig.name}
               </div>
-            )}
-
-            {/* Hide balance and faucet on mobile to reduce clutter */}
-            {walletStatus === 'unlocked' && (
-              <>
-                <BalanceDisplay compact className="hidden sm:flex" />
-                <FaucetButton variant="compact" className="hidden sm:flex" />
-              </>
             )}
 
             <WalletConnect />
