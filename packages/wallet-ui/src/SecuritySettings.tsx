@@ -5,7 +5,6 @@
 
 import { useSecuritySettings, DEFAULT_SECURITY_SETTINGS } from '@nasun/wallet';
 import { AdvancedToggle } from './AdvancedToggle';
-import { ChainSelector } from './ChainSelector';
 import { SessionKeyPanel } from './SessionKeyPanel';
 import { ZKIDManager } from './ZKIDManager';
 import { useAdvancedMode } from './stores';
@@ -157,9 +156,6 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         {/* Advanced Mode Features */}
         {isAdvancedMode && (
           <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
-            {/* Chain Selector */}
-            <ChainSelector size="sm" />
-
             {/* Session Keys */}
             <SessionKeyPanel compact />
 

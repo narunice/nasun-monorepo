@@ -49,7 +49,7 @@ import {
   LedgerBrowserWarning,
   LedgerErrorDisplay,
 } from "./ledger";
-import { useAdvancedMode } from "./stores";
+import { useAdvancedMode, useUISettingsStore } from "./stores";
 
 type ViewMode =
   | "main"
@@ -275,6 +275,7 @@ export function WalletConnect({
 
   // UI Settings (Advanced mode)
   const isAdvancedMode = useAdvancedMode();
+  const resetSettings = useUISettingsStore((state) => state.resetSettings);
 
   // Track which provider is loading
   const [loadingProvider, setLoadingProvider] = useState<ZkLoginProvider | null>(null);
@@ -387,9 +388,12 @@ export function WalletConnect({
       const target = event.target as Node;
       const isInsideDesktopDropdown = dropdownRef.current?.contains(target);
       const isInsideMobileDropdown = mobileDropdownRef.current?.contains(target);
+      
+      // Check if click is inside the network selector modal (rendered via portal)
+      const isInsideModal = (target as Element).closest?.('[data-network-modal="true"]');
 
-      // Only close if click is outside both desktop and mobile dropdown areas
-      if (dropdownRef.current && !isInsideDesktopDropdown && !isInsideMobileDropdown) {
+      // Only close if click is outside desktop dropdown, mobile dropdown, AND modal
+      if (dropdownRef.current && !isInsideDesktopDropdown && !isInsideMobileDropdown && !isInsideModal) {
         setShowDropdown(false);
         // Reset view when closing dropdown
         if (viewMode !== "create-backup") {
@@ -487,9 +491,10 @@ export function WalletConnect({
   const handleDelete = useCallback(() => {
     if (confirm("Are you sure you want to delete your wallet? This action cannot be undone.")) {
       deleteWallet();
+      resetSettings(); // Reset Advanced Mode and UI settings
       setShowDropdown(false);
     }
-  }, [deleteWallet]);
+  }, [deleteWallet, resetSettings]);
 
   // Get button text based on status
   // Uses responsive address display: full format on desktop, short on mobile
