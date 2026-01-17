@@ -26,7 +26,7 @@ const LiveItem = ({ text, delay }: { text: string; delay: number }) => (
     viewport={{ once: true }}
     className="flex items-start gap-2 text-sm md:text-base"
   >
-    <CheckCircle className="w-4 h-4 mt-0.5 text-nasun-c3 flex-shrink-0" />
+    <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
     <span className="text-nasun-white/85">{text}</span>
   </motion.li>
 );
@@ -38,7 +38,7 @@ export const LiveNowSection = () => {
 
   return (
     <SectionLayout className="!max-w-7xl gap-8 md:gap-10 xl:gap-12">
-      <OuterBox color="c5" className="">
+      <OuterBox color="default" className="bg-nasun-c6/40">
         {/* Header row with title and button */}
         <div className="flex items-start justify-between gap-4">
           <motion.div
@@ -48,11 +48,11 @@ export const LiveNowSection = () => {
             viewport={{ once: true }}
             className="flex items-center gap-3"
           >
-            <h4 className="font-bold tracking-wide">{liveNow.title}</h4>
+            <h4 className="font-bold text-green-500 tracking-wide">{liveNow.title}</h4>
             <div className="relative">
-              <Zap className="w-6 h-6 text-nasun-c3" />
+              <Zap className="w-6 h-6 text-green-500" />
               <span className="absolute inset-0 animate-ping">
-                <Zap className="w-6 h-6 text-nasun-c3 opacity-50" />
+                <Zap className="w-6 h-6 text-green-500 opacity-50" />
               </span>
             </div>
           </motion.div>
@@ -67,7 +67,7 @@ export const LiveNowSection = () => {
           >
             {liveNow.subtitle}
           </motion.p>
-          <Button variant="c3" size="sm" asChild>
+          <Button variant="c4" size="xs" asChild>
             <a href="https://explorer.devnet.nasun.io/" target="_blank" rel="noopener noreferrer">
               {liveNow.explorerButton}
               <ExternalLink className="w-3 h-3 ml-1.5" />
@@ -82,7 +82,7 @@ export const LiveNowSection = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           viewport={{ once: true }}
         >
-          <DividerBox title={liveNow.nasun.title} color="w1" padding="sm" className="">
+          <DividerBox title={liveNow.nasun.title} color="c5" padding="sm" className="">
             <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
               {liveNow.nasun.items.map((item, index) => (
                 <LiveItem key={item} text={item} delay={0.3 + index * 0.05} />
