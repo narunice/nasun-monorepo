@@ -7,7 +7,7 @@ import { useState, useCallback } from 'react';
 import { useTokenFaucet, hasTokenFaucet, useNetwork } from '@nasun/wallet';
 
 interface TokenFaucetButtonProps {
-  /** Token symbol (e.g., 'NASUN', 'NBTC') */
+  /** Token symbol (e.g., 'NSN', 'NBTC') */
   symbol: string;
   /** Compact mode (smaller button) */
   compact?: boolean;

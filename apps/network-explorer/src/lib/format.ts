@@ -2,23 +2,23 @@
  * Nasun 브랜딩 관련 포맷 유틸리티
  */
 
-// SUI 타입을 NASUN으로 변환
+// SUI 타입을 NSN으로 변환
 export function formatCoinType(coinType: string | undefined): string {
   if (!coinType || coinType === '0x2::sui::SUI') {
-    return 'NASUN';
+    return 'NSN';
   }
-  return coinType.replace(/0x2::sui::SUI/g, 'NASUN');
+  return coinType.replace(/0x2::sui::SUI/g, 'NSN');
 }
 
-// 객체 타입에서 SUI를 NASUN으로 변환
+// 객체 타입에서 SUI를 NSN으로 변환
 export function formatObjectType(type: string | undefined): string {
   if (!type) return '-';
   return type
-    .replace(/0x2::sui::SUI/g, '0x2::nasun::NASUN')
+    .replace(/0x2::sui::SUI/g, '0x2::nasun::NSN')
     .replace(/::sui::/g, '::nasun::');
 }
 
-// SOE 단위 잔액 포맷 (SOE -> NASUN 변환)
+// SOE 단위 잔액 포맷 (SOE -> NSN 변환)
 export function formatBalance(balance: string | undefined): string {
   if (!balance) return '0';
   const value = BigInt(balance);

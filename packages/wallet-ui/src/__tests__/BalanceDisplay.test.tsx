@@ -102,7 +102,7 @@ describe('BalanceDisplay', () => {
       render(<BalanceDisplay />);
 
       expect(screen.getByText('100.5')).toBeInTheDocument();
-      expect(screen.getByText('NASUN')).toBeInTheDocument();
+      expect(screen.getByText('NSN')).toBeInTheDocument();
       expect(screen.getByText('3 coin objects')).toBeInTheDocument();
     });
 
@@ -110,7 +110,7 @@ describe('BalanceDisplay', () => {
       render(<BalanceDisplay compact />);
 
       expect(screen.getByText('100.5')).toBeInTheDocument();
-      expect(screen.getByText('NASUN')).toBeInTheDocument();
+      expect(screen.getByText('NSN')).toBeInTheDocument();
       // Should not show coin count in compact mode
       expect(screen.queryByText('3 coin objects')).not.toBeInTheDocument();
     });

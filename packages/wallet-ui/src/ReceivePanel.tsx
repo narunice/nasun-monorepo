@@ -15,7 +15,7 @@ interface ReceivePanelProps {
 export function ReceivePanel({ onClose }: ReceivePanelProps) {
   const { address } = useSigner();
   const [amount, setAmount] = useState('');
-  const [selectedToken, setSelectedToken] = useState('NASUN');
+  const [selectedToken, setSelectedToken] = useState('NSN');
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 

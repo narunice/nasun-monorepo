@@ -55,8 +55,8 @@ export function SimpleCoinSymbol({ type, className = '' }: SimpleCoinSymbolProps
   const coinType = extractCoinType(type);
   const symbol = extractSymbolFromType(coinType || type);
 
-  // NASUN 브랜딩
-  const displaySymbol = symbol === 'SUI' ? 'NASUN' : symbol;
+  // NSN 브랜딩
+  const displaySymbol = symbol === 'SUI' ? 'NSN' : symbol;
 
   return (
     <span className={`font-semibold text-nasun-c4 ${className}`} title={type}>

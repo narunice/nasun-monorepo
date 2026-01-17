@@ -147,7 +147,7 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         <div className="bg-gray-100 dark:bg-zinc-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-zinc-600">
           <p className="text-xs text-gray-500 dark:text-zinc-400">Estimated Gas Fee</p>
           <p className="text-sm text-gray-900 dark:text-white mt-1">
-            ≈ 0.003 <span className="text-blue-400">NASUN</span>
+            ≈ 0.003 <span className="text-blue-400">NSN</span>
           </p>
         </div>
 

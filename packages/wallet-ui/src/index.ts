@@ -17,7 +17,7 @@
  * // Multi-token support
  * import { MultiBalanceDisplay, TokenSelector } from '@nasun/wallet-ui';
  *
- * <MultiBalanceDisplay tokens={['NASUN', 'NBTC']} />
+ * <MultiBalanceDisplay tokens={['NSN', 'NBTC']} />
  * <TokenSelector value={token} onChange={setToken} />
  * ```
  */

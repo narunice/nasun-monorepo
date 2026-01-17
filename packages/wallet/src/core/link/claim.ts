@@ -266,7 +266,7 @@ async function executeTransfer(
  * Normalize coin type string
  */
 function normalizeCoinType(coinType: string): string {
-  if (coinType === 'NASUN' || coinType === 'SUI') {
+  if (coinType === 'NSN' || coinType === 'SUI') {
     return NATIVE_TOKEN_TYPE;
   }
   return coinType;

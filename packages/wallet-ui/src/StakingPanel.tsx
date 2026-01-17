@@ -23,7 +23,7 @@ type StakeStep = 'select' | 'amount' | 'confirm' | 'result';
 type UnstakeStep = 'select' | 'confirm' | 'result';
 
 // Minimum stake amount
-const MIN_STAKE_NASUN = 1;
+const MIN_STAKE_NSN = 1;
 
 interface StakingPanelProps {
   // Called when close button is clicked
@@ -142,7 +142,7 @@ function StakeTab({ compact }: StakeTabProps) {
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Stake Successful</h3>
             <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
-              {lastResult.amount} NASUN staked
+              {lastResult.amount} NSN staked
             </p>
           </div>
 
@@ -182,7 +182,7 @@ function StakeTab({ compact }: StakeTabProps) {
           <div>
             <p className="text-xs text-gray-500 dark:text-zinc-400">Amount</p>
             <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
-              {amount} <span className="text-blue-500 dark:text-blue-400 text-sm">NASUN</span>
+              {amount} <span className="text-blue-500 dark:text-blue-400 text-sm">NSN</span>
             </p>
           </div>
           <div>
@@ -238,9 +238,9 @@ function StakeTab({ compact }: StakeTabProps) {
     const availableBalance = balance?.formattedBalance || '0';
     const numericBalance = parseFloat(availableBalance);
     const numericAmount = parseFloat(amount) || 0;
-    const isBelowMinimum = numericAmount > 0 && numericAmount < MIN_STAKE_NASUN;
+    const isBelowMinimum = numericAmount > 0 && numericAmount < MIN_STAKE_NSN;
     const isAboveBalance = numericAmount > numericBalance;
-    const isValidAmount = numericAmount >= MIN_STAKE_NASUN && numericAmount <= numericBalance;
+    const isValidAmount = numericAmount >= MIN_STAKE_NSN && numericAmount <= numericBalance;
     // Keep some for gas
     const maxStake = Math.max(0, numericBalance - 0.01).toFixed(4);
 
@@ -261,7 +261,7 @@ function StakeTab({ compact }: StakeTabProps) {
         <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
           <p className="text-xs text-gray-500 dark:text-zinc-400">Available Balance</p>
           <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
-            {availableBalance} <span className="text-blue-500 dark:text-blue-400 text-sm">NASUN</span>
+            {availableBalance} <span className="text-blue-500 dark:text-blue-400 text-sm">NSN</span>
           </p>
         </div>
 
@@ -285,7 +285,7 @@ function StakeTab({ compact }: StakeTabProps) {
             className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {isBelowMinimum && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Minimum stake is {MIN_STAKE_NASUN} NASUN</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Minimum stake is {MIN_STAKE_NSN} NSN</p>
           )}
           {isAboveBalance && (
             <p className="text-xs text-red-600 dark:text-red-400 mt-1">Insufficient balance</p>
@@ -359,7 +359,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Unstake Successful</h3>
             <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
-              Your NASUN will be available after the current epoch ends.
+              Your NSN will be available after the current epoch ends.
             </p>
           </div>
 
@@ -395,7 +395,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
           <p className="text-xs text-gray-500 dark:text-zinc-400">Amount to Unstake</p>
           <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
             {formatStakedAmount(selectedStake.principal)}{' '}
-            <span className="text-blue-500 dark:text-blue-400 text-sm">NASUN</span>
+            <span className="text-blue-500 dark:text-blue-400 text-sm">NSN</span>
           </p>
         </div>
 

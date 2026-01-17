@@ -60,7 +60,7 @@ export interface PaymentIntent {
   recipient: string;
   /** Amount in display units (e.g., "1.5") */
   amount: string;
-  /** Token symbol (e.g., "NASUN", "NBTC", "ETH") */
+  /** Token symbol (e.g., "NSN", "NBTC", "ETH") */
   token: string;
   /** Token type/address (full coin type for Move, contract address for EVM) */
   tokenType?: string;
@@ -239,7 +239,7 @@ export const DEFAULT_INTENT_TTL_MS = 15 * 60 * 1000;
 export const NASUN_COIN_TYPE = '0x2::sui::SUI';
 
 /** Default token symbol */
-export const DEFAULT_TOKEN_SYMBOL = 'NASUN';
+export const DEFAULT_TOKEN_SYMBOL = 'NSN';
 
 /** URL parameter keys (Pado compatible) */
 export const URL_PARAMS = {

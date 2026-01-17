@@ -36,11 +36,11 @@ export function useCoinMetadata(coinType: string | null) {
 }
 
 /**
- * NASUN 브랜딩: SUI → NASUN
+ * Nasun 브랜딩: SUI → NSN
  */
 export function formatSymbol(symbol: string | undefined): string {
   if (!symbol) return '?';
-  if (symbol === 'SUI') return 'NASUN';
+  if (symbol === 'SUI') return 'NSN';
   return symbol;
 }
 

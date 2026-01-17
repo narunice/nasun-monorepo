@@ -21,11 +21,11 @@ describe('Portfolio Dashboard', () => {
       vi.clearAllMocks();
     });
 
-    it('should return simulated price for NASUN', async () => {
-      const price = await provider.getPrice('NASUN');
+    it('should return simulated price for NSN', async () => {
+      const price = await provider.getPrice('NSN');
 
       expect(price).not.toBeNull();
-      expect(price?.symbol).toBe('NASUN');
+      expect(price?.symbol).toBe('NSN');
       expect(price?.priceUsd).toBe(0.1);
       expect(price?.source).toBe('simulated');
     });
@@ -50,7 +50,7 @@ describe('Portfolio Dashboard', () => {
 
     it('should handle case-insensitive symbols', async () => {
       const price1 = await provider.getPrice('nasun');
-      const price2 = await provider.getPrice('NASUN');
+      const price2 = await provider.getPrice('NSN');
       const price3 = await provider.getPrice('Nasun');
 
       expect(price1?.priceUsd).toBe(price2?.priceUsd);
@@ -67,19 +67,19 @@ describe('Portfolio Dashboard', () => {
     it('should invalidate cache after TTL', async () => {
       const shortTtlProvider = new DefaultPriceProvider({ cacheTtlMs: 10 });
 
-      const price1 = await shortTtlProvider.getPrice('NASUN');
+      const price1 = await shortTtlProvider.getPrice('NSN');
       await new Promise((resolve) => setTimeout(resolve, 20));
-      const price2 = await shortTtlProvider.getPrice('NASUN');
+      const price2 = await shortTtlProvider.getPrice('NSN');
 
       // Timestamps should be different after cache expiration
       expect(price2?.timestamp).toBeGreaterThan(price1?.timestamp ?? 0);
     });
 
     it('should fetch multiple prices', async () => {
-      const prices = await provider.getPrices(['NASUN', 'NBTC', 'NUSDC']);
+      const prices = await provider.getPrices(['NSN', 'NBTC', 'NUSDC']);
 
       expect(Object.keys(prices)).toHaveLength(3);
-      expect(prices['NASUN'].priceUsd).toBe(0.1);
+      expect(prices['NSN'].priceUsd).toBe(0.1);
       expect(prices['NBTC'].priceUsd).toBe(97000);
       expect(prices['NUSDC'].priceUsd).toBe(1.0);
     });
@@ -91,9 +91,9 @@ describe('Portfolio Dashboard', () => {
     });
 
     it('should clear cache', async () => {
-      await provider.getPrice('NASUN');
+      await provider.getPrice('NSN');
       provider.clearCache();
-      const price = await provider.getPrice('NASUN');
+      const price = await provider.getPrice('NSN');
 
       // New timestamp after cache clear
       expect(price?.timestamp).toBeDefined();
@@ -190,7 +190,7 @@ describe('Portfolio Dashboard', () => {
           chainId: 'nasun-devnet',
           chainName: 'Nasun Devnet',
           chainType: 'move',
-          symbol: 'NASUN',
+          symbol: 'NSN',
           name: 'Nasun',
           balance: 1000000000n,
           formattedBalance: '1.0',
@@ -332,7 +332,7 @@ describe('Portfolio Dashboard', () => {
         chainId: 'nasun-devnet',
         chainName: 'Nasun Devnet',
         chainType: 'move',
-        symbol: 'NASUN',
+        symbol: 'NSN',
         name: 'Nasun',
         balance: 1000000000n,
         formattedBalance: '1.0',

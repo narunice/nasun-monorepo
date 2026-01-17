@@ -13,6 +13,9 @@ import {
   useMultiBalance,
   useNetwork,
   useLedger,
+  useChain,
+  useEVMBalance,
+  getStoredEVMAddress,
   shortenAddressResponsive,
   isLockedOut,
   getLockoutRemainingMs,
@@ -361,13 +364,22 @@ export function WalletConnect({
     }
   };
 
-  // Fetch token balances (NASUN, NBTC, NUSDC)
+  // Fetch token balances (NSN, NBTC, NUSDC)
   const { data: balances, isLoading: balancesLoading } = useMultiBalance({
     pollingInterval: 15000,
   });
 
   // Network info
   const { networkType } = useNetwork();
+
+  // Chain selection (for multi-chain support)
+  const { isEVM, chain } = useChain();
+  const storedEVMAddress = isEVM ? getStoredEVMAddress() : null;
+  const evmAddressForHook: string | undefined = storedEVMAddress ?? undefined;
+  const {
+    balance: evmBalance,
+    isLoading: evmBalanceLoading,
+  } = useEVMBalance(evmAddressForHook);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -622,7 +634,7 @@ export function WalletConnect({
     // Staking panel view
     if (viewMode === "staking") {
       return (
-        <div className="w-full sm:w-[360px]">
+        <div className="w-full">
           <StakingPanel onClose={() => setViewMode("main")} compact />
         </div>
       );
@@ -631,7 +643,7 @@ export function WalletConnect({
     // Portfolio view
     if (viewMode === "portfolio") {
       return (
-        <div className="py-3 px-4 w-full sm:w-[360px]">
+        <div className="py-3 px-4 w-full">
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setViewMode("main")}
@@ -641,7 +653,7 @@ export function WalletConnect({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Portfolio</h3>
+            <h3 className="font-medium text-gray-900 dark:text-white">Portfolio</h3>
           </div>
           <PortfolioPanel />
         </div>
@@ -651,7 +663,7 @@ export function WalletConnect({
     // Nasun Link view
     if (viewMode === "nasun-link") {
       return (
-        <div className="py-3 px-4 w-full sm:w-[360px]">
+        <div className="py-3 px-4 w-full">
           <NasunLinkWizard
             onCancel={() => setViewMode("main")}
             onSuccess={() => {
@@ -997,9 +1009,29 @@ export function WalletConnect({
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
                 <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
-                  Token Balances
+                  Token Balances {isEVM && `(${chain.name})`}
                 </p>
-                {balancesLoading ? (
+                {isEVM ? (
+                  // EVM chain balance display
+                  <div className="space-y-1.5">
+                    {!storedEVMAddress ? (
+                      <p className="text-sm text-gray-500 dark:text-zinc-400">
+                        EVM wallet not configured
+                      </p>
+                    ) : evmBalanceLoading ? (
+                      <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                    ) : (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-zinc-300">
+                          {chain.nativeCurrency.symbol}
+                        </span>
+                        <span className="font-mono text-gray-900 dark:text-white">
+                          {evmBalance?.display || "0"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : balancesLoading ? (
                   <div className="space-y-1.5">
                     {[...Array(3)].map((_, i) => (
                       <div
@@ -1010,21 +1042,21 @@ export function WalletConnect({
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    {/* Native token (NASUN) */}
+                    {/* Native token (NSN) */}
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700 dark:text-zinc-300">NASUN</span>
+                      <span className="text-gray-700 dark:text-zinc-300">NSN</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-gray-900 dark:text-white">
                           {balances?.native?.formatted || "0"}
                         </span>
-                        <TokenFaucetButton symbol="NASUN" compact />
+                        <TokenFaucetButton symbol="NSN" compact />
                       </div>
                     </div>
                     {/* Additional tokens - show all registered on devnet/testnet, only with balance on mainnet */}
                     {(networkType === 'mainnet'
                       ? Object.entries(balances?.tokens || {})
                       : getAllTokens()
-                          .filter((t) => t.symbol !== 'NASUN')
+                          .filter((t) => t.symbol !== 'NSN')
                           .map((t) => [t.symbol, balances?.tokens?.[t.symbol] || { formatted: '0' }] as const)
                     ).map(([symbol, token]) => (
                       <div key={symbol} className="flex items-center justify-between text-sm">
@@ -1317,9 +1349,29 @@ export function WalletConnect({
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
                 <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
-                  Token Balances
+                  Token Balances {isEVM && `(${chain.name})`}
                 </p>
-                {balancesLoading ? (
+                {isEVM ? (
+                  // EVM chain balance display
+                  <div className="space-y-1.5">
+                    {!storedEVMAddress ? (
+                      <p className="text-sm text-gray-500 dark:text-zinc-400">
+                        EVM wallet not configured
+                      </p>
+                    ) : evmBalanceLoading ? (
+                      <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                    ) : (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-zinc-300">
+                          {chain.nativeCurrency.symbol}
+                        </span>
+                        <span className="font-mono text-gray-900 dark:text-white">
+                          {evmBalance?.display || "0"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : balancesLoading ? (
                   <div className="space-y-1.5">
                     {[...Array(3)].map((_, i) => (
                       <div
@@ -1330,21 +1382,21 @@ export function WalletConnect({
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    {/* Native token (NASUN) */}
+                    {/* Native token (NSN) */}
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700 dark:text-zinc-300">NASUN</span>
+                      <span className="text-gray-700 dark:text-zinc-300">NSN</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-gray-900 dark:text-white">
                           {balances?.native?.formatted || "0"}
                         </span>
-                        <TokenFaucetButton symbol="NASUN" compact />
+                        <TokenFaucetButton symbol="NSN" compact />
                       </div>
                     </div>
                     {/* Additional tokens - show all registered on devnet/testnet, only with balance on mainnet */}
                     {(networkType === 'mainnet'
                       ? Object.entries(balances?.tokens || {})
                       : getAllTokens()
-                          .filter((t) => t.symbol !== 'NASUN')
+                          .filter((t) => t.symbol !== 'NSN')
                           .map((t) => [t.symbol, balances?.tokens?.[t.symbol] || { formatted: '0' }] as const)
                     ).map(([symbol, token]) => (
                       <div key={symbol} className="flex items-center justify-between text-sm">
@@ -1512,8 +1564,8 @@ export function WalletConnect({
                   <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400 space-y-1">
                     <div className="flex justify-between items-center">
                       <span>Network:</span>
-                      <span className="text-gray-700 dark:text-zinc-300 capitalize">
-                        {networkType || 'devnet'}
+                      <span className="text-gray-700 dark:text-zinc-300">
+                        {chain.name}
                       </span>
                     </div>
                   </div>
@@ -1672,7 +1724,7 @@ export function WalletConnect({
       {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
       {showDropdown && !isMobile && (
         <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute w-[320px] overflow-hidden ${
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute w-[320px] sm:w-[380px] md:w-[420px] lg:w-[480px] overflow-hidden ${
             dropdownAlign === "left"
               ? "left-0"
               : dropdownAlign === "center"

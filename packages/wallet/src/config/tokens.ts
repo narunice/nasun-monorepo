@@ -10,11 +10,11 @@ const tokenRegistry = new Map<string, TokenConfig>();
 const tokensByType = new Map<string, TokenConfig>();
 
 /**
- * Native token (NASUN)
+ * Native token (NSN)
  * This is always registered by default
  */
 export const NATIVE_TOKEN: TokenConfig = {
-  symbol: 'NASUN',
+  symbol: 'NSN',
   name: 'Nasun',
   decimals: 9,
   type: '0x2::sui::SUI',
@@ -73,7 +73,7 @@ export function registerTokens(configs: TokenConfig[]): void {
 
 /**
  * Get token by symbol
- * @param symbol Token symbol (e.g., 'NASUN', 'NBTC')
+ * @param symbol Token symbol (e.g., 'NSN', 'NBTC')
  */
 export function getToken(symbol: string): TokenConfig | undefined {
   return tokenRegistry.get(symbol);
@@ -122,7 +122,7 @@ const faucetRegistry = new Map<string, TokenFaucetHandler>();
 
 /**
  * Register a faucet handler for a token
- * @param symbol Token symbol (e.g., 'NASUN', 'NBTC')
+ * @param symbol Token symbol (e.g., 'NSN', 'NBTC')
  * @param handler Faucet handler implementation
  */
 export function registerTokenFaucet(symbol: string, handler: TokenFaucetHandler): void {

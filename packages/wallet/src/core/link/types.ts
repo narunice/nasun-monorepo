@@ -13,7 +13,7 @@ export type LinkType = 'single' | 'multi' | 'first-n';
 export type LinkStatus = 'active' | 'claimed' | 'expired' | 'cancelled';
 
 /** Coin type for link */
-export type LinkCoinType = 'NASUN' | '0x2::sui::SUI' | string;
+export type LinkCoinType = 'NSN' | '0x2::sui::SUI' | string;
 
 /** Age threshold for ZK-ID */
 export type ZKIDAgeThreshold = 18 | 21 | 25;

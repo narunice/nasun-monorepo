@@ -40,7 +40,7 @@ vi.mock('@nasun/wallet', () => ({
   useRefreshBalance: vi.fn(() => vi.fn()),
   useMultiBalance: vi.fn(() => ({
     data: {
-      native: { symbol: 'NASUN', balance: 0n, formatted: '0', decimals: 9, type: '0x2::sui::SUI' },
+      native: { symbol: 'NSN', balance: 0n, formatted: '0', decimals: 9, type: '0x2::sui::SUI' },
       tokens: {},
     },
     isLoading: false,
@@ -149,9 +149,9 @@ vi.mock('@nasun/wallet', () => ({
   shortenAddress: vi.fn((addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`),
   formatBalance: vi.fn((amt: string) => amt),
   getAllTokens: vi.fn(() => [
-    { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+    { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   ]),
-  NATIVE_TOKEN: { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+  NATIVE_TOKEN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   // Explorer URL helpers
   getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.devnet.nasun.io/tx/${digest}`),
   getExplorerAddressUrl: vi.fn((addr: string) => `https://explorer.devnet.nasun.io/address/${addr}`),
@@ -181,7 +181,7 @@ vi.mock('@nasun/wallet', () => ({
     actions: [
       { type: 'send', label: 'Send', value: '0x1234...', icon: 'arrow-up' },
     ],
-    gasCost: '0.003 NASUN',
+    gasCost: '0.003 NSN',
     isSponsored: false,
   })),
   assessRisk: vi.fn(() => ({
