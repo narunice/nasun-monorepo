@@ -3,6 +3,7 @@ import { PageLayout } from "../../components/layout/PageLayout";
 import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import JoinSection from "@/components/app/about/JoinSection";
+import { SectionLoading } from "@/components/ui/SectionLoading";
 
 const FoundersSection = lazy(() => import("../../components/app/about/FoundersSection"));
 
@@ -11,15 +12,12 @@ const FoundersPage = () => {
 
   return (
     <PageLayout className="relative">
-      {/* Content Section */}
-      <div className="relative z-10 min-h-screen">
-        <ErrorBoundary fallback={<div>{t("common:info.loading")}</div>}>
-          <Suspense fallback={<div>{t("common:info.loading")}</div>}>
-            <FoundersSection />
-            <JoinSection />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
+      <ErrorBoundary fallback={<div>{t("common:info.loading")}</div>}>
+        <Suspense fallback={<SectionLoading fullScreen />}>
+          <FoundersSection />
+          <JoinSection />
+        </Suspense>
+      </ErrorBoundary>
     </PageLayout>
   );
 };
