@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { Button } from "../../../ui/button";
-import SectionTitle from "../../../ui/SectionTitle";
-import { DividerBox } from "../../../ui/DividerBox";
+import { Button } from "@/components/ui/button";
+import SectionTitle from "@/components/ui/SectionTitle";
+import { DividerBox } from "@/components/ui/DividerBox";
 
 // 배경 이미지
-import bgImageDesktop from "../../../../assets/images/spectra-plant-raid.webp";
-import bgImageMobile from "../../../../assets/images/spectra-plant-raid-mobile.webp";
+import bgImageDesktop from "@/assets/images/spectra-plant-raid.webp";
+import bgImageMobile from "@/assets/images/spectra-plant-raid-mobile.webp";
 
 /**
- * GenSolIntroSection 컴포넌트
+ * NarrativeContent 컴포넌트
  *
  * Overarching Narrative 섹션
  * - 배경: spectra-plant-raid 이미지 (데스크톱/모바일 반응형)
@@ -18,7 +18,7 @@ import bgImageMobile from "../../../../assets/images/spectra-plant-raid-mobile.w
  * - 3개 카테고리 그리드
  * - WEBSITE 버튼
  */
-function GenSolIntroSection() {
+function NarrativeContent() {
   const { t } = useTranslation("genSol");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -136,4 +136,4 @@ function GenSolIntroSection() {
   );
 }
 
-export default React.memo(GenSolIntroSection);
+export default React.memo(NarrativeContent);

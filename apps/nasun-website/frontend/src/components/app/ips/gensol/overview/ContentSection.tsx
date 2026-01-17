@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import { SectionTitle } from "../../../ui/SectionTitle";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 
 /**
  * ContentSection - GenSol Overview Main Content
