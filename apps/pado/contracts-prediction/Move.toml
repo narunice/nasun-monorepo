@@ -9,7 +9,8 @@ pado_tokens = { local = "../contracts" }
 
 [addresses]
 prediction = "0x0"
-pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+pado = "0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8"
 
 [environments]
-nasun-devnet = "6681cdfd"
+devnet = "56c8b101"
+nasun-devnet = "56c8b101"

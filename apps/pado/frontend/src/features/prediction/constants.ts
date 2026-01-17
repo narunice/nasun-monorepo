@@ -1,17 +1,17 @@
 /**
  * Prediction Market Constants
- * Updated: 2026-01-03 (New Markets with valid close dates)
+ * Updated: 2026-01-17 (V5 Reset - 2-hour epoch, Chain ID: 56c8b101)
  */
 
-// Deployed contract addresses (Nasun Devnet)
+// Deployed contract addresses (Nasun Devnet V5)
 export const PREDICTION_PACKAGE_ID =
-  '0x8928903e412cfa1f974ffce1993dd21b381ed02f32a6d142116b1d5089f90903';
+  '0xc428b702930337328044520256f783e51e80790cd766d5b6f77e7b126d3abb99';
 
 export const PREDICTION_ADMIN_CAP =
-  '0x38a29029ec9e80779e2027c4a77b4c76060b6dc2dd55da64d4d952285774be0a';
+  '0xdf0e94d2260ecc4ae38af192f1a7f8bf10e71fd8b90826eb2881906d5dac8240';
 
 export const PREDICTION_GLOBAL_STATE =
-  '0x29d793422053324f90cbdd4050290118613be68edf5826f187ca6b47ebac8d71';
+  '0x59320a0a63a16bdf5ad4173ed331d81f17afd63b706bd398fab0d629df6f4f7c';
 
 // Type names
 export const MARKET_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::Market`;
@@ -22,18 +22,17 @@ export const ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::Admi
 export const MAX_PRICE = 10000; // 100% in basis points
 export const PRICE_DECIMALS = 4;
 
-// NUSDC (updated package)
+// NUSDC (pado_tokens V5 package)
 export const NUSDC_DECIMALS = 6;
 export const NUSDC_TYPE =
-  '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nusdc::NUSDC';
+  '0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8::nusdc::NUSDC';
 
 // Clock
 export const CLOCK_ID = '0x6';
 
-// Active markets (created 2026-01-03 with valid close dates)
+// Active markets (created 2026-01-17 V5)
 export const TEST_MARKETS: string[] = [
-  '0x860a90a42ee611c5740b4a4e74fcadd301f877991c7f47fffb318f6ca9520c96', // BTC $150k by March 2026 (closes 2026-03-01)
-  '0xf0d8f14b7f9015139d0e5a03ab54b11a2a8cb52c91587559fc1212c7a7b67c64', // TikTok Ban by March 2026 (closes 2026-03-01)
-  '0xc78bffa99153bdb1a43f350f8b4244d3e4f0e91365f425f288ec3f31fec8363f', // Russia-Ukraine Ceasefire by June 2026 (closes 2026-06-30)
-  '0x9a214b8a6ddac338e71d8f8495da51f07db6de5a37dc46354d32dc98b34fcbd1', // ETH $10k by December 2026 (closes 2026-12-31)
+  '0xdc2110edc69ba2284bddf701c5337f19df0bd7abcd8396bb74754230affc6323', // AI: Will OpenAI release GPT-5 in Q1 2026?
+  '0x8d0f9ffcacf5c871bbc8370061d0c68dead53bf36f64b3996133281885bf57a9', // Crypto: Will BTC reach 200K by 2026?
+  '0x02e0ffab6da9b5b24d2808b978aa5c29e9a9b05cce1f613023befca31a195134', // Sports: Will Korea advance to 2026 World Cup semifinals?
 ];
