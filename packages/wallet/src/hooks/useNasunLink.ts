@@ -75,7 +75,7 @@ export interface UseNasunLinkResult {
  * const handleCreate = async () => {
  *   const { url, data } = await create({
  *     type: 'single',
- *     coinType: 'NASUN',
+ *     coinType: 'NSN',
  *     amount: 1000000000n, // 1 NASUN
  *     message: 'Welcome gift!',
  *   });

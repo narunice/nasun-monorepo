@@ -72,7 +72,7 @@ export interface UsePaymentLinkResult {
  * const { generateLink, parseLink, recipientAddress } = usePaymentLink();
  *
  * // Generate a link for receiving payments
- * const link = await generateLink({ amount: '100', token: 'NASUN' });
+ * const link = await generateLink({ amount: '100', token: 'NSN' });
  * console.log(link.url);      // https://pado.nasun.io/send?to=0x...&amount=100
  * console.log(link.qrCodeDataUrl); // data:image/png;base64,...
  *

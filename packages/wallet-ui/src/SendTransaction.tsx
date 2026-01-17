@@ -1,6 +1,6 @@
 /**
  * Nasun Wallet Token Transfer UI
- * Supports multi-token transfers (NASUN, NBTC, NUSDC, etc.)
+ * Supports multi-token transfers (NSN, NBTC, NUSDC, etc.)
  * Enhanced with Clear Signing UI elements for transaction clarity
  */
 
@@ -27,7 +27,7 @@ import { Tooltip } from './shared';
 interface SendTransactionProps {
   onClose?: () => void;
   onSuccess?: (digest: string) => void;
-  // Initial token symbol (defaults to NASUN)
+  // Initial token symbol (defaults to NSN)
   defaultToken?: string;
   // Initial recipient address (from Address Book)
   initialRecipient?: string;
@@ -36,7 +36,7 @@ interface SendTransactionProps {
 // Minimum gas balance required for non-native token transfers
 const MIN_GAS_BALANCE = 0.01;
 
-export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', initialRecipient }: SendTransactionProps) {
+export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', initialRecipient }: SendTransactionProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
@@ -62,7 +62,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', in
   // Get balance for selected token
   const getSelectedBalance = (): string => {
     if (!balances) return '0';
-    if (selectedToken === 'NASUN') return balances.native.formatted;
+    if (selectedToken === 'NSN') return balances.native.formatted;
     return balances.tokens[selectedToken]?.formatted || '0';
   };
 
@@ -73,7 +73,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', in
   };
 
   // Check if we have enough gas for non-native token transfers
-  const hasEnoughGas = selectedToken === 'NASUN' || getNativeBalance() >= MIN_GAS_BALANCE;
+  const hasEnoughGas = selectedToken === 'NSN' || getNativeBalance() >= MIN_GAS_BALANCE;
 
   // Check if connected via traditional wallet OR zkLogin
   const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn;
@@ -223,11 +223,11 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', in
               Estimated Gas Fee
             </p>
             <p className="text-sm text-gray-900 dark:text-white mt-1">
-              ≈ 0.003 <span className="text-blue-400">NASUN</span>
+              ≈ 0.003 <span className="text-blue-400">NSN</span>
             </p>
-            {selectedToken !== 'NASUN' && (
+            {selectedToken !== 'NSN' && (
               <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
-                Available for gas: {getNativeBalance().toFixed(4)} NASUN
+                Available for gas: {getNativeBalance().toFixed(4)} NSN
               </p>
             )}
           </div>
@@ -262,7 +262,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', in
                   <span className="text-gray-500 dark:text-zinc-400">Network</span>
                   <span className="text-gray-900 dark:text-white">Nasun Devnet</span>
                 </div>
-                {selectedToken !== 'NASUN' && (
+                {selectedToken !== 'NSN' && (
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-zinc-400">Token Type</span>
                     <span className="text-gray-900 dark:text-white font-mono text-[10px] truncate max-w-[180px]">
@@ -393,7 +393,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NASUN', in
         {!hasEnoughGas && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
             <p className="text-sm text-yellow-600 dark:text-yellow-400">
-              Insufficient NASUN for gas fees. You need at least {MIN_GAS_BALANCE} NASUN.
+              Insufficient NSN for gas fees. You need at least {MIN_GAS_BALANCE} NSN.
             </p>
           </div>
         )}

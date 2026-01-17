@@ -60,9 +60,9 @@ const SAMPLE_SIMULATION: SimulationResult = {
   balanceChanges: [
     {
       token: '0x2::sui::SUI',
-      symbol: 'NASUN',
+      symbol: 'NSN',
       decimals: 9,
-      amount: -1_000_000_000n, // -1 NASUN
+      amount: -1_000_000_000n, // -1 NSN
       displayAmount: '-1.0',
       usdValue: -5.0,
     },
@@ -348,8 +348,8 @@ describe('formatAmount', () => {
 
 describe('formatGasCost', () => {
   it('should format gas cost with symbol', () => {
-    const result = formatGasCost(1_000_000_000n, 'NASUN', 9);
-    expect(result).toBe('1 NASUN');
+    const result = formatGasCost(1_000_000_000n, 'NSN', 9);
+    expect(result).toBe('1 NSN');
   });
 
   it('should format small gas costs', () => {
@@ -385,25 +385,25 @@ describe('formatBalanceChange', () => {
   it('should format positive change', () => {
     const change = {
       token: '0x2::sui::SUI',
-      symbol: 'NASUN',
+      symbol: 'NSN',
       decimals: 9,
       amount: 1_000_000_000n,
       displayAmount: '1.0',
       usdValue: 5.0,
     };
-    expect(formatBalanceChange(change)).toBe('+1.0 NASUN ($5.00)');
+    expect(formatBalanceChange(change)).toBe('+1.0 NSN ($5.00)');
   });
 
   it('should format negative change', () => {
     const change = {
       token: '0x2::sui::SUI',
-      symbol: 'NASUN',
+      symbol: 'NSN',
       decimals: 9,
       amount: -1_000_000_000n,
       displayAmount: '-1.0',
       usdValue: -5.0,
     };
-    expect(formatBalanceChange(change)).toBe('-1.0 NASUN (-$5.00)');
+    expect(formatBalanceChange(change)).toBe('-1.0 NSN (-$5.00)');
   });
 });
 
@@ -481,9 +481,9 @@ describe('assessRisk', () => {
       balanceChanges: [
         {
           token: '0x2::sui::SUI',
-          symbol: 'NASUN',
+          symbol: 'NSN',
           decimals: 9,
-          amount: -100_000_000n, // 0.1 NASUN
+          amount: -100_000_000n, // 0.1 NSN
           displayAmount: '-0.1',
           usdValue: -0.5,
         },
@@ -564,9 +564,9 @@ describe('assessRisk', () => {
       balanceChanges: [
         {
           token: '0x2::sui::SUI',
-          symbol: 'NASUN',
+          symbol: 'NSN',
           decimals: 9,
-          amount: -1000_000_000_000n, // 1000 NASUN
+          amount: -1000_000_000_000n, // 1000 NSN
           displayAmount: '-1000',
           usdValue: -5000, // > $1000 threshold
         },
@@ -806,7 +806,7 @@ describe('Edge Cases', () => {
   });
 
   it('should format zero gas cost', () => {
-    expect(formatGasCost(0n, 'NASUN', 9)).toBe('0 NASUN');
+    expect(formatGasCost(0n, 'NSN', 9)).toBe('0 NSN');
   });
 
   it('should handle simulation without balance changes', async () => {

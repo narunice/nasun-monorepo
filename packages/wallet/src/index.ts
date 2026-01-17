@@ -612,8 +612,8 @@ import { nativeFaucetHandler } from './sui/faucet';
 import { nbtcFaucetHandler, nusdcFaucetHandler } from './sui/tokenFaucet';
 import { registerTokenFaucet } from './config/tokens';
 
-// NASUN - Native token faucet (HTTP API)
-registerTokenFaucet('NASUN', nativeFaucetHandler);
+// NSN - Native token faucet (HTTP API)
+registerTokenFaucet('NSN', nativeFaucetHandler);
 
 // NBTC/NUSDC - Token faucet (Move contract, requires signing)
 registerTokenFaucet('NBTC', nbtcFaucetHandler);

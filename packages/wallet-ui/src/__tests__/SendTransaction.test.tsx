@@ -42,7 +42,7 @@ vi.mock('@nasun/wallet', () => ({
   })),
   useMultiBalance: vi.fn(() => ({
     data: {
-      native: { symbol: 'NASUN', balance: 1000000000n, formatted: '1.000', decimals: 9, type: '0x2::sui::SUI' },
+      native: { symbol: 'NSN', balance: 1000000000n, formatted: '1.000', decimals: 9, type: '0x2::sui::SUI' },
       tokens: {
         NBTC: { symbol: 'NBTC', balance: 50000000n, formatted: '0.500', decimals: 8, type: '0xabc::nbtc::NBTC' },
       },
@@ -70,15 +70,15 @@ vi.mock('@nasun/wallet', () => ({
   isValidAddress: vi.fn((addr: string) => /^0x[a-fA-F0-9]{64}$/.test(addr)),
   shortenAddress: vi.fn((addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`),
   getAllTokens: vi.fn(() => [
-    { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+    { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
     { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type: '0xabc::nbtc::NBTC' },
   ]),
   getTokenByType: vi.fn((type: string) => {
-    if (type === '0x2::sui::SUI') return { symbol: 'NASUN', name: 'Nasun', decimals: 9, type };
+    if (type === '0x2::sui::SUI') return { symbol: 'NSN', name: 'Nasun', decimals: 9, type };
     if (type === '0xabc::nbtc::NBTC') return { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type };
     return null;
   }),
-  NATIVE_TOKEN: { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+  NATIVE_TOKEN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   // Explorer URL functions
   getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.devnet.nasun.io/tx/${digest}`),
   getExplorerAddressUrl: vi.fn((address: string) => `https://explorer.devnet.nasun.io/address/${address}`),
@@ -105,11 +105,11 @@ describe('SendTransaction', () => {
       expect(screen.getByText('Recipient Address')).toBeDefined();
     });
 
-    it('should show NASUN as default token', () => {
+    it('should show NSN as default token', () => {
       render(<SendTransaction />);
 
-      // NASUN should be selected by default (multiple instances in UI)
-      const nasunElements = screen.getAllByText('NASUN');
+      // NSN should be selected by default (multiple instances in UI)
+      const nasunElements = screen.getAllByText('NSN');
       expect(nasunElements.length).toBeGreaterThan(0);
 
       // Balance should be shown
@@ -120,16 +120,16 @@ describe('SendTransaction', () => {
     it('should disable send button when form is empty', () => {
       render(<SendTransaction />);
 
-      const sendButton = screen.getByRole('button', { name: /Send NASUN/i });
+      const sendButton = screen.getByRole('button', { name: /Send NSN/i });
       expect(sendButton).toBeDisabled();
     });
   });
 
   describe('Token Selection', () => {
     it('should allow selecting a different token', async () => {
-      render(<SendTransaction defaultToken="NASUN" />);
+      render(<SendTransaction defaultToken="NSN" />);
 
-      // Click on token selector (first button with NASUN text is the token selector)
+      // Click on token selector (first button with NSN text is the token selector)
       const buttons = screen.getAllByRole('button');
       const selectorButton = buttons[0]; // Token selector is the first button
       fireEvent.click(selectorButton);
@@ -179,7 +179,7 @@ describe('SendTransaction', () => {
       fireEvent.change(amountInput, { target: { value: '0.5' } });
 
       await waitFor(() => {
-        const sendButton = screen.getByRole('button', { name: /Send NASUN/i });
+        const sendButton = screen.getByRole('button', { name: /Send NSN/i });
         expect(sendButton).not.toBeDisabled();
       });
     });
@@ -199,7 +199,7 @@ describe('SendTransaction', () => {
       fireEvent.change(amountInput, { target: { value: '0.5' } });
 
       // Click send
-      const sendButton = screen.getByRole('button', { name: /Send NASUN/i });
+      const sendButton = screen.getByRole('button', { name: /Send NSN/i });
       fireEvent.click(sendButton);
 
       // Confirmation screen should appear
@@ -221,7 +221,7 @@ describe('SendTransaction', () => {
       });
       fireEvent.change(amountInput, { target: { value: '0.5' } });
 
-      const sendButton = screen.getByRole('button', { name: /Send NASUN/i });
+      const sendButton = screen.getByRole('button', { name: /Send NSN/i });
       fireEvent.click(sendButton);
 
       // Click cancel

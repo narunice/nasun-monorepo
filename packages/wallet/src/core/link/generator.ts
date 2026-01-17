@@ -44,7 +44,7 @@ const NATIVE_TOKEN_TYPE = '0x2::sui::SUI';
  * const { url, data } = await createLink(
  *   {
  *     type: 'single',
- *     coinType: 'NASUN',
+ *     coinType: 'NSN',
  *     amount: 1000000000n, // 1 NASUN
  *   },
  *   senderKeypair
@@ -198,7 +198,7 @@ async function fundEphemeralAddress(
  * Converts shorthand names to full type strings.
  */
 function normalizeCoinType(coinType: string): string {
-  if (coinType === 'NASUN' || coinType === 'SUI') {
+  if (coinType === 'NSN' || coinType === 'SUI') {
     return NATIVE_TOKEN_TYPE;
   }
   return coinType;
@@ -219,7 +219,7 @@ function normalizeCoinType(coinType: string): string {
  * @example
  * ```typescript
  * const links = await createBatchLinks(
- *   { type: 'single', coinType: 'NASUN', amount: 1000000000n },
+ *   { type: 'single', coinType: 'NSN', amount: 1000000000n },
  *   10, // Create 10 links
  *   senderKeypair
  * );

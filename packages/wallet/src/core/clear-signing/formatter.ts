@@ -80,7 +80,7 @@ function formatMoveTransaction(
   const riskLevel = calculateMoveRiskLevel(calls, simulation);
 
   // Format gas cost
-  const gasCost = formatGasCost(gasBudget, 'NASUN', 9);
+  const gasCost = formatGasCost(gasBudget, 'NSN', 9);
 
   return {
     title,

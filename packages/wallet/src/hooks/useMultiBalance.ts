@@ -51,7 +51,7 @@ export function useMultiBalance(options?: UseMultiBalanceOptions) {
 
 /**
  * Get specific token balance from multi-balance data
- * @param symbol Token symbol (e.g., 'NASUN', 'NBTC')
+ * @param symbol Token symbol (e.g., 'NSN', 'NBTC')
  * @param address Optional address (uses connected wallet if not provided)
  */
 export function useTokenBalance(symbol: string, address?: string): TokenBalance | undefined {
@@ -60,7 +60,7 @@ export function useTokenBalance(symbol: string, address?: string): TokenBalance 
   if (!multiBalance) return undefined;
 
   // Check if it's native token
-  if (symbol === 'NASUN') {
+  if (symbol === 'NSN') {
     return multiBalance.native;
   }
 
@@ -70,7 +70,7 @@ export function useTokenBalance(symbol: string, address?: string): TokenBalance 
 
 /**
  * Get native token balance only
- * Convenience hook for NASUN balance
+ * Convenience hook for NSN balance
  */
 export function useNativeBalance(address?: string): TokenBalance | undefined {
   const { data: multiBalance } = useMultiBalance({ address });

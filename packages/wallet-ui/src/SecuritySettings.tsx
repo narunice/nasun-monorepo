@@ -23,11 +23,11 @@ const AUTO_LOCK_OPTIONS = [
 ];
 
 const THRESHOLD_OPTIONS = [
-  { value: 10, label: '10 NASUN' },
-  { value: 50, label: '50 NASUN' },
-  { value: 100, label: '100 NASUN' },
-  { value: 500, label: '500 NASUN' },
-  { value: 1000, label: '1,000 NASUN' },
+  { value: 10, label: '10 NSN' },
+  { value: 50, label: '50 NSN' },
+  { value: 100, label: '100 NSN' },
+  { value: 500, label: '500 NSN' },
+  { value: 1000, label: '1,000 NSN' },
 ];
 
 export function SecuritySettings({ onClose }: SecuritySettingsProps) {

@@ -33,7 +33,7 @@ export interface LinkClaimPageProps {
 
 // Token decimals
 const TOKEN_DECIMALS: Record<string, number> = {
-  NASUN: 9,
+  NSN: 9,
   SUI: 9,
   NUSDC: 6,
   NBTC: 8,
@@ -64,7 +64,7 @@ export function LinkClaimPage({
   const linkStatus = useLinkStatus(linkData);
   const { hasFunds, isLoading: isLoadingBalance } = useLinkBalance(
     linkData?.ephemeralAddress ?? null,
-    linkData?.config.coinType ?? 'NASUN'
+    linkData?.config.coinType ?? 'NSN'
   );
 
   const [password, setPassword] = useState('');
@@ -86,7 +86,7 @@ export function LinkClaimPage({
   const requiresPassword = linkData?.config.conditions?.some((c) => c.type === 'password') ?? false;
 
   // Token info
-  const coinType = linkData?.config.coinType ?? 'NASUN';
+  const coinType = linkData?.config.coinType ?? 'NSN';
   const decimals = TOKEN_DECIMALS[coinType] ?? 9;
   const amount = linkData ? BigInt(linkData.config.amount) : 0n;
 

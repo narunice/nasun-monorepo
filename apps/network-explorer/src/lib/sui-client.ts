@@ -101,7 +101,7 @@ export async function getAddressInfo(address: string, cursor?: string | null) {
       }),
     ]);
 
-    // 네이티브 토큰 (NASUN/SUI) 잔액
+    // 네이티브 토큰 (NSN/SUI) 잔액
     const nativeBalance = allBalances.find(b => b.coinType === '0x2::sui::SUI');
 
     return {

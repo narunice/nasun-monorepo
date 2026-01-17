@@ -17,7 +17,7 @@ interface MultiBalanceDisplayProps {
   compact?: boolean;
   // Custom class
   className?: string;
-  // Show native token (NASUN)
+  // Show native token (NSN)
   showNative?: boolean;
   // Show faucet buttons (only visible on devnet/testnet)
   showFaucet?: boolean;
@@ -80,7 +80,7 @@ export function MultiBalanceDisplay({
   if (tokens) {
     // Only show specified tokens
     for (const symbol of tokens) {
-      if (symbol === 'NASUN') continue; // Already added if showNative
+      if (symbol === 'NSN') continue; // Already added if showNative
       const tokenBalance = balances.tokens[symbol];
       if (tokenBalance) {
         tokensToShow.push(tokenBalance);

@@ -33,12 +33,12 @@ describe('Payment Types', () => {
   describe('Constants', () => {
     it('should export default token symbol', async () => {
       const { DEFAULT_TOKEN_SYMBOL } = await import('../core/payment/types');
-      expect(DEFAULT_TOKEN_SYMBOL).toBe('NASUN');
+      expect(DEFAULT_TOKEN_SYMBOL).toBe('NSN');
     });
 
     it('should export Nasun coin type', async () => {
-      const { NASUN_COIN_TYPE } = await import('../core/payment/types');
-      expect(NASUN_COIN_TYPE).toBe('0x2::sui::SUI');
+      const { NSN_COIN_TYPE } = await import('../core/payment/types');
+      expect(NSN_COIN_TYPE).toBe('0x2::sui::SUI');
     });
 
     it('should export URL params constants', async () => {
@@ -288,7 +288,7 @@ describe('Payment Links', () => {
       const url = buildPaymentUrl('https://pado.nasun.io/send', {
         recipient: '0x' + 'a'.repeat(64),
         amount: '10',
-        token: 'NASUN', // Default token
+        token: 'NSN', // Default token
       });
 
       expect(url).not.toContain('token=');
@@ -301,13 +301,13 @@ describe('Payment Links', () => {
 
       const link = generatePaymentLink('0x' + 'a'.repeat(64), {
         amount: '50',
-        token: 'NASUN',
+        token: 'NSN',
         message: 'Hello',
       });
 
       expect(link.recipient).toBe('0x' + 'a'.repeat(64));
       expect(link.amount).toBe('50');
-      expect(link.token).toBe('NASUN');
+      expect(link.token).toBe('NSN');
       expect(link.message).toBe('Hello');
       expect(link.url).toContain('to=');
     });
@@ -342,7 +342,7 @@ describe('Payment Links', () => {
       expect(parsed.valid).toBe(true);
       expect(parsed.recipient).toBe('0x' + 'a'.repeat(64));
       expect(parsed.amount).toBeUndefined();
-      expect(parsed.token).toBe('NASUN'); // Default
+      expect(parsed.token).toBe('NSN'); // Default
     });
 
     it('should reject URL without recipient', async () => {
@@ -414,7 +414,7 @@ describe('Payment Links', () => {
         chainId: 'nasun-devnet',
         recipient: '0x' + 'a'.repeat(64),
         amount: '50',
-        token: 'NASUN',
+        token: 'NSN',
         tokenType: '0x2::sui::SUI',
         createdAt: Date.now(),
         status: 'pending' as const,
@@ -453,13 +453,13 @@ describe('Payment Links', () => {
         baseUrl: 'https://pado.nasun.io/send',
         recipient: '0x' + 'a'.repeat(64),
         amount: '100',
-        token: 'NASUN',
+        token: 'NSN',
         message: 'Thanks!',
       };
 
       const text = formatPaymentLinkForSharing(link);
 
-      expect(text).toContain('100 NASUN');
+      expect(text).toContain('100 NSN');
       expect(text).toContain('Thanks!');
       expect(text).toContain(link.url);
     });
@@ -565,7 +565,7 @@ describe('Payment Module Exports', () => {
     const types = await import('../core/payment/types');
 
     expect(types.DEFAULT_INTENT_TTL_MS).toBeDefined();
-    expect(types.NASUN_COIN_TYPE).toBeDefined();
+    expect(types.NSN_COIN_TYPE).toBeDefined();
     expect(types.DEFAULT_TOKEN_SYMBOL).toBeDefined();
     expect(types.URL_PARAMS).toBeDefined();
   });
@@ -605,7 +605,7 @@ describe('Payment Module Exports', () => {
 
     // Types/constants
     expect(payment.DEFAULT_TOKEN_SYMBOL).toBeDefined();
-    expect(payment.NASUN_COIN_TYPE).toBeDefined();
+    expect(payment.NSN_COIN_TYPE).toBeDefined();
     expect(payment.URL_PARAMS).toBeDefined();
 
     // Validation
