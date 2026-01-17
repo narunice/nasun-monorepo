@@ -3,18 +3,18 @@
  * 주문 실행 래퍼 (useTrading + Toast 통합)
  */
 
-import { useCallback, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useTrading } from '../useTrading';
-import { useMarket } from '../context/MarketContext';
-import { useAutoDeposit } from './useAutoDeposit';
-import { useMarginAccount } from '../../core/unified-margin/useMarginAccount';
-import type { TradeResult, OrderType } from '../types';
-import { ORDER_TYPE } from '../constants';
-import { useToast } from '../../../components/common';
-import { quantityToRaw, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
-import { isMarginError } from '../../../lib/risk-engine';
-import { parseError } from '../utils/errorParser';
+import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTrading } from "../useTrading";
+import { useMarket } from "../context/MarketContext";
+import { useAutoDeposit } from "./useAutoDeposit";
+import { useMarginAccount } from "../../core/unified-margin/useMarginAccount";
+import type { TradeResult, OrderType } from "../types";
+import { ORDER_TYPE } from "../constants";
+import { useToast } from "@/components/common";
+import { quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepbook";
+import { isMarginError } from "../../../lib/risk-engine";
+import { parseError } from "../utils/errorParser";
 
 export interface UseOrderActionsResult {
   isLoading: boolean;
@@ -28,12 +28,12 @@ export interface UseOrderActionsResult {
 
   // 주문 실행
   handleLimitOrder: (
-    type: 'buy' | 'sell',
+    type: "buy" | "sell",
     price: number,
     amount: number,
-    orderType?: OrderType,
+    orderType?: OrderType
   ) => Promise<TradeResult>;
-  handleMarketOrder: (type: 'buy' | 'sell', amount: number) => Promise<TradeResult>;
+  handleMarketOrder: (type: "buy" | "sell", amount: number) => Promise<TradeResult>;
   handleCancelOrder: (orderId: string) => Promise<TradeResult>;
 
   // BalanceManager 관리
@@ -46,16 +46,16 @@ export interface UseOrderActionsResult {
  * 체결 결과 메시지 포맷팅
  */
 function formatOrderResult(result: TradeResult, isBid: boolean): string {
-  const action = isBid ? 'Buy' : 'Sell';
+  const action = isBid ? "Buy" : "Sell";
   const exec = result.executionInfo;
 
   if (!exec) {
     return `${action} order placed! Tx: ${result.digest?.slice(0, 16)}...`;
   }
 
-  if (exec.status === 'filled') {
+  if (exec.status === "filled") {
     return `${action} FILLED! ${exec.executedQuantity.toFixed(4)} NBTC @ $${exec.avgPrice.toFixed(2)}`;
-  } else if (exec.status === 'partial') {
+  } else if (exec.status === "partial") {
     const total = exec.executedQuantity + exec.remainingQuantity;
     return `${action} PARTIAL: ${exec.executedQuantity.toFixed(4)}/${total.toFixed(4)} NBTC`;
   }
@@ -90,15 +90,12 @@ export function useOrderActions(): UseOrderActionsResult {
   } = useAutoDeposit(balanceManagerId);
 
   // Margin account for unified onboarding
-  const {
-    hasAccount: hasMarginAccount,
-    createAccount: createMarginAccount,
-  } = useMarginAccount();
+  const { hasAccount: hasMarginAccount, createAccount: createMarginAccount } = useMarginAccount();
 
   // Convert error message to user-friendly format
   const formatUserFriendlyError = useCallback(
     (error: string | undefined): string => {
-      if (!error) return 'Unknown error';
+      if (!error) return "Unknown error";
 
       const minQty = getMinQuantity(currentPool);
       const minPrice = getMinPrice(currentPool);
@@ -108,68 +105,68 @@ export function useOrderActions(): UseOrderActionsResult {
       const parsed = parseError(error);
 
       // Gas-related errors
-      if (parsed.errorType === 'GAS_REQUIRED') {
-        return 'Not enough NASUN for gas. Get NASUN from Faucet in your wallet.';
+      if (parsed.errorType === "GAS_REQUIRED") {
+        return "Not enough NASUN for gas. Get NASUN from Faucet in your wallet.";
       }
 
       // Quantity error
-      if (error.includes('ORDER_INFO-2') || error.includes('lot size')) {
+      if (error.includes("ORDER_INFO-2") || error.includes("lot size")) {
         return `Invalid quantity. Use ${minQty}, ${minQty * 10}, ${minQty * 100}... ${baseSymbol} (multiples of ${minQty})`;
       }
 
       // Price error
-      if (error.includes('POOL-2') || error.includes('tick size')) {
+      if (error.includes("POOL-2") || error.includes("tick size")) {
         return `Price must be a multiple of $${minPrice}`;
       }
 
       // Insufficient balance
-      if (error.includes('BM-3') || error.includes('Insufficient balance')) {
-        return 'Not enough balance. Get tokens from Faucet in your wallet.';
+      if (error.includes("BM-3") || error.includes("Insufficient balance")) {
+        return "Not enough balance. Get tokens from Faucet in your wallet.";
       }
 
       // Insufficient margin (Pado Balance)
       if (isMarginError(error)) {
-        return 'Not enough margin. Deposit more NUSDC or reduce order size.';
+        return "Not enough margin. Deposit more NUSDC or reduce order size.";
       }
 
       // Post-only error
-      if (error.includes('POOL-6') || error.includes('cross the book')) {
-        return 'Post-only rejected: order would fill immediately. Adjust price further from market.';
+      if (error.includes("POOL-6") || error.includes("cross the book")) {
+        return "Post-only rejected: order would fill immediately. Adjust price further from market.";
       }
 
       return error;
     },
-    [currentPool],
+    [currentPool]
   );
 
   // 데이터 갱신 헬퍼
   const refreshData = useCallback(() => {
     setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['balances'] });
-      queryClient.invalidateQueries({ queryKey: ['openOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['orderbook'] });
+      queryClient.invalidateQueries({ queryKey: ["balances"] });
+      queryClient.invalidateQueries({ queryKey: ["openOrders"] });
+      queryClient.invalidateQueries({ queryKey: ["orderbook"] });
     }, 2000);
   }, [queryClient]);
 
   // 지정가 주문 실행 (with auto deposit)
   const handleLimitOrder = useCallback(
     async (
-      type: 'buy' | 'sell',
+      type: "buy" | "sell",
       price: number,
       amount: number,
-      orderType: OrderType = ORDER_TYPE.NO_RESTRICTION,
+      orderType: OrderType = ORDER_TYPE.NO_RESTRICTION
     ): Promise<TradeResult> => {
       // Auto deposit if enabled
       if (autoDepositEnabled && balanceManagerId) {
         // Calculate required amounts
-        const requiredQuote = type === 'buy' ? price * amount : 0;
-        const requiredBase = type === 'sell' ? amount : 0;
+        const requiredQuote = type === "buy" ? price * amount : 0;
+        const requiredBase = type === "sell" ? amount : 0;
 
         const depositResult = await depositIfNeeded(requiredQuote, requiredBase);
 
         if (!depositResult.success) {
-          const friendlyError = depositResult.error || 'Auto deposit failed';
-          showToast(friendlyError, 'error');
+          const friendlyError = depositResult.error || "Auto deposit failed";
+          showToast(friendlyError, "error");
           return {
             success: false,
             error: friendlyError,
@@ -177,19 +174,21 @@ export function useOrderActions(): UseOrderActionsResult {
         }
 
         // Show deposit notification if deposit occurred
-        const hasQuoteDeposit = depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
-        const hasBaseDeposit = depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
+        const hasQuoteDeposit =
+          depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
+        const hasBaseDeposit =
+          depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
 
         if (hasQuoteDeposit) {
           showToast(
             `Auto-deposited ${depositResult.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`,
-            'info',
+            "info"
           );
         }
         if (hasBaseDeposit) {
           showToast(
             `Auto-deposited ${depositResult.depositedBaseAmount!.toFixed(4)} NBTC to trading`,
-            'info',
+            "info"
           );
         }
 
@@ -201,17 +200,17 @@ export function useOrderActions(): UseOrderActionsResult {
 
       // Place the order
       const result =
-        type === 'buy'
+        type === "buy"
           ? await placeBuyOrder(price, amount, orderType)
           : await placeSellOrder(price, amount, orderType);
 
       if (result.success) {
-        const message = formatOrderResult(result, type === 'buy');
-        showToast(message, 'success');
+        const message = formatOrderResult(result, type === "buy");
+        showToast(message, "success");
         refreshData();
       } else {
         const friendlyError = formatUserFriendlyError(result.error);
-        showToast(friendlyError, 'error');
+        showToast(friendlyError, "error");
       }
 
       return result;
@@ -225,45 +224,47 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast,
       refreshData,
       formatUserFriendlyError,
-    ],
+    ]
   );
 
   // 시장가 주문 실행 (with auto deposit)
   const handleMarketOrder = useCallback(
-    async (type: 'buy' | 'sell', amount: number): Promise<TradeResult> => {
+    async (type: "buy" | "sell", amount: number): Promise<TradeResult> => {
       // Auto deposit if enabled
       // For market orders, estimate required quote based on orderbook (conservative estimate)
       if (autoDepositEnabled && balanceManagerId) {
         // Conservative estimate: use a high price for buy orders
         // Actual execution will use orderbook prices
         const estimatedPrice = 100000; // Conservative max price for NBTC
-        const requiredQuote = type === 'buy' ? estimatedPrice * amount : 0;
-        const requiredBase = type === 'sell' ? amount : 0;
+        const requiredQuote = type === "buy" ? estimatedPrice * amount : 0;
+        const requiredBase = type === "sell" ? amount : 0;
 
         const depositResult = await depositIfNeeded(requiredQuote, requiredBase);
 
         if (!depositResult.success) {
-          const friendlyError = depositResult.error || 'Auto deposit failed';
-          showToast(friendlyError, 'error');
+          const friendlyError = depositResult.error || "Auto deposit failed";
+          showToast(friendlyError, "error");
           return {
             success: false,
             error: friendlyError,
           };
         }
 
-        const hasQuoteDeposit = depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
-        const hasBaseDeposit = depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
+        const hasQuoteDeposit =
+          depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
+        const hasBaseDeposit =
+          depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
 
         if (hasQuoteDeposit) {
           showToast(
             `Auto-deposited ${depositResult.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`,
-            'info',
+            "info"
           );
         }
         if (hasBaseDeposit) {
           showToast(
             `Auto-deposited ${depositResult.depositedBaseAmount!.toFixed(4)} NBTC to trading`,
-            'info',
+            "info"
           );
         }
 
@@ -276,15 +277,15 @@ export function useOrderActions(): UseOrderActionsResult {
       const rawQuantity = quantityToRaw(amount);
       const result = await placeMarketOrder({
         quantity: rawQuantity,
-        isBid: type === 'buy',
+        isBid: type === "buy",
       });
 
       if (result.success) {
-        showToast(`Market ${type} executed!`, 'success');
+        showToast(`Market ${type} executed!`, "success");
         refreshData();
       } else {
         const friendlyError = formatUserFriendlyError(result.error);
-        showToast(friendlyError, 'error');
+        showToast(friendlyError, "error");
       }
 
       return result;
@@ -297,7 +298,7 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast,
       refreshData,
       formatUserFriendlyError,
-    ],
+    ]
   );
 
   // 주문 취소
@@ -306,23 +307,20 @@ export function useOrderActions(): UseOrderActionsResult {
       const result = await cancelOrder(orderId);
 
       if (result.success) {
-        showToast('Order cancelled successfully', 'success');
+        showToast("Order cancelled successfully", "success");
         refreshData();
       } else {
         // 이미 체결된 주문인 경우 경고
-        if (
-          result.error?.includes('leaf_remove') ||
-          result.error?.includes('big_vector')
-        ) {
-          showToast('Order already filled or cancelled', 'warning');
+        if (result.error?.includes("leaf_remove") || result.error?.includes("big_vector")) {
+          showToast("Order already filled or cancelled", "warning");
         } else {
-          showToast(`Cancel error: ${result.error}`, 'error');
+          showToast(`Cancel error: ${result.error}`, "error");
         }
       }
 
       return result;
     },
-    [cancelOrder, showToast, refreshData],
+    [cancelOrder, showToast, refreshData]
   );
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
@@ -332,7 +330,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
     if (!result.success) {
       const friendlyError = formatUserFriendlyError(result.error);
-      showToast(friendlyError, 'error');
+      showToast(friendlyError, "error");
       return result;
     }
 
@@ -342,15 +340,15 @@ export function useOrderActions(): UseOrderActionsResult {
         // Wait for RPC to sync after BalanceManager creation
         await new Promise((resolve) => setTimeout(resolve, 2000));
         await createMarginAccount();
-        showToast('Pado enabled!', 'success');
+        showToast("Pado enabled!", "success");
       } catch (error) {
         // BM succeeded but MA failed - show warning but don't fail
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.warn('[UnifiedOnboarding] MarginAccount creation failed:', errorMsg);
-        showToast('Trading enabled. Pado Balance setup failed.', 'warning');
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        console.warn("[UnifiedOnboarding] MarginAccount creation failed:", errorMsg);
+        showToast("Trading enabled. Pado Balance setup failed.", "warning");
       }
     } else {
-      showToast('Pado enabled!', 'success');
+      showToast("Pado enabled!", "success");
     }
 
     return result;
@@ -364,11 +362,11 @@ export function useOrderActions(): UseOrderActionsResult {
       const info = result.depositInfo;
       const message = info
         ? `Added ${info.baseAmount} ${info.baseSymbol} + ${info.quoteAmount} ${info.quoteSymbol} to trading`
-        : 'Funds added to trading balance!';
-      showToast(message, 'success');
+        : "Funds added to trading balance!";
+      showToast(message, "success");
       refreshData();
     } else {
-      showToast(`Error: ${result.error}`, 'error');
+      showToast(`Error: ${result.error}`, "error");
     }
 
     return result;
@@ -379,10 +377,10 @@ export function useOrderActions(): UseOrderActionsResult {
     const result = await withdrawAllTokens();
 
     if (result.success) {
-      showToast('Funds returned to wallet!', 'success');
+      showToast("Funds returned to wallet!", "success");
       refreshData();
     } else {
-      showToast(`Error: ${result.error}`, 'error');
+      showToast(`Error: ${result.error}`, "error");
     }
 
     return result;

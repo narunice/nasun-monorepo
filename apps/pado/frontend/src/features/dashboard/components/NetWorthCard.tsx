@@ -3,11 +3,12 @@
  * Displays total portfolio value with 24h change
  */
 
-import { useNetWorth } from '../hooks/useNetWorth';
-import { Spinner } from '../../../components/common';
+import { useNetWorth } from "../hooks/useNetWorth";
+import { Spinner } from "@/components/common";
 
 export function NetWorthCard() {
-  const { totalUsdValue, change24h, changePercent, tokens, predictionValue, isLoading } = useNetWorth();
+  const { totalUsdValue, change24h, changePercent, tokens, predictionValue, isLoading } =
+    useNetWorth();
 
   if (isLoading) {
     return (
@@ -22,26 +23,26 @@ export function NetWorthCard() {
   const isPositive = change24h >= 0;
 
   const formatUsd = (value: number) => {
-    return value.toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return value.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   };
 
   const formatChange = (value: number) => {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    const sign = value >= 0 ? "+" : "";
+    return `${sign}${value.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
   };
 
   const formatPercent = (value: number) => {
-    const sign = value >= 0 ? '+' : '';
+    const sign = value >= 0 ? "+" : "";
     return `${sign}${value.toFixed(2)}%`;
   };
 
@@ -56,7 +57,9 @@ export function NetWorthCard() {
       {/* Total Value */}
       <div className="mb-4">
         <div className="text-3xl font-bold mb-1">{formatUsd(totalUsdValue)}</div>
-        <div className={`flex items-center gap-2 text-sm ${isPositive ? 'text-green-300' : 'text-red-300'}`}>
+        <div
+          className={`flex items-center gap-2 text-sm ${isPositive ? "text-green-300" : "text-red-300"}`}
+        >
           <span>{formatChange(change24h)}</span>
           <span>({formatPercent(changePercent)})</span>
           <span className="text-blue-200">24h</span>
@@ -70,7 +73,7 @@ export function NetWorthCard() {
             <span className="text-blue-100">{token.symbol}</span>
             <div className="flex items-center gap-2">
               <span>{formatUsd(token.usdValue)}</span>
-              <span className={token.change24h >= 0 ? 'text-green-300' : 'text-red-300'}>
+              <span className={token.change24h >= 0 ? "text-green-300" : "text-red-300"}>
                 {formatPercent(token.change24h)}
               </span>
             </div>

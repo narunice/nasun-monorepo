@@ -11,13 +11,18 @@
  * @version 1.0.0 (Phase 16.5)
  */
 
-import { useState } from 'react';
-import { useSmartAccount, formatUsd, getRiskLevelLabel, getRiskLevelColor } from './useSmartAccount';
-import { useMarginAccount } from './useMarginAccount';
-import { useToast } from '../../../components/common';
-import { TOKENS } from '../../../config/network';
+import { useState } from "react";
+import {
+  useSmartAccount,
+  formatUsd,
+  getRiskLevelLabel,
+  getRiskLevelColor,
+} from "./useSmartAccount";
+import { useMarginAccount } from "./useMarginAccount";
+import { useToast } from "@/components/common";
+import { TOKENS } from "../../../config/network";
 
-type CollateralToken = 'NUSDC' | 'NBTC';
+type CollateralToken = "NUSDC" | "NBTC";
 
 export function SmartAccountPanel() {
   const {
@@ -34,30 +39,24 @@ export function SmartAccountPanel() {
     refetch,
   } = useSmartAccount();
 
-  const {
-    createAccount,
-    withdraw,
-    isCreating,
-    isDepositing,
-    isWithdrawing,
-  } = useMarginAccount();
+  const { createAccount, withdraw, isCreating, isDepositing, isWithdrawing } = useMarginAccount();
 
   const { showToast } = useToast();
 
   // Modal states
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [selectedToken, setSelectedToken] = useState<CollateralToken>('NUSDC');
-  const [amount, setAmount] = useState('');
+  const [selectedToken, setSelectedToken] = useState<CollateralToken>("NUSDC");
+  const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Handle enable Pado
   const handleEnablePado = async () => {
     try {
       await createAccount();
-      showToast('Pado enabled successfully!', 'success');
+      showToast("Pado enabled successfully!", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to enable Pado', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to enable Pado", "error");
     }
   };
 
@@ -66,23 +65,23 @@ export function SmartAccountPanel() {
     setError(null);
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Please enter a valid amount');
+      setError("Please enter a valid amount");
       return;
     }
 
     try {
       // TODO: Get coin ID for selected token
       // For now, only NUSDC is implemented
-      if (selectedToken === 'NUSDC') {
+      if (selectedToken === "NUSDC") {
         // This requires a coin ID - we need to fetch it
-        showToast('Deposit initiated. Use the detailed Deposit button for now.', 'info');
+        showToast("Deposit initiated. Use the detailed Deposit button for now.", "info");
         setShowDepositModal(false);
-        setAmount('');
+        setAmount("");
       } else {
-        showToast('NBTC deposit coming soon', 'info');
+        showToast("NBTC deposit coming soon", "info");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Deposit failed');
+      setError(err instanceof Error ? err.message : "Deposit failed");
     }
   };
 
@@ -91,19 +90,19 @@ export function SmartAccountPanel() {
     setError(null);
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Please enter a valid amount');
+      setError("Please enter a valid amount");
       return;
     }
 
     try {
       const decimals = TOKENS[selectedToken].decimals;
       await withdraw(BigInt(Math.round(amountNum * 10 ** decimals)));
-      showToast(`Withdrew ${amountNum} ${selectedToken}`, 'success');
+      showToast(`Withdrew ${amountNum} ${selectedToken}`, "success");
       setShowWithdrawModal(false);
-      setAmount('');
+      setAmount("");
       refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Withdraw failed');
+      setError(err instanceof Error ? err.message : "Withdraw failed");
     }
   };
 
@@ -137,11 +136,10 @@ export function SmartAccountPanel() {
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-theme-text-primary">
-              Enable Smart Account
-            </h3>
+            <h3 className="text-lg font-semibold text-theme-text-primary">Enable Smart Account</h3>
             <p className="text-sm text-theme-text-secondary mt-1">
-              Enable your Smart Account to use unified collateral across Trading, Predictions, and more
+              Enable your Smart Account to use unified collateral across Trading, Predictions, and
+              more
             </p>
           </div>
           <button
@@ -149,7 +147,7 @@ export function SmartAccountPanel() {
             disabled={isCreating}
             className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isCreating ? 'Enabling...' : 'Enable Now'}
+            {isCreating ? "Enabling..." : "Enable Now"}
           </button>
         </div>
       </div>
@@ -162,36 +160,32 @@ export function SmartAccountPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-theme-text-primary">
-            Smart Account
-          </h3>
+          <h3 className="text-lg font-semibold text-theme-text-primary">Smart Account</h3>
           <p className="text-xs text-theme-text-muted mt-0.5">
-            {authType === 'zkLogin' ? 'Social Login' : 'Embedded Wallet'}
+            {authType === "zkLogin" ? "Social Login" : "Embedded Wallet"}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-medium ${getRiskLevelColor(riskLevel)}`}>
             {getRiskLevelLabel(riskLevel)}
           </span>
-          <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">
-            Active
-          </span>
+          <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">Active</span>
         </div>
       </div>
 
       {/* Total Equity */}
       <div className="bg-theme-bg-primary rounded-lg p-4">
         <div className="text-sm text-theme-text-secondary mb-1">Total Equity</div>
-        <div className="text-3xl font-bold text-theme-text-primary">
-          {formatUsd(totalEquity)}
-        </div>
+        <div className="text-3xl font-bold text-theme-text-primary">{formatUsd(totalEquity)}</div>
         <div className="flex items-center gap-4 mt-2 text-sm">
           <span className="text-theme-text-muted">
-            Free: <span className="text-theme-text-primary font-medium">{formatUsd(freeCollateral)}</span>
+            Free:{" "}
+            <span className="text-theme-text-primary font-medium">{formatUsd(freeCollateral)}</span>
           </span>
           {marginRatio < 100 && (
             <span className="text-theme-text-muted">
-              Margin: <span className={getRiskLevelColor(riskLevel)}>{marginRatio.toFixed(1)}%</span>
+              Margin:{" "}
+              <span className={getRiskLevelColor(riskLevel)}>{marginRatio.toFixed(1)}%</span>
             </span>
           )}
         </div>
@@ -222,9 +216,7 @@ export function SmartAccountPanel() {
                   {formatUsd(collateral.NUSDC.value)}
                 </div>
                 {collateral.NUSDC.haircut > 0 && (
-                  <div className="text-xs text-yellow-500">
-                    {collateral.NUSDC.haircut}% haircut
-                  </div>
+                  <div className="text-xs text-yellow-500">{collateral.NUSDC.haircut}% haircut</div>
                 )}
               </div>
             </div>
@@ -248,9 +240,7 @@ export function SmartAccountPanel() {
                 <div className="text-sm font-medium text-theme-text-primary">
                   {formatUsd(collateral.NBTC.value)}
                 </div>
-                <div className="text-xs text-yellow-500">
-                  {collateral.NBTC.haircut}% haircut
-                </div>
+                <div className="text-xs text-yellow-500">{collateral.NBTC.haircut}% haircut</div>
               </div>
             </div>
           )}
@@ -268,7 +258,7 @@ export function SmartAccountPanel() {
       <div className="flex gap-3">
         <button
           onClick={() => {
-            setSelectedToken('NUSDC');
+            setSelectedToken("NUSDC");
             setShowDepositModal(true);
           }}
           className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
@@ -277,7 +267,7 @@ export function SmartAccountPanel() {
         </button>
         <button
           onClick={() => {
-            setSelectedToken('NUSDC');
+            setSelectedToken("NUSDC");
             setShowWithdrawModal(true);
           }}
           disabled={totalCollateralValue === 0}
@@ -289,23 +279,23 @@ export function SmartAccountPanel() {
 
       {/* Risk Warning */}
       {riskLevel >= 1 && (
-        <div className={`p-4 rounded-lg border ${
-          riskLevel >= 2
-            ? 'bg-red-500/10 border-red-500/30'
-            : 'bg-yellow-500/10 border-yellow-500/30'
-        }`}>
+        <div
+          className={`p-4 rounded-lg border ${
+            riskLevel >= 2
+              ? "bg-red-500/10 border-red-500/30"
+              : "bg-yellow-500/10 border-yellow-500/30"
+          }`}
+        >
           <div className="flex items-start gap-3">
-            <span className="text-xl">
-              {riskLevel >= 2 ? '⚠️' : '⚡'}
-            </span>
+            <span className="text-xl">{riskLevel >= 2 ? "⚠️" : "⚡"}</span>
             <div>
-              <div className={`font-medium ${riskLevel >= 2 ? 'text-red-400' : 'text-yellow-400'}`}>
-                {riskLevel >= 2 ? 'Liquidation Risk' : 'Low Margin Warning'}
+              <div className={`font-medium ${riskLevel >= 2 ? "text-red-400" : "text-yellow-400"}`}>
+                {riskLevel >= 2 ? "Liquidation Risk" : "Low Margin Warning"}
               </div>
               <p className="text-sm text-theme-text-secondary mt-1">
                 {riskLevel >= 2
-                  ? 'Your margin ratio is below maintenance level. Add collateral to avoid liquidation.'
-                  : 'Your margin is approaching the warning threshold. Consider adding more collateral.'}
+                  ? "Your margin ratio is below maintenance level. Add collateral to avoid liquidation."
+                  : "Your margin is approaching the warning threshold. Consider adding more collateral."}
               </p>
             </div>
           </div>
@@ -323,21 +313,21 @@ export function SmartAccountPanel() {
             {/* Token Selector */}
             <div className="flex gap-2 mb-4">
               <button
-                onClick={() => setSelectedToken('NUSDC')}
+                onClick={() => setSelectedToken("NUSDC")}
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  selectedToken === 'NUSDC'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                  selectedToken === "NUSDC"
+                    ? "bg-green-500 text-white"
+                    : "bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary"
                 }`}
               >
                 NUSDC
               </button>
               <button
-                onClick={() => setSelectedToken('NBTC')}
+                onClick={() => setSelectedToken("NBTC")}
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  selectedToken === 'NBTC'
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                  selectedToken === "NBTC"
+                    ? "bg-orange-500 text-white"
+                    : "bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary"
                 }`}
               >
                 NBTC
@@ -346,9 +336,7 @@ export function SmartAccountPanel() {
 
             {/* Amount Input */}
             <div className="mb-4">
-              <label className="block text-sm text-theme-text-secondary mb-2">
-                Amount
-              </label>
+              <label className="block text-sm text-theme-text-secondary mb-2">Amount</label>
               <input
                 type="number"
                 value={amount}
@@ -356,22 +344,20 @@ export function SmartAccountPanel() {
                 placeholder="0.00"
                 className="w-full px-4 py-3 bg-theme-bg-primary border border-theme-border rounded-lg text-theme-text-primary"
               />
-              {selectedToken === 'NBTC' && (
+              {selectedToken === "NBTC" && (
                 <p className="text-xs text-yellow-500 mt-2">
                   Note: NBTC has a 5% haircut (95% collateral value)
                 </p>
               )}
             </div>
 
-            {error && (
-              <div className="text-sm text-red-500 mb-4">{error}</div>
-            )}
+            {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
 
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowDepositModal(false);
-                  setAmount('');
+                  setAmount("");
                   setError(null);
                 }}
                 className="flex-1 py-2 bg-theme-bg-tertiary text-theme-text-primary rounded-lg"
@@ -383,7 +369,7 @@ export function SmartAccountPanel() {
                 disabled={isDepositing}
                 className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg disabled:opacity-50"
               >
-                {isDepositing ? 'Depositing...' : 'Deposit'}
+                {isDepositing ? "Depositing..." : "Deposit"}
               </button>
             </div>
           </div>
@@ -401,23 +387,23 @@ export function SmartAccountPanel() {
             {/* Token Selector */}
             <div className="flex gap-2 mb-4">
               <button
-                onClick={() => setSelectedToken('NUSDC')}
+                onClick={() => setSelectedToken("NUSDC")}
                 disabled={collateral.NUSDC.amount === 0}
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                  selectedToken === 'NUSDC'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                  selectedToken === "NUSDC"
+                    ? "bg-green-500 text-white"
+                    : "bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary"
                 }`}
               >
                 NUSDC ({collateral.NUSDC.amount.toFixed(2)})
               </button>
               <button
-                onClick={() => setSelectedToken('NBTC')}
+                onClick={() => setSelectedToken("NBTC")}
                 disabled={collateral.NBTC.amount === 0}
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                  selectedToken === 'NBTC'
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                  selectedToken === "NBTC"
+                    ? "bg-orange-500 text-white"
+                    : "bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary"
                 }`}
               >
                 NBTC ({collateral.NBTC.amount.toFixed(8)})
@@ -430,9 +416,8 @@ export function SmartAccountPanel() {
                 <span className="text-theme-text-secondary">Amount</span>
                 <button
                   onClick={() => {
-                    const maxAmount = selectedToken === 'NUSDC'
-                      ? collateral.NUSDC.amount
-                      : collateral.NBTC.amount;
+                    const maxAmount =
+                      selectedToken === "NUSDC" ? collateral.NUSDC.amount : collateral.NBTC.amount;
                     setAmount(maxAmount.toString());
                   }}
                   className="text-blue-500 hover:text-blue-400"
@@ -449,15 +434,13 @@ export function SmartAccountPanel() {
               />
             </div>
 
-            {error && (
-              <div className="text-sm text-red-500 mb-4">{error}</div>
-            )}
+            {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
 
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowWithdrawModal(false);
-                  setAmount('');
+                  setAmount("");
                   setError(null);
                 }}
                 className="flex-1 py-2 bg-theme-bg-tertiary text-theme-text-primary rounded-lg"
@@ -469,7 +452,7 @@ export function SmartAccountPanel() {
                 disabled={isWithdrawing}
                 className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg disabled:opacity-50"
               >
-                {isWithdrawing ? 'Withdrawing...' : 'Withdraw'}
+                {isWithdrawing ? "Withdrawing..." : "Withdraw"}
               </button>
             </div>
           </div>

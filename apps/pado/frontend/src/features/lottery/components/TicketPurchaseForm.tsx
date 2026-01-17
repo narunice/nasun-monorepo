@@ -1,36 +1,28 @@
-import { useState, useCallback } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
-import { useLotteryActions } from '../hooks';
-import { useToast } from '../../../components/common/Toast';
-import { generateQuickPick, formatNusdc } from '../lib/lottery-client';
-import { MAX_NUMBER, TICKET_PRICE, NUMBERS_COUNT } from '../constants';
-import type { LotteryRound } from '../types';
+import { useState, useCallback } from "react";
+import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useLotteryActions } from "../hooks";
+import { useToast } from "@/components/common/Toast";
+import { generateQuickPick, formatNusdc } from "../lib/lottery-client";
+import { MAX_NUMBER, TICKET_PRICE, NUMBERS_COUNT } from "../constants";
+import type { LotteryRound } from "../types";
 
 interface TicketPurchaseFormProps {
   round: LotteryRound;
   onPurchaseSuccess?: () => void;
 }
 
-export function TicketPurchaseForm({
-  round,
-  onPurchaseSuccess,
-}: TicketPurchaseFormProps) {
+export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseFormProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const { buyTicket, isBuying, error } = useLotteryActions();
   const { showToast } = useToast();
-  const [selectedNumbers, setSelectedNumbers] = useState<Set<number>>(
-    new Set()
-  );
+  const [selectedNumbers, setSelectedNumbers] = useState<Set<number>>(new Set());
 
   // Detect both regular wallet and zkLogin connection
-  const isConnected = isZkLoggedIn || (status === 'unlocked' && !!account);
+  const isConnected = isZkLoggedIn || (status === "unlocked" && !!account);
   const isRoundOpen = Date.now() < round.closeTime;
   const canPurchase =
-    isConnected &&
-    isRoundOpen &&
-    selectedNumbers.size === NUMBERS_COUNT &&
-    !isBuying;
+    isConnected && isRoundOpen && selectedNumbers.size === NUMBERS_COUNT && !isBuying;
 
   const handleNumberClick = useCallback((num: number) => {
     setSelectedNumbers((prev) => {
@@ -57,16 +49,16 @@ export function TicketPurchaseForm({
     if (!canPurchase) return;
 
     const numbers = [...selectedNumbers].sort((a, b) => a - b);
-    showToast('Processing ticket purchase...', 'info');
+    showToast("Processing ticket purchase...", "info");
 
     const success = await buyTicket(round.id, numbers);
 
     if (success) {
-      showToast(`Ticket purchased! Numbers: ${numbers.join(', ')}`, 'success');
+      showToast(`Ticket purchased! Numbers: ${numbers.join(", ")}`, "success");
       setSelectedNumbers(new Set());
       onPurchaseSuccess?.();
     } else {
-      showToast('Failed to purchase ticket. Check error below.', 'error');
+      showToast("Failed to purchase ticket. Check error below.", "error");
     }
   }, [canPurchase, selectedNumbers, round.id, buyTicket, onPurchaseSuccess, showToast]);
 
@@ -109,10 +101,10 @@ export function TicketPurchaseForm({
                 text-lg font-medium rounded-lg transition-all
                 ${
                   isSelected
-                    ? 'bg-theme-accent text-white scale-105 shadow-lg'
-                    : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-hover'
+                    ? "bg-theme-accent text-white scale-105 shadow-lg"
+                    : "bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-hover"
                 }
-                ${!isRoundOpen ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                ${!isRoundOpen ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
               `}
             >
               {num}
@@ -135,16 +127,14 @@ export function TicketPurchaseForm({
                 {num}
               </span>
             ))}
-          {Array.from({ length: NUMBERS_COUNT - selectedNumbers.size }).map(
-            (_, i) => (
-              <span
-                key={`empty-${i}`}
-                className="w-8 h-8 flex items-center justify-center border border-dashed border-gray-500 rounded-full text-sm"
-              >
-                ?
-              </span>
-            )
-          )}
+          {Array.from({ length: NUMBERS_COUNT - selectedNumbers.size }).map((_, i) => (
+            <span
+              key={`empty-${i}`}
+              className="w-8 h-8 flex items-center justify-center border border-dashed border-gray-500 rounded-full text-sm"
+            >
+              ?
+            </span>
+          ))}
         </div>
       </div>
 
@@ -163,19 +153,17 @@ export function TicketPurchaseForm({
             px-6 py-2 rounded-lg font-medium transition-all
             ${
               canPurchase
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-600 text-gray-400 cursor-not-allowed"
             }
           `}
         >
-          {isBuying ? 'Purchasing...' : 'Buy Ticket'}
+          {isBuying ? "Purchasing..." : "Buy Ticket"}
         </button>
       </div>
 
       {/* Error Display */}
-      {error && (
-        <div className="text-red-500 text-sm text-center">{error}</div>
-      )}
+      {error && <div className="text-red-500 text-sm text-center">{error}</div>}
 
       {/* Connection Warning */}
       {!isConnected && (
