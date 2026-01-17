@@ -127,40 +127,6 @@ export const CHAINS: Record<string, ChainConfig> = {
 
   // Testnets
   'sepolia': {
-    id: 'sepolia',
-    name: 'Sepolia',
-    type: 'evm',
-    chainId: 11155111,
-    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
-    nativeCurrency: {
-      name: 'Sepolia Ether',
-      symbol: 'ETH',
-      decimals: 18,
-    },
-    blockExplorer: 'https://sepolia.etherscan.io',
-    testnet: true,
-    aa: {
-      bundlerUrl: 'https://api.pimlico.io/v2/11155111/rpc',
-      entryPoint: '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789',
-    },
-  },
-
-  'holesky': {
-    id: 'holesky',
-    name: 'Holesky',
-    type: 'evm',
-    chainId: 17000,
-    rpcUrl: 'https://1rpc.io/holesky',
-    nativeCurrency: {
-      name: 'Holesky Ether',
-      symbol: 'ETH',
-      decimals: 18,
-    },
-    blockExplorer: 'https://holesky.etherscan.io',
-    testnet: true,
-  },
-
-  'base-sepolia': {
     id: 'base-sepolia',
     name: 'Base Sepolia',
     type: 'evm',
