@@ -5,6 +5,7 @@ import nsnNetworkVideo from "../../../../assets/videos/Nsn-Network-Section-rf29.
 import nsnNetworkVideoMobile from "../../../../assets/videos/Nsn-Network-Section-Mobile-rf27.mp4";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface NetworkHeroSectionProps {
   onVideoReady?: () => void;
@@ -136,17 +137,19 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
       {isVideoPlaying && (
         <div className="absolute hidden md:flex md:flex-col md:inset-x-auto md:right-[10%] md:bottom-[25%]  lg:right-[10%] xl:right-[17%] xl:bottom-[25%] z-20 text-end">
           <div>
-            <h3 className="font-medium text-nasun-white">End-to-End Protocol</h3>
-            <h5 className="text-nasun-white/70">for Coordinated Creation</h5>
-            <Button variant="defaultReverse" size="lg" asChild className="mt-5">
-              <Link
-                to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open Devnet & Wallet
-              </Link>
-            </Button>
+            <FadeInUp>
+              <h3 className="font-medium text-nasun-white">End-to-End Protocol</h3>
+              <h5 className="text-nasun-white/70">for Coordinated Creation</h5>
+              <Button variant="defaultReverse" size="lg" asChild className="mt-5">
+                <Link
+                  to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Devnet & Wallet
+                </Link>
+              </Button>
+            </FadeInUp>
           </div>
         </div>
       )}

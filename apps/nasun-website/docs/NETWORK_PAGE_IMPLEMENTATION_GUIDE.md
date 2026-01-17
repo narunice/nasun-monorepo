@@ -49,13 +49,10 @@ const YourPage = () => {
 
   const handleVideoReady = useCallback(async () => {
     setIsVideoReady(true);
-    
+
     // Preload critical sections
-    await Promise.all([
-      import("..."),
-      import("..."),
-    ]);
-    
+    await Promise.all([import("..."), import("...")]);
+
     setIsPageReady(true); // Show footer
   }, [setIsPageReady]);
 
@@ -68,7 +65,13 @@ const YourPage = () => {
   }, [isVideoReady]);
 
   return (
-    <ErrorBoundary fallback={<SectionLayout><p>Failed to load</p></SectionLayout>}>
+    <ErrorBoundary
+      fallback={
+        <SectionLayout>
+          <p>Failed to load</p>
+        </SectionLayout>
+      }
+    >
       <Suspense fallback={null}>
         {/* Remove preload="auto" from video tag in HeroSection for better performance */}
         <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
@@ -84,6 +87,7 @@ export default YourPage;
 ```
 
 **Key Principles**:
+
 - ✅ Lazy load all sections for performance
 - ✅ Use ErrorBoundary for graceful error handling
 - ✅ Manage page loading state with usePageLoading context
@@ -99,13 +103,15 @@ export default YourPage;
 **Purpose**: Wrapper for all page sections providing consistent spacing and max-width.
 
 **Default Behavior**:
+
 ```tsx
 <section className="w-full max-w-9xl h-full relative flex flex-col mx-auto items-center justify-center px-6 md:px-8 lg:px-10 xl:px-12 py-4 md:py-6 lg:py-8 xl:py-10">
 ```
 
 **Usage**:
+
 ```tsx
-import { SectionLayout } from "../../../components/layout/SectionLayout";
+import { SectionLayout } from "@/components/layout/SectionLayout";
 
 // Basic usage - inherits all defaults
 // Note: SectionLayout already provides px-6 md:px-8 lg:px-10 xl:px-12 padding,
@@ -128,6 +134,7 @@ import { SectionLayout } from "../../../components/layout/SectionLayout";
 ```
 
 **Standard Patterns**:
+
 - ✅ **Default**: `className=""` (empty, no background)
 - ✅ **Custom width**: `className="!max-w-6xl"` (use `!` to override)
 - ❌ **Avoid**: `className="bg-nasun-black"` (deprecated pattern)
@@ -141,6 +148,7 @@ import { SectionLayout } from "../../../components/layout/SectionLayout";
 **Purpose**: Standardized section headings with consistent sizing and colors.
 
 **Component Props**:
+
 ```tsx
 interface SectionTitleProps {
   children: React.ReactNode;
@@ -151,11 +159,13 @@ interface SectionTitleProps {
 ```
 
 **Default Styling**:
+
 - Color: `text-nasun-white/90` (90% opacity white)
 - Size: Defined by global CSS for h1-h6 tags
 - Font: Inherits from global typography
 
 **Usage Examples**:
+
 ```tsx
 import { SectionTitle } from "../../../ui/SectionTitle";
 
@@ -176,6 +186,7 @@ import { SectionTitle } from "../../../ui/SectionTitle";
 ```
 
 **Standard Spacing**:
+
 - ✅ **Recommended**: `mb-2 md:mb-3 lg:mb-4` (responsive bottom margin)
 - ✅ **With extra spacing**: `mb-2 md:mb-3 lg:mb-4 xl:mb-5`
 
@@ -186,6 +197,7 @@ import { SectionTitle } from "../../../ui/SectionTitle";
 **Purpose**: Semi-transparent container with border, backdrop blur, and shadow effects.
 
 **Component Props**:
+
 ```tsx
 interface OuterBoxProps {
   children: ReactNode;
@@ -195,12 +207,13 @@ interface OuterBoxProps {
 ```
 
 **Variant Styles**:
+
 ```tsx
 const variantStyles = {
   default: "border-nasun-c5/50 bg-nasun-c6/90",
   c1: "border-nasun-c1/50 bg-[#312107]/90",
   c2: "border-nasun-c2/50 bg-[#312d20]/90",
-  c3: "border-nasun-c3/50 bg-[#1d2d2a]/90",  // Teal/green theme
+  c3: "border-nasun-c3/50 bg-[#1d2d2a]/90", // Teal/green theme
   c4: "border-nasun-c4/50 bg-[#0d1b25]/90",
   c5: "border-nasun-c5/50 bg-[#081427]/90",
   c6: "border-nasun-c6/50 bg-nasun-c6/90",
@@ -211,16 +224,20 @@ const variantStyles = {
 **Default Padding**: `px-6 md:px-8 lg:px-10 xl:px-12 py-4 md:py-6 lg:py-8 xl:py-10`
 
 **Usage**:
+
 ```tsx
 import { OuterBox } from "../../../ui/OuterBox";
 
 <OuterBox variant="c3" className="">
-  <SectionTitle as="h2" className="...">Title</SectionTitle>
+  <SectionTitle as="h2" className="...">
+    Title
+  </SectionTitle>
   <p>Content...</p>
-</OuterBox>
+</OuterBox>;
 ```
 
 **When to Use**:
+
 - ✅ Hero sections with important content
 - ✅ Featured content boxes
 - ✅ Call-to-action sections
@@ -233,6 +250,7 @@ import { OuterBox } from "../../../ui/OuterBox";
 **Purpose**: Card-style box with optional title, divider line, and colored theme.
 
 **Component Props**:
+
 ```tsx
 interface DividerBoxProps {
   title?: string;
@@ -249,6 +267,7 @@ interface DividerBoxProps {
 ```
 
 **Color Themes**:
+
 ```tsx
 const colorStyles = {
   c1: { border: "border-nasun-c1", background: "bg-nasun-c1/10", text: "text-nasun-c1" },
@@ -259,6 +278,7 @@ const colorStyles = {
 ```
 
 **Usage Examples**:
+
 ```tsx
 import { DividerBox } from "../../../ui/DividerBox";
 
@@ -292,6 +312,7 @@ import { DividerBox } from "../../../ui/DividerBox";
 ```
 
 **When to Use**:
+
 - ✅ Feature cards with titles
 - ✅ Use case descriptions
 - ✅ Highlighted content sections
@@ -327,6 +348,7 @@ function SimpleTextSection() {
 ```
 
 **Key Features**:
+
 - Container: `max-w-4xl mx-auto` (no px-4 - SectionLayout provides padding)
 - Title: `uppercase mb-2 md:mb-3 lg:mb-4` (ALL CAPS)
 - Paragraph spacing: `space-y-4 md:space-y-6` (responsive)
@@ -377,6 +399,7 @@ function TextWithBulletListSection() {
 ```
 
 **Key Features**:
+
 - Main container: `max-w-4xl mx-auto` (no px-4 - SectionLayout provides padding)
 - Paragraph spacing: `space-y-4 md:space-y-6` (responsive)
 - Section gap: `mb-8 md:mb-10 lg:mb-12` (between intro and list)
@@ -400,7 +423,10 @@ function FeaturedBoxSection() {
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-10 xl:py-12">
           <OuterBox variant="c3" className="">
-            <SectionTitle as="h2" className="font-medium uppercase text-center mb-2 md:mb-3 lg:mb-4 xl:mb-5">
+            <SectionTitle
+              as="h2"
+              className="font-medium uppercase text-center mb-2 md:mb-3 lg:mb-4 xl:mb-5"
+            >
               {t("title")}
             </SectionTitle>
 
@@ -417,7 +443,9 @@ function FeaturedBoxSection() {
             </DividerBox>
 
             <div className="pt-6 md:pt-8 text-center">
-              <Button variant="c3" size="xl">{t("buttonText")}</Button>
+              <Button variant="c3" size="xl">
+                {t("buttonText")}
+              </Button>
             </div>
           </OuterBox>
         </div>
@@ -428,6 +456,7 @@ function FeaturedBoxSection() {
 ```
 
 **Key Features**:
+
 - Nested responsive containers for centering
 - OuterBox for semi-transparent background
 - DividerBox for featured content within
@@ -446,7 +475,10 @@ function GridLayoutSection() {
 
   return (
     <SectionLayout className="!max-w-6xl">
-      <SectionTitle as="h2" className="font-medium uppercase text-center my-2 md:my-3 lg:my-4 xl:my-5">
+      <SectionTitle
+        as="h2"
+        className="font-medium uppercase text-center my-2 md:my-3 lg:my-4 xl:my-5"
+      >
         {t("heading")}
       </SectionTitle>
 
@@ -461,13 +493,16 @@ function GridLayoutSection() {
       {/* 2x2 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-7 lg:gap-8">
         {items.map((item) => (
-          <div key={item.key} className="border border-nasun-c3/50 rounded-2xl bg-[#1d2d2a] backdrop-blur-md p-6 md:p-8 transition-all hover:border-nasun-c3 hover:bg-black/60 min-h-[140px] md:min-h-[160px]">
+          <div
+            key={item.key}
+            className="border border-nasun-c3/50 rounded-2xl bg-[#1d2d2a] backdrop-blur-md p-6 md:p-8 transition-all hover:border-nasun-c3 hover:bg-black/60 min-h-[140px] md:min-h-[160px]"
+          >
             <div className="flex items-center gap-6 h-full">
               {/* Icon */}
               <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-xl bg-nasun-c2/20 border-3 border-nasun-c3 flex items-center justify-center">
                 <img src={item.icon} alt={t(item.titleKey)} className="w-8 h-8 md:w-10 md:h-10" />
               </div>
-              
+
               {/* Text */}
               <div className="flex-1">
                 <h4 className="font-semibold text-nasun-c3 mb-2">{t(item.titleKey)}</h4>
@@ -483,6 +518,7 @@ function GridLayoutSection() {
 ```
 
 **Key Features**:
+
 - Responsive grid: `grid-cols-1 md:grid-cols-2`
 - Responsive gaps: `gap-6 md:gap-7 lg:gap-8`
 - Card styling: border + background + hover effects
@@ -503,11 +539,11 @@ function SplitLayoutSection() {
     <SectionLayout className="">
       <div className="max-w-7xl mx-auto pr-12">
         <div className="grid lg:grid-cols-[410px_1fr] xl:grid-cols-[430px_1fr] gap-x-8 py-10 lg:py-12 xl:py-14">
-          
           {/* Left: Title Section */}
           <div className="flex flex-col items-center lg:items-end text-center lg:text-right">
             <h1 className="font-semibold max-w-[410px] md:max-w-lg lg:max-w-none leading-[1.1]">
-              NSN Token<br />
+              NSN Token
+              <br />
               Four Main <br />
               Use Cases
             </h1>
@@ -539,6 +575,7 @@ function SplitLayoutSection() {
 ```
 
 **Key Features**:
+
 - Two-column grid: `lg:grid-cols-[410px_1fr]` (fixed left, flexible right)
 - Right-aligned title on desktop
 - Stacked cards on mobile, grid on large screens
@@ -581,6 +618,7 @@ function ListParagraphSection() {
 ```
 
 **Key Features**:
+
 - Flex layout: `flex gap-4` (표시선과 콘텐츠 분리)
 - Left line: `w-0.5 bg-nasun-c1 flex-shrink-0 my-1` (2px width, margin으로 높이 조절)
 - Line height adjustment: `my-1` on line element (텍스트 줄간격 유지하면서 표시선만 축소)
@@ -589,6 +627,7 @@ function ListParagraphSection() {
 - Description: Default paragraph styling
 
 **목록문단 Line Styles**:
+
 ```tsx
 // ✅ CORRECT (flex + my-1로 표시선 높이만 조절)
 <div className="flex gap-4">
@@ -601,6 +640,7 @@ function ListParagraphSection() {
 ```
 
 **When to Use**:
+
 - ✅ Lists with title + description pairs
 - ✅ Feature highlights
 - ✅ Step-by-step items with explanations
@@ -624,14 +664,13 @@ max-w-2xl   // Deprecated (avoid)
 ```
 
 **Standard Pattern**:
+
 ```tsx
 <SectionLayout className="">
   <div className="max-w-4xl mx-auto">
     {/* Main content */}
 
-    <div className="max-w-3xl mx-auto">
-      {/* Narrower list content */}
-    </div>
+    <div className="max-w-3xl mx-auto">{/* Narrower list content */}</div>
   </div>
 </SectionLayout>
 ```
@@ -679,6 +718,7 @@ max-w-2xl   // Deprecated (avoid)
 ```
 
 **Color Hierarchy**:
+
 - Default: Inherits from parent (usually white/90)
 - Subtle: `text-nasun-white/80` (80% opacity)
 - Accent: `text-nasun-c1`, `text-nasun-c3`, `text-nasun-c4` (colored)
@@ -693,23 +733,42 @@ Defined in global CSS (`index.css`):
 
 ```css
 /* Desktop (default) */
-h1 { font-size: 3.5rem; }    /* 56px */
-h2 { font-size: 2.5rem; }    /* 40px */
-h3 { font-size: 1.875rem; }  /* 30px */
-h4 { font-size: 1.5rem; }    /* 24px */
-h5 { font-size: 1.25rem; }   /* 20px */
-h6 { font-size: 1rem; }      /* 16px */
+h1 {
+  font-size: 3.5rem;
+} /* 56px */
+h2 {
+  font-size: 2.5rem;
+} /* 40px */
+h3 {
+  font-size: 1.875rem;
+} /* 30px */
+h4 {
+  font-size: 1.5rem;
+} /* 24px */
+h5 {
+  font-size: 1.25rem;
+} /* 20px */
+h6 {
+  font-size: 1rem;
+} /* 16px */
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  h1 { font-size: 2.5rem; }  /* 40px */
-  h2 { font-size: 2rem; }    /* 32px */
-  h3 { font-size: 1.5rem; }  /* 24px */
+  h1 {
+    font-size: 2.5rem;
+  } /* 40px */
+  h2 {
+    font-size: 2rem;
+  } /* 32px */
+  h3 {
+    font-size: 1.5rem;
+  } /* 24px */
   /* ... */
 }
 ```
 
 **Usage**:
+
 ```tsx
 // Use SectionTitle for consistent styling
 <SectionTitle as="h2">Title</SectionTitle>  // 40px desktop, 32px mobile
@@ -725,13 +784,14 @@ h6 { font-size: 1rem; }      /* 16px */
 
 ```tsx
 // Standard weights
-font-normal    // 400 (default for body text)
-font-medium    // 500 (titles, emphasis)
-font-semibold  // 600 (strong emphasis)
-font-bold      // 700 (rare, special cases)
+font - normal; // 400 (default for body text)
+font - medium; // 500 (titles, emphasis)
+font - semibold; // 600 (strong emphasis)
+font - bold; // 700 (rare, special cases)
 ```
 
 **Usage Patterns**:
+
 ```tsx
 <SectionTitle as="h2" className="font-medium">  // Titles
 <h4 className="font-semibold">                   // Subtitles
@@ -749,6 +809,7 @@ normal-case    // Normal (default)
 ```
 
 **Usage**:
+
 ```tsx
 // Centered h2 title (featured sections)
 <SectionTitle as="h2" className="font-medium uppercase text-center mb-2 md:mb-3 lg:mb-4">
@@ -821,24 +882,26 @@ space-y-1 md:space-y-2 lg:space-y-3
 
 ```tsx
 // Primary colors (from tailwind.config.js)
-nasun-c1  // #F5A623 (Orange/Gold)
-nasun-c2  // #E8D21D (Yellow)
-nasun-c3  // #B8E6D5 (Teal/Mint)
-nasun-c4  // #4A9EFF (Blue)
-nasun-c5  // #6C5CE7 (Purple)
-nasun-c6  // #0A1628 (Dark Navy)
-nasun-scarlet  // #FF0000 (Red)
+nasun - c1; // #F5A623 (Orange/Gold)
+nasun - c2; // #E8D21D (Yellow)
+nasun - c3; // #B8E6D5 (Teal/Mint)
+nasun - c4; // #4A9EFF (Blue)
+nasun - c5; // #6C5CE7 (Purple)
+nasun - c6; // #0A1628 (Dark Navy)
+nasun - scarlet; // #FF0000 (Red)
 ```
 
 ### Color Application
 
 **Borders**:
+
 ```tsx
-border-nasun-c3/50   // 50% opacity border
-border-nasun-c1      // Solid border
+border - nasun - c3 / 50; // 50% opacity border
+border - nasun - c1; // Solid border
 ```
 
 **Backgrounds**:
+
 ```tsx
 bg-nasun-c3/10       // 10% opacity background (subtle)
 bg-nasun-c6/90       // 90% opacity background (semi-transparent)
@@ -846,16 +909,18 @@ bg-[#1d2d2a]         // Custom hex (when needed)
 ```
 
 **Text**:
+
 ```tsx
-text-nasun-white/90  // Default white (90% opacity)
-text-nasun-white/80  // Subtle white (80% opacity)
-text-nasun-c1        // Accent color (solid)
-text-nasun-c3/90     // Accent color (90% opacity)
+text - nasun - white / 90; // Default white (90% opacity)
+text - nasun - white / 80; // Subtle white (80% opacity)
+text - nasun - c1; // Accent color (solid)
+text - nasun - c3 / 90; // Accent color (90% opacity)
 ```
 
 ### Color Combinations
 
 **Teal Theme (c3)**:
+
 ```tsx
 border-nasun-c3/50 bg-[#1d2d2a]/90  // OuterBox
 border-nasun-c3 bg-nasun-c3/10      // DividerBox
@@ -863,6 +928,7 @@ text-nasun-c3                        // Title text
 ```
 
 **Blue Theme (c4)**:
+
 ```tsx
 border-nasun-c4/50 bg-[#0d1b25]/90  // OuterBox
 border-nasun-c4 bg-nasun-c4/10      // DividerBox
@@ -874,6 +940,7 @@ text-nasun-c4                        // Title text
 ## Implementation Checklist
 
 ### Page Setup
+
 - [ ] Create page component with lazy loading
 - [ ] Add ErrorBoundary wrapper
 - [ ] Implement usePageLoading hook
@@ -881,6 +948,7 @@ text-nasun-c4                        // Title text
 - [ ] Configure scroll prevention during load
 
 ### Section Structure
+
 - [ ] Use `SectionLayout` as wrapper
 - [ ] Set `className=""` (empty background)
 - [ ] Add `max-w-4xl mx-auto` container (no px-4 - SectionLayout provides padding)
@@ -888,6 +956,7 @@ text-nasun-c4                        // Title text
 - [ ] Apply responsive spacing: `mb-2 md:mb-3 lg:mb-4`
 
 ### Content Styling
+
 - [ ] Use `space-y-4 md:space-y-6` for paragraphs (responsive)
 - [ ] Use `space-y-1 md:space-y-2 lg:space-y-3` for lists
 - [ ] Implement bullets using Unicode: `<span className="text-nasun-c1 mr-4">●</span>`
@@ -895,6 +964,7 @@ text-nasun-c4                        // Title text
 - [ ] **Use `max-w-3xl mx-auto` for list containers** (들여쓰기 효과)
 
 ### Special Components
+
 - [ ] Use `OuterBox` for featured sections
 - [ ] Use `DividerBox` for card layouts
 - [ ] Apply appropriate color variants
@@ -902,6 +972,7 @@ text-nasun-c4                        // Title text
 - [ ] Implement responsive grid layouts
 
 ### Typography
+
 - [ ] Use `SectionTitle` component for headings
 - [ ] Apply `font-medium` for centered h2 titles
 - [ ] Apply `font-semibold` for subtitles (h4)
@@ -909,12 +980,14 @@ text-nasun-c4                        // Title text
 - [ ] Let body text inherit defaults
 
 ### Spacing
+
 - [ ] Apply responsive margins: `mb-2 md:mb-3 lg:mb-4`
 - [ ] Use section spacing: `mb-8 md:mb-10 lg:mb-12`
 - [ ] Apply responsive padding to containers
 - [ ] Use consistent gap values in grids
 
 ### Colors
+
 - [ ] Choose appropriate color theme (c1-c6)
 - [ ] Apply 50% opacity to borders
 - [ ] Apply 10% opacity to backgrounds
@@ -926,10 +999,13 @@ text-nasun-c4                        // Title text
 ## Common Patterns Summary
 
 ### Simple Text Section
+
 ```tsx
 <SectionLayout className="">
   <div className="max-w-4xl mx-auto">
-    <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">{t("title")}</SectionTitle>
+    <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+      {t("title")}
+    </SectionTitle>
     <div className="space-y-4 md:space-y-6">
       <p>{t("text")}</p>
     </div>
@@ -938,10 +1014,13 @@ text-nasun-c4                        // Title text
 ```
 
 ### Bullet List Section
+
 ```tsx
 <SectionLayout className="">
   <div className="max-w-4xl mx-auto">
-    <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">{t("title")}</SectionTitle>
+    <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+      {t("title")}
+    </SectionTitle>
 
     {/* Intro paragraphs */}
     <div className="space-y-4 md:space-y-6 mb-8 md:mb-10 lg:mb-12">
@@ -965,13 +1044,14 @@ text-nasun-c4                        // Title text
 ```
 
 ### Grid Card Section
+
 ```tsx
 <SectionLayout className="!max-w-6xl">
   <SectionTitle as="h2" className="font-medium uppercase text-center my-2 md:my-3 lg:my-4 xl:my-5">
     {t("title")}
   </SectionTitle>
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-7 lg:gap-8">
-    {items.map(item => (
+    {items.map((item) => (
       <DividerBox key={item.key} color="c4" title={t(item.title)} className="min-h-[160px]">
         <p>{t(item.description)}</p>
       </DividerBox>
@@ -981,10 +1061,13 @@ text-nasun-c4                        // Title text
 ```
 
 ### 목록문단 (List Paragraph Section)
+
 ```tsx
 <SectionLayout className="">
   <div className="max-w-4xl mx-auto">
-    <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">{t("title")}</SectionTitle>
+    <SectionTitle as="h3" className="uppercase mb-2 md:mb-3 lg:mb-4">
+      {t("title")}
+    </SectionTitle>
     <div className="space-y-4 md:space-y-6">
       {items.map((item, i) => (
         <div key={i} className="flex gap-4">
@@ -1005,9 +1088,11 @@ text-nasun-c4                        // Title text
 ## Reference Files
 
 **Page Component**:
+
 - `frontend/src/pages/vision/NetworkPage.tsx`
 
 **Section Components**:
+
 - `frontend/src/components/app/vision/network/NewNasunNetworkSection.tsx`
 - `frontend/src/components/app/vision/network/NewNasunTokenSection.tsx`
 - `frontend/src/components/app/vision/network/NewMoveTogetherSection.tsx`
@@ -1018,6 +1103,7 @@ text-nasun-c4                        // Title text
 - `frontend/src/components/app/vision/network/InflationSection.tsx`
 
 **UI Components**:
+
 - `frontend/src/components/layout/SectionLayout.tsx`
 - `frontend/src/components/ui/SectionTitle.tsx`
 - `frontend/src/components/ui/OuterBox.tsx`

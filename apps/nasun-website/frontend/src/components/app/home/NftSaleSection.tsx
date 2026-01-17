@@ -117,7 +117,7 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
             </SectionTitle>
 
             {/* Join Us 버튼 */}
-            <div className="w-full flex justify-center pt-4 lg:pt-6">
+            <div className="w-full flex justify-center pt-2 md:pt-3 lg:pt-4">
               <Button asChild size="xl" variant="defaultReverse" className="">
                 <Link to="/genesis-nft">{t("nftSale.moreInfo")}</Link>
               </Button>
