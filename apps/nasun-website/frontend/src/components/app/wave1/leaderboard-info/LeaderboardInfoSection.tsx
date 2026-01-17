@@ -200,7 +200,7 @@ const LeaderboardInfoSection: React.FC = () => {
         </DividerBox>
 
         <DividerBox
-          color="c7"
+          color="c5"
           title={t("info.rulesGuidelines.title")}
           titleClassName="text-nasun-scarlet"
         >

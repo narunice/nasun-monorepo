@@ -7,6 +7,7 @@ import { Button } from "@/components/ui";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface PadoHeroSectionProps {
   onVideoReady?: () => void;
@@ -131,20 +132,22 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
             px-4
             pointer-events-auto"
           >
-            <h2 className="">{t("hero.tagline")}</h2>
-            <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
-              {t("hero.subTagline")}
-            </h4>
-            <Button variant="c1" size="lg" asChild className="mt-5">
-              <Link
-                to={import.meta.env.VITE_PADO_ALPHA_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t("hero.button")}
-                <ExternalLink className="w-4 h-4 ml-2" />
-              </Link>
-            </Button>
+            <FadeInUp>
+              <h2 className="">{t("hero.tagline")}</h2>
+              <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
+                {t("hero.subTagline")}
+              </h4>
+              <Button variant="c1" size="lg" asChild className="mt-6">
+                <Link
+                  to={import.meta.env.VITE_PADO_ALPHA_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("hero.button")}
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </Link>
+              </Button>
+            </FadeInUp>
           </div>
         </div>
       )}

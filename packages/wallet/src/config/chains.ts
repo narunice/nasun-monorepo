@@ -44,6 +44,10 @@ export interface ChainConfig {
   aa?: AAConfig;
   /** Whether this is a testnet */
   testnet?: boolean;
+  /** Whether this is a devnet */
+  devnet?: boolean;
+  /** Whether this chain is disabled (coming soon) */
+  disabled?: boolean;
   /** Chain icon URL */
   iconUrl?: string;
 }
@@ -56,6 +60,35 @@ export interface ChainConfig {
  */
 export const CHAINS: Record<string, ChainConfig> = {
   // Move-based chains
+  'nasun-mainnet': {
+    id: 'nasun-mainnet',
+    name: 'Nasun Mainnet',
+    type: 'move',
+    rpcUrl: 'https://rpc.mainnet.nasun.io', // Placeholder
+    nativeCurrency: {
+      name: 'Nasun',
+      symbol: 'NSN',
+      decimals: 9,
+    },
+    blockExplorer: 'https://explorer.nasun.io',
+    disabled: true,
+  },
+
+  'nasun-testnet': {
+    id: 'nasun-testnet',
+    name: 'Nasun Testnet',
+    type: 'move',
+    rpcUrl: 'https://rpc.testnet.nasun.io', // Placeholder
+    nativeCurrency: {
+      name: 'Nasun',
+      symbol: 'NSN',
+      decimals: 9,
+    },
+    blockExplorer: 'https://explorer.testnet.nasun.io',
+    testnet: true,
+    disabled: true,
+  },
+
   'nasun-devnet': {
     id: 'nasun-devnet',
     name: 'Nasun Devnet',
@@ -68,6 +101,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     },
     blockExplorer: 'https://explorer.devnet.nasun.io',
     testnet: true,
+    devnet: true,
   },
 
   // EVM chains
@@ -127,20 +161,20 @@ export const CHAINS: Record<string, ChainConfig> = {
 
   // Testnets
   'sepolia': {
-    id: 'base-sepolia',
-    name: 'Base Sepolia',
+    id: 'sepolia',
+    name: 'Sepolia',
     type: 'evm',
-    chainId: 84532,
-    rpcUrl: 'https://sepolia.base.org',
+    chainId: 11155111,
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     nativeCurrency: {
-      name: 'Ether',
+      name: 'Sepolia Ether',
       symbol: 'ETH',
       decimals: 18,
     },
-    blockExplorer: 'https://sepolia.basescan.org',
+    blockExplorer: 'https://sepolia.etherscan.io',
     testnet: true,
     aa: {
-      bundlerUrl: 'https://api.pimlico.io/v2/84532/rpc',
+      bundlerUrl: 'https://api.pimlico.io/v2/11155111/rpc',
       entryPoint: '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789',
     },
   },

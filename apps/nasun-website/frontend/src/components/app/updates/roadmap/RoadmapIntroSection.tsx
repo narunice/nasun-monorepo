@@ -109,15 +109,15 @@ export const RoadmapIntroSection = () => {
     }
   }, []);
 
-  // 2023년 시작점 기준 현재까지의 년수 계산
+  // 2024년 시작점 기준 현재까지의 년수 계산
   const yearsBuilding = useMemo(() => {
-    const startYear = 2023;
+    const startYear = 2024;
     const currentYear = new Date().getFullYear();
     return currentYear - startYear + 1;
   }, []);
 
-  // Twitter 팔로워 수 (실제 값만 표시, 없으면 0)
-  const communityCount = followerCount ?? 0;
+  // Twitter 팔로워 수 (실제 값만 표시, 없으면 1000)
+  const communityCount = followerCount ?? 1000;
 
   const metrics = [
     {
@@ -130,15 +130,15 @@ export const RoadmapIntroSection = () => {
     {
       value: `${yearsBuilding}`,
       label: t("metrics.years"),
-      color: "bg-nasun-c4/20",
-      icon: <Calendar className="w-6 h-6 text-nasun-c4" />,
+      color: "bg-nasun-c3/20",
+      icon: <Calendar className="w-6 h-6 text-nasun-c3" />,
       delay: 0.1,
     },
     {
       value: `${communityCount}+`,
       label: t("metrics.community"),
-      color: "bg-nasun-c4/20",
-      icon: <Users className="w-6 h-6 text-nasun-c4" />,
+      color: "bg-nasun-c1/20",
+      icon: <Users className="w-6 h-6 text-nasun-c1" />,
       delay: 0.2,
     },
   ];
@@ -149,7 +149,7 @@ export const RoadmapIntroSection = () => {
         {t("title")}
       </PageTitle>
 
-      <OuterBox color="n1" className="">
+      <OuterBox color="c5" className="">
         {/* Heading */}
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("intro.heading")}</h4>

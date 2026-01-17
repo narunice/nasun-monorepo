@@ -75,7 +75,8 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
 }) => {
   const navigate = useNavigate();
   const { reset: resetBattalionStore } = useBattalionNftStore();
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
+  const [isGenesisWithdrawing, setIsGenesisWithdrawing] = useState(false);
 
   // Battalion NFT Status
   const {
@@ -124,14 +125,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
    * Battalion NFT Withdraw Handler (no signature required)
    */
   const handleBattalionWithdraw = async () => {
-    if (!walletAddress || isWithdrawing) return;
+    if (!walletAddress || isBattalionWithdrawing) return;
 
     if (!confirm("Are you sure you want to withdraw from Battalion NFT Allowlist?")) {
       return;
     }
 
     try {
-      setIsWithdrawing(true);
+      setIsBattalionWithdrawing(true);
       await withdrawUserApi({
         walletAddress: walletAddress.toLowerCase(),
         signature: "",
@@ -145,7 +146,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
       console.error("[CompactNftStatus] Battalion withdraw error:", err);
       alert("Failed to withdraw. Please try again.");
     } finally {
-      setIsWithdrawing(false);
+      setIsBattalionWithdrawing(false);
     }
   };
 
@@ -153,14 +154,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
    * Genesis NFT Withdraw Handler (no signature required)
    */
   const handleGenesisWithdraw = async () => {
-    if (!walletAddress || isWithdrawing) return;
+    if (!walletAddress || isGenesisWithdrawing) return;
 
     if (!confirm("Are you sure you want to withdraw from Genesis NFT Whitelist?")) {
       return;
     }
 
     try {
-      setIsWithdrawing(true);
+      setIsGenesisWithdrawing(true);
       await withdrawWhitelist(
         walletAddress.toLowerCase(),
         "",
@@ -173,7 +174,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
       console.error("[CompactNftStatus] Founders withdraw error:", err);
       alert("Failed to withdraw. Please try again.");
     } finally {
-      setIsWithdrawing(false);
+      setIsGenesisWithdrawing(false);
     }
   };
 
@@ -195,14 +196,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
         <NftStatusItem
           title="Battalion NFT Allowlist"
           isRegistered={isBattalionRegistered}
-          isLoading={isBattalionLoading || isWithdrawing}
+          isLoading={isBattalionLoading || isBattalionWithdrawing}
           onJoin={() => navigate("/wave1/battalion-nft")}
           onWithdraw={handleBattalionWithdraw}
         />
         <NftStatusItem
           title="Genesis NFT Whitelist"
           isRegistered={isFoundersRegistered}
-          isLoading={isFoundersLoading || isWithdrawing}
+          isLoading={isFoundersLoading || isGenesisWithdrawing}
           onWithdraw={handleGenesisWithdraw}
           renderJoinButton={
             <JoinWhitelistButton
