@@ -1729,7 +1729,7 @@ export function WalletConnect({
       {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
       {showDropdown && !isMobile && (
         <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute w-[320px] sm:w-[380px] md:w-[420px] lg:w-[480px] overflow-hidden ${
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute w-[320px] sm:w-[380px] md:w-[420px] overflow-hidden ${
             dropdownAlign === "left"
               ? "left-0"
               : dropdownAlign === "center"

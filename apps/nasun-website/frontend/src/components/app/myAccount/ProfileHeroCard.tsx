@@ -13,8 +13,6 @@ import { useUserStore } from "../../../store/userStore";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useDelegation } from "@/features/governance/hooks/useDelegation";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
-import { useUserRankHistory } from "@/features/leaderboard/hooks/useUserRankHistory";
-import { CumulativePeriod, DateRangeOption } from "@/features/leaderboard/types/leaderboard";
 import { DashboardCard } from "../../ui/DashboardCard";
 import { Button } from "../../ui/button";
 import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
@@ -58,6 +56,38 @@ const AccountIcons: Record<string, React.ReactNode> = {
   metamask: <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-4 h-4" />,
   nasun: <img src="/nasun_symbol_white.svg" alt="Nasun Wallet" className="w-4 h-4" />,
 };
+
+// Helper to get login method identifier for display
+interface LoginIdentifier {
+  label: string;
+  value: string;
+}
+
+function getLoginIdentifier(user: {
+  provider?: string;
+  email?: string;
+  twitterHandle?: string;
+  walletAddress?: string;
+} | null): LoginIdentifier | null {
+  if (!user) return null;
+
+  switch (user.provider) {
+    case 'Google':
+      return user.email
+        ? { label: 'Google', value: user.email }
+        : null;
+    case 'Twitter':
+      return user.twitterHandle
+        ? { label: 'X', value: `@${user.twitterHandle}` }
+        : null;
+    case 'MetaMask':
+      return user.walletAddress
+        ? { label: 'Wallet', value: `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}` }
+        : null;
+    default:
+      return null;
+  }
+}
 
 // Unified Account Item Component
 interface AccountItemProps {
@@ -124,15 +154,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const { votingPower, nftVerification } = useVotingPower();
   const { delegationState } = useDelegation();
   const { stats } = useVoteHistory(1);
-
-  // Rank History
-  const twitterHandle = user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle;
-  const { data: rankHistory } = useUserRankHistory({
-    username: twitterHandle || "",
-    period: CumulativePeriod.CUMULATIVE,
-    days: DateRangeOption.DAYS_7,
-    enabled: !!twitterHandle,
-  });
 
   // MetaMask Connection Logic
   const { handleConnect: handleLinkMetaMask, isConnecting: isMetaMaskLinking } =
@@ -348,9 +369,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">{displayName}</h2>
-              <p className="text-nasun-white/60 text-sm">
-                Rank <span className="text-nasun-c4 font-bold">{rankHistory?.history[0]?.rank ? `#${rankHistory.history[0].rank}` : "-"}</span>
-              </p>
+              {(() => {
+                const loginId = getLoginIdentifier(user);
+                return loginId ? (
+                  <p className="text-nasun-white/60 text-sm">
+                    <span className="text-nasun-c4 font-medium">{loginId.value}</span>
+                  </p>
+                ) : null;
+              })()}
             </div>
           </div>
 
