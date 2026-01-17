@@ -121,17 +121,17 @@ const TEST_CHAIN: ChainConfig = {
 
 // Chain without AA support
 const NON_AA_CHAIN: ChainConfig = {
-  id: 'holesky',
-  name: 'Holesky',
+  id: 'ethereum',
+  name: 'Ethereum',
   type: 'evm',
-  chainId: 17000,
-  rpcUrl: 'https://ethereum-holesky-rpc.publicnode.com',
+  chainId: 1,
+  rpcUrl: 'https://eth.llamarpc.com',
   nativeCurrency: {
-    name: 'Holesky Ether',
+    name: 'Ether',
     symbol: 'ETH',
     decimals: 18,
   },
-  testnet: true,
+  testnet: false,
 };
 
 // Mock EVMSigner
@@ -269,7 +269,7 @@ describe('Bundler Client', () => {
 
   it('should throw error for chain without AA support', () => {
     expect(() => getBundlerClient(NON_AA_CHAIN)).toThrow(
-      'Chain holesky does not support Account Abstraction'
+      'Chain ethereum does not support Account Abstraction'
     );
   });
 });
@@ -286,7 +286,7 @@ describe('Paymaster Client', () => {
 
   it('should throw error for chain without AA support', () => {
     expect(() => getPaymasterClient(NON_AA_CHAIN, 'test-api-key')).toThrow(
-      'Chain holesky does not support Account Abstraction'
+      'Chain ethereum does not support Account Abstraction'
     );
   });
 });
@@ -318,7 +318,7 @@ describe('Smart Account Factory', () => {
     const signer = createMockEVMSigner();
 
     await expect(getSimpleSmartAccount(signer, NON_AA_CHAIN)).rejects.toThrow(
-      'Chain holesky does not support Account Abstraction'
+      'Chain ethereum does not support Account Abstraction'
     );
   });
 
@@ -487,7 +487,7 @@ describe('SmartAccountSigner', () => {
     } as any;
 
     expect(() => new SmartAccountSigner(mockSmartAccount, NON_AA_CHAIN)).toThrow(
-      'Chain holesky does not support Account Abstraction'
+      'Chain ethereum does not support Account Abstraction'
     );
   });
 
