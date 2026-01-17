@@ -1,8 +1,8 @@
-import { PageLayout } from "../../../components/layout/PageLayout";
+import { PageLayout } from "@/components/layout/PageLayout";
 import {
   RiderStudioImageHeroSection,
   RiderStudioHeroSection,
-} from "../../../components/app/ips/rider-studio";
+} from "@/components/app/ips/rider-studio";
 
 export default function RiderStudioMainPage() {
   return (

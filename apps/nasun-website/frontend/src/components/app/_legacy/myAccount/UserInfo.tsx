@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
-import { SectionLayout } from "../../../components/layout/SectionLayout";
+import { SectionLayout } from "@/components/layout/SectionLayout";
 import { UserData, useUserStore } from "../../../store/userStore";
 import logger from "../../../lib/logger";
-import { InlineLoading } from "../../../components/ui";
-import { Button } from "../../../components/ui/button";
-import { Tag } from "../../../components/ui/tag";
+import { InlineLoading } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Tag } from "@/components/ui/tag";
 import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
 import { Table, TableBody, TableRow, TableCell } from "../../ui/table";
 import { useWallet, useZkLogin } from "@nasun/wallet";
@@ -198,17 +198,31 @@ const UserInfo = ({ user, isLoading, error }: UserInfoProps) => {
       alert(t(successKey) || `${provider} account unlinked successfully!`);
     } catch (err) {
       logger.error(`Failed to unlink ${provider} account:`, err);
-      setLinkError((err instanceof Error ? err.message : null) || t(errorKey) || `Failed to unlink ${provider} account`);
+      setLinkError(
+        (err instanceof Error ? err.message : null) ||
+          t(errorKey) ||
+          `Failed to unlink ${provider} account`
+      );
     } finally {
       setIsLinking(false);
     }
   };
 
   const handleUnlinkGoogle = () =>
-    handleUnlinkProvider("google", "userInfo.confirmUnlinkGoogle", "userInfo.unlinkGoogleSuccess", "userInfo.unlinkGoogleError");
+    handleUnlinkProvider(
+      "google",
+      "userInfo.confirmUnlinkGoogle",
+      "userInfo.unlinkGoogleSuccess",
+      "userInfo.unlinkGoogleError"
+    );
 
   const handleUnlinkTwitter = () =>
-    handleUnlinkProvider("twitter", "userInfo.confirmUnlinkTwitter", "userInfo.unlinkTwitterSuccess", "userInfo.unlinkTwitterError");
+    handleUnlinkProvider(
+      "twitter",
+      "userInfo.confirmUnlinkTwitter",
+      "userInfo.unlinkTwitterSuccess",
+      "userInfo.unlinkTwitterError"
+    );
 
   // Link MetaMask handler (now uses unified hook)
   const handleLinkMetaMask = async () => {
@@ -309,11 +323,7 @@ const UserInfo = ({ user, isLoading, error }: UserInfoProps) => {
           <TableRow variant="c3">
             <TableCell align="center" className="w-[30%]">
               <div className="flex items-center justify-center gap-2">
-                <img
-                  src="/nasun_symbol_white.svg"
-                  alt="Nasun Wallet"
-                  className="w-5 h-5"
-                />
+                <img src="/nasun_symbol_white.svg" alt="Nasun Wallet" className="w-5 h-5" />
                 <span>Nasun Wallet</span>
               </div>
             </TableCell>
