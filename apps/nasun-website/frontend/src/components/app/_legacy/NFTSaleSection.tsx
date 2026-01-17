@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect } from "react";
 import { NFTTiers } from "../../../types/genesisNFTs.d";
-import { NFTTierSection } from "../../../components/app/wave1/genesisNft/NFTTierSection";
+import { NFTTierSection } from "@/components/app/wave1/genesisNft/NFTTierSection";
 import { SectionLayout } from "../../layout/SectionLayout";
 import { useAllTiersSupplyCounts } from "../../../hooks/PayAndMintNFT/useAllTiersSupplyCounts";
 import { toast } from "react-toastify";

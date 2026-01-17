@@ -9,6 +9,7 @@ import { SectionLayout } from "../../layout/SectionLayout";
 import { SectionTitle } from "../../ui/SectionTitle";
 import { Button } from "../../ui/button";
 import usePosts, { WP_CATEGORIES } from "../../../hooks/wordpress/usePosts";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const CustomArrow = ({
   onClick,
@@ -94,99 +95,104 @@ function AwardsGrantsSection() {
           background: "linear-gradient(to bottom, #2F2D2C 40%, rgb(25, 22, 21) 100%)",
         }}
       />
+      <FadeInUp>
+        {/* 컨텐츠 */}
+        <div className="relative max-w-8xl mx-auto z-10 h-full">
+          {/* Title */}
+          <SectionTitle
+            as="h2"
+            color="white"
+            className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-6 sm:mt-18 xl:mt-20"
+          >
+            {t("awardsGrants.title")}
+          </SectionTitle>
 
-      {/* 컨텐츠 */}
-      <div className="relative max-w-8xl mx-auto z-10 h-full">
-        {/* Title */}
-        <SectionTitle
-          as="h2"
-          color="white"
-          className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-6 sm:mt-18 xl:mt-20"
-        >
-          {t("awardsGrants.title")}
-        </SectionTitle>
+          {/* Subtitle */}
+          <p className="!text-base md:!text-lg lg:!text-xl !font-medium text-nasun-white/80 uppercase tracking-wide mb-0 md:mb-1 lg:mb-2">
+            {t("awardsGrants.subtitle")}
+          </p>
 
-        {/* Subtitle */}
-        <p className="!text-base md:!text-lg lg:!text-xl !font-medium text-nasun-white/80 uppercase tracking-wide mb-0 md:mb-1 lg:mb-2">
-          {t("awardsGrants.subtitle")}
-        </p>
+          {/* Cards */}
+          {loading ? (
+            <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 ">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-80 bg-black animate-pulse rounded-lg-none " />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="w-full text-center py-12 space-y-4 mb-8">
+              <p className="text-orange-400">{error}</p>
+              <Button variant="default" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          ) : !Array.isArray(posts) || posts.length === 0 ? (
+            <div className="w-full text-center py-12 text-nasun-gray mb-8">
+              No awards posts available.
+            </div>
+          ) : (
+            <div className="w-full dark:[&_.slick-dots]:dots-dark px-0 md:px-10 lg:px-12">
+              <Slider {...sliderSettings}>
+                {posts.map((post) => {
+                  const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
 
-        {/* Cards */}
-        {loading ? (
-          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 ">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-80 bg-black animate-pulse rounded-lg-none " />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="w-full text-center py-12 space-y-4 mb-8">
-            <p className="text-orange-400">{error}</p>
-            <Button variant="default" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </div>
-        ) : !Array.isArray(posts) || posts.length === 0 ? (
-          <div className="w-full text-center py-12 text-nasun-gray mb-8">
-            No awards posts available.
-          </div>
-        ) : (
-          <div className="w-full dark:[&_.slick-dots]:dots-dark px-0 md:px-10 lg:px-12">
-            <Slider {...sliderSettings}>
-              {posts.map((post) => {
-                const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+                  return (
+                    <Link
+                      key={post.id}
+                      to={`/awards-grants/${post.slug}`}
+                      className="block py-4 px-4 md:px-6 lg:px-8 h-full mx-auto max-w-xl"
+                    >
+                      <div className="group h-[446px] flex flex-col bg-black/50 backdrop-blur-md rounded-2xl shadow-lg border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 pt-4 md:pt-5 lg:pt-6 overflow-hidden">
+                        {/* Image */}
+                        {imageUrl && (
+                          <div className="w-full px-4 md:px-5 lg:px-6 pb-2">
+                            <div className="w-full h-44 overflow-hidden rounded-2xl">
+                              <img
+                                src={imageUrl}
+                                alt="Featured"
+                                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                              />
+                            </div>
+                          </div>
+                        )}
 
-                return (
-                  <Link key={post.id} to={`/awards-grants/${post.slug}`} className="block py-4 px-4 md:px-6 lg:px-8 h-full mx-auto max-w-xl">
-                    <div className="group h-[446px] flex flex-col bg-black/50 backdrop-blur-md rounded-2xl shadow-lg border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 pt-4 md:pt-5 lg:pt-6 overflow-hidden">
-                      {/* Image */}
-                      {imageUrl && (
-                        <div className="w-full px-4 md:px-5 lg:px-6 pb-2">
-                          <div className="w-full h-44 overflow-hidden rounded-2xl">
-                            <img
-                              src={imageUrl}
-                              alt="Featured"
-                              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                            />
+                        {/* Content */}
+                        <div className="flex-grow flex flex-col p-4 md:p-5 lg:p-6 !pt-0">
+                          {/* Title */}
+                          <h4 className="line-clamp-2 !text-lg md:!text-xl lg:!text-2xl text-nasun-white mb-2 text-left group-hover:text-white transition-colors ">
+                            {stripHtml(post.title.rendered)}
+                          </h4>
+                          {/* Divider */}
+                          <hr className="border-nasun-white/50 mb-3" />
+                          {/* Date */}{" "}
+                          <div className="flex items-center justify-between">
+                            <p className=" !text-sm text-nasun-white/80">{formatDate(post.date)}</p>
+                          </div>
+                          {/* Excerpt */}
+                          <p className=" !text-base text-nasun-white/80 line-clamp-2 flex-grow my-1 text-left">
+                            {stripHtml(post.excerpt.rendered)}
+                          </p>
+                          {/* Read More */}
+                          <div className="flex justify-end pt-0 md:pt-2 mb-0 md:-mb-2">
+                            <span className="text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                              {t("awardsGrants.readMore")}
+                            </span>
                           </div>
                         </div>
-                      )}
-
-                      {/* Content */}
-                      <div className="flex-grow flex flex-col p-4 md:p-5 lg:p-6 !pt-0">
-                        {/* Title */}
-                        <h4 className="line-clamp-2 !text-lg md:!text-xl lg:!text-2xl text-nasun-white mb-2 text-left group-hover:text-white transition-colors ">
-                          {stripHtml(post.title.rendered)}
-                        </h4>
-                        {/* Divider */}
-                        <hr className="border-nasun-white/50 mb-3" />
-                        {/* Date */}{" "}
-                        <div className="flex items-center justify-between">
-                          <p className=" !text-sm text-nasun-white/80">{formatDate(post.date)}</p>
-                        </div>
-                        {/* Excerpt */}
-                        <p className=" !text-base text-nasun-white/80 line-clamp-2 flex-grow my-1 text-left">
-                          {stripHtml(post.excerpt.rendered)}
-                        </p>
-                        {/* Read More */}
-                        <div className="flex justify-end pt-0 md:pt-2 mb-0 md:-mb-2">
-                          <span className="text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
-                            {t("awardsGrants.readMore")}
-                          </span>
-                        </div>
                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </Slider>
-          </div>
-        )}
+                    </Link>
+                  );
+                })}
+              </Slider>
+            </div>
+          )}
 
-        {/* Bottom Description */}
-        <p className="!text-sm lg:!text-base text-nasun-white max-w-2xl mx-auto mt-6 mb-6 md:mb-8 lg:mb-10 text-center">
-          {t("awardsGrants.footer")}
-        </p>
-      </div>
+          {/* Bottom Description */}
+          <p className="!text-sm lg:!text-base text-nasun-white max-w-2xl mx-auto mt-6 mb-6 md:mb-8 lg:mb-10 text-center">
+            {t("awardsGrants.footer")}
+          </p>
+        </div>
+      </FadeInUp>
     </SectionLayout>
   );
 }

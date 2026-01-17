@@ -61,32 +61,32 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-scarlet",
   },
   c1: {
-    border: "border-nasun-c1/50 hover:border-nasun-c1/40 transition-colors",
+    border: "border-nasun-c1/50 hover:border-nasun-c1/80 transition-colors",
     background: "bg-[#312107]/40 hover:bg-nasun-c1/5 transition-colors",
     text: "text-nasun-c1",
   },
   c2: {
-    border: "border-nasun-c2/50 hover:border-nasun-c2/40 transition-colors",
+    border: "border-nasun-c2/50 hover:border-nasun-c2/80 transition-colors",
     background: "bg-[#312d20]/40 hover:bg-nasun-c2/5 transition-colors",
     text: "text-nasun-c2",
   },
   c3: {
-    border: "border-nasun-c3/50 hover:border-nasun-c3/40 transition-colors",
+    border: "border-nasun-c3/50 hover:border-nasun-c3/80 transition-colors",
     background: "bg-[#1d2d2a]/40 hover:bg-nasun-c3/5 transition-colors",
     text: "text-nasun-c3",
   },
   c4: {
-    border: "border-nasun-c4/50 hover:border-nasun-c4/40 transition-colors",
+    border: "border-nasun-c4/50 hover:border-nasun-c4/80 transition-colors",
     background: "bg-[#0d1b25]/40 hover:bg-nasun-c4/5 transition-colors",
     text: "text-nasun-c4",
   },
   c5: {
-    border: "border-nasun-c5/50 hover:border-nasun-c5/40 transition-colors",
+    border: "border-nasun-c5/50 hover:border-nasun-c5/80 transition-colors",
     background: "bg-[#081427]/40 hover:bg-nasun-c5/5 transition-colors",
     text: "text-nasun-c5",
   },
   c6: {
-    border: "border-nasun-c6/50 hover:border-nasun-c6/40 transition-colors",
+    border: "border-nasun-c6/50 hover:border-nasun-c6/80 transition-colors",
     background: "bg-nasun-c6/90",
     text: "text-nasun-c5",
   },
@@ -116,22 +116,22 @@ const colorStyles: Record<NasunColor, { border: string; background: string; text
     text: "text-nasun-white",
   },
   n2: {
-    border: "border-nasun-white/10",
+    border: "border-nasun-white/10 hover:border-nasun-white/20 transition-colors",
     background: "bg-gray-800",
     text: "text-nasun-white",
   },
   n3: {
-    border: "border-nasun-c5/40",
+    border: "border-nasun-c5/40 hover:border-nasun-c5/80 transition-colors",
     background: "bg-gray-800/30",
     text: "text-nasun-white",
   },
   n4: {
-    border: "border-nasun-c4/50",
+    border: "border-nasun-c4/50 hover:border-nasun-c4/80 transition-colors",
     background: "bg-nasun-c4/10 ",
     text: "text-nasun-white",
   },
   n5: {
-    border: "border-nasun-c3/40",
+    border: "border-nasun-c3/40 hover:border-nasun-c3/80 transition-colors",
     background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  ",
     text: "text-nasun-white",
   },
@@ -202,9 +202,7 @@ export const DividerBox = ({
 
       {/* Description (옵셔널) */}
       {description && (
-        <p
-          className={`text-center md:text-left text-nasun-white/85 mb-3 md:mb-4 lg:mb-5 ${descriptionClassName}`}
-        >
+        <p className={`text-center md:text-left text-nasun-white/85  ${descriptionClassName}`}>
           {description}
         </p>
       )}
