@@ -2,13 +2,14 @@
 name = "governance"
 edition = "2024.beta"
 version = "0.0.4"
-published-at = "0xf6d2c99985eec548a604d7d49491b36a76fd02d7ac37e3cab11b8609797186fc"
+# published-at = "0x0" # set after publish
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/devnet" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
 governance = "0x0"
 
 [environments]
-nasun-devnet = "6681cdfd"
+devnet = "56c8b101"
+nasun-devnet = "56c8b101"
