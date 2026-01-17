@@ -302,7 +302,6 @@ function getEVMNativeToken(chainId: number): string {
   switch (chainId) {
     case 1:
     case 11155111: // Sepolia
-    case 17000: // Holesky
       return 'ETH';
     case 137:
     case 80002: // Amoy
