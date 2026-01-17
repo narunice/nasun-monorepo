@@ -525,7 +525,7 @@ export function WalletConnect({
     // Mnemonic backup screen (full-size, important)
     if (viewMode === "create-backup" && mnemonic) {
       return (
-        <div className="p-2 w-full sm:w-[400px]">
+        <div className="p-2 w-full">
           <MnemonicBackup mnemonic={mnemonic} onConfirm={handleBackupConfirmed} />
         </div>
       );
@@ -593,7 +593,7 @@ export function WalletConnect({
     // Import wallet screen
     if (viewMode === "import") {
       return (
-        <div className="p-2 w-full sm:w-[320px]">
+        <div className="p-2 w-full">
           <ImportWallet
             onImportMnemonic={handleImportMnemonic}
             onImportPrivateKey={handleImportPrivateKey}
@@ -607,7 +607,7 @@ export function WalletConnect({
     // Export private key view
     if (viewMode === "export") {
       return (
-        <div className="p-2 w-full sm:w-[320px]">
+        <div className="p-2 w-full">
           <ExportPrivateKey onExport={handleExportPrivateKey} onClose={() => setViewMode("main")} />
         </div>
       );
@@ -616,7 +616,7 @@ export function WalletConnect({
     // Send transaction view
     if (viewMode === "send") {
       return (
-        <div className="p-2 w-full sm:w-[320px]">
+        <div className="p-2 w-full">
           <SendTransaction
             onClose={() => {
               setViewMode("main");
@@ -1752,7 +1752,7 @@ export function WalletConnect({
             />
             <div
               ref={mobileDropdownRef}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] max-w-[320px] max-h-[85vh] overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] max-w-[420px] max-h-[85vh] overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]"
             >
               {renderDropdownContent()}
             </div>

@@ -31,13 +31,18 @@ export type LedgerErrorCode =
  * Provides typed error codes for better error handling.
  */
 export class LedgerError extends Error {
+  readonly code: LedgerErrorCode;
+  readonly originalError?: unknown;
+
   constructor(
     message: string,
-    public readonly code: LedgerErrorCode,
-    public readonly originalError?: unknown
+    code: LedgerErrorCode,
+    originalError?: unknown
   ) {
     super(message);
     this.name = 'LedgerError';
+    this.code = code;
+    this.originalError = originalError;
   }
 }
 

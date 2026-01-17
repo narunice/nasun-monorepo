@@ -189,6 +189,14 @@ export function ImportWallet({
             />
           </div>
 
+          {/* Real-time password validation */}
+          {password.length > 0 && password.length < 8 && (
+            <p className="text-xs text-red-400">Password must be at least 8 characters</p>
+          )}
+          {confirmPassword.length > 0 && password !== confirmPassword && (
+            <p className="text-xs text-red-400">Passwords do not match</p>
+          )}
+
           {error && (
             <p className="text-sm text-red-400">{error}</p>
           )}
@@ -203,7 +211,7 @@ export function ImportWallet({
             </button>
             <button
               onClick={handleImportMnemonic}
-              disabled={isLoading || !mnemonic.trim() || !password || !confirmPassword}
+              disabled={isLoading || !mnemonic.trim() || password.length < 8 || password !== confirmPassword}
               className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors"
             >
               {isLoading ? 'Importing...' : 'Import'}
@@ -279,6 +287,14 @@ export function ImportWallet({
           />
         </div>
 
+        {/* Real-time password validation */}
+        {password.length > 0 && password.length < 8 && (
+          <p className="text-xs text-red-400">Password must be at least 8 characters</p>
+        )}
+        {confirmPassword.length > 0 && password !== confirmPassword && (
+          <p className="text-xs text-red-400">Passwords do not match</p>
+        )}
+
         {error && (
           <p className="text-sm text-red-400">{error}</p>
         )}
@@ -293,7 +309,7 @@ export function ImportWallet({
           </button>
           <button
             onClick={handleImportPrivateKey}
-            disabled={isLoading || !privateKey.trim() || !password || !confirmPassword}
+            disabled={isLoading || !privateKey.trim() || password.length < 8 || password !== confirmPassword}
             className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors"
           >
             {isLoading ? 'Importing...' : 'Import'}
