@@ -13,7 +13,7 @@ import {
 } from '../lib/lending-client';
 
 // NUSDC token type (from environment config)
-const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nusdc::NUSDC';
+const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || '0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8::nusdc::NUSDC';
 
 interface UseLendingActionsResult {
   deposit: (amount: bigint) => Promise<string>;
