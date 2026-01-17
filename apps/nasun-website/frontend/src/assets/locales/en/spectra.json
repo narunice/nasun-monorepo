@@ -396,8 +396,8 @@
           "Regions",
           "Game Sessions",
           "Player Sessions",
-          "Testing.",
-          "Refactoring."
+          "Testing",
+          "Refactoring"
         ]
       }
     }
@@ -409,7 +409,13 @@
         "sections": [
           {
             "title": "Hire 2D Artists / Illustrators / Designers",
-            "items": ["Conceptualize:", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships", "Game UI"]
+            "items": [
+              "Conceptualize:",
+              "Sci-fi Game Characters",
+              "Sci-fi Weapons",
+              "Spaceships",
+              "Game UI"
+            ]
           },
           {
             "title": "Seek - 3D Artists / Modelers"
@@ -426,7 +432,13 @@
         "sections": [
           {
             "title": "2D Artists / Illustrators / Designers",
-            "items": ["Design, Illustrate & Color (front, side(profile), back):", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships", "Game UI"]
+            "items": [
+              "Design, Illustrate & Color (front, side(profile), back):",
+              "Sci-fi Game Characters",
+              "Sci-fi Weapons",
+              "Spaceships",
+              "Game UI"
+            ]
           },
           {
             "title": "Hire - 3D Artists / Modelers"
@@ -447,11 +459,17 @@
           },
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Implement UI.", "Design and create or find and import Melee Attack Animation.", "Design and animate particle VFX, weapon VFX, and real-time VFX."]
+            "items": [
+              "Implement UI.",
+              "Design and create or find and import Melee Attack Animation.",
+              "Design and animate particle VFX, weapon VFX, and real-time VFX."
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["Refactor code for team games - Team Death Match, Escape from Kramok prototype."]
+            "items": [
+              "Refactor code for team games - Team Death Match, Escape from Kramok prototype."
+            ]
           }
         ]
       },
@@ -463,11 +481,17 @@
           },
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Implement UI.", "Implement melee attack animation.", "Make blueprints for particle VFX, weapon VFX, and real-time VFX."]
+            "items": [
+              "Implement UI.",
+              "Implement melee attack animation.",
+              "Make blueprints for particle VFX, weapon VFX, and real-time VFX."
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["AWS Architecture - plan, design, and implement EC2 dedicated server virtual resources in cloud infrastructure."]
+            "items": [
+              "AWS Architecture - plan, design, and implement EC2 dedicated server virtual resources in cloud infrastructure."
+            ]
           }
         ]
       },
@@ -475,15 +499,33 @@
         "sections": [
           {
             "title": "3D Artists / Modelers",
-            "items": ["Texture/Materials, Rigging, Test Animations -", "Sci-fi Game Characters", "Sci-fi Weapons", "Spaceships"]
+            "items": [
+              "Texture/Materials, Rigging, Test Animations -",
+              "Sci-fi Game Characters",
+              "Sci-fi Weapons",
+              "Spaceships"
+            ]
           },
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Import & optimize models/assets, materials, and rigging.", "Create gameplay animations, animation blueprints, and Animgraphs."]
+            "items": [
+              "Import & optimize models/assets, materials, and rigging.",
+              "Create gameplay animations, animation blueprints, and Animgraphs."
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["Design and create framework for AWS Cognito and persistent data -", "Game Stats", "Player Stats", "Assets (NFTs)", "Player Profiles", "Player Passwords", "Regions", "Game Sessions", "Player Sessions"]
+            "items": [
+              "Design and create framework for AWS Cognito and persistent data -",
+              "Game Stats",
+              "Player Stats",
+              "Assets (NFTs)",
+              "Player Profiles",
+              "Player Passwords",
+              "Regions",
+              "Game Sessions",
+              "Player Sessions"
+            ]
           }
         ]
       },
@@ -491,11 +533,23 @@
         "sections": [
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Import & optimize models/assets, materials, and rigging.", "Create gameplay animations, animation blueprints, and Animgraphs."]
+            "items": [
+              "Import & optimize models/assets, materials, and rigging.",
+              "Create gameplay animations, animation blueprints, and Animgraphs."
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["Implement matchmaking (Flexmatch), matchstats (DynamoDB), and leaderboards.", "Optimize lobbies and timers.", "C++ and Bluprint Implementation -", "Character Gameplay Logic", "Player Controller Logic", "Weapons Logic", "Animations", "Weapon Effects"]
+            "items": [
+              "Implement matchmaking (Flexmatch), matchstats (DynamoDB), and leaderboards.",
+              "Optimize lobbies and timers.",
+              "C++ and Bluprint Implementation -",
+              "Character Gameplay Logic",
+              "Player Controller Logic",
+              "Weapons Logic",
+              "Animations",
+              "Weapon Effects"
+            ]
           }
         ]
       },
@@ -503,11 +557,22 @@
         "sections": [
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Create gameplay animations, animation blueprints, and Animgraphs.", "Finish Prototype level design for \"Escape from Kramok.\""]
+            "items": [
+              "Create gameplay animations, animation blueprints, and Animgraphs.",
+              "Finish Prototype level design for \"Escape from Kramok.\""
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["Implement Security Framework.", "C++ and Bluprint Implementation -", "Character Gameplay Logic", "Player Controller Logic", "Weapons Logic", "Animations", "Weapon Effects"]
+            "items": [
+              "Implement Security Framework.",
+              "C++ and Bluprint Implementation -",
+              "Character Gameplay Logic",
+              "Player Controller Logic",
+              "Weapons Logic",
+              "Animations",
+              "Weapon Effects"
+            ]
           }
         ]
       },
@@ -515,11 +580,20 @@
         "sections": [
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Create gameplay animations, animation blueprints, and Animgraphs.", "Finish Prototype level design for \"Escape from Kramok.\""]
+            "items": [
+              "Create gameplay animations, animation blueprints, and Animgraphs.",
+              "Finish Prototype level design for \"Escape from Kramok.\""
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["Optimize game for dedicated server multiplayer gameplay -", "Refactor Code", "Environment / Maps", "Assets", "Map Transitions"]
+            "items": [
+              "Optimize game for dedicated server multiplayer gameplay -",
+              "Refactor Code",
+              "Environment / Maps",
+              "Assets",
+              "Map Transitions"
+            ]
           }
         ]
       },
@@ -527,11 +601,21 @@
         "sections": [
           {
             "title": "Unreal Engine Developers (Designer / Blueprints)",
-            "items": ["Create gameplay animations, animation blueprints, and Animgraphs.", "Finish Prototype level design for \"Escape from Kramok.\""]
+            "items": [
+              "Create gameplay animations, animation blueprints, and Animgraphs.",
+              "Finish Prototype level design for \"Escape from Kramok.\""
+            ]
           },
           {
             "title": "Unreal Engine Developers (Programmer)",
-            "items": ["Optimize EC2 dedicated servers for gameplay by -", "Regions", "Game Sessions", "Player Sessions", "Testing.", "Refactoring."]
+            "items": [
+              "Optimize EC2 dedicated servers for gameplay by -",
+              "Regions",
+              "Game Sessions",
+              "Player Sessions",
+              "Testing.",
+              "Refactoring."
+            ]
           }
         ]
       }
