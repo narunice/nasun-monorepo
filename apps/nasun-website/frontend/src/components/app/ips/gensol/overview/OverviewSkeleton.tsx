@@ -1,5 +1,5 @@
-import { InlineLoading } from "../../../ui/InlineLoading";
-import { SectionLayout } from "../../../layout/SectionLayout";
+import { InlineLoading } from "@/components/ui/InlineLoading";
+import { SectionLayout } from "@/components/layout/SectionLayout";
 
 export default function OverviewSkeleton() {
   // Use h-screen to push content down and prevent layout shift of elements below (like the button)

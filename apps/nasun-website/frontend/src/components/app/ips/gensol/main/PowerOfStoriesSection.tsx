@@ -1,11 +1,11 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import { OuterBox } from "../../../ui/OuterBox";
-import SectionTitle from "../../../ui/SectionTitle";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { OuterBox } from "@/components/ui/OuterBox";
+import SectionTitle from "@/components/ui/SectionTitle";
 
 // 배경 이미지
-import bgImage from "../../../../assets/images/boliviainteligente-iVgqztKXxwM-unsplash.jpg";
+import bgImage from "@/assets/images/boliviainteligente-iVgqztKXxwM-unsplash.jpg";
 
 function PowerOfStoriesSection() {
   const { t } = useTranslation("genSol");
