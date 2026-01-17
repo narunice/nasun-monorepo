@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 
 // 배경 이미지
-import bgImageDesktop from "../../../../assets/images/robot-arena-hq.webp";
-import bgImageMobile from "../../../../assets/images/robot-arena-mobile.webp";
+import bgImageDesktop from "@/assets/images/robot-arena-hq.webp";
+import bgImageMobile from "@/assets/images/robot-arena-mobile.webp";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**

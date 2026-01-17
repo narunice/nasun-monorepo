@@ -11,7 +11,7 @@ export const Pages = {
   IPs: lazy(() => import("../pages/IPsPage")),
   IPsGenSol: lazy(() => import("../pages/ips/gensol/GenSolMainPage")),
   IPsGenSolOverview: lazy(() => import("../pages/ips/gensol/OverviewPage")),
-  IPsGenSolSpectra: lazy(() => import("../pages/ips/gensol/SpectraPage")),
+  IPsGenSolShooter: lazy(() => import("../pages/ips/gensol/ShooterPage")),
   IPsGenSolHeist: lazy(() => import("../pages/ips/gensol/HeistPage")),
   FinancePado: lazy(() => import("../pages/finance/PadoPage")),
   IPsWePop: lazy(() => import("../pages/ips/WePopPage")),
@@ -179,7 +179,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
             {
               name: "navigation.genSolShooter",
               path: "/ips/gensol/shooter",
-              element: Pages.IPsGenSolSpectra,
+              element: Pages.IPsGenSolShooter,
             },
             {
               name: "navigation.genSolAnimation",
