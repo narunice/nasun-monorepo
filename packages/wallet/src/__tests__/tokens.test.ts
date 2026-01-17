@@ -19,14 +19,14 @@ describe('Token Registry', () => {
 
   describe('NATIVE_TOKEN', () => {
     it('should have correct native token config', () => {
-      expect(NATIVE_TOKEN.symbol).toBe('NASUN');
+      expect(NATIVE_TOKEN.symbol).toBe('NSN');
       expect(NATIVE_TOKEN.name).toBe('Nasun');
       expect(NATIVE_TOKEN.decimals).toBe(9);
       expect(NATIVE_TOKEN.type).toBe('0x2::sui::SUI');
     });
 
     it('should always have native token registered', () => {
-      expect(isTokenRegistered('NASUN')).toBe(true);
+      expect(isTokenRegistered('NSN')).toBe(true);
     });
   });
 
@@ -97,7 +97,7 @@ describe('Token Registry', () => {
 
   describe('getToken', () => {
     it('should return token by symbol', () => {
-      const token = getToken('NASUN');
+      const token = getToken('NSN');
       expect(token).toEqual(NATIVE_TOKEN);
     });
 
@@ -143,7 +143,7 @@ describe('Token Registry', () => {
 
   describe('isTokenRegistered', () => {
     it('should return true for registered token', () => {
-      expect(isTokenRegistered('NASUN')).toBe(true);
+      expect(isTokenRegistered('NSN')).toBe(true);
     });
 
     it('should return false for unregistered token', () => {
@@ -163,7 +163,7 @@ describe('Token Registry', () => {
       clearTokens();
 
       expect(getAllTokens().length).toBe(1);
-      expect(isTokenRegistered('NASUN')).toBe(true);
+      expect(isTokenRegistered('NSN')).toBe(true);
       expect(isTokenRegistered('NBTC')).toBe(false);
       expect(isTokenRegistered('NUSDC')).toBe(false);
     });

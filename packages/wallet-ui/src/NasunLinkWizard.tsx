@@ -44,7 +44,7 @@ interface FormState {
 }
 
 const DEFAULT_FORM: FormState = {
-  coinType: 'NASUN',
+  coinType: 'NSN',
   amount: '',
   linkType: 'single',
   maxClaims: 10,
@@ -56,7 +56,7 @@ const DEFAULT_FORM: FormState = {
 
 // Token decimals
 const TOKEN_DECIMALS: Record<string, number> = {
-  NASUN: 9,
+  NSN: 9,
   SUI: 9,
   NUSDC: 6,
   NBTC: 8,
@@ -94,7 +94,7 @@ export function NasunLinkWizard({
   onSuccess,
   onCancel,
   className = '',
-  defaultCoinType = 'NASUN',
+  defaultCoinType = 'NSN',
   showAdvanced: _showAdvanced, // Reserved for future ZK-ID conditions UI
 }: NasunLinkWizardProps) {
   const { status } = useWallet();
@@ -115,7 +115,7 @@ export function NasunLinkWizard({
 
   // Get balance for selected token
   const getTokenBalance = (): bigint => {
-    if (form.coinType === 'NASUN') {
+    if (form.coinType === 'NSN') {
       return BigInt(nasunBalance?.totalBalance ?? '0');
     }
     const tokenBalance = multiBalances?.tokens[form.coinType];
@@ -263,7 +263,7 @@ export function NasunLinkWizard({
             onChange={(e) => updateForm('coinType', e.target.value)}
             className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="NASUN">NASUN</option>
+            <option value="NSN">NSN</option>
             <option value="NUSDC">NUSDC</option>
             <option value="NBTC">NBTC</option>
           </select>

@@ -79,7 +79,7 @@ describe('StakingPanel', () => {
       fireEvent.click(positionsTab);
 
       // The tab should be clicked - positions content might show
-      // "Stake NASUN to earn rewards" when no stakes, or "Total Staked" when stakes exist
+      // "Stake NSN to earn rewards" when no stakes, or "Total Staked" when stakes exist
       expect(positionsTab).toBeInTheDocument();
     });
   });

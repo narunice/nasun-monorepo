@@ -9,7 +9,7 @@
  * Display format:
  * - Token changes: "Your USDC -100 → 400"
  * - NFT changes: "You'll receive: CoolNFT #123"
- * - Fee display: "Fee ~0.003 NASUN [?]"
+ * - Fee display: "Fee ~0.003 NSN [?]"
  */
 
 import type {
@@ -183,7 +183,7 @@ export function BalancePreview({
             )}
           </span>
           <span className="font-medium text-gray-900 dark:text-white">
-            ~{formatGas(simulation.estimatedGas)} NASUN
+            ~{formatGas(simulation.estimatedGas)} NSN
           </span>
         </div>
       )}
@@ -192,7 +192,7 @@ export function BalancePreview({
 }
 
 /**
- * Format gas amount (9 decimals for NASUN)
+ * Format gas amount (9 decimals for NSN)
  */
 function formatGas(gas: bigint): string {
   const decimals = 9;

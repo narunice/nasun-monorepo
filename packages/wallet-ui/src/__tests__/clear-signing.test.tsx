@@ -114,7 +114,7 @@ describe('BalancePreview', () => {
     balanceChanges: [
       {
         token: '0x2::sui::SUI',
-        symbol: 'NASUN',
+        symbol: 'NSN',
         decimals: 9,
         amount: -1000000000n,
         displayAmount: '-1',
@@ -140,7 +140,7 @@ describe('BalancePreview', () => {
 
   it('shows balance changes', () => {
     render(<BalancePreview simulation={successSimulation} />);
-    expect(screen.getByText('NASUN')).toBeInTheDocument();
+    expect(screen.getByText('NSN')).toBeInTheDocument();
     // Amount includes prefix (-) and value separately, so use regex
     expect(screen.getByText(/-1/)).toBeInTheDocument();
   });
@@ -277,7 +277,7 @@ describe('TransactionPreview', () => {
     actions: [
       { type: 'send', label: 'Send 100 USDC', value: '0x' + 'a'.repeat(64) },
     ],
-    gasCost: '0.003 NASUN',
+    gasCost: '0.003 NSN',
     isSponsored: false,
   };
 

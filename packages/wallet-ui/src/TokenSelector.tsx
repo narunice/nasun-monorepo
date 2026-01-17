@@ -54,7 +54,7 @@ export function TokenSelector({
   // Get balance for a token
   const getBalance = (symbol: string): string | undefined => {
     if (!balances) return undefined;
-    if (symbol === 'NASUN') return balances.native.formatted;
+    if (symbol === 'NSN') return balances.native.formatted;
     return balances.tokens[symbol]?.formatted;
   };
 

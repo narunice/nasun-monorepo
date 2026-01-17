@@ -65,7 +65,7 @@ export function StakingStatus({
           </svg>
           <p className="text-sm text-gray-500 dark:text-zinc-400">No active stakes</p>
           <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
-            Stake NASUN to earn rewards
+            Stake NSN to earn rewards
           </p>
         </div>
       </div>

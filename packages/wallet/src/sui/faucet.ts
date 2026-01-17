@@ -60,8 +60,8 @@ export async function checkFaucetAvailable(): Promise<boolean> {
 }
 
 /**
- * Native NASUN faucet handler
- * Use this with registerTokenFaucet('NASUN', nativeFaucetHandler)
+ * Native NSN faucet handler
+ * Use this with registerTokenFaucet('NSN', nativeFaucetHandler)
  */
 export const nativeFaucetHandler: TokenFaucetHandler = {
   request: async (address: string): Promise<boolean> => {

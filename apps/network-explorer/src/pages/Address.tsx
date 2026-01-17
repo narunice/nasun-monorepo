@@ -22,12 +22,12 @@ function truncateDigest(digest: string) {
 }
 
 // 토큰 잔액 포맷 (decimals 고려)
-// 알려진 토큰 decimals: NASUN=9, NUSDC=6, NBTC=8
+// 알려진 토큰 decimals: NSN=9, NUSDC=6, NBTC=8
 function formatTokenBalance(balance: string, coinType: string): string {
   const value = BigInt(balance);
 
   // 알려진 토큰 decimals
-  let decimals = 9; // 기본값 (NASUN/SUI)
+  let decimals = 9; // 기본값 (NSN/SUI)
   if (coinType.includes('::nusdc::')) decimals = 6;
   else if (coinType.includes('::nbtc::')) decimals = 8;
 
@@ -130,7 +130,7 @@ export default function Address() {
                 <InfoRow label="Address" value={addr || '-'} mono copyable />
                 <InfoRow
                   label="Balance"
-                  value={`${formatBalance(addressInfo.balance?.totalBalance)} NASUN`}
+                  value={`${formatBalance(addressInfo.balance?.totalBalance)} NSN`}
                 />
                 <InfoRow
                   label="Owned Objects"

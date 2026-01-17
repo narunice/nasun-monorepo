@@ -5,8 +5,8 @@ import { getToken, registerToken, clearTokens, NATIVE_TOKEN } from '../config/to
 
 describe('Token Transaction Utilities', () => {
   describe('parseAmount', () => {
-    // parseAmount only accepts string parameter and uses 9 decimals (NASUN)
-    it('should parse NASUN amount to SOE (9 decimals)', () => {
+    // parseAmount only accepts string parameter and uses 9 decimals (NSN)
+    it('should parse NSN amount to SOE (9 decimals)', () => {
       expect(parseAmount('1')).toBe(1000000000n);
       expect(parseAmount('0.5')).toBe(500000000n);
       expect(parseAmount('0.000000001')).toBe(1n);
@@ -33,7 +33,7 @@ describe('Token Transaction Utilities', () => {
   });
 
   describe('formatBalance', () => {
-    it('should format SOE to NASUN (default 9 decimals)', () => {
+    it('should format SOE to NSN (default 9 decimals)', () => {
       expect(formatBalance('1000000000')).toBe('1');
       expect(formatBalance('500000000')).toBe('0.5');
       expect(formatBalance(1000000000n)).toBe('1');
@@ -91,8 +91,8 @@ describe('Token Registry', () => {
   });
 
   describe('NATIVE_TOKEN', () => {
-    it('should have correct NASUN configuration', () => {
-      expect(NATIVE_TOKEN.symbol).toBe('NASUN');
+    it('should have correct NSN configuration', () => {
+      expect(NATIVE_TOKEN.symbol).toBe('NSN');
       expect(NATIVE_TOKEN.decimals).toBe(9);
       expect(NATIVE_TOKEN.type).toBe('0x2::sui::SUI');
     });

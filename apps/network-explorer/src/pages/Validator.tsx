@@ -68,7 +68,7 @@ export default function Validator() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card variant="c4" className="p-4">
             <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Staked Amount</div>
-            <div className="text-lg font-mono text-nasun-white">{formatBalance(validator.stakingPoolSuiBalance)} NASUN</div>
+            <div className="text-lg font-mono text-nasun-white">{formatBalance(validator.stakingPoolSuiBalance)} NSN</div>
           </Card>
           <Card variant="c3" className="p-4">
             <div className="text-nasun-white/60 text-sm uppercase tracking-wider">APY</div>
@@ -120,11 +120,11 @@ export default function Validator() {
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <span className="text-nasun-white/60 text-sm min-w-[180px]">Current Stake</span>
-              <span className="font-mono">{formatBalance(validator.stakingPoolSuiBalance)} NASUN</span>
+              <span className="font-mono">{formatBalance(validator.stakingPoolSuiBalance)} NSN</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <span className="text-nasun-white/60 text-sm min-w-[180px]">Next Epoch Stake</span>
-              <span className="font-mono">{formatBalance(validator.nextEpochStake)} NASUN</span>
+              <span className="font-mono">{formatBalance(validator.nextEpochStake)} NSN</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <span className="text-nasun-white/60 text-sm min-w-[180px]">Gas Price</span>
@@ -136,7 +136,7 @@ export default function Validator() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <span className="text-nasun-white/60 text-sm min-w-[180px]">Total Network Stake</span>
-              <span className="font-mono">{formatBalance(validator.totalNetworkStake)} NASUN</span>
+              <span className="font-mono">{formatBalance(validator.totalNetworkStake)} NSN</span>
             </div>
           </div>
         </SectionBox>

@@ -283,7 +283,7 @@ export function usePaymentIntent(): UsePaymentIntentResult {
  */
 function getTokenSymbolFromType(tokenType: string): string {
   if (tokenType === NASUN_COIN_TYPE) {
-    return 'NASUN';
+    return 'NSN';
   }
 
   // Extract symbol from coin type (e.g., "0x...::nbtc::NBTC" -> "NBTC")

@@ -23,7 +23,7 @@ const COINGECKO_IDS: Record<string, string> = {
 
 // Simulated prices for devnet/testnet tokens
 const SIMULATED_PRICES: Record<string, number> = {
-  NASUN: 0.1,
+  NSN: 0.1,
   NBTC: 97000,
   NUSDC: 1.0,
   ETH: 3400,

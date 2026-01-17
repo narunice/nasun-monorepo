@@ -60,7 +60,7 @@ export default function Validators() {
               </Card>
               <Card variant="c4" className="p-4">
                 <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Total Staked</div>
-                <div className="text-lg font-mono text-nasun-white">{formatBalance(data.totalStake)} NASUN</div>
+                <div className="text-lg font-mono text-nasun-white">{formatBalance(data.totalStake)} NSN</div>
               </Card>
               <Card variant="c4" className="p-4">
                 <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Active Validators</div>

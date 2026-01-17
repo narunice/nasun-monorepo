@@ -63,7 +63,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     rpcUrl: 'https://rpc.devnet.nasun.io',
     nativeCurrency: {
       name: 'Nasun',
-      symbol: 'NASUN',
+      symbol: 'NSN',
       decimals: 9,
     },
     blockExplorer: 'https://explorer.devnet.nasun.io',
@@ -131,7 +131,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     name: 'Sepolia',
     type: 'evm',
     chainId: 11155111,
-    rpcUrl: 'https://rpc.sepolia.org',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     nativeCurrency: {
       name: 'Sepolia Ether',
       symbol: 'ETH',
@@ -150,7 +150,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     name: 'Holesky',
     type: 'evm',
     chainId: 17000,
-    rpcUrl: 'https://ethereum-holesky-rpc.publicnode.com',
+    rpcUrl: 'https://1rpc.io/holesky',
     nativeCurrency: {
       name: 'Holesky Ether',
       symbol: 'ETH',

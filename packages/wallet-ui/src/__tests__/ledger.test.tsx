@@ -289,9 +289,9 @@ describe('LedgerErrorDisplay', () => {
 
 describe('LedgerAddressSelector', () => {
   const mockAddresses: LedgerAddress[] = [
-    { index: 0, address: '0x1111111111111111111111111111111111111111', balance: '100 NASUN' },
-    { index: 1, address: '0x2222222222222222222222222222222222222222', balance: '50 NASUN', isUsed: true },
-    { index: 2, address: '0x3333333333333333333333333333333333333333', balance: '0 NASUN' },
+    { index: 0, address: '0x1111111111111111111111111111111111111111', balance: '100 NSN' },
+    { index: 1, address: '0x2222222222222222222222222222222222222222', balance: '50 NSN', isUsed: true },
+    { index: 2, address: '0x3333333333333333333333333333333333333333', balance: '0 NSN' },
   ];
 
   it('renders address list', () => {
@@ -304,7 +304,7 @@ describe('LedgerAddressSelector', () => {
       />
     );
     expect(screen.getByText('Select Address')).toBeInTheDocument();
-    expect(screen.getByText('100 NASUN')).toBeInTheDocument();
+    expect(screen.getByText('100 NSN')).toBeInTheDocument();
   });
 
   it('shows derivation paths', () => {
@@ -328,8 +328,8 @@ describe('LedgerAddressSelector', () => {
         chainType="move"
       />
     );
-    // Find the row with 50 NASUN (index 1) which should be highlighted
-    const selectedRow = screen.getByText('50 NASUN').closest('button');
+    // Find the row with 50 NSN (index 1) which should be highlighted
+    const selectedRow = screen.getByText('50 NSN').closest('button');
     expect(selectedRow).toHaveClass('bg-blue-50');
   });
 
@@ -344,7 +344,7 @@ describe('LedgerAddressSelector', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('50 NASUN'));
+    fireEvent.click(screen.getByText('50 NSN'));
     expect(onSelect).toHaveBeenCalledWith(1);
   });
 

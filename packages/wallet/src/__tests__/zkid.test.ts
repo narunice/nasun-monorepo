@@ -852,7 +852,7 @@ describe('ZK-ID Link Integration (Phase 6)', () => {
       encryptedPayload: 'encrypted-payload',
       config: {
         type: 'single',
-        coinType: 'NASUN',
+        coinType: 'NSN',
         amount: '1000000000',
         conditions,
       },
