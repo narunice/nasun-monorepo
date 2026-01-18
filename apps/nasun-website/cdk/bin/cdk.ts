@@ -15,6 +15,8 @@ import { AuthStack } from '../lib/auth-stack';
 import { CommonStack } from '../lib/common-stack';
 import { MonitoringStack } from '../lib/monitoring-stack';
 import { NftEventStack } from '../lib/nft-event-stack';
+import { AdminStack } from '../lib/admin-stack';
+import { FollowerStack } from '../lib/follower-stack';
 
 const app = new cdk.App();
 
@@ -68,3 +70,20 @@ const nftEventStack = new NftEventStack(app, 'NftEventStack', {
   env: { region: 'ap-northeast-2' },
 });
 // No dependencies - standalone stack with Feature Flag
+
+// Admin stack (Whitelist Export, Governance Management)
+const adminStack = new AdminStack(app, 'AdminStack', {
+  env: { region: 'ap-northeast-2' },
+  userProfilesTableName: 'UserProfiles',
+  genesisTableName: 'GenesisNftWhitelist',
+  battalionTableName: 'nasun-nft-whitelist',
+});
+// No dependencies - references existing tables by name
+
+// Follower collection stack (X API daily follower tracking)
+const followerStack = new FollowerStack(app, 'FollowerStack', {
+  env: { region: 'ap-northeast-2' },
+  twitterBearerToken: process.env.TWITTER_BEARER_TOKEN || '',
+  targetAccounts: process.env.TARGET_ACCOUNTS || '[]',
+});
+// No dependencies - standalone stack

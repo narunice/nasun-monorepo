@@ -8,6 +8,13 @@ import { Pages, routesV2 } from "../config/routesConfig";
 import useScrollToTop from "../hooks/useScrollToTop";
 import LogoutRouteGate from "./LogoutRouteGate";
 import PageLoading from "../components/ui/PageLoading";
+import { AdminRoute } from "../features/admin";
+
+// Admin pages (lazy loaded)
+const AdminDashboard = lazy(() => import("../features/admin/pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const WhitelistManagement = lazy(() => import("../features/admin/pages/WhitelistManagement").then(m => ({ default: m.WhitelistManagement })));
+const GovernanceManagement = lazy(() => import("../features/admin/pages/GovernanceManagement").then(m => ({ default: m.GovernanceManagement })));
+const CreateProposal = lazy(() => import("../features/admin/pages/CreateProposal").then(m => ({ default: m.CreateProposal })));
 
 const AppRoutes = () => {
   return (
@@ -424,6 +431,56 @@ const AppRoutes = () => {
 
         {/* Headless WordPress Post Detail Page */}
         <Route path="/awards-grants/:slug" element={<Pages.PostDetailPage />} />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Helmet>
+                <title>NASUN - Admin Dashboard</title>
+                <meta name="robots" content="noindex, nofollow" />
+              </Helmet>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/whitelist"
+          element={
+            <AdminRoute>
+              <Helmet>
+                <title>NASUN - Whitelist Export</title>
+                <meta name="robots" content="noindex, nofollow" />
+              </Helmet>
+              <WhitelistManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/governance"
+          element={
+            <AdminRoute>
+              <Helmet>
+                <title>NASUN - Governance Management</title>
+                <meta name="robots" content="noindex, nofollow" />
+              </Helmet>
+              <GovernanceManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/governance/create"
+          element={
+            <AdminRoute>
+              <Helmet>
+                <title>NASUN - Create Proposal</title>
+                <meta name="robots" content="noindex, nofollow" />
+              </Helmet>
+              <CreateProposal />
+            </AdminRoute>
+          }
+        />
 
         {/* Fallback Route */}
         <Route path="*" element={<Pages.NotFound />} />
