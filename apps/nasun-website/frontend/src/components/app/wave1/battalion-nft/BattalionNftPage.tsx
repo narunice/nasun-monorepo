@@ -28,6 +28,7 @@ import type { VerificationResult, ApiError } from "../../../../types/battalion-n
 import { SectionLayout } from "../../../layout/SectionLayout";
 import { PageTitle } from "../../../ui/PageTitle";
 import { checkBattalionNftStatus } from "../../../../services/battalionNftApi";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 export const BattalionNftPage: React.FC = () => {
   const { t } = useTranslation("battalion-nft");
@@ -61,7 +62,9 @@ export const BattalionNftPage: React.FC = () => {
 
   useEffect(() => {
     if (!isEnabled) {
-      console.warn("[BattalionNftPage] Battalion NFT feature is disabled (VITE_ENABLE_BATTALION_NFT=false)");
+      console.warn(
+        "[BattalionNftPage] Battalion NFT feature is disabled (VITE_ENABLE_BATTALION_NFT=false)",
+      );
     }
   }, [isEnabled]);
 
@@ -80,7 +83,7 @@ export const BattalionNftPage: React.FC = () => {
     // Twitter callback 처리 중이면 reset 건너뛰기 (race condition 방지)
     if (isTwitterCallback) {
       console.log(
-        "[BattalionNftPage] Twitter callback in progress - skipping reset to prevent race condition"
+        "[BattalionNftPage] Twitter callback in progress - skipping reset to prevent race condition",
       );
       return;
     }
@@ -96,7 +99,7 @@ export const BattalionNftPage: React.FC = () => {
       // Otherwise, reset to Step 1 if not already at Step 1
       if (currentStep !== 1) {
         console.warn(
-          "[BattalionNftPage] Page reload: Logged out and not at Step 1 - resetting to Step 1"
+          "[BattalionNftPage] Page reload: Logged out and not at Step 1 - resetting to Step 1",
         );
         reset();
       }
@@ -110,7 +113,7 @@ export const BattalionNftPage: React.FC = () => {
 
       if (currentXUserId && currentXUserId !== xUserId) {
         console.warn(
-          `[BattalionNftPage] User mismatch detected (current: ${currentXUserId}, store: ${xUserId}) - resetting store`
+          `[BattalionNftPage] User mismatch detected (current: ${currentXUserId}, store: ${xUserId}) - resetting store`,
         );
         reset();
         return;
@@ -121,7 +124,7 @@ export const BattalionNftPage: React.FC = () => {
     const userWalletAddress = user.linkedAccounts?.metamask?.walletAddress;
     if (walletAddress && !userWalletAddress) {
       console.warn(
-        `[BattalionNftPage] Wallet was unlinked but store still has address: ${walletAddress} - resetting`
+        `[BattalionNftPage] Wallet was unlinked but store still has address: ${walletAddress} - resetting`,
       );
       reset();
       return;
@@ -209,6 +212,13 @@ export const BattalionNftPage: React.FC = () => {
     navigate("/my-account");
   };
 
+  const handleReconnectX = () => {
+    console.log("[BattalionNftPage] X token expired - clearing tokens and returning to Step 2");
+    localStorage.removeItem("battalion_nft_x_access_token");
+    localStorage.removeItem("battalion_nft_twitter_session");
+    setStep(2);
+  };
+
   const handleReset = () => {
     console.log("[BattalionNftPage] Resetting Battalion NFT registration");
     reset();
@@ -233,10 +243,12 @@ export const BattalionNftPage: React.FC = () => {
   return (
     <>
       <SectionLayout>
-        <PageTitle as="h2" align="center" className="mb-6">
-          {t("header.title").toUpperCase()}
-        </PageTitle>
-        <StepperProgress currentStep={currentStep} />
+        <FadeInUp>
+          <PageTitle as="h2" align="center" className="mb-6">
+            {t("header.title").toUpperCase()}
+          </PageTitle>
+          <StepperProgress currentStep={currentStep} />
+        </FadeInUp>
       </SectionLayout>
 
       <SectionLayout className="!py-0 mb-6 md:mb-8 lg:mb-10">
@@ -253,6 +265,7 @@ export const BattalionNftPage: React.FC = () => {
               xUsername={xUsername}
               walletAddress={walletAddress}
               onVerificationSuccess={handleVerificationSuccess}
+              onReconnectX={handleReconnectX}
             />
           )}
           {currentStep === 4 && <WalletConnectCard onWalletConnected={handleWalletConnected} />}

@@ -30,6 +30,7 @@ interface TaskVerificationCardProps {
   xUsername: string;
   walletAddress?: string;
   onVerificationSuccess: (result: VerificationResult) => void;
+  onReconnectX?: () => void;
 }
 
 /**
@@ -48,6 +49,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
   xUsername,
   walletAddress,
   onVerificationSuccess,
+  onReconnectX,
 }) => {
   const { t } = useTranslation("battalion-nft");
   const { verify, isLoading, error, data } = useBattalionNftVerification();
@@ -213,9 +215,25 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
-          <p className="text-red-200">
-            ❌ {error.message || error.code || t("step3.errors.verificationFailed")}
-          </p>
+          {error.message?.includes("401") || error.code?.includes("401") ? (
+            <>
+              <p className="text-red-200 mb-3">⚠️ {t("step3.errors.tokenExpired")}</p>
+              {onReconnectX && (
+                <Button
+                  onClick={onReconnectX}
+                  variant="outlineC5"
+                  size="sm"
+                  className="w-full"
+                >
+                  {t("step3.errors.reconnectX")}
+                </Button>
+              )}
+            </>
+          ) : (
+            <p className="text-red-200">
+              ❌ {error.message || error.code || t("step3.errors.verificationFailed")}
+            </p>
+          )}
         </div>
       )}
 
@@ -226,8 +244,20 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
         </DividerBox>
       )}
 
-      {/* Incomplete Tasks Message */}
-      {hasVerified && data && !data.eligible && (
+      {/* Token Expired Message (from data.message) */}
+      {hasVerified && data && !data.eligible && data.message?.includes("401") && (
+        <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
+          <p className="text-red-200 mb-3">⚠️ {t("step3.errors.tokenExpired")}</p>
+          {onReconnectX && (
+            <Button onClick={onReconnectX} variant="outlineC5" size="sm" className="w-full">
+              {t("step3.errors.reconnectX")}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Incomplete Tasks Message (non-401 errors) */}
+      {hasVerified && data && !data.eligible && !data.message?.includes("401") && (
         <DividerBox color="c5" icon="⚠️" className="!py-4 mb-6">
           <p>{t("step3.errors.incomplete")}</p>
         </DividerBox>

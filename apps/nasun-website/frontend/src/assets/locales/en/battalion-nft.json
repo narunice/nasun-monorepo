@@ -103,7 +103,9 @@
     "errors": {
       "verificationFailed": "Task verification failed",
       "incomplete": "Some tasks are incomplete. Please complete all tasks and try again.",
-      "failed": "Task verification failed. Please try again later."
+      "failed": "Task verification failed. Please try again later.",
+      "tokenExpired": "Your X authentication has expired. Please reconnect your X account.",
+      "reconnectX": "Reconnect X Account"
     }
   },
   "step4": {
