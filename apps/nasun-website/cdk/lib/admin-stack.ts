@@ -11,6 +11,7 @@ interface AdminStackProps extends cdk.StackProps {
   userProfilesTableName?: string;
   genesisTableName?: string;
   battalionTableName?: string;
+  hiddenProposalsTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
@@ -23,6 +24,15 @@ export class AdminStack extends cdk.Stack {
     const userProfilesTableName = props?.userProfilesTableName || "UserProfiles";
     const genesisTableName = props?.genesisTableName || "GenesisNftWhitelist";
     const battalionTableName = props?.battalionTableName || "nasun-nft-whitelist";
+    const hiddenProposalsTableName = props?.hiddenProposalsTableName || "HiddenProposals";
+
+    // Create HiddenProposals DynamoDB table
+    const hiddenProposalsTable = new dynamodb.Table(this, "HiddenProposalsTable", {
+      tableName: hiddenProposalsTableName,
+      partitionKey: { name: "proposalId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
 
     // Reference existing DynamoDB tables
     const userProfilesTable = dynamodb.Table.fromTableName(
@@ -61,6 +71,7 @@ export class AdminStack extends cdk.Stack {
         USER_PROFILES_TABLE: userProfilesTableName,
         GENESIS_TABLE: genesisTableName,
         BATTALION_TABLE: battalionTableName,
+        HIDDEN_PROPOSALS_TABLE: hiddenProposalsTableName,
         ALLOWED_ORIGINS: allowedOrigins,
       },
       bundling: {
@@ -76,6 +87,7 @@ export class AdminStack extends cdk.Stack {
     userProfilesTable.grantReadData(this.exportFunction);
     genesisTable.grantReadData(this.exportFunction);
     battalionTable.grantReadData(this.exportFunction);
+    hiddenProposalsTable.grantReadWriteData(this.exportFunction);
 
     // Grant permission to query GSI (batch-index)
     this.exportFunction.addToRolePolicy(
@@ -123,6 +135,17 @@ export class AdminStack extends cdk.Stack {
     // GET /export/stats
     const statsResource = exportResource.addResource("stats");
     statsResource.addMethod("GET", exportIntegration);
+
+    // Hidden Proposals API Routes
+    const hiddenProposalsResource = this.api.root.addResource("hidden-proposals");
+    // GET /hidden-proposals - List all hidden proposal IDs
+    hiddenProposalsResource.addMethod("GET", exportIntegration);
+    // POST /hidden-proposals - Hide a proposal
+    hiddenProposalsResource.addMethod("POST", exportIntegration);
+
+    // DELETE /hidden-proposals/{proposalId} - Unhide a proposal
+    const hiddenProposalIdResource = hiddenProposalsResource.addResource("{proposalId}");
+    hiddenProposalIdResource.addMethod("DELETE", exportIntegration);
 
     // Outputs
     new cdk.CfnOutput(this, "AdminApiUrl", {

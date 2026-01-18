@@ -102,3 +102,94 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ============================================================================
+// Hidden Proposals API
+// ============================================================================
+
+export interface HiddenProposalsResponse {
+  proposalIds: string[];
+}
+
+/**
+ * Get list of hidden proposal IDs
+ */
+export async function getHiddenProposals(identityId: string): Promise<string[]> {
+  const url = `${ADMIN_API_URL}/hidden-proposals`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'X-Identity-Id': identityId,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get hidden proposals: ${response.status}`);
+  }
+
+  const data: HiddenProposalsResponse = await response.json();
+  return data.proposalIds;
+}
+
+/**
+ * Hide a proposal
+ */
+export async function hideProposal(identityId: string, proposalId: string): Promise<void> {
+  const url = `${ADMIN_API_URL}/hidden-proposals`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Identity-Id': identityId,
+    },
+    body: JSON.stringify({ proposalId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to hide proposal: ${response.status}`);
+  }
+}
+
+/**
+ * Unhide a proposal
+ */
+export async function unhideProposal(identityId: string, proposalId: string): Promise<void> {
+  const url = `${ADMIN_API_URL}/hidden-proposals/${encodeURIComponent(proposalId)}`;
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'X-Identity-Id': identityId,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to unhide proposal: ${response.status}`);
+  }
+}
+
+/**
+ * Get list of hidden proposal IDs (public - no auth required)
+ * This uses a simple GET endpoint that doesn't require admin auth
+ */
+export async function getHiddenProposalsPublic(): Promise<string[]> {
+  const url = `${ADMIN_API_URL}/hidden-proposals`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+  });
+
+  // Return empty array on error (non-admin users won't have access)
+  if (!response.ok) {
+    console.warn('[getHiddenProposalsPublic] Failed to fetch hidden proposals:', response.status);
+    return [];
+  }
+
+  const data: HiddenProposalsResponse = await response.json();
+  return data.proposalIds;
+}
