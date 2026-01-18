@@ -23,8 +23,7 @@
       "title": "참여 조건",
       "item1": "X @Nasun_io 계정 팔로우",
       "item2": "이벤트 게시물에 좋아요",
-      "item3": "이벤트 게시물 리트윗",
-      "item4": "MetaMask 지갑 연결"
+      "item3": "이벤트 게시물 리트윗"
     },
     "links": {
       "officialAccount": "나선 공식 X 계정",
@@ -49,6 +48,7 @@
     "authenticationPurpose": "다음 이벤트 태스크 완료 여부를 확인하기 위해 X OAuth 인증이 필요합니다:",
     "verifyLikes": "타겟 트윗에 좋아요를 눌렀는지 확인",
     "verifyRetweets": "타겟 트윗을 리트윗했는지 확인",
+    "verifyFollow": "@Nasun_io를 팔로우했는지 확인",
     "notSignUp": "이것은 검증 절차일 뿐, 웹사이트 가입이 아닙니다",
     "tokenAutoDelete": "🔒 본 인증은 이벤트 참여 조건 검증을 위한 1회성 인증입니다.",
     "infoTitle": "왜 X 연동이 필요한가요?",

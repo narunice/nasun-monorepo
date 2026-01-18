@@ -19,9 +19,8 @@ import { Button } from "../../../../ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
-import { InlineLoading, DividerBox } from "../../../../ui";
+import { InlineLoading, DividerBox, OuterBox } from "../../../../ui";
 import { ExternalLink } from "lucide-react";
-import { BattalionNftCard } from "../BattalionNftCard";
 
 // 브랜드 아이콘 추가
 library.add(fab);
@@ -124,10 +123,10 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
   const followIntentUrl = `https://twitter.com/intent/follow?screen_name=${targetAccount}`;
 
   return (
-    <BattalionNftCard>
+    <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center">
-        <h3 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step3.title")}</h3>
+        <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step3.title")}</h4>
         <p className="mb-6">{t("step3.description")}</p>
       </div>
 
@@ -277,6 +276,6 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
           )}
         </Button>
       )}
-    </BattalionNftCard>
+    </OuterBox>
   );
 };
