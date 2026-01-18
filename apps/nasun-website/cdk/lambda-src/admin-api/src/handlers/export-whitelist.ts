@@ -1,5 +1,11 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
-import { DynamoDBClient, ScanCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  ScanCommand,
+  QueryCommand,
+  PutItemCommand,
+  DeleteItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { verifyAdminRole, extractIdentityId } from "../utils/auth.js";
 import { generateCSV, generateFilename } from "../utils/csv.js";
 import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResponse } from "../utils/response.js";
@@ -9,6 +15,7 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 // Table names
 const GENESIS_TABLE = process.env.GENESIS_TABLE || "GenesisNftWhitelist";
 const BATTALION_TABLE = process.env.BATTALION_TABLE || "nasun-nft-whitelist";
+const HIDDEN_PROPOSALS_TABLE = process.env.HIDDEN_PROPOSALS_TABLE || "HiddenProposals";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -16,6 +23,7 @@ interface GenesisWhitelistItem {
   signature?: string;
   status: string;
   withdrawnAt?: string;
+  [key: string]: string | undefined;
 }
 
 interface BattalionWhitelistItem {
@@ -25,6 +33,74 @@ interface BattalionWhitelistItem {
   xUsername?: string;
   allowlistBatchId?: string;
   status: string;
+  [key: string]: string | undefined;
+}
+
+interface HiddenProposal {
+  proposalId: string;
+  hiddenAt: number;
+  hiddenBy: string;
+}
+
+/**
+ * Scan all hidden proposal IDs from DynamoDB
+ */
+async function scanHiddenProposals(): Promise<HiddenProposal[]> {
+  const items: HiddenProposal[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined;
+
+  do {
+    const command = new ScanCommand({
+      TableName: HIDDEN_PROPOSALS_TABLE,
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
+
+    const result = await dynamoClient.send(command);
+
+    if (result.Items) {
+      for (const item of result.Items) {
+        items.push({
+          proposalId: item.proposalId?.S || "",
+          hiddenAt: Number(item.hiddenAt?.N) || 0,
+          hiddenBy: item.hiddenBy?.S || "",
+        });
+      }
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return items;
+}
+
+/**
+ * Hide a proposal by adding it to the HiddenProposals table
+ */
+async function hideProposal(proposalId: string, adminIdentityId: string): Promise<void> {
+  const command = new PutItemCommand({
+    TableName: HIDDEN_PROPOSALS_TABLE,
+    Item: {
+      proposalId: { S: proposalId },
+      hiddenAt: { N: String(Date.now()) },
+      hiddenBy: { S: adminIdentityId },
+    },
+  });
+
+  await dynamoClient.send(command);
+}
+
+/**
+ * Unhide a proposal by removing it from the HiddenProposals table
+ */
+async function unhideProposal(proposalId: string): Promise<void> {
+  const command = new DeleteItemCommand({
+    TableName: HIDDEN_PROPOSALS_TABLE,
+    Key: {
+      proposalId: { S: proposalId },
+    },
+  });
+
+  await dynamoClient.send(command);
 }
 
 /**
@@ -175,8 +251,18 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     queryParams: event.queryStringParameters,
   });
 
+  const path = event.path;
+
   try {
-    // Extract and verify admin identity
+    // Public endpoint: GET /hidden-proposals (no auth required)
+    // This allows the public governance page to filter hidden proposals
+    if (path.endsWith("/hidden-proposals") && event.httpMethod === "GET") {
+      console.log("Fetching hidden proposals (public)");
+      const items = await scanHiddenProposals();
+      return jsonResponse(200, { proposalIds: items.map((i) => i.proposalId) }, requestOrigin);
+    }
+
+    // All other endpoints require admin authentication
     const identityId = extractIdentityId(
       event.headers as Record<string, string>,
       event.queryStringParameters
@@ -194,8 +280,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     console.log(`Admin verified: ${admin.email} (${admin.identityId})`);
-
-    const path = event.path;
     const queryParams = event.queryStringParameters || {};
 
     // GET /export/genesis - Export Genesis NFT Whitelist
@@ -315,6 +399,33 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         },
         requestOrigin
       );
+    }
+
+    // POST /hidden-proposals - Hide a proposal (admin only)
+    if (path.endsWith("/hidden-proposals") && event.httpMethod === "POST") {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { proposalId } = body;
+
+      if (!proposalId || typeof proposalId !== "string") {
+        return errorResponse(400, "Missing required field: proposalId", requestOrigin);
+      }
+
+      console.log(`Hiding proposal: ${proposalId} by admin: ${admin.identityId}`);
+      await hideProposal(proposalId, admin.identityId);
+      return jsonResponse(200, { success: true, proposalId }, requestOrigin);
+    }
+
+    // DELETE /hidden-proposals/{proposalId} - Unhide a proposal
+    if (path.includes("/hidden-proposals/") && event.httpMethod === "DELETE") {
+      const proposalId = event.pathParameters?.proposalId;
+
+      if (!proposalId) {
+        return errorResponse(400, "Missing proposalId in path", requestOrigin);
+      }
+
+      console.log(`Unhiding proposal: ${proposalId}`);
+      await unhideProposal(proposalId);
+      return jsonResponse(200, { success: true, proposalId }, requestOrigin);
     }
 
     return errorResponse(404, "Not found", requestOrigin);

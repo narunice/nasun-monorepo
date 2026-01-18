@@ -1,4 +1,5 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { useQuery } from "@tanstack/react-query";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
 import { ProposalItem } from "./ProposalItem";
@@ -8,6 +9,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
@@ -110,6 +112,14 @@ const ProposalList = () => {
   const { account } = useWallet();
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
 
+  // Fetch hidden proposal IDs from API
+  const { data: hiddenIdsArray = [] } = useQuery({
+    queryKey: ["hiddenProposals"],
+    queryFn: fetchHiddenProposalIds,
+    staleTime: 30 * 1000, // Cache for 30 seconds
+  });
+  const hiddenIds = new Set(hiddenIdsArray);
+
   const {
     data: dataResponse,
     isPending: isDashboardPending,
@@ -143,7 +153,10 @@ const ProposalList = () => {
   const voteNfts = extractVoteNfts(voteNftsRes);
   const proposalIds = getDashboardFields(dataResponse.data)?.proposals_ids || [];
 
-  if (proposalIds.length === 0) {
+  // Filter out hidden proposals
+  const visibleProposalIds = proposalIds.filter((id) => !hiddenIds.has(id));
+
+  if (visibleProposalIds.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="text-5xl mb-4">📋</div>
@@ -154,7 +167,7 @@ const ProposalList = () => {
 
   return (
     <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-      {proposalIds.map((id) => (
+      {visibleProposalIds.map((id) => (
         <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
           <Suspense fallback={<InlineLoading size="sm" />}>
             <ProposalItem
