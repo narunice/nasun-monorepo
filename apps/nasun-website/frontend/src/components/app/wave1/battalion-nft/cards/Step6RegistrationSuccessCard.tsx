@@ -15,8 +15,7 @@ import { Button } from "../../../../ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { DividerBox } from "../../../../ui";
-import { BattalionNftCard } from "../BattalionNftCard";
+import { DividerBox, OuterBox } from "../../../../ui";
 
 interface RegistrationSuccessCardProps {
   whitelist: NftWhitelist;
@@ -64,7 +63,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   };
 
   return (
-    <BattalionNftCard>
+    <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Success Header */}
       <div className="text-center mb-8">
         <div className="mb-4 flex justify-center">
@@ -235,6 +234,6 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
           {t("goToMyAccount")}
         </Button>
       </div>
-    </BattalionNftCard>
+    </OuterBox>
   );
 };

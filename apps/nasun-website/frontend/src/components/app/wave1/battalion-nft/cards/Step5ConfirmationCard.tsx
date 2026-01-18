@@ -11,8 +11,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../../../ui/button";
-import { InlineLoading, DividerBox } from "../../../../ui";
-import { BattalionNftCard } from "../BattalionNftCard";
+import { InlineLoading, DividerBox, OuterBox } from "../../../../ui";
 
 interface Step5ConfirmationCardProps {
   xUsername: string;
@@ -30,7 +29,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
   const { t } = useTranslation("battalion-nft");
 
   return (
-    <BattalionNftCard>
+    <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Header - 모바일: 세로, 데스크톱: 가로 배치 (중앙 정렬) */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 mb-6">
         <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-nasun-c1/20 rounded-full flex items-center justify-center">
@@ -90,6 +89,6 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           <span>{t("step5.button")}</span>
         )}
       </Button>
-    </BattalionNftCard>
+    </OuterBox>
   );
 };

@@ -14,8 +14,7 @@ import { Button } from "../../../../ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
-import { InlineLoading, DividerBox } from "../../../../ui";
-import { BattalionNftCard } from "../BattalionNftCard";
+import { InlineLoading, DividerBox, OuterBox } from "../../../../ui";
 
 // 브랜드 아이콘 추가
 library.add(fab);
@@ -94,7 +93,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         setIsLoading(false);
       }
     },
-    [onAuthSuccess]
+    [onAuthSuccess],
   );
 
   useEffect(() => {
@@ -146,12 +145,12 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <BattalionNftCard>
+    <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Header with X Icon */}
       <div className="mb-4 text-center">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <h3 className="!font-rubik font-medium">Connect</h3>
-          <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-8 h-8 text-nasun-white" />
+          <h4 className="!font-rubik font-medium">Connect</h4>
+          <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-7 h-7 text-nasun-white" />
         </div>
         <p>{t("step2.description")}</p>
       </div>
@@ -162,6 +161,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         <ul className="space-y-1 list-disc list-inside">
           <li>{t("step2.verifyLikes")}</li>
           <li>{t("step2.verifyRetweets")}</li>
+          <li>{t("step2.verifyFollow")}</li>
           <li>{t("step2.privacyNote")}</li>
           <li>{t("step2.notSignUp")}</li>
         </ul>
@@ -175,7 +175,13 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       )}
 
       {/* Connect Button */}
-      <Button onClick={handleXLogin} disabled={isLoading} variant="c5" className="w-full" size="lg">
+      <Button
+        onClick={handleXLogin}
+        disabled={isLoading}
+        variant="c5"
+        className="flex mx-auto"
+        size="lg"
+      >
         {isLoading ? (
           <InlineLoading message={t("step2.connecting")} size="md" className="text-white" />
         ) : (
@@ -185,6 +191,6 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
           </>
         )}
       </Button>
-    </BattalionNftCard>
+    </OuterBox>
   );
 };
