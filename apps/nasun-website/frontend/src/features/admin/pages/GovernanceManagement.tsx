@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { AdminLayout } from '../components/AdminLayout';
 import { useSuiClientQuery, useSuiClient } from '@mysten/dapp-kit';
 import { useNetworkVariable } from '@/config/suiNetworkConfig';
 import { SuiObjectData, DynamicFieldPage } from '@mysten/sui/client';
 import { downloadBlob } from '../services/adminApi';
+import { useHiddenProposals } from '../hooks/useHiddenProposals';
 
 type ProposalType = 'Governance' | 'Poll';
 
@@ -38,6 +40,20 @@ export function GovernanceManagement() {
   const [voters, setVoters] = useState<VoterRecord[]>([]);
   const [isLoadingVoters, setIsLoadingVoters] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const { isHidden, toggle, hiddenCount, isLoading: isHiddenLoading } = useHiddenProposals();
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  async function handleToggleVisibility(proposalId: string) {
+    setTogglingId(proposalId);
+    try {
+      await toggle(proposalId);
+      toast.success(isHidden(proposalId) ? 'Proposal unhidden' : 'Proposal hidden');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle visibility');
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   // Fetch Dashboard
   const { data: dashboardData, isPending: isDashboardPending } = useSuiClientQuery('getObject', {
@@ -154,7 +170,7 @@ export function GovernanceManagement() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
             <p className="text-white/60 text-sm">Total Proposals</p>
             <p className="text-2xl font-bold text-white">{proposals.length}</p>
@@ -171,6 +187,10 @@ export function GovernanceManagement() {
               {proposals.filter((p) => p.isExpired || p.isDelisted).length}
             </p>
           </div>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <p className="text-white/60 text-sm">Hidden</p>
+            <p className="text-2xl font-bold text-amber-400">{hiddenCount}</p>
+          </div>
         </div>
 
         {/* Proposals Table */}
@@ -186,21 +206,37 @@ export function GovernanceManagement() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-white/70">Status</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-white/70">Expiration</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-white/70">Actions</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-white/70">Visibility</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {proposals.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-white/60">
+                    <td colSpan={8} className="px-4 py-12 text-center text-white/60">
                       No proposals found
                     </td>
                   </tr>
                 ) : (
                   proposals.map((proposal) => (
-                    <tr key={proposal.id} className="hover:bg-white/5">
+                    <tr
+                      key={proposal.id}
+                      className={`hover:bg-white/5 ${isHidden(proposal.id) ? 'opacity-50' : ''}`}
+                    >
                       <td className="px-4 py-3">
-                        <p className="text-white font-medium">{proposal.title}</p>
-                        <p className="text-white/50 text-sm truncate max-w-xs">{proposal.description}</p>
+                        <div className="flex items-center gap-2">
+                          {isHidden(proposal.id) && (
+                            <span className="text-amber-400 flex-shrink-0" title="Hidden from public">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" />
+                                <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                              </svg>
+                            </span>
+                          )}
+                          <div>
+                            <p className="text-white font-medium">{proposal.title}</p>
+                            <p className="text-white/50 text-sm truncate max-w-xs">{proposal.description}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -242,6 +278,20 @@ export function GovernanceManagement() {
                           className="px-3 py-1 text-sm bg-white/10 text-white rounded hover:bg-white/20 transition-colors"
                         >
                           View Votes
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleToggleVisibility(proposal.id)}
+                          disabled={togglingId === proposal.id || isHiddenLoading}
+                          className={`px-3 py-1 text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isHidden(proposal.id)
+                              ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                              : 'bg-white/10 text-white hover:bg-white/20'
+                          }`}
+                          title={isHidden(proposal.id) ? 'Show on public page' : 'Hide from public page'}
+                        >
+                          {togglingId === proposal.id ? '...' : isHidden(proposal.id) ? 'Unhide' : 'Hide'}
                         </button>
                       </td>
                     </tr>
