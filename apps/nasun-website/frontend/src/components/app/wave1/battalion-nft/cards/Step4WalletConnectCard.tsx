@@ -22,8 +22,7 @@ import {
 import { authenticateWithMetaMask } from "../../../../../services/metamaskApi";
 import { Button } from "../../../../ui/button";
 import logger from "../../../../../lib/logger";
-import { InlineLoading, DividerBox } from "../../../../ui";
-import { BattalionNftCard } from "../BattalionNftCard";
+import { InlineLoading, DividerBox, OuterBox } from "../../../../ui";
 
 interface WalletConnectCardProps {
   onWalletConnected: (address: string) => void;
@@ -179,7 +178,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
   if (!isMetaMaskInstalled) {
     return (
-      <BattalionNftCard>
+      <OuterBox color="c5" className="max-w-3xl mx-auto">
         <div className="text-center">
           {/* MetaMask Logo */}
           <div className="mb-6 flex justify-center">
@@ -208,12 +207,12 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
           <p className="mt-4">{t("step4.installing")}</p>
         </div>
-      </BattalionNftCard>
+      </OuterBox>
     );
   }
 
   return (
-    <BattalionNftCard>
+    <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center">
         <h3 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step4.title")}</h3>
@@ -306,6 +305,6 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         </p>
         <p className="mt-1">{t("step4.networkNote")}</p>
       </DividerBox>
-    </BattalionNftCard>
+    </OuterBox>
   );
 };

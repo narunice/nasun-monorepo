@@ -5,7 +5,7 @@
   },
   "header": {
     "title": "Wave 1 Battalion NFT Free Mint",
-    "description": "Complete the tasks below to join the allowlist and mint your NFT."
+    "description": "You're among the pioneers shaping Nasun's future. Please complete the steps below to claim your place on the allowlist."
   },
   "errors": {
     "missingInfo": "Missing required information. Please complete all previous steps.",
@@ -17,14 +17,13 @@
   "goToHome": "Go to Home",
   "goToMyAccount": "Go to My Account Dashboard",
   "step1": {
-    "title": "Welcome to the Wave 1 Battalion NFT Free Mint Event!",
+    "title": "Welcome to Nasun",
     "description": "This is your special opportunity to mint NASUN's first NFT collection for free.",
     "requirements": {
       "title": "Requirements",
       "item1": "Follow X @Nasun_io account",
       "item2": "Like the event post",
-      "item3": "Retweet the event post",
-      "item4": "Connect MetaMask wallet"
+      "item3": "Retweet the event post"
     },
     "links": {
       "officialAccount": "Official X Account",
@@ -49,6 +48,7 @@
     "authenticationPurpose": "X OAuth authentication is required to verify the following event tasks:",
     "verifyLikes": "Check if you liked the target tweet",
     "verifyRetweets": "Check if you retweeted the target tweet",
+    "verifyFollow": "Check if you followed @Nasun_io",
     "notSignUp": "This is verification only — not signing up to our website",
     "tokenAutoDelete": "🔒 This is a one-time authentication for event participation verification.",
     "infoTitle": "Why do we need X integration?",
