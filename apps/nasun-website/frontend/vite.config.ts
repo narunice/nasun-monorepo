@@ -140,6 +140,38 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       assetsDir: "assets",
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Core React
+            "vendor-react": ["react", "react-dom", "react-router-dom"],
+
+            // UI Components
+            "vendor-radix": [
+              "@radix-ui/react-dialog",
+              "@radix-ui/react-dropdown-menu",
+              "@radix-ui/react-popover",
+              "@radix-ui/react-tooltip",
+            ],
+
+            // Web3 (Note: @mysten/sui uses subpath exports, handled by Vite automatically)
+            "vendor-web3": ["ethers", "@mysten/dapp-kit"],
+
+            // AWS
+            "vendor-aws": ["aws-amplify"],
+
+            // State & Data
+            "vendor-data": ["zustand", "@tanstack/react-query", "axios"],
+
+            // i18n
+            "vendor-i18n": ["i18next", "react-i18next"],
+
+            // Heavy Libraries
+            "vendor-chart": ["chart.js", "react-chartjs-2", "recharts"],
+            "vendor-carousel": ["react-slick", "slick-carousel"],
+          },
+        },
+      },
     },
   };
 });
