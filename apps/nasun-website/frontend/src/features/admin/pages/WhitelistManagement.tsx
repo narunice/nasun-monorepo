@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AdminLayout } from '../components/AdminLayout';
+import { SectionLayout } from '@/components/layout/SectionLayout';
+import { PageTitle } from '@/components/ui/PageTitle';
+import { DashboardCard } from '@/components/ui/DashboardCard';
+import { OuterBox } from '@/components/ui/OuterBox';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth';
-import {
-  exportGenesisWhitelist,
-  exportBattalionAllowlist,
-  getWhitelistStats,
-  downloadBlob,
-  type WhitelistStats,
-} from '../services/adminApi';
+import { exportGenesisWhitelist, exportBattalionAllowlist, downloadBlob } from '../services/adminApi';
+import { useWhitelistStats } from '../hooks/useWhitelistStats';
 
 type TabType = 'genesis' | 'battalion';
 
@@ -17,17 +17,10 @@ export function WhitelistManagement() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isExporting, setIsExporting] = useState(false);
-  const [stats, setStats] = useState<WhitelistStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch stats on mount
-  useEffect(() => {
-    if (user?.identityId) {
-      getWhitelistStats(user.identityId)
-        .then(setStats)
-        .catch((err) => console.error('Failed to fetch stats:', err));
-    }
-  }, [user?.identityId]);
+  // Fetch stats using React Query hook
+  const { data: stats, isLoading: isLoadingStats, error: statsError } = useWhitelistStats();
 
   const handleExport = async (format: 'default' | 'opensea' = 'default') => {
     if (!user?.identityId) {
@@ -74,141 +67,184 @@ export function WhitelistManagement() {
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-2">Whitelist Export</h1>
-        <p className="text-white/60 mb-8">
-          Download NFT whitelist data as CSV files.
-        </p>
+      <div className="bg-nasun-black min-h-screen">
+        <SectionLayout className="!max-w-6xl !pt-12">
+          
+          <div className="w-full mb-10 text-left">
+            <PageTitle as="h1" align="left" className="!mb-4">
+              Whitelist Export
+            </PageTitle>
+            <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
+              Download NFT whitelist and allowlist data as CSV files for OpenSea or internal analysis.
+            </p>
+          </div>
 
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <p className="text-white/60 text-sm">Genesis NFT Whitelist</p>
-              <p className="text-2xl font-bold text-nasun-c3">{stats.genesis.active.toLocaleString()} Active</p>
-              <p className="text-sm text-white/50 mt-1">
-                Total {stats.genesis.total.toLocaleString()} registered / {stats.genesis.withdrawn.toLocaleString()} withdrawn
-              </p>
+          <div className="flex flex-col gap-6 md:gap-8 lg:gap-10 w-full">
+            {/* Stats Grid */}
+            {isLoadingStats ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                <DashboardCard className="bg-gray-800/30 border-nasun-c5/40 animate-pulse">
+                  <div className="h-4 bg-nasun-c5/20 rounded w-1/3 mb-4"></div>
+                  <div className="h-8 bg-nasun-c5/20 rounded w-1/2"></div>
+                </DashboardCard>
+                <DashboardCard className="bg-gray-800/30 border-nasun-c5/40 animate-pulse">
+                  <div className="h-4 bg-nasun-c5/20 rounded w-1/3 mb-4"></div>
+                  <div className="h-8 bg-nasun-c5/20 rounded w-1/2"></div>
+                </DashboardCard>
+              </div>
+            ) : stats ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                <DashboardCard className="bg-gray-800/30 border-nasun-c5/40">
+                  <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">Genesis NFT Whitelist</h5>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-nasun-c3">{stats.genesis.active.toLocaleString()}</span>
+                    <span className="text-nasun-white/40 text-sm font-light">Active Users</span>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
+                    Total: {stats.genesis.total.toLocaleString()} registered / {stats.genesis.withdrawn.toLocaleString()} withdrawn
+                  </div>
+                </DashboardCard>
+
+                <DashboardCard className="bg-gray-800/30 border-nasun-c5/40">
+                  <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">Battalion NFT Allowlist</h5>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-nasun-c3">{stats.battalion.active.toLocaleString()}</span>
+                    <span className="text-nasun-white/40 text-sm font-light">Active Users</span>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
+                    Total: {stats.battalion.total.toLocaleString()} registered / {stats.battalion.withdrawn.toLocaleString()} withdrawn
+                  </div>
+                </DashboardCard>
+              </div>
+            ) : null}
+
+            {/* Stats Error */}
+            {statsError && (
+              <div className="p-4 bg-red-950/30 border border-red-900/50 rounded-lg text-red-400 text-sm flex items-center gap-3">
+                <span className="text-lg">⚠️</span>
+                Failed to load stats: {statsError.message}
+              </div>
+            )}
+
+            {/* Tabs & Content */}
+            <div className="w-full">
+              <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-xl w-fit border border-nasun-c5/20">
+                <button
+                  onClick={() => setActiveTab('genesis')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                    activeTab === 'genesis'
+                      ? 'bg-nasun-c4 text-nasun-white shadow-lg'
+                      : 'text-nasun-white/50 hover:text-nasun-white hover:bg-white/5'
+                  }`}
+                >
+                  Genesis NFT
+                </button>
+                <button
+                  onClick={() => setActiveTab('battalion')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                    activeTab === 'battalion'
+                      ? 'bg-nasun-c4 text-nasun-white shadow-lg'
+                      : 'text-nasun-white/50 hover:text-nasun-white hover:bg-white/5'
+                  }`}
+                >
+                  Battalion NFT
+                </button>
+              </div>
+
+              <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+                <h3 className="text-xl font-medium text-nasun-white mb-2">
+                  {activeTab === 'genesis' ? 'Genesis NFT Whitelist' : 'Battalion NFT Allowlist'}
+                </h3>
+                <p className="text-nasun-white/60 text-sm mb-8">
+                  {activeTab === 'genesis'
+                    ? 'Export wallet addresses currently registered for the Genesis NFT whitelist.'
+                    : 'Export wallet addresses for the Battalion NFT allowlist. You can filter by registration date.'}
+                </p>
+
+                {/* Date Filter (Battalion only) */}
+                {activeTab === 'battalion' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="space-y-2">
+                      <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium">Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium">End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Error message */}
+                {error && (
+                  <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-lg text-red-400 text-sm flex items-center gap-3">
+                    <span className="text-lg">⚠️</span>
+                    {error}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    onClick={() => handleExport('default')}
+                    disabled={isExporting}
+                    variant="c4"
+                    size="lg"
+                    className="min-w-[180px]"
+                  >
+                    {isExporting ? 'Exporting...' : 'Download CSV'}
+                  </Button>
+                  <Button
+                    onClick={() => handleExport('opensea')}
+                    disabled={isExporting}
+                    variant="outlineC5"
+                    size="lg"
+                    className="min-w-[180px]"
+                  >
+                    {isExporting ? 'Exporting...' : 'OpenSea Format'}
+                  </Button>
+                </div>
+              </OuterBox>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <p className="text-white/60 text-sm">Battalion NFT Allowlist</p>
-              <p className="text-2xl font-bold text-nasun-c3">{stats.battalion.active.toLocaleString()} Active</p>
-              <p className="text-sm text-white/50 mt-1">
-                Total {stats.battalion.total.toLocaleString()} registered / {stats.battalion.withdrawn.toLocaleString()} withdrawn
-              </p>
+
+            {/* Information Section */}
+            <div className="w-full">
+              <OuterBox color="n3" padding="sm" className="w-full">
+                <h4 className="text-sm font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-1 h-4 bg-nasun-c3 rounded-full"></span>
+                  CSV Column Definitions
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <span className="text-xs font-medium text-nasun-c3 uppercase">Standard Format</span>
+                    <p className="text-nasun-white/50 text-xs mt-1 leading-relaxed">
+                      {activeTab === 'genesis' 
+                        ? 'walletAddress, joinedAt, signature, status, withdrawnAt'
+                        : 'walletAddress, verifiedAt, xUserId, xUsername, allowlistBatchId, status'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-nasun-c3 uppercase">OpenSea Format</span>
+                    <p className="text-nasun-white/50 text-xs mt-1 leading-relaxed">
+                      Optimized for OpenSea Allowlist upload. Includes only mandatory columns: Wallet address, Mint limit, and Price.
+                    </p>
+                  </div>
+                </div>
+              </OuterBox>
             </div>
           </div>
-        )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveTab('genesis')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'genesis'
-                ? 'bg-nasun-c4 text-white'
-                : 'bg-white/5 text-white/70 hover:bg-white/10'
-            }`}
-          >
-            Genesis NFT Whitelist
-          </button>
-          <button
-            onClick={() => setActiveTab('battalion')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'battalion'
-                ? 'bg-nasun-c4 text-white'
-                : 'bg-white/5 text-white/70 hover:bg-white/10'
-            }`}
-          >
-            Battalion NFT Allowlist
-          </button>
-        </div>
-
-        {/* Export Card */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">
-            {activeTab === 'genesis' ? 'Genesis NFT Whitelist' : 'Battalion NFT Allowlist'}
-          </h2>
-
-          <p className="text-white/60 text-sm mb-6">
-            {activeTab === 'genesis'
-              ? 'Export wallet addresses registered for the Genesis NFT whitelist.'
-              : 'Export wallet addresses registered for the Battalion NFT allowlist with date filtering.'}
-          </p>
-
-          {/* Date Filter (Battalion only) */}
-          {activeTab === 'battalion' && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm text-white/70 mb-2">Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-nasun-c4"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-white/70 mb-2">End Date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-nasun-c4"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Export Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleExport('default')}
-              disabled={isExporting}
-              className="px-6 py-3 bg-nasun-c4 text-white rounded-lg hover:bg-nasun-c5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isExporting ? 'Exporting...' : 'Download CSV'}
-            </button>
-            <button
-              onClick={() => handleExport('opensea')}
-              disabled={isExporting}
-              className="px-6 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/20"
-            >
-              {isExporting ? 'Exporting...' : 'Download for OpenSea'}
-            </button>
-          </div>
-        </div>
-
-        {/* CSV Format Info */}
-        <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-lg">
-          <h3 className="text-white font-medium mb-2">CSV Format</h3>
-          {activeTab === 'genesis' ? (
-            <div className="space-y-2">
-              <p className="text-white/60 text-sm">
-                <span className="text-white/80">Default:</span> walletAddress, joinedAt, signature, status, withdrawnAt
-              </p>
-              <p className="text-white/60 text-sm">
-                <span className="text-white/80">OpenSea:</span> Wallet address, Custom mint limit (optional), Custom price in native token e.g. ETH (optional)
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-white/60 text-sm">
-                <span className="text-white/80">Default:</span> walletAddress, verifiedAt, xUserId, xUsername, allowlistBatchId, status
-              </p>
-              <p className="text-white/60 text-sm">
-                <span className="text-white/80">OpenSea:</span> Wallet address, Custom mint limit (optional), Custom price in native token e.g. ETH (optional)
-              </p>
-            </div>
-          )}
-        </div>
+        </SectionLayout>
       </div>
     </AdminLayout>
   );

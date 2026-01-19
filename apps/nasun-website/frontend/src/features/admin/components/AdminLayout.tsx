@@ -26,9 +26,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-nasun-c6 flex pt-20">
+    <div className="min-h-screen bg-nasun-black flex pt-20">
       {/* Sidebar */}
-      <aside className="w-64 bg-nasun-c6/80 border-r border-white/10 flex flex-col fixed top-20 left-0 bottom-0">
+      <aside className="w-64 bg-nasun-c6/40 border-r border-white/10 flex flex-col fixed top-20 left-0 bottom-0">
         {/* Logo */}
         <div className="p-6 border-b border-white/10">
           <Link to="/" className="text-xl font-bold text-white">
