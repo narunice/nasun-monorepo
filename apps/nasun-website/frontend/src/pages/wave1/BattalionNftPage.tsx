@@ -43,11 +43,8 @@ const BattalionNftPage: React.FC = () => {
     }
   }, [setIsPageReady, showHeroVideo]);
 
-  const handleVideoReady = useCallback(async () => {
+  const handleVideoReady = useCallback(() => {
     setIsVideoReady(true);
-
-    // 메인 컴포넌트 프리로드
-    await import("../../components/app/wave1/battalion-nft/BattalionNftPage");
 
     // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
     requestAnimationFrame(() => {
