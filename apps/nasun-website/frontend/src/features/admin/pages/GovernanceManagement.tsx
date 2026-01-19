@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { AdminLayout } from '../components/AdminLayout';
 import { SectionLayout } from '@/components/layout/SectionLayout';
-import { PageTitle } from '@/components/ui/PageTitle';
 import { DashboardCard } from '@/components/ui/DashboardCard';
 import { OuterBox } from '@/components/ui/OuterBox';
 import { Button } from '@/components/ui/button';
@@ -86,9 +85,9 @@ export function GovernanceManagement() {
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 w-full">
             <div>
-              <PageTitle as="h1" align="left" className="!mb-4">
+              <h2 className="text-nasun-white uppercase mb-4">
                 Governance Management
-              </PageTitle>
+              </h2>
               <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
                 Review on-chain proposals, monitor voting power distribution, and manage content visibility.
               </p>

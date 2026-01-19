@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '../components/AdminLayout';
 import { SectionLayout } from '@/components/layout/SectionLayout';
-import { PageTitle } from '@/components/ui/PageTitle';
 import { DashboardCard } from '@/components/ui/DashboardCard';
 import { OuterBox } from '@/components/ui/OuterBox';
 import { Button } from '@/components/ui/button';
@@ -71,9 +70,9 @@ export function WhitelistManagement() {
         <SectionLayout className="!max-w-6xl !pt-12">
           
           <div className="w-full mb-10 text-left">
-            <PageTitle as="h1" align="left" className="!mb-4">
+            <h2 className="text-nasun-white uppercase mb-4">
               Whitelist Export
-            </PageTitle>
+            </h2>
             <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
               Download NFT whitelist and allowlist data as CSV files for OpenSea or internal analysis.
             </p>
