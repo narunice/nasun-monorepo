@@ -1,18 +1,9 @@
+import type { ExportOptions, WhitelistStats, HiddenProposalsResponse } from '../types';
+
 const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL;
 
-export interface ExportOptions {
-  identityId: string;
-  status?: string;
-  startDate?: string;
-  endDate?: string;
-  batchId?: string;
-  format?: 'default' | 'opensea';
-}
-
-export interface WhitelistStats {
-  genesis: { active: number; withdrawn: number; total: number };
-  battalion: { active: number; withdrawn: number; total: number };
-}
+// Re-export types for backward compatibility
+export type { ExportOptions, WhitelistStats, HiddenProposalsResponse } from '../types';
 
 /**
  * Export Genesis NFT Whitelist as CSV
@@ -106,10 +97,6 @@ export function downloadBlob(blob: Blob, filename: string): void {
 // ============================================================================
 // Hidden Proposals API
 // ============================================================================
-
-export interface HiddenProposalsResponse {
-  proposalIds: string[];
-}
 
 /**
  * Get list of hidden proposal IDs

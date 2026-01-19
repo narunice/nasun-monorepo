@@ -246,11 +246,16 @@
     },
     "rulesGuidelines": {
       "title": "⚠️ RULES & GUIDELINES",
-      "description": "Following the rules and guidelines of X, any accounts involved in bot activity, spamming or inorganic manipulation of the rules to game the leaderboard will either be blacklisted or reset.",
+      "description": "In accordance with the rules and guidelines of each social media platform, any accounts involved in bot activity, spamming or inorganic manipulation of the rules to game the leaderboard will either be blacklisted or reset.",
       "expand": "View Details",
       "collapse": "Hide Details",
       "prohibited": {
-        "title": "Prohibited Activities",
+        "headlines": [
+          "No bots, scripts, or automated activity",
+          "No spamming or low-quality interactions",
+          "No multi-account abuse",
+          "No artificial or misleading signals"
+        ],
         "items": [
           "Automated, scripted, or bot-driven activity intended to simulate engagement",
           "Coordinated spamming or repetitive low-quality interactions",
@@ -258,23 +263,27 @@
           "Any activity that produces misleading, artificial, or non-genuine contribution signals"
         ],
         "disclaimer": "Accounts found to engage in such behavior may have their scores adjusted, reset, or removed from the leaderboard at the discretion of the Nasun team."
-      },
-      "xApiUsage": {
-        "title": "X API Usage Disclosure",
-        "description": "Nasun does not use the X API to collect, scrape, or analyze users' posts, timelines, or engagement activity for the purpose of leaderboard scoring.",
-        "items": [
-          "Account authentication or login",
-          "Identity verification",
-          "Event participation checks (e.g., confirming whether a required interaction occurred)"
-        ],
-        "scoringNote": "Leaderboard scores are based on manual curation by the Nasun team, publicly available information at the time of curation, and on-chain participation signals."
-      },
-      "scoreAdjustments": {
+      }
+    },
+    "dataPrivacy": {
+      "title": "📋 DATA & PRIVACY",
+      "description": "Nasun does not use the X API to collect, scrape, or analyze users' posts, timelines, or engagement activity for the purpose of leaderboard scoring.",
+      "apiUsageTitle": "X API is only used for:",
+      "items": [
+        "Account authentication or login",
+        "Identity verification",
+        "Event participation checks (e.g., confirming whether a required interaction occurred)"
+      ],
+      "scoringNote": "Leaderboard scores are based on manual review by the Nasun team, publicly available information, and on-chain participation signals."
+    },
+    "scorePolicy": {
+      "title": "📊 SCORE POLICY",
+      "evolution": {
         "title": "Score Adjustments & Evolution",
         "description": "Leaderboard scoring rules, weights, and evaluation criteria may evolve over time. Nasun may adjust scoring weights, introduce new contribution signals, or retire existing metrics. Any changes will be applied transparently."
       },
       "finalNotes": {
-        "title": "Final Notes",
+        "title": "Please Note",
         "items": [
           "Participation in the leaderboard is voluntary",
           "Leaderboard rankings are informational and community-driven",
