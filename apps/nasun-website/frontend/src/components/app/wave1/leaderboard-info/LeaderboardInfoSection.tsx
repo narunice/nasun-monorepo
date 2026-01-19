@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { SectionLayout } from "../../../layout/SectionLayout";
@@ -15,6 +15,8 @@ import {
   faTag,
   faBullhorn,
   faArrowRight,
+  faChevronUp,
+  faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { buttonVariants } from "../../../ui/button-variants";
 
@@ -23,6 +25,20 @@ const FOLLOW_INTENT_URL = `https://twitter.com/intent/follow?screen_name=${TARGE
 
 const LeaderboardInfoSection: React.FC = () => {
   const { t } = useTranslation("leaderboard");
+  const [rulesExpanded, setRulesExpanded] = useState(false);
+
+  const prohibitedHeadlines = t("info.rulesGuidelines.prohibited.headlines", {
+    returnObjects: true,
+  }) as string[];
+  const prohibitedItems = t("info.rulesGuidelines.prohibited.items", {
+    returnObjects: true,
+  }) as string[];
+  const dataPrivacyItems = t("info.dataPrivacy.items", {
+    returnObjects: true,
+  }) as string[];
+  const finalNotesItems = t("info.scorePolicy.finalNotes.items", {
+    returnObjects: true,
+  }) as string[];
 
   return (
     <SectionLayout className="!max-w-6xl ">
@@ -172,14 +188,19 @@ const LeaderboardInfoSection: React.FC = () => {
           </SectionTitle>
 
           <div className="max-w-3xl mx-auto space-y-4 md:space-y-6 mt-2 md:mt-3 lg:mt-4">
-            <DividerBox color="w1" title={t("info.engagementScoring.title")} titleClassName="">
+            <DividerBox
+              color="w1"
+              disableHover={true}
+              title={t("info.engagementScoring.title")}
+              titleClassName=""
+            >
               <p className="text-nasun-white/85 leading-relaxed">
                 {t("info.engagementScoring.description")}{" "}
                 <a
                   href={FOLLOW_INTENT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-nasun-c1  hover:text-orange-500 transition-colors"
+                  className="text-nasun-c3  hover:text-sky-400 transition-colors"
                 >
                   @{TARGET_ACCOUNT}
                 </a>{" "}
@@ -187,21 +208,104 @@ const LeaderboardInfoSection: React.FC = () => {
               </p>
             </DividerBox>
 
+            {/* Rules & Guidelines Box */}
             <DividerBox
               color="c5"
+              disableHover={true}
               title={t("info.rulesGuidelines.title")}
               titleClassName="!text-nasun-scarlet"
             >
               <p className="text-nasun-white/85 leading-relaxed">
                 {t("info.rulesGuidelines.description")}
               </p>
+
+              {/* Prohibited Headlines - Always Visible */}
+              <ul className="list-disc marker:text-nasun-scarlet pl-6 space-y-1 text-nasun-white/90 mt-3">
+                {prohibitedHeadlines.map((headline, i) => (
+                  <li key={i} className="font-medium">
+                    {headline}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Expand/Collapse Button */}
+              <button
+                onClick={() => setRulesExpanded(!rulesExpanded)}
+                className="mt-3 text-nasun-c1 hover:text-nasun-c2 transition-colors flex items-center gap-2 text-sm"
+              >
+                <span>
+                  {rulesExpanded
+                    ? t("info.rulesGuidelines.collapse")
+                    : t("info.rulesGuidelines.expand")}
+                </span>
+                <FontAwesomeIcon
+                  icon={rulesExpanded ? faChevronUp : faChevronDown}
+                  className="w-3 h-3"
+                />
+              </button>
+
+              {/* Expanded Content - Detailed Descriptions */}
+              {rulesExpanded && (
+                <div className="mt-4 space-y-3 border-t border-nasun-white/10 pt-4">
+                  <ul className="list-disc marker:text-nasun-scarlet pl-6 space-y-2 text-nasun-white/80">
+                    {prohibitedItems.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                  <p className="text-nasun-white/70 text-sm italic">
+                    {t("info.rulesGuidelines.prohibited.disclaimer")}
+                  </p>
+                </div>
+              )}
+            </DividerBox>
+
+            {/* Data & Privacy Box */}
+            <DividerBox
+              color="c5"
+              disableHover={true}
+              title={t("info.dataPrivacy.title")}
+              titleClassName="!text-nasun-white"
+            >
+              <p className="">{t("info.dataPrivacy.description")}</p>
+              <h6 className="mt-3">{t("info.dataPrivacy.apiUsageTitle")}</h6>
+              <ul className="list-disc marker:text-nasun-c4 pl-6 space-y-1 text-nasun-white/80 mt-2">
+                {dataPrivacyItems.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+              <p className="text-nasun-white/80 mt-3">{t("info.dataPrivacy.scoringNote")}</p>
+            </DividerBox>
+
+            {/* Score Policy Box */}
+            <DividerBox
+              color="c5"
+              disableHover={true}
+              title={t("info.scorePolicy.title")}
+              titleClassName="!text-nasun-white"
+            >
+              <div className="space-y-4">
+                <div>
+                  <h6 className="mb-2">{t("info.scorePolicy.evolution.title")}</h6>
+                  <p className="text-nasun-white/80">
+                    {t("info.scorePolicy.evolution.description")}
+                  </p>
+                </div>
+                <div>
+                  <h6 className=" mb-2">{t("info.scorePolicy.finalNotes.title")}</h6>
+                  <ul className="list-disc marker:text-nasun-c2 pl-6 space-y-1 text-nasun-white/80">
+                    {finalNotesItems.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </DividerBox>
           </div>
         </section>
 
         {/* Go to Leaderboard Button */}
         <div className="flex justify-center">
-          <Link to="/leaderboard" className={buttonVariants({ variant: "c3", size: "xl" })}>
+          <Link to="/wave1/leaderboard" className={buttonVariants({ variant: "c3", size: "xl" })}>
             {t("info.goToLeaderboard")}
             <FontAwesomeIcon icon={faArrowRight} className="ml-2 w-4 h-4" />
           </Link>
