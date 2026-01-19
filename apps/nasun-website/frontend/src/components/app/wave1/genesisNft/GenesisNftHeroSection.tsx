@@ -13,7 +13,7 @@ function GenesisNftHeroSection() {
       {/* Content Box - Semi-transparent container */}
       <div className="max-w-7xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto pt-28 pb-0 md:py-20 xl:py-24">
-          <OuterBox color="n5" className="">
+          <OuterBox color="c5" className="">
             {/* Main Title */}
             <SectionTitle
               as="h2"
@@ -46,7 +46,7 @@ function GenesisNftHeroSection() {
             <DividerBox
               color="n1"
               title={t("foundersHero.visionTitle")}
-              className="font-semibold !bg-nasun-white"
+              className="font-semibold"
               titleClassName="text-nasun-c3
                "
             >

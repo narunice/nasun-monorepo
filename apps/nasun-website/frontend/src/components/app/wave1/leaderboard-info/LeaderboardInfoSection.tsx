@@ -36,7 +36,7 @@ const LeaderboardInfoSection: React.FC = () => {
   const dataPrivacyItems = t("info.dataPrivacy.items", {
     returnObjects: true,
   }) as string[];
-  const finalNotesItems = t("info.scorePolicy.finalNotes.items", {
+  const finalNotesItems = t("info.scoringOverview.finalNotes.items", {
     returnObjects: true,
   }) as string[];
 
@@ -191,21 +191,25 @@ const LeaderboardInfoSection: React.FC = () => {
             <DividerBox
               color="w1"
               disableHover={true}
-              title={t("info.engagementScoring.title")}
+              title={t("info.scoringOverview.title")}
               titleClassName=""
             >
-              <p className="text-nasun-white/85 leading-relaxed">
-                {t("info.engagementScoring.description")}{" "}
-                <a
-                  href={FOLLOW_INTENT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-nasun-c3  hover:text-sky-400 transition-colors"
-                >
-                  @{TARGET_ACCOUNT}
-                </a>{" "}
-                {t("info.engagementScoring.descriptionSuffix")}
-              </p>
+              <div className="space-y-4">
+                <p className="text-nasun-white/85 leading-relaxed">
+                  {t("info.scoringOverview.description")}
+                </p>
+                <p className="text-nasun-white/70 text-sm leading-relaxed">
+                  {t("info.scoringOverview.policyNote")}
+                </p>
+                <div>
+                  <h6 className="mb-2">{t("info.scoringOverview.finalNotes.title")}</h6>
+                  <ul className="list-disc marker:text-nasun-c2 pl-6 space-y-1 text-nasun-white/80">
+                    {finalNotesItems.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </DividerBox>
 
             {/* Rules & Guidelines Box */}
@@ -276,30 +280,6 @@ const LeaderboardInfoSection: React.FC = () => {
               <p className="text-nasun-white/80 mt-3">{t("info.dataPrivacy.scoringNote")}</p>
             </DividerBox>
 
-            {/* Score Policy Box */}
-            <DividerBox
-              color="c5"
-              disableHover={true}
-              title={t("info.scorePolicy.title")}
-              titleClassName="!text-nasun-white"
-            >
-              <div className="space-y-4">
-                <div>
-                  <h6 className="mb-2">{t("info.scorePolicy.evolution.title")}</h6>
-                  <p className="text-nasun-white/80">
-                    {t("info.scorePolicy.evolution.description")}
-                  </p>
-                </div>
-                <div>
-                  <h6 className=" mb-2">{t("info.scorePolicy.finalNotes.title")}</h6>
-                  <ul className="list-disc marker:text-nasun-c2 pl-6 space-y-1 text-nasun-white/80">
-                    {finalNotesItems.map((item, i) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </DividerBox>
           </div>
         </section>
 
