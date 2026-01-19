@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { SectionLayout } from '@/components/layout/SectionLayout';
-import { PageTitle } from '@/components/ui/PageTitle';
 import { DashboardCard } from '@/components/ui/DashboardCard';
 import { OuterBox } from '@/components/ui/OuterBox';
 
@@ -62,9 +61,9 @@ export function AdminDashboard() {
         <SectionLayout className="!max-w-6xl !pt-12">
           
           <div className="w-full mb-10">
-            <PageTitle as="h1" align="left" className="!mb-4">
+            <h2 className="text-nasun-white uppercase mb-4">
               Admin Dashboard
-            </PageTitle>
+            </h2>
             <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
               Manage whitelist exports, governance proposals, and monitor platform health through the centralized admin console.
             </p>
