@@ -1,7 +1,7 @@
 // App.tsx
 import { useEffect } from "react";
 import { HelmetProvider } from "react-helmet-async";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import { NFTMintedModal } from "./components/app/wave1/genesisNft/nftMintedModal/NFTMintedModal";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/layout/Footer";
@@ -11,6 +11,8 @@ import ErrorBoundary from "./components/layout/ErrorBoundary";
 
 function AppContent() {
   const { isPageReady } = useHomePageLoading();
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   // 브라우저의 자동 스크롤 복원 비활성화
   useEffect(() => {
@@ -19,13 +21,13 @@ function AppContent() {
     }
   }, []);
 
-  // 모든 페이지에서 페이지가 준비될 때까지 Footer 숨김
+  // Admin 페이지에서는 Footer 숨김
   return (
     <>
       <Navbar />
       <AppRoutes />
       <NFTMintedModal />
-      {isPageReady && <Footer />}
+      {isPageReady && !isAdminPage && <Footer />}
     </>
   );
 }
