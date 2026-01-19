@@ -84,13 +84,19 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.governance",
           path: "/network/governance",
           element: Pages.Web3, // ProposalPage - Nasun Devnet Voting System
+        },
+        {
+          name: "navigation.privacy",
+          path: "/network/privacy",
+          element: Pages.VisionNetwork, // Placeholder
           disabled: true, // Coming Soon
         },
         {
-          name: "navigation.protocolOverview",
-          path: "/network/overview",
-          element: Pages.ProtocolOverview,
+          name: "navigation.litepaper",
+          path: "/network/litepaper", // Placeholder path
+          element: Pages.VisionNetwork, // Placeholder
           disabled: true, // Coming Soon
+          external: true, // To show external link icon
         },
       ],
     },
@@ -109,46 +115,33 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       path: "/ecosystem",
       subMenu: [
         {
-          name: "navigation.pado",
-          path: "/ecosystem/pado",
+          name: "navigation.financePado",
+          path: "/ecosystem/finance",
           element: Pages.FinancePado,
-          subMenu: [
-            {
-              name: "navigation.padoMain",
-              path: "/ecosystem/pado/main",
-              element: Pages.FinancePado,
-            },
-            {
-              name: "navigation.padoSpotPerps",
-              path: "/ecosystem/pado/spot-perps",
-              element: Pages.FinancePado, // Placeholder
-              disabled: true, // Coming Soon
-            },
-            {
-              name: "navigation.padoPrediction",
-              path: "/ecosystem/pado/prediction",
-              element: Pages.FinancePado, // Placeholder
-              disabled: true, // Coming Soon
-            },
-            {
-              name: "navigation.padoLending",
-              path: "/ecosystem/pado/lending",
-              element: Pages.FinancePado, // Placeholder
-              disabled: true, // Coming Soon
-            },
-            {
-              name: "navigation.padoTokenization",
-              path: "/ecosystem/pado/tokenization",
-              element: Pages.FinancePado, // Placeholder
-              disabled: true, // Coming Soon
-            },
-            {
-              name: "navigation.padoStablecoins",
-              path: "/ecosystem/pado/stablecoins",
-              element: Pages.FinancePado, // Placeholder
-              disabled: true, // Coming Soon
-            },
-          ],
+        },
+        {
+          name: "navigation.aiEconomy",
+          path: "/ecosystem/ai-economy",
+          element: Pages.FinancePado, // Placeholder
+          disabled: true, // Coming Soon
+        },
+        {
+          name: "navigation.tokenizedAssets",
+          path: "/ecosystem/tokenized-assets",
+          element: Pages.FinancePado, // Placeholder
+          disabled: true, // Coming Soon
+        },
+        {
+          name: "navigation.stablecoinRails",
+          path: "/ecosystem/stablecoin-rails",
+          element: Pages.FinancePado, // Placeholder
+          disabled: true, // Coming Soon
+        },
+        {
+          name: "navigation.depinCompute",
+          path: "/ecosystem/depin-compute",
+          element: Pages.FinancePado, // Placeholder
+          disabled: true, // Coming Soon
         },
       ],
     },
@@ -187,8 +180,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
               element: Pages.IPsGenSolHeist,
             },
             {
-              name: "navigation.genSolOverview",
-              path: "/ip/gensol/overview",
+              name: "navigation.genSolPlan",
+              path: "/ip/gensol/plan",
               element: Pages.IPsGenSolOverview,
             },
           ],
@@ -204,8 +197,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
               element: Pages.IPsRiderStudioMain,
             },
             {
-              name: "navigation.riderStudioOverview",
-              path: "/ip/riderstudio/overview",
+              name: "navigation.riderStudioFramework",
+              path: "/ip/riderstudio/framework",
               element: Pages.IPsRiderStudioOverview,
             },
           ],

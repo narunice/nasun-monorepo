@@ -22,41 +22,34 @@ export const EarlyContributorsSection: React.FC = () => {
 
   return (
     <SectionLayout className="!max-w-6xl">
-      <div className="flex flex-col ">
-        {/* Page Title */}
-        <PageTitle as="h2" align="center">
-          {t("title")}
-        </PageTitle>
-
+      {/* Page Title */}
+      <PageTitle as="h2" align="center">
+        {t("title")}
+      </PageTitle>
+      <div className="flex flex-col gap-6 md:gap-7 lg:gap8">
         {/* Main Intro Box */}
-        <OuterBox
-          color="n1"
-          className="max-w-4xl mx-auto border-nasun-c4 !bg-nasun-c4/10 mb-4 md:mb-6 lg:mb-8 xl:mb-10"
-        >
-          <h6 className="text-nasun-white/80 text-center">
-            <span className="text-nasun-c4 font-medium">{t("intro.highlight")}</span>
+        <OuterBox color="c1" className="w-full">
+          <p className="text-lg font-light leading-relaxed text-nasun-white/90 text-center max-w-3xl mx-auto">
+            <span className="text-nasun-c1 font-medium">{t("intro.highlight")}</span>
             {t("intro.rest")}
-          </h6>
+          </p>
         </OuterBox>
 
         {/* We're Looking For Section */}
-        <div className="space-y-6 mb-6">
+        <section className="space-y-2 md:space-y-3 lg:space-y-4">
           <h3 className="font-medium text-center">{t("lookingFor.title")}</h3>
 
-          <div className="flex flex-col md:grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-7 lg:gap-8 mt-2 md:mt-3 lg:mt-4">
             {/* Content Creators */}
             <DividerBox
               color="c3"
               title={t("contentCreators.title")}
-              titleClassName="text-nasun-c3"
-              icon={<FontAwesomeIcon icon={faXTwitter} className="text-nasun-c3 text-2xl" />}
+              titleClassName="!text-nasun-c3"
+              icon={<FontAwesomeIcon icon={faXTwitter} className="text-nasun-c3 w-5 h-5" />}
             >
-              <ul className="space-y-3">
+              <ul className="list-disc marker:text-nasun-c3 pl-6 space-y-2 md:space-y-3 text-nasun-white/80">
                 {contentCreatorsItems.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 text-nasun-white/80">
-                    <span className="text-nasun-c3 mt-1">•</span>
-                    <span>{item}</span>
-                  </li>
+                  <li key={index}>{item}</li>
                 ))}
               </ul>
             </DividerBox>
@@ -65,55 +58,51 @@ export const EarlyContributorsSection: React.FC = () => {
             <DividerBox
               color="c3"
               title={t("youtubeCreators.title")}
-              titleClassName="text-nasun-c3"
-              icon={<FontAwesomeIcon icon={faYoutube} className="text-nasun-c3 text-2xl" />}
+              titleClassName="!text-nasun-c3"
+              icon={<FontAwesomeIcon icon={faYoutube} className="text-nasun-c3 w-5 h-5" />}
             >
-              <ul className="space-y-3">
+              <ul className="list-disc marker:text-nasun-c3 pl-6 space-y-2 md:space-y-3 text-nasun-white/80">
                 {youtubeCreatorsItems.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 text-nasun-white/80">
-                    <span className="text-nasun-c3 mt-1">•</span>
-                    <span>{item}</span>
-                  </li>
+                  <li key={index}>{item}</li>
                 ))}
               </ul>
             </DividerBox>
           </div>
-        </div>
+        </section>
 
         {/* Rewards Section */}
         <DividerBox
           color="c3"
           title={t("rewards.title")}
-          titleClassName="text-nasun-c3"
-          icon={<FontAwesomeIcon icon={faTrophy} className="text-nasun-c3 text-2xl" />}
+          titleClassName="!text-nasun-c3"
+          icon={<FontAwesomeIcon icon={faTrophy} className="text-nasun-c3 w-5 h-5" />}
         >
-          <p className="text-nasun-white/90 font-medium mb-4">{t("rewards.intro")}</p>
-          <ul className="space-y-3">
+          <p className="text-nasun-white font-medium mb-4">{t("rewards.intro")}</p>
+          <ul className="list-disc marker:text-nasun-c3 pl-6 space-y-2 md:space-y-3 text-nasun-white/80">
             {rewardsItems.map((item, index) => (
-              <li key={index} className="flex items-start gap-2 text-nasun-white/80">
-                <span className="text-nasun-c3 mt-1">•</span>
-                <span>{item}</span>
-              </li>
+              <li key={index}>{item}</li>
             ))}
           </ul>
         </DividerBox>
 
         {/* Philosophy Section */}
-        <OuterBox color="n1" className="bg-nasun-c6/50 mt-16">
-          <div className="space-y-4 text-nasun-white/80 leading-relaxed">
+        <OuterBox color="w1" className="">
+          <div className="space-y-2 md:space-y-3 lg:space-y-4 text-nasun-white/80 leading-relaxed">
             {philosophyParagraphs.map((paragraph, index) => (
               <p key={index}>{paragraph}</p>
             ))}
           </div>
 
-          {/* Contact - 박스 내부 */}
-          <div className="mt-8 pt-6 border-t border-nasun-white/10 text-center px-[11%]">
-            <p className="mb-6">
+          {/* Contact */}
+          <div className="mt-6 md:mt-8 pt-6 border-t border-nasun-white/10 text-center">
+            <p className="mb-6 max-w-2xl mx-auto">
               {t("philosophy.closing.before")}
-              <span className="font-medium">{t("philosophy.closing.highlight")}</span>
+              <span className="text-nasun-white font-medium">
+                {t("philosophy.closing.highlight")}
+              </span>
               {t("philosophy.closing.after")}
             </p>
-            <div className="flex justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
               <a href="mailto:admin@nasun.io">
                 <Button variant="c3" size="lg">
                   {t("philosophy.emailButton")}
@@ -121,7 +110,8 @@ export const EarlyContributorsSection: React.FC = () => {
               </a>
               <a href="https://x.com/Nasun_io" target="_blank" rel="noopener noreferrer">
                 <Button variant="c3" size="lg">
-                  {t("philosophy.xButton")} <FontAwesomeIcon icon={faXTwitter} className="ml-1" />
+                  {t("philosophy.xButton")}{" "}
+                  <FontAwesomeIcon icon={faXTwitter} className="ml-2 w-4 h-4" />
                 </Button>
               </a>
             </div>

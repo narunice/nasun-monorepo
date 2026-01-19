@@ -97,58 +97,20 @@ const AppRoutes = () => {
 
         {/* Nested Routes: Ecosystem */}
         <Route path="/ecosystem">
-          <Route index element={<Navigate to="/ecosystem/pado/main" replace />} />
+          <Route index element={<Navigate to="/ecosystem/finance" replace />} />
           {routesV2.ecosystem.navItem?.subMenu?.map((subItem) => {
             const subPath = subItem.path.replace('/ecosystem/', '');
             const SubComponent = subItem.element!;
 
             // 페이지 제목 매핑 (i18n 키를 실제 표시명으로 변환)
             const pageTitleMap: Record<string, string> = {
-              'navigation.pado': 'Pado',
-              'navigation.padoMain': 'Pado',
-              'navigation.padoSpotPerps': 'Spot & Perps',
-              'navigation.padoPrediction': 'Prediction Markets',
-              'navigation.padoLending': 'Lending',
-              'navigation.padoTokenization': 'Tokenization',
-              'navigation.padoStablecoins': 'Stablecoins',
+              'navigation.financePado': 'Finance (Pado)',
+              'navigation.aiEconomy': 'AI Economy',
+              'navigation.tokenizedAssets': 'Tokenized Assets',
+              'navigation.stablecoinRails': 'Stablecoin Rails',
+              'navigation.depinCompute': 'DePIN & Compute',
             };
             const pageTitle = pageTitleMap[subItem.name] || subItem.name;
-
-            // 중첩 서브메뉴가 있는 경우 (예: Pado)
-            if (subItem.subMenu && subItem.subMenu.length > 0) {
-              return (
-                <Route key={subItem.path} path={subPath}>
-                  <Route
-                    index
-                    element={<Navigate to={`${subItem.path}/main`} replace />}
-                  />
-                  {subItem.subMenu.map((nestedItem) => {
-                    const nestedPath = nestedItem.path.replace(subItem.path + '/', '');
-                    const NestedComponent = nestedItem.element!;
-                    const nestedTitle = pageTitleMap[nestedItem.name] || nestedItem.name;
-
-                    return (
-                      <Route
-                        key={nestedItem.path}
-                        path={nestedPath}
-                        element={
-                          <RouteWithMeta
-                            route={{
-                              ...routesV2.ecosystem,
-                              component: NestedComponent,
-                              meta: {
-                                title: `NASUN - ${nestedTitle}`,
-                                description: `${nestedTitle} page in Ecosystem section`
-                              }
-                            }}
-                          />
-                        }
-                      />
-                    );
-                  })}
-                </Route>
-              );
-            }
 
             return (
               <Route
@@ -182,12 +144,12 @@ const AppRoutes = () => {
             const pageTitleMap: Record<string, string> = {
               'navigation.genSol': 'GenSol',
               'navigation.genSolMain': 'GenSol',
-              'navigation.genSolOverview': 'GenSol Overview',
+              'navigation.genSolPlan': 'GenSol Plan',
               'navigation.genSolShooter': 'Multiplayer Shooter',
               'navigation.genSolAnimation': 'Animation Series',
               'navigation.riderStudio': 'Rider Studio',
               'navigation.riderStudioMain': 'Rider Studio',
-              'navigation.riderStudioOverview': 'Rider Studio Overview',
+              'navigation.riderStudioFramework': 'Rider Studio Framework',
               'navigation.wePop': 'WePop',
             };
             const pageTitle = pageTitleMap[subItem.name] || subItem.name;
@@ -409,30 +371,21 @@ const AppRoutes = () => {
           })}
         </Route>
 
-        {/* Redirect old routes */}
-        <Route path="/protocol" element={<Navigate to="/network" replace />} />
-        <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
-        <Route path="/ips" element={<Navigate to="/ip" replace />} />
-
-        <Route path="/nft-event" element={<Navigate to="/wave1/battalion-nft" replace />} />
-        <Route path="/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
-        {/* Vision → Ecosystem 리디렉트 */}
-        <Route path="/vision" element={<Navigate to="/ecosystem" replace />} />
-        <Route path="/vision/reliance" element={<Navigate to="/ecosystem/pado/main" replace />} />
-        <Route path="/vision/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
-        <Route path="/vision/network" element={<Navigate to="/network/nasun" replace />} />
-        <Route path="/vision/ips" element={<Navigate to="/ip" replace />} />
-        <Route path="/vision/ips/gensol" element={<Navigate to="/ip/gensol" replace />} />
-        <Route path="/vision/ips/wepop" element={<Navigate to="/ip/wepop" replace />} />
-        <Route path="/vision/ips/riderstudio" element={<Navigate to="/ip/riderstudio" replace />} />
-        <Route path="/opportunities" element={<Navigate to="/about/opportunities" replace />} />
-        <Route path="/team/founders" element={<Navigate to="/about/founders" replace />} />
-        <Route path="/team/opportunities" element={<Navigate to="/about/opportunities" replace />} />
-        <Route path="/vision/strategy" element={<Navigate to="/about/strategy" replace />} />
-        {/* Grants → Awards 리디렉트 */}
-        <Route path="/grants" element={<Navigate to="/updates/awards" replace />} />
-        <Route path="/updates/grants" element={<Navigate to="/updates/awards" replace />} />
-
+                {/* Redirect old routes */}
+                <Route path="/protocol" element={<Navigate to="/network" replace />} />
+                <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
+                <Route path="/ips" element={<Navigate to="/ip" replace />} />
+        
+                <Route path="/nft-event" element={<Navigate to="/wave1/battalion-nft" replace />} />
+                <Route path="/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
+        
+                <Route path="/opportunities" element={<Navigate to="/about/opportunities" replace />} />
+                <Route path="/team/founders" element={<Navigate to="/about/founders" replace />} />
+                <Route path="/team/opportunities" element={<Navigate to="/about/opportunities" replace />} />
+                <Route path="/vision/strategy" element={<Navigate to="/about/strategy" replace />} />
+                {/* Grants → Awards 리디렉트 */}
+                <Route path="/grants" element={<Navigate to="/updates/awards" replace />} />
+                <Route path="/updates/grants" element={<Navigate to="/updates/awards" replace />} />
         {/* Headless WordPress Post Detail Page */}
         <Route path="/awards-grants/:slug" element={<Pages.PostDetailPage />} />
 

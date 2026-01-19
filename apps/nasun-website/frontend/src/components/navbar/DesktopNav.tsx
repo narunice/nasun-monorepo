@@ -101,7 +101,15 @@ export default function DesktopNav({ navItems }: Props) {
                               subItem
                             )} cursor-not-allowed opacity-50`}
                           >
-                            <span>{subItem.name}</span>
+                            <span className="flex items-center gap-2">
+                              {subItem.name}
+                              {subItem.external && (
+                                <FontAwesomeIcon
+                                  icon={faArrowUpRightFromSquare}
+                                  className="text-xs opacity-70"
+                                />
+                              )}
+                            </span>
                           </span>
                         ) : subItem.external ? (
                           <a
