@@ -23,7 +23,7 @@ import RankChangeIndicator from "./RankChangeIndicator";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth";
 import { toast } from "react-toastify";
-import html2canvas from "html2canvas";
+// html2canvas is dynamically imported to reduce initial bundle size
 
 interface MyRankCardProps {
   period: CumulativePeriod;
@@ -121,6 +121,8 @@ const MyRankCardComponent = forwardRef<MyRankCardRef, MyRankCardProps>(
         const backgroundColor = isDarkMode ? "#1f2937" : "#f3f4f6";
         await document.fonts.ready;
 
+        // Dynamically import html2canvas (reduces initial bundle by ~204KB)
+        const html2canvas = await import("html2canvas").then((m) => m.default);
         const canvas = await html2canvas(cardRef.current, {
           backgroundColor,
           scale: 2,
@@ -194,6 +196,8 @@ const MyRankCardComponent = forwardRef<MyRankCardRef, MyRankCardProps>(
         const isDarkMode = document.documentElement.classList.contains("dark");
         const backgroundColor = isDarkMode ? "#1f2937" : "#f3f4f6";
         await document.fonts.ready;
+        // Dynamically import html2canvas (reduces initial bundle by ~204KB)
+        const html2canvas = await import("html2canvas").then((m) => m.default);
         const canvas = await html2canvas(cardRef.current, {
           backgroundColor,
           scale: 2,
