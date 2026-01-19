@@ -184,7 +184,15 @@ export default function MobileNav({
                                 key={subItem.name}
                                 className="block py-2 px-2 text-left rounded-lg text-nasun-black opacity-50 cursor-not-allowed"
                               >
-                                <span>{subItem.name}</span>
+                                <span className="flex items-center gap-2">
+                                  {subItem.name}
+                                  {subItem.external && (
+                                    <FontAwesomeIcon
+                                      icon={faArrowUpRightFromSquare}
+                                      className="text-xs opacity-70"
+                                    />
+                                  )}
+                                </span>
                               </span>
                             ) : subItem.external ? (
                               <a
