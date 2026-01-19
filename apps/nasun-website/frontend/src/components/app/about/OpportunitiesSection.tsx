@@ -17,7 +17,7 @@ function OpportunitiesSection() {
       </PageTitle>
 
       {/* First Box - Join Our Team */}
-      <OuterBox color="n1" className="bg-nasun-c6/40">
+      <OuterBox color="w1" className="bg-nasun-c6/40">
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("joinTeam.heading")}</h4>
           <h5 className="text-nasun-c1">{t("joinTeam.subheading")}</h5>
@@ -29,12 +29,14 @@ function OpportunitiesSection() {
           <div className="flex flex-col md:grid md:grid-cols-2 gap-6">
             <DividerBox
               color="c3"
+              disableHover={true}
               title={t("advisors.title")}
               titleClassName="text-nasun-c3"
               description={t("advisors.description")}
             />
             <DividerBox
               color="c3"
+              disableHover={true}
               title={t("partners.title")}
               titleClassName="text-nasun-c3"
               description={t("partners.description")}
@@ -43,6 +45,7 @@ function OpportunitiesSection() {
           {/* Founding Members (Full width on all screens) */}
           <DividerBox
             color="c3"
+            disableHover={true}
             title={t("members.title")}
             titleClassName="text-nasun-c3"
             description={t("members.description")}
