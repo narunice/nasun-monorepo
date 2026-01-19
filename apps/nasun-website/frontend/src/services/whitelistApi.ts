@@ -221,7 +221,6 @@ export async function joinWhitelistWithSignature(
   // 서명할 메시지 생성 (다국어 지원 + 보안 안내)
   const message = `${i18n.t('common:signatures.joinWhitelist.title')}
 
-${i18n.t('common:signatures.joinWhitelist.securityNotice')}
 ${i18n.t('common:signatures.joinWhitelist.noTransaction')}
 ${i18n.t('common:signatures.joinWhitelist.ownershipVerification')}
 
@@ -259,7 +258,6 @@ export async function withdrawWhitelistWithSignature(
   // 서명할 메시지 생성 (다국어 지원 + 보안 안내)
   const message = `${i18n.t('common:signatures.withdrawWhitelist.title')}
 
-${i18n.t('common:signatures.withdrawWhitelist.securityNotice')}
 ${i18n.t('common:signatures.withdrawWhitelist.noTransaction')}
 ${i18n.t('common:signatures.withdrawWhitelist.ownershipVerification')}
 
