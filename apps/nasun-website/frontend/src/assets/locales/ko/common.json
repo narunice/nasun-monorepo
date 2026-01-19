@@ -180,16 +180,16 @@
       "officialSiteOnly": "• NASUN 공식 사이트에서만 서명하세요"
     },
     "joinWhitelist": {
-      "title": "NASUN NFT 화이트리스트 참여",
-      "securityNotice": "⚠️ 중요 안내:",
-      "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
-      "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"
+      "title": "Nasun Genesis NFT 화이트리스트 참여",
+      "securityNotice": "",
+      "noTransaction": "⚠️ 이 서명으로 자금이 이체되지 않습니다",
+      "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
     },
     "withdrawWhitelist": {
-      "title": "NASUN NFT 화이트리스트 철회",
-      "securityNotice": "⚠️ 중요 안내:",
-      "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
-      "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"
+      "title": "Nasun Genesis NFT 화이트리스트 철회",
+      "securityNotice": "",
+      "noTransaction": "⚠️ 이 서명으로 자금이 이체되지 않습니다",
+      "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
     },
     "withdrawBattalionNft": {
       "title": "NASUN 배틀리온 NFT 참여 취소",

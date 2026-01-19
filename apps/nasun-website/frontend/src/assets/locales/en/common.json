@@ -185,16 +185,16 @@
       "officialSiteOnly": "• Only sign on the official NASUN website"
     },
     "joinWhitelist": {
-      "title": "Join NASUN NFT Whitelist",
-      "securityNotice": "⚠️ Important Notice:",
-      "noTransaction": "• This signature does NOT transfer any funds",
-      "ownershipVerification": "• This is only to verify you own this wallet"
+      "title": "Join Nasun Genesis NFT Whitelist",
+      "securityNotice": "",
+      "noTransaction": "⚠️ This signature does NOT transfer any funds",
+      "ownershipVerification": "⚠️ This is only to verify you own this wallet"
     },
     "withdrawWhitelist": {
-      "title": "Withdraw from NASUN NFT Whitelist",
-      "securityNotice": "⚠️ Important Notice:",
-      "noTransaction": "• This signature does NOT transfer any funds",
-      "ownershipVerification": "• This is only to verify you own this wallet"
+      "title": "Withdraw from Nasun Genesis NFT Whitelist",
+      "securityNotice": "",
+      "noTransaction": "⚠️ This signature does NOT transfer any funds",
+      "ownershipVerification": "⚠️ This is only to verify you own this wallet"
     },
     "withdrawBattalionNft": {
       "title": "Withdraw from NASUN Battalion NFT",
