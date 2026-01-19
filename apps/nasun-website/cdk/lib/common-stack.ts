@@ -279,7 +279,8 @@ export class CommonStack extends cdk.Stack {
         TOKEN_WEIGHT: process.env.TOKEN_WEIGHT || "0",
         // VotingPowerCertificate + Sponsored Transaction
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x01ceae826f1ce6a13407eaa290fd0f99ca02230f1253f312246a57f9edf94ff0",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0xa4636c566d7d06bcb3802e248390007a09fb78837349bce3cb71eadd905937cf",
+        PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0x4da0ef1eb2cfd06970ceebcc9524d3819b0c5174eca18af1090338b25d4de756",
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-governance-api",

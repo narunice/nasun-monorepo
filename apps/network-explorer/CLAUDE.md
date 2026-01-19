@@ -100,7 +100,6 @@ apps/network-explorer/
 │   │   ├── InfoRow.tsx
 │   │   ├── NFTMedia.tsx      # NFT 미디어 렌더링
 │   │   └── NFTCard.tsx       # NFT 카드 (Address 페이지)
-│   ├── wallet/               # 지갑 모듈 (격리된 구조)
 │   └── lib/
 │       ├── sui-client.ts     # SUI RPC 클라이언트
 │       ├── format.ts         # 포맷 유틸리티
@@ -158,33 +157,14 @@ VITE_FAUCET_URL=http://3.38.127.23:5003
 | `/checkpoints` | 체크포인트 목록 (페이지네이션) |
 | `/checkpoint/:sequence` | 체크포인트 상세 |
 
-## 지갑 모듈 (src/wallet/)
+## 지갑 기능
 
-Explorer에 내장된 지갑 기능으로, 격리된 모듈 구조로 설계되었습니다.
+지갑 기능은 모노레포의 공통 패키지를 사용하여 구현되었습니다.
 
-### 구조
+- **로직**: `@nasun/wallet` (Zustand 상태 관리, SUI 클라이언트)
+- **UI**: `@nasun/wallet-ui` (연결 버튼, 잔액 표시 등)
 
-```
-src/wallet/
-├── components/
-│   ├── WalletProvider.tsx    # 지갑 초기화 Provider
-│   ├── WalletConnect.tsx     # 연결/생성/잠금해제 UI
-│   ├── BalanceDisplay.tsx    # 잔액 표시
-│   ├── SendTransaction.tsx   # 토큰 전송 UI
-│   └── FaucetButton.tsx      # Faucet 토큰 요청 버튼
-├── hooks/
-│   ├── useWallet.ts          # 지갑 상태 관리 (Zustand)
-│   ├── useBalance.ts         # 잔액 조회 (TanStack Query)
-│   └── useTransaction.ts     # 트랜잭션 전송
-├── lib/
-│   ├── crypto.ts             # AES-256-GCM 암호화
-│   ├── keystore.ts           # localStorage 키 저장소
-│   ├── sui-client.ts         # SUI 클라이언트 래퍼
-│   └── faucet.ts             # Faucet API
-├── types/
-│   └── wallet.ts             # 타입 정의
-└── index.ts                  # Public API exports
-```
+상세 내용은 루트 [CLAUDE.md](../../CLAUDE.md)의 패키지 설명을 참조하세요.
 
 ## 배포된 스마트 컨트랙트
 
