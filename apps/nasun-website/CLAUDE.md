@@ -2,8 +2,8 @@
 
 > 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
-**Last Updated**: 2025-12-27
-**Version**: 2.18.0 (monorepo migration)
+**Last Updated**: 2026-01-19
+**Version**: 2.19.0 (navigation restructure)
 
 ## 기본 규칙
 
@@ -30,7 +30,48 @@
 
 ### 🎯 최근 업데이트 이력 ⭐ **필독!**
 
-#### 📅 2025-12-16: CDK 환경별 .env 파일 분리 (최신) ✅
+#### 📅 2026-01-19: 네비게이션 메뉴 구조 개편 및 라우트 변경 (최신) ✅
+
+**작업 일시**: 2026-01-19
+**작업 유형**: UX 개선 + 라우팅 구조 변경
+**심각도**: Medium (URL 구조 변경)
+
+---
+
+**목적**: 직관적인 네비게이션 구조로 개편하여 Nasun의 구조를 사용자에게 더 명확하게 전달
+
+**메뉴 이름 및 순서 변경**:
+| 기존 | 변경 후 | 라우트 |
+|------|---------|--------|
+| Protocol | Network | `/network` |
+| IPs | IP | `/ip` |
+| Finance | Ecosystem | `/ecosystem` |
+
+**라우트 구조 재설계**:
+| 기존 경로 | 새로운 경로 | 페이지 |
+|-----------|-------------|--------|
+| `/protocol/*` | `/network/*` | 네트워크 관련 |
+| `/finance/*` | `/ecosystem/*` | 에코시스템 (Pado 등) |
+| `/ips/*` | `/ip/*` | IP (GenSol 등) |
+| `/vision/network` | `/network/nasun` | Nasun Network 페이지 |
+
+**하위 호환성**:
+- 기존 경로(`/protocol`, `/finance`, `/ips`, `/vision/*`)로 접근 시 새로운 경로로 자동 리디렉션
+- 사용자 경험 유지
+
+**수정된 파일** (4개):
+- `src/config/routesConfig.ts` - 메뉴 이름 및 경로 변경
+- `src/routes/AppRoutes.tsx` - 라우트 및 리디렉션 설정
+- `src/contexts/PageLoadingContext.tsx` - 비디오 히어로 페이지 경로 감지 수정
+- `src/components/governance/GovernanceCard.tsx` - 내부 링크 업데이트
+
+**번역 파일 업데이트**:
+- `en/*.json` - 메뉴 이름 변경
+- `ko/*.json` - 메뉴 이름 변경
+
+---
+
+#### 📅 2025-12-16: CDK 환경별 .env 파일 분리 ✅
 
 **작업 일시**: 2025-12-16
 **작업 유형**: 인프라 개선
@@ -692,7 +733,7 @@ b9adbf9 - refactor(Leaderboard): Remove custom font-family settings
 ---
 
 **문제 증상**:
-- Network 페이지(`/vision/network`)에서 Footer와 섹션들이 Hero 비디오 로딩 스핀보다 **먼저 렌더링**
+- Network 페이지(구: `/vision/network`, 현: `/network/nasun`)에서 Footer와 섹션들이 Hero 비디오 로딩 스핀보다 **먼저 렌더링**
 - 렌더링 순서: 네비게이션바 → Footer → 로딩 스핀 → NSN NETWORK 텍스트 → 배경 비디오
 - **레이아웃 시프트**: 비디오 로딩 완료 시 모든 요소가 갑자기 아래로 밀림
 
@@ -726,7 +767,7 @@ b9adbf9 - refactor(Leaderboard): Remove custom font-family settings
    const isPageWithVideoHero =
      location.pathname === "/" ||
      location.pathname === "/home" ||
-     location.pathname === "/vision/network";  // ✅ 수정
+     location.pathname === "/network/nasun";  // ✅ 2026-01-19 라우트 변경
    ```
 
 **추가 작업 - 다국어 지원 개선**:

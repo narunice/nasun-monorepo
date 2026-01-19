@@ -38,7 +38,7 @@ const AppRoutes = () => {
 
         {/* Dynamic Routes from routesV2 */}
         {Object.entries(routesV2)
-          .filter(([key]) => !['home', 'finance', 'ips', 'team', 'wave1Campaign', 'updates', 'protocol', 'about'].includes(key)) // 특별 처리되는 라우트 제외
+          .filter(([key]) => !['home', 'ecosystem', 'ip', 'team', 'wave1Campaign', 'updates', 'network', 'about'].includes(key)) // 특별 처리되는 라우트 제외
           .map(([key, routeConfig]) => {
             const RouteElement = routeConfig.isProtected ? (
               <PrivateRoute>
@@ -57,13 +57,13 @@ const AppRoutes = () => {
             );
           })}
 
-        {/* Nested Routes: Protocol */}
-        <Route path="/protocol">
-          <Route index element={<Navigate to="/protocol/network" replace />} />
-          {routesV2.protocol.navItem?.subMenu
+        {/* Nested Routes: Network */}
+        <Route path="/network">
+          <Route index element={<Navigate to="/network/nasun" replace />} />
+          {routesV2.network.navItem?.subMenu
             ?.filter((subItem) => !subItem.external) // 외부 링크 제외
             .map((subItem) => {
-              const subPath = subItem.path.replace('/protocol/', '');
+              const subPath = subItem.path.replace('/network/', '');
               const SubComponent = subItem.element!;
 
               // 페이지 제목 매핑
@@ -81,11 +81,11 @@ const AppRoutes = () => {
                   element={
                     <RouteWithMeta
                       route={{
-                        ...routesV2.protocol,
+                        ...routesV2.network,
                         component: SubComponent,
                         meta: {
                           title: `NASUN - ${pageTitle}`,
-                          description: `${pageTitle} page in Protocol section`
+                          description: `${pageTitle} page in Network section`
                         }
                       }}
                     />
@@ -95,11 +95,11 @@ const AppRoutes = () => {
             })}
         </Route>
 
-        {/* Nested Routes: Finance (기존 Vision) */}
-        <Route path="/finance">
-          <Route index element={<Navigate to="/finance/pado/main" replace />} />
-          {routesV2.finance.navItem?.subMenu?.map((subItem) => {
-            const subPath = subItem.path.replace('/finance/', '');
+        {/* Nested Routes: Ecosystem */}
+        <Route path="/ecosystem">
+          <Route index element={<Navigate to="/ecosystem/pado/main" replace />} />
+          {routesV2.ecosystem.navItem?.subMenu?.map((subItem) => {
+            const subPath = subItem.path.replace('/ecosystem/', '');
             const SubComponent = subItem.element!;
 
             // 페이지 제목 매핑 (i18n 키를 실제 표시명으로 변환)
@@ -134,11 +134,11 @@ const AppRoutes = () => {
                         element={
                           <RouteWithMeta
                             route={{
-                              ...routesV2.finance,
+                              ...routesV2.ecosystem,
                               component: NestedComponent,
                               meta: {
                                 title: `NASUN - ${nestedTitle}`,
-                                description: `${nestedTitle} page in Finance section`
+                                description: `${nestedTitle} page in Ecosystem section`
                               }
                             }}
                           />
@@ -157,11 +157,11 @@ const AppRoutes = () => {
                 element={
                   <RouteWithMeta
                     route={{
-                      ...routesV2.finance,
+                      ...routesV2.ecosystem,
                       component: SubComponent,
                       meta: {
                         title: `NASUN - ${pageTitle}`,
-                        description: `${pageTitle} page in Finance section`
+                        description: `${pageTitle} page in Ecosystem section`
                       }
                     }}
                   />
@@ -171,11 +171,11 @@ const AppRoutes = () => {
           })}
         </Route>
 
-        {/* Nested Routes: IPs */}
-        <Route path="/ips">
-          <Route index element={<RouteWithMeta route={routesV2.ips} />} />
-          {routesV2.ips.navItem?.subMenu?.map((subItem) => {
-            const subPath = subItem.path.replace('/ips/', '');
+        {/* Nested Routes: IP */}
+        <Route path="/ip">
+          <Route index element={<RouteWithMeta route={routesV2.ip} />} />
+          {routesV2.ip.navItem?.subMenu?.map((subItem) => {
+            const subPath = subItem.path.replace('/ip/', '');
             const SubComponent = subItem.element!;
 
             // 페이지 제목 매핑
@@ -201,18 +201,18 @@ const AppRoutes = () => {
                     element={
                       <RouteWithMeta
                         route={{
-                          ...routesV2.ips,
+                          ...routesV2.ip,
                           component: SubComponent,
                           meta: {
                             title: `NASUN - ${pageTitle}`,
-                            description: `${pageTitle} page in IPs section`
+                            description: `${pageTitle} page in IP section`
                           }
                         }}
                       />
                     }
                   />
                   {subItem.subMenu.map((nestedItem) => {
-                    // /ips/gensol/overview -> overview
+                    // /ip/gensol/overview -> overview
                     const nestedPath = nestedItem.path.replace(subItem.path + '/', '');
                     const NestedComponent = nestedItem.element!;
                     const nestedTitle = pageTitleMap[nestedItem.name] || nestedItem.name;
@@ -227,11 +227,11 @@ const AppRoutes = () => {
                         element={
                           <RouteWithMeta
                             route={{
-                              ...routesV2.ips,
+                              ...routesV2.ip,
                               component: NestedComponent,
                               meta: {
                                 title: `NASUN - ${nestedTitle}`,
-                                description: `${nestedTitle} page in IPs section`
+                                description: `${nestedTitle} page in IP section`
                               }
                             }}
                           />
@@ -250,11 +250,11 @@ const AppRoutes = () => {
                 element={
                   <RouteWithMeta
                     route={{
-                      ...routesV2.ips,
+                      ...routesV2.ip,
                       component: SubComponent,
                       meta: {
                         title: `NASUN - ${pageTitle}`,
-                        description: `${pageTitle} page in IPs section`
+                        description: `${pageTitle} page in IP section`
                       }
                     }}
                   />
@@ -410,17 +410,21 @@ const AppRoutes = () => {
         </Route>
 
         {/* Redirect old routes */}
+        <Route path="/protocol" element={<Navigate to="/network" replace />} />
+        <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
+        <Route path="/ips" element={<Navigate to="/ip" replace />} />
+
         <Route path="/nft-event" element={<Navigate to="/wave1/battalion-nft" replace />} />
         <Route path="/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
-        {/* Vision → Finance 리디렉트 */}
-        <Route path="/vision" element={<Navigate to="/finance" replace />} />
-        <Route path="/vision/reliance" element={<Navigate to="/finance/pado/main" replace />} />
+        {/* Vision → Ecosystem 리디렉트 */}
+        <Route path="/vision" element={<Navigate to="/ecosystem" replace />} />
+        <Route path="/vision/reliance" element={<Navigate to="/ecosystem/pado/main" replace />} />
         <Route path="/vision/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
-        <Route path="/vision/network" element={<Navigate to="/protocol/network" replace />} />
-        <Route path="/vision/ips" element={<Navigate to="/ips" replace />} />
-        <Route path="/vision/ips/gensol" element={<Navigate to="/ips/gensol" replace />} />
-        <Route path="/vision/ips/wepop" element={<Navigate to="/ips/wepop" replace />} />
-        <Route path="/vision/ips/riderstudio" element={<Navigate to="/ips/riderstudio" replace />} />
+        <Route path="/vision/network" element={<Navigate to="/network/nasun" replace />} />
+        <Route path="/vision/ips" element={<Navigate to="/ip" replace />} />
+        <Route path="/vision/ips/gensol" element={<Navigate to="/ip/gensol" replace />} />
+        <Route path="/vision/ips/wepop" element={<Navigate to="/ip/wepop" replace />} />
+        <Route path="/vision/ips/riderstudio" element={<Navigate to="/ip/riderstudio" replace />} />
         <Route path="/opportunities" element={<Navigate to="/about/opportunities" replace />} />
         <Route path="/team/founders" element={<Navigate to="/about/founders" replace />} />
         <Route path="/team/opportunities" element={<Navigate to="/about/opportunities" replace />} />

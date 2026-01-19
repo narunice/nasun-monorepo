@@ -62,17 +62,17 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  // Protocol 섹션 (서브메뉴 있음)
-  protocol: {
-    path: "/protocol",
+  // Network 섹션 (서브메뉴 있음) - 기존 Protocol에서 변경
+  network: {
+    path: "/network",
     component: Pages.VisionNetwork, // 기본 서브페이지로 Nasun Network
     navItem: {
-      name: "navigation.protocol",
-      path: "/protocol",
+      name: "navigation.network",
+      path: "/network",
       subMenu: [
         {
           name: "navigation.nasunNetwork",
-          path: "/protocol/network",
+          path: "/network/nasun",
           element: Pages.VisionNetwork,
         },
         {
@@ -82,69 +82,69 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         },
         {
           name: "navigation.governance",
-          path: "/protocol/governance",
+          path: "/network/governance",
           element: Pages.Web3, // ProposalPage - Nasun Devnet Voting System
           disabled: true, // Coming Soon
         },
         {
           name: "navigation.protocolOverview",
-          path: "/protocol/overview",
+          path: "/network/overview",
           element: Pages.ProtocolOverview,
           disabled: true, // Coming Soon
         },
       ],
     },
     meta: {
-      title: "Protocol - NASUN",
-      description: "NASUN Protocol",
+      title: "Network - NASUN",
+      description: "NASUN Network",
     },
   },
 
-  // Finance 섹션 (서브메뉴 있음) - 기존 Vision에서 이름 변경
-  finance: {
-    path: "/finance",
+  // Ecosystem 섹션 (서브메뉴 있음) - 기존 Finance에서 변경
+  ecosystem: {
+    path: "/ecosystem",
     component: Pages.FinancePado, // 기본 서브페이지로 Pado
     navItem: {
-      name: "navigation.finance",
-      path: "/finance",
+      name: "navigation.ecosystem",
+      path: "/ecosystem",
       subMenu: [
         {
           name: "navigation.pado",
-          path: "/finance/pado",
+          path: "/ecosystem/pado",
           element: Pages.FinancePado,
           subMenu: [
             {
               name: "navigation.padoMain",
-              path: "/finance/pado/main",
+              path: "/ecosystem/pado/main",
               element: Pages.FinancePado,
             },
             {
               name: "navigation.padoSpotPerps",
-              path: "/finance/pado/spot-perps",
+              path: "/ecosystem/pado/spot-perps",
               element: Pages.FinancePado, // Placeholder
               disabled: true, // Coming Soon
             },
             {
               name: "navigation.padoPrediction",
-              path: "/finance/pado/prediction",
+              path: "/ecosystem/pado/prediction",
               element: Pages.FinancePado, // Placeholder
               disabled: true, // Coming Soon
             },
             {
               name: "navigation.padoLending",
-              path: "/finance/pado/lending",
+              path: "/ecosystem/pado/lending",
               element: Pages.FinancePado, // Placeholder
               disabled: true, // Coming Soon
             },
             {
               name: "navigation.padoTokenization",
-              path: "/finance/pado/tokenization",
+              path: "/ecosystem/pado/tokenization",
               element: Pages.FinancePado, // Placeholder
               disabled: true, // Coming Soon
             },
             {
               name: "navigation.padoStablecoins",
-              path: "/finance/pado/stablecoins",
+              path: "/ecosystem/pado/stablecoins",
               element: Pages.FinancePado, // Placeholder
               disabled: true, // Coming Soon
             },
@@ -153,73 +153,73 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Finance - NASUN",
-      description: "NASUN Finance - The Pado Initiative",
+      title: "Ecosystem - NASUN",
+      description: "NASUN Ecosystem - The Pado Initiative",
     },
   },
 
-  // IPs 섹션 (서브메뉴 있음)
-  ips: {
-    path: "/ips",
+  // IP 섹션 (서브메뉴 있음)
+  ip: {
+    path: "/ip",
     component: Pages.IPs,
     navItem: {
-      name: "navigation.ips",
-      path: "/ips",
+      name: "navigation.ip",
+      path: "/ip",
       subMenu: [
         {
           name: "navigation.genSol",
-          path: "/ips/gensol",
+          path: "/ip/gensol",
           element: Pages.IPsGenSol,
           subMenu: [
             {
               name: "navigation.genSolMain",
-              path: "/ips/gensol/main",
+              path: "/ip/gensol/main",
               element: Pages.IPsGenSol,
             },
             {
               name: "navigation.genSolShooter",
-              path: "/ips/gensol/shooter",
+              path: "/ip/gensol/shooter",
               element: Pages.IPsGenSolShooter,
             },
             {
               name: "navigation.genSolAnimation",
-              path: "/ips/gensol/animation",
+              path: "/ip/gensol/animation",
               element: Pages.IPsGenSolHeist,
             },
             {
               name: "navigation.genSolOverview",
-              path: "/ips/gensol/overview",
+              path: "/ip/gensol/overview",
               element: Pages.IPsGenSolOverview,
             },
           ],
         },
         {
           name: "navigation.riderStudio",
-          path: "/ips/riderstudio",
+          path: "/ip/riderstudio",
           element: Pages.IPsRiderStudioMain,
           subMenu: [
             {
               name: "navigation.riderStudioMain",
-              path: "/ips/riderstudio/main",
+              path: "/ip/riderstudio/main",
               element: Pages.IPsRiderStudioMain,
             },
             {
               name: "navigation.riderStudioOverview",
-              path: "/ips/riderstudio/overview",
+              path: "/ip/riderstudio/overview",
               element: Pages.IPsRiderStudioOverview,
             },
           ],
         },
         {
           name: "navigation.wePop",
-          path: "/ips/wepop",
+          path: "/ip/wepop",
           element: Pages.IPsWePop,
           disabled: true, // Coming Soon
         },
       ],
     },
     meta: {
-      title: "IPs - NASUN",
+      title: "IP - NASUN",
       description: "NASUN intellectual properties",
     },
   },
@@ -538,11 +538,11 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
       })),
     }))
     .sort((a, b) => {
-      // 정렬 순서: protocol, ips, finance, updates, about, team, wave1, leaderboard, genesis-nft
+      // 정렬 순서: network, ecosystem, ip, updates, about, team, wave1, leaderboard, genesis-nft
       const order = [
-        "protocol",
-        "ips",
-        "finance",
+        "network",
+        "ecosystem",
+        "ip",
         "updates",
         "about",
         "team",
