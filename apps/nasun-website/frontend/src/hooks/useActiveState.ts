@@ -25,7 +25,7 @@ export const useActiveState = () => {
       }
 
       // 리프 항목 (하위 메뉴가 없는 항목)은 정확한 경로 매칭만 사용
-      // 이렇게 하면 /ips/gensol/spectra에서 Main(/ips/gensol)이 active로 표시되지 않음
+      // 이렇게 하면 /ip/gensol/spectra에서 Main(/ip/gensol)이 active로 표시되지 않음
       if (!('subMenu' in item) || !item.subMenu) {
         return false;
       }
