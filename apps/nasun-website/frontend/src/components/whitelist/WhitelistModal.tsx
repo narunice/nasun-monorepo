@@ -7,8 +7,8 @@
  * - 에러: 에러 메시지 표시 + Close 버튼
  * - 로딩: 스피너 표시
  *
- * UI follows Nasun design system with DividerBox components
- * and semantic HTML tags (h5, h6, p) for typography.
+ * UI follows Nasun design system with DividerBox components.
+ * Uses span tags in DialogTitle/DialogDescription to avoid HTML nesting issues.
  */
 
 import { useTranslation } from "react-i18next";
@@ -90,10 +90,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
-              <h5 className="text-nasun-white">{t("whitelist.modal.intro.title")}</h5>
+              <span className="text-nasun-white">{t("whitelist.modal.intro.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.intro.description")}</p>
+              {t("whitelist.modal.intro.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -167,14 +167,12 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-c1">
               <InlineLoading size="md" />
-              <h5>{t("whitelist.modal.connecting.title")}</h5>
+              <span>{t("whitelist.modal.connecting.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>
-                {walletAddress
-                  ? t("whitelist.modal.connecting.checking")
-                  : t("whitelist.modal.connecting.description")}
-              </p>
+              {walletAddress
+                ? t("whitelist.modal.connecting.checking")
+                : t("whitelist.modal.connecting.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -203,10 +201,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-c2">
               <InlineLoading size="md" />
-              <h5>{t("whitelist.modal.signing.title")}</h5>
+              <span>{t("whitelist.modal.signing.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.signing.description")}</p>
+              {t("whitelist.modal.signing.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -235,10 +233,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-c4">
               <InlineLoading size="md" />
-              <h5>{t("whitelist.modal.submitting.title")}</h5>
+              <span>{t("whitelist.modal.submitting.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.submitting.description")}</p>
+              {t("whitelist.modal.submitting.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -267,10 +265,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-c3">
               <CheckCircle2 className="h-6 w-6" />
-              <h5>{t("whitelist.modal.success.title")}</h5>
+              <span>{t("whitelist.modal.success.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.success.description")}</p>
+              {t("whitelist.modal.success.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -315,10 +313,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-c4">
               <AlertCircle className="h-6 w-6" />
-              <h5>{t("whitelist.modal.alreadyJoined.title")}</h5>
+              <span>{t("whitelist.modal.alreadyJoined.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.alreadyJoined.description")}</p>
+              {t("whitelist.modal.alreadyJoined.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -363,10 +361,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-c4">
               <AlertCircle className="h-6 w-6" />
-              <h5>{t("whitelist.modal.alreadyWithdrawn.title")}</h5>
+              <span>{t("whitelist.modal.alreadyWithdrawn.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.alreadyWithdrawn.description")}</p>
+              {t("whitelist.modal.alreadyWithdrawn.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -418,10 +416,10 @@ export function WhitelistModal({ open, onOpenChange, modalData, onWithdraw, onPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-nasun-coral">
               <XCircle className="h-6 w-6" />
-              <h5>{t("whitelist.modal.error.title")}</h5>
+              <span>{t("whitelist.modal.error.title")}</span>
             </DialogTitle>
             <DialogDescription>
-              <p>{t("whitelist.modal.error.description")}</p>
+              {t("whitelist.modal.error.description")}
             </DialogDescription>
           </DialogHeader>
 
