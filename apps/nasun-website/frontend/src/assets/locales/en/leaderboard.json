@@ -239,10 +239,18 @@
       "randomDrawings": "Eligible for Random Drawings",
       "beyondRewards": "Additional participation rewards and community perks will be announced soon."
     },
-    "engagementScoring": {
-      "title": "ENGAGEMENT SCORING",
-      "description": "Engage with Nasun's X account to accumulate points and climb the ranks of our leaderboard. All real and organic engagement with Nasun (follow, likes, replies, reposts, bookmarks) will win points but posting quality content like informative or creative posts",
-      "descriptionSuffix": "will be scored the highest."
+    "scoringOverview": {
+      "title": "SCORING & POLICY",
+      "description": "Your leaderboard position reflects your overall contribution to the Nasun community. We evaluate genuine engagement through various signals, with an emphasis on quality and authenticity over volume.",
+      "policyNote": "Scoring methods and criteria may be adjusted at any time without prior notice. Not all engagement types are weighted equally, and the specific weighting is not disclosed.",
+      "finalNotes": {
+        "title": "Please Note",
+        "items": [
+          "Participation in the leaderboard is voluntary",
+          "The Nasun team reserves final discretion over rankings and policy interpretation",
+          "Leaderboard rankings are informational and do not confer ownership or financial rights"
+        ]
+      }
     },
     "rulesGuidelines": {
       "title": "⚠️ RULES & GUIDELINES",
@@ -275,22 +283,6 @@
         "Event participation checks (e.g., confirming whether a required interaction occurred)"
       ],
       "scoringNote": "Leaderboard scores are based on manual review by the Nasun team, publicly available information, and on-chain participation signals."
-    },
-    "scorePolicy": {
-      "title": "📊 SCORE POLICY",
-      "evolution": {
-        "title": "Score Adjustments & Evolution",
-        "description": "Leaderboard scoring rules, weights, and evaluation criteria may evolve over time. Nasun may adjust scoring weights, introduce new contribution signals, or retire existing metrics. Any changes will be applied transparently."
-      },
-      "finalNotes": {
-        "title": "Please Note",
-        "items": [
-          "Participation in the leaderboard is voluntary",
-          "Leaderboard rankings are informational and community-driven",
-          "Scores do not represent ownership, entitlement, or financial rights",
-          "Final interpretation and enforcement of these guidelines rests with the Nasun team"
-        ]
-      }
     },
     "goToLeaderboard": "Go to Leaderboard"
   }
