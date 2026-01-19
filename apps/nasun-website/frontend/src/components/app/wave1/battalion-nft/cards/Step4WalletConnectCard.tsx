@@ -16,8 +16,6 @@ import {
   isMetaMaskInstalled as checkMetaMaskInstalled,
   connectWallet,
   signMessage,
-  isCorrectNetwork,
-  switchNetwork,
 } from "../../../../../utils/metamaskUtils";
 import { authenticateWithMetaMask } from "../../../../../services/metamaskApi";
 import { Button } from "../../../../ui/button";
@@ -46,9 +44,6 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID || "1";
-  const networkName = import.meta.env.VITE_ETHEREUM_NETWORK_NAME || "Ethereum";
 
   useEffect(() => {
     setIsMetaMaskInstalled(checkMetaMaskInstalled());
@@ -102,14 +97,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       const walletAddress = await connectWallet();
       logger.log("[WalletConnectCard] Connected wallet:", walletAddress);
 
-      // 3. Check network
-      const correctNetwork = await isCorrectNetwork(expectedChainId);
-      if (!correctNetwork) {
-        logger.log("[WalletConnectCard] Switching to correct network...");
-        await switchNetwork(expectedChainId);
-      }
-
-      // 4. If not linked, authenticate and link account
+      // 3. If not linked, authenticate and link account
       if (!linkedWallet) {
         logger.log("[WalletConnectCard] Wallet not linked - authenticating...");
 
@@ -191,7 +179,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
           <p className="mb-6">{t("step4.errors.noMetaMask")}</p>
 
-          <Button variant="orange" size="lg" asChild>
+          <Button color="c2" size="lg" asChild>
             <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">
               {t("step4.installLink")}
               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,14 +203,14 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
     <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center">
-        <h3 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step4.title")}</h3>
+        <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step4.title")}</h4>
         <p className="mb-6">{t("step4.description")}</p>
       </div>
 
       {/* Connected Wallet Display */}
       {connectedAddress ? (
         <>
-          <DividerBox color="green" icon="✅" className="!py-4 mb-6">
+          <DividerBox color="green" padding="sm" icon="✅" className="mb-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="mb-1">{t("step4.success")}</p>
@@ -250,8 +238,8 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           <Button
             onClick={() => onWalletConnected(connectedAddress)}
             variant="green"
-            className="w-full"
             size="lg"
+            className="flex mx-auto"
           >
             <span>{t("step4.nextButton")}</span>
             <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,8 +255,17 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       ) : (
         <>
           {/* MetaMask Info */}
-          <DividerBox color="c4" icon="ℹ️" title={t("step4.infoTitle")} className="!py-4 mb-6">
+          <DividerBox
+            color="c4"
+            padding="sm"
+            icon="ℹ️"
+            title={t("step4.infoTitle")}
+            className="mb-6"
+          >
             <p>{t("step4.infoDescription")}</p>
+            <p className="mt-2 text-yellow-200 text-xs/snug md:text-sm/snug xl:text-base/snug">
+              🔒 {t("step4.signatureNote")}
+            </p>
           </DividerBox>
 
           {/* Error Message */}
@@ -283,8 +280,8 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             onClick={handleConnect}
             disabled={isConnecting}
             variant="c2"
-            className="w-full"
             size="lg"
+            className="flex mx-auto"
           >
             {isConnecting ? (
               <InlineLoading message={t("step4.connecting")} size="md" className="text-white" />
@@ -297,14 +294,6 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           </Button>
         </>
       )}
-
-      {/* Network Info */}
-      <DividerBox color="c4" className="!py-4 mt-6">
-        <p>
-          <span>{t("step4.networkLabel")}:</span> {networkName}
-        </p>
-        <p className="mt-1">{t("step4.networkNote")}</p>
-      </DividerBox>
     </OuterBox>
   );
 };

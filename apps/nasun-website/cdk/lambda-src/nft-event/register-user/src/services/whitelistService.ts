@@ -47,17 +47,13 @@ export class WhitelistService {
       // 지갑 주소 정규화 (소문자)
       const normalizedAddress = this.normalizeAddress(request.walletAddress);
 
-      // 현재 Allowlist Batch ID (환경 변수에서 로드, 기본값: "1")
-      const allowlistBatchId = process.env.CURRENT_BATCH_ID || '1';
-
       const now = new Date().toISOString();
       const whitelist: NftWhitelist = {
         walletAddress: normalizedAddress,
         xUserId: request.xUserId,
         xUsername: request.xUsername,
         verifiedAt: now,
-        engagementScore: 0, // 초기값
-        allowlistBatchId, // Allowlist Batch ID 추가
+        engagementScore: 0,
       };
 
       await this.docClient.send(
@@ -69,7 +65,7 @@ export class WhitelistService {
         })
       );
 
-      console.log(`[WhitelistService] User registered successfully: ${normalizedAddress} (Batch: ${allowlistBatchId})`);
+      console.log(`[WhitelistService] User registered successfully: ${normalizedAddress}`);
       return whitelist;
     } catch (error: any) {
       // ConditionalCheckFailedException: 이미 등록된 지갑 주소

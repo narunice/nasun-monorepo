@@ -185,9 +185,6 @@ export interface NftEventEnv {
   ENABLE_RATE_LIMIT_CACHE: string; // "true" | "false"
   CACHE_TTL_MINUTES: string; // 기본값: "15"
 
-  // Allowlist Batch
-  CURRENT_BATCH_ID?: string; // 현재 Allowlist Batch ID ("1", "2", "3", ...)
-
   // S3 Bucket (CSV Export)
   EXPORT_BUCKET_NAME?: string;
 

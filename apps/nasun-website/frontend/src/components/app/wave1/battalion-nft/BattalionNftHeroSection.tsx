@@ -29,7 +29,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
   const [titleVisible, setTitleVisible] = useState(false);
   const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
   const [waveTitleOpacity, setWaveTitleOpacity] = useState(0);
-  const [videoDuration, setVideoDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -53,13 +52,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
     onVideoReady?.();
   };
 
-  // 비디오 메타데이터 로드 핸들러 - duration 저장
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setVideoDuration(videoRef.current.duration);
-    }
-  };
-
   // 비디오 playing 핸들러 - 비디오 재생 시작
   const handleVideoPlaying = () => {
     setIsVideoPlaying(true);
@@ -71,6 +63,8 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
     if (!video) return;
 
     const currentTime = video.currentTime;
+    // Use video.duration directly instead of state (handles cached video case)
+    const duration = video.duration;
 
     // "POWER YOUR DESTINY" animation
     if (currentTime >= TITLE_START_TIME && currentTime < TITLE_END_TIME) {
@@ -93,9 +87,10 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
 
     // "WAVE 1 BATTALION" animation
     if (
-      videoDuration > 0 &&
+      duration > 0 &&
+      !isNaN(duration) &&
       currentTime >= WAVE_TITLE_START_TIME &&
-      currentTime < videoDuration - 0.05
+      currentTime < duration - 0.05
     ) {
       const fadeProgress = Math.min(
         1,
@@ -105,7 +100,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
     } else {
       setWaveTitleOpacity(0);
     }
-  }, [videoDuration]);
+  }, []);
 
   // Animation loop for title
   useEffect(() => {
@@ -177,7 +172,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
               preload="auto"
               onCanPlay={handleVideoCanPlay}
               onPlaying={handleVideoPlaying}
-              onLoadedMetadata={handleLoadedMetadata}
               className={videoClassName}
             >
               <source src={battalionNftVideoMobile} type="video/mp4" />
@@ -247,7 +241,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
             preload="auto"
             onCanPlay={handleVideoCanPlay}
             onPlaying={handleVideoPlaying}
-            onLoadedMetadata={handleLoadedMetadata}
             className={videoClassName}
           >
             <source src={battalionNftVideoDesktop} type="video/mp4" />

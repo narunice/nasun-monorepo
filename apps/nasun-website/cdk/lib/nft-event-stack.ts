@@ -167,7 +167,6 @@ export class NftEventStack extends cdk.Stack {
     const X_TARGET_USERNAME = process.env.X_TARGET_USERNAME || 'Nasun_io';
     const X_TARGET_USER_ID = process.env.X_TARGET_USER_ID || '1863020068785004544';
     const X_TARGET_TWEET_ID = process.env.X_TARGET_TWEET_ID || '';
-    const CURRENT_BATCH_ID = process.env.CURRENT_BATCH_ID || '1';
 
     // Lambda 1: verify-eligibility
     const verifyEligibilityLambda = new lambda.Function(this, 'VerifyEligibilityLambda', {
@@ -212,7 +211,6 @@ export class NftEventStack extends cdk.Stack {
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
-        CURRENT_BATCH_ID, // Allowlist Batch ID
         ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
       },
     });
