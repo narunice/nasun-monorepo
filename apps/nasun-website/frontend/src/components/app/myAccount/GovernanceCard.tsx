@@ -97,7 +97,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
       {/* View All Link */}
       <Link
-        to="/protocol/governance"
+        to="/network/governance"
         className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-nasun-c5/30 text-nasun-c3 hover:text-nasun-c4 transition-colors"
       >
         View All
