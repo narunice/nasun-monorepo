@@ -100,7 +100,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
             </ul>
           </DividerBox>
         </div>
-        <Button onClick={onStartClick} variant="c5" className="" size="xl">
+        <Button onClick={onStartClick} variant="c5" size="lg" className="flex mx-auto">
           {t("step1.button")}
         </Button>
       </div>

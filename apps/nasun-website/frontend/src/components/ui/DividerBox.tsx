@@ -47,97 +47,138 @@ interface DividerBoxProps {
   descriptionClassName?: string;
   /** 패딩 설정 (기본값: md) */
   padding?: PaddingVariant;
+  /** hover 효과 비활성화 (기본값: false) */
+  disableHover?: boolean;
 }
 
-const colorStyles: Record<NasunColor, { border: string; background: string; text: string }> = {
+const colorStyles: Record<
+  NasunColor,
+  { border: string; borderHover: string; background: string; backgroundHover: string; text: string }
+> = {
   white: {
     border: "border-nasun-white/70",
+    borderHover: "",
     background: "bg-nasun-white/70",
+    backgroundHover: "",
     text: "text-nasun-white",
   },
   scarlet: {
     border: "border-nasun-scarlet",
+    borderHover: "",
     background: "bg-nasun-scarlet/5",
+    backgroundHover: "",
     text: "text-nasun-scarlet",
   },
   c1: {
-    border: "border-nasun-c1/50 hover:border-nasun-c1/80 transition-colors",
-    background: "bg-[#312107]/40 hover:bg-nasun-c1/5 transition-colors",
+    border: "border-nasun-c1/50",
+    borderHover: "hover:border-nasun-c1/80 transition-colors",
+    background: "bg-[#312107]/40",
+    backgroundHover: "hover:bg-nasun-c1/5 transition-colors",
     text: "text-nasun-c1",
   },
   c2: {
-    border: "border-nasun-c2/50 hover:border-nasun-c2/80 transition-colors",
-    background: "bg-[#312d20]/40 hover:bg-nasun-c2/5 transition-colors",
+    border: "border-nasun-c2/50",
+    borderHover: "hover:border-nasun-c2/80 transition-colors",
+    background: "bg-[#312d20]/40",
+    backgroundHover: "hover:bg-nasun-c2/5 transition-colors",
     text: "text-nasun-c2",
   },
   c3: {
-    border: "border-nasun-c3/50 hover:border-nasun-c3/80 transition-colors",
-    background: "bg-[#1d2d2a]/40 hover:bg-nasun-c3/5 transition-colors",
+    border: "border-nasun-c3/50",
+    borderHover: "hover:border-nasun-c3/80 transition-colors",
+    background: "bg-[#1d2d2a]/40",
+    backgroundHover: "hover:bg-nasun-c3/5 transition-colors",
     text: "text-nasun-c3",
   },
   c4: {
-    border: "border-nasun-c4/50 hover:border-nasun-c4/80 transition-colors",
-    background: "bg-[#0d1b25]/40 hover:bg-nasun-c4/5 transition-colors",
+    border: "border-nasun-c4/50",
+    borderHover: "hover:border-nasun-c4/80 transition-colors",
+    background: "bg-[#0d1b25]/40",
+    backgroundHover: "hover:bg-nasun-c4/5 transition-colors",
     text: "text-nasun-c4",
   },
   c5: {
-    border: "border-nasun-c5/50 hover:border-nasun-c5/80 transition-colors",
-    background: "bg-[#081427]/40 hover:bg-nasun-c5/5 transition-colors",
+    border: "border-nasun-c5/50",
+    borderHover: "hover:border-nasun-c5/80 transition-colors",
+    background: "bg-[#081427]/40",
+    backgroundHover: "hover:bg-nasun-c5/5 transition-colors",
     text: "text-nasun-c5",
   },
   c6: {
-    border: "border-nasun-c6/50 hover:border-nasun-c6/80 transition-colors",
+    border: "border-nasun-c6/50",
+    borderHover: "hover:border-nasun-c6/80 transition-colors",
     background: "bg-nasun-c6/90",
+    backgroundHover: "",
     text: "text-nasun-c5",
   },
   green: {
-    border: "border-green-500",
-    background: "bg-green-950",
+    border: "border-green-500/50",
+    borderHover: "",
+    background: "bg-green-800/10",
+    backgroundHover: "",
     text: "text-green-500",
   },
   coral: {
     border: "border-nasun-coral",
+    borderHover: "",
     background: "bg-nasun-coral/10",
+    backgroundHover: "",
     text: "text-nasun-coral",
   },
   "gensol-red": {
     border: "border-nasun-gensol-red",
+    borderHover: "",
     background: "bg-nasun-gensol-red/10",
+    backgroundHover: "",
     text: "text-nasun-gensol-red",
   },
   black: {
     border: "border-nasun-black/50",
+    borderHover: "",
     background: "bg-nasun-black/80",
+    backgroundHover: "",
     text: "text-nasun-white",
   },
   n1: {
-    border: "border-nasun-white/40 hover:border-nasun-white/50 transition-colors",
-    background: "bg-nasun-white/5 hover:bg-nasun-white/10 transition-colors",
+    border: "border-nasun-white/40",
+    borderHover: "hover:border-nasun-white/50 transition-colors",
+    background: "bg-nasun-white/5",
+    backgroundHover: "hover:bg-nasun-white/10 transition-colors",
     text: "text-nasun-white",
   },
   n2: {
-    border: "border-nasun-white/10 hover:border-nasun-white/20 transition-colors",
+    border: "border-nasun-white/10",
+    borderHover: "hover:border-nasun-white/20 transition-colors",
     background: "bg-gray-800",
+    backgroundHover: "",
     text: "text-nasun-white",
   },
   n3: {
-    border: "border-nasun-c5/40 hover:border-nasun-c5/80 transition-colors",
+    border: "border-nasun-c5/40",
+    borderHover: "hover:border-nasun-c5/80 transition-colors",
     background: "bg-gray-800/30",
+    backgroundHover: "",
     text: "text-nasun-white",
   },
   n4: {
-    border: "border-nasun-c4/50 hover:border-nasun-c4/80 transition-colors",
-    background: "bg-nasun-c4/10 ",
+    border: "border-nasun-c4/50",
+    borderHover: "hover:border-nasun-c4/80 transition-colors",
+    background: "bg-nasun-c4/10",
+    backgroundHover: "",
     text: "text-nasun-white",
   },
   n5: {
-    border: "border-nasun-c3/40 hover:border-nasun-c3/80 transition-colors",
-    background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  ",
+    border: "border-nasun-c3/40",
+    borderHover: "hover:border-nasun-c3/80 transition-colors",
+    background: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5",
+    backgroundHover: "",
     text: "text-nasun-white",
   },
   w1: {
-    border: "border-nasun-white/40 hover:border-nasun-white/50 transition-colors",
-    background: "bg-nasun-gray/70 hover:bg-nasun-gray/40 transition-colors",
+    border: "border-nasun-white/40",
+    borderHover: "hover:border-nasun-white/50 transition-colors",
+    background: "bg-nasun-gray/70",
+    backgroundHover: "hover:bg-nasun-gray/40 transition-colors",
     text: "text-nasun-white",
   },
 };
@@ -169,13 +210,19 @@ export const DividerBox = ({
   rightTitleClassName = "",
   descriptionClassName = "",
   padding = "md",
+  disableHover = false,
 }: DividerBoxProps) => {
   const styles = colorStyles[color];
   const paddingClass = paddingStyles[padding];
 
+  const borderClass = disableHover ? styles.border : `${styles.border} ${styles.borderHover}`;
+  const bgClass = disableHover
+    ? styles.background
+    : `${styles.background} ${styles.backgroundHover}`;
+
   return (
     <div
-      className={`${paddingClass} w-full ${styles.background} rounded-lg border backdrop-blur-lg ${styles.border} ${className}`}
+      className={`${paddingClass} w-full ${bgClass} rounded-lg border backdrop-blur-lg ${borderClass} ${className}`}
     >
       {/* Title (옵셔널) - rightTitle/rightAction이 있으면 justify-between 레이아웃 */}
       {(title || rightTitle || rightAction) && (

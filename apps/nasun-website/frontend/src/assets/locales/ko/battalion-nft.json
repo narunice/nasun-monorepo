@@ -48,7 +48,6 @@
     "authenticationPurpose": "다음 이벤트 태스크 완료 여부를 확인하기 위해 X OAuth 인증이 필요합니다:",
     "verifyLikes": "타겟 트윗에 좋아요를 눌렀는지 확인",
     "verifyRetweets": "타겟 트윗을 리트윗했는지 확인",
-    "verifyFollow": "@Nasun_io를 팔로우했는지 확인",
     "notSignUp": "이것은 검증 절차일 뿐, 웹사이트 가입이 아닙니다",
     "tokenAutoDelete": "🔒 본 인증은 이벤트 참여 조건 검증을 위한 1회성 인증입니다.",
     "infoTitle": "왜 X 연동이 필요한가요?",
@@ -113,8 +112,7 @@
     "description": "NFT를 받을 Ethereum 지갑을 연결해주세요.",
     "infoTitle": "MetaMask 지갑 연결 안내",
     "infoDescription": "NFT를 받을 Ethereum 지갑 주소를 연결해주세요. MetaMask 팝업이 나타나면 연결을 승인하세요.",
-    "networkLabel": "네트워크",
-    "networkNote": "⚠️ 지갑 연결 시 자동으로 올바른 네트워크로 전환됩니다",
+    "signatureNote": "서명은 유효한 주소 수집을 위한 지갑 소유권 확인입니다. 거래나 자금 이동은 발생하지 않습니다.",
     "connected": "연결됨",
     "success": "지갑 연결 성공",
     "connecting": "연결 중...",
@@ -162,7 +160,7 @@
       "step3": "'Mint' 버튼을 클릭하여 NFT를 민팅하세요",
       "step4": "가스비를 확인하고 트랜잭션을 승인하세요",
       "note": "민팅 시작일은 별도로 공지됩니다",
-      "button": "OpenSea에서 민팅하기"
+      "button": "OpenSea Battalion Collection"
     },
     "tip": "💡 Tip: OpenSea 민팅 페이지를 북마크해두세요!",
     "sharePrompt": "이벤트를 친구들에게 공유하세요!",
@@ -190,7 +188,6 @@
     "goToMyAccount": "My Account에서 재연결",
     "info": {
       "title": "등록 정보",
-      "allowlistBatch": "허용리스트 배치",
       "wallet": "지갑 주소",
       "username": "X 계정",
       "registeredAt": "등록 시간",

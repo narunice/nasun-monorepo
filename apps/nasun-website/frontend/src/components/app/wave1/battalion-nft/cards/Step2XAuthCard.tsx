@@ -156,12 +156,11 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       </div>
 
       {/* Simplified Info Box */}
-      <DividerBox color="c4" className="mb-6 md:mb-8 lg:mb-10">
+      <DividerBox color="c4" padding="sm" className="mb-6 md:mb-8 lg:mb-10">
         <p className="text-nasun-white mb-3">{t("step2.infoSimplified")}</p>
         <ul className="space-y-1 list-disc list-inside">
           <li>{t("step2.verifyLikes")}</li>
           <li>{t("step2.verifyRetweets")}</li>
-          <li>{t("step2.verifyFollow")}</li>
           <li>{t("step2.privacyNote")}</li>
           <li>{t("step2.notSignUp")}</li>
         </ul>
