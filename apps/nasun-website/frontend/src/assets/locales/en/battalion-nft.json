@@ -48,7 +48,6 @@
     "authenticationPurpose": "X OAuth authentication is required to verify the following event tasks:",
     "verifyLikes": "Check if you liked the target tweet",
     "verifyRetweets": "Check if you retweeted the target tweet",
-    "verifyFollow": "Check if you followed @Nasun_io",
     "notSignUp": "This is verification only — not signing up to our website",
     "tokenAutoDelete": "🔒 This is a one-time authentication for event participation verification.",
     "infoTitle": "Why do we need X integration?",
@@ -113,8 +112,7 @@
     "description": "Please connect your Ethereum wallet to receive the NFT.",
     "infoTitle": "MetaMask Wallet Connection Guide",
     "infoDescription": "Please connect your Ethereum wallet address to receive the NFT. Approve the connection when the MetaMask popup appears.",
-    "networkLabel": "Network",
-    "networkNote": "⚠️ The network will automatically switch to the correct one when connecting your wallet",
+    "signatureNote": "Signing only confirms wallet ownership to collect a valid address. No transactions or fund transfers occur.",
     "connected": "Connected",
     "success": "Wallet connected successfully",
     "connecting": "Connecting...",
@@ -162,7 +160,7 @@
       "step3": "Click the 'Mint' button to mint your NFT",
       "step4": "Confirm the gas fee and approve the transaction",
       "note": "The minting start date will be announced separately",
-      "button": "Mint on OpenSea"
+      "button": "Battalion Collection on OpenSea"
     },
     "tip": "💡 Tip: Bookmark the OpenSea minting page!",
     "sharePrompt": "Share this event with your friends!",
@@ -190,7 +188,6 @@
     "goToMyAccount": "Go to My Account to Reconnect",
     "info": {
       "title": "Registration Info",
-      "allowlistBatch": "Allowlist Batch",
       "wallet": "Wallet Address",
       "username": "X Account",
       "registeredAt": "Registered At",

@@ -16,7 +16,7 @@ export const buttonVariants = cva(
         scarlet: "bg-nasun-scarlet text-nasun-white hover:bg-nasun-scarlet/80",
 
         // Amber: Solid amber button (c1)
-        c1: "bg-nasun-c1/90 text-nasun-black hover:bg-nasun-c1",
+        c1: "bg-nasun-c1 text-nasun-black hover:bg-nasun-c1/80",
 
         // Sunshine: Solid yellow button (c2)
         c2: "bg-nasun-c2 text-nasun-black hover:bg-nasun-c2/80",
@@ -25,7 +25,7 @@ export const buttonVariants = cva(
         c3: "bg-nasun-c3 text-nasun-black hover:bg-nasun-c3/80",
 
         // Ocean: Solid ocean button (c4)
-        c4: "bg-nasun-c4 text-nasun-black hover:bg-sky-500",
+        c4: "bg-nasun-c4 text-nasun-white hover:bg-sky-700",
 
         //  (c5)
         c5: "bg-nasun-c5 text-nasun-white hover:bg-nasun-c5/80",
@@ -107,7 +107,7 @@ export const buttonVariants = cva(
         ghost: "text-nasun-white hover:bg-nasun-c5/20",
 
         // Link
-        link: "text-nasun-white/80 underline-offset-4 underline hover:text-nasun-c1 ",
+        link: "text-nasun-white/80 underline-offset-4 underline hover:text-white ",
 
         // Action: (어두운 배경용)
         action: "bg-nasun-c4/20 hover:bg-nasun-c5/20 text-white capitalize",
@@ -134,5 +134,5 @@ export const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
+  },
 );

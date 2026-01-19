@@ -32,9 +32,9 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
     <OuterBox color="c5" className="max-w-3xl mx-auto">
       {/* Header - 모바일: 세로, 데스크톱: 가로 배치 (중앙 정렬) */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 mb-6">
-        <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-nasun-c1/20 rounded-full flex items-center justify-center">
+        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-nasun-c1/20 rounded-full flex items-center justify-center">
           <svg
-            className="w-10 h-10 md:w-12 md:h-12 text-nasun-c1"
+            className="w-8 h-8 md:w-10 md:h-10 text-nasun-c1"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -48,13 +48,12 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           </svg>
         </div>
         <div className="text-center ">
-          <h3 className="!font-rubik font-medium mb-2">{t("step5.title")}</h3>
-          <p className="max-w-md">{t("step5.description")}</p>
+          <h4 className="!font-rubik font-medium mb-2">{t("step5.title")}</h4>
         </div>
       </div>
-
+      <p className="w-full mx-auto text-center mb-2">{t("step5.description")}</p>
       {/* Summary */}
-      <DividerBox color="c3" className="mb-8 text-left">
+      <DividerBox color="c3" padding="sm" className="mb-8 text-left">
         {/* X Account & Wallet - 모바일: 세로, 데스크톱: 가로 */}
         <div className="flex flex-col md:flex-row md:gap-8 space-y-4 md:space-y-0 mb-4">
           <div className="flex-1">
@@ -75,13 +74,12 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           <span className="text-green-500">{t("step5.allTasksCompleted")}</span>
         </div>
       </DividerBox>
-
       <Button
         onClick={onRegister}
         disabled={isRegistering}
         variant="c5"
-        className="w-full uppercase"
-        size="xl"
+        className=" flex mx-auto"
+        size="lg"
       >
         {isRegistering ? (
           <InlineLoading message={t("step5.registering")} size="md" />
