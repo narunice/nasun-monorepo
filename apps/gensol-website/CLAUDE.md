@@ -22,6 +22,7 @@ pnpm dev              # Development server (localhost:5173)
 pnpm build            # Type-check and production build
 pnpm lint             # Run ESLint
 pnpm format           # Format code with Prettier
+pnpm format:check     # Check code formatting without modifying
 pnpm test             # Run tests with Vitest
 pnpm test:ui          # Run tests with Vitest UI
 ```
@@ -46,6 +47,7 @@ pnpm dev:local        # Dev server with localnet
 - **AWS Amplify** for authentication (Cognito)
 - **TanStack Query** for data fetching
 - **Tailwind CSS** + Radix UI for styling/components
+- **Vitest + React Testing Library** for testing
 
 ### Key Directories
 - `src/pages/` - Top-level page components (HomePage, FilmsPage, GamesPage, etc.)
@@ -72,6 +74,7 @@ Copy `.env.example` to `.env` and configure:
 - `VITE_NETWORK` - Blockchain network (mainnet, testnet, devnet, localnet)
 - `VITE_AWS_*` / `VITE_COGNITO_*` - AWS Cognito authentication settings
 - `VITE_*_API_ENDPOINT` - Backend API endpoints (synced from nasun-website CDK deployment)
+- `VITE_CSP_POLICY` - Content Security Policy string
 
 ## Authentication System
 

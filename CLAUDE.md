@@ -520,27 +520,26 @@ cd apps/pado/contracts
 - `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
 - `liquidation.move` - 청산 엔진 (5% 보너스)
 
-#### Governance (Nasun Website) - 2026-01-08 업데이트
+#### Governance (Nasun Website) - 2026-01-18 업데이트
 
 | 컨트랙트                      | ID                                                                   | 비고                                |
 | ----------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
-| governance (v1)               | `0xcd753b00...`                                                      | 초기 패키지 (deprecated)            |
-| governance (v2)               | `0x77153fb2...`                                                      | Certificate 기반 투표 (deprecated)  |
-| governance (v3)               | `0x01ceae82...`                                                      | Domain Separation 추가 (deprecated) |
-| governance (v4)               | `0xf6d2c99985eec548a604d7d49491b36a76fd02d7ac37e3cab11b8609797186fc` | **현재 패키지** (ProposalType 추가) |
-| VotingPowerOracle (shared)    | `0x656632e390118ddf2c41fc59f14ddbbdfdd2115b8a08e4db48e8232846f43199` | Ed25519 서명 검증                   |
-| CertificateRegistry (shared)  | `0x5edbaf20f817ee3a9a94528babff2d2218364d4ec9a60af486a35228ad8a421f` | 중복 발급 방지                      |
-| ProposalTypeRegistry (shared) | `0x87bd4a3f00b1ef6cbb3311eb4d40ee14d32dadbaf6498d07e2347f517ebe84ba` | 프로포절 유형 관리                  |
-| Dashboard (shared)            | `0x422ee880...`                                                      | 프로포절 대시보드                   |
-| DelegationRegistry            | `0x23f4c7b5...`                                                      | 투표 위임 레지스트리                |
-| AdminCap                      | `0x21a92db9776a4c4b4c81323103dd16c082ae13c8c86a780e6711fb9b81620972` | 관리자 권한                         |
-| UpgradeCap                    | `0x71d874e076031e9645ceb372ef5546de5d250abf87e1ab08fa3cf459544e5ba5` | 업그레이드 권한                     |
+| governance (v1-v4)            | deprecated                                                           | 이전 버전들 (더 이상 사용 안함)     |
+| governance (v5)               | `0xa4636c566d7d06bcb3802e248390007a09fb78837349bce3cb71eadd905937cf` | **현재 패키지** (2026-01-17 배포)   |
+| VotingPowerOracle (shared)    | `0x39dc3fece619659c248bbc16b5e2bf27ccf14ab9c7452d2e21e3c8b3a86369cf` | Ed25519 서명 검증                   |
+| CertificateRegistry (shared)  | `0x50390f76578f663bfc365e3ff8036fe7671a7a9fa3b041bc45e2bef62c76ebca` | 중복 발급 방지                      |
+| ProposalTypeRegistry (shared) | `0x4da0ef1eb2cfd06970ceebcc9524d3819b0c5174eca18af1090338b25d4de756` | 프로포절 유형 관리                  |
+| Dashboard (shared)            | `0x542142dcf283834783cbf75e4b2e5bd32458a02171232738638b86de386acd0d` | 프로포절 대시보드                   |
+| AdminCap                      | `0xbce95269bbf47f09a2980fd46ee40185c812b6f4088caf9ca70cbe2e5f9f76e2` | 관리자 권한                         |
+| UpgradeCap                    | `0x576ebf7a856ac802fe8ef63291d75d70367a9a0b4458deeb7b69db4c3bf910be` | 업그레이드 권한                     |
 
-**v4 Features:**
+**v5 Features:**
 
 - **ProposalType**: Governance (사용자 가스비) vs Poll (Sponsored/Zero Gas)
 - **ProposalTypeRegistry**: 프로포절 유형 On-chain 저장
 - **조건부 Sponsoring**: Poll 프로포절만 가스비 지원
+- **VotingPowerOracle**: Ed25519 공개키로 Certificate 서명 검증
+- **CertificateRegistry**: 투표자별 Certificate 발급 추적 (중복 방지)
 
 **v3 Security Features (유지):**
 

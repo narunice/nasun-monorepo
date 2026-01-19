@@ -34,14 +34,11 @@ const TeamCard: React.FC<TeamCardProps> = ({
   const descriptionArray = Array.isArray(description) ? description : [description];
 
   return (
-    <OuterBox
-      color="n1"
-      className={`flex flex-col md:flex-row gap-8 md:gap-12 bg-nasun-c6/40 ${className}`}
-    >
+    <OuterBox color="c5" className={`flex flex-col md:flex-row gap-8 md:gap-12 ${className}`}>
       {/* Left Column - Profile */}
       <div className="md:w-1/4 flex flex-col items-center md:items-start">
         {/* Profile Image */}
-        <div className="relative w-full h-auto rounded-5xl overflow-hidden border-5 border-nasun-c5 mb-4">
+        <div className="relative w-full h-auto rounded-5xl overflow-hidden  mb-4">
           <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
         </div>
 
@@ -103,7 +100,7 @@ const TeamCard: React.FC<TeamCardProps> = ({
       {/* Right Column - Details */}
       <div className="md:w-3/4 space-y-6">
         {/* Bio/Description */}
-        <DividerBox color="c4">
+        <DividerBox color="w1">
           <div className="space-y-4">
             {descriptionArray.map((paragraph: string, index: number) => {
               // 첫 번째 단락의 시작 부분만 강조
@@ -138,10 +135,12 @@ const TeamCard: React.FC<TeamCardProps> = ({
             {publications && publications.length > 0 && (
               <DividerBox
                 color="c3"
+                padding="sm"
                 icon={<FiBook />}
                 title="Publications"
                 titleClassName="text-nasun-c3"
-                className="flex-1"
+                className="flex-1 "
+                disableHover
               >
                 <ul className="space-y-1 pl-8 text-gray-300 list-disc">
                   {publications.map((pub: { label: string; url?: string }, index: number) => (
@@ -168,10 +167,12 @@ const TeamCard: React.FC<TeamCardProps> = ({
             {filmography && filmography.length > 0 && (
               <DividerBox
                 color="c3"
+                padding="sm"
                 icon={<FiFilm />}
                 title="Filmography"
                 titleClassName="text-nasun-c3"
                 className="flex-1"
+                disableHover
               >
                 <ul className="space-y-1 pl-8 text-gray-300 list-disc">
                   {filmography.map((film: { label: string; url?: string }, index: number) => (

@@ -174,12 +174,12 @@ Phase 4 (v0.8.0) - NEXT
 
 ---
 
-## File Structure (v0.7.0)
+## File Structure (v0.7.1)
 
 ```
 src/
 ├── pages/
-│   ├── Home.tsx               # TPS Chart, Epoch Progress added
+│   ├── Home.tsx             # TPS Chart, Epoch Progress, Search bar
 │   ├── Transactions.tsx
 │   ├── Transaction.tsx
 │   ├── Object.tsx           # Package link added
@@ -188,14 +188,14 @@ src/
 │   ├── Validator.tsx
 │   ├── Checkpoints.tsx
 │   ├── Checkpoint.tsx
-│   └── Package.tsx          # NEW (v0.6.0)
+│   └── Package.tsx
 ├── lib/
 │   ├── sui-client.ts        # getPackageModules(), getModuleDetail()
 │   ├── format.ts
 │   ├── media.ts
 │   └── nft.ts
 └── components/
-    ├── Header.tsx           # Packages menu added
+    ├── Header.tsx           # Hamburger menu, WalletConnect
     ├── CopyableId.tsx
     ├── NFTDetailView.tsx
     └── ...
