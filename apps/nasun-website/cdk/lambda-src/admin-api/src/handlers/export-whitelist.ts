@@ -353,7 +353,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           { key: "verifiedAt", header: "verifiedAt" },
           { key: "xUserId", header: "xUserId" },
           { key: "xUsername", header: "xUsername" },
-          { key: "allowlistBatchId", header: "allowlistBatchId" },
           { key: "status", header: "status" },
         ]);
         filename = generateFilename("battalion-nft-allowlist", suffix);
