@@ -81,7 +81,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (containerRef.current) {

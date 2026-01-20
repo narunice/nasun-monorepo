@@ -21,17 +21,15 @@
 #### Backend (CDK)
 | 환경변수 | 설정 위치 | 값 (Dev) | 값 (Prod) | 상태 |
 |---------|----------|---------|----------|------|
-| `TARGET_USERNAME` | `cdk/.env` Line 9 | `Naru010110` | `GenSol_io` | ✅ 설정됨 |
+| `TARGET_USERNAME` | `cdk/.env` Line 9 | `Naru010110` | `Nasun_io` | ✅ 설정됨 |
 | `TARGET_USER_ID` | `cdk/.env` Line 10 | `1863020068785004544` | `1725466995565752320` | ✅ 설정됨 |
-| `X_TARGET_USERNAME` | `cdk/.env` Line 11 | `Naru010110` | `GenSol_io` | ⚠️ 중복 |
+| `X_TARGET_USERNAME` | `cdk/.env` Line 11 | `Naru010110` | `Nasun_io` | ⚠️ 중복 |
 | `X_TARGET_USER_ID` | `cdk/.env` Line 12 | `1863020068785004544` | `1725466995565752320` | ⚠️ 중복 |
-
-> **참고**: Production username이 `GenSol_io`에서 `Nasun_io`로 변경될 예정이나, User ID는 동일하게 유지됨
 
 #### Frontend
 | 환경변수 | 설정 위치 | 값 (Dev) | 값 (Prod) | 상태 |
 |---------|----------|---------|----------|------|
-| `VITE_TARGET_TWEET_ACCOUNT` | `.env.development` Line 174 | `Naru010110` | `GenSol_io` | ✅ 설정됨 |
+| `VITE_TARGET_TWEET_ACCOUNT` | `.env.development` Line 174 | `Naru010110` | `Nasun_io` | ✅ 설정됨 |
 | `VITE_TARGET_USER_ID` | - | - | - | ❌ 미설정 (불필요) |
 
 ### 2.2 Backend Lambda 사용 패턴
@@ -288,12 +286,12 @@ aws stepfunctions start-execution --state-machine-arn <ARN> --input '{}'
 
 | 항목 | 값 | 비고 |
 |------|-----|------|
-| **Username** | `GenSol_io` | 향후 `Nasun_io`로 변경 예정 |
+| **Username** | `Nasun_io` | 프로덕션 최종 핸들 |
 | **User ID** | `1725466995565752320` | 변경 없음 (영구 식별자) |
 
 ### 8.2 OAuth 2.0 토큰 발급 완료
 
-- **대상 계정**: @GenSol_io
+- **대상 계정**: @Nasun_io
 - **발급 일시**: 2025-12-13 12:37 UTC
 - **Scope**: `follows.read offline.access list.read like.read users.read tweet.read`
 - **토큰 유효기간**:
@@ -308,15 +306,17 @@ aws stepfunctions start-execution --state-machine-arn <ARN> --input '{}'
 
 **업데이트된 필드**:
 - `oauth2.clientSecret`: `.env.production`과 동기화
-- `oauth2.userAccessToken`: @GenSol_io 토큰
-- `oauth2.refreshToken`: @GenSol_io 토큰
+- `oauth2.userAccessToken`: @Nasun_io 토큰
+- `oauth2.refreshToken`: @Nasun_io 토큰
 - `oauth2.expiresAt`: 2025-12-13T14:37:09.000Z
 - `oauth2.lastRefreshed`: 2025-12-13T12:37:09.000Z
 
 ### 8.4 Username 변경 시 참고사항
 
-> ⚠️ **중요**: `GenSol_io` → `Nasun_io`로 username 변경 시:
+> ⚠️ **중요**: Username 변경 시:
 > 1. **토큰 재발급 불필요**: User ID가 동일하므로 기존 토큰 유효
 > 2. **환경변수만 변경**: `.env.production`의 `TARGET_USERNAME`, `X_TARGET_USERNAME`
 > 3. **Frontend 환경변수 변경**: `VITE_TARGET_TWEET_ACCOUNT`
 > 4. **재배포 필요**: CDK + Frontend
+>
+> **현재 상태**: `Nasun_io`가 프로덕션 최종 핸들로 설정됨 (2026-01-20)

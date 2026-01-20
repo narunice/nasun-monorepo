@@ -19,7 +19,7 @@ async function main() {
   console.log(`Token prefix: ${bearerToken.substring(0, 30)}...`);
 
   const client = new TwitterApi(bearerToken);
-  const targetUserId = '1725466995565752320'; // GenSol_io
+  const targetUserId = '1725466995565752320'; // Nasun_io
 
   // Test 1: User lookup
   console.log('\n1️⃣ User lookup...');

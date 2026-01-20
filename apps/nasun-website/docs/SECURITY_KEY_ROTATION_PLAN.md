@@ -69,7 +69,7 @@ aws configure --profile nasun-devnet
 ### 2.1 X (Twitter) API 재설정
 **URL**: [X Developer Portal](https://developer.x.com/en/portal/dashboard)
 
-1. **개발 앱(@Naru010110) & 프로덕션 앱(@GenSol_io)** 각각 접속.
+1. **개발 앱(@Naru010110) & 프로덕션 앱(@Nasun_io)** 각각 접속.
 2. **Keys and tokens** 탭에서 아래 항목 **모두 Regenerate**:
    - API Key and Secret
    - Bearer Token

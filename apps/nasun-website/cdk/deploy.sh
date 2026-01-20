@@ -109,7 +109,7 @@ echo ""
 if [[ "$ENV" == "production" ]]; then
     ENV_FILE=".env.production"
     AWS_PROFILE="nasun-prod"
-    TARGET_ACCOUNT="@GenSol_io"
+    TARGET_ACCOUNT="@Nasun_io"
     AWS_ACCOUNT_ID="466841130170"
     PROFILE_FLAG="--profile nasun-prod"
     NODE_ENV_VAL="production"
