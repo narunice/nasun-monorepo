@@ -1,8 +1,8 @@
 //optimistic account
 
-// Nasun Devnet - Governance Package V6 (deployed 2026-01-20, Chain ID: 56c8b101)
+// Nasun Devnet - Governance Package V7 (deployed 2026-01-20, Chain ID: 56c8b101)
 export const NASUN_DEVNET_PACKAGE_ID =
-  "0x1b92455bed34604785c0b697316195a3cbab9270a968e41f3a398284a4c9ceed";
+  "0x85cbfc0e9a54331d0b2fd4cf68bf7228639ede99755945f8a098ef563b628843";
 export const NASUN_DEVNET_DASHBOARD_ID =
   "0x542142dcf283834783cbf75e4b2e5bd32458a02171232738638b86de386acd0d";
 export const NASUN_DEVNET_ADMIN_CAP =
