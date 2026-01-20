@@ -116,7 +116,7 @@ function AwardsGrantsSection() {
           ) : error ? (
             <div className="w-full text-center py-12 space-y-4 mb-8">
               <p className="text-orange-400">{error}</p>
-              <Button variant="default" onClick={() => refetch()}>
+              <Button variant="outlineC4" onClick={() => refetch()}>
                 Retry
               </Button>
             </div>

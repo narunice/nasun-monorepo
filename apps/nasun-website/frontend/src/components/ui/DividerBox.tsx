@@ -222,7 +222,7 @@ export const DividerBox = ({
 
   return (
     <div
-      className={`${paddingClass} w-full ${bgClass} rounded-lg border backdrop-blur-lg ${borderClass} ${className}`}
+      className={`${paddingClass} w-full ${bgClass} rounded-sm border backdrop-blur-lg ${borderClass} ${className}`}
     >
       {/* Title (옵셔널) - rightTitle/rightAction이 있으면 justify-between 레이아웃 */}
       {(title || rightTitle || rightAction) && (
