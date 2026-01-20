@@ -12,16 +12,18 @@
   </context>
 
   <tasks>
-    <task></task>
-    <task></task>
-    <task></task>
+    <task>뉴스 카드의 rounded 클래스 제거 </task>
+    <task>카드 우측 상단 outline 태그 색상을 c1 으로 변경 </task>
+    <task>카드 하단 navigation dots의 active 상태 색상도 c1으로 변경</task>
+    <task>섹션 타이틀 News & Events와 뉴스 카드의 배치를 중앙 정렬로 하지 말고 around로 배치해주세요. 그리고 타이틀과 카드 사이에는 min 여백을 지금 현재 정도로 지정해주세요. 지금은 섹션 타이틀과 카드가 너무 가깝고 특히 브라우저 높이가 클 때는 네비게이션 바와 섹션 타이틀이 너무 멀어지고 있어요. </task>
+    <task>섹션 배경색을 black으로 하고 카드 배경색을 nasun-black으로 해주세요. </task>
   </tasks>
 
   <constraints>
     <constraint>롤백 포인트 확보 후 진행할 것</constraint>
     <constraint>보안 규칙 준수 (XSS, CSP, OAuth 등)</constraint>
     <constraint>불필요한 주석, 타입 변경, 코드 스타일 변경 금지</constraint>
-    <constraint>모든 import 경로를 정확히 업데이트하여 빌드 에러가 없도록 할 것</constraint>
+    <constraint>nasun-c3 색상은 사용하지 않는다.</constraint>
   </constraints>
 
   <action>
@@ -30,10 +32,7 @@
 
   <output>
     <explanation>
-      - 폴더 이동: 경로를 단순화하여 개발자가 더 직관적으로 접근 가능.
-      - 이름 변경: 'app' 대신 'sections'를 사용해 역할을 명확히 표현.
-      - 임포트 경로 업데이트: 코드 일관성을 유지하고 빌드 오류를 방지.
-      - 기대 효과: 유지보수성 향상, 구조적 직관성 확보, 협업 시 가독성 개선.
+- 작업 요약 및 기대효과 설명
     </explanation>
   </output>
 </Request>

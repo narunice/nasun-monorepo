@@ -58,7 +58,7 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
           }
         });
       },
-      { threshold: 0 } // 0%: 완전히 벗어나면 멈춤, 조금이라도 보이면 재생
+      { threshold: 0 }, // 0%: 완전히 벗어나면 멈춤, 조금이라도 보이면 재생
     );
 
     if (containerRef.current) {
@@ -106,7 +106,7 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
       {/* 컨텐츠 */}
       <div className="max-w-8xl mx-auto relative z-10 px-4 lg:px-8 flex lg:justify-end">
         {/* 모바일: 타이틀 상단, 카드 하단 (justify-between), 데스크톱: 우측 배치 */}
-        <div className="min-h-screen flex flex-col w-full lg:w-fit lg:justify-center items-center mt-80 md:mt-64 lg:mt-[25%] pb-8 lg:pt-14 lg:pb-0 px-14 gap-4">
+        <div className="min-h-screen flex flex-col w-full lg:w-fit lg:justify-center items-center mt-80 md:mt-64 lg:mt-[25%] pb-8 lg:pt-14 lg:pb-0 px-14 gap-0 md:gap-2 lg:gap-4">
           {/* GENESIS NFT 타이틀 - 가운데 정렬 */}
           <FadeInUp>
             <SectionTitle
@@ -117,8 +117,8 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
             </SectionTitle>
 
             {/* Join Us 버튼 */}
-            <div className="w-full flex justify-center pt-2 md:pt-3 lg:pt-4">
-              <Button asChild size="xl" variant="defaultReverse" className="">
+            <div className="w-full flex justify-center ">
+              <Button asChild size="md" variant="filledOutlineC1" className="">
                 <Link to="/genesis-nft">{t("nftSale.moreInfo")}</Link>
               </Button>
             </div>

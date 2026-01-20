@@ -1,5 +1,11 @@
 # 리더보드 블랙리스트 관리 시스템 구현 계획서
 
+## 0. 현재 상태 (Current Status)
+**작성일**: 2026-01-20
+**상태**: 🟡 진행 중 (In Progress)
+- **Frontend**: Admin Dashboard에 메뉴 진입점 및 UI 플레이스홀더 구현 완료 (`/admin`).
+- **Backend**: DynamoDB 스키마 변경 및 API 구현 대기 중. 현재는 여전히 환경 변수 기반 차단 방식 사용 중.
+
 ## 1. 개요
 
 현재 리더보드에서 어뷰징 사용자를 제외하는 블랙리스트 기능은 `EXCLUDED_USERNAMES`, `EXCLUDED_USER_IDS` 환경변수에 의존하고 있습니다. 이는 차단 목록 업데이트 시마다 백엔드 재배포가 필요하여 운영 효율성이 떨어집니다. 이를 Admin Dashboard에서 실시간으로 관리할 수 있도록 **DynamoDB 기반의 동적 관리 시스템**으로 전환합니다.

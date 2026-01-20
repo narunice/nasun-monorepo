@@ -223,6 +223,10 @@ VITE_GOVERNANCE_API_URL=/api/governance
 
 ## Changelog
 
+### 2026-01-20
+- ✅ Verified current implementation status.
+- ✅ Governance V5 contracts deployed and active.
+
 ### 2025-12-28
 - ✅ Phase 1: Leaderboard-based voting power implemented
 - ✅ Phase 2: Ethereum NFT verification via MetaMask signature
