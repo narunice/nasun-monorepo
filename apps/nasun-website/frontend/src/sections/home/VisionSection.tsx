@@ -139,7 +139,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
         {/* CTA Button */}
         <FadeInUp delay="0.2s">
           <Button
-            variant="default"
+            variant="black"
             size="xl"
             asChild
             className="rounded-full font-normal text-base lg:text-lg px-10 mb-12 md:mb-14 lg:mb-16"

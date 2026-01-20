@@ -32,7 +32,7 @@
     "walden": "월든 (출시 예정)",
     "mbase": "엠베이스 (출시 예정)",
     "verdan": "버던 (출시 예정)",
-    "wePop": "위팝 (출시 예정)",
+    "wePop": "위팝",
     "riderStudio": "라이더 스튜디오",
     "riderStudioMain": "메인",
     "riderStudioFramework": "프레임워크",
@@ -50,8 +50,8 @@
     "battalionNft": "배틀리온 NFT",
     "earlyContributors": "얼리 컨트리뷰터",
     "leaderboardInfo": "리더보드 안내",
-    "contests": "콘테스트 (출시 예정)",
-    "aboutTeam": "팀 (출시 예정)"
+    "contests": "콘테스트",
+    "aboutTeam": "팀"
   },
   "auth": {
     "login": "로그인/회원가입",
