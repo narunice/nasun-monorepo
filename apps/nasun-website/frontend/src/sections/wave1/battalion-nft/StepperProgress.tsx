@@ -40,9 +40,9 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
   const getStepColor = (status: "completed" | "current" | "upcoming"): string => {
     switch (status) {
       case "completed":
-        return "bg-nasun-c3 text-white border-nasun-c3";
-      case "current":
         return "bg-nasun-c4 text-white border-nasun-c4";
+      case "current":
+        return "bg-nasun-c1/90 text-nasun-white border-nasun-c2";
       case "upcoming":
         return "bg-gray-700 text-gray-400 border-gray-600";
     }
@@ -51,7 +51,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
   const getLineColor = (fromStep: EventStep): string => {
     const status = getStepStatus(fromStep);
     if (status === "completed") {
-      return "bg-nasun-c3";
+      return "bg-nasun-c4";
     }
     return "bg-gray-600";
   };
@@ -78,7 +78,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                         ${stepColor}
                         ${
                           status === "current"
-                            ? "ring-4 ring-nasun-c4/30 dark:ring-nasun-c4/50"
+                            ? "ring-4 ring-nasun-c4/30 dark:ring-nasun-c1/50"
                             : ""
                         }
                       `}
@@ -105,8 +105,8 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                     <p
                       className={`
                         text-center break-words
-                        ${status === "current" ? "text-nasun-c4" : ""}
-                        ${status === "completed" ? "text-nasun-c3" : ""}
+                        ${status === "current" ? "text-nasun-c1" : ""}
+                        ${status === "completed" ? "text-nasun-c4" : ""}
                         ${status === "upcoming" ? "text-gray-400" : ""}
                       `}
                     >
@@ -169,8 +169,8 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                   {/* Step Label */}
                   <p
                     className={`
-                      ${status === "current" ? "text-nasun-c4" : ""}
-                      ${status === "completed" ? "text-nasun-c3" : ""}
+                      ${status === "current" ? "text-nasun-c1" : ""}
+                      ${status === "completed" ? "text-nasun-c4" : ""}
                       ${status === "upcoming" ? "text-gray-400" : ""}
                     `}
                   >
@@ -185,7 +185,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                   </span>
                 )}
                 {status === "completed" && (
-                  <span className="px-3 py-1 text-nasun-c3 bg-nasun-c3/20 rounded-full text-sm flex-shrink-0">
+                  <span className="px-3 py-1 text-nasun-c4 bg-nasun-c4/20 rounded-full text-sm flex-shrink-0">
                     {t("stepper.statusCompleted")}
                   </span>
                 )}

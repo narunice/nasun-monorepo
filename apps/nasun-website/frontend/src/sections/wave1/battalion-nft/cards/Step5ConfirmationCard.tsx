@@ -53,7 +53,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
       </div>
       <p className="w-full mx-auto text-center mb-2">{t("step5.description")}</p>
       {/* Summary */}
-      <DividerBox color="c3" padding="sm" className="mb-8 text-left">
+      <DividerBox color="w1" padding="sm" className="mb-8 text-left">
         {/* X Account & Wallet - 모바일: 세로, 데스크톱: 가로 */}
         <div className="flex flex-col md:flex-row md:gap-8 space-y-4 md:space-y-0 mb-4">
           <div className="flex-1">
