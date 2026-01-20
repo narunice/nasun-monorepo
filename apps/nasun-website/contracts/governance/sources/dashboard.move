@@ -7,6 +7,7 @@ use sui::dynamic_field;
 const EDuplicateProposal: u64 = 0;
 const EInvalidOtw: u64 = 1;
 const EMigrationAlreadyComplete: u64 = 2;
+const EProposalNotFound: u64 = 3;
 
 /// Key for tracking v6 migration status via dynamic field
 const MIGRATION_V6_KEY: vector<u8> = b"migrated_v6";
@@ -46,6 +47,17 @@ public fun new(otw: DASHBOARD, ctx: &mut TxContext) {
 public fun register_proposal(self: &mut Dashboard, _admin_cap: &AdminCap, proposal_id: ID) {
     assert!(!self.proposals_ids.contains(&proposal_id), EDuplicateProposal);
     self.proposals_ids.push_back(proposal_id);
+}
+
+/// Unregister a proposal from Dashboard (admin only)
+public fun unregister_proposal(
+    self: &mut Dashboard,
+    _admin_cap: &AdminCap,
+    proposal_id: ID
+) {
+    let (found, index) = self.proposals_ids.index_of(&proposal_id);
+    assert!(found, EProposalNotFound);
+    self.proposals_ids.remove(index);
 }
 
 public fun proposals_ids(self: &Dashboard): vector<ID> {
