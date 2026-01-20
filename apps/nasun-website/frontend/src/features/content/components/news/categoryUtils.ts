@@ -1,4 +1,4 @@
-// components/app/news/categoryUtils.ts
+// sections/news/categoryUtils.ts
 import { WP_CATEGORIES } from "../../../../hooks/wordpress/usePosts";
 
 export type CategoryType = "all" | "news" | "events";

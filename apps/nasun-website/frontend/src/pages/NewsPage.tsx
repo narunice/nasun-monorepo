@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import { SectionLoading } from "../components/ui";
 
-const NewsSection = lazy(() => import("../components/app/updates/news/NewsSection"));
+const NewsSection = lazy(() => import("../sections/updates/news/NewsSection"));
 
 export default function NewsPage() {
   return (

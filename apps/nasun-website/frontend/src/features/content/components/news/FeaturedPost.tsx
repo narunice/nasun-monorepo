@@ -1,4 +1,4 @@
-// components/app/news/FeaturedPost.tsx
+// sections/news/FeaturedPost.tsx
 import { Link } from "react-router-dom";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { Post } from "../../../types/post.d";

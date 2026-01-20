@@ -3,10 +3,10 @@ import { useTranslation } from "react-i18next";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
-import OverviewSkeleton from "@/components/app/ips/gensol/overview/OverviewSkeleton";
+import OverviewSkeleton from "@/sections/ips/gensol/overview/OverviewSkeleton";
 
 // Lazy load consolidated hero section
-const OverviewHeroSection = lazy(() => import("@/components/app/ips/gensol/overview/OverviewHeroSection"));
+const OverviewHeroSection = lazy(() => import("@/sections/ips/gensol/overview/OverviewHeroSection"));
 
 export default function OverviewPage() {
   const { t } = useTranslation("genSol");

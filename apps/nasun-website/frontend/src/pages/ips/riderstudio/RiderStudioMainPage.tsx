@@ -4,7 +4,7 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
 const RiderMain = lazy(
-  () => import("@/components/app/ips/rider-studio/RiderMain")
+  () => import("@/sections/ips/rider-studio/RiderMain")
 );
 
 export default function RiderStudioMainPage() {

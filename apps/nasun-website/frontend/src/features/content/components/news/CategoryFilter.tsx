@@ -1,4 +1,4 @@
-// components/app/news/CategoryFilter.tsx
+// sections/news/CategoryFilter.tsx
 import { useTranslation } from "react-i18next";
 import { Tag } from "../../../ui/tag";
 import { categories, CategoryType } from "./categoryUtils";

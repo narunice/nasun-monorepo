@@ -5,7 +5,7 @@
  */
 
 // Battalion NFT Components
-// Note: BattalionNftPage is located in components/app/wave1/battalion-nft/ (more feature-complete version)
+// Note: BattalionNftPage is located in sections/wave1/battalion-nft/ (more feature-complete version)
 export { BattalionNftCard } from "./components/battalion-nft/BattalionNftCard";
 export { default as BattalionNftHeroSection } from "./components/battalion-nft/BattalionNftHeroSection";
 export { StepperProgress } from "./components/battalion-nft/StepperProgress";

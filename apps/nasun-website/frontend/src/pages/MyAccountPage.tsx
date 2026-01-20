@@ -16,12 +16,12 @@ import { Button } from "../components/ui/button";
 import { SectionLoading, PageTitle } from "../components/ui";
 
 // Dashboard Card Components
-import { ProfileHeroCard } from "../components/app/myAccount/ProfileHeroCard";
-import { RankHistoryCard } from "../components/app/myAccount/RankHistoryCard";
-import { GovernanceCard } from "../components/app/myAccount/GovernanceCard";
-import { CompactNftStatus } from "../components/app/myAccount/CompactNftStatus";
-import { AssetsCard } from "../components/app/myAccount/AssetsCard";
-import { DangerZoneCard } from "../components/app/myAccount/DangerZoneCard";
+import { ProfileHeroCard } from "../sections/myAccount/ProfileHeroCard";
+import { RankHistoryCard } from "../sections/myAccount/RankHistoryCard";
+import { GovernanceCard } from "../sections/myAccount/GovernanceCard";
+import { CompactNftStatus } from "../sections/myAccount/CompactNftStatus";
+import { AssetsCard } from "../sections/myAccount/AssetsCard";
+import { DangerZoneCard } from "../sections/myAccount/DangerZoneCard";
 
 const MyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);

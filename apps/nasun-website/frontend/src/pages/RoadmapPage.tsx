@@ -5,19 +5,19 @@ import { useTranslation } from "react-i18next";
 import { SectionLoading } from "../components/ui";
 
 const RoadmapIntroSection = lazy(() =>
-  import("../components/app/updates/roadmap/RoadmapIntroSection").then((module) => ({
+  import("../sections/updates/roadmap/RoadmapIntroSection").then((module) => ({
     default: module.RoadmapIntroSection,
   }))
 );
 
 const RoadmapTimelineSection = lazy(() =>
-  import("../components/app/updates/roadmap/RoadmapTimelineSection").then((module) => ({
+  import("../sections/updates/roadmap/RoadmapTimelineSection").then((module) => ({
     default: module.RoadmapTimelineSection,
   }))
 );
 
 const LiveNowSection = lazy(() =>
-  import("../components/app/updates/roadmap/LiveNowSection").then((module) => ({
+  import("../sections/updates/roadmap/LiveNowSection").then((module) => ({
     default: module.LiveNowSection,
   }))
 );

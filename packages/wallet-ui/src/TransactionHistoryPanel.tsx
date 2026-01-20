@@ -177,7 +177,7 @@ function TransactionItem({
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+            <p className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
               {getLabel()}
             </p>
             {counterparty && hasTransfers && (
@@ -206,7 +206,7 @@ function TransactionItem({
             </div>
           ) : (
             <div className="text-right">
-              <p className="text-sm text-gray-500 dark:text-zinc-400">
+              <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400">
                 {tx.status === 'failure' ? 'Failed' : 'Contract Call'}
               </p>
               {tx.gasUsed && tx.status === 'success' && (
@@ -256,7 +256,7 @@ export function TransactionHistoryPanel({
       <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
               Transaction History
             </h3>
           </div>
@@ -283,7 +283,7 @@ export function TransactionHistoryPanel({
       <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
               Transaction History
             </h3>
           </div>
@@ -309,7 +309,7 @@ export function TransactionHistoryPanel({
       <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
               Transaction History
             </h3>
             <button
@@ -355,7 +355,7 @@ export function TransactionHistoryPanel({
     <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
       {!hideHeader && (
         <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
             Transaction History
           </h3>
           <button
