@@ -2,15 +2,15 @@
 import { cva } from "class-variance-authority";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-3xl leading-normal active:scale-[0.97] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 transition-all ",
+  "inline-flex items-center justify-center rounded-full active:scale-[0.97] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 transition-all",
   {
     variants: {
       variant: {
         // Default: NASUN 모노톤 스타일
-        default: "bg-nasun-black/80 text-nasun-white hover:bg-nasun-black",
+        black: "bg-nasun-black/80 text-nasun-white hover:bg-nasun-black",
 
         // Default Reverse: NASUN 색상 반전 모노톤 스타일
-        defaultReverse: "bg-nasun-white/70  text-nasun-black hover:bg-gray-100/80",
+        white: "bg-nasun-white  text-nasun-black hover:bg-nasun-white/80",
 
         // Scarlet: Solid red button
         scarlet: "bg-nasun-scarlet text-nasun-white hover:bg-nasun-scarlet/80",
@@ -104,34 +104,36 @@ export const buttonVariants = cva(
           "ring-1 ring-inset ring-nasun-gensol-red bg-nasun-gensol-red/10 text-nasun-gensol-red hover:bg-transparent",
 
         // Ghost: 기존 유지
-        ghost: "text-nasun-white hover:bg-nasun-c5/20",
+        ghost: "text-nasun-white hover:bg-nasun-c1/20",
 
         // Link
         link: "text-nasun-white/80 underline-offset-4 underline hover:text-white ",
 
         // Action: (어두운 배경용)
-        action: "bg-nasun-c4/20 hover:bg-nasun-c5/20 text-white capitalize",
+        //  action:
+        //    "bg-nasun-c1/20 hover:bg-nasun-c1/10 text-nasun-white hover:text-nasun-c1 capitalize",
 
         // Action Dark:  (밝은 배경용)
-        actionDark: "bg-nasun-c4/30 hover:bg-nasun-c5/30 text-black capitalize",
+        //  actionDark: "bg-nasun-c4/70 hover:bg-nasun-c5/30 text-black capitalize",
 
         // Destructive: 위험한 동작용 빨간색 버튼 (Unlink, Delete 등)
-        destructive: "bg-red-500 text-white hover:bg-red-600",
+        destructive:
+          "ring-1 ring-inset ring-red-500 bg-red-500/10 text-red-500 hover:bg-transparent",
       },
       size: {
         xs: "text-xs px-5 py-1",
-        sm: "text-xs lg:text-sm px-4 lg:px-5 py-1",
-        default: "text-xs lg:text-sm px-4 lg:px-5 py-1 lg:py-[6px]",
-        md: "text-sm lg:text-base px-5 lg:px-6 py-1 lg:py-[6px]",
-        lg: "text-base lg:text-lg px-6 lg:px-8 py-[6px] lg:py-2",
-        xl: "text-lg lg:text-xl px-8 lg:px-10 py-2",
-        "2xl": "text-lg lg:text-xl px-8 lg:px-12 py-2 lg:py-3",
-        hero: "text-2xl md:text-2xl w-full py-3 tracking-wider",
+        sm: "text-xs lg:text-sm px-5 md:px-7 lg:px-9 py-1",
+        default: "text-xs lg:text-sm px-6 md:px-8 lg:px-10 py-1 ",
+        md: "text-sm lg:text-base px-7 md:px-9 lg:px-11 py-1 lg:py-1.5",
+        lg: "text-base lg:text-lg  px-8 md:px-10 lg:px-12 py-1  ",
+        xl: "text-lg lg:text-xl px-9 md:px-11 lg:px-13 py-1 lg:py-1.5",
+        "2xl": "text-lg lg:text-xl px-11 md:px-13 lg:px-15 py-1 lg:py-1.5",
+        hero: "text-xl lg:text-2xl px-12 md:px-13 lg:px-14 py-1.5 lg:py-2 tracking-wider",
         icon: "h-10 w-10",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "c1",
       size: "default",
     },
   },
