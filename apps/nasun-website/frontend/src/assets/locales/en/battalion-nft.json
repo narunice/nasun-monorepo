@@ -109,9 +109,9 @@
   },
   "step4": {
     "title": "Connect Wallet",
-    "description": "Please connect your Ethereum wallet to receive the NFT.",
+    "description": "Please connect your Ethereum wallet to mint the NFT.",
     "infoTitle": "MetaMask Wallet Connection Guide",
-    "infoDescription": "Please connect your Ethereum wallet address to receive the NFT. Approve the connection when the MetaMask popup appears.",
+    "infoDescription": "Please connect your MetaMask wallet address to mint the NFT. Approve the connection when the MetaMask popup appears.",
     "signatureNote": "Signing only confirms wallet ownership to collect a valid address. No transactions or fund transfers occur.",
     "connected": "Connected",
     "success": "Wallet connected successfully",
@@ -145,15 +145,6 @@
     "description": "Congratulations! You have successfully registered for the Wave 1 Battalion NFT allowlist.",
     "shareMessage": "I've registered for the Wave 1 Battalion NFT allowlist! 🎉 #NASUN #NFT",
     "shareEventOnX": "Share this event on",
-    "info": {
-      "title": "Registration Info",
-      "wallet": "Wallet Address",
-      "username": "X Account",
-      "registeredAt": "Registered At",
-      "item1": "You will receive an email notification when minting starts",
-      "item2": "You can mint NFT with your registered wallet address",
-      "item3": "Minting price: Free (gas fees only)"
-    },
     "mintingGuide": {
       "title": "OpenSea Minting Guide",
       "step1": "Go to the OpenSea collection page",

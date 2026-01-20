@@ -8,11 +8,11 @@
  * @date 2025-11-02
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
-import { FiCheck, FiAward, FiFeather, FiUsers } from "react-icons/fi";
+import { FiCheck, FiAward, FiFeather, FiUsers, FiGift, FiStar } from "react-icons/fi";
 import { DividerBox, OuterBox } from "@/components/ui";
 
 interface Step1WelcomeCardProps {
@@ -21,6 +21,15 @@ interface Step1WelcomeCardProps {
 
 export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick }) => {
   const { t } = useTranslation("battalion-nft");
+  const [checkPhase, setCheckPhase] = useState(0);
+
+  // Sequential checkmark animation loop (0→1→2→3→0: accumulate then reset)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCheckPhase((prev) => (prev + 1) % 4);
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <OuterBox color="c5" className="max-w-3xl mx-auto">
@@ -30,7 +39,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         <p className="mb-6 max-w-lg mx-auto">{t("header.description")}</p>
         <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
           <DividerBox
-            color="c4"
+            color="w1"
             padding="sm"
             disableHover={true}
             icon="📋"
@@ -39,13 +48,28 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           >
             <ul className="space-y-2 ">
               <li className="flex items-start gap-2">
-                <FiCheck className="mt-1 flex-shrink-0" /> {t("step1.requirements.item1")}
+                <FiCheck
+                  className={`mt-1 flex-shrink-0 transition-colors duration-300 ${
+                    checkPhase >= 1 ? "text-green-300" : ""
+                  }`}
+                />
+                {t("step1.requirements.item1")}
               </li>
               <li className="flex items-start gap-2">
-                <FiCheck className="mt-1 flex-shrink-0" /> {t("step1.requirements.item2")}
+                <FiCheck
+                  className={`mt-1 flex-shrink-0 transition-colors duration-300 ${
+                    checkPhase >= 2 ? "text-green-300" : ""
+                  }`}
+                />
+                {t("step1.requirements.item2")}
               </li>
               <li className="flex items-start gap-2">
-                <FiCheck className="mt-1 flex-shrink-0" /> {t("step1.requirements.item3")}
+                <FiCheck
+                  className={`mt-1 flex-shrink-0 transition-colors duration-300 ${
+                    checkPhase >= 3 ? "text-green-300" : ""
+                  }`}
+                />
+                {t("step1.requirements.item3")}
               </li>
             </ul>
             <div className="mt-4 flex items-center justify-around gap-4">
@@ -74,7 +98,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
             </div>
           </DividerBox>
           <DividerBox
-            color="c3"
+            color="c1"
             icon="🎁"
             padding="sm"
             disableHover={true}
@@ -83,19 +107,20 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           >
             <ul className="space-y-2 text-nasun-white/80 font-rubik font-light">
               <li className="flex items-start gap-2">
-                <FiAward className="mt-1 flex-shrink-0" /> {t("step1.rewards.item1")}
+                <FiAward className="mt-1 flex-shrink-0 text-nasun-c1" /> {t("step1.rewards.item1")}
               </li>
               <li className="flex items-start gap-2">
-                <FiFeather className="mt-1 flex-shrink-0" /> {t("step1.rewards.item2")}
+                <FiFeather className="mt-1 flex-shrink-0 text-nasun-c1" />{" "}
+                {t("step1.rewards.item2")}
               </li>
               <li className="flex items-start gap-2">
-                <FiAward className="mt-1 flex-shrink-0" /> {t("step1.rewards.item3")}
+                <FiGift className="mt-1 flex-shrink-0 text-nasun-c1" /> {t("step1.rewards.item3")}
               </li>
               <li className="flex items-start gap-2">
-                <FiAward className="mt-1 flex-shrink-0" /> {t("step1.rewards.item4")}
+                <FiStar className="mt-1 flex-shrink-0 text-nasun-c1" /> {t("step1.rewards.item4")}
               </li>
               <li className="flex items-start gap-2">
-                <FiUsers className="mt-1 flex-shrink-0" /> {t("step1.rewards.item5")}
+                <FiUsers className="mt-1 flex-shrink-0 text-nasun-c1" /> {t("step1.rewards.item5")}
               </li>
             </ul>
           </DividerBox>

@@ -142,17 +142,17 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       {/* Tasks List */}
       <div className="space-y-4 !py-4">
         {/* Follow Recommendation (Not Required) */}
-        <div className="flex text-nasun-white items-center justify-between p-4 rounded-lg border transition-all bg-nasun-c3/10 border-nasun-c3/40">
+        <div className="flex text-nasun-white items-center justify-between p-4 rounded-lg border transition-all bg-nasun-c2/10 border-nasun-c2/40">
           <div className="flex items-center space-x-3">
-            <svg className="w-6 h-6 text-nasun-c3" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-nasun-c1" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
             <span>
               {t("step3.tasks.follow", { account: targetAccount })}{" "}
-              <span className="text-nasun-c3 text-sm">({t("step3.recommended")})</span>
+              <span className="text-nasun-c2/80 text-sm">({t("step3.recommended")})</span>
             </span>
           </div>
-          <Button variant="outlineC3" size="sm" asChild>
+          <Button variant="outlineC1" size="sm" asChild>
             <a href={followIntentUrl} target="_blank" rel="noopener noreferrer">
               <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-4 h-4 mr-1" />
               {t("step3.followButton")}
@@ -271,8 +271,8 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
               tasks: data.tasks,
             });
           }}
-          variant="c1"
-          className="w-full"
+          variant="c5"
+          className="flex mx-auto"
           size="lg"
         >
           <span>{t("step3.nextButton")}</span>
@@ -291,7 +291,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
           onClick={handleVerify}
           disabled={isLoading}
           variant="c5"
-          className="w-full"
+          className="flex mx-auto"
           size="lg"
         >
           {isLoading ? (

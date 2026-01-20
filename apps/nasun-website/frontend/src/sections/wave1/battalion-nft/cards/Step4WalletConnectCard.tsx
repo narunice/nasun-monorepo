@@ -256,7 +256,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         <>
           {/* MetaMask Info */}
           <DividerBox
-            color="c4"
+            color="w1"
             padding="sm"
             icon="ℹ️"
             title={t("step4.infoTitle")}
