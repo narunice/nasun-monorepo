@@ -65,7 +65,7 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 **용도**: 실제 서비스
 - **AWS 계정**: 466841130170
 - **API Gateway**: bumvhwfbj4
-- **Target Account**: @GenSol_io
+- **Target Account**: @Nasun_io
 - **Target User ID**: 1725466995565752320
 - **Secret**: nasun-twitter-tokens-prod
 - **URL**: https://nasun.io
@@ -242,7 +242,7 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
   - `PIPELINE_EXECUTION_REPORT_20251031.md` (특정 날짜 리포트)
   - `OAUTH_TOKEN_MANAGEMENT_GUIDE.md` (cdk/docs로 통합)
 - ✅ **OAuth 문서 통합**: `../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md`로 통합
-- ✅ **환경 정보 업데이트**: Production 타겟 계정 (@GenSol_io), Secret 이름 수정
+- ✅ **환경 정보 업데이트**: Production 타겟 계정 (@Nasun_io), Secret 이름 수정
 
 ### v3.2.0 (2025-12-03) - 문서 정리 및 최신화
 - ✅ **신규 문서 추가**:

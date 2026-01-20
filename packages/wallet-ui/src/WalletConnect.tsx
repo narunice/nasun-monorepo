@@ -44,6 +44,7 @@ import { ReceivePanel } from "./ReceivePanel";
 import { TransactionHistoryPanel } from "./TransactionHistoryPanel";
 import { PortfolioPanel } from "./PortfolioPanel";
 import { NasunLinkWizard } from "./NasunLinkWizard";
+import { AdvancedToggle } from "./AdvancedToggle";
 import {
   LedgerConnect,
   LedgerBrowserWarning,
@@ -560,6 +561,7 @@ export function WalletConnect({
               placeholder="Confirm Password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && password.length >= 8 && password === confirmPassword && handleCreate()}
               className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
@@ -1252,6 +1254,11 @@ export function WalletConnect({
               }}
             />
           )}
+
+          {/* Advanced Mode Toggle for zkLogin */}
+          <div className="px-3 py-2 border-t border-gray-200 dark:border-zinc-700">
+            <AdvancedToggle compact showDescription={false} />
+          </div>
 
           {/* Disconnect Button */}
           <div className="border-t border-gray-200 dark:border-zinc-700">

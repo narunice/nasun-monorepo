@@ -21,7 +21,7 @@ async function main() {
   // Test 1: User lookup (free tier)
   console.log('1️⃣ User lookup (Free tier)...');
   try {
-    const user = await client.v2.userByUsername('GenSol_io');
+    const user = await client.v2.userByUsername('Nasun_io');
     console.log(`   ✅ Success: @${user.data?.username} (ID: ${user.data?.id})`);
   } catch (e: any) {
     console.log(`   ❌ Failed: ${e.message}`);
@@ -30,7 +30,7 @@ async function main() {
   // Test 2: Tweet lookup (free tier)
   console.log('\n2️⃣ Recent search (Free tier)...');
   try {
-    const tweets = await client.v2.search('from:GenSol_io', { max_results: 10 });
+    const tweets = await client.v2.search('from:Nasun_io', { max_results: 10 });
     console.log(`   ✅ Success: Found ${tweets.data?.data?.length || 0} tweets`);
   } catch (e: any) {
     console.log(`   ❌ Failed: ${e.message}`);

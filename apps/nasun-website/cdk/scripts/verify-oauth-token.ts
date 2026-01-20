@@ -60,7 +60,7 @@ const ENV_CONFIGS = {
     envFile: '.env.production',
     secretName: 'nasun-twitter-tokens-prod',
     targetUserId: '1725466995565752320',
-    targetUsername: 'GenSol_io',
+    targetUsername: 'Nasun_io',
     awsAccount: '466841130170',
     awsRegion: 'ap-northeast-2',
   },

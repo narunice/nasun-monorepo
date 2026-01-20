@@ -1,10 +1,8 @@
 <Request>
-  <tasks>
-    - /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/sections 라고 하는 새로운 폴더를 생성한다.
-    - /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app 경로에 있던 모든 파일을 
-      /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/sections 경로로 이동한다.
-    - 기존 코드에서 import 경로를 모두 업데이트하여 새로운 위치(/src/sections)를 참조하도록 변경한다.
-  </tasks>
+  <goal>
+    - 나선 웹사이트 홈페이지의 news & events 섹션 디자인을 개선한다
+    - 해당 섹션 코드 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/sections/home/VisionSection.tsx
+  </goal>
 
   <context>
     <project>nasun-monorepo</project>
@@ -13,11 +11,11 @@
     <framework>React 19, TailwindCSS 3.4</framework>
   </context>
 
-  <goals>
-    <goal>컴포넌트 구조를 단순화하고, 섹션 단위 코드가 직관적으로 관리될 수 있도록 한다.</goal>
-    <goal>폴더 이름을 'sections'로 변경하여 페이지 섹션 컴포넌트임을 명확히 한다.</goal>
-    <goal>라우트 구조와 컴포넌트 구조가 일관성을 가지도록 한다.</goal>
-  </goals>
+  <tasks>
+    <task></task>
+    <task></task>
+    <task></task>
+  </tasks>
 
   <constraints>
     <constraint>롤백 포인트 확보 후 진행할 것</constraint>

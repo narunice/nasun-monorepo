@@ -64,7 +64,7 @@ GET https://bb4zdy0rwe.execute-api.ap-northeast-2.amazonaws.com/prod/leaderboard
 
 **AWS 계정**: 466841130170
 **API Gateway**: bumvhwfbj4
-**타겟 계정**: 현재 @GenSol_io, 향후 핸들을 @Nasun_io로 변경할 예정 (User ID: 1725466995565752320)
+**타겟 계정**: @Nasun_io (User ID: 1725466995565752320)
 **DynamoDB 테이블**: nasun-leaderboard-data
 **Step Functions**: nasun-leaderboard-pipeline
 **EventBridge 스케줄**: 매일 09:10 AM KST
