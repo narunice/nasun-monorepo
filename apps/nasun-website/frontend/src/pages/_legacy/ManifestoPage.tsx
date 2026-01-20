@@ -6,7 +6,7 @@ import { KeyPointsBox } from "../../components/ui/KeyPointsBox";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { PageTitle } from "../../components/ui/PageTitle";
 
-const VisionForChangeSection = lazy(() => import("../../components/app/_legacy/manifesto/VisionForChangeSection"));
+const VisionForChangeSection = lazy(() => import("../../sections/_legacy/manifesto/VisionForChangeSection"));
 
 function VisionManifestoPage() {
   const { t } = useTranslation("manifesto");

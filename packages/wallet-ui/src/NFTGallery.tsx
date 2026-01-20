@@ -169,7 +169,7 @@ export function NFTGallery({
             {/* Refresh button */}
             <button
               onClick={() => refetch()}
-              className="text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
               title="Refresh"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +199,7 @@ export function NFTGallery({
 
       {/* Show more indicator */}
       {limit > 0 && nfts.length > limit && (
-        <p className="text-center text-sm text-gray-500 dark:text-zinc-400 mt-3">
+        <p className="text-center text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-3">
           +{nfts.length - limit} more
         </p>
       )}

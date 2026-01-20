@@ -2,10 +2,10 @@ import { Suspense, lazy } from "react";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
-import JoinSection from "@/components/app/about/JoinSection";
+import JoinSection from "@/sections/about/JoinSection";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
-const FoundersSection = lazy(() => import("../../components/app/about/FoundersSection"));
+const FoundersSection = lazy(() => import("../../sections/about/FoundersSection"));
 
 const FoundersPage = () => {
   const { t } = useTranslation(["team", "common"]);

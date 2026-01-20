@@ -2,11 +2,11 @@ import { Suspense, lazy, useState, useCallback, useEffect } from "react";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
-import PadoHeroSectionSkeleton from "../../components/app/ecosystem/pado/PadoHeroSectionSkeleton";
+import PadoHeroSectionSkeleton from "../../sections/ecosystem/pado/PadoHeroSectionSkeleton";
 
 // Lazy load section components (4 sections total)
-const UnifiedOnchain = lazy(() => import("@/components/app/ecosystem/pado/UnifiedOnchain"));
-const PadoHeroSection = lazy(() => import("@/components/app/ecosystem/pado/PadoHeroSection"));
+const UnifiedOnchain = lazy(() => import("@/sections/ecosystem/pado/UnifiedOnchain"));
+const PadoHeroSection = lazy(() => import("@/sections/ecosystem/pado/PadoHeroSection"));
 
 /**
  * PadoPage 컴포넌트
@@ -26,7 +26,7 @@ export default function PadoPage() {
     setIsVideoReady(true);
 
     // Preload critical sections
-    await Promise.all([import("../../components/app/ecosystem/pado/UnifiedOnchain")]);
+    await Promise.all([import("../../sections/ecosystem/pado/UnifiedOnchain")]);
 
     // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
     requestAnimationFrame(() => {

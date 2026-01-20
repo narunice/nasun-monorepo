@@ -110,7 +110,7 @@ export function usePortfolio(options?: UsePortfolioOptions): UsePortfolioResult 
 
       // 1. Fetch Move chain balances (Nasun)
       const moveChains = getMoveChains().filter(
-        (c) => enabledChains.includes(c.id) && (includeTestnets || !c.testnet)
+        (c) => enabledChains.includes(c.id) && !c.disabled && (includeTestnets || !c.testnet)
       );
 
       for (const chain of moveChains) {
@@ -160,7 +160,7 @@ export function usePortfolio(options?: UsePortfolioOptions): UsePortfolioResult 
       // 2. Fetch EVM chain balances
       if (evmAddress) {
         const evmChains = getEVMChains().filter(
-          (c) => enabledChains.includes(c.id) && (includeTestnets || !c.testnet)
+          (c) => enabledChains.includes(c.id) && !c.disabled && (includeTestnets || !c.testnet)
         );
 
         for (const chain of evmChains) {

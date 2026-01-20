@@ -9,7 +9,7 @@ import usePosts, { WP_CATEGORIES } from "../hooks/wordpress/usePosts";
 import { SectionLoading } from "../components/ui/SectionLoading";
 import { PageLayout } from "../components/layout/PageLayout";
 import { sanitizeWordPressContent } from "../utils/wordpressContent";
-import PostNavigation from "../components/app/posts/PostNavigation";
+import PostNavigation from "../sections/posts/PostNavigation";
 import type { Post } from "../types/post.d";
 
 // Hero Background Image

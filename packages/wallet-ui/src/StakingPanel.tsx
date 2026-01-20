@@ -141,7 +141,7 @@ function StakeTab({ compact }: StakeTabProps) {
 
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Stake Successful</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+            <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {lastResult.amount} NSN staked
             </p>
           </div>
@@ -172,7 +172,7 @@ function StakeTab({ compact }: StakeTabProps) {
   if (step === 'confirm' && selectedValidator) {
     return (
       <div className="p-4 space-y-4">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Confirm Stake</h4>
+        <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Stake</h4>
 
         <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3 space-y-3">
           <div>
@@ -255,7 +255,7 @@ function StakeTab({ compact }: StakeTabProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Stake to {selectedValidator.name}</h4>
+          <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Stake to {selectedValidator.name}</h4>
         </div>
 
         <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
@@ -267,7 +267,7 @@ function StakeTab({ compact }: StakeTabProps) {
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm text-gray-500 dark:text-zinc-400">Stake Amount</label>
+            <label className="text-sm md:text-base text-gray-500 dark:text-zinc-400">Stake Amount</label>
             <button
               onClick={() => setAmount(maxStake)}
               className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
@@ -306,7 +306,7 @@ function StakeTab({ compact }: StakeTabProps) {
   // Select validator step
   return (
     <div className="p-4 space-y-3">
-      <h4 className="text-sm font-medium text-gray-900 dark:text-white">Select Validator</h4>
+      <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Select Validator</h4>
       <ValidatorList
         selected={selectedValidator?.address}
         onSelect={(v) => {
@@ -358,7 +358,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
 
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Unstake Successful</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+            <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
               Your NSN will be available after the current epoch ends.
             </p>
           </div>
@@ -389,7 +389,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
   if (step === 'confirm' && selectedStake) {
     return (
       <div className="p-4 space-y-4">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Confirm Unstake</h4>
+        <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Unstake</h4>
 
         <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3">
           <p className="text-xs text-gray-500 dark:text-zinc-400">Amount to Unstake</p>
@@ -456,7 +456,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
               d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">No active stakes to unstake</p>
+          <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400">No active stakes to unstake</p>
         </div>
       </div>
     );
@@ -464,7 +464,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
 
   return (
     <div className="p-4 space-y-3">
-      <h4 className="text-sm font-medium text-gray-900 dark:text-white">Select Position to Unstake</h4>
+      <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Select Position to Unstake</h4>
       <StakingStatus
         compact={compact}
         hideSummary

@@ -184,7 +184,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
             Enter your password to continue
           </label>
           <input

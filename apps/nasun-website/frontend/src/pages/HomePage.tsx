@@ -5,15 +5,15 @@ import { ScrollSnapContainer } from "../components/layout/ScrollSnapContainer";
 import { ScrollSnapSection } from "../components/layout/ScrollSnapSection";
 import { useHomePageLoading } from "../contexts/PageLoadingContext";
 
-import HeroSectionSkeleton from "../components/app/home/HeroSectionSkeleton";
+import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 
 // Lazy load all sections
-const HeroSection = lazy(() => import("../components/app/home/HeroSection"));
-const VisionSection = lazy(() => import("../components/app/home/VisionSection"));
-const Wave1Section = lazy(() => import("../components/app/home/Wave1Section"));
-const NftSaleSection = lazy(() => import("../components/app/home/NftSaleSection"));
-const AwardsGrantsSection = lazy(() => import("../components/app/home/AwardsGrantsSection"));
-const NewsEventsSection = lazy(() => import("../components/app/home/NewsEventsSection"));
+const HeroSection = lazy(() => import("../sections/home/HeroSection"));
+const VisionSection = lazy(() => import("../sections/home/VisionSection"));
+const Wave1Section = lazy(() => import("../sections/home/Wave1Section"));
+const NftSaleSection = lazy(() => import("../sections/home/NftSaleSection"));
+const AwardsGrantsSection = lazy(() => import("../sections/home/AwardsGrantsSection"));
+const NewsEventsSection = lazy(() => import("../sections/home/NewsEventsSection"));
 
 export default function HomePage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -33,8 +33,8 @@ export default function HomePage() {
     // Preload critical above-the-fold sections before showing footer
     // This prevents layout shift when sections load after footer appears
     await Promise.all([
-      import("../components/app/home/VisionSection"),
-      import("../components/app/home/NewsEventsSection"),
+      import("../sections/home/VisionSection"),
+      import("../sections/home/NewsEventsSection"),
     ]);
 
     // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)

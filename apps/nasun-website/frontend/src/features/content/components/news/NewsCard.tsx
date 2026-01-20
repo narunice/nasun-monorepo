@@ -1,4 +1,4 @@
-// components/app/news/NewsCard.tsx
+// sections/news/NewsCard.tsx
 import { Link } from "react-router-dom";
 import { Post } from "../../../types/post.d";
 import { Tag } from "../../../ui/tag";

@@ -5,7 +5,7 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 
 // Lazy load consolidated sections
 
-const StrategyOverviewV2 = lazy(() => import("@/components/app/about/StrategyOverviewV2"));
+const StrategyOverviewV2 = lazy(() => import("@/sections/about/StrategyOverviewV2"));
 
 function StrategyPage() {
   return (

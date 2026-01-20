@@ -4,7 +4,7 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
 const LeaderboardInfoSection = lazy(
-  () => import("../../components/app/wave1/leaderboard-info/LeaderboardInfoSection")
+  () => import("../../sections/wave1/leaderboard-info/LeaderboardInfoSection")
 );
 
 export default function LeaderboardInfoPage() {

@@ -38,7 +38,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         Backup Your Recovery Phrase
       </h3>
 
-      <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">
+      <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-4">
         Write down these 12 words in order. This is the <strong className="text-gray-900 dark:text-white">ONLY way</strong> to recover
         your wallet if you lose access.
       </p>

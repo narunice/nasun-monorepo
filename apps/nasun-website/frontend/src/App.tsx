@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { NFTMintedModal } from "./components/app/wave1/genesisNft/nftMintedModal/NFTMintedModal";
+import { NFTMintedModal } from "./sections/wave1/genesisNft/nftMintedModal/NFTMintedModal";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/layout/Footer";
 import AppRoutes from "./routes/AppRoutes";

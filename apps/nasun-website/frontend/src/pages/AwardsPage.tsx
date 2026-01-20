@@ -4,8 +4,8 @@ import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { SectionLoading } from "../components/ui";
 
-const AwardsSection = lazy(() => import("../components/app/updates/awards/AwardsSection"));
-const AwardsListSection = lazy(() => import("../components/app/updates/awards/AwardsListSection"));
+const AwardsSection = lazy(() => import("../sections/updates/awards/AwardsSection"));
+const AwardsListSection = lazy(() => import("../sections/updates/awards/AwardsListSection"));
 
 export default function AwardsPage() {
   const { t } = useTranslation(["grants", "common"]);

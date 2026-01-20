@@ -25,7 +25,7 @@
    - 위치: MY WALLET STATUS 섹션
    - 모드: `link` (기존 로그인 유지)
 
-2. **UserInfo** (`frontend/src/components/app/myAccount/UserInfo.tsx`)
+2. **UserInfo** (`frontend/src/sections/myAccount/UserInfo.tsx`)
    - 위치: USER INFO 섹션
    - 모드: `link` (기존 로그인 유지)
 

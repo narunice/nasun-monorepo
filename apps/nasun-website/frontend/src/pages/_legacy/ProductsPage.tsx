@@ -4,8 +4,8 @@ import { PageLayout } from "../../components/layout/PageLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { PageTitle } from "../../components/ui/PageTitle";
 
-const BeyondScreensSection = lazy(() => import("../../components/app/_legacy/products/BeyondScreensSection"));
-const ProductsSection = lazy(() => import("../../components/app/_legacy/products/ProductsSection"));
+const BeyondScreensSection = lazy(() => import("../../sections/_legacy/products/BeyondScreensSection"));
+const ProductsSection = lazy(() => import("../../sections/_legacy/products/ProductsSection"));
 
 export default function VisionProductsPage() {
   const { t } = useTranslation("products");

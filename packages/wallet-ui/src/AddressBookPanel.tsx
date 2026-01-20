@@ -104,7 +104,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
     <div className={`${compact ? 'p-3' : 'p-4'} w-full`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -208,7 +208,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
                     />
                   ) : (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <span className="text-sm md:text-base font-medium text-gray-900 dark:text-white truncate">
                         {entry.label || shortenAddress(entry.address)}
                       </span>
                       <button
@@ -226,7 +226,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
                     </div>
                   )}
                 </div>
-                <span className="text-xs text-gray-500 dark:text-zinc-400">
+                <span className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">
                   {entry.transactionCount} tx{entry.transactionCount !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -261,7 +261,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="px-2 py-1 text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+                      className="px-2 py-1 text-xs md:text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
                     >
                       Cancel
                     </button>
@@ -307,7 +307,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
       {/* Info Box */}
       {entries.length > 0 && (
         <div className="mt-4 bg-gray-100 dark:bg-zinc-700/50 rounded p-3">
-          <p className="text-xs text-gray-500 dark:text-zinc-400">
+          <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">
             <span className="font-medium text-gray-600 dark:text-zinc-300">Tip:</span> Mark addresses as trusted to skip the first-time recipient warning when sending.
           </p>
         </div>
