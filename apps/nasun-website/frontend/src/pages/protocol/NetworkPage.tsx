@@ -4,24 +4,24 @@ import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 
-import NetworkHeroSectionSkeleton from "../../components/app/protocol/network/NetworkHeroSectionSkeleton";
+import NetworkHeroSectionSkeleton from "../../components/app/network/network/NetworkHeroSectionSkeleton";
 
 const NetworkHeroSection = lazy(
-  () => import("../../components/app/protocol/network/NetworkHeroSection")
+  () => import("../../components/app/network/network/NetworkHeroSection")
 );
 
 // NEW DESIGN - 새로운 디자인 섹션들
 const NasunNetworkSection = lazy(
-  () => import("../../components/app/protocol/network/NasunNetworkSection")
+  () => import("../../components/app/network/network/NasunNetworkSection")
 );
 const NasunTokenSection = lazy(
-  () => import("../../components/app/protocol/network/NasunTokenSection")
+  () => import("../../components/app/network/network/NasunTokenSection")
 );
 const MoveTogetherSection = lazy(
-  () => import("../../components/app/protocol/network/MoveTogetherSection")
+  () => import("../../components/app/network/network/MoveTogetherSection")
 );
 const TokenDistributionSection = lazy(
-  () => import("../../components/app/protocol/network/TokenDistributionSection")
+  () => import("../../components/app/network/network/TokenDistributionSection")
 );
 
 const VisionNetworkPage = () => {
@@ -39,8 +39,8 @@ const VisionNetworkPage = () => {
     // 중요한 섹션들을 프리로드하여 레이아웃 시프트 방지
     await Promise.all([
       // New Design
-      import("../../components/app/protocol/network/NasunNetworkSection"),
-      import("../../components/app/protocol/network/NasunTokenSection"),
+      import("../../components/app/network/network/NasunNetworkSection"),
+      import("../../components/app/network/network/NasunTokenSection"),
     ]);
 
     // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
