@@ -77,9 +77,9 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
             <p className="mb-3">{t("step6.walletDisconnectedWarning")}</p>
             <Button
               onClick={() => navigate("/my-account")}
-              variant="default"
+              variant="black"
               size="sm"
-              className="w-full bg-yellow-600 hover:bg-yellow-700"
+              className="w-full !bg-yellow-600 hover:bg-yellow-700"
             >
               {t("step6.goToMyAccount")}
             </Button>
@@ -88,7 +88,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Whitelist Info - 등록 정보 */}
         <DividerBox
-          color="c3"
+          color="w1"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -121,7 +121,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Minting Guide */}
         <DividerBox
-          color="c4"
+          color="w1"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

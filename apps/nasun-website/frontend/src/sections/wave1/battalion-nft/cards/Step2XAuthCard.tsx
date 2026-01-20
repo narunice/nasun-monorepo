@@ -178,7 +178,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         onClick={handleXLogin}
         disabled={isLoading}
         variant="c5"
-        className="flex mx-auto"
+        className="flex  mx-auto"
         size="lg"
       >
         {isLoading ? (
@@ -186,7 +186,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         ) : (
           <>
             <span>Verify with </span>
-            <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-6 h-6 pl-2" />
+            <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-5 h-5 pl-2" />
           </>
         )}
       </Button>
