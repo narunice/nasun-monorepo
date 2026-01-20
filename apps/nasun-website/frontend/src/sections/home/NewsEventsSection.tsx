@@ -22,8 +22,8 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-black/60 p-3 rounded-full shadow-lg hover:bg-black transition-all border border-nasun-white/50 hover:border-white ${
-      direction === "left" ? "-left-14" : "-right-14"
+    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-black p-3 rounded-full shadow-lg hover:bg-nasun-black/50 transition-all border border-nasun-white/50 hover:border-white ${
+      direction === "left" ? "-left-24" : "-right-24"
     }`}
     aria-label={direction === "left" ? "Previous news" : "Next news"}
   >
@@ -39,7 +39,7 @@ function NewsEventsSection() {
   const { t } = useTranslation("home");
   const { posts, loading, error, refetch } = usePosts(
     [WP_CATEGORIES.NEWS, WP_CATEGORIES.EVENTS],
-    6
+    6,
   );
 
   // WordPress 카테고리 추출 헬퍼 함수
@@ -60,7 +60,7 @@ function NewsEventsSection() {
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
-      month: "short",
+      month: "long",
       day: "numeric",
     });
   };
@@ -77,24 +77,12 @@ function NewsEventsSection() {
   };
 
   return (
-    <SectionLayout id="news-events" className="relative min-h-screen">
-      {/* 배경 Gradient - 상단은 #2F2D2C, 하단은 nasun-black */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full z-0"
-        style={{
-          background: "linear-gradient(to bottom, #2F2D2C 40%, rgb(25, 22, 21) 100%)",
-        }}
-      />
-
+    <SectionLayout id="news-events" className="relative min-h-screen bg-black">
       {/* 컨텐츠 */}
       <FadeInUp>
-        <div className="relative max-w-6xl mx-auto z-10  w-full h-full px-4 md:px-8 mt-6 md:mt-8 lg:mt-10">
+        <div className="relative max-w-6xl mx-auto z-10 w-full h-full px-4 md:px-8 lg:px-32 flex flex-col justify-start min-h-screen gap-6 md:gap-9 lg:gap-12 pt-10 md:pt-20 lg:pt-24 pb-8 md:pb-16 lg:pb-20">
           {/* 섹션 타이틀 - Awards & Grants 스타일 */}
-          <SectionTitle
-            as="h2"
-            color="white"
-            className="!font-eurostile text-center mt-6 mb-2 sm:my-4 md:my-6 lg:mt-8 xl:mt-10"
-          >
+          <SectionTitle as="h2" color="white" className="!font-eurostile text-center">
             {t("newsEvents.title")}
           </SectionTitle>
 
@@ -111,7 +99,7 @@ function NewsEventsSection() {
           ) : !Array.isArray(posts) || posts.length === 0 ? (
             <div className="w-full text-center py-12 text-gray-400">No news posts available.</div>
           ) : (
-            <div className="w-full dark:[&_.slick-dots]:dots-dark [&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-0">
+            <div className="w-full [&_.slick-dots_li.slick-active_button:before]:!text-nasun-c1 [&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-4">
               <Slider {...sliderSettings}>
                 {posts.map((post) => {
                   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
@@ -119,7 +107,7 @@ function NewsEventsSection() {
                   return (
                     <Link key={post.id} to={`/news-events/${post.slug}`} className="block px-2">
                       {/* 수평 카드 레이아웃 */}
-                      <div className="group flex flex-col md:flex-row bg-black/50 backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300">
+                      <div className="group flex flex-col md:flex-row bg-nasun-black overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 rounded-sm">
                         {/* 좌측: 이미지 */}
                         <div className="md:w-1/2 md:self-stretch overflow-hidden">
                           {imageUrl ? (
@@ -129,17 +117,17 @@ function NewsEventsSection() {
                               className="block w-full h-64 md:h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                             />
                           ) : (
-                            <div className="w-full h-64 md:h-full bg-gradient-to-br from-nasun-c4/30 to-nasun-c3/20 flex items-center justify-center">
+                            <div className="w-full h-64 md:h-full bg-gradient-to-br from-nasun-c4/30 to-nasun-c1/20 flex items-center justify-center">
                               <span className="text-white/40 text-lg">No Image</span>
                             </div>
                           )}
                         </div>
 
                         {/* 우측: 콘텐츠 */}
-                        <div className="md:w-1/2 p-4 md:p-6 lg:p-10 flex flex-col justify-center">
+                        <div className="md:w-1/2 py-3 md:py-5 lg:py-8 px-4 md:px-6 lg:px-10 flex flex-col justify-center gap-3 md:gap-4 lg:gap-4">
                           {/* WordPress 카테고리 뱃지 - 왼쪽 정렬 */}
                           <Tag
-                            variant="outlineC3"
+                            variant="outlineC1"
                             size="md"
                             className="self-center font-medium uppercase tracking-wider"
                           >
@@ -147,7 +135,7 @@ function NewsEventsSection() {
                           </Tag>
 
                           {/* 제목 - 가운데 정렬 */}
-                          <h3 className="font-semibold my-4 line-clamp-3 text-center">
+                          <h3 className="font-semibold line-clamp-3 text-center pt-1">
                             {stripHtml(post.title.rendered)}
                           </h3>
 
@@ -157,15 +145,19 @@ function NewsEventsSection() {
                           </time>
 
                           {/* 설명 - 가운데 정렬 */}
-                          <p className="my-4 line-clamp-3 text-center">
+                          <p className=" line-clamp-3 text-center">
                             {stripHtml(post.excerpt.rendered)}
                           </p>
 
                           {/* Read More 버튼 - 오른쪽 정렬 */}
                           <div className="flex justify-end">
-                            <span className="text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                            <Tag
+                              variant="filledC1"
+                              size="sm"
+                              className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8 mt-1"
+                            >
                               {t("newsEvents.readMore")}
-                            </span>
+                            </Tag>
                           </div>
                         </div>
                       </div>

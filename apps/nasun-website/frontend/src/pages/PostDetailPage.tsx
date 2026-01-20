@@ -107,7 +107,7 @@ function PostDetailPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-nasun-black text-nasun-white gap-4">
           <h2 className="text-2xl font-eurostile">Post not found</h2>
           {error && <p className="text-nasun-scarlet">{error}</p>}
-          <Link to="/" className="text-nasun-c3 hover:underline">
+          <Link to="/" className="text-blue-300 hover:underline">
             Return Home
           </Link>
         </div>
@@ -156,7 +156,7 @@ function PostDetailPage() {
             <div className="max-w-4xl mx-auto text-center md:text-left">
               <button
                 onClick={handleBackToSection}
-                className="inline-flex items-center text-nasun-c4 hover:text-white transition-colors mb-6 text-xs md:text-sm uppercase tracking-[0.2em] font-medium"
+                className="inline-flex items-center text-nasun-c1 hover:text-white transition-colors mb-6 text-xs md:text-sm uppercase tracking-[0.2em] font-medium"
               >
                 <ArrowLeftIcon className="mr-2 w-4 h-4" /> {backButtonText}
               </button>
@@ -233,27 +233,27 @@ function PostDetailPage() {
               className="flex-1 prose prose-lg prose-invert max-w-none
                 /* Headings */
                 prose-headings:font-eurostile prose-headings:tracking-wide prose-headings:text-white
-                prose-h1:text-4xl prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-nasun-c4
-                prose-h3:text-2xl prose-h3:mt-8 prose-h3:text-nasun-c3
-                
+                prose-h1:text-4xl prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-nasun-c1
+                prose-h3:text-2xl prose-h3:mt-8 prose-h3:text-nasun-c1
+
                 /* Text */
                 prose-p:text-gray-300 prose-p:leading-relaxed prose-p:font-light
                 prose-strong:text-white prose-strong:font-semibold
-                
+
                 /* Links */
-                prose-a:text-nasun-c3 prose-a:no-underline prose-a:border-b prose-a:border-nasun-c3/50 prose-a:break-all
+                prose-a:text-blue-300 prose-a:no-underline prose-a:border-b prose-a:border-blue-300/50 prose-a:break-all
                 hover:prose-a:text-nasun-scarlet hover:prose-a:border-nasun-scarlet hover:prose-a:transition-colors
-                
+
                 /* Blockquotes */
-                prose-blockquote:border-l-4 prose-blockquote:border-nasun-c4 
+                prose-blockquote:border-l-4 prose-blockquote:border-nasun-c1
                 prose-blockquote:bg-white/5 prose-blockquote:px-6 prose-blockquote:py-4 prose-blockquote:rounded-r-lg
                 prose-blockquote:text-gray-200 prose-blockquote:not-italic
-                
+
                 /* Images inside content */
-                prose-img:rounded-xl prose-img:shadow-xl prose-img:border prose-img:border-white/10 prose-img:my-8
-                
+                prose-img:rounded-sm prose-img:shadow-xl prose-img:border prose-img:border-white/10 prose-img:my-4
+
                 /* Lists */
-                prose-li:text-gray-300 prose-li:marker:text-nasun-c4"
+                prose-li:text-gray-300 prose-li:marker:text-nasun-c1"
               dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
           </div>
