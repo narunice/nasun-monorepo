@@ -4,7 +4,7 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
 const EarlyContributorsSection = lazy(() =>
-  import("../../components/app/wave1/early-contributors/EarlyContributorsSection").then(
+  import("../../sections/wave1/early-contributors/EarlyContributorsSection").then(
     (module) => ({ default: module.EarlyContributorsSection })
   )
 );

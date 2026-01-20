@@ -5,7 +5,7 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { PageTitle } from "../../components/ui/PageTitle";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
-const WePopSection = lazy(() => import("../../components/app/ips/WePopSection"));
+const WePopSection = lazy(() => import("../../sections/ips/WePopSection"));
 
 export default function WePopPage() {
   const { t } = useTranslation("wePop");

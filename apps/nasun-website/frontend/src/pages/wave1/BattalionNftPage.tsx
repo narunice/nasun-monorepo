@@ -11,16 +11,16 @@
 
 import React, { Suspense, lazy, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { BattalionNftPage as BattalionNftComponent } from "../../components/app/wave1/battalion-nft/BattalionNftPage";
+import { BattalionNftPage as BattalionNftComponent } from "../../sections/wave1/battalion-nft/BattalionNftPage";
 import { PageLayout } from "../../components/layout/PageLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
-import BattalionNftHeroSectionSkeleton from "../../components/app/wave1/battalion-nft/BattalionNftHeroSectionSkeleton";
+import BattalionNftHeroSectionSkeleton from "../../sections/wave1/battalion-nft/BattalionNftHeroSectionSkeleton";
 
 const BattalionNftHeroSection = lazy(
-  () => import("../../components/app/wave1/battalion-nft/BattalionNftHeroSection")
+  () => import("../../sections/wave1/battalion-nft/BattalionNftHeroSection")
 );
 
 const BattalionNftPage: React.FC = () => {

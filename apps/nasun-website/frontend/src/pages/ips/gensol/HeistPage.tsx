@@ -4,7 +4,7 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
 // Lazy load consolidated hero section
-const HeistHeroSection = lazy(() => import("@/components/app/ips/gensol/heist/HeistHeroSection"));
+const HeistHeroSection = lazy(() => import("@/sections/ips/gensol/heist/HeistHeroSection"));
 
 export default function HeistPage() {
   return (

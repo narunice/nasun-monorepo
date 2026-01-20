@@ -106,7 +106,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
 
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+            <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {lastResult.amount} {successToken} sent successfully
             </p>
           </div>
@@ -211,7 +211,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
           </div>
 
           <div className="bg-gray-200 dark:bg-zinc-700 rounded p-3">
-            <p className="text-xs text-gray-500 dark:text-zinc-400">Amount</p>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Amount</p>
             <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
               {amount} <span className="text-blue-400 text-sm">{selectedToken}</span>
             </p>
@@ -219,7 +219,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
 
           {/* Gas fee estimation */}
           <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3 border border-gray-300 dark:border-zinc-600">
-            <p className="text-xs text-gray-500 dark:text-zinc-400">
+            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">
               Estimated Gas Fee
             </p>
             <p className="text-sm text-gray-900 dark:text-white mt-1">
@@ -239,7 +239,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
               tabIndex={0}
               onClick={() => setShowDetails(!showDetails)}
               onKeyDown={(e) => e.key === 'Enter' && setShowDetails(!showDetails)}
-              className="w-full flex items-center justify-between text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors py-1 cursor-pointer"
+              className="w-full flex items-center justify-between text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors py-1 cursor-pointer"
             >
               <span className="flex items-center gap-1">
                 Transaction Details
@@ -372,7 +372,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
       <div className="space-y-4">
         {/* Token selector */}
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Token</label>
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-1">Token</label>
           <TokenSelector
             value={selectedToken}
             onChange={setSelectedToken}
@@ -382,7 +382,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
 
         {/* Balance display */}
         <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
-          <p className="text-xs text-gray-500 dark:text-zinc-400">Available Balance</p>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Available Balance</p>
           <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
             {getSelectedBalance()}{' '}
             <span className="text-blue-400 text-sm">{selectedToken}</span>
@@ -400,7 +400,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
 
         {/* Recipient address */}
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
           <input
             type="text"
             placeholder="0x..."
@@ -436,7 +436,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
 
         {/* Amount */}
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Amount ({selectedToken})</label>
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-1">Amount ({selectedToken})</label>
           <input
             type="number"
             placeholder="0.0"

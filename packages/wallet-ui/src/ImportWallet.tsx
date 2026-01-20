@@ -80,7 +80,7 @@ export function ImportWallet({
     return (
       <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import Wallet</h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">
+        <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-4">
           Choose how to import your existing wallet
         </p>
 
@@ -97,7 +97,7 @@ export function ImportWallet({
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">Recovery Phrase</div>
-                <div className="text-xs text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
+                <div className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
               </div>
             </div>
           </button>
@@ -114,7 +114,7 @@ export function ImportWallet({
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">Private Key</div>
-                <div className="text-xs text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
+                <div className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
               </div>
             </div>
           </button>
@@ -136,7 +136,7 @@ export function ImportWallet({
       <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
         <button
           onClick={() => setMode('select')}
-          className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
+          className="flex items-center gap-1 text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -148,7 +148,7 @@ export function ImportWallet({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+            <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
               Recovery Phrase (12 or 24 words)
             </label>
             <textarea
@@ -162,7 +162,7 @@ export function ImportWallet({
           </div>
 
           <div>
-            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+            <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
               New Password (min 8 characters)
             </label>
             <input
@@ -176,7 +176,7 @@ export function ImportWallet({
           </div>
 
           <div>
-            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+            <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
               Confirm Password
             </label>
             <input
@@ -228,7 +228,7 @@ export function ImportWallet({
     <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
       <button
         onClick={() => setMode('select')}
-        className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
+        className="flex items-center gap-1 text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -247,7 +247,7 @@ export function ImportWallet({
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
             Private Key (Bech32 format)
           </label>
           <input
@@ -261,7 +261,7 @@ export function ImportWallet({
         </div>
 
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
             New Password (min 8 characters)
           </label>
           <input
@@ -275,7 +275,7 @@ export function ImportWallet({
         </div>
 
         <div>
-          <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
             Confirm Password
           </label>
           <input

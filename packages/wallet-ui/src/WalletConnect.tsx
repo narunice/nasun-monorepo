@@ -126,7 +126,7 @@ function LockedStateUI({
 
   return (
     <div className="p-4 w-full ">
-      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Unlock Wallet</h3>
+      <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white mb-3">Unlock Wallet</h3>
 
       {isLocked && (
         <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
@@ -154,7 +154,7 @@ function LockedStateUI({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !isLocked && handleUnlock()}
-          className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading || isLocked}
           autoFocus={!isLocked}
         />
@@ -182,7 +182,7 @@ function LockedStateUI({
         <div className="flex gap-2 mt-2">
           <button
             onClick={() => setViewMode("import")}
-            className="px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
+            className="px-3 py-2 text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
             disabled={isLoading}
             title="Import a different wallet"
           >
@@ -190,7 +190,7 @@ function LockedStateUI({
           </button>
           <button
             onClick={handleDelete}
-            className="px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+            className="px-3 py-2 text-sm md:text-base text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors disabled:opacity-50"
             disabled={isLoading}
           >
             Delete
@@ -198,7 +198,7 @@ function LockedStateUI({
           <button
             onClick={handleUnlock}
             disabled={isLoading || !password || isLocked}
-            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
+            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm md:text-base transition-colors"
           >
             {isLocked
               ? `Locked (${formatTime(lockoutRemaining)})`
@@ -540,7 +540,7 @@ export function WalletConnect({
     if (viewMode === "create") {
       return (
         <div className="p-4 w-full ">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white mb-3">
             Create New Wallet
           </h3>
 
@@ -550,7 +550,7 @@ export function WalletConnect({
               placeholder="Password (min. 8 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
               autoFocus
             />
@@ -560,7 +560,7 @@ export function WalletConnect({
               placeholder="Confirm Password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
 
@@ -577,7 +577,7 @@ export function WalletConnect({
             <div className="flex gap-2 mt-2">
               <button
                 onClick={resetView}
-                className="flex-1 px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="flex-1 px-3 py-2 text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                 disabled={isLoading}
               >
                 Cancel
@@ -585,7 +585,7 @@ export function WalletConnect({
               <button
                 onClick={handleCreate}
                 disabled={isLoading || password.length < 8 || password !== confirmPassword}
-                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
+                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm md:text-base transition-colors"
               >
                 {isLoading ? "Creating..." : "Create"}
               </button>
@@ -658,7 +658,7 @@ export function WalletConnect({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h3 className="font-medium text-gray-900 dark:text-white">Portfolio</h3>
+            <h3 className="font-medium text-gray-900 dark:text-white md:text-base">Portfolio</h3>
           </div>
           <PortfolioPanel />
         </div>
@@ -725,7 +725,7 @@ export function WalletConnect({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Add Hardware Key</h3>
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Add Hardware Key</h3>
           </div>
 
           <LedgerBrowserWarning />
@@ -733,10 +733,10 @@ export function WalletConnect({
           <div className="space-y-4">
             <div className="text-center py-4">
               <div className="text-4xl mb-3">🔐</div>
-              <p className="text-sm text-gray-600 dark:text-zinc-400 mb-1">
+              <p className="text-sm md:text-base text-gray-600 dark:text-zinc-400 mb-1">
                 Connect your Ledger device
               </p>
-              <p className="text-xs text-gray-500 dark:text-zinc-500">
+              <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-500">
                 Make sure the Sui/Nasun app is open on your device
               </p>
             </div>
@@ -772,11 +772,11 @@ export function WalletConnect({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Select Account</h3>
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Select Account</h3>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3">
+            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-3">
               Choose which account index to use
             </p>
             <div className="flex items-center gap-2">
@@ -809,7 +809,7 @@ export function WalletConnect({
           <div className="mt-4">
             <button
               onClick={() => setViewMode("main")}
-              className="w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              className="w-full px-3 py-2 text-sm md:text-base bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               Done
             </button>
@@ -844,7 +844,7 @@ export function WalletConnect({
           <div className="py-2 px-3 space-y-1">
             <button
               onClick={() => setViewMode("send")}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -853,7 +853,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setViewMode("ledger-select")}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
@@ -871,7 +871,7 @@ export function WalletConnect({
               onClick={async () => {
                 await ledgerDisconnect();
               }}
-              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -889,7 +889,7 @@ export function WalletConnect({
         <div className="py-3 px-4 w-full ">
           {/* Social Login Section */}
           <div className="mb-4">
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 text-center">
+            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-3 text-center">
               Quick start with social login
             </p>
             <SocialLoginButtons
@@ -906,7 +906,7 @@ export function WalletConnect({
           <div className="space-y-1">
             <button
               onClick={() => setViewMode("create")}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -920,7 +920,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setViewMode("import")}
-              className="w-full px-3 py-2 text-left text-sm text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -978,7 +978,7 @@ export function WalletConnect({
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
               onClick={() => setActiveTab("tokens")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
                 activeTab === "tokens"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
@@ -988,7 +988,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setActiveTab("nfts")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
                 activeTab === "nfts"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
@@ -998,7 +998,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
                 activeTab === "history"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
@@ -1013,7 +1013,7 @@ export function WalletConnect({
             <div className="py-1">
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
-                <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
+                <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
                   Token Balances {isEVM && `(${chain.name})`}
                 </p>
                 {isEVM ? (
@@ -1081,7 +1081,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("send")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1096,7 +1096,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("receive")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1111,7 +1111,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("staking")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1126,7 +1126,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("portfolio")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1141,7 +1141,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("nasun-link")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1156,7 +1156,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("address-book")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1225,7 +1225,7 @@ export function WalletConnect({
                     <button
                       onClick={handleLoadMoreNfts}
                       disabled={nftsLoading}
-                      className="w-full mt-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
+                      className="w-full mt-2 py-2 text-sm md:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
                     >
                       {nftsLoading ? 'Loading...' : 'Load More NFTs'}
                     </button>
@@ -1260,7 +1260,7 @@ export function WalletConnect({
                 zkLogout();
                 setShowDropdown(false);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1318,7 +1318,7 @@ export function WalletConnect({
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
               onClick={() => setActiveTab("tokens")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
                 activeTab === "tokens"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
@@ -1328,7 +1328,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setActiveTab("nfts")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
                 activeTab === "nfts"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
@@ -1338,7 +1338,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
                 activeTab === "history"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
@@ -1353,7 +1353,7 @@ export function WalletConnect({
             <div className="py-1">
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
-                <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
+                <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
                   Token Balances {isEVM && `(${chain.name})`}
                 </p>
                 {isEVM ? (
@@ -1421,7 +1421,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("send")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1436,7 +1436,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("receive")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1451,7 +1451,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("staking")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1466,7 +1466,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("portfolio")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1481,7 +1481,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("nasun-link")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1496,7 +1496,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("export")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1511,7 +1511,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("address-book")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1526,7 +1526,7 @@ export function WalletConnect({
 
               <button
                 onClick={() => setViewMode("settings")}
-                className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1633,7 +1633,7 @@ export function WalletConnect({
                     <button
                       onClick={handleLoadMoreNfts}
                       disabled={nftsLoading}
-                      className="w-full mt-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
+                      className="w-full mt-2 py-2 text-sm md:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
                     >
                       {nftsLoading ? 'Loading...' : 'Load More NFTs'}
                     </button>
@@ -1668,7 +1668,7 @@ export function WalletConnect({
                 lockWallet();
                 setShowDropdown(false);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1682,7 +1682,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={handleDelete}
-              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1712,7 +1712,7 @@ export function WalletConnect({
       {/* Main button - consistent across all states */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm transition-colors"
+        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm md:text-base transition-colors"
       >
         <span className={`w-2 h-2 ${getStatusColor()} rounded-full`} />
         <span className="text-gray-900 dark:text-white font-mono">{getButtonText()}</span>

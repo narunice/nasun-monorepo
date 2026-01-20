@@ -4,10 +4,10 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
 // Lazy load section components
-const GenSolHeroSection = lazy(() => import("@/components/app/ips/gensol/main/GenSolHeroSection"));
-const NarrativeContent = lazy(() => import("@/components/app/ips/gensol/main/NarrativeContent"));
+const GenSolHeroSection = lazy(() => import("@/sections/ips/gensol/main/GenSolHeroSection"));
+const NarrativeContent = lazy(() => import("@/sections/ips/gensol/main/NarrativeContent"));
 const PowerOfStoriesSection = lazy(
-  () => import("@/components/app/ips/gensol/main/PowerOfStoriesSection")
+  () => import("@/sections/ips/gensol/main/PowerOfStoriesSection")
 );
 
 export default function GenSolMainPage() {

@@ -55,7 +55,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
     <div className="p-4 w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -81,10 +81,10 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
       <div className="space-y-4">
         {/* Auto-lock timeout */}
         <div>
-          <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1.5">
+          <label className="block text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-1.5">
             Auto-lock Timeout
           </label>
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">
+          <p className="text-xs md:text-sm text-gray-400 dark:text-zinc-500 mb-2">
             Automatically lock wallet after inactivity
           </p>
           <select
@@ -106,7 +106,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
             <label className="block text-sm text-gray-900 dark:text-white">
               Confirm Large Transactions
             </label>
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+            <p className="text-xs md:text-sm text-gray-400 dark:text-zinc-500 mt-0.5">
               Require extra confirmation for large amounts
             </p>
           </div>
@@ -127,10 +127,10 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         {/* Large transaction threshold */}
         {security.confirmLargeTransactions && (
           <div>
-            <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1.5">
+            <label className="block text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-1.5">
               Large Transaction Threshold
             </label>
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mb-2">
+            <p className="text-xs md:text-sm text-gray-400 dark:text-zinc-500 mb-2">
               Transactions above this amount require confirmation
             </p>
             <select
@@ -172,7 +172,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
             </svg>
             Security Tips
           </h4>
-          <ul className="text-xs text-gray-500 dark:text-zinc-400 space-y-1">
+          <ul className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 space-y-1">
             <li>• Never share your private key or mnemonic</li>
             <li>• Always verify recipient addresses</li>
             <li>• Use auto-lock for added protection</li>
