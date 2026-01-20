@@ -152,20 +152,20 @@ function PostDetailPage() {
           <div className="absolute inset-0 bg-gradient-to-b from-nasun-black/20 via-nasun-black/60 to-nasun-black z-10" />
 
           {/* Hero Content */}
-          <div className="relative z-20 pt-24 md:pt-28 pb-12 md:pb-20 px-4">
+          <div className="relative z-20 pt-24 md:pt-28 pb-6 md:pb-10 px-4">
             <div className="max-w-4xl mx-auto text-center md:text-left">
               <button
                 onClick={handleBackToSection}
-                className="inline-flex items-center text-nasun-c1 hover:text-white transition-colors mb-6 text-xs md:text-sm uppercase tracking-[0.2em] font-medium"
+                className="inline-flex items-center text-nasun-c1 hover:text-nasun-c2 transition-colors mb-6 text-xs md:text-sm uppercase tracking-[0.2em] font-medium"
               >
                 <ArrowLeftIcon className="mr-2 w-4 h-4" /> {backButtonText}
               </button>
 
-              <motion.h1
+              <motion.h3
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-relaxed mb-6 font-eurostile"
+                className="font-bold text-white leading-snug mb-6 font-eurostile"
                 dangerouslySetInnerHTML={{ __html: post.title.rendered }}
               />
 
@@ -182,7 +182,7 @@ function PostDetailPage() {
         </div>
 
         {/* Content Body */}
-        <div className="relative z-20 max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-20">
+        <div className="relative z-20 max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-10">
           {/* Main Text Content */}
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Side Menu (Sticky Share/Nav) - Desktop Only */}
@@ -242,7 +242,7 @@ function PostDetailPage() {
 
                 /* Links */
                 prose-a:text-blue-300 prose-a:no-underline prose-a:border-b prose-a:border-blue-300/50 prose-a:break-all
-                hover:prose-a:text-nasun-scarlet hover:prose-a:border-nasun-scarlet hover:prose-a:transition-colors
+                hover:prose-a:text-blue-500 hover:prose-a:border-blue-500 hover:prose-a:transition-colors
 
                 /* Blockquotes */
                 prose-blockquote:border-l-4 prose-blockquote:border-nasun-c1
