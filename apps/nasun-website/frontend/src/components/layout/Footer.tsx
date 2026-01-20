@@ -45,6 +45,8 @@ export default function Footer() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isHomePage = location.pathname === "/";
+
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     window.scrollTo(0, 0);
@@ -54,7 +56,7 @@ export default function Footer() {
   };
 
   return (
-    <div>
+    <div className={isHomePage ? "bg-black" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>

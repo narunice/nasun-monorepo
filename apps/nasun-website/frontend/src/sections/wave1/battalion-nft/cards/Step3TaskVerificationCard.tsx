@@ -77,7 +77,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
     }
   };
 
-  const getTaskIcon = (completed?: boolean): JSX.Element => {
+  const getTaskIcon = (completed?: boolean): React.ReactElement => {
     if (completed === true) {
       return (
         <svg
@@ -219,12 +219,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
             <>
               <p className="text-red-200 mb-3">⚠️ {t("step3.errors.tokenExpired")}</p>
               {onReconnectX && (
-                <Button
-                  onClick={onReconnectX}
-                  variant="outlineC5"
-                  size="sm"
-                  className="w-full"
-                >
+                <Button onClick={onReconnectX} variant="outlineC5" size="sm" className="w-full">
                   {t("step3.errors.reconnectX")}
                 </Button>
               )}
@@ -276,7 +271,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
               tasks: data.tasks,
             });
           }}
-          variant="green"
+          variant="c1"
           className="w-full"
           size="lg"
         >
