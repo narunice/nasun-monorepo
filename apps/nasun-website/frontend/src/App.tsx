@@ -2,26 +2,52 @@
 import { useEffect } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { NFTMintedModal } from "./components/app/wave1/genesisNft/nftMintedModal/NFTMintedModal";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/layout/Footer";
 import AppRoutes from "./routes/AppRoutes";
 import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoadingContext";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
+import { Button } from "./components/ui/button";
+
+/**
+ * Error fallback component with i18n support
+ * Displayed when an unrecoverable error occurs (non-ChunkLoadError)
+ */
+function ErrorFallback() {
+  const { t } = useTranslation("common");
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-nasun-black text-white px-4">
+      <div className="text-center space-y-6 max-w-md">
+        <div className="text-6xl mb-4">⚠️</div>
+        <h1 className="text-2xl font-bold">{t("errorPage.title")}</h1>
+        <p className="text-nasun-white/70">{t("errorPage.description")}</p>
+        <Button
+          onClick={() => window.location.reload()}
+          variant="filledOutlineC4"
+          size="lg"
+        >
+          {t("errorPage.reload")}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function AppContent() {
   const { isPageReady } = useHomePageLoading();
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
 
-  // 브라우저의 자동 스크롤 복원 비활성화
+  // Disable browser's auto scroll restoration
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
   }, []);
 
-  // Admin 페이지에서는 Footer 숨김
+  // Hide Footer on admin pages
   return (
     <>
       <Navbar />
@@ -34,20 +60,7 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary
-      fallback={
-        <div className="flex flex-col items-center justify-center min-h-screen bg-nasun-black text-white">
-          <h1 className="text-2xl font-bold mb-4">죄송합니다. 문제가 발생했습니다.</h1>
-          <p className="mb-4 text-nasun-c3">페이지를 새로고침하면 문제가 해결될 수 있습니다.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-nasun-c1 text-white rounded hover:bg-nasun-c2 transition-colors"
-          >
-            새로고침
-          </button>
-        </div>
-      }
-    >
+    <ErrorBoundary fallback={<ErrorFallback />}>
       <div className="min-h-screen bg-nasun-black">
         <HelmetProvider>
           <Router>

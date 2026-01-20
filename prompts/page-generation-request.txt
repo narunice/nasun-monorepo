@@ -1,0 +1,51 @@
+
+<pageGenerationRequest>
+  <context>
+    <project>nasun-monorepo</project>
+    <app>apps/nasun-website/frontend</app>
+    <language>TypeScript + React (Vite)</language>
+    <framework>React 19, TailwindCSS 3.4</framework>
+    <description>
+나선 웹사이트의 ecosystem 메뉴의 하위 항목인 AI Economy 페이지를 새로 생성한다
+    </description>
+  </context>
+
+  <goals>
+    <goal>AI Economy 메뉴에 대한 페이지를 새로 생성하고 라우트를 연결한다.</goal>
+  </goals>
+
+<instruction>
+페이지에 들어갈 텍스트 내용은 아래와 같다. 
+<document>
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/temp/ai-page.txt
+</document>
+</instruction>
+  <actions>
+    <action>React 컴포넌트는 UI/컨테이너/훅으로 나누기</action>
+    <action>상태 관리 로직은 hooks 디렉토리로 분리</action>
+    <action>TailwindCSS 스타일은 공통 config에 맞게 정리</action>
+  </actions>
+<context>
+ui디자인은 아래 문서를 참고하시오 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs/UI_STYLE_GUIDE.md
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs/page-design-convention.md
+디자인 일관성을 위해 다음 컴포넌트들을 재사용할 수 있다.
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/ui/button.tsx
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/ui/DividerBox.tsx
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/ui/OuterBox.tsx
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/ui/PageTitle.tsx
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/ui/SectionTitle.tsx
+</context>
+
+  <constraints>
+    <constraint>/home/naru/my_apps/nasun-monorepo/apps/nasun-website/temp/ai-page.txt 이 파일의 영문 텍스트를 수정하지 말고 그대로 사용하되, 포맷팅을 보기좋게 하면 된다.</constraint>
+    <constraint>UI 텍스트는 영어만 사용 (i18n 예외 허용)</constraint>
+    <constraint>보안 규칙 준수 (XSS, CSP, OAuth 등)</constraint>
+    <constraint>불필요한 주석이나 타입 변경 금지</constraint>
+  </constraints>
+
+  <output>
+
+    <explanation>각 변경의 이유와 기대 효과 설명</explanation>
+
+  </output>
+</pageGenerationRequest>

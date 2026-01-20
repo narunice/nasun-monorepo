@@ -1,0 +1,32 @@
+
+
+
+<Request>
+  <task>
+- 폴더명을 변경하고, 해당 폴더가 사용된 모든 코드들에서 관련 임포트 경로를 모두 변경.
+- /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app/protocol 폴더명을 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app/network로 변경한다.
+  </task>
+
+  <context>
+    <project>nasun-monorepo</project>
+    <app>apps/nasun-website/frontend</app>
+    <language>TypeScript + React (Vite)</language>
+    <framework>React 19, TailwindCSS 3.4</framework>
+  </context>
+
+  <goals>
+    <goal>폴더 이름과 구조는 나선 웹사이트의 라우트 구조와 동일해야 한다.
+   </goals>
+
+
+  <constraints>
+  <constraint>롤백포인트 확보 후 진행하시오</constraint>
+ <constraint>보안 규칙 준수 (XSS, CSP, OAuth 등)</constraint>
+    <constraint>불필요한 주석이나 타입 변경 금지</constraint>
+  </constraints>
+ <action>코드 변경을 마친 후 테스트하여 빌드가 되는지 확인한다 </action>
+  <output>
+    <explanation>각 변경의 이유와 기대 효과 설명</explanation>
+  </output>
+</Request>
+
