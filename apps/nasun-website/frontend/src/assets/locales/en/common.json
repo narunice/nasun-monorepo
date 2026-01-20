@@ -37,7 +37,7 @@
     "walden": "Walden (Coming Soon)",
     "mbase": "Mbase (Coming Soon)",
     "verdan": "Verdan (Coming Soon)",
-    "wePop": "WePop (Coming Soon)",
+    "wePop": "WePop",
     "riderStudio": "Rider Studio",
     "riderStudioMain": "Main",
     "riderStudioFramework": "Framework",
@@ -55,8 +55,8 @@
     "battalionNft": "Battalion NFT",
     "earlyContributors": "Early Contributors",
     "leaderboardInfo": "Leaderboard Info",
-    "contests": "Contests (Coming Soon)",
-    "aboutTeam": "Team (Coming Soon)"
+    "contests": "Contests",
+    "aboutTeam": "Team"
   },
   "auth": {
     "login": "Login/Register",
