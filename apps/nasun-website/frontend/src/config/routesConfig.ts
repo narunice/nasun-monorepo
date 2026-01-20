@@ -1,48 +1,49 @@
 // src/config/routesConfig.ts
-import { lazy } from "react";
 import { EnhancedRouteConfigBuilder } from "../types/routes.d";
 import { TFunction } from "i18next";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 
 // 페이지 컴포넌트 lazy loading
 export const Pages = {
-  Home: lazy(() => import("../pages/HomePage")),
-  VisionStrategy: lazy(() => import("../pages/about/StrategyPage")),
-  VisionNetwork: lazy(() => import("../pages/protocol/NetworkPage")),
-  IPs: lazy(() => import("../pages/IPsPage")),
-  IPsGenSol: lazy(() => import("../pages/ips/gensol/GenSolMainPage")),
-  IPsGenSolOverview: lazy(() => import("../pages/ips/gensol/OverviewPage")),
-  IPsGenSolShooter: lazy(() => import("../pages/ips/gensol/ShooterPage")),
-  IPsGenSolHeist: lazy(() => import("../pages/ips/gensol/HeistPage")),
-  FinancePado: lazy(() => import("../pages/finance/PadoPage")),
-  IPsWePop: lazy(() => import("../pages/ips/WePopPage")),
-  IPsRiderStudioMain: lazy(() => import("../pages/ips/riderstudio/RiderStudioMainPage")),
-  IPsRiderStudioOverview: lazy(() => import("../pages/ips/riderstudio/RiderStudioOverviewPage")),
-  Roadmap: lazy(() => import("../pages/RoadmapPage")),
-  Opportunities: lazy(() => import("../pages/about/OpportunitiesPage")),
-  Grants: lazy(() => import("../pages/AwardsPage")),
-  Founders: lazy(() => import("../pages/about/FoundersPage")),
-  GenesisNft: lazy(() => import("../pages/GenesisNftPage")),
-  Web3: lazy(() => import("../pages/protocol/ProposalPage")),
-  MyAccountPage: lazy(() => import("../pages/MyAccountPage")),
-  PrivacyPolicy: lazy(() => import("../pages/PrivacyPolicyPage")),
-  TermsOfUse: lazy(() => import("../pages/TermsOfUsePage")),
-  PostDetailPage: lazy(() => import("../pages/PostDetailPage")), // Headless WP Post Page
-  News: lazy(() => import("../pages/NewsPage")),
-  Callback: lazy(() => import("@/features/auth").then(module => ({ default: module.Callback }))),
-  Logout: lazy(() => import("../pages/LogoutPage")),
-  Leaderboard: lazy(() => import("../pages/LeaderboardPage")),
-  XLeaderboard: lazy(() => import("../pages/LeaderboardPage")), // backward compatibility
+  Home: lazyWithRetry(() => import("../pages/HomePage")),
+  VisionStrategy: lazyWithRetry(() => import("../pages/about/StrategyPage")),
+  VisionNetwork: lazyWithRetry(() => import("../pages/protocol/NetworkPage")),
+  IPs: lazyWithRetry(() => import("../pages/IPsPage")),
+  IPsGenSol: lazyWithRetry(() => import("../pages/ips/gensol/GenSolMainPage")),
+  IPsGenSolOverview: lazyWithRetry(() => import("../pages/ips/gensol/OverviewPage")),
+  IPsGenSolShooter: lazyWithRetry(() => import("../pages/ips/gensol/ShooterPage")),
+  IPsGenSolHeist: lazyWithRetry(() => import("../pages/ips/gensol/HeistPage")),
+  FinancePado: lazyWithRetry(() => import("../pages/finance/PadoPage")),
+  IPsWePop: lazyWithRetry(() => import("../pages/ips/WePopPage")),
+  IPsRiderStudioMain: lazyWithRetry(() => import("../pages/ips/riderstudio/RiderStudioMainPage")),
+  IPsRiderStudioOverview: lazyWithRetry(() => import("../pages/ips/riderstudio/RiderStudioOverviewPage")),
+  Roadmap: lazyWithRetry(() => import("../pages/RoadmapPage")),
+  Opportunities: lazyWithRetry(() => import("../pages/about/OpportunitiesPage")),
+  Grants: lazyWithRetry(() => import("../pages/AwardsPage")),
+  Founders: lazyWithRetry(() => import("../pages/about/FoundersPage")),
+  GenesisNft: lazyWithRetry(() => import("../pages/GenesisNftPage")),
+  Web3: lazyWithRetry(() => import("../pages/protocol/ProposalPage")),
+  MyAccountPage: lazyWithRetry(() => import("../pages/MyAccountPage")),
+  PrivacyPolicy: lazyWithRetry(() => import("../pages/PrivacyPolicyPage")),
+  TermsOfUse: lazyWithRetry(() => import("../pages/TermsOfUsePage")),
+  PostDetailPage: lazyWithRetry(() => import("../pages/PostDetailPage")), // Headless WP Post Page
+  News: lazyWithRetry(() => import("../pages/NewsPage")),
+  Callback: lazyWithRetry(() => import("@/features/auth").then(module => ({ default: module.Callback }))),
+  Logout: lazyWithRetry(() => import("../pages/LogoutPage")),
+  Leaderboard: lazyWithRetry(() => import("../pages/LeaderboardPage")),
+  XLeaderboard: lazyWithRetry(() => import("../pages/LeaderboardPage")), // backward compatibility
+  AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
   // Wave 1 Campaign Pages
-  BattalionNft: lazy(() => import("../pages/wave1/BattalionNftPage")),
-  EarlyContributors: lazy(() => import("../pages/wave1/EarlyContributorsPage")),
-  LeaderboardInfo: lazy(() => import("../pages/wave1/LeaderboardInfoPage")),
+  BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
+  EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
+  LeaderboardInfo: lazyWithRetry(() => import("../pages/wave1/LeaderboardInfoPage")),
   // Protocol Pages
-  ProtocolOverview: lazy(() => import("../pages/protocol/ProtocolOverviewPage")),
+  ProtocolOverview: lazyWithRetry(() => import("../pages/protocol/ProtocolOverviewPage")),
   // About Pages
-  About: lazy(() => import("../pages/AboutPage")),
-  AboutTeam: lazy(() => import("../pages/about/TeamPage")),
+  About: lazyWithRetry(() => import("../pages/AboutPage")),
+  AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // 404 Page
-  NotFound: lazy(() => import("../pages/NotFoundPage")),
+  NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
 
 // 라우트 구성 정의
@@ -122,8 +123,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         {
           name: "navigation.aiEconomy",
           path: "/ecosystem/ai-economy",
-          element: Pages.FinancePado, // Placeholder
-          disabled: true, // Coming Soon
+          element: Pages.AiEconomy,
         },
         {
           name: "navigation.tokenizedAssets",

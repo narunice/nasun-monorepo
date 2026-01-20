@@ -1,0 +1,36 @@
+
+
+<refactorRequest>
+
+<Project> 
+<Name>nasun-website</Name> 
+<Path>/home/naru/my_apps/nasun-monorepo/apps/nasun-website
+</Path> 
+</Project>
+
+<goal>
+나선 웹사이트의 /ips/riderstudio/main 페이지에 사용된 섹션 코드를 하나로 합치기
+</goal>
+
+
+  <context>
+- 페이지 코드 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app/ips/rider-studio/RiderOverviewContentSection.tsx
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app/ips/rider-studio/RiderProcessCardsSection.tsx
+- 레이아웃/ui 디자인 가이드 문서 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app/ips/rider-studio/RiderOverviewContentSection.tsx
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app/ips/rider-studio/RiderProcessCardsSection.tsx 참고
+  </context>
+
+
+
+
+  <rules>
+- 코드 수정은 아직 하지 마세요. 나중에 나의 승인을 얻은 후 수정하세요.
+</rules>
+
+  <output_format>
+  - 리팩토링을 위한 코드 수정 방안을 제안하고, 각 변경의 이유와 기대 효과 설명
+  <output_format>
+
+</refactorRequest>
+
+

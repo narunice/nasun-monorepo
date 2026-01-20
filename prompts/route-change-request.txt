@@ -1,0 +1,34 @@
+
+
+
+<Request>
+  <context>
+    <project>nasun-monorepo</project>
+    <app>apps/nasun-website/frontend</app>
+    <language>TypeScript + React (Vite)</language>
+    <framework>React 19, TailwindCSS 3.4</framework>
+    <description>
+네비게이션 바(모바일 및 데스크탑)의 메뉴 구조를 변경하고, 이에 따라 라우트도 변경해주세요.
+    </description>
+  </context>
+
+  <goals>
+    <goal>메인 메뉴 Leaderboard 항목을 /Wave1/Leaderboard Info 항목 아래로 이동</goal>
+    <goal>메인 메뉴 Genesis NFT 항목을 /Wave1/Leaderboard 아래로 이동</goal>  </goals>
+
+  <actions>
+    <action>중복된 유틸 함수는 packages/tsconfig 또는 packages/ui로 이동</action>
+    <action>상태 관리 로직은 hooks 디렉토리로 분리</action>
+    <action>TailwindCSS 스타일은 공통 config에 맞게 정리</action>
+  </actions>
+
+  <constraints>
+    <constraint>/home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/components/app 경로의  하위 디렉토리 구조가 라우트 구조와 일치하도록 할 것.</constraint>    <constraint>보안 규칙 준수 (XSS, CSP, OAuth 등)</constraint>
+    <constraint>불필요한 주석이나 타입 변경 금지</constraint>
+  </constraints>
+
+  <output>
+    <explanation>각 변경의 이유와 기대 효과 설명</explanation>
+  </output>
+</Request>
+

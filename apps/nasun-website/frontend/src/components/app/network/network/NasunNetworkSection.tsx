@@ -5,6 +5,7 @@ import { SectionLayout } from "../../../layout/SectionLayout";
 import { SectionTitle } from "../../../ui/SectionTitle";
 import { OuterBox } from "../../../ui/OuterBox";
 import { DividerBox } from "../../../ui/DividerBox";
+import NetworkActivity from "./NetworkActivity";
 
 function NasunNetworkSection() {
   const { t } = useTranslation("tokenomics");
@@ -53,6 +54,9 @@ function NasunNetworkSection() {
               </Button>
             </div>
           </OuterBox>
+
+          {/* Network Activity - TPS Chart & Epoch Progress */}
+          <NetworkActivity />
         </div>
       </div>
     </SectionLayout>

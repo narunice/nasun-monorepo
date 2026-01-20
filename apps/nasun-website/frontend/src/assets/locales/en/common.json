@@ -217,5 +217,10 @@
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Stay tuned for updates!"
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Refreshing the page may resolve the issue.",
+    "reload": "Refresh Page"
   }
 }
