@@ -81,7 +81,7 @@ export const OuterBox: React.FC<OuterBoxProps> = ({
 
   return (
     <div
-      className={`${paddingClass} backdrop-blur-lg rounded-xl shadow-lg border ${variantStyles[color]} ${className}`}
+      className={`${paddingClass} backdrop-blur-lg rounded-sm shadow-lg border ${variantStyles[color]} ${className}`}
     >
       {children}
     </div>
