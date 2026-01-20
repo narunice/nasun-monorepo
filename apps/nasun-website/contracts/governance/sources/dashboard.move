@@ -2,9 +2,14 @@
 module governance::dashboard;
 
 use sui::types;
+use sui::dynamic_field;
 
 const EDuplicateProposal: u64 = 0;
 const EInvalidOtw: u64 = 1;
+const EMigrationAlreadyComplete: u64 = 2;
+
+/// Key for tracking v6 migration status via dynamic field
+const MIGRATION_V6_KEY: vector<u8> = b"migrated_v6";
 
 public struct Dashboard has key {
     id: UID,
@@ -45,6 +50,31 @@ public fun register_proposal(self: &mut Dashboard, _admin_cap: &AdminCap, propos
 
 public fun proposals_ids(self: &Dashboard): vector<ID> {
     self.proposals_ids
+}
+
+/// Migrate to v6 - issue new AdminCap to caller (one-time only)
+/// Uses dynamic field to track migration status on existing Dashboard object
+/// SECURITY: Call immediately after upgrade to claim AdminCap
+public fun migrate_v6(self: &mut Dashboard, ctx: &mut TxContext) {
+    // Check if already migrated using dynamic field
+    assert!(
+        !dynamic_field::exists_(&self.id, MIGRATION_V6_KEY),
+        EMigrationAlreadyComplete
+    );
+
+    // Mark as migrated
+    dynamic_field::add(&mut self.id, MIGRATION_V6_KEY, true);
+
+    // Issue new AdminCap to caller
+    transfer::transfer(
+        AdminCap { id: object::new(ctx) },
+        ctx.sender()
+    );
+}
+
+/// Check if v6 migration has been completed
+public fun is_migrated_v6(self: &Dashboard): bool {
+    dynamic_field::exists_(&self.id, MIGRATION_V6_KEY)
 }
 
 #[test_only]
