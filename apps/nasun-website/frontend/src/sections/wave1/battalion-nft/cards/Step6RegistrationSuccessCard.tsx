@@ -196,25 +196,20 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Navigation Buttons */}
         <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row gap-4">
-          <Button onClick={() => navigate("/")} variant="outlineC4" className="w-full">
-            {t("goToHome")}
+          <Button onClick={handleShareToTwitter} variant="outlineC4" size="md" className="w-full">
+            <span>{t("step6.shareEventOnX")}</span>
+            <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 ml-1" />
           </Button>
-          <Button onClick={() => navigate("/my-account")} variant="outlineC4" className="w-full">
+          <Button
+            onClick={() => navigate("/my-account")}
+            variant="outlineC4"
+            size="md"
+            className="w-full"
+          >
             {t("goToMyAccount")}
           </Button>
         </div>
       </OuterBox>
-
-      {/* Share Section */}
-      <div className="mt-6 text-center max-w-3xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4">
-          <p>{t("step6.sharePrompt")}</p>
-          <Button onClick={handleShareToTwitter} variant="c1" size="md">
-            <span>{t("share")}</span>
-            <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </div>
     </>
   );
 };

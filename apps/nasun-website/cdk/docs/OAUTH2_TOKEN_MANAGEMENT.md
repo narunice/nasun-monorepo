@@ -13,7 +13,7 @@ This document describes how OAuth 2.0 tokens are managed for the Nasun Community
 | Environment | Secret Name | AWS Account | Target Account |
 |-------------|-------------|-------------|----------------|
 | Development | `nasun-twitter-tokens` | __AWS_DEV_ACCOUNT__ | @Naru010110 (1863020068785004544) |
-| Production | `nasun-twitter-tokens-prod` | __AWS_PROD_ACCOUNT__ | @GenSol_io (1725466995565752320) |
+| Production | `nasun-twitter-tokens-prod` | __AWS_PROD_ACCOUNT__ | @Nasun_io (1725466995565752320) |
 
 ### Environment Files
 
@@ -72,7 +72,7 @@ Use this checklist when re-authenticating OAuth 2.0 tokens.
 
 - [ ] **4. Log out of wrong X accounts in browser**
   - Open https://x.com in browser
-  - Ensure logged in as **@Naru010110** (dev) or **@GenSol_io** (prod)
+  - Ensure logged in as **@Naru010110** (dev) or **@Nasun_io** (prod)
 
 ### Run Authentication
 
@@ -88,7 +88,7 @@ npx tsx setup-oauth2-auto.ts
   npx tsx scripts/verify-oauth-token.ts              # Development only
   npx tsx scripts/verify-oauth-token.ts --env=prod   # Production only
   npx tsx scripts/verify-oauth-token.ts --all        # Both environments
-  # Must show: @Naru010110 (dev) or @GenSol_io (prod)
+  # Must show: @Naru010110 (dev) or @Nasun_io (prod)
   ```
 
 - [ ] **6. Test Liking Users API**

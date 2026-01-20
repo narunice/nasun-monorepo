@@ -125,31 +125,30 @@ pnpm cdk deploy AuthStack
 
 ---
 
-**목적**: 프로덕션 환경의 타겟 X 계정을 @GenSol_io로 설정하고 OAuth 2.0 토큰 발급
+**목적**: 프로덕션 환경의 타겟 X 계정을 @Nasun_io로 설정하고 OAuth 2.0 토큰 발급
 
 **프로덕션 타겟 계정 정보**:
-- **Username**: `GenSol_io` (향후 `Nasun_io`로 변경 예정)
-- **User ID**: `1725466995565752320` (변경 없음)
-- **참고**: Username이 변경되어도 User ID는 동일하므로 토큰 재발급 불필요
+- **Username**: `Nasun_io`
+- **User ID**: `1725466995565752320`
 
 **환경변수 설정** (`cdk/.env.production`):
 ```bash
-TARGET_USERNAME=GenSol_io
+TARGET_USERNAME=Nasun_io
 TARGET_USER_ID=1725466995565752320
-X_TARGET_USERNAME=GenSol_io
+X_TARGET_USERNAME=Nasun_io
 X_TARGET_USER_ID=1725466995565752320
 ```
 
 **OAuth 2.0 토큰 발급 완료**:
-- **계정**: @GenSol_io
+- **계정**: @Nasun_io
 - **Scope**: `follows.read offline.access list.read like.read users.read tweet.read`
 - **유효기간**: Access Token 2시간, Refresh Token 90일 (자동 갱신)
 
 **Secrets Manager 업데이트** (`nasun-twitter-tokens-prod`):
 - `oauth2.clientSecret`: `.env.production`과 동기화 완료
-- `oauth2.userAccessToken`: @GenSol_io 토큰으로 교체
-- `oauth2.refreshToken`: @GenSol_io 토큰으로 교체
-- `version`: `2.5-gensol`
+- `oauth2.userAccessToken`: @Nasun_io 토큰으로 교체
+- `oauth2.refreshToken`: @Nasun_io 토큰으로 교체
+- `version`: `2.5-nasun`
 
 **⚠️ 발견된 문제 및 해결**:
 - **문제**: Secrets Manager의 `clientSecret`과 `.env.production`의 값이 불일치
@@ -161,7 +160,7 @@ X_TARGET_USER_ID=1725466995565752320
 - Migration Plan Step 1-2 완료 ✅
 
 **핵심 교훈**:
-> ⚠️ **Username 변경 시 토큰 재발급 불필요**: X API는 User ID 기반으로 동작하므로, username이 `GenSol_io` → `Nasun_io`로 변경되어도 User ID (`1725466995565752320`)가 동일하면 기존 토큰 그대로 사용 가능
+> ⚠️ **Username 변경 시 토큰 재발급 불필요**: X API는 User ID 기반으로 동작하므로, username이 변경되어도 User ID (`1725466995565752320`)가 동일하면 기존 토큰 그대로 사용 가능
 
 ---
 
