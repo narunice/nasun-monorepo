@@ -4,6 +4,8 @@ interface ScrollSnapSectionProps {
   children: ReactNode;
   className?: string;
   allowTallContent?: boolean;
+  /** 1024px 이하에서 스냅 비활성화 (기본값: false) */
+  disableSnapBelowLg?: boolean;
 }
 
 /**
@@ -18,11 +20,13 @@ interface ScrollSnapSectionProps {
  * - scroll-snap-section 클래스로 식별
  * - allowTallContent: 100vh를 초과하는 긴 콘텐츠 허용
  *   (ScrollSnapContainer의 조건부 스냅 전략이 자동 활성화)
+ * - disableSnapBelowLg: 1024px 이하에서 스냅 비활성화
  */
 export function ScrollSnapSection({
   children,
   className = "",
   allowTallContent = false,
+  disableSnapBelowLg = false,
 }: ScrollSnapSectionProps) {
   return (
     <section
@@ -36,6 +40,7 @@ export function ScrollSnapSection({
         overflow-clip
         ${className}
       `}
+      {...(disableSnapBelowLg && { 'data-disable-snap-below-lg': 'true' })}
     >
       {children}
     </section>

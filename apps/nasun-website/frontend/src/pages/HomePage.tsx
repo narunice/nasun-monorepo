@@ -93,7 +93,7 @@ export default function HomePage() {
 
             {/* Wave1Section */}
             {/* Vision 비디오 로딩 후 시작 */}
-            <ScrollSnapSection allowTallContent={true}>
+            <ScrollSnapSection allowTallContent={true} disableSnapBelowLg={true}>
               <Wave1Section
                 shouldLoadVideo={isVisionVideoReady}
                 onVideoReady={handleWave1VideoReady}

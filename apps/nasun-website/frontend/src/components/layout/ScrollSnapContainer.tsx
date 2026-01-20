@@ -94,6 +94,8 @@ export function ScrollSnapContainer({
 
     // 데스크톱에서만 커스텀 스크롤 적용 (768px 이상)
     const isDesktop = () => window.innerWidth >= 768;
+    // lg breakpoint 이상인지 체크 (1024px)
+    const isLgOrAbove = () => window.innerWidth >= 1024;
 
     const handleWheel = (e: WheelEvent) => {
       // 모바일에서는 기본 스크롤 유지
@@ -157,6 +159,12 @@ export function ScrollSnapContainer({
       const currentSection = sections[currentIndex] as HTMLElement;
       if (!currentSection) {
         return;
+      }
+
+      // 1024px 이하에서 스냅 비활성화된 섹션 체크
+      const disableSnapBelowLg = currentSection.hasAttribute("data-disable-snap-below-lg");
+      if (disableSnapBelowLg && !isLgOrAbove()) {
+        return; // 일반 스크롤 허용
       }
 
       // 내부 스크롤이 있는 섹션 체크 (예: TheWaySection의 카드 전환)

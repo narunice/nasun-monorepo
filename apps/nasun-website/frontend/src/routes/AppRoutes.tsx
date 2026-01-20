@@ -16,6 +16,9 @@ const WhitelistManagement = lazy(() => import("../features/admin/pages/Whitelist
 const GovernanceManagement = lazy(() => import("../features/admin/pages/GovernanceManagement").then(m => ({ default: m.GovernanceManagement })));
 const CreateProposal = lazy(() => import("../features/admin/pages/CreateProposal").then(m => ({ default: m.CreateProposal })));
 
+// Dev/Showcase pages (lazy loaded)
+const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<PageLoading />}>
@@ -438,6 +441,9 @@ const AppRoutes = () => {
             </AdminRoute>
           }
         />
+
+        {/* Dev/Showcase Route */}
+        <Route path="/showcase" element={<ComponentShowcasePage />} />
 
         {/* Fallback Route */}
         <Route path="*" element={<Pages.NotFound />} />

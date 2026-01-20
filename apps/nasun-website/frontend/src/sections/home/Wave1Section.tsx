@@ -9,6 +9,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { FadeInUp } from "@/components/ui/FadeInUp";
+import { Tag } from "@/components/ui/tag";
 
 interface Wave1SectionV3Props {
   shouldLoadVideo?: boolean;
@@ -86,7 +87,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (containerRef.current) {
@@ -168,18 +169,21 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               {/* LEADERBOARD Box */}
               <Link
                 to="/wave1/leaderboard-info"
-                className={`block w-full group ${dividerBoxWrapperStyles}`}
+                className={`block w-full flex-1 group ${dividerBoxWrapperStyles}`}
               >
-                <DividerBox
-                  title={t("wave1.leaderboard.title")}
-                  color="n1"
-                  className="!bg-nasun-black !p-4 md:!p-5 lg:!p-6  transition-colors"
-                >
-                  <p className="">{t("wave1.leaderboard.description")}</p>
-                  <div className="flex justify-end">
-                    <span className=" text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                <DividerBox color="w1" padding="md" className="h-full !bg-nasun-black/85 flex flex-col">
+                  <h6 className="mb-2 uppercase font-medium text-nasun-c1">
+                    {t("wave1.leaderboard.title")}
+                  </h6>
+                  <p className="flex-1">{t("wave1.leaderboard.description")}</p>
+                  <div className="flex justify-end mt-auto pt-3">
+                    <Tag
+                      variant="filledC1"
+                      size="sm"
+                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+                    >
                       {t("wave1.leaderboard.cta")}
-                    </span>
+                    </Tag>
                   </div>
                 </DividerBox>
               </Link>
@@ -187,18 +191,21 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               {/* BATTALION NFT Box */}
               <Link
                 to="/wave1/battalion-nft"
-                className={`block w-full group ${dividerBoxWrapperStyles}`}
+                className={`block w-full flex-1 group ${dividerBoxWrapperStyles}`}
               >
-                <DividerBox
-                  title={t("wave1.battalionNft.title")}
-                  color="n1"
-                  className="!bg-nasun-black !p-4 md:!p-5 lg:!p-6 transition-colors"
-                >
-                  <p className="">{t("wave1.battalionNft.description")}</p>
-                  <div className="flex justify-end">
-                    <span className=" text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                <DividerBox color="w1" padding="md" className="h-full !bg-nasun-black/85 flex flex-col">
+                  <h6 className="mb-2 uppercase font-medium text-nasun-c1">
+                    {t("wave1.battalionNft.title")}
+                  </h6>
+                  <p className="flex-1">{t("wave1.battalionNft.description")}</p>
+                  <div className="flex justify-end mt-auto pt-3">
+                    <Tag
+                      variant="filledC1"
+                      size="sm"
+                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+                    >
                       {t("wave1.battalionNft.cta")}
-                    </span>
+                    </Tag>
                   </div>
                 </DividerBox>
               </Link>
@@ -206,18 +213,21 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               {/* EARLY CONTRIBUTOR Box */}
               <Link
                 to="/wave1/early-contributors"
-                className={`block w-full group ${dividerBoxWrapperStyles}`}
+                className={`block w-full flex-1 group ${dividerBoxWrapperStyles}`}
               >
-                <DividerBox
-                  title={t("wave1.earlyContributor.title")}
-                  color="n1"
-                  className="!bg-nasun-black !p-4 md:!p-5 lg:!p-6  transition-colors"
-                >
-                  <p className="">{t("wave1.earlyContributor.description")}</p>
-                  <div className="flex justify-end">
-                    <span className=" text-nasun-white/80 bg-gray-800 px-4 py-1 rounded-full group-hover:text-nasun-c3 group-hover:bg-gray-900 transition-colors">
+                <DividerBox color="w1" padding="md" className="h-full !bg-nasun-black/85 flex flex-col">
+                  <h6 className="mb-2 uppercase font-medium text-nasun-c1">
+                    {t("wave1.earlyContributor.title")}
+                  </h6>
+                  <p className="flex-1">{t("wave1.earlyContributor.description")}</p>
+                  <div className="flex justify-end mt-auto pt-3">
+                    <Tag
+                      variant="filledC1"
+                      size="sm"
+                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+                    >
                       {t("wave1.earlyContributor.cta")}
-                    </span>
+                    </Tag>
                   </div>
                 </DividerBox>
               </Link>
