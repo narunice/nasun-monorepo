@@ -3,10 +3,9 @@
 
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
-import { useCurrentAccount as useCurrentSuiAccount, useSuiClientQuery } from "@mysten/dapp-kit";
 import { SuiObject } from "./SuiObjects";
 import { EthereumNFT } from "./EthereumNFT";
-import { useEthereumNFTs } from "../../hooks/wallet/useEthereumNFTs";
+import { useUserAssets } from "./hooks/useUserAssets";
 
 interface OwnedObjectsProps {
   walletAddress?: string;
@@ -14,37 +13,17 @@ interface OwnedObjectsProps {
 
 export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
   const { t } = useTranslation("myAccount");
-  const suiAccount = useCurrentSuiAccount();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Sui 오브젝트 쿼리
   const {
-    data: suiResponse,
-    error: suiError,
-    isPending: isSuiPending,
-  } = useSuiClientQuery(
-    "getOwnedObjects",
-    {
-      owner: suiAccount?.address as string,
-      options: {
-        showType: true,
-        showOwner: true,
-        showContent: true,
-        showDisplay: true,
-      },
-    },
-    {
-      enabled: !!suiAccount,
-    }
-  );
-
-  // Ethereum NFT 쿼리
-  const {
-    data: ethereumNFTs,
-    error: ethError,
-    isPending: isEthPending,
-  } = useEthereumNFTs(walletAddress);
+    suiAccount,
+    suiObjects,
+    ethObjects,
+    suiError,
+    ethError,
+    isLoading,
+  } = useUserAssets({ walletAddress });
 
   if (!suiAccount && !walletAddress) {
     return (
@@ -54,52 +33,8 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
     );
   }
 
-  const filterStrings = import.meta.env.VITE_FILTER_STRINGS?.split(",") || [];
-
-  // Sui 오브젝트 필터링
-  const filteredSuiObjects =
-    suiAccount && suiResponse?.data
-      ? suiResponse.data.filter((objectRes) => {
-          return (
-            objectRes.data?.type &&
-            filterStrings.some((filter: string) => objectRes.data?.type!.includes(filter))
-          );
-        })
-      : [];
-
-  // Ethereum NFT 필터링
-  const filterContracts = import.meta.env.VITE_ETHEREUM_NFT_FILTER_CONTRACTS?.split(",") || [];
-  const filteredEthereumNFTs =
-    filterContracts.length > 0 && ethereumNFTs
-      ? ethereumNFTs.filter((nft) =>
-          filterContracts.some(
-            (addr: string) => nft.contractAddress.toLowerCase() === addr.toLowerCase()
-          )
-        )
-      : ethereumNFTs || [];
-
-  // 모든 오브젝트를 네트워크별로 분리하여 저장
-  const suiObjects = filteredSuiObjects;
-  const ethObjects = filteredEthereumNFTs;
-
-  const noObjectsFound = suiObjects.length === 0 && ethObjects.length === 0;
-
-  // 페이지네이션
-  const suiTotalPages = Math.ceil(suiObjects.length / itemsPerPage);
-  const totalPages = suiTotalPages;
-
-  const suiStartIndex = (currentPage - 1) * itemsPerPage;
-  const suiEndIndex = suiStartIndex + itemsPerPage;
-  const paginatedSuiObjects = suiObjects.slice(suiStartIndex, suiEndIndex);
-
-  const handlePageClick = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
   // 로딩 및 에러 상태
-  if ((isSuiPending || isEthPending) && !suiResponse && !ethereumNFTs) {
+  if (isLoading) {
     return <div className="flex">{t("loading")}</div>;
   }
 
@@ -119,6 +54,20 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
       </div>
     );
   }
+
+  const noObjectsFound = suiObjects.length === 0 && ethObjects.length === 0;
+
+  // 페이지네이션
+  const totalPages = Math.ceil(suiObjects.length / itemsPerPage);
+  const suiStartIndex = (currentPage - 1) * itemsPerPage;
+  const suiEndIndex = suiStartIndex + itemsPerPage;
+  const paginatedSuiObjects = suiObjects.slice(suiStartIndex, suiEndIndex);
+
+  const handlePageClick = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   return (
     <div className="flex flex-col space-y-2">
