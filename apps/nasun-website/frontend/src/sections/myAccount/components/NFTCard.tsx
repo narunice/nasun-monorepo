@@ -20,7 +20,7 @@ export const NFTCard: FC<NFTCardProps> = ({
   children,
 }) => {
   return (
-    <div className="p-5 rounded-lg border-gray-800 border-1 bg-black">
+    <div className="p-5 rounded-sm border-gray-800 border-1 bg-black">
       <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
         {/* NFT Image */}
         {imageUrl && (

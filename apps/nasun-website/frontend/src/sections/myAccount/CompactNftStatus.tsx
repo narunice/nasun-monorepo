@@ -38,7 +38,7 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
   onWithdraw,
   renderJoinButton,
 }) => (
-  <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-lg">
+  <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
     <h6 className="text-nasun-white ">{title}</h6>
     <div className="flex items-center justify-between">
       {isLoading ? (
