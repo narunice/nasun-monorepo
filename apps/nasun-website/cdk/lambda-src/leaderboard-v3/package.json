@@ -4,7 +4,7 @@
   "description": "Nasun Community Leaderboard V3 - Manual curation system",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && cp -r node_modules dist/",
+    "build": "tsc",
     "build:clean": "rm -rf dist && pnpm build",
     "watch": "tsc -w"
   },
