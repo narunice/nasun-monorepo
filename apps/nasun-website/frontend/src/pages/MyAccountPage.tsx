@@ -119,43 +119,43 @@ const MyAccountPage = () => {
 
         {/* Bento Grid Dashboard Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        {/* Profile Hero Card - Top Full Width */}
-        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-          <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-3" />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Rank History - 2 columns on large screens */}
-        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-          <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <RankHistoryCard
-              username={twitterUsername || null}
-              className="col-span-1 md:col-span-2 lg:col-span-2"
-            />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Governance Card - 1 column */}
-        <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-          <Suspense fallback={<SectionLoading showLayout={false} />}>
-            <GovernanceCard className="col-span-1" />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* NFT Status + Assets - Side by Side (50/50) */}
-        <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          {/* Profile Hero Card - 2 columns (z-20 ensures dropdown appears above sibling cards) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <CompactNftStatus walletAddress={walletAddress} />
+              <ProfileHeroCard className="col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
             </Suspense>
           </ErrorBoundary>
+
+          {/* NFT Status - 1 column, right of Profile Hero */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} />
+              <CompactNftStatus walletAddress={walletAddress} className="col-span-1" />
             </Suspense>
           </ErrorBoundary>
-        </div>
+
+          {/* Rank History - 2 columns on large screens */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <RankHistoryCard
+                username={twitterUsername || null}
+                className="col-span-1 md:col-span-2 lg:col-span-2"
+              />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* Governance Card - 1 column */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <GovernanceCard className="col-span-1" />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* Assets Card - Full Width */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <AssetsCard walletAddress={walletAddress} className="col-span-1 md:col-span-2 lg:col-span-3" />
+            </Suspense>
+          </ErrorBoundary>
 
         {/* Danger Zone - Full Width, Compact */}
         <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>

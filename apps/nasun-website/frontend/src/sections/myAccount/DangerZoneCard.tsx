@@ -59,7 +59,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
     <OuterBox color="c5" padding="sm" className={className}>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h5 className="uppercase text-red-400">
+          <h5 className="font-medium uppercase text-red-400">
             {t("accountDeletion.title")}
           </h5>
           <p className="text-nasun-white/50 mt-1">

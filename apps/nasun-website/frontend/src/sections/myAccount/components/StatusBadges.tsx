@@ -1,8 +1,8 @@
 import { FC } from "react";
 
 export const ActiveBadge: FC = () => (
-  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-medium border border-green-500/20">
-    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-[10px] font-medium border border-nasun-c4/20">
+    <span className="w-1.5 h-1.5 rounded-full bg-nasun-c4 animate-pulse" />
     Active
   </span>
 );
@@ -21,8 +21,8 @@ export const LinkedBadge: FC = () => (
 );
 
 export const ConnectedBadge: FC = () => (
-  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-nasun-c3/10 text-nasun-c3 text-[10px] font-medium border border-nasun-c3/20">
-    <span className="w-1.5 h-1.5 rounded-full bg-nasun-c3" />
+  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-[10px] font-medium border border-nasun-c4/20">
+    <span className="w-1.5 h-1.5 rounded-full bg-nasun-c4" />
     Connected
   </span>
 );

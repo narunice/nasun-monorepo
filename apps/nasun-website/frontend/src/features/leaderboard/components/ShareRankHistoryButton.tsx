@@ -231,7 +231,7 @@ export const ShareRankHistoryButton: React.FC<ShareRankHistoryButtonProps> = ({
     <Button
       onClick={handleShare}
       disabled={isProcessing}
-      variant="c4"
+      variant="filledOutlineC3"
       title={t('rankHistory.share.button', { defaultValue: 'Share on X' })}
     >
       {isProcessing ? (

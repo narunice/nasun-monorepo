@@ -20,7 +20,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
 }) => {
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <h5 className="uppercase text-nasun-white mb-4">MY ASSETS</h5>
+      <h5 className="font-medium uppercase text-nasun-white mb-4">MY ASSETS</h5>
       <OwnedObjects walletAddress={walletAddress} />
     </OuterBox>
   );
