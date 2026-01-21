@@ -38,41 +38,34 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
   onWithdraw,
   renderJoinButton,
 }) => (
-  <div className="flex items-center justify-between p-4 bg-gray-800/80 rounded-lg">
-    <div className="flex items-center gap-3">
-      <h6 className="font-medium text-nasun-white">{title}</h6>
+  <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-lg">
+    <h6 className="text-nasun-white ">{title}</h6>
+    <div className="flex items-center justify-between">
       {isLoading ? (
         <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c3 border-t-transparent" />
       ) : isRegistered ? (
-        <span className="text-green-400">✓ Registered</span>
+        <span className="text-green-400 text-sm">✓ Registered</span>
       ) : (
-        <span className="text-nasun-white/50">Not Registered</span>
+        <span className="text-nasun-white/50 text-sm">Not Registered</span>
       )}
+      {!isLoading &&
+        (isRegistered
+          ? onWithdraw && (
+              <Button onClick={onWithdraw} variant="filledOutlineScarlet" size="sm">
+                Withdraw
+              </Button>
+            )
+          : renderJoinButton ||
+            (onJoin && (
+              <Button onClick={onJoin} variant="filledOutlineC3" size="sm">
+                Join
+              </Button>
+            )))}
     </div>
-    {!isLoading && (
-      isRegistered ? (
-        onWithdraw && (
-          <Button onClick={onWithdraw} variant="filledOutlineScarlet" size="sm">
-            Withdraw
-          </Button>
-        )
-      ) : (
-        renderJoinButton || (
-          onJoin && (
-            <Button onClick={onJoin} variant="filledOutlineC4" size="sm">
-              Join
-            </Button>
-          )
-        )
-      )
-    )}
   </div>
 );
 
-export const CompactNftStatus: FC<CompactNftStatusProps> = ({
-  walletAddress,
-  className = "",
-}) => {
+export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, className = "" }) => {
   const navigate = useNavigate();
   const { reset: resetBattalionStore } = useBattalionNftStore();
   const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
@@ -162,12 +155,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
 
     try {
       setIsGenesisWithdrawing(true);
-      await withdrawWhitelist(
-        walletAddress.toLowerCase(),
-        "",
-        "",
-        new Date().toISOString()
-      );
+      await withdrawWhitelist(walletAddress.toLowerCase(), "", "", new Date().toISOString());
       refetchFounders();
       alert("Successfully withdrawn from Genesis NFT Whitelist.");
     } catch (err) {
@@ -181,17 +169,15 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
   if (!walletAddress) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
-        <p className="text-nasun-white/50">
-          Connect MetaMask above to view NFT status
-        </p>
+        <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
+        <p className="text-nasun-white/50">Connect MetaMask above to view NFT status</p>
       </OuterBox>
     );
   }
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
+      <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
       <div className="flex flex-col gap-3">
         <NftStatusItem
           title="Battalion NFT Allowlist"
@@ -207,7 +193,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
           onWithdraw={handleGenesisWithdraw}
           renderJoinButton={
             <JoinWhitelistButton
-              variant="filledOutlineC4"
+              variant="filledOutlineC3"
               size="sm"
               onSuccess={() => refetchFounders()}
             >

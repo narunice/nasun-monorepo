@@ -36,7 +36,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   if (!isConnected) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center">
             Connect Nasun Wallet to view governance activity
@@ -49,7 +49,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   if (isLoading) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c3 border-t-transparent" />
         </div>
@@ -59,7 +59,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
+      <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <StatCard label="Voting Power" value={totalPower.toLocaleString()} className="!p-3" />
