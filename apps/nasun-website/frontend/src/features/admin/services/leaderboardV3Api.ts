@@ -11,6 +11,7 @@ import type {
   GetLeaderboardParams,
   GetLeaderboardResponse,
   GetAccountResponse,
+  DashboardStats,
 } from '../types/leaderboard-v3';
 
 const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
@@ -101,6 +102,62 @@ export async function getAccount(
     }
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to get account: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get cumulative leaderboard (Admin only)
+ * Returns all-time rankings across all seasons
+ */
+export async function getCumulativeLeaderboard(
+  adminPassword: string,
+  params: { limit?: number; offset?: number; breakdown?: boolean } = {}
+): Promise<GetLeaderboardResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.append('cumulative', 'true');
+
+  if (params.limit) searchParams.append('limit', params.limit.toString());
+  if (params.offset) searchParams.append('offset', params.offset.toString());
+  if (params.breakdown) searchParams.append('breakdown', 'true');
+
+  const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard?${searchParams}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get cumulative leaderboard: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get dashboard statistics (Admin only)
+ * Returns system stats, active season info, and recent activity
+ */
+export async function getDashboardStats(adminPassword: string): Promise<DashboardStats> {
+  const url = `${LEADERBOARD_V3_API_URL}/v3/admin/stats`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get dashboard stats: ${response.status}`);
   }
 
   return response.json();

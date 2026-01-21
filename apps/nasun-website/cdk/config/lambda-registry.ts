@@ -351,6 +351,46 @@ export const lambdaRegistry: { [key: string]: LambdaConfig} = {
     timeout: cdk.Duration.seconds(30),
     memorySize: 256,
     description: 'Leaderboard V3: Get account details for auto-prefill'
+  },
+  'leaderboard-v3-admin-seasons': {
+    constructId: 'LeaderboardV3AdminSeasonsFunction',
+    functionName: 'nasun-leaderboard-v3-admin-seasons',
+    handler: 'handlers/admin-seasons.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.seconds(30),
+    memorySize: 256,
+    description: 'Leaderboard V3: Admin CRUD for season management'
+  },
+  'leaderboard-v3-admin-stats': {
+    constructId: 'LeaderboardV3AdminStatsFunction',
+    functionName: 'nasun-leaderboard-v3-admin-stats',
+    handler: 'handlers/admin-stats.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.seconds(30),
+    memorySize: 256,
+    description: 'Leaderboard V3: Admin dashboard statistics'
+  },
+  'leaderboard-v3-get-top-climbers': {
+    constructId: 'LeaderboardV3GetTopClimbersFunction',
+    functionName: 'nasun-leaderboard-v3-get-top-climbers',
+    handler: 'handlers/get-top-climbers.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.seconds(30),
+    memorySize: 256,
+    description: 'Leaderboard V3: Get top climbers'
+  },
+  'leaderboard-v3-generate-snapshot': {
+    constructId: 'LeaderboardV3GenerateSnapshotFunction',
+    functionName: 'nasun-leaderboard-v3-generate-snapshot',
+    handler: 'handlers/generate-snapshot.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.minutes(2),
+    memorySize: 512,
+    description: 'Leaderboard V3: Generate daily snapshot'
   }
 };
 
