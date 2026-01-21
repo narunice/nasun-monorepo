@@ -1,0 +1,22 @@
+{
+  "name": "leaderboard-v3",
+  "version": "1.0.0",
+  "description": "Nasun Community Leaderboard V3 - Manual curation system",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc && cp -r node_modules dist/",
+    "build:clean": "rm -rf dist && pnpm build",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.400.0",
+    "@aws-sdk/lib-dynamodb": "^3.400.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.0.0"
+  }
+}
