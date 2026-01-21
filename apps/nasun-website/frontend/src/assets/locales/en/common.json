@@ -122,7 +122,7 @@
           "title": "Approve Signature Request",
           "description": "Free, no gas fees. Only your wallet address is registered."
         },
-        "notice": "Signing is for identity verification only. No funds will be transferred.",
+        "notice": "No funds will be transferred. Signing is for submitting a valid address. ",
         "noMetaMask": "Don't have MetaMask?",
         "installLink": "Install MetaMask",
         "cancel": "Cancel",

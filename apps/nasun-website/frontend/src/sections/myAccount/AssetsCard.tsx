@@ -1,12 +1,12 @@
 /**
  * AssetsCard Component
  *
- * Wraps MyAssets (OwnedObjects) in a DashboardCard for the Bento Grid layout.
+ * Wraps MyAssets (OwnedObjects) in an OuterBox for the Bento Grid layout.
  * Displays Ethereum NFTs and Nasun (Sui) objects.
  */
 
 import { FC } from "react";
-import { DashboardCard } from "@/components/ui/DashboardCard";
+import { OuterBox } from "@/components/ui";
 import { OwnedObjects } from "./OwnedObjects";
 
 interface AssetsCardProps {
@@ -19,10 +19,10 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   className = "",
 }) => {
   return (
-    <DashboardCard className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <h5 className="uppercase text-nasun-white mb-4">MY ASSETS</h5>
       <OwnedObjects walletAddress={walletAddress} />
-    </DashboardCard>
+    </OuterBox>
   );
 };
 

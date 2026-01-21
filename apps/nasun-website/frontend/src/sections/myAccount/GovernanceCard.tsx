@@ -11,7 +11,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useDelegation } from "@/features/governance/hooks/useDelegation";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
-import { DashboardCard } from "@/components/ui/DashboardCard";
+import { OuterBox } from "@/components/ui";
 import { StatCard } from "@/components/ui/StatCard";
 
 interface GovernanceCardProps {
@@ -35,30 +35,30 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (!isConnected) {
     return (
-      <DashboardCard className={className}>
+      <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center">
             Connect Nasun Wallet to view governance activity
           </p>
         </div>
-      </DashboardCard>
+      </OuterBox>
     );
   }
 
   if (isLoading) {
     return (
-      <DashboardCard className={className}>
+      <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c3 border-t-transparent" />
         </div>
-      </DashboardCard>
+      </OuterBox>
     );
   }
 
   return (
-    <DashboardCard className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <h5 className="uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -105,7 +105,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </Link>
-    </DashboardCard>
+    </OuterBox>
   );
 };
 

@@ -11,7 +11,7 @@ import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { checkWhitelistStatus, withdrawWhitelist } from "../../services/whitelistApi";
 import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
-import { DashboardCard } from "@/components/ui/DashboardCard";
+import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { JoinWhitelistButton } from "@/components/whitelist/JoinWhitelistButton";
 
@@ -180,17 +180,17 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
 
   if (!walletAddress) {
     return (
-      <DashboardCard className={className}>
+      <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
         <p className="text-nasun-white/50">
           Connect MetaMask above to view NFT status
         </p>
-      </DashboardCard>
+      </OuterBox>
     );
   }
 
   return (
-    <DashboardCard className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <h5 className="uppercase text-nasun-white mb-4">NFT STATUS</h5>
       <div className="flex flex-col gap-3">
         <NftStatusItem
@@ -216,7 +216,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({
           }
         />
       </div>
-    </DashboardCard>
+    </OuterBox>
   );
 };
 

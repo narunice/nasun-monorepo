@@ -7,7 +7,7 @@
 import { FC } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
-import { DashboardCard } from "@/components/ui/DashboardCard";
+import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 
 interface DangerZoneCardProps {
@@ -56,7 +56,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
   };
 
   return (
-    <DashboardCard variant="danger" className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h5 className="uppercase text-red-400">
@@ -70,7 +70,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
           {t("accountDeletion.button")}
         </Button>
       </div>
-    </DashboardCard>
+    </OuterBox>
   );
 };
 

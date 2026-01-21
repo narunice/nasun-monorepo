@@ -101,12 +101,8 @@ function KeyBenefitsSection() {
 
         {/* CTA Buttons */}
         <div className="flex justify-center gap-4 md:gap-6">
-          <JoinWhitelistButton
-            variant="c3"
-            size="lg"
-            className="!font-founders uppercase font-normal tracking-wide w-[240px]"
-          />
-          <Button variant="c3" size="lg" disabled className="uppercase text-center w-[240px]">
+          <JoinWhitelistButton variant="white" size="lg" className=" max-w-2xl " />
+          <Button variant="white" size="lg" disabled className="max-w-2xl ">
             Mint Coming Soon
           </Button>
         </div>

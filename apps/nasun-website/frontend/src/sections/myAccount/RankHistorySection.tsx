@@ -32,7 +32,7 @@ import { RankHistoryStatus } from "./components/RankHistoryStatus";
 
 export interface RankHistorySectionProps {
   username: string | null; // X 사용자명 (null인 경우 미연결 상태)
-  embedded?: boolean; // true when used inside DashboardCard (no SectionLayout)
+  embedded?: boolean; // true when used inside OuterBox (no SectionLayout)
 }
 
 /**

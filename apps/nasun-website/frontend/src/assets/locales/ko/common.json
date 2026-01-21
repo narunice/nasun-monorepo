@@ -117,7 +117,7 @@
           "title": "서명 요청 승인",
           "description": "가스비 없이 무료입니다. 지갑 주소만 등록됩니다."
         },
-        "notice": "서명은 본인 확인용이며, 자산 이동이나 결제가 아닙니다.",
+        "notice": "서명은 유효한 주소 제출용이며, 자산 이동은 발생하지 않습니다.",
         "noMetaMask": "MetaMask가 없으신가요?",
         "installLink": "MetaMask 설치하기",
         "cancel": "취소",
