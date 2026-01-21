@@ -57,7 +57,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h5 className="font-medium uppercase text-red-400">
             {t("accountDeletion.title")}
@@ -66,7 +66,12 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
             {t("accountDeletion.description")}
           </p>
         </div>
-        <Button onClick={handleDeleteAccount} variant="destructive" size="sm">
+        <Button
+          onClick={handleDeleteAccount}
+          variant="destructive"
+          size="sm"
+          className="whitespace-nowrap self-start sm:self-center sm:flex-shrink-0"
+        >
           {t("accountDeletion.button")}
         </Button>
       </div>

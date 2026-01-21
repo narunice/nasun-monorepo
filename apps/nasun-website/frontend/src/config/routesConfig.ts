@@ -32,6 +32,7 @@ export const Pages = {
   Logout: lazyWithRetry(() => import("../pages/LogoutPage")),
   Leaderboard: lazyWithRetry(() => import("../pages/LeaderboardPage")),
   XLeaderboard: lazyWithRetry(() => import("../pages/LeaderboardPage")), // backward compatibility
+  LeaderboardV3: lazyWithRetry(() => import("../pages/LeaderboardV3Page")),
   AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
   // Wave 1 Campaign Pages
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
@@ -411,6 +412,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Leaderboard - NASUN",
       description: "Engagement leaderboard",
+    },
+  },
+
+  leaderboardV3: {
+    path: "/leaderboard-v3",
+    component: Pages.LeaderboardV3,
+    navItem: {
+      name: "navigation.leaderboardV3",
+      path: "/leaderboard-v3",
+      hidden: true,
+    },
+    meta: {
+      title: "Community Leaderboard - NASUN",
+      description: "Community engagement leaderboard with manual curation",
     },
   },
 

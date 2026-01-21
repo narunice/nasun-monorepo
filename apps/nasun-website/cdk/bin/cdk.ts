@@ -17,6 +17,7 @@ import { MonitoringStack } from '../lib/monitoring-stack';
 import { NftEventStack } from '../lib/nft-event-stack';
 import { AdminStack } from '../lib/admin-stack';
 import { FollowerStack } from '../lib/follower-stack';
+import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
 
 const app = new cdk.App();
 
@@ -87,3 +88,12 @@ const followerStack = new FollowerStack(app, 'FollowerStack', {
   targetAccounts: process.env.TARGET_ACCOUNTS || '[]',
 });
 // No dependencies - standalone stack
+
+// Leaderboard V3 stack (Independent manual curation system)
+const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
+  env: { region: 'ap-northeast-2' },
+  environmentName: nodeEnv === 'production' ? 'prod' : 'dev',
+  adminPassword: process.env.LEADERBOARD_V3_ADMIN_PASSWORD || 'change-me-in-production',
+  userProfilesTableName: 'UserProfiles', // For Internal Data Sync (profile image/displayName lookup)
+});
+// No dependencies - completely independent from V2

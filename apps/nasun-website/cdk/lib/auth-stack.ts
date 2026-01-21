@@ -40,6 +40,10 @@ export class AuthStack extends cdk.Stack {
 
     const twitterTokensSecret = secretsmanager.Secret.fromSecretNameV2(this, "TwitterTokensSecret", secretName);
 
+    // Leaderboard V3 accounts table name (for profile sync)
+    // Note: Using hardcoded name as LeaderboardV3Stack is deployed separately
+    const leaderboardV3AccountsTableName = 'leaderboard-v3-accounts';
+
     // Twitter OAuth Authentication Lambda
     const twitterLoginFunction = new lambda.Function(this, 'TwitterLoginFunction', {
       functionName: 'nasun-auth-twitter-login',
@@ -55,6 +59,8 @@ export class AuthStack extends cdk.Stack {
         COGNITO_DEVELOPER_PROVIDER_NAME: 'nasun.io',
         OAUTH2_CLIENT_ID: process.env.OAUTH2_CLIENT_ID || "",
         OAUTH2_CLIENT_SECRET: process.env.OAUTH2_CLIENT_SECRET || "",
+        // Leaderboard V3 profile sync (optional - fails gracefully if table doesn't exist)
+        LEADERBOARD_V3_ACCOUNTS_TABLE: leaderboardV3AccountsTableName,
       },
       logGroup: new logs.LogGroup(this, "TwitterAuthLambdaLogGroup", {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -69,6 +75,18 @@ export class AuthStack extends cdk.Stack {
     // Grant DynamoDB permissions
     twitterSessionsTable.grantReadWriteData(twitterLoginFunction);
     props.userProfilesTable.grantReadWriteData(twitterLoginFunction);
+
+    // Grant permissions to leaderboard-v3-accounts table (for profile sync)
+    twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'dynamodb:Query',
+        'dynamodb:UpdateItem',
+      ],
+      resources: [
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/${leaderboardV3AccountsTableName}`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/${leaderboardV3AccountsTableName}/index/*`,
+      ],
+    }));
 
     // Grant Cognito permissions
     twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({

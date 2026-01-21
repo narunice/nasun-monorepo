@@ -318,6 +318,39 @@ export const lambdaRegistry: { [key: string]: LambdaConfig} = {
     runtime: lambda.Runtime.NODEJS_18_X,
     timeout: cdk.Duration.minutes(10),
     memorySize: 512
+  },
+  // ============================================
+  // Leaderboard V3 - Independent from V2
+  // ============================================
+  'leaderboard-v3-create-post': {
+    constructId: 'LeaderboardV3CreatePostFunction',
+    functionName: 'nasun-leaderboard-v3-create-post',
+    handler: 'handlers/create-post.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.seconds(30),
+    memorySize: 256,
+    description: 'Leaderboard V3: Admin endpoint to register social media posts'
+  },
+  'leaderboard-v3-get-leaderboard': {
+    constructId: 'LeaderboardV3GetLeaderboardFunction',
+    functionName: 'nasun-leaderboard-v3-get-leaderboard',
+    handler: 'handlers/get-leaderboard.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.seconds(30),
+    memorySize: 512,
+    description: 'Leaderboard V3: Public endpoint to get rankings'
+  },
+  'leaderboard-v3-get-account': {
+    constructId: 'LeaderboardV3GetAccountFunction',
+    functionName: 'nasun-leaderboard-v3-get-account',
+    handler: 'handlers/get-account.handler',
+    assetPath: 'lambda-src/leaderboard-v3/dist',
+    runtime: lambda.Runtime.NODEJS_18_X,
+    timeout: cdk.Duration.seconds(30),
+    memorySize: 256,
+    description: 'Leaderboard V3: Get account details for auto-prefill'
   }
 };
 
