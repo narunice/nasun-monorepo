@@ -41,7 +41,7 @@ export const RankHistoryControls: FC<RankHistoryControlsProps> = ({
           id="date-range"
           value={selectedDays}
           onChange={(e) => onDaysChange(Number(e.target.value) as DateRangeOption)}
-          className="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-1.5 rounded-sm border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {dateRangeOptions.map((option) => (
             <option key={option.value} value={option.value}>

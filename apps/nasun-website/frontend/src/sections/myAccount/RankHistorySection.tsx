@@ -210,7 +210,7 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({
         )}
 
         {data && data.history.length > 0 && !isLoading && (
-          <div ref={chartContainerRef} className="rounded-lg">
+          <div ref={chartContainerRef} className="rounded-sm">
             <RankHistoryStatsCard
               bestRank={data.stats.bestRank}
               averageRank={data.stats.averageRank}

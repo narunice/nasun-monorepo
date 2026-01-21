@@ -51,7 +51,7 @@ export const RankHistoryStatsCard = ({
   const isKorean = i18n.language === "ko";
 
   return (
-    <div className="mb-6 p-6 min-h-[210px] bg-gradient-to-r from-nasun-c4/10 to-nasun-c3/10 dark:from-nasun-c4/20 dark:to-nasun-c3/10 border border-gray-600 rounded-lg shadow-sm">
+    <div className="mb-6 p-6 min-h-[210px] bg-gradient-to-r from-nasun-c4/10 to-nasun-c3/10 dark:from-nasun-c4/20 dark:to-nasun-c3/10 border border-gray-600 rounded-sm shadow-sm">
       <div className="space-y-4">
         {/* 카드 제목: 선택된 리더보드 종류 */}
         <h6 className="font-medium uppercase">
