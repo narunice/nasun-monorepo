@@ -115,7 +115,7 @@ export default function Navbar() {
             }}
           >
             <img
-              src="/NASUN_wordmark-black.png"
+              src="/nasun-wordmark-black.svg"
               alt="NASUN"
               className="hidden min-[440px]:block h-6 md:h-7 lg:h-8 w-auto transition-all"
             />
