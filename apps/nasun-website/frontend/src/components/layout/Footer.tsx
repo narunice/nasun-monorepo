@@ -63,9 +63,9 @@ export default function Footer() {
             <div className="flex-col items-center py-6 md:py-8 lg:py-10">
               <Link to="/" onClick={handleLogoClick} className="flex items-center justify-center">
                 <img
-                  src={theme === "dark" ? "/NASUN_wordmark-white.png" : "/NASUN_wordmark-black.png"}
+                  src={theme === "dark" ? "/nasun-wordmark-white.svg" : "/nasun-wordmark-black.svg"}
                   alt="NASUN"
-                  className="h-10 md:h-12 lg:h-14 w-auto transition-all ease-in-out hover:scale-105 active:scale-95"
+                  className="h-9 md:h-[43px] lg:h-[50px] w-auto transition-all ease-in-out hover:scale-105 active:scale-95"
                 />
               </Link>
             </div>

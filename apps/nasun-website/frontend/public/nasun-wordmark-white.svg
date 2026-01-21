@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1301.69 314.7">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: 0em;
+      }
+
+      .cls-2 {
+        fill: #fafafa;
+        font-family: ChangelingNeo-Bold, 'Changeling Neo';
+        font-size: 300px;
+        font-weight: 700;
+      }
+
+      .cls-3 {
+        letter-spacing: .03em;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <text class="cls-2" transform="translate(0 232.8)"><tspan class="cls-1" x="0" y="0">N</tspan><tspan class="cls-3" x="252.3" y="0">ASUN</tspan></text>
+  </g>
+</svg>

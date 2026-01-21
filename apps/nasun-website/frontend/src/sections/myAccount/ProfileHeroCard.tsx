@@ -12,7 +12,7 @@ import { useAuth } from "@/features/auth";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useDelegation } from "@/features/governance/hooks/useDelegation";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
-import { DashboardCard } from "@/components/ui/DashboardCard";
+import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { useMetaMaskConnection } from "../../hooks/wallet/useMetaMaskConnection";
 import logger from "../../lib/logger";
@@ -26,13 +26,13 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 import { AccountItem } from "./components/AccountItem";
-import { 
-  ActiveBadge, 
-  ConnectedBadge, 
-  DifferentWalletBadge, 
-  InactiveBadge, 
-  LinkedBadge, 
-  LoggedInBadge 
+import {
+  ActiveBadge,
+  ConnectedBadge,
+  DifferentWalletBadge,
+  InactiveBadge,
+  LinkedBadge,
+  LoggedInBadge,
 } from "./components/StatusBadges";
 import { useAccountLinking } from "./hooks/useAccountLinking";
 
@@ -46,26 +46,27 @@ interface LoginIdentifier {
   value: string;
 }
 
-function getLoginIdentifier(user: {
-  provider?: string;
-  email?: string;
-  twitterHandle?: string;
-  walletAddress?: string;
-} | null): LoginIdentifier | null {
+function getLoginIdentifier(
+  user: {
+    provider?: string;
+    email?: string;
+    twitterHandle?: string;
+    walletAddress?: string;
+  } | null,
+): LoginIdentifier | null {
   if (!user) return null;
 
   switch (user.provider) {
-    case 'Google':
-      return user.email
-        ? { label: 'Google', value: user.email }
-        : null;
-    case 'Twitter':
-      return user.twitterHandle
-        ? { label: 'X', value: `@${user.twitterHandle}` }
-        : null;
-    case 'MetaMask':
+    case "Google":
+      return user.email ? { label: "Google", value: user.email } : null;
+    case "Twitter":
+      return user.twitterHandle ? { label: "X", value: `@${user.twitterHandle}` } : null;
+    case "MetaMask":
       return user.walletAddress
-        ? { label: 'Wallet', value: `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}` }
+        ? {
+            label: "Wallet",
+            value: `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`,
+          }
         : null;
     default:
       return null;
@@ -80,7 +81,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
 
   // Custom Hooks
-  const { isLinking, handleLinkGoogle, handleLinkTwitter, unlinkAccount } = useAccountLinking({ user });
+  const { isLinking, handleLinkGoogle, handleLinkTwitter, unlinkAccount } = useAccountLinking({
+    user,
+  });
 
   // Nasun Wallet Hooks
   const { status, account } = useWallet();
@@ -131,7 +134,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
     onAccountsChanged(handleAccountsChanged);
 
     return () => {
-      removeListener('accountsChanged', handleAccountsChanged as (...args: unknown[]) => void);
+      removeListener("accountsChanged", handleAccountsChanged as (...args: unknown[]) => void);
     };
   }, []);
 
@@ -154,7 +157,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   // ------------------------------------------------------------------
   // Data Preparation
   // ------------------------------------------------------------------
-  if (!user) return <DashboardCard variant="hero" className={className}>Loading...</DashboardCard>;
+  if (!user)
+    return (
+      <OuterBox color="c1" padding="sm" className={className}>
+        Loading...
+      </OuterBox>
+    );
 
   // Providers
   const isTwitterPrimary = user.provider === "Twitter";
@@ -170,10 +178,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const isMetaMaskLinked = !!metamaskData;
   const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
   const isMetaMaskActive = isMetaMaskLinked && activeWalletAddress === linkedWalletAddress;
-  const isDifferentWalletActive = isMetaMaskLinked && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
+  const isDifferentWalletActive =
+    isMetaMaskLinked && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
 
   return (
-    <DashboardCard variant="hero" className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left: User Info & Accounts */}
         <div className="flex-1 space-y-6">
@@ -195,12 +204,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               )}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{displayName}</h2>
+              <h6 className="font-semibold">{displayName}</h6>
               {(() => {
                 const loginId = getLoginIdentifier(user);
                 return loginId ? (
-                  <p className="text-nasun-white/60 text-sm">
-                    <span className="text-nasun-c4 font-medium">{loginId.value}</span>
+                  <p className="text-nasun-white/60">
+                    <span className="text-slate-400 font-medium text-sm lg:text-base">
+                      {loginId.value}
+                    </span>
                   </p>
                 ) : null;
               })()}
@@ -209,20 +220,39 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
 
           {/* Connected Accounts List */}
           <div>
-            <h5 className="text-xs font-bold text-nasun-white/40 uppercase tracking-wider mb-3">Connected Accounts</h5>
+            <h6 className="text-nasun-white/40 uppercase mb-3">Connected Accounts</h6>
             <div className="space-y-2">
-              
               {/* 1. X (Twitter) */}
               <AccountItem
                 provider="twitter"
-                identifier={twitterData?.twitterHandle ? `@${twitterData.twitterHandle}` : undefined}
-                statusBadge={isTwitterPrimary ? <LoggedInBadge /> : (twitterData ? <LinkedBadge /> : undefined)}
+                identifier={
+                  twitterData?.twitterHandle ? `@${twitterData.twitterHandle}` : undefined
+                }
+                statusBadge={
+                  isTwitterPrimary ? <LoggedInBadge /> : twitterData ? <LinkedBadge /> : undefined
+                }
                 actions={[
                   !twitterData ? (
-                    <Button key="link" size="xs" variant="filledOutlineC4" onClick={handleLinkTwitter} disabled={isLinking}>Link</Button>
+                    <Button
+                      key="link"
+                      size="xs"
+                      variant="filledOutlineC4"
+                      onClick={handleLinkTwitter}
+                      disabled={isLinking}
+                    >
+                      Link
+                    </Button>
                   ) : !isTwitterPrimary ? (
-                    <Button key="unlink" size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("Twitter")} disabled={isLinking}>Unlink</Button>
-                  ) : null
+                    <Button
+                      key="unlink"
+                      size="xs"
+                      variant="filledOutlineScarlet"
+                      onClick={() => unlinkAccount("Twitter")}
+                      disabled={isLinking}
+                    >
+                      Unlink
+                    </Button>
+                  ) : null,
                 ]}
               />
 
@@ -230,13 +260,31 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               <AccountItem
                 provider="google"
                 identifier={googleData?.email}
-                statusBadge={isGooglePrimary ? <LoggedInBadge /> : (googleData ? <LinkedBadge /> : undefined)}
+                statusBadge={
+                  isGooglePrimary ? <LoggedInBadge /> : googleData ? <LinkedBadge /> : undefined
+                }
                 actions={[
                   !googleData ? (
-                    <Button key="link" size="xs" variant="filledOutlineC4" onClick={handleLinkGoogle} disabled={isLinking}>Link</Button>
+                    <Button
+                      key="link"
+                      size="xs"
+                      variant="filledOutlineC4"
+                      onClick={handleLinkGoogle}
+                      disabled={isLinking}
+                    >
+                      Link
+                    </Button>
                   ) : !isGooglePrimary ? (
-                    <Button key="unlink" size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("Google")} disabled={isLinking}>Unlink</Button>
-                  ) : null
+                    <Button
+                      key="unlink"
+                      size="xs"
+                      variant="filledOutlineScarlet"
+                      onClick={() => unlinkAccount("Google")}
+                      disabled={isLinking}
+                    >
+                      Unlink
+                    </Button>
+                  ) : null,
                 ]}
               />
 
@@ -244,56 +292,82 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               <AccountItem
                 provider="metamask"
                 identifier={
-                  isMetaMaskLinked 
+                  isMetaMaskLinked
                     ? `${linkedWalletAddress?.slice(0, 6)}...${linkedWalletAddress?.slice(-4)}`
                     : "Not linked"
                 }
                 statusBadge={
-                  isMetaMaskActive ? <ActiveBadge /> : 
-                  isDifferentWalletActive ? <DifferentWalletBadge /> :
-                  isMetaMaskLinked ? <InactiveBadge /> : undefined
+                  isMetaMaskActive ? (
+                    <ActiveBadge />
+                  ) : isDifferentWalletActive ? (
+                    <DifferentWalletBadge />
+                  ) : isMetaMaskLinked ? (
+                    <InactiveBadge />
+                  ) : undefined
                 }
                 actions={[
                   // Case 1: Not Linked -> Link Button with detected address hint
                   !isMetaMaskLinked ? (
-                    <Button key="link" size="xs" variant="filledOutlineC4" onClick={handleLinkMetaMask} disabled={isMetaMaskLinking || isLinking}>
-                      {isMetaMaskLinking 
-                        ? "Linking..." 
+                    <Button
+                      key="link"
+                      size="xs"
+                      variant="filledOutlineC4"
+                      onClick={handleLinkMetaMask}
+                      disabled={isMetaMaskLinking || isLinking}
+                    >
+                      {isMetaMaskLinking
+                        ? "Linking..."
                         : `Link Wallet${activeWalletAddress ? ` (${activeWalletAddress.slice(0, 6)}...)` : ""}`}
                     </Button>
-                  ) : 
-                  // Case 2: Linked but Inactive or Different -> Activate/Switch Button
-                  (!isMetaMaskActive) ? (
+                  ) : // Case 2: Linked but Inactive or Different -> Activate/Switch Button
+                  !isMetaMaskActive ? (
                     <div key="actions" className="flex gap-2">
                       <Button size="xs" variant="filledOutlineC4" onClick={handleActivateMetaMask}>
                         {isDifferentWalletActive ? "Switch" : "Activate"}
                       </Button>
                       {!isMetaMaskPrimary && (
-                        <Button size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("MetaMask")} disabled={isLinking}>Unlink</Button>
+                        <Button
+                          size="xs"
+                          variant="filledOutlineScarlet"
+                          onClick={() => unlinkAccount("MetaMask")}
+                          disabled={isLinking}
+                        >
+                          Unlink
+                        </Button>
                       )}
                     </div>
-                  ) : 
-                  // Case 3: Active -> Unlink only (if not primary)
-                  (!isMetaMaskPrimary) ? (
-                    <Button key="unlink" size="xs" variant="filledOutlineScarlet" onClick={() => unlinkAccount("MetaMask")} disabled={isLinking}>Unlink</Button>
-                  ) : null
+                  ) : // Case 3: Active -> Unlink only (if not primary)
+                  !isMetaMaskPrimary ? (
+                    <Button
+                      key="unlink"
+                      size="xs"
+                      variant="filledOutlineScarlet"
+                      onClick={() => unlinkAccount("MetaMask")}
+                      disabled={isLinking}
+                    >
+                      Unlink
+                    </Button>
+                  ) : null,
                 ]}
               />
 
               {/* 4. Nasun Wallet */}
               <AccountItem
                 provider="nasun"
-                identifier={isNasunConnected && nasunWalletAddress ? `${nasunWalletAddress.slice(0, 6)}...${nasunWalletAddress.slice(-4)}` : "Not connected"}
+                identifier={
+                  isNasunConnected && nasunWalletAddress
+                    ? `${nasunWalletAddress.slice(0, 6)}...${nasunWalletAddress.slice(-4)}`
+                    : "Not connected"
+                }
                 statusBadge={isNasunConnected ? <ConnectedBadge /> : undefined}
                 actions={[
-                  <WalletConnect key="connect" dropdownPosition="bottom" dropdownAlign="right" />
+                  <WalletConnect key="connect" dropdownPosition="bottom" dropdownAlign="right" />,
                 ]}
               >
                 <p className="text-[10px] text-nasun-c4/80 leading-relaxed">
                   * This is a prototype on Devnet. The network may be reset at any time.
                 </p>
               </AccountItem>
-
             </div>
           </div>
         </div>
@@ -302,21 +376,30 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
         <div className="lg:w-64 flex flex-col gap-3 pt-2">
           <div className="bg-gray-800/60 rounded-xl p-4 border border-white/5">
             <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">Voting Power</p>
-            <p className="text-2xl font-bold text-white">{(votingPower?.leaderboardScore || 0 + (nftVerification?.nftBonus || 0) + (delegationState?.delegatorCount || 0) * 100).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">
+              {(
+                votingPower?.leaderboardScore ||
+                0 + (nftVerification?.nftBonus || 0) + (delegationState?.delegatorCount || 0) * 100
+              ).toLocaleString()}
+            </p>
           </div>
           <div className="bg-gray-800/60 rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">Participation</p>
+            <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">
+              Participation
+            </p>
             <p className="text-2xl font-bold text-white">{stats.participationRate.toFixed(0)}%</p>
           </div>
           <div className="bg-gray-800/60 rounded-xl p-4 border border-white/5">
             <p className="text-xs text-nasun-white/60 uppercase tracking-wide mb-1">NFT Status</p>
-            <p className={`text-xl font-bold ${nftVerification?.nftBonus ? "text-nasun-c3" : "text-nasun-white/40"}`}>
+            <p
+              className={`text-xl font-bold ${nftVerification?.nftBonus ? "text-nasun-c3" : "text-nasun-white/40"}`}
+            >
               {nftVerification?.nftBonus ? "Verified" : "Not Verified"}
             </p>
           </div>
         </div>
       </div>
-    </DashboardCard>
+    </OuterBox>
   );
 };
 

@@ -1,11 +1,11 @@
 /**
  * RankHistoryCard Component
  *
- * Wraps RankHistorySection in a DashboardCard for the Bento Grid layout.
+ * Wraps RankHistorySection in an OuterBox for the Bento Grid layout.
  */
 
 import { FC } from "react";
-import { DashboardCard } from "@/components/ui/DashboardCard";
+import { OuterBox } from "@/components/ui";
 import { RankHistorySection } from "./RankHistorySection";
 
 interface RankHistoryCardProps {
@@ -18,9 +18,9 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({
   className = "",
 }) => {
   return (
-    <DashboardCard className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <RankHistorySection username={username} embedded />
-    </DashboardCard>
+    </OuterBox>
   );
 };
 
