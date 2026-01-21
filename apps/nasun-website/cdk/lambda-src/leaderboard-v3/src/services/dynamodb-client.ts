@@ -22,6 +22,8 @@ import {
   DYNAMO_KEYS,
   Platform,
   Post,
+  Season,
+  SeasonAccountScore,
 } from '../types';
 import {
   addActiveDate,
@@ -43,6 +45,10 @@ const POSTS_TABLE =
   process.env.LEADERBOARD_V3_POSTS_TABLE || DYNAMO_KEYS.POSTS_TABLE;
 const ACCOUNTS_TABLE =
   process.env.LEADERBOARD_V3_ACCOUNTS_TABLE || DYNAMO_KEYS.ACCOUNTS_TABLE;
+const SEASONS_TABLE =
+  process.env.LEADERBOARD_V3_SEASONS_TABLE || DYNAMO_KEYS.SEASONS_TABLE;
+const SEASON_ACCOUNTS_TABLE =
+  process.env.LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE || DYNAMO_KEYS.SEASON_ACCOUNTS_TABLE;
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
 
 // UserProfiles table structure (from auth-twitter Lambda)
@@ -90,9 +96,17 @@ export async function createPost(params: {
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
   createdBy: string;
-}): Promise<{ post: Post; account: Account }> {
+  seasonId?: string; // If not provided, will use active season
+}): Promise<{ post: Post; account: Account; seasonAccountScore?: SeasonAccountScore }> {
   const { normalizedUrl, rawUrl, platform, username, accountRole, contentSignals, createdBy } =
     params;
+
+  // Get active season if seasonId not provided
+  let seasonId = params.seasonId;
+  if (!seasonId) {
+    const activeSeason = await getActiveSeason();
+    seasonId = activeSeason?.seasonId;
+  }
 
   // Get or create account
   let account = await getAccountByUsername(platform, username);
@@ -142,6 +156,7 @@ export async function createPost(params: {
     postScore,
     createdAt: now,
     createdBy,
+    seasonId, // Phase 5: Season assignment
   };
 
   // Save post
@@ -152,7 +167,7 @@ export async function createPost(params: {
     })
   );
 
-  // Update account aggregates
+  // Update account aggregates (cumulative)
   const { dates: newActiveDates, isNewDay } = addActiveDate(
     account.activeDates || [],
     todayDate
@@ -169,7 +184,25 @@ export async function createPost(params: {
     lastSeenAt: now,
   });
 
-  return { post, account: updatedAccount };
+  // Phase 5: Update season-specific aggregates if seasonId exists
+  let seasonAccountScore: SeasonAccountScore | undefined;
+  if (seasonId) {
+    seasonAccountScore = await updateSeasonAccountAggregates({
+      seasonId,
+      accountId: account.accountId,
+      username: account.username,
+      platform: account.platform,
+      postScoreToAdd: postScore,
+      signalCountToAdd: bonusSignalCount,
+      todayDate,
+      lastSeenAt: now,
+      displayName: account.displayName,
+      profileImageUrl: account.profileImageUrl,
+      isRegistered: account.isRegistered,
+    });
+  }
+
+  return { post, account: updatedAccount, seasonAccountScore };
 }
 
 /**
@@ -409,4 +442,263 @@ export async function getAccountsWithPostsInRange(
     const activeDates = account.activeDates || [];
     return activeDates.some((date) => date >= startDate && date <= endDate);
   });
+}
+
+// ============================================
+// Season Operations (Phase 5)
+// ============================================
+
+/**
+ * Get the currently active season
+ */
+export async function getActiveSeason(): Promise<Season | null> {
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: SEASONS_TABLE,
+      FilterExpression: 'sk = :sk AND #status = :status',
+      ExpressionAttributeNames: {
+        '#status': 'status',
+      },
+      ExpressionAttributeValues: {
+        ':sk': 'METADATA',
+        ':status': 'active',
+      },
+    })
+  );
+
+  if (result.Items && result.Items.length > 0) {
+    return result.Items[0] as Season;
+  }
+  return null;
+}
+
+/**
+ * Get a season by ID
+ */
+export async function getSeasonById(seasonId: string): Promise<Season | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: SEASONS_TABLE,
+      Key: { seasonId, sk: 'METADATA' },
+    })
+  );
+
+  return (result.Item as Season) || null;
+}
+
+/**
+ * Update season-specific account aggregates
+ */
+export async function updateSeasonAccountAggregates(params: {
+  seasonId: string;
+  accountId: string;
+  username: string;
+  platform: Platform;
+  postScoreToAdd: number;
+  signalCountToAdd: number;
+  todayDate: string;
+  lastSeenAt: string;
+  displayName?: string;
+  profileImageUrl?: string;
+  isRegistered?: boolean;
+}): Promise<SeasonAccountScore> {
+  const {
+    seasonId,
+    accountId,
+    username,
+    platform,
+    postScoreToAdd,
+    signalCountToAdd,
+    todayDate,
+    lastSeenAt,
+    displayName,
+    profileImageUrl,
+    isRegistered,
+  } = params;
+
+  const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
+  const sk = 'SCORE';
+
+  // Try to get existing record
+  const existing = await docClient.send(
+    new GetCommand({
+      TableName: SEASON_ACCOUNTS_TABLE,
+      Key: { pk, sk },
+    })
+  );
+
+  if (existing.Item) {
+    // Update existing record
+    const existingRecord = existing.Item as SeasonAccountScore;
+    const { dates: newActiveDates, isNewDay } = addActiveDate(
+      existingRecord.activeDates || [],
+      todayDate
+    );
+
+    // Calculate new aggregates
+    const newTotalPostScore = existingRecord.totalPostScore + postScoreToAdd;
+    const newPostCount = existingRecord.postCount + 1;
+    const newSignalCount = existingRecord.signalCountTotal + signalCountToAdd;
+    const newUniqueDays = newActiveDates.length;
+
+    // Recalculate scores
+    const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
+      calculateSeasonUserScore({
+        totalPostScore: newTotalPostScore,
+        postCount: newPostCount,
+        uniqueActiveDays: newUniqueDays,
+        lastSeenAt,
+      });
+
+    const result = await docClient.send(
+      new UpdateCommand({
+        TableName: SEASON_ACCOUNTS_TABLE,
+        Key: { pk, sk },
+        UpdateExpression: `
+          SET totalPostScore = :totalPostScore,
+              postCount = :postCount,
+              signalCountTotal = :signalCount,
+              activeDates = :activeDates,
+              uniqueActiveDays = :uniqueDays,
+              userScore = :userScore,
+              rawScore = :rawScore,
+              consistencyBonus = :consistencyBonus,
+              freshnessMultiplier = :freshnessMultiplier,
+              lastSeenAt = :lastSeen,
+              displayName = :displayName,
+              profileImageUrl = :profileImageUrl,
+              isRegistered = :isRegistered
+        `,
+        ExpressionAttributeValues: {
+          ':totalPostScore': newTotalPostScore,
+          ':postCount': newPostCount,
+          ':signalCount': newSignalCount,
+          ':activeDates': newActiveDates,
+          ':uniqueDays': newUniqueDays,
+          ':userScore': userScore,
+          ':rawScore': rawScore,
+          ':consistencyBonus': consistencyBonus,
+          ':freshnessMultiplier': freshnessMultiplier,
+          ':lastSeen': lastSeenAt,
+          ':displayName': displayName,
+          ':profileImageUrl': profileImageUrl,
+          ':isRegistered': isRegistered ?? false,
+        },
+        ReturnValues: 'ALL_NEW',
+      })
+    );
+
+    return result.Attributes as SeasonAccountScore;
+  } else {
+    // Create new record
+    const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
+      calculateSeasonUserScore({
+        totalPostScore: postScoreToAdd,
+        postCount: 1,
+        uniqueActiveDays: 1,
+        lastSeenAt,
+      });
+
+    const newRecord: SeasonAccountScore = {
+      pk,
+      sk,
+      accountId,
+      seasonId,
+      username,
+      platform,
+      totalPostScore: postScoreToAdd,
+      postCount: 1,
+      signalCountTotal: signalCountToAdd,
+      uniqueActiveDays: 1,
+      activeDates: [todayDate],
+      userScore,
+      rawScore,
+      consistencyBonus,
+      freshnessMultiplier,
+      displayName,
+      profileImageUrl,
+      isRegistered: isRegistered ?? false,
+      firstSeenAt: lastSeenAt,
+      lastSeenAt,
+    };
+
+    await docClient.send(
+      new PutCommand({
+        TableName: SEASON_ACCOUNTS_TABLE,
+        Item: newRecord,
+      })
+    );
+
+    return newRecord;
+  }
+}
+
+/**
+ * Calculate user score for season leaderboard
+ */
+function calculateSeasonUserScore(params: {
+  totalPostScore: number;
+  postCount: number;
+  uniqueActiveDays: number;
+  lastSeenAt: string;
+}): {
+  rawScore: number;
+  consistencyBonus: number;
+  freshnessMultiplier: number;
+  userScore: number;
+} {
+  const { totalPostScore, postCount, uniqueActiveDays, lastSeenAt } = params;
+
+  // RawScore = totalPostScore × log₂(postCount + 1) / postCount
+  const effectivePosts = Math.log2(postCount + 1);
+  const rawScore = postCount > 0 ? (totalPostScore * effectivePosts) / postCount : 0;
+
+  // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1
+  const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
+
+  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / 14)
+  const daysSinceLastPost = Math.floor(
+    (Date.now() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / 14);
+
+  // UserScore = rawScore × consistencyBonus × freshnessMultiplier
+  const userScore = rawScore * consistencyBonus * freshnessMultiplier;
+
+  return {
+    rawScore: Math.round(rawScore * 1000) / 1000,
+    consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
+    freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
+    userScore: Math.round(userScore * 1000) / 1000,
+  };
+}
+
+/**
+ * Get all season account scores for a season
+ */
+export async function getSeasonAccountScores(seasonId: string): Promise<SeasonAccountScore[]> {
+  const scores: SeasonAccountScore[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: SEASON_ACCOUNTS_TABLE,
+        FilterExpression: 'seasonId = :seasonId AND sk = :sk',
+        ExpressionAttributeValues: {
+          ':seasonId': seasonId,
+          ':sk': 'SCORE',
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
+
+    if (result.Items) {
+      scores.push(...(result.Items as SeasonAccountScore[]));
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return scores;
 }

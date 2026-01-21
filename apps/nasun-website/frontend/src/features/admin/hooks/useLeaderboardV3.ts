@@ -89,7 +89,6 @@ export function usePostSubmissionForm() {
   const [postUrl, setPostUrl] = useState('');
   const [accountRole, setAccountRole] = useState<AccountRole>('default');
   const [contentSignals, setContentSignals] = useState<ContentSignal[]>([]);
-  const [adminUsername, setAdminUsername] = useState('');
 
   const scorePreview = calculatePostScorePreview(accountRole, contentSignals);
 
@@ -105,14 +104,6 @@ export function usePostSubmissionForm() {
     setPostUrl('');
     setAccountRole('default');
     setContentSignals([]);
-    // Keep adminUsername for convenience
-  }, []);
-
-  const resetAll = useCallback(() => {
-    setPostUrl('');
-    setAccountRole('default');
-    setContentSignals([]);
-    setAdminUsername('');
   }, []);
 
   return {
@@ -124,15 +115,12 @@ export function usePostSubmissionForm() {
     contentSignals,
     setContentSignals,
     toggleSignal,
-    adminUsername,
-    setAdminUsername,
 
     // Score preview
     scorePreview,
 
     // Actions
     reset,
-    resetAll,
 
     // Build request
     buildRequest: (): CreatePostRequest => ({

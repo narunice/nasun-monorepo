@@ -59,6 +59,7 @@ export interface Post {
   postScore: number; // baseScore × roleMultiplier + signalBonus
   createdAt: string; // ISO timestamp
   createdBy: string; // Admin username who added this post
+  seasonId?: string; // Season this post belongs to (Phase 5)
 }
 
 /**
@@ -218,9 +219,193 @@ export const DYNAMO_KEYS = {
   POSTS_TABLE: 'leaderboard-v3-posts',
   POSTS_PK: 'postId',
   POSTS_URL_INDEX: 'postUrl-index',
+  POSTS_SEASON_INDEX: 'seasonId-createdAt-index',
 
   // Accounts table
   ACCOUNTS_TABLE: 'leaderboard-v3-accounts',
   ACCOUNTS_PK: 'accountId',
   ACCOUNTS_USERNAME_INDEX: 'platform-username-index',
+
+  // Seasons table
+  SEASONS_TABLE: 'leaderboard-v3-seasons',
+  SEASONS_PK: 'seasonId',
+  SEASONS_SK: 'sk',
+
+  // Snapshots table
+  SNAPSHOTS_TABLE: 'leaderboard-v3-snapshots',
+  SNAPSHOTS_PK: 'pk',
+  SNAPSHOTS_SK: 'sk',
+
+  // Season-Accounts table
+  SEASON_ACCOUNTS_TABLE: 'leaderboard-v3-season-accounts',
+  SEASON_ACCOUNTS_PK: 'pk',
+  SEASON_ACCOUNTS_SK: 'sk',
 };
+
+// ============================================
+// Season System Types (Phase 5)
+// ============================================
+
+export type SeasonStatus = 'upcoming' | 'active' | 'ended' | 'archived';
+
+/**
+ * Season record stored in DynamoDB
+ * Defines time periods for independent leaderboard calculation
+ */
+export interface Season {
+  seasonId: string; // PK: "SEASON1", "SEASON2", "LEGACY"
+  sk: string; // SK: "METADATA"
+  name: string; // "Season 1", "Genesis Season"
+  description?: string;
+  startDate: string; // "2026-01-01" (YYYY-MM-DD)
+  endDate: string; // "2026-01-31" (YYYY-MM-DD)
+  status: SeasonStatus;
+  isDefault: boolean; // Currently displayed season for public
+  totalPosts?: number; // Cached count
+  totalAccounts?: number; // Cached count
+  createdAt: string; // ISO timestamp
+  createdBy: string; // Admin username
+  updatedAt?: string; // ISO timestamp
+}
+
+export type RankChangeDirection = 'up' | 'down' | 'same' | 'new';
+
+export interface RankChange {
+  direction: RankChangeDirection;
+  amount: number;
+}
+
+/**
+ * Daily snapshot record stored in DynamoDB
+ * Captures ranked leaderboard state at a point in time
+ */
+export interface DailySnapshot {
+  pk: string; // "{seasonId}#{date}" e.g., "SEASON1#2026-01-21"
+  sk: string; // "RANK#{rank:04d}" e.g., "RANK#0001"
+  accountId: string;
+  username: string;
+  platform: Platform;
+  userScore: number;
+  rank: number;
+  previousDayRank?: number;
+  rankChange: RankChange;
+  // Score breakdown
+  totalPostScore: number;
+  postCount: number;
+  uniqueActiveDays: number;
+  rawScore: number;
+  consistencyBonus: number;
+  freshnessMultiplier: number;
+  // Profile
+  displayName?: string;
+  profileImageUrl?: string;
+  isRegistered?: boolean;
+  // Meta
+  snapshotDate: string; // "2026-01-21"
+  snapshotTime: string; // ISO timestamp
+  ttl?: number; // Unix timestamp for auto-deletion (90 days except final snapshot)
+}
+
+/**
+ * Season-specific account score record
+ * Aggregates posts within a specific season (independent from cumulative)
+ */
+export interface SeasonAccountScore {
+  pk: string; // "SEASON#{seasonId}#ACCOUNT#{accountId}"
+  sk: string; // "SCORE"
+  accountId: string;
+  seasonId: string;
+  username: string;
+  platform: Platform;
+  // Season-specific aggregates
+  totalPostScore: number;
+  postCount: number;
+  signalCountTotal: number;
+  uniqueActiveDays: number;
+  activeDates: string[];
+  // Computed scores (updated on post registration)
+  userScore: number;
+  rawScore: number;
+  consistencyBonus: number;
+  freshnessMultiplier: number;
+  // Profile (denormalized for snapshot efficiency)
+  displayName?: string;
+  profileImageUrl?: string;
+  isRegistered?: boolean;
+  // Timestamps
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+// ============================================
+// Season API Request/Response Types
+// ============================================
+
+/**
+ * POST /v3/admin/seasons request body
+ */
+export interface CreateSeasonRequest {
+  seasonId: string; // e.g., "SEASON1"
+  name: string;
+  description?: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string; // "YYYY-MM-DD"
+}
+
+/**
+ * PATCH /v3/admin/seasons/:seasonId request body
+ */
+export interface UpdateSeasonRequest {
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: SeasonStatus;
+  isDefault?: boolean;
+}
+
+/**
+ * GET /v3/leaderboard response (extended for season support)
+ */
+export interface SeasonLeaderboardResponse {
+  season: {
+    seasonId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    status: SeasonStatus;
+  };
+  entries: SeasonLeaderboardEntry[];
+  totalCount: number;
+  snapshotDate?: string; // If viewing past snapshot
+  calculatedAt: string;
+}
+
+/**
+ * Leaderboard entry with rank change info
+ */
+export interface SeasonLeaderboardEntry extends LeaderboardEntry {
+  rankChange?: RankChange;
+}
+
+/**
+ * GET /v3/leaderboard/top-climbers response
+ */
+export interface TopClimbersResponse {
+  seasonId: string;
+  range: 'today' | '7d' | '4w';
+  climbers: TopClimberEntry[];
+  calculatedAt: string;
+}
+
+export interface TopClimberEntry {
+  accountId: string;
+  username: string;
+  platform: Platform;
+  displayName?: string;
+  profileImageUrl?: string;
+  currentRank: number;
+  previousRank: number;
+  rankChange: RankChange;
+  currentScore: number;
+}

@@ -161,3 +161,74 @@ export const SIGNAL_SHORTCUTS: Record<string, ContentSignal> = {
   'w': 'creative',
   'e': 'high_reach',
 };
+
+// ============================================
+// Season Types (Phase 5)
+// ============================================
+
+export type SeasonStatus = 'upcoming' | 'active' | 'ended' | 'archived';
+
+export interface Season {
+  seasonId: string;
+  sk: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  status: SeasonStatus;
+  isDefault: boolean;
+  totalPosts?: number;
+  totalAccounts?: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+}
+
+export interface CreateSeasonRequest {
+  seasonId: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface UpdateSeasonRequest {
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: SeasonStatus;
+  isDefault?: boolean;
+}
+
+// ============================================
+// Dashboard Stats Types (Phase 7)
+// ============================================
+
+export interface DashboardStats {
+  totalPosts: number;
+  totalAccounts: number;
+  activeSeason: {
+    seasonId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    totalPosts: number;
+    totalAccounts: number;
+  } | null;
+  todayStats: {
+    postsCreated: number;
+    newAccounts: number;
+  };
+  topFive: Array<{
+    rank: number;
+    username: string;
+    userScore: number;
+  }>;
+  recentActivity: Array<{
+    type: 'post_created' | 'account_created' | 'snapshot_generated';
+    description: string;
+    timestamp: string;
+  }>;
+  calculatedAt: string;
+}
