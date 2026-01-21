@@ -5,15 +5,20 @@
  * Manual curation system for community engagement tracking.
  *
  * Resources:
- * - DynamoDB tables: leaderboard-v3-posts, leaderboard-v3-accounts
- * - Lambda functions: create-post, get-leaderboard, get-account
- * - API Gateway: /v3/posts, /v3/leaderboard, /v3/accounts
+ * - DynamoDB tables: leaderboard-v3-posts, leaderboard-v3-accounts,
+ *                    leaderboard-v3-seasons, leaderboard-v3-snapshots,
+ *                    leaderboard-v3-season-accounts
+ * - Lambda functions: create-post, get-leaderboard, get-account,
+ *                     admin-seasons, generate-snapshot, get-top-climbers
+ * - API Gateway: /v3/posts, /v3/leaderboard, /v3/accounts, /v3/admin/seasons
  */
 
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -31,6 +36,9 @@ export interface LeaderboardV3StackProps extends cdk.StackProps {
 export class LeaderboardV3Stack extends cdk.Stack {
   public readonly postsTable: dynamodb.Table;
   public readonly accountsTable: dynamodb.Table;
+  public readonly seasonsTable: dynamodb.Table;
+  public readonly snapshotsTable: dynamodb.Table;
+  public readonly seasonAccountsTable: dynamodb.Table;
   public readonly api: apigw.RestApi;
 
   constructor(scope: Construct, id: string, props: LeaderboardV3StackProps) {
@@ -75,6 +83,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // GSI for season-based queries (Phase 5)
+    this.postsTable.addGlobalSecondaryIndex({
+      indexName: 'seasonId-createdAt-index',
+      partitionKey: { name: 'seasonId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // Accounts table
     this.accountsTable = new dynamodb.Table(this, 'LeaderboardV3AccountsTable', {
       tableName: `${envPrefix}leaderboard-v3-accounts`,
@@ -95,6 +111,58 @@ export class LeaderboardV3Stack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // Seasons table (Phase 5)
+    this.seasonsTable = new dynamodb.Table(this, 'LeaderboardV3SeasonsTable', {
+      tableName: `${envPrefix}leaderboard-v3-seasons`,
+      partitionKey: { name: 'seasonId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy:
+        environmentName === 'prod'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecovery: environmentName === 'prod',
+    });
+
+    // Snapshots table (Phase 5)
+    // pk: "{seasonId}#{date}" e.g., "SEASON1#2026-01-21"
+    // sk: "RANK#{rank:04d}" e.g., "RANK#0001"
+    this.snapshotsTable = new dynamodb.Table(this, 'LeaderboardV3SnapshotsTable', {
+      tableName: `${envPrefix}leaderboard-v3-snapshots`,
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy:
+        environmentName === 'prod'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecovery: environmentName === 'prod',
+      timeToLiveAttribute: 'ttl', // Enable TTL for auto-cleanup of old snapshots
+    });
+
+    // Season-Accounts table (Phase 5)
+    // pk: "SEASON#{seasonId}#ACCOUNT#{accountId}"
+    // sk: "SCORE"
+    this.seasonAccountsTable = new dynamodb.Table(this, 'LeaderboardV3SeasonAccountsTable', {
+      tableName: `${envPrefix}leaderboard-v3-season-accounts`,
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy:
+        environmentName === 'prod'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecovery: environmentName === 'prod',
+    });
+
+    // GSI for season-based leaderboard ranking
+    this.seasonAccountsTable.addGlobalSecondaryIndex({
+      indexName: 'seasonId-userScore-index',
+      partitionKey: { name: 'seasonId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'userScore', type: dynamodb.AttributeType.NUMBER },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // ============================================
     // Lambda Functions (using NodejsFunction for automatic bundling)
     // ============================================
@@ -102,6 +170,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
     const lambdaEnvironment: Record<string, string> = {
       LEADERBOARD_V3_POSTS_TABLE: this.postsTable.tableName,
       LEADERBOARD_V3_ACCOUNTS_TABLE: this.accountsTable.tableName,
+      LEADERBOARD_V3_SEASONS_TABLE: this.seasonsTable.tableName,
+      LEADERBOARD_V3_SNAPSHOTS_TABLE: this.snapshotsTable.tableName,
+      LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE: this.seasonAccountsTable.tableName,
       LEADERBOARD_V3_ADMIN_PASSWORD: adminPassword,
       NODE_OPTIONS: '--enable-source-maps',
     };
@@ -178,6 +249,63 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Seasons Lambda (Phase 5)
+    const adminSeasonsLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdminSeasonsFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-admin-seasons`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'admin-seasons.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Admin season CRUD operations',
+      }
+    );
+
+    // Generate Snapshot Lambda (Phase 5) - triggered by EventBridge
+    const generateSnapshotLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3GenerateSnapshotFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-generate-snapshot`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'generate-snapshot.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.minutes(5), // Longer timeout for batch operations
+        memorySize: 512,
+        description: 'Leaderboard V3: Daily snapshot generation',
+      }
+    );
+
+    // EventBridge rule: Run daily at 09:00 KST (00:00 UTC)
+    const snapshotScheduleRule = new events.Rule(this, 'LeaderboardV3SnapshotSchedule', {
+      ruleName: `${envPrefix}leaderboard-v3-snapshot-schedule`,
+      description: 'Daily snapshot generation for Leaderboard V3 at 09:00 KST',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '0', // 00:00 UTC = 09:00 KST
+      }),
+    });
+
+    snapshotScheduleRule.addTarget(new targets.LambdaFunction(generateSnapshotLambda));
+
+    // Get Top Climbers Lambda (Phase 5)
+    const getTopClimbersLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3GetTopClimbersFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-get-top-climbers`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'get-top-climbers.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Get top rank climbers',
+      }
+    );
+
     // Grant DynamoDB permissions
     this.postsTable.grantReadWriteData(createPostLambda);
     this.postsTable.grantReadData(getLeaderboardLambda);
@@ -186,6 +314,20 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.accountsTable.grantReadWriteData(createPostLambda);
     this.accountsTable.grantReadData(getLeaderboardLambda);
     this.accountsTable.grantReadData(getAccountLambda);
+
+    // Season tables permissions
+    this.seasonsTable.grantReadData(createPostLambda); // Read active season
+    this.seasonsTable.grantReadData(getLeaderboardLambda); // Read season info
+    this.seasonsTable.grantReadWriteData(adminSeasonsLambda); // Full CRUD for admin
+    this.seasonsTable.grantReadWriteData(generateSnapshotLambda); // Read season, update metadata
+    this.seasonAccountsTable.grantReadWriteData(createPostLambda); // Update season-specific aggregates
+    this.seasonAccountsTable.grantReadData(getLeaderboardLambda); // Read season rankings
+    this.seasonAccountsTable.grantReadData(generateSnapshotLambda); // Read scores for snapshot
+    this.snapshotsTable.grantReadData(getLeaderboardLambda); // Read past snapshots
+    this.snapshotsTable.grantReadWriteData(generateSnapshotLambda); // Write snapshots, read previous
+    this.snapshotsTable.grantReadData(getTopClimbersLambda); // Read snapshots for comparison
+    this.seasonsTable.grantReadData(getTopClimbersLambda); // Read season info
+    this.postsTable.grantReadData(adminSeasonsLambda); // Check posts before delete
 
     // Grant read access to UserProfiles table for profile data lookup
     if (userProfilesTable) {
@@ -230,6 +372,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
       new apigw.LambdaIntegration(getLeaderboardLambda)
     );
 
+    // GET /v3/leaderboard/top-climbers
+    const topClimbersResource = leaderboardResource.addResource('top-climbers');
+    topClimbersResource.addMethod(
+      'GET',
+      new apigw.LambdaIntegration(getTopClimbersLambda)
+    );
+
     // GET /v3/accounts/{username}
     const accountsResource = v3Resource.addResource('accounts');
     const accountUsernameResource = accountsResource.addResource('{username}');
@@ -237,6 +386,30 @@ export class LeaderboardV3Stack extends cdk.Stack {
       'GET',
       new apigw.LambdaIntegration(getAccountLambda)
     );
+
+    // Admin Seasons API routes (Phase 5)
+    const adminResource = v3Resource.addResource('admin');
+    const adminSeasonsResource = adminResource.addResource('seasons');
+    const adminSeasonsIntegration = new apigw.LambdaIntegration(adminSeasonsLambda);
+
+    // POST /v3/admin/seasons - Create season
+    // GET /v3/admin/seasons - List seasons
+    adminSeasonsResource.addMethod('POST', adminSeasonsIntegration);
+    adminSeasonsResource.addMethod('GET', adminSeasonsIntegration);
+
+    // GET/PATCH/DELETE /v3/admin/seasons/{seasonId}
+    const adminSeasonIdResource = adminSeasonsResource.addResource('{seasonId}');
+    adminSeasonIdResource.addMethod('GET', adminSeasonsIntegration);
+    adminSeasonIdResource.addMethod('PATCH', adminSeasonsIntegration);
+    adminSeasonIdResource.addMethod('DELETE', adminSeasonsIntegration);
+
+    // POST /v3/admin/seasons/{seasonId}/activate
+    const adminSeasonActivateResource = adminSeasonIdResource.addResource('activate');
+    adminSeasonActivateResource.addMethod('POST', adminSeasonsIntegration);
+
+    // POST /v3/admin/seasons/{seasonId}/end
+    const adminSeasonEndResource = adminSeasonIdResource.addResource('end');
+    adminSeasonEndResource.addMethod('POST', adminSeasonsIntegration);
 
     // ============================================
     // Outputs
@@ -256,6 +429,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
     new cdk.CfnOutput(this, 'LeaderboardV3AccountsTableName', {
       value: this.accountsTable.tableName,
       description: 'Leaderboard V3 Accounts Table Name',
+    });
+
+    new cdk.CfnOutput(this, 'LeaderboardV3SeasonsTableName', {
+      value: this.seasonsTable.tableName,
+      description: 'Leaderboard V3 Seasons Table Name',
+    });
+
+    new cdk.CfnOutput(this, 'LeaderboardV3SnapshotsTableName', {
+      value: this.snapshotsTable.tableName,
+      description: 'Leaderboard V3 Snapshots Table Name',
+    });
+
+    new cdk.CfnOutput(this, 'LeaderboardV3SeasonAccountsTableName', {
+      value: this.seasonAccountsTable.tableName,
+      description: 'Leaderboard V3 Season Accounts Table Name',
     });
   }
 }

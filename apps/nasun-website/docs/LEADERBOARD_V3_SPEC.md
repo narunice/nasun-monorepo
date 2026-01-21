@@ -1,5 +1,39 @@
 # Nasun Community Leaderboard System v3 기획안
 
+## 구현 현황 (2026-01-21 업데이트)
+
+| Phase | 설명 | 상태 |
+|-------|------|------|
+| Phase 1 | 데이터 모델 & 백엔드 | ✅ 완료 |
+| Phase 2 | Admin UI | ✅ 완료 |
+| Phase 3 | 공개 리더보드 | ✅ 완료 |
+| Phase 4 | 프로필 데이터 동기화 | ✅ 완료 |
+| Phase 5 | 시즌 기반 독립 리더보드 (백엔드) | ✅ 완료 |
+| Phase 6 | 시즌 기반 독립 리더보드 (프론트엔드) | ⏳ 예정 |
+
+### Phase 5 구현 파일
+
+**CDK Stack**
+- `cdk/lib/leaderboard-v3-stack.ts` - 테이블 3개, Lambda 6개, EventBridge 스케줄
+
+**Lambda Handlers**
+- `lambda-src/leaderboard-v3/src/handlers/admin-seasons.ts` - 시즌 CRUD
+- `lambda-src/leaderboard-v3/src/handlers/generate-snapshot.ts` - 일일 스냅샷 생성
+- `lambda-src/leaderboard-v3/src/handlers/get-top-climbers.ts` - Top Climbers 조회
+- `lambda-src/leaderboard-v3/src/handlers/get-leaderboard.ts` - 시즌/스냅샷 지원 추가
+- `lambda-src/leaderboard-v3/src/handlers/create-post.ts` - seasonId 자동 할당
+
+**Services & Types**
+- `lambda-src/leaderboard-v3/src/services/dynamodb-client.ts` - 시즌 관련 쿼리 추가
+- `lambda-src/leaderboard-v3/src/types/index.ts` - Season, Snapshot, SeasonAccountScore 타입
+
+**DynamoDB Tables**
+- `leaderboard-v3-seasons` - 시즌 메타데이터
+- `leaderboard-v3-snapshots` - 일일 스냅샷 (TTL 90일)
+- `leaderboard-v3-season-accounts` - 시즌별 계정 집계
+
+---
+
 ## 1. 개요
 
 ### 목적
@@ -329,16 +363,20 @@ interface LeaderboardEntry {
 
 ---
 
-## 9. 향후 확장 여지 (v3.1+)
+## 9. 향후 확장 여지 (v3.2+)
 
-| Feature | 설명 | 우선순위 |
-|---------|------|----------|
-| Bulk Import | CSV 일괄 업로드 | High |
-| 플랫폼 확장 | Discord, Farcaster | Medium |
-| 시즌별 스냅샷 | Weekly/Monthly 자동 저장 | Medium |
-| Season Reset | 시즌 리셋과 연계 | Medium |
-| Account Badges | Community Organizer 등 | Low |
-| 온체인 연동 | NFT Badge 발급 | Low |
+| Feature | 설명 | 우선순위 | 상태 |
+|---------|------|----------|------|
+| 시즌 기반 리더보드 | 독립적 시즌 관리 | **P0** | ✅ Phase 5 백엔드 완료 |
+| Daily Snapshots | 매일 스냅샷 자동 생성 | **P0** | ✅ Phase 5 백엔드 완료 |
+| Top Climbers | 순위 상승자 하이라이트 | **P1** | ✅ Phase 5 백엔드 완료 |
+| Rank Change Indicators | ↑↓=✨ 순위 변동 표시 | **P1** | ✅ Phase 5 백엔드 완료 |
+| Bulk Import | CSV 일괄 업로드 | Medium | 미정 |
+| 플랫폼 확장 | Discord, Farcaster | Medium | 미정 |
+| User Search + Highlight | 사용자 검색 + 자동 스크롤 | **P2** | ⏳ 프론트엔드 구현 필요 |
+| Snapshot Date Picker | 과거 날짜 스냅샷 조회 | **P2** | ✅ Phase 5 백엔드 완료 |
+| Account Badges | Community Organizer 등 | Low | 미정 |
+| 온체인 연동 | NFT Badge 발급 | Low | 미정 |
 
 ---
 
@@ -367,11 +405,28 @@ interface LeaderboardEntry {
 12. 사용자 검색
 13. 내 랭킹 카드 (X 연동 시)
 
-### Phase 4: 프로필 데이터 표시 (Internal Data Sync)
+### Phase 4: 프로필 데이터 표시 (Internal Data Sync) ✅ 완료
 14. UserProfiles 테이블에 GSI 추가 (`twitterHandle-index`)
 15. create-post Lambda에서 UserProfiles 조회 로직 추가
 16. auth-twitter callback Lambda에서 리더보드 프로필 동기화
 17. 프론트엔드 프로필 이미지 및 displayName 표시
+
+### Phase 5: 시즌 기반 독립 리더보드 (백엔드) ✅ 완료
+18. DynamoDB 테이블 생성 (seasons, snapshots, season-accounts)
+19. Posts 테이블 GSI 추가 (`seasonId-createdAt-index`)
+20. admin-seasons Lambda (시즌 CRUD)
+21. create-post Lambda 수정 (seasonId 자동 할당)
+22. generate-snapshot Lambda + EventBridge 스케줄 (매일 09:00 KST)
+23. get-top-climbers Lambda
+24. get-leaderboard Lambda 수정 (시즌/스냅샷 지원)
+
+### Phase 6: 시즌 기반 독립 리더보드 (프론트엔드) ⏳ 예정
+25. Admin 시즌 관리 UI
+26. 시즌 선택기 컴포넌트
+27. 스냅샷 날짜 선택기
+28. Top Climbers Spotlight 컴포넌트
+29. Rank Change Indicator 컴포넌트
+30. 사용자 검색 + 자동 하이라이트
 
 ---
 
@@ -476,3 +531,450 @@ Admin 포스트 등록 → X handle 추출 → UserProfiles 조회 (GSI)
 | Eve | 3 (avg 2.0) | 3 | 오늘 | 3.2 | 1.20 | 1.00 | **3.8** |
 
 **결과**: Alice(꾸준 + 고품질) > Carol(소량 + 고품질) > Bob(다량 + 오래됨) > Eve(소량 + 신규) > Dave(스팸성 + 비활성)
+
+---
+
+## 13. 시즌 기반 독립 리더보드 시스템 (Phase 5) ✅ 백엔드 구현 완료
+
+### 개요
+
+V2 시스템에서는 이벤트 기간 리더보드가 전체 누적 데이터의 날짜 필터링에 의존했다.
+V3에서는 **시즌별 완전 독립 계산** 방식을 채택하여 더 유연하고 관리하기 쉬운 구조를 구현한다.
+
+### 구현 상태 (2026-01-21)
+
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| DynamoDB 테이블 (3개) | ✅ | `leaderboard-v3-stack.ts` |
+| Posts 테이블 GSI | ✅ | `seasonId-createdAt-index` |
+| 시즌 CRUD Lambda | ✅ | `admin-seasons.ts` |
+| 스냅샷 생성 Lambda | ✅ | `generate-snapshot.ts` |
+| Top Climbers Lambda | ✅ | `get-top-climbers.ts` |
+| 리더보드 시즌 지원 | ✅ | `get-leaderboard.ts` |
+| EventBridge 스케줄 | ✅ | 매일 09:00 KST |
+| 프론트엔드 UI | ⏳ | Phase 6 예정 |
+
+### V2 vs V3 비교
+
+| 항목 | V2 (의존적) | V3 (독립적) |
+|------|-------------|-------------|
+| 이벤트 점수 계산 | 누적 데이터 → 날짜 필터링 | 시즌별 개별 집계 |
+| 데이터 의존성 | 누적 테이블 필수 | 시즌 테이블만 조회 |
+| 시즌 간 간섭 | 가능 | 불가능 |
+| 쿼리 복잡도 | 높음 | 낮음 |
+
+### V3 시즌 특징
+
+1. **포스트 귀속**: 각 포스트는 생성 시점의 활성 시즌에 자동 귀속
+2. **독립 집계**: 시즌별로 별도의 계정 집계 레코드 유지
+3. **접근 제어**: 사용자는 현재 시즌만 조회, 관리자만 누적(All-time) 조회 가능
+4. **스냅샷 기반**: 매일 자동 스냅샷으로 순위 변동 추적
+
+### 시즌 상태 전이
+
+```
+upcoming ──► active ──► ended ──► archived
+    │           │          │          │
+    │           │          │          └─ 데이터 압축, TTL 적용
+    │           │          └─ 최종 스냅샷 생성, 읽기 전용
+    │           └─ 포스트 수집 중, 매일 스냅샷
+    └─ 관리자만 포스트 등록 가능
+```
+
+### 시즌 간 갭 처리
+
+- 활성 시즌이 없는 기간: 공개 리더보드에 "No active season" 표시
+- 관리자는 `upcoming` 상태의 시즌에 미리 포스트 등록 가능
+- 겹치는 시즌은 허용하지 않음 (날짜 중복 검증)
+
+---
+
+## 14. 스냅샷 시스템
+
+### 개요
+
+Top Climbers 기능과 순위 변동 표시를 위해 매일 리더보드 스냅샷을 생성한다.
+
+### 스냅샷 생성 타이밍
+
+- **시간**: 매일 09:00 KST (00:00 UTC)
+- **트리거**: EventBridge Scheduler
+- **대상**: 활성(active) 상태인 시즌의 리더보드
+
+### 스냅샷 생성 프로세스
+
+```
+1. 활성 시즌 조회 (status = 'active')
+2. 해당 시즌의 Season-Account 레코드 전체 조회
+3. 각 계정의 userScore 계산
+   - FreshnessMultiplier는 스냅샷 시점 기준
+4. 점수 내림차순 정렬 → 순위 부여
+5. 전일 스냅샷 조회 → rankChange 계산
+6. Snapshots 테이블에 BatchWrite (상위 500명)
+7. Seasons 테이블 메타데이터 업데이트
+   - totalPosts, totalAccounts, topScore
+```
+
+### Rank Change 계산
+
+```typescript
+interface RankChange {
+  direction: 'up' | 'down' | 'same' | 'new';
+  amount: number;
+}
+
+function calculateRankChange(currentRank: number, previousRank?: number): RankChange {
+  if (previousRank === undefined) {
+    return { direction: 'new', amount: 0 };
+  }
+  const change = previousRank - currentRank;
+  if (change > 0) return { direction: 'up', amount: change };
+  if (change < 0) return { direction: 'down', amount: Math.abs(change) };
+  return { direction: 'same', amount: 0 };
+}
+```
+
+### 스냅샷 보존 정책
+
+| 스냅샷 유형 | 보존 기간 | TTL |
+|------------|----------|-----|
+| 일반 스냅샷 | 90일 | 적용 |
+| 최종 스냅샷 (시즌 종료 시) | 영구 | 미적용 |
+| 아카이브된 시즌 | 관리자 결정 | 선택적 |
+
+### 스냅샷 데이터 구조
+
+```typescript
+interface DailySnapshot {
+  pk: string;               // "{seasonId}#{date}" e.g., "SEASON1#2026-01-21"
+  sk: string;               // "RANK#{rank:04d}"
+  accountId: string;
+  username: string;
+  platform: Platform;
+  userScore: number;
+  rank: number;
+  previousDayRank?: number;
+  rankChange: RankChange;
+  // Score breakdown
+  totalPostScore: number;
+  postCount: number;
+  uniqueActiveDays: number;
+  rawScore: number;
+  consistencyBonus: number;
+  freshnessMultiplier: number;
+  // Profile (denormalized)
+  displayName?: string;
+  profileImageUrl?: string;
+  isRegistered?: boolean;
+  // Meta
+  snapshotDate: string;     // YYYY-MM-DD
+  snapshotTime: string;     // ISO timestamp
+  ttl?: number;             // Unix timestamp for auto-delete
+}
+```
+
+---
+
+## 15. Top Climbers 기능
+
+### 개요
+
+일정 기간 동안 순위가 가장 많이 상승한 사용자 5명을 하이라이트하는 기능.
+사용자 참여 동기 부여와 커뮤니티 활성화를 목적으로 한다.
+
+### 시간 범위 옵션
+
+| 옵션 | 설명 | 비교 대상 |
+|------|------|----------|
+| Today | 지난 24시간 | 어제 스냅샷 vs 오늘 스냅샷 |
+| 7D | 지난 7일 | 7일 전 스냅샷 vs 오늘 |
+| 4W | 지난 4주 | 28일 전 스냅샷 vs 오늘 |
+
+### Top Climbers 계산
+
+```typescript
+interface TopClimber {
+  rank: number;              // 1-5
+  username: string;
+  displayName?: string;
+  profileImageUrl?: string;
+  currentRank: number;
+  previousRank: number;
+  rankImprovement: number;   // previousRank - currentRank
+  currentScore: number;
+  previousScore: number;
+  scoreChange: number;
+  percentageIncrease: number;
+}
+
+async function getTopClimbers(
+  seasonId: string,
+  timeRange: 'today' | '7d' | '4w',
+  limit: number = 5
+): Promise<TopClimber[]> {
+  const today = getTodayDate();
+  const compareDate = getCompareDate(today, timeRange);
+
+  const currentSnapshot = await getSnapshot(seasonId, today);
+  const previousSnapshot = await getSnapshot(seasonId, compareDate);
+
+  const climbers = currentSnapshot
+    .map(current => {
+      const previous = previousSnapshot.find(p => p.accountId === current.accountId);
+      if (!previous) return null; // New entry, not a climber
+
+      const improvement = previous.rank - current.rank;
+      if (improvement <= 0) return null; // Not improved
+
+      return {
+        ...current,
+        previousRank: previous.rank,
+        rankImprovement: improvement,
+        previousScore: previous.userScore,
+        scoreChange: current.userScore - previous.userScore,
+        percentageIncrease: ((current.userScore - previous.userScore) / previous.userScore) * 100,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.rankImprovement - a.rankImprovement)
+    .slice(0, limit);
+
+  return climbers.map((c, i) => ({ ...c, rank: i + 1 }));
+}
+```
+
+### UI 표시 요소
+
+각 Top Climber 카드에 표시되는 정보:
+
+1. **순위 뱃지**: #1 ~ #5
+2. **프로필**: 이미지 + 이름 + @username
+3. **현재 순위**: 현재 리더보드 순위
+4. **순위 상승**: "+47 positions" 형태
+5. **점수 변화**: 현재 점수 vs 이전 점수
+6. **상승률**: "+125%" 형태
+7. **액션 버튼**: "View in Leaderboard" (해당 사용자로 스크롤)
+
+### 캐싱 정책
+
+- **캐시 시간**: 30분 (스냅샷 기반이므로 자주 변하지 않음)
+- **캐시 키**: `top-climbers:{seasonId}:{timeRange}`
+
+---
+
+## 16. DynamoDB 스키마 확장
+
+### 신규 테이블 1: `leaderboard-v3-seasons`
+
+```typescript
+interface Season {
+  seasonId: string;         // PK: "SEASON1", "SEASON2"
+  sk: string;               // SK: "METADATA"
+  name: string;             // "Season 1"
+  description?: string;
+  startDate: string;        // "2026-01-01"
+  endDate: string;          // "2026-01-31"
+  status: 'upcoming' | 'active' | 'ended' | 'archived';
+  isDefault: boolean;       // 현재 공개 시즌
+  totalPosts?: number;
+  totalAccounts?: number;
+  topScore?: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+}
+```
+
+### 신규 테이블 2: `leaderboard-v3-snapshots`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| pk | String (PK) | `{seasonId}#{date}` |
+| sk | String (SK) | `RANK#{rank:04d}` |
+
+### 신규 테이블 3: `leaderboard-v3-season-accounts`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| pk | String (PK) | `SEASON#{seasonId}#ACCOUNT#{accountId}` |
+| sk | String (SK) | `SCORE` |
+
+### 기존 테이블 확장: `leaderboard-v3-posts`
+
+추가 필드:
+- `seasonId: string` - 포스트가 속한 시즌
+
+추가 GSI:
+- **Name**: `seasonId-createdAt-index`
+- **PK**: `seasonId`
+- **SK**: `createdAt`
+- **Projection**: ALL
+
+---
+
+## 17. API 엔드포인트 확장 ✅ 구현 완료
+
+### Admin 시즌 관리 ✅
+
+```
+POST   /v3/admin/seasons                      # 시즌 생성
+GET    /v3/admin/seasons                      # 시즌 목록
+GET    /v3/admin/seasons/{seasonId}           # 시즌 상세
+PATCH  /v3/admin/seasons/{seasonId}           # 시즌 수정
+DELETE /v3/admin/seasons/{seasonId}           # 시즌 삭제 (포스트 없을 때만)
+POST   /v3/admin/seasons/{seasonId}/activate  # 수동 활성화
+POST   /v3/admin/seasons/{seasonId}/end       # 수동 종료
+```
+
+### Public 리더보드 ✅
+
+```
+GET    /v3/leaderboard                        # 현재 시즌 (실시간 계산)
+GET    /v3/leaderboard?seasonId=...           # 특정 시즌
+GET    /v3/leaderboard?snapshotDate=...       # 과거 스냅샷
+GET    /v3/leaderboard?cumulative=true        # 전체 누적 (관리자 인증 필요)
+GET    /v3/leaderboard/top-climbers           # Top Climbers
+```
+
+### Query Parameters
+
+**GET /v3/leaderboard**
+- `seasonId`: string (optional, default: active season)
+- `snapshotDate`: string `YYYY-MM-DD` (optional, 과거 스냅샷 조회)
+- `cumulative`: `true` (관리자 전용, Authorization 필요)
+- `limit`: number (default: 100, max: 500)
+- `offset`: number (default: 0)
+- `breakdown`: `true` (점수 상세 내역 포함)
+
+**GET /v3/leaderboard/top-climbers**
+- `range`: `today` | `7d` | `4w` (default: `7d`)
+- `seasonId`: string (optional, default: active season)
+- `limit`: number (default: 10, max: 50)
+
+---
+
+## 18. 구현 우선순위
+
+### P0 (필수) ✅ 백엔드 완료
+
+| 기능 | 이유 | 상태 |
+|------|------|------|
+| Daily Snapshots | Top Climbers 및 순위 변동의 기반 데이터 | ✅ `generate-snapshot.ts` |
+| Season/Event 기간 관리 | 사용자 대상 리더보드의 핵심 | ✅ `admin-seasons.ts` |
+
+### P1 (높음) ✅ 백엔드 완료
+
+| 기능 | 이유 | 상태 |
+|------|------|------|
+| Top Climbers Spotlight | 사용자 참여 동기 부여 | ✅ `get-top-climbers.ts` |
+| Rank Change Indicators (↑↓=✨) | 순위 변동 시각화 | ✅ `get-leaderboard.ts` |
+
+### P2 (중간) ✅ 백엔드 완료
+
+| 기능 | 이유 | 상태 |
+|------|------|------|
+| Snapshot Date Picker | 과거 랭킹 조회 | ✅ `?snapshotDate=` 쿼리 |
+| User Search + Auto-highlight | UX 편의성 | ⏳ 프론트엔드 구현 필요 |
+
+### P3 (낮음)
+
+| 기능 | 이유 | 상태 |
+|------|------|------|
+| My Rank Card | V3는 수동 큐레이션이라 덜 중요 | ⏳ 미정 |
+| Rank History Charts | 분석용 | ⏳ 미정 |
+
+---
+
+## 19. 마이그레이션 전략
+
+### Step 1: LEGACY 시즌 생성
+
+기존 포스트를 "LEGACY" 시즌으로 일괄 할당:
+
+```typescript
+const legacySeason: Season = {
+  seasonId: 'LEGACY',
+  sk: 'METADATA',
+  name: 'Legacy (Pre-Season)',
+  description: 'Posts created before season system',
+  startDate: '2026-01-01',  // 가장 오래된 포스트 날짜
+  endDate: new Date().toISOString().split('T')[0],
+  status: 'ended',
+  isDefault: false,
+  createdAt: new Date().toISOString(),
+  createdBy: 'system',
+};
+```
+
+### Step 2: 기존 포스트 마이그레이션
+
+```typescript
+async function migrateExistingPosts() {
+  const posts = await scanAllPosts();
+  for (const post of posts) {
+    await updatePost(post.postId, { seasonId: 'LEGACY' });
+  }
+}
+```
+
+### Step 3: Season-Account 재계산
+
+LEGACY 시즌의 집계 데이터 생성:
+
+```typescript
+async function rebuildSeasonAccounts(seasonId: string) {
+  const posts = await getPostsBySeason(seasonId);
+  const accountMap = new Map();
+
+  for (const post of posts) {
+    // 계정별로 집계
+    aggregatePostToAccount(accountMap, post);
+  }
+
+  // Season-Account 레코드 생성
+  await batchWriteSeasonAccounts(seasonId, accountMap);
+}
+```
+
+### Step 4: 첫 실제 시즌 생성
+
+```typescript
+const season1: Season = {
+  seasonId: 'SEASON1',
+  sk: 'METADATA',
+  name: 'Season 1',
+  description: 'First official season',
+  startDate: '2026-02-01',
+  endDate: '2026-02-28',
+  status: 'upcoming',
+  isDefault: true,
+  createdAt: new Date().toISOString(),
+  createdBy: 'admin',
+};
+```
+
+---
+
+## 20. Phase 5 검증 계획
+
+### 시즌 관리 테스트
+- [ ] 시즌 CRUD 정상 작동
+- [ ] 날짜 중복 검증
+- [ ] 상태 전이 (upcoming → active → ended)
+- [ ] 활성 시즌 자동 감지
+
+### 스냅샷 테스트
+- [ ] 매일 09:00 KST 자동 생성
+- [ ] Rank Change 계산 정확성
+- [ ] TTL 적용 (90일)
+- [ ] 최종 스냅샷 영구 보존
+
+### Top Climbers 테스트
+- [ ] 시간 범위별 정확한 계산 (today/7d/4w)
+- [ ] 신규 진입자 제외 (climber가 아님)
+- [ ] 상위 5명 정렬
+
+### 성능 테스트
+- [ ] 스냅샷 생성 < 30초 (500명 기준)
+- [ ] Top Climbers 조회 < 1초
+- [ ] 시즌별 리더보드 조회 < 500ms
