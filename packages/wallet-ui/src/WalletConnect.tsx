@@ -45,11 +45,7 @@ import { TransactionHistoryPanel } from "./TransactionHistoryPanel";
 import { PortfolioPanel } from "./PortfolioPanel";
 import { NasunLinkWizard } from "./NasunLinkWizard";
 import { AdvancedToggle } from "./AdvancedToggle";
-import {
-  LedgerConnect,
-  LedgerBrowserWarning,
-  LedgerErrorDisplay,
-} from "./ledger";
+import { LedgerConnect, LedgerBrowserWarning, LedgerErrorDisplay } from "./ledger";
 import { useAdvancedMode, useUISettingsStore } from "./stores";
 
 type ViewMode =
@@ -127,7 +123,9 @@ function LockedStateUI({
 
   return (
     <div className="p-4 w-full ">
-      <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white mb-3">Unlock Wallet</h3>
+      <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white mb-3">
+        Unlock Wallet
+      </h3>
 
       {isLocked && (
         <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
@@ -293,7 +291,7 @@ export function WalletConnect({
       }
       setLoadingProvider(null);
     },
-    [zkLogin]
+    [zkLogin],
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>("main");
@@ -322,9 +320,9 @@ export function WalletConnect({
   // Save backup pending state to localStorage when entering backup mode
   // This allows parent components (like HomePage) to keep the modal mounted
   useEffect(() => {
-    if (viewMode === 'create-backup' && mnemonic) {
+    if (viewMode === "create-backup" && mnemonic) {
       try {
-        localStorage.setItem('nasun_wallet_backup_pending', 'true');
+        localStorage.setItem("nasun_wallet_backup_pending", "true");
       } catch {
         // Ignore localStorage errors
       }
@@ -333,7 +331,12 @@ export function WalletConnect({
 
   // Fetch NFTs when unlocked (only active tab uses the data)
   // Auto-refresh every 15 seconds to catch new NFTs (e.g., after voting)
-  const { data: nfts = [], isLoading: nftsLoading, hasNextPage: nftsHasNextPage, nextCursor: nftsNextCursor } = useNFTs({
+  const {
+    data: nfts = [],
+    isLoading: nftsLoading,
+    hasNextPage: nftsHasNextPage,
+    nextCursor: nftsNextCursor,
+  } = useNFTs({
     limit: 50,
     cursor: nftCursor,
     refetchInterval: nftCursor ? undefined : 15000, // Disable auto-refresh when loading more
@@ -347,9 +350,9 @@ export function WalletConnect({
       setAccumulatedNfts(nfts);
     } else if (nfts.length > 0) {
       // Loading more - append to existing
-      setAccumulatedNfts(prev => {
-        const existingIds = new Set(prev.map(n => n.objectId));
-        const newNfts = nfts.filter(n => !existingIds.has(n.objectId));
+      setAccumulatedNfts((prev) => {
+        const existingIds = new Set(prev.map((n) => n.objectId));
+        const newNfts = nfts.filter((n) => !existingIds.has(n.objectId));
         return [...prev, ...newNfts];
       });
     }
@@ -378,10 +381,7 @@ export function WalletConnect({
   const { isEVM, chain } = useChain();
   const storedEVMAddress = isEVM ? getStoredEVMAddress() : null;
   const evmAddressForHook: string | undefined = storedEVMAddress ?? undefined;
-  const {
-    balance: evmBalance,
-    isLoading: evmBalanceLoading,
-  } = useEVMBalance(evmAddressForHook);
+  const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(evmAddressForHook);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -389,12 +389,17 @@ export function WalletConnect({
       const target = event.target as Node;
       const isInsideDesktopDropdown = dropdownRef.current?.contains(target);
       const isInsideMobileDropdown = mobileDropdownRef.current?.contains(target);
-      
+
       // Check if click is inside the network selector modal (rendered via portal)
       const isInsideModal = (target as Element).closest?.('[data-network-modal="true"]');
 
       // Only close if click is outside desktop dropdown, mobile dropdown, AND modal
-      if (dropdownRef.current && !isInsideDesktopDropdown && !isInsideMobileDropdown && !isInsideModal) {
+      if (
+        dropdownRef.current &&
+        !isInsideDesktopDropdown &&
+        !isInsideMobileDropdown &&
+        !isInsideModal
+      ) {
         setShowDropdown(false);
         // Reset view when closing dropdown
         if (viewMode !== "create-backup") {
@@ -430,7 +435,7 @@ export function WalletConnect({
   const handleBackupConfirmed = useCallback(() => {
     // Clear backup pending flag
     try {
-      localStorage.removeItem('nasun_wallet_backup_pending');
+      localStorage.removeItem("nasun_wallet_backup_pending");
     } catch {
       // Ignore localStorage errors
     }
@@ -458,7 +463,7 @@ export function WalletConnect({
       setViewMode("main");
       setShowDropdown(false);
     },
-    [importFromMnemonic]
+    [importFromMnemonic],
   );
 
   // Import from private key
@@ -468,7 +473,7 @@ export function WalletConnect({
       setViewMode("main");
       setShowDropdown(false);
     },
-    [importFromPrivateKey]
+    [importFromPrivateKey],
   );
 
   // Export private key
@@ -476,7 +481,7 @@ export function WalletConnect({
     async (pwd: string) => {
       return await exportPrivateKey(pwd);
     },
-    [exportPrivateKey]
+    [exportPrivateKey],
   );
 
   // Reset view
@@ -561,7 +566,12 @@ export function WalletConnect({
               placeholder="Confirm Password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && password.length >= 8 && password === confirmPassword && handleCreate()}
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                password.length >= 8 &&
+                password === confirmPassword &&
+                handleCreate()
+              }
               className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
@@ -656,8 +666,18 @@ export function WalletConnect({
               onClick={() => setViewMode("main")}
               className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
             <h3 className="font-medium text-gray-900 dark:text-white md:text-base">Portfolio</h3>
@@ -723,11 +743,23 @@ export function WalletConnect({
               onClick={() => setViewMode("main")}
               className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
-            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Add Hardware Key</h3>
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
+              Add Hardware Key
+            </h3>
           </div>
 
           <LedgerBrowserWarning />
@@ -743,11 +775,7 @@ export function WalletConnect({
               </p>
             </div>
 
-            <LedgerConnect
-              status={ledgerStatus}
-              onConnect={handleLedgerConnect}
-              variant="button"
-            />
+            <LedgerConnect status={ledgerStatus} onConnect={handleLedgerConnect} variant="button" />
 
             {ledgerError && (
               <LedgerErrorDisplay
@@ -770,11 +798,23 @@ export function WalletConnect({
               onClick={() => setViewMode("main")}
               className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
-            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Select Account</h3>
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
+              Select Account
+            </h3>
           </div>
 
           <div className="space-y-2">
@@ -849,7 +889,12 @@ export function WalletConnect({
               className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
               Send
             </button>
@@ -858,7 +903,12 @@ export function WalletConnect({
               className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16m-7 6h7"
+                />
               </svg>
               Change Account
             </button>
@@ -876,7 +926,12 @@ export function WalletConnect({
               className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
               </svg>
               Disconnect Hardware Key
             </button>
@@ -1060,11 +1115,17 @@ export function WalletConnect({
                       </div>
                     </div>
                     {/* Additional tokens - show all registered on devnet/testnet, only with balance on mainnet */}
-                    {(networkType === 'mainnet'
+                    {(networkType === "mainnet"
                       ? Object.entries(balances?.tokens || {})
                       : getAllTokens()
-                          .filter((t) => t.symbol !== 'NSN')
-                          .map((t) => [t.symbol, balances?.tokens?.[t.symbol] || { formatted: '0' }] as const)
+                          .filter((t) => t.symbol !== "NSN")
+                          .map(
+                            (t) =>
+                              [
+                                t.symbol,
+                                balances?.tokens?.[t.symbol] || { formatted: "0" },
+                              ] as const,
+                          )
                     ).map(([symbol, token]) => (
                       <div key={symbol} className="flex items-center justify-between text-sm">
                         <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
@@ -1078,7 +1139,6 @@ export function WalletConnect({
                     ))}
                   </div>
                 )}
-
               </div>
 
               <button
@@ -1229,7 +1289,7 @@ export function WalletConnect({
                       disabled={nftsLoading}
                       className="w-full mt-2 py-2 text-sm md:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
                     >
-                      {nftsLoading ? 'Loading...' : 'Load More NFTs'}
+                      {nftsLoading ? "Loading..." : "Load More NFTs"}
                     </button>
                   )}
                 </>
@@ -1283,7 +1343,7 @@ export function WalletConnect({
 
           {/* Network Selector */}
           <div className="border-t border-gray-200 dark:border-zinc-700">
-            <NetworkSelector currentNetwork={networkType} />
+            <NetworkSelector />
           </div>
         </div>
       );
@@ -1310,7 +1370,9 @@ export function WalletConnect({
         <div className="w-full ">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
-            <span className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">Connected Address</span>
+            <span className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">
+              Connected Address
+            </span>
             <CopyableAddress
               value={account.address}
               shorten={8}
@@ -1405,11 +1467,17 @@ export function WalletConnect({
                       </div>
                     </div>
                     {/* Additional tokens - show all registered on devnet/testnet, only with balance on mainnet */}
-                    {(networkType === 'mainnet'
+                    {(networkType === "mainnet"
                       ? Object.entries(balances?.tokens || {})
                       : getAllTokens()
-                          .filter((t) => t.symbol !== 'NSN')
-                          .map((t) => [t.symbol, balances?.tokens?.[t.symbol] || { formatted: '0' }] as const)
+                          .filter((t) => t.symbol !== "NSN")
+                          .map(
+                            (t) =>
+                              [
+                                t.symbol,
+                                balances?.tokens?.[t.symbol] || { formatted: "0" },
+                              ] as const,
+                          )
                     ).map(([symbol, token]) => (
                       <div key={symbol} className="flex items-center justify-between text-sm">
                         <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
@@ -1423,7 +1491,6 @@ export function WalletConnect({
                     ))}
                   </div>
                 )}
-
               </div>
 
               <button
@@ -1559,7 +1626,7 @@ export function WalletConnect({
                     <div className="flex justify-between">
                       <span>Account Type:</span>
                       <span className="text-gray-700 dark:text-zinc-300">
-                        {isZkLoggedIn ? 'zkLogin' : isLedgerConnected ? 'Ledger' : 'Local'}
+                        {isZkLoggedIn ? "zkLogin" : isLedgerConnected ? "Ledger" : "Local"}
                       </span>
                     </div>
                     {account?.address && (
@@ -1576,9 +1643,7 @@ export function WalletConnect({
                   <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400 space-y-1">
                     <div className="flex justify-between items-center">
                       <span>Network:</span>
-                      <span className="text-gray-700 dark:text-zinc-300">
-                        {chain.name}
-                      </span>
+                      <span className="text-gray-700 dark:text-zinc-300">{chain.name}</span>
                     </div>
                   </div>
                 </>
@@ -1642,7 +1707,7 @@ export function WalletConnect({
                       disabled={nftsLoading}
                       className="w-full mt-2 py-2 text-sm md:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
                     >
-                      {nftsLoading ? 'Loading...' : 'Load More NFTs'}
+                      {nftsLoading ? "Loading..." : "Load More NFTs"}
                     </button>
                   )}
                 </>
@@ -1705,7 +1770,7 @@ export function WalletConnect({
 
           {/* Network Selector */}
           <div className="border-t border-gray-200 dark:border-zinc-700">
-            <NetworkSelector currentNetwork={networkType} />
+            <NetworkSelector />
           </div>
         </div>
       );
@@ -1742,11 +1807,7 @@ export function WalletConnect({
               : dropdownAlign === "center"
                 ? "left-1/2 -translate-x-1/2"
                 : "right-0"
-          } ${
-            dropdownPosition === "top"
-              ? "bottom-full mb-2"
-              : "top-full mt-2"
-          }`}
+          } ${dropdownPosition === "top" ? "bottom-full mb-2" : "top-full mt-2"}`}
         >
           {renderDropdownContent()}
         </div>
@@ -1769,7 +1830,7 @@ export function WalletConnect({
               {renderDropdownContent()}
             </div>
           </>,
-          document.body
+          document.body,
         )}
     </div>
   );

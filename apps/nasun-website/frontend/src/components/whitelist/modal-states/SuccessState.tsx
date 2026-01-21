@@ -24,9 +24,9 @@ export function SuccessState({ walletAddress, joinedAt, onClose, onWithdraw }: S
   return (
     <DialogContent className={DIALOG_CONTENT_CLASS}>
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-3 text-nasun-c3">
+        <DialogTitle className="flex items-center gap-3 text-nasun-white">
           <CheckCircle2 className="h-6 w-6" />
-          <span>{t("whitelist.modal.success.title")}</span>
+          <h6>{t("whitelist.modal.success.title")}</h6>
         </DialogTitle>
         <DialogDescription className="text-xs/snug md:text-sm/snug xl:text-base/snug">
           {t("whitelist.modal.success.description")}
@@ -35,13 +35,14 @@ export function SuccessState({ walletAddress, joinedAt, onClose, onWithdraw }: S
 
       <div className="space-y-4 py-4">
         <DividerBox
-          color="c3"
+          color="w1"
+          titleClassName="text-base"
           icon={<CheckCircle2 className="w-5 h-5" />}
           title={t("whitelist.modal.success.walletAddress")}
           padding="sm"
           className="!p-3"
         >
-          <code className="text-nasun-c3 break-all font-mono text-xs/snug md:text-sm/snug xl:text-base/snug">
+          <code className="text-nasun-white/80 break-all font-mono text-xs/snug md:text-sm/snug xl:text-base/snug">
             {walletAddress}
           </code>
         </DividerBox>
@@ -55,10 +56,10 @@ export function SuccessState({ walletAddress, joinedAt, onClose, onWithdraw }: S
       </div>
 
       <DialogFooter className="flex-col sm:flex-row gap-3">
-        <Button variant="outlineC3" size="md" onClick={onWithdraw} className="w-full sm:w-auto">
+        <Button variant="outlineC5" size="md" onClick={onWithdraw} className="w-full sm:w-auto">
           {t("whitelist.modal.success.withdraw")}
         </Button>
-        <Button variant="c3" size="md" onClick={onClose} className="w-full sm:w-auto">
+        <Button variant="c5" size="md" onClick={onClose} className="w-full sm:w-auto">
           {t("whitelist.modal.success.close")}
         </Button>
       </DialogFooter>

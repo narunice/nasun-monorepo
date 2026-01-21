@@ -130,7 +130,7 @@ export const RankHistorySection: React.FC<RankHistorySectionProps> = ({
       {/* Section Title with Share Button (only when embedded) */}
       {embedded && (
         <div className="flex items-center justify-between mb-4">
-          <h5 className="uppercase text-nasun-white">{t("rankHistory.title")}</h5>
+          <h5 className="font-medium uppercase text-nasun-white">{t("rankHistory.title")}</h5>
           {data && data.history.length > 0 && !isLoading && (
             <ShareRankHistoryButton
               chartRef={chartContainerRef}

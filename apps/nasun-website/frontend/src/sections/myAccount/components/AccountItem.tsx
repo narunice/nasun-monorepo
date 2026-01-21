@@ -16,12 +16,12 @@ const LABELS: Record<string, string> = {
   nasun: "Nasun Wallet",
 };
 
-export const AccountItem: FC<AccountItemProps> = ({ 
-  provider, 
-  identifier, 
-  statusBadge, 
-  actions, 
-  children 
+export const AccountItem: FC<AccountItemProps> = ({
+  provider,
+  identifier,
+  statusBadge,
+  actions,
+  children,
 }) => {
   return (
     <div className="flex flex-col py-3 px-4 bg-gray-800/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
@@ -34,18 +34,14 @@ export const AccountItem: FC<AccountItemProps> = ({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-nasun-white">{LABELS[provider]}</span>
+            <span className="font-medium text-nasun-white">{LABELS[provider]}</span>
             {statusBadge}
           </div>
-          <div className="text-xs text-nasun-white/50 truncate">
-            {identifier || "Not linked"}
-          </div>
+          <div className="text-sm font-light text-nasun-white/50 truncate">{identifier || "Not linked"}</div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
-          {actions}
-        </div>
+        <div className="flex items-center gap-2">{actions}</div>
       </div>
       {children && <div className="mt-2 pl-11">{children}</div>}
     </div>

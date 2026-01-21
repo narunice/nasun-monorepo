@@ -438,3 +438,55 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 225, 211, 0.4) rgba(0, 0, 0, 0.2);
 }
+
+/* ========================================
+   Nasun Wallet Connect Button Overrides
+   패키지 UI를 수정하지 않고 nasun-website에서만 스타일 변경
+   ======================================== */
+
+/* Main connect button - match filledOutlineC3 style with sm size */
+.nasun-wallet-connect > div > button {
+  background: rgba(148, 225, 211, 0.1) !important;
+  border: 1px solid rgba(148, 225, 211, 0.7) !important;
+  border-radius: 9999px !important;
+  color: #94e1d3 !important;
+  font-family: "Rubik", sans-serif !important;
+  font-size: 0.75rem !important;
+  padding: 0.125rem 1.25rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.nasun-wallet-connect > div > button:hover {
+  background: transparent !important;
+  border-color: #94e1d3 !important;
+}
+
+.nasun-wallet-connect > div > button:active {
+  transform: scale(0.97);
+}
+
+/* Responsive font size to match sm button (text-xs lg:text-sm) */
+@media (min-width: 1024px) {
+  .nasun-wallet-connect > div > button {
+    font-size: 0.875rem !important;
+  }
+}
+
+/* Button text color */
+.nasun-wallet-connect > div > button > span:not(:first-child) {
+  color: #94e1d3 !important;
+}
+
+/* Chevron icon */
+.nasun-wallet-connect > div > button > svg {
+  color: #94e1d3 !important;
+}
+
+/* Dropdown panel - ensure high z-index and match site styling */
+.nasun-wallet-connect > div > div:not(:first-child) {
+  z-index: 9999 !important;
+  border-radius: 0.5rem !important;
+  border-color: rgba(148, 225, 211, 0.3) !important;
+  background: rgba(10, 10, 15, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+}

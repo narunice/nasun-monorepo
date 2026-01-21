@@ -41,67 +41,66 @@ export const buttonVariants = cva(
 
         // Outline Scarlet (투명 배경)
         outlineScarlet:
-          "ring-1 ring-inset ring-nasun-scarlet bg-transparent text-nasun-scarlet hover:bg-nasun-scarlet/10",
+          "ring-1 ring-inset ring-nasun-scarlet/70 bg-transparent text-nasun-scarlet hover:bg-nasun-scarlet/10",
 
         // Outline c1 (투명 배경)
         outlineC1:
-          "ring-1 ring-inset ring-nasun-c1 bg-transparent text-nasun-c1 hover:bg-nasun-c1/10",
+          "ring-1 ring-inset ring-nasun-c1/70 bg-transparent text-nasun-c1 hover:bg-nasun-c1/10",
 
         // Outline c2 (투명 배경)
         outlineC2:
-          "ring-1 ring-inset ring-nasun-c2 bg-transparent text-nasun-c2 hover:bg-nasun-c2/10",
+          "ring-1 ring-inset ring-nasun-c2/70 bg-transparent text-nasun-c2 hover:bg-nasun-c2/10",
 
         // Outline c3 (투명 배경)
         outlineC3:
-          "ring-1 ring-inset ring-nasun-c3 bg-transparent text-nasun-c3 hover:bg-nasun-c3/10",
+          "ring-1 ring-inset ring-nasun-c3/70 bg-transparent text-nasun-c3 hover:bg-nasun-c3/10",
 
         // Outline c4 (투명 배경)
         outlineC4:
-          "ring-1 ring-inset ring-nasun-c4 bg-transparent text-nasun-c4 hover:bg-nasun-c4/10",
+          "ring-1 ring-inset ring-nasun-c4/70 bg-transparent text-nasun-c4 hover:bg-nasun-c4/10",
 
         // Outline c5 (투명 배경)
         outlineC5:
-          "ring-1 ring-inset ring-nasun-c5 bg-transparent text-nasun-c5 hover:bg-nasun-c5/10",
+          "ring-1 ring-inset ring-nasun-c5/70 bg-transparent text-nasun-c5 hover:bg-nasun-c5/10",
 
         // Outline Coral (투명 배경)
         outlineCoral:
-          "ring-1 ring-inset ring-nasun-coral bg-transparent text-nasun-coral hover:bg-nasun-coral/10",
+          "ring-1 ring-inset ring-nasun-coral/70 bg-transparent text-nasun-coral hover:bg-nasun-coral/10",
 
         // Outline Gensol Red (투명 배경)
         outlineGensolRed:
-          "ring-1 ring-inset ring-nasun-gensol-red bg-transparent text-nasun-gensol-red hover:bg-nasun-gensol-red/10",
+          "ring-1 ring-inset ring-nasun-gensol-red/70 bg-transparent text-nasun-gensol-red hover:bg-nasun-gensol-red/10",
 
         // Filled Outline Scarlet (연한 배경색)
         filledOutlineScarlet:
-          "ring-1 ring-inset ring-nasun-scarlet bg-nasun-scarlet/10 text-nasun-scarlet hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-scarlet/70 bg-nasun-scarlet/10 text-nasun-scarlet hover:bg-transparent hover:ring-nasun-scarlet",
 
         // Filled Outline c1 (연한 배경색)
         filledOutlineC1:
-          "ring-1 ring-inset ring-nasun-c1 bg-nasun-c1/10 text-nasun-c1 hover:bg-transparent",
-
+          "ring-1 ring-inset ring-nasun-c1/70 bg-nasun-c1/10 text-nasun-c1 hover:bg-transparent hover:ring-nasun-c1",
         // Filled Outline c2 (연한 배경색)
         filledOutlineC2:
-          "ring-1 ring-inset ring-nasun-c2 bg-nasun-c2/10 text-nasun-c2 hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-c2/70 bg-nasun-c2/10 text-nasun-c2 hover:bg-transparent hover:ring-nasun-c2",
 
         // Filled Outline c3 (연한 배경색)
         filledOutlineC3:
-          "ring-1 ring-inset ring-nasun-c3 bg-nasun-c3/10 text-nasun-c3 hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-c3/70 bg-nasun-c3/10 text-nasun-c3 hover:bg-transparent hover:ring-nasun-c3",
 
         // Filled Outline c4 (연한 배경색)
         filledOutlineC4:
-          "ring-1 ring-inset ring-nasun-c4 bg-nasun-c4/10 text-nasun-c4 hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-c4/70 bg-nasun-c4/10 text-nasun-c4 hover:bg-transparent hover:ring-nasun-c4",
 
         // Filled Outline c5 (연한 배경색)
         filledOutlineC5:
-          "ring-1 ring-inset ring-nasun-c5 bg-nasun-c5/10 text-nasun-c5 hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-c5/70 bg-nasun-c5/10 text-nasun-c5 hover:bg-transparent hover:ring-nasun-c5",
 
         // Filled Outline Coral (연한 배경색)
         filledOutlineCoral:
-          "ring-1 ring-inset ring-nasun-coral bg-nasun-coral/10 text-nasun-coral hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-coral/70 bg-nasun-coral/10 text-nasun-coral hover:bg-transparent hover:ring-nasun-coral",
 
         // Filled Outline Gensol Red (연한 배경색)
         filledOutlineGensolRed:
-          "ring-1 ring-inset ring-nasun-gensol-red bg-nasun-gensol-red/10 text-nasun-gensol-red hover:bg-transparent",
+          "ring-1 ring-inset ring-nasun-gensol-red/70 bg-nasun-gensol-red/10 text-nasun-gensol-red hover:bg-transparent hover:ring-nasun-gensol-red",
 
         // Ghost: 기존 유지
         ghost: "text-nasun-white hover:bg-nasun-c1/20",
