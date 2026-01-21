@@ -91,6 +91,26 @@ function validateDateRange(startDate: string, endDate: string): { valid: boolean
   return { valid: true };
 }
 
+/**
+ * Determine initial status based on dates and existing active season
+ */
+function determineInitialStatus(
+  startDate: string,
+  endDate: string,
+  hasActiveSeason: boolean
+): SeasonStatus {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  if (endDate < today) {
+    return 'ended';
+  }
+  if (startDate <= today && today <= endDate) {
+    // Current period, but if there's already an active season, keep as upcoming
+    return hasActiveSeason ? 'upcoming' : 'active';
+  }
+  return 'upcoming';
+}
+
 // ============================================
 // Season Operations
 // ============================================
@@ -123,6 +143,30 @@ async function createSeason(request: CreateSeasonRequest, createdBy: string): Pr
     throw new Error(`Date range overlaps with season ${overlapping.seasonId}`);
   }
 
+  // Determine initial status based on dates
+  const hasActiveSeason = allSeasons.some((s) => s.status === 'active');
+  const initialStatus = determineInitialStatus(startDate, endDate, hasActiveSeason);
+
+  // If this season becomes active, it should also be the default
+  const isDefault = initialStatus === 'active';
+
+  // If this season becomes active, deactivate any existing default season
+  if (isDefault) {
+    const currentDefault = allSeasons.find((s) => s.isDefault);
+    if (currentDefault) {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: SEASONS_TABLE,
+          Key: { seasonId: currentDefault.seasonId, sk: 'METADATA' },
+          UpdateExpression: 'SET isDefault = :isDefault',
+          ExpressionAttributeValues: {
+            ':isDefault': false,
+          },
+        })
+      );
+    }
+  }
+
   const now = new Date().toISOString();
   const season: Season = {
     seasonId,
@@ -131,8 +175,8 @@ async function createSeason(request: CreateSeasonRequest, createdBy: string): Pr
     description,
     startDate,
     endDate,
-    status: 'upcoming',
-    isDefault: false,
+    status: initialStatus,
+    isDefault,
     totalPosts: 0,
     totalAccounts: 0,
     createdAt: now,
