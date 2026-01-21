@@ -11,6 +11,7 @@ const navItems = [
   { path: '/admin', label: 'Dashboard', icon: '📊' },
   { path: '/admin/whitelist', label: 'Whitelist Export', icon: '📋' },
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
+  { path: '/admin/leaderboard-v3', label: 'Leaderboard V3', icon: '🏆' },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {

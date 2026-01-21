@@ -1,8 +1,55 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
+
+/**
+ * Sync profile data to leaderboard-v3-accounts table
+ * Updates displayName, profileImageUrl, isRegistered for accounts that match the Twitter handle
+ */
+async function syncLeaderboardProfile(
+  dynamoClient: DynamoDBClient,
+  tableName: string,
+  twitterHandle: string,
+  displayName: string,
+  profileImageUrl?: string
+): Promise<void> {
+  try {
+    // Query leaderboard-v3-accounts by platform-username-index
+    const queryResult = await dynamoClient.send(new QueryCommand({
+      TableName: tableName,
+      IndexName: 'platform-username-index',
+      KeyConditionExpression: 'platform = :platform AND username = :username',
+      ExpressionAttributeValues: {
+        ':platform': { S: 'twitter' },
+        ':username': { S: twitterHandle.toLowerCase() },
+      },
+      Limit: 1,
+    }));
+
+    if (queryResult.Items && queryResult.Items.length > 0) {
+      const accountId = queryResult.Items[0].accountId?.S;
+      if (accountId) {
+        // Update profile fields
+        await dynamoClient.send(new UpdateItemCommand({
+          TableName: tableName,
+          Key: { accountId: { S: accountId } },
+          UpdateExpression: 'SET displayName = :displayName, profileImageUrl = :profileImageUrl, isRegistered = :isRegistered',
+          ExpressionAttributeValues: {
+            ':displayName': { S: displayName },
+            ':profileImageUrl': profileImageUrl ? { S: profileImageUrl } : { NULL: true },
+            ':isRegistered': { BOOL: true },
+          },
+        }));
+        console.log(`Synced leaderboard profile for @${twitterHandle}`);
+      }
+    }
+  } catch (error) {
+    // Log but don't fail the auth flow if leaderboard sync fails
+    console.warn('Failed to sync leaderboard profile:', error);
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,27 +158,43 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
 
     const existingProfile = await dynamoClient.send(getCommand);
     
+    // Normalize twitterHandle to lowercase (X handles are case-insensitive)
+    const normalizedTwitterHandle = twitterUser.username.toLowerCase();
     let userProfile: any;
-    
+
     if (existingProfile.Item) {
       // Update existing profile with latest Twitter info
       userProfile = {
         identityId: cognitoIdentity.identityId,
         provider: 'Twitter',
         username: twitterUser.name,
-        twitterHandle: twitterUser.username,
+        twitterHandle: normalizedTwitterHandle,
         twitterId: twitterUser.id,
         profileImageUrl: twitterUser.profile_image_url,
         verified: twitterUser.verified,
         updatedAt: new Date().toISOString(),
       };
+
+      // Update existing profile in DynamoDB
+      await dynamoClient.send(new UpdateItemCommand({
+        TableName: USER_PROFILES_TABLE,
+        Key: { identityId: { S: cognitoIdentity.identityId } },
+        UpdateExpression: 'SET username = :username, twitterHandle = :handle, profileImageUrl = :image, verified = :verified, updatedAt = :updatedAt',
+        ExpressionAttributeValues: {
+          ':username': { S: twitterUser.name },
+          ':handle': { S: normalizedTwitterHandle },
+          ':image': { S: twitterUser.profile_image_url || '' },
+          ':verified': { BOOL: twitterUser.verified || false },
+          ':updatedAt': { S: userProfile.updatedAt },
+        },
+      }));
     } else {
       // Create new user profile
       userProfile = {
         identityId: cognitoIdentity.identityId,
         provider: 'Twitter',
         username: twitterUser.name,
-        twitterHandle: twitterUser.username,
+        twitterHandle: normalizedTwitterHandle,
         twitterId: twitterUser.id,
         profileImageUrl: twitterUser.profile_image_url,
         verified: twitterUser.verified,
@@ -153,6 +216,18 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       });
 
       await dynamoClient.send(putCommand);
+    }
+
+    // 5.5 Sync profile to leaderboard-v3-accounts (if table is configured)
+    const LEADERBOARD_V3_ACCOUNTS_TABLE = process.env.LEADERBOARD_V3_ACCOUNTS_TABLE;
+    if (LEADERBOARD_V3_ACCOUNTS_TABLE) {
+      await syncLeaderboardProfile(
+        dynamoClient,
+        LEADERBOARD_V3_ACCOUNTS_TABLE,
+        twitterUser.username,
+        twitterUser.name,
+        twitterUser.profile_image_url
+      );
     }
 
     // 6. Clean up session
