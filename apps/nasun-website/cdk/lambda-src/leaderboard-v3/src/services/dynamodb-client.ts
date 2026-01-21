@@ -550,40 +550,51 @@ export async function updateSeasonAccountAggregates(params: {
         lastSeenAt,
       });
 
+    // Build update expression dynamically to avoid undefined values
+    const updateParts = [
+      'totalPostScore = :totalPostScore',
+      'postCount = :postCount',
+      'signalCountTotal = :signalCount',
+      'activeDates = :activeDates',
+      'uniqueActiveDays = :uniqueDays',
+      'userScore = :userScore',
+      'rawScore = :rawScore',
+      'consistencyBonus = :consistencyBonus',
+      'freshnessMultiplier = :freshnessMultiplier',
+      'lastSeenAt = :lastSeen',
+      'isRegistered = :isRegistered',
+    ];
+
+    const expressionValues: Record<string, unknown> = {
+      ':totalPostScore': newTotalPostScore,
+      ':postCount': newPostCount,
+      ':signalCount': newSignalCount,
+      ':activeDates': newActiveDates,
+      ':uniqueDays': newUniqueDays,
+      ':userScore': userScore,
+      ':rawScore': rawScore,
+      ':consistencyBonus': consistencyBonus,
+      ':freshnessMultiplier': freshnessMultiplier,
+      ':lastSeen': lastSeenAt,
+      ':isRegistered': isRegistered ?? false,
+    };
+
+    // Only include optional profile fields if they have values
+    if (displayName !== undefined) {
+      updateParts.push('displayName = :displayName');
+      expressionValues[':displayName'] = displayName;
+    }
+    if (profileImageUrl !== undefined) {
+      updateParts.push('profileImageUrl = :profileImageUrl');
+      expressionValues[':profileImageUrl'] = profileImageUrl;
+    }
+
     const result = await docClient.send(
       new UpdateCommand({
         TableName: SEASON_ACCOUNTS_TABLE,
         Key: { pk, sk },
-        UpdateExpression: `
-          SET totalPostScore = :totalPostScore,
-              postCount = :postCount,
-              signalCountTotal = :signalCount,
-              activeDates = :activeDates,
-              uniqueActiveDays = :uniqueDays,
-              userScore = :userScore,
-              rawScore = :rawScore,
-              consistencyBonus = :consistencyBonus,
-              freshnessMultiplier = :freshnessMultiplier,
-              lastSeenAt = :lastSeen,
-              displayName = :displayName,
-              profileImageUrl = :profileImageUrl,
-              isRegistered = :isRegistered
-        `,
-        ExpressionAttributeValues: {
-          ':totalPostScore': newTotalPostScore,
-          ':postCount': newPostCount,
-          ':signalCount': newSignalCount,
-          ':activeDates': newActiveDates,
-          ':uniqueDays': newUniqueDays,
-          ':userScore': userScore,
-          ':rawScore': rawScore,
-          ':consistencyBonus': consistencyBonus,
-          ':freshnessMultiplier': freshnessMultiplier,
-          ':lastSeen': lastSeenAt,
-          ':displayName': displayName,
-          ':profileImageUrl': profileImageUrl,
-          ':isRegistered': isRegistered ?? false,
-        },
+        UpdateExpression: `SET ${updateParts.join(', ')}`,
+        ExpressionAttributeValues: expressionValues,
         ReturnValues: 'ALL_NEW',
       })
     );

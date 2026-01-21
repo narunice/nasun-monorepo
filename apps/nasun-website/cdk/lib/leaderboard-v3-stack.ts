@@ -264,6 +264,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Stats Lambda (Phase 7) - Dashboard statistics
+    const adminStatsLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdminStatsFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-admin-stats`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'admin-stats.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Admin dashboard statistics',
+      }
+    );
+
     // Generate Snapshot Lambda (Phase 5) - triggered by EventBridge
     const generateSnapshotLambda = new NodejsFunction(
       this,
@@ -328,6 +343,12 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.snapshotsTable.grantReadData(getTopClimbersLambda); // Read snapshots for comparison
     this.seasonsTable.grantReadData(getTopClimbersLambda); // Read season info
     this.postsTable.grantReadData(adminSeasonsLambda); // Check posts before delete
+
+    // Admin Stats permissions (Phase 7)
+    this.postsTable.grantReadData(adminStatsLambda);
+    this.accountsTable.grantReadData(adminStatsLambda);
+    this.seasonsTable.grantReadData(adminStatsLambda);
+    this.seasonAccountsTable.grantReadData(adminStatsLambda);
 
     // Grant read access to UserProfiles table for profile data lookup
     if (userProfilesTable) {
@@ -410,6 +431,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // POST /v3/admin/seasons/{seasonId}/end
     const adminSeasonEndResource = adminSeasonIdResource.addResource('end');
     adminSeasonEndResource.addMethod('POST', adminSeasonsIntegration);
+
+    // GET /v3/admin/stats - Dashboard statistics (Phase 7)
+    const adminStatsResource = adminResource.addResource('stats');
+    adminStatsResource.addMethod('GET', new apigw.LambdaIntegration(adminStatsLambda));
 
     // ============================================
     // Outputs
