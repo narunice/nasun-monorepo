@@ -36,7 +36,7 @@ export const RankHistoryStatus: FC<RankHistoryStatusProps> = ({
   };
 
   return (
-    <div className={`flex items-center justify-center min-h-[200px] rounded-lg border ${containerClasses[type]}`}>
+    <div className={`flex items-center justify-center min-h-[200px] rounded-sm border ${containerClasses[type]}`}>
       <div className="text-center p-6">
         {icon || defaultIcons[type]}
         <p className="font-medium">{message}</p>

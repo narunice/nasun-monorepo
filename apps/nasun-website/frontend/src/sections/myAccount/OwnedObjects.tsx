@@ -113,7 +113,7 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
           <button
             onClick={() => handlePageClick(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-1 rounded-lg border border-gray-800 disabled:opacity-50"
+            className="px-3 py-1 rounded-sm border border-gray-800 disabled:opacity-50"
           >
             &lt;
           </button>
@@ -122,7 +122,7 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
             <button
               key={page}
               onClick={() => handlePageClick(page)}
-              className={`px-3 py-1 rounded-lg border border-gray-800 ${
+              className={`px-3 py-1 rounded-sm border border-gray-800 ${
                 currentPage === page
                   ? "bg-gray-200 text-black"
                   : "bg-black"
@@ -135,7 +135,7 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
           <button
             onClick={() => handlePageClick(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1 rounded-lg border border-gray-800 disabled:opacity-50"
+            className="px-3 py-1 rounded-sm border border-gray-800 disabled:opacity-50"
           >
             &gt;
           </button>

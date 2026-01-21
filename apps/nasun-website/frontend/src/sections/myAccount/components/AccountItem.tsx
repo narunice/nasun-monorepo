@@ -24,7 +24,7 @@ export const AccountItem: FC<AccountItemProps> = ({
   children,
 }) => {
   return (
-    <div className="flex flex-col py-3 px-4 bg-gray-800/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+    <div className="flex flex-col py-3 px-4 bg-gray-800/60 rounded-sm border border-white/5 hover:border-white/10 transition-colors">
       <div className="flex items-center gap-3">
         {/* Icon */}
         <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full">
