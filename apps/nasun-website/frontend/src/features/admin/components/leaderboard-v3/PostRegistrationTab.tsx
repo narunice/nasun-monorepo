@@ -133,7 +133,7 @@ export function PostRegistrationTab() {
       </OuterBox>
 
       {/* Post Submission Form */}
-      <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+      <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         <h3 className="text-xl font-medium text-nasun-white mb-6">
           Register Post
         </h3>
@@ -151,7 +151,7 @@ export function PostRegistrationTab() {
               onChange={(e) => form.setPostUrl(e.target.value)}
               placeholder="https://x.com/username/status/..."
               autoFocus
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm"
             />
             {/* Account lookup status */}
             {extractedUsername && (
@@ -180,7 +180,7 @@ export function PostRegistrationTab() {
                   key={role}
                   type="button"
                   onClick={() => form.setAccountRole(role)}
-                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all border ${
+                  className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
                     form.accountRole === role
                       ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg'
                       : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
@@ -207,7 +207,7 @@ export function PostRegistrationTab() {
                     key={signal}
                     type="button"
                     onClick={() => form.toggleSignal(signal)}
-                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all border ${
+                    className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
                       isActive
                         ? 'bg-nasun-c3/20 border-nasun-c3/50 text-nasun-c3 shadow-lg'
                         : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
@@ -222,7 +222,7 @@ export function PostRegistrationTab() {
           </div>
 
           {/* Score Preview */}
-          <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg border border-nasun-c5/20">
+          <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-sm border border-nasun-c5/20">
             <div className="text-sm text-nasun-white/60">
               <span className="font-medium text-nasun-white">Score Preview:</span>{' '}
               {form.scorePreview.baseScore} × {form.scorePreview.roleMultiplier} + {form.scorePreview.signalBonus}
@@ -235,7 +235,7 @@ export function PostRegistrationTab() {
           {/* Submit Message */}
           {submitMessage && (
             <div
-              className={`p-4 rounded-lg text-sm ${
+              className={`p-4 rounded-sm text-sm ${
                 submitMessage.type === 'success'
                   ? 'bg-green-950/30 border border-green-900/50 text-green-400'
                   : 'bg-red-950/30 border border-red-900/50 text-red-400'

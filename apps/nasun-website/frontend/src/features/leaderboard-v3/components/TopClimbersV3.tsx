@@ -6,7 +6,6 @@
  */
 
 import React, { useState } from 'react';
-import { OuterBox } from '@/components/ui/OuterBox';
 import { useTopClimbersV3 } from '../hooks/useTopClimbersV3';
 import type { TimeRangeV3 } from '../types';
 import { TIME_RANGE_LABELS } from '../types';
@@ -17,6 +16,21 @@ interface TopClimbersV3Props {
 }
 
 const TIME_RANGES: TimeRangeV3[] = ['today', '7d', '4w'];
+
+/**
+ * Get responsive visibility class for each card based on index
+ * - xl: 5 cards, lg: 4 cards, sm+: 3 cards (minimum 3)
+ */
+const getVisibilityClass = (index: number): string => {
+  switch (index) {
+    case 3:
+      return 'hidden lg:block'; // 4th: lg+ only
+    case 4:
+      return 'hidden xl:block'; // 5th: xl only
+    default:
+      return ''; // 1st, 2nd, 3rd: always visible
+  }
+};
 
 const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
   const [timeRange, setTimeRange] = useState<TimeRangeV3>('7d');
@@ -30,44 +44,44 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
   // Loading skeleton
   if (isLoading) {
     return (
-      <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-nasun-white flex items-center gap-2">
-            <span className="text-xl">🏆</span> Top Climbers
+      <div className="w-full">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+          <h3 className="text-lg font-medium text-nasun-white flex items-center gap-2 uppercase">
+            <span className="text-xl text-yellow-500">🏆</span> TOP CLIMBERS SPOTLIGHT
           </h3>
-          <div className="flex gap-2 animate-pulse">
+          <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-lg animate-pulse">
             {TIME_RANGES.map((r) => (
-              <div key={r} className="h-8 w-16 bg-nasun-c5/20 rounded-lg"></div>
+              <div key={r} className="h-7 w-14 bg-nasun-c4/20 rounded-2xl mx-0.5"></div>
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-48 bg-nasun-c5/10 rounded-lg animate-pulse"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className={getVisibilityClass(i)}>
+              <div className="h-52 bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl animate-pulse"></div>
+            </div>
           ))}
         </div>
-      </OuterBox>
+      </div>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
-        <div className="text-center py-8 text-nasun-white/50">
-          Failed to load top climbers. Please try again later.
-        </div>
-      </OuterBox>
+      <div className="w-full text-center py-8 text-nasun-white/50">
+        Failed to load top climbers. Please try again later.
+      </div>
     );
   }
 
   // No data
   if (!data || data.climbers.length === 0) {
     return (
-      <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-nasun-white flex items-center gap-2">
-            <span className="text-xl">🏆</span> Top Climbers
+      <div className="w-full">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+          <h3 className="text-lg font-medium text-nasun-white flex items-center gap-2 uppercase">
+            <span className="text-xl text-yellow-500">🏆</span> TOP CLIMBERS SPOTLIGHT
           </h3>
           <TimeRangeSelectorInline
             selected={timeRange}
@@ -78,16 +92,16 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         <div className="text-center py-8 text-nasun-white/50">
           No rank improvements in this period yet.
         </div>
-      </OuterBox>
+      </div>
     );
   }
 
   return (
-    <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+    <div className="w-full">
       {/* Header with time range selector */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-nasun-white flex items-center gap-2">
-          <span className="text-xl">🏆</span> Top Climbers
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+        <h3 className="text-lg font-medium text-nasun-white flex items-center gap-2 uppercase">
+          <span className="text-xl text-yellow-500">🏆</span> TOP CLIMBERS SPOTLIGHT
         </h3>
         <TimeRangeSelectorInline
           selected={timeRange}
@@ -96,17 +110,19 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         />
       </div>
 
-      {/* Climber cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Climber cards grid (responsive: xl:5 lg:4 md:3 sm:2 mobile:3 cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {data.climbers.slice(0, 5).map((climber, index) => (
-          <ClimberCardV3 key={climber.accountId} climber={climber} position={index + 1} />
+          <div key={climber.accountId} className={getVisibilityClass(index)}>
+            <ClimberCardV3 climber={climber} position={index + 1} />
+          </div>
         ))}
       </div>
-    </OuterBox>
+    </div>
   );
 };
 
-// Inline time range selector
+// Inline time range selector (V2 pattern)
 interface TimeRangeSelectorInlineProps {
   selected: TimeRangeV3;
   onSelect: (range: TimeRangeV3) => void;
@@ -119,15 +135,15 @@ function TimeRangeSelectorInline({
   ranges,
 }: TimeRangeSelectorInlineProps) {
   return (
-    <div className="flex gap-1 bg-nasun-c6/50 p-1 rounded-lg">
+    <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-lg">
       {ranges.map((range) => (
         <button
           key={range}
           onClick={() => onSelect(range)}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+          className={`px-3 py-1 rounded-2xl text-sm font-light transition-all ${
             selected === range
-              ? 'bg-nasun-c4 text-nasun-white shadow'
-              : 'text-nasun-white/50 hover:text-nasun-white hover:bg-white/5'
+              ? 'bg-nasun-c4/80 text-nasun-white'
+              : 'text-nasun-white hover:bg-gray-700'
           }`}
         >
           {TIME_RANGE_LABELS[range]}

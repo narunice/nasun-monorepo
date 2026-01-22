@@ -11,6 +11,7 @@ interface SeasonSelectorProps {
   selectedSeasonId?: string;
   onSelect: (seasonId: string) => void;
   isLoading?: boolean;
+  selectedSeason?: Season;
 }
 
 export function SeasonSelector({
@@ -18,6 +19,7 @@ export function SeasonSelector({
   selectedSeasonId,
   onSelect,
   isLoading = false,
+  selectedSeason,
 }: SeasonSelectorProps) {
   // Sort seasons: active first, then by startDate desc
   const sortedSeasons = [...seasons].sort((a, b) => {
@@ -30,11 +32,52 @@ export function SeasonSelector({
     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
   });
 
+  // Status badge component (V2 style - subtle)
+  const StatusBadge = ({ status }: { status: string }) => {
+    if (status === 'active') {
+      return (
+        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c3/20 text-nasun-c3">
+          Live
+        </span>
+      );
+    }
+    if (status === 'upcoming') {
+      return (
+        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c4/20 text-nasun-c4">
+          Soon
+        </span>
+      );
+    }
+    if (status === 'ended' || status === 'archived') {
+      return (
+        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-600/50 text-gray-400">
+          Ended
+        </span>
+      );
+    }
+    return null;
+  };
+
+  // Date range display
+  const DateRange = () => {
+    if (!selectedSeason) return null;
+    return (
+      <span className="text-sm text-nasun-white/50">
+        {selectedSeason.startDate} - {selectedSeason.endDate}
+      </span>
+    );
+  };
+
   if (isLoading) {
     return (
-      <div className="flex gap-2 animate-pulse">
-        <div className="h-10 w-32 bg-nasun-c6/30 rounded-lg"></div>
-        <div className="h-10 w-32 bg-nasun-c6/30 rounded-lg"></div>
+      <div className="border-b border-gray-700 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="h-8 w-24 bg-gray-700 rounded"></div>
+            <div className="h-8 w-24 bg-gray-700 rounded"></div>
+          </div>
+          <div className="h-5 w-40 bg-gray-700 rounded"></div>
+        </div>
       </div>
     );
   }
@@ -46,49 +89,66 @@ export function SeasonSelector({
   // Use tabs for 3 or fewer seasons, dropdown for more
   if (seasons.length <= 3) {
     return (
-      <div className="flex justify-center gap-2 bg-nasun-c6/30 p-1 rounded-xl w-fit mx-auto border border-nasun-c5/20">
-        {sortedSeasons.map((season) => {
-          const isSelected = season.seasonId === selectedSeasonId;
-          const isEnded = season.status === 'ended' || season.status === 'archived';
+      <div className="border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          {/* Tabs */}
+          <div className="flex items-center space-x-4">
+            {sortedSeasons.map((season) => {
+              const isSelected = season.seasonId === selectedSeasonId;
 
-          return (
-            <button
-              key={season.seasonId}
-              onClick={() => onSelect(season.seasonId)}
-              className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                isSelected
-                  ? 'bg-nasun-c4 text-nasun-white shadow-lg'
-                  : 'text-nasun-white/50 hover:text-nasun-white hover:bg-white/5'
-              }`}
-            >
-              {season.name}
-              {isEnded && <span className="ml-1 text-xs opacity-60">(Ended)</span>}
-            </button>
-          );
-        })}
+              return (
+                <button
+                  key={season.seasonId}
+                  onClick={() => onSelect(season.seasonId)}
+                  className={`relative px-1 py-2 font-medium outline-none flex items-center transition-colors ${
+                    isSelected ? 'text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {season.name}
+                  <StatusBadge status={season.status} />
+                  {isSelected && (
+                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-white rounded-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {/* Date Range */}
+          <DateRange />
+        </div>
       </div>
     );
   }
 
   // Dropdown for many seasons
   return (
-    <div className="flex justify-center">
-      <select
-        value={selectedSeasonId || ''}
-        onChange={(e) => onSelect(e.target.value)}
-        className="bg-nasun-c6/30 border border-nasun-c5/20 rounded-lg px-4 py-2 text-nasun-white font-medium focus:outline-none focus:border-nasun-c3/50 cursor-pointer"
-      >
-        {sortedSeasons.map((season) => {
-          const isEnded = season.status === 'ended' || season.status === 'archived';
-          return (
-            <option key={season.seasonId} value={season.seasonId}>
-              {season.name}
-              {isEnded ? ' (Ended)' : ''}
-              {season.status === 'active' ? ' (Active)' : ''}
-            </option>
-          );
-        })}
-      </select>
+    <div className="border-b border-gray-700 pb-2">
+      <div className="flex items-center justify-between">
+        <select
+          value={selectedSeasonId || ''}
+          onChange={(e) => onSelect(e.target.value)}
+          className="bg-transparent text-white text-sm font-medium px-2 py-1.5 rounded focus:outline-none cursor-pointer border border-gray-600 hover:border-gray-500"
+        >
+          {sortedSeasons.map((season) => {
+            const statusLabel =
+              season.status === 'active'
+                ? ' (Live)'
+                : season.status === 'upcoming'
+                  ? ' (Soon)'
+                  : season.status === 'ended' || season.status === 'archived'
+                    ? ' (Ended)'
+                    : '';
+            return (
+              <option key={season.seasonId} value={season.seasonId} className="bg-gray-800">
+                {season.name}
+                {statusLabel}
+              </option>
+            );
+          })}
+        </select>
+        {/* Date Range */}
+        <DateRange />
+      </div>
     </div>
   );
 }
