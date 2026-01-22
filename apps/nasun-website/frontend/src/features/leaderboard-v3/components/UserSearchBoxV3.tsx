@@ -5,10 +5,10 @@
  * V2 UserSearchBox pattern.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X, User } from 'lucide-react';
-import { useUserSearchV3 } from '../hooks/useUserSearchV3';
-import type { SearchAccountResult } from '../services/leaderboardV3Api';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Search, X, User } from "lucide-react";
+import { useUserSearchV3 } from "../hooks/useUserSearchV3";
+import type { SearchAccountResult } from "../services/leaderboardV3Api";
 
 interface UserSearchBoxV3Props {
   seasonId?: string;
@@ -19,11 +19,11 @@ interface UserSearchBoxV3Props {
 export function UserSearchBoxV3({
   seasonId,
   onUserSelect,
-  placeholder = 'Search user...',
+  placeholder = "Search user...",
 }: UserSearchBoxV3Props) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +50,8 @@ export function UserSearchBoxV3({
         setIsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,20 +66,20 @@ export function UserSearchBoxV3({
       setIsOpen(false);
       onUserSelect(account.username, account.rank);
     },
-    [onUserSelect]
+    [onUserSelect],
   );
 
   const handleClear = () => {
-    setQuery('');
-    setDebouncedQuery('');
+    setQuery("");
+    setDebouncedQuery("");
     setIsOpen(false);
     inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && data?.accounts && data.accounts.length > 0) {
+    if (e.key === "Enter" && data?.accounts && data.accounts.length > 0) {
       handleSelect(data.accounts[0]);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setIsOpen(false);
     }
   };
@@ -87,7 +87,7 @@ export function UserSearchBoxV3({
   const showDropdown = isOpen && debouncedQuery.length >= 2;
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-xs">
+    <div ref={containerRef} className="relative w-full max-w-sm pl-1">
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nasun-white/40" />
