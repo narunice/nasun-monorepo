@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { Trophy } from 'lucide-react';
+import { SectionTitle } from '@/components/ui/SectionTitle';
 import { useTopClimbersV3 } from '../hooks/useTopClimbersV3';
 import type { TimeRangeV3 } from '../types';
 import { TIME_RANGE_LABELS } from '../types';
@@ -49,9 +50,9 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Trophy className="w-6 h-6 text-yellow-500" />
-            <h3 className="font-medium text-nasun-white uppercase">
+            <SectionTitle as="h3" className="uppercase font-medium !mb-0">
               Top Climbers Spotlight
-            </h3>
+            </SectionTitle>
           </div>
           <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-lg animate-pulse">
             {TIME_RANGES.map((r) => (
@@ -86,9 +87,9 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Trophy className="w-6 h-6 text-yellow-500" />
-            <h3 className="font-medium text-nasun-white uppercase">
+            <SectionTitle as="h3" className="uppercase font-medium !mb-0">
               Top Climbers Spotlight
-            </h3>
+            </SectionTitle>
           </div>
           <TimeRangeSelectorInline
             selected={timeRange}
@@ -107,9 +108,12 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
     <div className="w-full">
       {/* Header with time range selector */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <h3 className="text-lg font-medium text-nasun-white flex items-center gap-2 uppercase">
-          <span className="text-xl text-yellow-500">🏆</span> TOP CLIMBERS SPOTLIGHT
-        </h3>
+        <div className="flex items-center gap-2">
+          <Trophy className="w-6 h-6 text-yellow-500" />
+          <SectionTitle as="h3" className="uppercase font-medium !mb-0">
+            Top Climbers Spotlight
+          </SectionTitle>
+        </div>
         <TimeRangeSelectorInline
           selected={timeRange}
           onSelect={setTimeRange}
