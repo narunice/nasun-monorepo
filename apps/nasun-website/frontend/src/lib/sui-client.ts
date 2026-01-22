@@ -1,6 +1,38 @@
 import { SuiClient } from '@mysten/sui/client';
 
-const RPC_URL = "https://rpc.devnet.nasun.io";
+// Trusted RPC URL whitelist - only these URLs are allowed
+const ALLOWED_RPC_URLS = [
+  'https://rpc.devnet.nasun.io',
+  'https://rpc.testnet.nasun.io',
+  'https://rpc.mainnet.nasun.io',
+] as const;
+
+const DEFAULT_RPC_URL = 'https://rpc.devnet.nasun.io';
+
+/**
+ * Get validated RPC URL
+ * Falls back to default if environment variable is not in whitelist
+ */
+function getValidatedRpcUrl(): string {
+  const envUrl = import.meta.env.VITE_SUI_RPC_URL;
+
+  if (!envUrl) {
+    return DEFAULT_RPC_URL;
+  }
+
+  // Validate against whitelist
+  if (ALLOWED_RPC_URLS.includes(envUrl as typeof ALLOWED_RPC_URLS[number])) {
+    return envUrl;
+  }
+
+  // URL not in whitelist - log warning and use default
+  console.warn(
+    `[sui-client] RPC URL "${envUrl}" not in whitelist. Using default: ${DEFAULT_RPC_URL}`
+  );
+  return DEFAULT_RPC_URL;
+}
+
+const RPC_URL = getValidatedRpcUrl();
 
 export const suiClient = new SuiClient({ url: RPC_URL });
 

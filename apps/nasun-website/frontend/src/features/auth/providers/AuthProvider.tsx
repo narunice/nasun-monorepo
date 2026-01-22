@@ -28,7 +28,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     clearError();
     try {
-      const cachedUser = localStorage.getItem("nasun_user_profile");
+      // Security: Using sessionStorage for sensitive user data to reduce XSS exposure
+      const cachedUser = sessionStorage.getItem("nasun_user_profile");
       if (cachedUser) {
         setUser(JSON.parse(cachedUser));
       } else {
@@ -52,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isLinkingFlow = !!twitterLinkSession || !!googleLinkSession;
 
     // Skip Twitter OAuth if this is Battalion NFT flow
-    const isBattalionNftTwitterSession = localStorage.getItem("battalion_nft_twitter_session");
+    const isBattalionNftTwitterSession = sessionStorage.getItem("battalion_nft_twitter_session");
     if (isBattalionNftTwitterSession && url.searchParams.has("code")) {
       logger.debug("Skipping AuthContext Twitter OAuth - Battalion NFT flow detected");
       return false;
@@ -129,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Reload user profile to get updated linked accounts
           const updatedProfile = await fetchUserProfile(linkSession.primaryIdentityId);
           if (updatedProfile) {
-            localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+            sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
             setUser(updatedProfile);
           }
         } else if (provider === "Google" && userInfo && googleLinkSession) {
@@ -141,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Reload user profile to get updated linked accounts
           const updatedProfile = await fetchUserProfile(linkSession.primaryIdentityId);
           if (updatedProfile) {
-            localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+            sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
             setUser(updatedProfile);
           }
         } else if (identityId && userInfo) {
@@ -164,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const dbProfile = await ensureUserProfile(finalUserData);
           const userDataToStore = dbProfile || finalUserData;
 
-          localStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
+          sessionStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
           setUser(userDataToStore);
         }
       } else if (identityId && userInfo) {
@@ -190,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Use DynamoDB profile if available, otherwise use finalUserData
         const userDataToStore = dbProfile || finalUserData;
 
-        localStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
+        sessionStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
         setUser(userDataToStore);
       } else {
         throw new Error("Could not establish user identity after redirect.");
@@ -291,8 +292,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         linkedAccounts: profileData.linkedAccounts || {},
       };
 
-      // Save to localStorage and state
-      localStorage.setItem("nasun_user_profile", JSON.stringify(userData));
+      // Save to sessionStorage and state (sessionStorage for security)
+      sessionStorage.setItem("nasun_user_profile", JSON.stringify(userData));
       setUser(userData);
 
       logger.log("MetaMask sign-in successful:", { identityId, walletAddress });
@@ -308,16 +309,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
-      localStorage.removeItem("nasun_user_profile");
+      // Clear sensitive data from sessionStorage
+      sessionStorage.removeItem("nasun_user_profile");
       localStorage.removeItem("auth_provider_preference");
 
       // Reset Battalion NFT Store first
       useBattalionNftStore.getState().reset();
 
+      // Battalion NFT state (UI state can stay in localStorage, but tokens go in sessionStorage)
       localStorage.removeItem("battalion-nft-state");
-      localStorage.removeItem("battalion_nft_twitter_session");
-      localStorage.removeItem("battalion_nft_x_access_token");
+      sessionStorage.removeItem("battalion_nft_twitter_session");
+      sessionStorage.removeItem("battalion_nft_x_access_token");
 
+      // Clear all remaining sessionStorage items
       sessionStorage.clear();
       clearUser();
       logger.log("User logged out successfully");

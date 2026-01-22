@@ -2,20 +2,48 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateSessionId } from '../utils/pkce';
+import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+// SECURITY: Allowed origins whitelist for CORS and redirect URI validation
+const ALLOWED_ORIGINS = [
+  'https://nasun.io',
+  'https://www.nasun.io',
+  'https://staging.nasun.io',
+  'https://gensol.io',
+  'https://www.gensol.io',
+  'http://localhost:5174',
+  'http://localhost:5173',
+];
+
+// SECURITY: Dynamic CORS headers based on validated origin + security headers
+const getSecurityHeaders = (origin?: string) => {
+  const normalizedOrigin = origin?.replace(/\/$/, '').split('/callback')[0];
+  const allowedOrigin = normalizedOrigin && ALLOWED_ORIGINS.includes(normalizedOrigin)
+    ? normalizedOrigin
+    : ALLOWED_ORIGINS[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  };
 };
 
 export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  console.log('Twitter OAuth login request:', JSON.stringify(event, null, 2));
+  console.log('Twitter OAuth login request:', createSafeEventLog(event));
+
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.referer || event.headers?.Referer;
+  const headers = getSecurityHeaders(origin);
 
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: '',
     };
   }
@@ -31,14 +59,27 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
       throw new Error('Missing required environment variables or secrets.');
     }
 
-    // Dynamically determine redirect URI from request origin
-    const origin = event.headers?.origin || event.headers?.Origin || event.headers?.referer || event.headers?.Referer;
     let redirectUri = TWITTER_REDIRECT_URI || 'http://localhost:5174/callback';
 
     if (origin) {
-      const baseUrl = origin.replace(/\/$/, '');
+      // Extract base URL from origin (remove trailing slash)
+      const baseUrl = origin.replace(/\/$/, '').split('/callback')[0];
+
+      // Validate origin against whitelist
+      if (!ALLOWED_ORIGINS.includes(baseUrl)) {
+        console.warn('SECURITY: Rejected invalid origin:', baseUrl);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error: 'Invalid Origin',
+            message: 'The request origin is not in the allowed list.',
+          }),
+        };
+      }
+
       redirectUri = `${baseUrl}/callback`;
-      console.log('Using dynamic redirect URI from origin:', redirectUri);
+      console.log('Using validated redirect URI from origin:', redirectUri);
     } else {
       console.log('No origin header found, using default redirect URI:', redirectUri);
     }
@@ -75,7 +116,7 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
 
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({
         authUrl,
         sessionId,
@@ -83,11 +124,11 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
       }),
     };
   } catch (error: any) {
-    console.error('Twitter login error:', error);
-    
+    console.error('Twitter login error:', maskSensitiveData({ message: error.message, stack: error.stack }));
+
     return {
       statusCode: 500,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({
         error: 'Internal Server Error',
         message: error.message || 'Failed to initialize Twitter OAuth',

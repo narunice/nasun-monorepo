@@ -72,15 +72,16 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         }
 
         // Store Access Token for Battalion NFT verification (Like 조회용)
+        // Security: Using sessionStorage instead of localStorage to reduce XSS exposure
         if (data.xAccessToken) {
-          console.log("[XAuthCard] Storing X Access Token for verification");
-          localStorage.setItem("battalion_nft_x_access_token", data.xAccessToken);
+          console.log("[XAuthCard] Storing X Access Token for verification (sessionStorage)");
+          sessionStorage.setItem("battalion_nft_x_access_token", data.xAccessToken);
         } else {
           console.warn("[XAuthCard] No xAccessToken in response - Like verification may fail");
         }
 
         // Clean up
-        localStorage.removeItem("battalion_nft_twitter_session");
+        sessionStorage.removeItem("battalion_nft_twitter_session");
         window.history.replaceState({}, document.title, window.location.pathname);
 
         // Notify parent component
@@ -106,7 +107,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
     const url = new URL(window.location.href);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
-    const sessionId = localStorage.getItem("battalion_nft_twitter_session");
+    const sessionId = sessionStorage.getItem("battalion_nft_twitter_session");
 
     if (code && state && sessionId) {
       hasHandledRef.current = true;
@@ -132,7 +133,8 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       console.log("[XAuthCard] X OAuth initiated:", { authUrl, sessionId });
 
       // Save session ID for callback verification
-      localStorage.setItem("battalion_nft_twitter_session", sessionId);
+      // Security: Using sessionStorage instead of localStorage to reduce XSS exposure
+      sessionStorage.setItem("battalion_nft_twitter_session", sessionId);
 
       // Redirect to Twitter OAuth
       window.location.href = authUrl;

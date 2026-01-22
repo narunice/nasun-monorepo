@@ -19,6 +19,8 @@ import {
   isZkLoginSessionValid,
   disconnectZkLogin,
   signWithZkLogin,
+  validateOAuthCsrfState,
+  clearOAuthCsrfState,
 } from '../core/zklogin';
 import { useZkLoginStore } from '../stores/zkLoginStore';
 
@@ -243,6 +245,7 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
 /**
  * Hook to check if we're in an OAuth callback
  * Useful for detecting redirect from OAuth provider
+ * Includes CSRF state validation for security
  */
 export function useZkLoginCallback(): {
   isCallback: boolean;
@@ -261,15 +264,40 @@ export function useZkLoginCallback(): {
     };
   }
 
+  // Helper to validate CSRF state and return error if invalid
+  const validateState = (receivedState: string | null): string | null => {
+    if (!receivedState) {
+      // State parameter is required for CSRF protection
+      clearOAuthCsrfState();
+      return 'Missing OAuth state parameter - possible security issue';
+    }
+    try {
+      validateOAuthCsrfState(receivedState);
+      return null; // Validation passed
+    } catch (err) {
+      return err instanceof Error ? err.message : 'OAuth state validation failed';
+    }
+  };
+
   // Check URL hash for id_token (Google returns token in hash)
   const hash = typeof window !== 'undefined' ? window.location.hash : '';
   if (hash) {
     const params = new URLSearchParams(hash.substring(1));
     const idToken = params.get('id_token');
+    const receivedState = params.get('state');
     const error = params.get('error');
     const errorDescription = params.get('error_description');
 
     if (idToken) {
+      // Validate CSRF state before accepting the token
+      const stateError = validateState(receivedState);
+      if (stateError) {
+        return {
+          isCallback: true,
+          jwt: null,
+          error: stateError,
+        };
+      }
       return {
         isCallback: true,
         jwt: idToken,
@@ -278,6 +306,7 @@ export function useZkLoginCallback(): {
     }
 
     if (error) {
+      clearOAuthCsrfState(); // Clean up state on error
       return {
         isCallback: true,
         jwt: null,
@@ -291,9 +320,19 @@ export function useZkLoginCallback(): {
   if (search) {
     const params = new URLSearchParams(search);
     const idToken = params.get('id_token');
+    const receivedState = params.get('state');
     const error = params.get('error');
 
     if (idToken) {
+      // Validate CSRF state before accepting the token
+      const stateError = validateState(receivedState);
+      if (stateError) {
+        return {
+          isCallback: true,
+          jwt: null,
+          error: stateError,
+        };
+      }
       return {
         isCallback: true,
         jwt: idToken,
@@ -302,6 +341,7 @@ export function useZkLoginCallback(): {
     }
 
     if (error) {
+      clearOAuthCsrfState(); // Clean up state on error
       return {
         isCallback: true,
         jwt: null,
