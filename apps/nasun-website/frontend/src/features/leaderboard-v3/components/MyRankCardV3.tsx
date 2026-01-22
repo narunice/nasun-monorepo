@@ -262,7 +262,7 @@ function MyRankCardV3Component({ seasonId }: MyRankCardV3Props) {
           {/* Rank & Score */}
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-nasun-c3">#{data.rank}</span>
+              <span className="text-3xl font-black text-nasun-c1">#{data.rank}</span>
               {data.totalUsers && (
                 <span className="text-xs text-nasun-white/40">/ {data.totalUsers}</span>
               )}
@@ -284,36 +284,26 @@ function MyRankCardV3Component({ seasonId }: MyRankCardV3Props) {
         {/* Share Actions */}
         <div className="pt-3 border-t border-white/10 mt-3">
           <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewRank}
-              className="text-xs text-nasun-white/70 hover:text-nasun-white hover:bg-white/5"
-            >
+            <Button variant="outlineC1" size="sm" onClick={handleViewRank} className="">
               <Eye className="w-3.5 h-3.5 mr-1.5" />
               View
             </Button>
-            <Button variant="c3" size="sm" onClick={handleShareToX} className="text-xs">
+            <Button variant="c1" size="sm" onClick={handleShareToX} className="">
               <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
               Share
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyLink}
-              className="text-xs text-nasun-white/70 hover:text-nasun-white hover:bg-white/5"
-            >
+            <Button variant="outlineC1" size="sm" onClick={handleCopyLink} className="">
               <Link className="w-3.5 h-3.5 mr-1.5" />
               Copy
             </Button>
             <Button
-              variant="ghost"
+              variant="outlineC1"
               size="sm"
               onClick={handleDownloadImage}
               disabled={isGeneratingImage}
-              className="text-xs text-nasun-white/70 hover:text-nasun-white hover:bg-white/5"
+              className=""
             >
               <Download className="w-3.5 h-3.5 mr-1.5" />
               {isGeneratingImage ? "..." : "Image"}
