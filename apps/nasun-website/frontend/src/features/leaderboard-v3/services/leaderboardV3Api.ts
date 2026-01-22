@@ -11,6 +11,7 @@ import type {
   GetSeasonLeaderboardParams,
   GetTopClimbersParams,
   Platform,
+  FeaturedFeedResponse,
 } from '../types';
 
 // Search result interface
@@ -120,6 +121,31 @@ export async function getSeasons(): Promise<Season[]> {
 
   const data = await response.json();
   return data.seasons || [];
+}
+
+/**
+ * Get featured feed (public)
+ * Returns recent posts from top rankers and top climbers
+ */
+export async function getFeaturedFeed(seasonId?: string): Promise<FeaturedFeedResponse> {
+  const searchParams = new URLSearchParams();
+  if (seasonId) searchParams.append('seasonId', seasonId);
+
+  const url = `${LEADERBOARD_V3_API_URL}/v3/feed/featured?${searchParams}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get featured feed: ${response.status}`);
+  }
+
+  return response.json();
 }
 
 /**

@@ -439,3 +439,36 @@ export interface TopClimberEntry {
   rankChange: RankChange;
   currentScore: number;
 }
+
+// ============================================
+// Featured Feed Types (Phase 10)
+// ============================================
+
+export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'climber-1' | 'climber-2' | 'climber-3';
+
+export interface FeaturedFeedItem {
+  type: 'post';
+  postId: string;
+  author: {
+    accountId: string;
+    username: string;
+    originalUsername?: string;
+    displayName?: string;
+    profileImageUrl?: string;
+    badges: BadgeType[];
+  };
+  content: {
+    platform: Platform;
+    postUrl: string;
+    postType: PostType;
+    signals: ContentSignal[];
+    createdAt: string;
+  };
+}
+
+export interface FeaturedFeedResponse {
+  success: boolean;
+  seasonId: string;
+  items: FeaturedFeedItem[];
+  calculatedAt: string;
+}
