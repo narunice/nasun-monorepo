@@ -3,6 +3,7 @@ import { DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateIte
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
+import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
 
 /**
  * Sync profile data to leaderboard-v3-accounts table
@@ -45,25 +46,52 @@ async function syncLeaderboardProfile(
         console.log(`Synced leaderboard profile for @${twitterHandle}`);
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     // Log but don't fail the auth flow if leaderboard sync fails
-    console.warn('Failed to sync leaderboard profile:', error);
+    console.warn('Failed to sync leaderboard profile:', maskSensitiveData({ message: error?.message }));
   }
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// SECURITY: Allowed origins whitelist for CORS validation
+const ALLOWED_ORIGINS = [
+  'https://nasun.io',
+  'https://www.nasun.io',
+  'https://staging.nasun.io',
+  'https://gensol.io',
+  'https://www.gensol.io',
+  'http://localhost:5174',
+  'http://localhost:5173',
+];
+
+// SECURITY: Dynamic CORS headers based on validated origin + security headers
+const getSecurityHeaders = (origin?: string) => {
+  const normalizedOrigin = origin?.replace(/\/$/, '');
+  const allowedOrigin = normalizedOrigin && ALLOWED_ORIGINS.includes(normalizedOrigin)
+    ? normalizedOrigin
+    : ALLOWED_ORIGINS[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  };
 };
 
 export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  console.log('Twitter OAuth callback request:', JSON.stringify(event, null, 2));
+  console.log('Twitter OAuth callback request:', createSafeEventLog(event));
+
+  const origin = event.headers?.origin || event.headers?.Origin;
+  const headers = getSecurityHeaders(origin);
 
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: '',
     };
   }
@@ -76,7 +104,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     if (!code || !state || !sessionId) {
       return {
         statusCode: 400,
-        headers: corsHeaders,
+        headers,
         body: JSON.stringify({
           error: 'Bad Request',
           message: 'Missing required parameters: code, state, sessionId',
@@ -112,7 +140,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     if (!session) {
       return {
         statusCode: 400,
-        headers: corsHeaders,
+        headers,
         body: JSON.stringify({
           error: 'Invalid Session',
           message: 'Session not found or expired',
@@ -123,7 +151,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     if (session.state !== state) {
       return {
         statusCode: 400,
-        headers: corsHeaders,
+        headers,
         body: JSON.stringify({
           error: 'Invalid State',
           message: 'State parameter mismatch',
@@ -234,7 +262,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     await sessionManager.deleteSession(sessionId);
 
     // 7. Return user profile to frontend
-    console.log('User authenticated successfully:', userProfile);
+    console.log('User authenticated successfully:', maskSensitiveData(userProfile));
 
     // NFT Event 흐름일 때는 Access Token도 함께 반환 (Like 조회용)
     const isNftEventFlow = requestBody.battalionNft === true;
@@ -247,17 +275,17 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
 
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify(responseBody),
     };
 
   } catch (error: any) {
-    console.error('Twitter callback error:', error);
+    console.error('Twitter callback error:', maskSensitiveData({ message: error.message, stack: error.stack }));
 
     if (error.response?.status === 401) {
       return {
         statusCode: 401,
-        headers: corsHeaders,
+        headers,
         body: JSON.stringify({
           error: 'Unauthorized',
           message: 'Twitter authentication failed',
@@ -267,7 +295,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
 
     return {
       statusCode: 500,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({
         error: 'Internal Server Error',
         message: error.message || 'Failed to process Twitter OAuth callback',

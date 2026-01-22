@@ -1,8 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { verifySignature } from '../utils/ethereum';
 import { getCognitoIdentityId } from '../utils/cognito';
-import { getNonce, deleteNonce } from '../utils/dynamodb';
+import { getAndDeleteNonce } from '../utils/dynamodb';
 import { createOrUpdateMetaMaskProfile } from '../utils/userProfile';
+import { maskSensitiveData } from '../utils/log-utils';
 
 export async function handleVerify(
   event: APIGatewayProxyEvent,
@@ -27,21 +28,22 @@ export async function handleVerify(
     };
   }
 
-  // 1. DynamoDB에서 nonce 조회
-  const nonceData = await getNonce(walletAddress.toLowerCase());
+  // 1. DynamoDB에서 nonce 조회 및 즉시 삭제 (원자적 연산)
+  // 이 방식으로 race condition을 방지합니다 - 동시 요청 시 하나만 nonce를 받을 수 있음
+  const nonceData = await getAndDeleteNonce(walletAddress.toLowerCase());
   if (!nonceData) {
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ message: 'Nonce not found or expired' }),
+      body: JSON.stringify({ message: 'Nonce not found or expired (may have been used already)' }),
     };
   }
 
   const { nonce, expiresAt } = nonceData;
 
-  // 2. Nonce 만료 확인
+  // 2. Nonce 만료 확인 (이미 삭제됨, 만료만 체크)
   if (Date.now() / 1000 > expiresAt) {
-    await deleteNonce(walletAddress.toLowerCase());
+    // 이미 삭제되었으므로 추가 삭제 불필요
     return {
       statusCode: 400,
       headers: corsHeaders,
@@ -105,8 +107,7 @@ Nonce: ${nonce}`;
     }
   }
 
-  // 4. Nonce 삭제 (재사용 방지)
-  await deleteNonce(walletAddress.toLowerCase());
+  // 4. Nonce는 이미 원자적으로 삭제됨 (getAndDeleteNonce에서 처리)
 
   // 5. Cognito Identity 발급
   const { identityId, token } = await getCognitoIdentityId(walletAddress);
@@ -114,8 +115,8 @@ Nonce: ${nonce}`;
   // 6. UserProfiles 테이블에 사용자 정보 저장
   try {
     await createOrUpdateMetaMaskProfile(identityId, walletAddress);
-  } catch (error) {
-    console.error('Failed to save user profile, but continuing:', error);
+  } catch (error: any) {
+    console.error('Failed to save user profile, but continuing:', maskSensitiveData({ message: error?.message }));
     // 프로필 저장 실패해도 인증은 성공으로 처리
   }
 

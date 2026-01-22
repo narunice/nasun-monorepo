@@ -98,7 +98,7 @@ export class AuthStack extends cdk.Stack {
       resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`],
     }));
 
-    // Create API Gateway for Twitter Auth
+    // Create API Gateway for Twitter Auth with rate limiting
     const twitterAuthApi = new apigw.RestApi(this, "TwitterAuthApi", {
       restApiName: "Twitter Auth Service",
       description: "API for Twitter OAuth 2.0 authentication",
@@ -106,6 +106,11 @@ export class AuthStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      // Rate limiting to prevent abuse
+      deployOptions: {
+        throttlingBurstLimit: 50, // Max concurrent requests
+        throttlingRateLimit: 20, // Requests per second
       },
     });
 
@@ -177,7 +182,7 @@ export class AuthStack extends cdk.Stack {
       })
     );
 
-    // 5. API Gateway for MetaMask Auth
+    // 5. API Gateway for MetaMask Auth with rate limiting
     const metamaskAuthApi = new apigw.RestApi(this, 'MetaMaskAuthApi', {
       restApiName: 'MetaMask Auth Service',
       description: 'API for MetaMask Ethereum wallet authentication',
@@ -185,6 +190,11 @@ export class AuthStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      // Rate limiting to prevent abuse
+      deployOptions: {
+        throttlingBurstLimit: 50, // Max concurrent requests
+        throttlingRateLimit: 20, // Requests per second
       },
     });
 
@@ -247,7 +257,7 @@ export class AuthStack extends cdk.Stack {
     // 3. DynamoDB 권한 부여
     zkLoginTable.grantReadWriteData(zkLoginSaltFunction);
 
-    // 4. API Gateway for zkLogin Auth
+    // 4. API Gateway for zkLogin Auth with rate limiting
     const zkLoginAuthApi = new apigw.RestApi(this, 'ZkLoginAuthApi', {
       restApiName: 'zkLogin Auth Service',
       description: 'API for Sui zkLogin authentication with social providers',
@@ -255,6 +265,11 @@ export class AuthStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ['POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      // Rate limiting to prevent abuse
+      deployOptions: {
+        throttlingBurstLimit: 50, // Max concurrent requests
+        throttlingRateLimit: 20, // Requests per second
       },
     });
 
