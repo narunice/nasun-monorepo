@@ -12,3 +12,4 @@ export { SnapshotViewerV3 } from './SnapshotViewerV3';
 export { UserSearchBoxV3 } from './UserSearchBoxV3';
 export { NasunContentFeed } from './NasunContentFeed';
 export { FeedPostCard } from './FeedPostCard';
+export { MyRankCardV3 } from './MyRankCardV3';

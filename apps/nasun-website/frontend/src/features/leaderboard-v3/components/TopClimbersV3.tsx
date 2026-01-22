@@ -54,9 +54,9 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
               Top Climbers Spotlight
             </SectionTitle>
           </div>
-          <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-lg animate-pulse">
+          <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-sm animate-pulse">
             {TIME_RANGES.map((r) => (
-              <div key={r} className="h-7 w-14 bg-nasun-c4/20 rounded-2xl mx-0.5"></div>
+              <div key={r} className="h-7 w-14 bg-nasun-c4/20 rounded-sm mx-0.5"></div>
             ))}
           </div>
         </div>
@@ -146,12 +146,12 @@ function TimeRangeSelectorInline({
   ranges,
 }: TimeRangeSelectorInlineProps) {
   return (
-    <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-lg">
+    <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-sm">
       {ranges.map((range) => (
         <button
           key={range}
           onClick={() => onSelect(range)}
-          className={`px-3 py-1 rounded-2xl text-sm font-light transition-all ${
+          className={`px-3 py-1 rounded-sm text-sm font-light transition-all ${
             selected === range
               ? 'bg-nasun-c4/80 text-nasun-white'
               : 'text-nasun-white hover:bg-gray-700'

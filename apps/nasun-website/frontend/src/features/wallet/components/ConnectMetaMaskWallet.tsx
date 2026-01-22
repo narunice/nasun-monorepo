@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useAuth } from "@/features/auth";
-import { cn } from "../../../utils/utils";
-import { Button } from "../../ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
-import { Command, CommandGroup, CommandItem, CommandList } from "../../ui/command";
-import { isMetaMaskInstalled } from "../../../utils/metamaskUtils";
+import { cn } from "@/utils/utils";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { isMetaMaskInstalled } from "@/utils/metamaskUtils";
 import { useMetaMaskConnection } from "../hooks/useMetaMaskConnection";
 
 function MetaMaskConnectedButton({

@@ -99,7 +99,7 @@ export function UserSearchBoxV3({
           onKeyDown={handleKeyDown}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full bg-black/60 border border-nasun-c4/50 rounded-lg pl-10 pr-8 py-2 text-sm text-nasun-white placeholder-nasun-white/40 focus:outline-none focus:border-nasun-c3/50"
+          className="w-full bg-black/60 border border-nasun-c4/50 rounded-sm pl-10 pr-8 py-2 text-sm text-nasun-white placeholder-nasun-white/40 focus:outline-none focus:border-nasun-c3/50"
         />
         {query && (
           <button
@@ -113,7 +113,7 @@ export function UserSearchBoxV3({
 
       {/* Dropdown */}
       {showDropdown && (
-        <div className="absolute z-50 w-full mt-1 bg-nasun-c6 border border-nasun-c4/50 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-nasun-c6 border border-nasun-c4/50 rounded-sm shadow-xl overflow-hidden">
           {isLoading && (
             <div className="px-4 py-3 text-sm text-nasun-white/50 flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-nasun-c3/30 border-t-nasun-c3 rounded-full animate-spin" />

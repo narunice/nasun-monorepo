@@ -163,3 +163,26 @@ export interface FeaturedFeedResponse {
   items: FeaturedFeedItem[];
   calculatedAt: string;
 }
+
+// My Rank Types (Phase 10)
+export type MyRankStatus = 'no_twitter' | 'not_ranked' | 'ranked' | 'error';
+
+export interface MyRankData {
+  status: MyRankStatus;
+  rank?: number;
+  userScore?: number;
+  postCount?: number;
+  username?: string;
+  originalUsername?: string;
+  displayName?: string;
+  profileImageUrl?: string;
+  rankChange?: RankChange;
+  totalUsers?: number;
+}
+
+export interface MyRankResponse {
+  success: boolean;
+  data: MyRankData;
+  seasonId?: string;
+  calculatedAt: string;
+}
