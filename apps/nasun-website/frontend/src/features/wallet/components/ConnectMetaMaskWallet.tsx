@@ -7,7 +7,7 @@ import { Button } from "../../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Command, CommandGroup, CommandItem, CommandList } from "../../ui/command";
 import { isMetaMaskInstalled } from "../../../utils/metamaskUtils";
-import { useMetaMaskConnection } from "../../../hooks/wallet/useMetaMaskConnection";
+import { useMetaMaskConnection } from "../hooks/useMetaMaskConnection";
 
 function MetaMaskConnectedButton({
   walletAddress,
