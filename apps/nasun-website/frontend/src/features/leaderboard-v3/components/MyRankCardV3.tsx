@@ -262,7 +262,7 @@ function MyRankCardV3Component({ seasonId }: MyRankCardV3Props) {
           {/* Rank & Score */}
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-nasun-c1">#{data.rank}</span>
+              <span className="text-3xl font-black text-nasun-c3">#{data.rank}</span>
               {data.totalUsers && (
                 <span className="text-xs text-nasun-white/40">/ {data.totalUsers}</span>
               )}
