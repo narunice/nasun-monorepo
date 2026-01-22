@@ -76,14 +76,14 @@ async function searchAccounts(
     return [];
   }
 
-  // Scan with filter for username prefix matching
+  // Scan with filter for username substring matching
   // Note: In production with large datasets, consider using OpenSearch or a GSI
   const result = await docClient.send(
     new ScanCommand({
       TableName: ACCOUNTS_TABLE,
-      FilterExpression: 'begins_with(username, :prefix)',
+      FilterExpression: 'contains(username, :query)',
       ExpressionAttributeValues: {
-        ':prefix': normalizedQuery,
+        ':query': normalizedQuery,
       },
       Limit: limit * 10, // Scan more to account for filtering
     })
@@ -91,9 +91,9 @@ async function searchAccounts(
 
   const accounts = (result.Items || []) as Account[];
 
-  // Filter and sort: exact matches first, then prefix matches
+  // Filter and sort: exact matches first, then substring matches
   return accounts
-    .filter((a) => a.username.startsWith(normalizedQuery))
+    .filter((a) => a.username.includes(normalizedQuery))
     .sort((a, b) => {
       // Exact match first
       if (a.username === normalizedQuery && b.username !== normalizedQuery) return -1;

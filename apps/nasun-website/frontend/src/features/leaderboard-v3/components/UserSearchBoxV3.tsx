@@ -12,7 +12,7 @@ import type { SearchAccountResult } from '../services/leaderboardV3Api';
 
 interface UserSearchBoxV3Props {
   seasonId?: string;
-  onUserSelect: (username: string) => void;
+  onUserSelect: (username: string, rank?: number) => void;
   placeholder?: string;
 }
 
@@ -64,7 +64,7 @@ export function UserSearchBoxV3({
     (account: SearchAccountResult) => {
       setQuery(account.username);
       setIsOpen(false);
-      onUserSelect(account.username);
+      onUserSelect(account.username, account.rank);
     },
     [onUserSelect]
   );
