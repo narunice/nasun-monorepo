@@ -10,3 +10,5 @@ export { default as ClimberCardV3 } from './ClimberCardV3';
 export { LeaderboardV3 } from './LeaderboardV3';
 export { SnapshotViewerV3 } from './SnapshotViewerV3';
 export { UserSearchBoxV3 } from './UserSearchBoxV3';
+export { NasunContentFeed } from './NasunContentFeed';
+export { FeedPostCard } from './FeedPostCard';

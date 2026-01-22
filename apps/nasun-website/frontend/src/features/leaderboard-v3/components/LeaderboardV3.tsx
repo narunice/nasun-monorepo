@@ -19,6 +19,7 @@ import LeaderboardV3Row from './LeaderboardV3Row';
 import { SnapshotViewerV3 } from './SnapshotViewerV3';
 import { UserSearchBoxV3 } from './UserSearchBoxV3';
 import PaginationControlsV3 from './PaginationControlsV3';
+import { NasunContentFeed } from './NasunContentFeed';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -223,67 +224,83 @@ export function LeaderboardV3() {
         </div>
       )}
 
-      {/* Leaderboard Table */}
-      {leaderboardData && leaderboardData.entries.length > 0 && (
-        <div className="w-full border border-nasun-c3/50 bg-gray-900/80 rounded-xl overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-12 gap-4 py-3 border-b border-nasun-c3/30 text-xs uppercase tracking-wider text-gray-200 font-medium bg-nasun-c3/20">
-            <div className="col-span-2 text-center">RANK</div>
-            <div className="col-span-6">USER</div>
-            <div className="col-span-2 text-right">SCORE</div>
-            <div className="col-span-2 text-center">CHANGE</div>
-          </div>
+      {/* Main Content Area - 2 Column Layout */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Column: Leaderboard Table */}
+        <div className="flex-1 min-w-0 w-full">
+          {leaderboardData && leaderboardData.entries.length > 0 && (
+            <>
+              <div className="w-full border border-nasun-c3/50 bg-gray-900/80 rounded-xl overflow-hidden shadow-2xl">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-4 py-3 border-b border-nasun-c3/30 text-xs uppercase tracking-wider text-gray-200 font-medium bg-nasun-c3/20">
+                  <div className="col-span-2 text-center">RANK</div>
+                  <div className="col-span-6">USER</div>
+                  <div className="col-span-2 text-right">SCORE</div>
+                  <div className="col-span-2 text-center">CHANGE</div>
+                </div>
 
-          {/* Table Body */}
-          <div ref={tableRef} className="divide-y divide-nasun-c3/10">
-            {leaderboardData.entries.map((entry) => (
-              <LeaderboardV3Row
-                key={`${entry.platform}-${entry.username}`}
-                entry={entry}
-                isHighlighted={highlightedUsername === entry.username}
-              />
-            ))}
-          </div>
+                {/* Table Body */}
+                <div ref={tableRef} className="divide-y divide-nasun-c3/10">
+                  {leaderboardData.entries.map((entry) => (
+                    <LeaderboardV3Row
+                      key={`${entry.platform}-${entry.username}`}
+                      entry={entry}
+                      isHighlighted={highlightedUsername === entry.username}
+                    />
+                  ))}
+                </div>
 
-          {/* Footer */}
-          <div className="px-4 py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center">
-            <span>Total: {leaderboardData.totalCount} contributors</span>
-            <span>
-              {snapshotDate ? `Snapshot: ${snapshotDate}` : 'Live'} |{' '}
-              {new Date(leaderboardData.calculatedAt).toLocaleString('en-US')}
-            </span>
+                {/* Footer */}
+                <div className="px-4 py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center bg-black/20">
+                  <span>Total: {leaderboardData.totalCount} contributors</span>
+                  <span>
+                    {snapshotDate ? `Snapshot: ${snapshotDate}` : 'Live'} |{' '}
+                    {new Date(leaderboardData.calculatedAt).toLocaleString('en-US')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Pagination */}
+              {leaderboardData.totalCount > ITEMS_PER_PAGE && (
+                <div className="mt-6">
+                  <PaginationControlsV3
+                    currentPage={page}
+                    totalPages={pagination.totalPages}
+                    totalEntries={leaderboardData.totalCount}
+                    pageInput={pagination.pageInput}
+                    paginationRange={pagination.paginationRange}
+                    hasPrev={pagination.hasPrevPage}
+                    hasNext={pagination.hasNextPage}
+                    onPageChange={handlePageChange}
+                    onPageInputChange={pagination.handlePageInputChange}
+                    onPageInputSubmit={(e) => {
+                      e.preventDefault();
+                      const pageNum = parseInt(pagination.pageInput, 10);
+                      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pagination.totalPages) {
+                        handlePageChange(pageNum);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Empty State */}
+          {leaderboardData && leaderboardData.entries.length === 0 && (
+            <div className="text-center py-12 bg-gray-900/40 rounded-xl border border-white/5">
+              <p className="text-nasun-white/50 text-lg">No entries found for this season.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Featured Content Feed */}
+        <div className="w-full lg:w-[320px] xl:w-[380px] lg:flex-shrink-0">
+          <div className="lg:sticky lg:top-24">
+            <NasunContentFeed seasonId={selectedSeasonId} />
           </div>
         </div>
-      )}
-
-      {/* Pagination */}
-      {leaderboardData && leaderboardData.totalCount > ITEMS_PER_PAGE && (
-        <PaginationControlsV3
-          currentPage={page}
-          totalPages={pagination.totalPages}
-          totalEntries={leaderboardData.totalCount}
-          pageInput={pagination.pageInput}
-          paginationRange={pagination.paginationRange}
-          hasPrev={pagination.hasPrevPage}
-          hasNext={pagination.hasNextPage}
-          onPageChange={handlePageChange}
-          onPageInputChange={pagination.handlePageInputChange}
-          onPageInputSubmit={(e) => {
-            e.preventDefault();
-            const pageNum = parseInt(pagination.pageInput, 10);
-            if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pagination.totalPages) {
-              handlePageChange(pageNum);
-            }
-          }}
-        />
-      )}
-
-      {/* Empty State */}
-      {leaderboardData && leaderboardData.entries.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-nasun-white/50 text-lg">No entries found for this season.</p>
-        </div>
-      )}
+      </div>
     </SectionLayout>
   );
 }
