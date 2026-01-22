@@ -34,6 +34,7 @@ const SEASON_ACCOUNTS_TABLE =
 interface SearchResult {
   accountId: string;
   username: string;
+  originalUsername?: string;
   platform: Platform;
   displayName?: string;
   profileImageUrl?: string;
@@ -189,6 +190,7 @@ export const handler = async (
       return {
         accountId: account.accountId,
         username: account.username,
+        originalUsername: account.originalUsername,
         platform: account.platform,
         displayName: account.displayName,
         profileImageUrl: account.profileImageUrl,

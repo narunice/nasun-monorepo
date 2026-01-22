@@ -134,6 +134,7 @@ function calculateTopClimbers(
       climbers.push({
         accountId,
         username: current.username,
+        originalUsername: current.originalUsername,
         platform: current.platform,
         displayName: current.displayName,
         profileImageUrl: current.profileImageUrl,

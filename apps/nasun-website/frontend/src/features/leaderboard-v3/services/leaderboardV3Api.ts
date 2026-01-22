@@ -17,6 +17,7 @@ import type {
 export interface SearchAccountResult {
   accountId: string;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   displayName?: string;
   profileImageUrl?: string;

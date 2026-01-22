@@ -69,7 +69,8 @@ export interface Post {
 export interface Account {
   accountId: string; // UUID, Primary Key
   platform: Platform;
-  username: string; // Unique per platform
+  username: string; // Unique per platform (lowercase for consistent lookups)
+  originalUsername?: string; // Original casing as provided by user (for display)
 
   // Role tracking
   lastKnownRole: AccountRole;
@@ -98,6 +99,7 @@ export interface Account {
 export interface ComputedUserScore {
   accountId: string;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
 
   // Profile data (from Account via Internal Data Sync)
@@ -126,6 +128,7 @@ export interface ComputedUserScore {
 export interface LeaderboardEntry {
   rank: number;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   userScore: number;
   postCount: number;
@@ -284,6 +287,7 @@ export interface DailySnapshot {
   sk: string; // "RANK#{rank:04d}" e.g., "RANK#0001"
   accountId: string;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   userScore: number;
   rank: number;
@@ -303,7 +307,7 @@ export interface DailySnapshot {
   // Meta
   snapshotDate: string; // "2026-01-21"
   snapshotTime: string; // ISO timestamp
-  ttl?: number; // Unix timestamp for auto-deletion (90 days except final snapshot)
+  ttl?: number; // Unix timestamp for auto-deletion (180 days, final snapshots are permanent)
 }
 
 /**
@@ -316,6 +320,7 @@ export interface SeasonAccountScore {
   accountId: string;
   seasonId: string;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   // Season-specific aggregates
   totalPostScore: number;
@@ -401,6 +406,7 @@ export interface TopClimbersResponse {
 export interface TopClimberEntry {
   accountId: string;
   username: string;
+  originalUsername?: string;
   platform: Platform;
   displayName?: string;
   profileImageUrl?: string;

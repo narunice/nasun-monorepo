@@ -6,12 +6,10 @@
 
 import React from 'react';
 import type { SeasonLeaderboardEntry } from '../types';
-import { PLATFORM_LABELS } from '../types';
 import { RankChangeIndicatorV3 } from './RankChangeIndicatorV3';
 
 interface LeaderboardV3RowProps {
   entry: SeasonLeaderboardEntry;
-  showBreakdown?: boolean;
   isHighlighted?: boolean;
 }
 
@@ -27,7 +25,6 @@ function DefaultAvatar({ username }: { username: string }) {
 
 const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
   entry,
-  showBreakdown = false,
   isHighlighted = false,
 }) => {
   const isTopThree = entry.rank <= 3;
@@ -40,13 +37,13 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
   return (
     <div
       data-username={entry.username}
-      className={`grid grid-cols-12 gap-4 px-4 py-4 items-center transition-all duration-200 hover:bg-black hover:scale-[1.01] hover:shadow-sm ${
+      className={`grid grid-cols-12 gap-4 py-4 items-center transition-all duration-200 hover:bg-black hover:scale-[1.01] hover:shadow-sm ${
         isTopThree ? 'bg-nasun-c4/5' : ''
       } ${isHighlighted ? 'bg-yellow-900/30 border-l-4 border-yellow-500 scale-[1.02] shadow-lg' : ''}`}
     >
       {/* Rank */}
       <div
-        className={`col-span-1 text-center font-bold text-lg ${
+        className={`col-span-2 text-center font-bold text-lg ${
           rankColors[entry.rank] || 'text-nasun-white/70'
         }`}
       >
@@ -54,7 +51,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
       </div>
 
       {/* User with Avatar */}
-      <div className="col-span-3 md:col-span-3 flex items-center gap-3 min-w-0">
+      <div className="col-span-6 flex items-center gap-3 min-w-0">
         {/* Profile Image */}
         {entry.profileImageUrl ? (
           <img
@@ -109,35 +106,18 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
               entry.displayName ? 'text-nasun-white/50 text-sm' : 'text-nasun-white font-medium'
             }`}
           >
-            @{entry.username}
+            @{entry.originalUsername || entry.username}
           </a>
         </div>
       </div>
 
-      {/* Platform - Hidden on mobile */}
-      <div className="col-span-2 hidden md:block text-nasun-white/50 text-sm">
-        {PLATFORM_LABELS[entry.platform] || entry.platform}
-      </div>
-
-      {/* Post Count */}
-      <div className="col-span-2 text-center text-nasun-white/70">{entry.postCount}</div>
-
-      {/* Active Days */}
-      <div className="col-span-1 text-center text-nasun-white/70">{entry.uniqueActiveDays}</div>
-
       {/* Score */}
       <div className="col-span-2 text-right">
         <span className="text-nasun-c3 font-extrabold text-lg">{entry.userScore.toFixed(1)}</span>
-        {showBreakdown && entry.breakdown && (
-          <div className="text-xs text-nasun-white/40 mt-1">
-            {entry.breakdown.rawScore.toFixed(1)} x {entry.breakdown.consistencyBonus.toFixed(2)} x{' '}
-            {entry.breakdown.freshnessMultiplier.toFixed(2)}
-          </div>
-        )}
       </div>
 
       {/* Rank Change */}
-      <div className="col-span-1 flex justify-center">
+      <div className="col-span-2 flex justify-center">
         {entry.rankChange ? (
           <RankChangeIndicatorV3
             direction={entry.rankChange.direction}

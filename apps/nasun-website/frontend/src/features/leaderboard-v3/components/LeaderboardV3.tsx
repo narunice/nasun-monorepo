@@ -10,7 +10,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SectionLayout } from '@/components/layout/SectionLayout';
-import { OuterBox } from '@/components/ui/OuterBox';
 import { useSeasons, useActiveSeason } from '../hooks/useSeasons';
 import { useSeasonLeaderboard } from '../hooks/useSeasonLeaderboard';
 import { SeasonSelector } from './SeasonSelector';
@@ -19,11 +18,7 @@ import LeaderboardV3Row from './LeaderboardV3Row';
 import { SnapshotViewerV3 } from './SnapshotViewerV3';
 import { UserSearchBoxV3 } from './UserSearchBoxV3';
 
-interface LeaderboardV3Props {
-  showBreakdown?: boolean;
-}
-
-export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
+export function LeaderboardV3() {
   const { data: seasons, isLoading: seasonsLoading } = useSeasons();
   const activeSeason = useActiveSeason();
 
@@ -86,7 +81,6 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
     seasonId: selectedSeasonId,
     snapshotDate,
     limit: 100,
-    breakdown: showBreakdown,
   });
 
   // Get selected season info
@@ -101,16 +95,11 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
   };
 
   return (
-    <SectionLayout className="!max-w-5xl !pt-12 !pb-20">
-      {/* Header */}
-      <div className="w-full mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold text-nasun-white uppercase mb-4">
-          Community Leaderboard
-        </h1>
-        <p className="text-nasun-white/60 text-lg font-light max-w-2xl mx-auto leading-relaxed">
-          Top contributors in the Nasun community, ranked by engagement quality and consistency.
-        </p>
-      </div>
+    <SectionLayout className="!max-w-7xl !pt-12 !pb-20">
+      {/* Header - V2 style */}
+      <h2 className="text-nasun-white uppercase mb-6 md:mb-8 text-center">
+        Community Leaderboard
+      </h2>
 
       {/* Season Selector */}
       {seasons && seasons.length > 0 && (
@@ -134,7 +123,7 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
 
       {/* Snapshot Viewer and Search */}
       {selectedSeason && (
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+        <div className="mb-3 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
           <SnapshotViewerV3
             selectedDate={snapshotDate}
             onDateChange={setSnapshotDate}
@@ -174,16 +163,13 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
 
       {/* Leaderboard Table */}
       {leaderboardData && leaderboardData.entries.length > 0 && (
-        <OuterBox color="c3" className="w-full border-nasun-c3/50 bg-gray-900/80 rounded-xl overflow-hidden">
+        <div className="w-full border border-nasun-c3/50 bg-gray-900/80 rounded-xl overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-nasun-c3/30 text-xs uppercase tracking-wider text-gray-200 font-medium bg-nasun-c3/20">
-            <div className="col-span-1 text-center">RANK</div>
-            <div className="col-span-3">USER</div>
-            <div className="col-span-2 hidden md:block">PLATFORM</div>
-            <div className="col-span-2 text-center">POSTS</div>
-            <div className="col-span-1 text-center">DAYS</div>
+          <div className="grid grid-cols-12 gap-4 py-3 border-b border-nasun-c3/30 text-xs uppercase tracking-wider text-gray-200 font-medium bg-nasun-c3/20">
+            <div className="col-span-2 text-center">RANK</div>
+            <div className="col-span-6">USER</div>
             <div className="col-span-2 text-right">SCORE</div>
-            <div className="col-span-1 text-center">CHANGE</div>
+            <div className="col-span-2 text-center">CHANGE</div>
           </div>
 
           {/* Table Body */}
@@ -192,21 +178,20 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
               <LeaderboardV3Row
                 key={`${entry.platform}-${entry.username}`}
                 entry={entry}
-                showBreakdown={showBreakdown}
                 isHighlighted={highlightedUsername === entry.username}
               />
             ))}
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center">
+          <div className="py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center">
             <span>Total: {leaderboardData.totalCount} contributors</span>
             <span>
               {snapshotDate ? `Snapshot: ${snapshotDate}` : 'Live'} |{' '}
               {new Date(leaderboardData.calculatedAt).toLocaleString('en-US')}
             </span>
           </div>
-        </OuterBox>
+        </div>
       )}
 
       {/* Empty State */}

@@ -265,6 +265,7 @@ function toSeasonLeaderboardEntry(
   const entry: SeasonLeaderboardEntry = {
     rank,
     username: score.username,
+    originalUsername: score.originalUsername,
     platform: score.platform,
     userScore: Math.round(score.userScore * 100) / 100,
     postCount: score.postCount,
@@ -297,6 +298,7 @@ function snapshotToLeaderboardEntry(
   const entry: SeasonLeaderboardEntry = {
     rank: snapshot.rank,
     username: snapshot.username,
+    originalUsername: snapshot.originalUsername,
     platform: snapshot.platform,
     userScore: Math.round(snapshot.userScore * 100) / 100,
     postCount: snapshot.postCount,
@@ -330,6 +332,7 @@ function toLeaderboardEntry(
   const entry: LeaderboardEntry = {
     rank,
     username: score.username,
+    originalUsername: score.originalUsername,
     platform: score.platform,
     userScore: Math.round(score.userScore * 100) / 100,
     postCount: score.postCount,
