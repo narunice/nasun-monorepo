@@ -5,7 +5,6 @@
  */
 
 import { Tweet } from "react-tweet";
-import { OuterBox } from "@/components/ui/OuterBox";
 import type { FeaturedFeedItem, BadgeType } from "../types";
 
 interface FeedPostCardProps {
@@ -81,13 +80,13 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
 
   return (
     <div className="relative">
-      {/* Tweet Embed - OuterBox provides w1 styling */}
-      <OuterBox color="w1" padding="sm" className="nasun-tweet-container p-0">
+      {/* Tweet Embed */}
+      <div className="w-full nasun-tweet-container" data-theme="dark">
         <Tweet id={tweetId} />
-      </OuterBox>
+      </div>
 
       {/* Badge Indicator - Next to X icon */}
-      <div className="absolute top-6 right-8 z-10">
+      <div className="absolute top-4 right-12 z-10">
         <div
           className={`
           flex items-center gap-1 px-2 py-0.5 rounded-full border
@@ -101,21 +100,73 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         </div>
       </div>
 
-      {/* Override react-tweet internal styles */}
+      {/* Override react-tweet internal styles - dark subtle styling */}
       <style>{`
         .nasun-tweet-container .react-tweet-theme {
           --tweet-container-background: transparent;
           --tweet-color-blue-primary: rgb(29, 155, 240);
-          --tweet-color-hover: rgba(255, 255, 255, 0.05);
+          --tweet-color-hover: rgba(255, 255, 255, 0.03);
           --tweet-body-font-size: 14px;
           --tweet-body-line-height: 1.4;
+          /* Critical: Set tweet-border to none - this variable is used by quoted-tweet-container.module.css */
+          --tweet-border: none;
+          --tweet-quoted-container-border: none;
+          --tweet-quoted-border: none;
+          --tweet-quoted-bg-color: rgba(15, 15, 15, 0.6);
+          --tweet-quoted-bg-color-hover: rgba(15, 15, 15, 0.6);
+          margin: 0 !important;
         }
 
-        /* Remove react-tweet's default article border/bg (OuterBox handles it) */
-        .nasun-tweet-container article {
+        /* Dark subtle card styling - main tweet only (not nested) */
+        .nasun-tweet-container > div > article {
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          background: rgba(20, 20, 20, 0.85) !important;
+          border-radius: 0.125rem !important;
+          backdrop-filter: blur(8px);
+          margin: 0 !important;
+        }
+
+        /* Target the quoted tweet container div - this has the 12px border-radius */
+        /* Using :has() to target parent div that contains the quoted article */
+        .nasun-tweet-container article div:has(> article),
+        .nasun-tweet-container article div:has(> article):hover,
+        .nasun-tweet-container article div:has(> article):focus {
+          border: none !important;
+          border-radius: 0 !important;
+          background: rgba(15, 15, 15, 0.6) !important;
+          box-shadow: none !important;
+          outline: none !important;
+          transition: none !important;
+        }
+
+        /* Reset ALL borders, outlines, shadows on ALL elements inside main article */
+        .nasun-tweet-container article *,
+        .nasun-tweet-container article *:hover,
+        .nasun-tweet-container article *:focus,
+        .nasun-tweet-container article *::before,
+        .nasun-tweet-container article *::after,
+        .nasun-tweet-container article *:hover::before,
+        .nasun-tweet-container article *:hover::after {
+          border: none !important;
+          border-top: none !important;
+          border-bottom: none !important;
+          border-left: none !important;
+          border-right: none !important;
+          border-radius: 0 !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        /* Quoted tweet article - transparent background as parent handles it */
+        .nasun-tweet-container article article,
+        .nasun-tweet-container article article:hover,
+        .nasun-tweet-container article article:focus {
           border: none !important;
           background: transparent !important;
           border-radius: 0 !important;
+          margin: 0 !important;
+          outline: none !important;
+          box-shadow: none !important;
         }
 
         /* Tweet body text size */
