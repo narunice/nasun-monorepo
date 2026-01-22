@@ -34,7 +34,7 @@ const getVisibilityClass = (index: number): string => {
 };
 
 const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
-  const [timeRange, setTimeRange] = useState<TimeRangeV3>('7d');
+  const [timeRange, setTimeRange] = useState<TimeRangeV3>('today');
 
   const { data, isLoading, error } = useTopClimbersV3({
     seasonId,

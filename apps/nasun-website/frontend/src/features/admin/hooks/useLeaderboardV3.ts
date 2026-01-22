@@ -17,6 +17,7 @@ import type {
   GetLeaderboardParams,
   AccountRole,
   ContentSignal,
+  PostType,
 } from '../types/leaderboard-v3';
 
 // Query keys
@@ -84,11 +85,13 @@ export function useCreatePost() {
 
 /**
  * Hook for admin post submission form state
+ * Phase 9: Added postType with persistent selection (not reset between submissions)
  */
 export function usePostSubmissionForm() {
   const [postUrl, setPostUrl] = useState('');
   const [accountRole, setAccountRole] = useState<AccountRole>('default');
   const [contentSignals, setContentSignals] = useState<ContentSignal[]>([]);
+  const [postType, setPostType] = useState<PostType>('original'); // Phase 9: Post type
 
   const scorePreview = calculatePostScorePreview(accountRole, contentSignals);
 
@@ -100,10 +103,12 @@ export function usePostSubmissionForm() {
     );
   }, []);
 
+  // Reset form but preserve postType (user requested: persist selection)
   const reset = useCallback(() => {
     setPostUrl('');
     setAccountRole('default');
     setContentSignals([]);
+    // NOTE: postType is intentionally NOT reset to preserve user's selection
   }, []);
 
   return {
@@ -115,6 +120,8 @@ export function usePostSubmissionForm() {
     contentSignals,
     setContentSignals,
     toggleSignal,
+    postType, // Phase 9
+    setPostType, // Phase 9
 
     // Score preview
     scorePreview,
@@ -127,6 +134,7 @@ export function usePostSubmissionForm() {
       postUrl,
       accountRole,
       contentSignals,
+      postType, // Phase 9
     }),
   };
 }
@@ -179,6 +187,23 @@ export function usePostFormKeyboardShortcuts(
         if (e.key.toLowerCase() === 'e') {
           e.preventDefault();
           form.toggleSignal('high_reach');
+          return;
+        }
+
+        // Phase 9: Post type shortcuts (R, T, Y) - only when not in input
+        if (e.key.toLowerCase() === 'r') {
+          e.preventDefault();
+          form.setPostType('original');
+          return;
+        }
+        if (e.key.toLowerCase() === 't') {
+          e.preventDefault();
+          form.setPostType('quote');
+          return;
+        }
+        if (e.key.toLowerCase() === 'y') {
+          e.preventDefault();
+          form.setPostType('reply');
           return;
         }
 

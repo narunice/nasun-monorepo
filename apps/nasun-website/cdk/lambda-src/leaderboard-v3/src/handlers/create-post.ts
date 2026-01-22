@@ -10,6 +10,7 @@ import {
   ContentSignal,
   CreatePostRequest,
   CreatePostResponse,
+  PostType,
 } from '../types';
 import { normalizeUrl } from '../utils/url-normalizer';
 import { createPost, getPostByUrl } from '../services/dynamodb-client';
@@ -86,12 +87,26 @@ function validateRequest(body: unknown): {
     signals = ['standard', ...signals];
   }
 
+  // Phase 9: Validate postType (optional, defaults to 'original')
+  const validPostTypes: PostType[] = ['original', 'quote', 'reply'];
+  let postType: PostType = 'original';
+  if (req.postType !== undefined) {
+    if (!validPostTypes.includes(req.postType as PostType)) {
+      return {
+        valid: false,
+        error: `postType must be one of: ${validPostTypes.join(', ')}`,
+      };
+    }
+    postType = req.postType as PostType;
+  }
+
   return {
     valid: true,
     data: {
       postUrl: req.postUrl as string,
       accountRole: req.accountRole as AccountRole,
       contentSignals: signals,
+      postType,
     },
   };
 }
@@ -152,7 +167,7 @@ export const handler = async (
       });
     }
 
-    const { postUrl, accountRole, contentSignals } = validation.data;
+    const { postUrl, accountRole, contentSignals, postType } = validation.data;
 
     // Normalize URL
     const normalized = normalizeUrl(postUrl);
@@ -189,6 +204,7 @@ export const handler = async (
       originalUsername: normalized.originalUsername,
       accountRole,
       contentSignals,
+      postType, // Phase 9: Post type differentiation
       createdBy: adminUsername,
     });
 

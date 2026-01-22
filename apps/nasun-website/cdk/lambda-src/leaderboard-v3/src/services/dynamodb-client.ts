@@ -22,8 +22,10 @@ import {
   DYNAMO_KEYS,
   Platform,
   Post,
+  PostType,
   Season,
   SeasonAccountScore,
+  SCORE_CONSTANTS,
 } from '../types';
 import {
   addActiveDate,
@@ -96,11 +98,21 @@ export async function createPost(params: {
   originalUsername?: string; // Original casing for display
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
+  postType?: PostType; // Phase 9: original, quote, or reply (default: original)
   createdBy: string;
   seasonId?: string; // If not provided, will use active season
 }): Promise<{ post: Post; account: Account; seasonAccountScore?: SeasonAccountScore }> {
-  const { normalizedUrl, rawUrl, platform, username, originalUsername, accountRole, contentSignals, createdBy } =
-    params;
+  const {
+    normalizedUrl,
+    rawUrl,
+    platform,
+    username,
+    originalUsername,
+    accountRole,
+    contentSignals,
+    postType = 'original',
+    createdBy,
+  } = params;
 
   // Get active season if seasonId not provided
   let seasonId = params.seasonId;
@@ -151,6 +163,7 @@ export async function createPost(params: {
     username,
     accountRole,
     contentSignals,
+    postType, // Phase 9: Post type
     baseScore,
     roleMultiplier,
     signalBonus,
@@ -184,6 +197,7 @@ export async function createPost(params: {
     newLastKnownRole: accountRole,
     lastSeenAt: now,
     originalUsername, // Backfill for legacy accounts without originalUsername
+    postType, // Phase 9: For per-type aggregation
   });
 
   // Phase 5: Update season-specific aggregates if seasonId exists
@@ -202,6 +216,7 @@ export async function createPost(params: {
       displayName: account.displayName,
       profileImageUrl: account.profileImageUrl,
       isRegistered: account.isRegistered,
+      postType, // Phase 9: For per-type aggregation
     });
   }
 
@@ -340,6 +355,13 @@ export async function createAccount(
     signalCountTotal: 0,
     uniqueActiveDays: 0,
     activeDates: [],
+    // Phase 9: Per-type aggregation
+    originalPostCount: 0,
+    originalTotalScore: 0,
+    quotePostCount: 0,
+    quoteTotalScore: 0,
+    replyPostCount: 0,
+    replyTotalScore: 0,
     firstSeenAt: now,
     lastSeenAt: now,
   };
@@ -357,6 +379,7 @@ export async function createAccount(
 /**
  * Update account aggregates after adding a post
  * Also backfills originalUsername for legacy accounts that don't have it
+ * Phase 9: Updates per-type aggregates (original, quote, reply)
  */
 export async function updateAccountAggregates(params: {
   accountId: string;
@@ -367,6 +390,7 @@ export async function updateAccountAggregates(params: {
   newLastKnownRole: AccountRole;
   lastSeenAt: string;
   originalUsername?: string; // For backfilling legacy accounts
+  postType?: PostType; // Phase 9: For per-type aggregation
 }): Promise<Account> {
   const {
     accountId,
@@ -377,6 +401,7 @@ export async function updateAccountAggregates(params: {
     newLastKnownRole,
     lastSeenAt,
     originalUsername,
+    postType = 'original',
   } = params;
 
   // Build update expression - conditionally include originalUsername
@@ -399,7 +424,28 @@ export async function updateAccountAggregates(params: {
     ':uniqueDays': newActiveDates.length,
     ':role': newLastKnownRole,
     ':lastSeen': lastSeenAt,
+    ':zero': 0,
   };
+
+  // Phase 9: Per-type aggregation
+  // Initialize fields if they don't exist, then increment based on postType
+  switch (postType) {
+    case 'original':
+      updateExpression += `,
+        originalPostCount = if_not_exists(originalPostCount, :zero) + :one,
+        originalTotalScore = if_not_exists(originalTotalScore, :zero) + :postScore`;
+      break;
+    case 'quote':
+      updateExpression += `,
+        quotePostCount = if_not_exists(quotePostCount, :zero) + :one,
+        quoteTotalScore = if_not_exists(quoteTotalScore, :zero) + :postScore`;
+      break;
+    case 'reply':
+      updateExpression += `,
+        replyPostCount = if_not_exists(replyPostCount, :zero) + :one,
+        replyTotalScore = if_not_exists(replyTotalScore, :zero) + :postScore`;
+      break;
+  }
 
   // Backfill originalUsername if provided
   if (originalUsername) {
@@ -508,6 +554,7 @@ export async function getSeasonById(seasonId: string): Promise<Season | null> {
 
 /**
  * Update season-specific account aggregates
+ * Phase 9: Updates per-type aggregates (original, quote, reply)
  */
 export async function updateSeasonAccountAggregates(params: {
   seasonId: string;
@@ -522,6 +569,7 @@ export async function updateSeasonAccountAggregates(params: {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  postType?: PostType; // Phase 9: For per-type aggregation
 }): Promise<SeasonAccountScore> {
   const {
     seasonId,
@@ -536,6 +584,7 @@ export async function updateSeasonAccountAggregates(params: {
     displayName,
     profileImageUrl,
     isRegistered,
+    postType = 'original',
   } = params;
 
   const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
@@ -563,13 +612,34 @@ export async function updateSeasonAccountAggregates(params: {
     const newSignalCount = existingRecord.signalCountTotal + signalCountToAdd;
     const newUniqueDays = newActiveDates.length;
 
-    // Recalculate scores
+    // Phase 9: Calculate per-type aggregates
+    const newOriginalCount =
+      (existingRecord.originalPostCount || 0) + (postType === 'original' ? 1 : 0);
+    const newOriginalScore =
+      (existingRecord.originalTotalScore || 0) + (postType === 'original' ? postScoreToAdd : 0);
+    const newQuoteCount =
+      (existingRecord.quotePostCount || 0) + (postType === 'quote' ? 1 : 0);
+    const newQuoteScore =
+      (existingRecord.quoteTotalScore || 0) + (postType === 'quote' ? postScoreToAdd : 0);
+    const newReplyCount =
+      (existingRecord.replyPostCount || 0) + (postType === 'reply' ? 1 : 0);
+    const newReplyScore =
+      (existingRecord.replyTotalScore || 0) + (postType === 'reply' ? postScoreToAdd : 0);
+
+    // Recalculate scores using per-type calculation
     const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
       calculateSeasonUserScore({
         totalPostScore: newTotalPostScore,
         postCount: newPostCount,
         uniqueActiveDays: newUniqueDays,
         lastSeenAt,
+        // Phase 9: Per-type fields
+        originalPostCount: newOriginalCount,
+        originalTotalScore: newOriginalScore,
+        quotePostCount: newQuoteCount,
+        quoteTotalScore: newQuoteScore,
+        replyPostCount: newReplyCount,
+        replyTotalScore: newReplyScore,
       });
 
     // Build update expression dynamically to avoid undefined values
@@ -585,6 +655,13 @@ export async function updateSeasonAccountAggregates(params: {
       'freshnessMultiplier = :freshnessMultiplier',
       'lastSeenAt = :lastSeen',
       'isRegistered = :isRegistered',
+      // Phase 9: Per-type fields
+      'originalPostCount = :originalPostCount',
+      'originalTotalScore = :originalTotalScore',
+      'quotePostCount = :quotePostCount',
+      'quoteTotalScore = :quoteTotalScore',
+      'replyPostCount = :replyPostCount',
+      'replyTotalScore = :replyTotalScore',
     ];
 
     const expressionValues: Record<string, unknown> = {
@@ -599,6 +676,13 @@ export async function updateSeasonAccountAggregates(params: {
       ':freshnessMultiplier': freshnessMultiplier,
       ':lastSeen': lastSeenAt,
       ':isRegistered': isRegistered ?? false,
+      // Phase 9: Per-type values
+      ':originalPostCount': newOriginalCount,
+      ':originalTotalScore': newOriginalScore,
+      ':quotePostCount': newQuoteCount,
+      ':quoteTotalScore': newQuoteScore,
+      ':replyPostCount': newReplyCount,
+      ':replyTotalScore': newReplyScore,
     };
 
     // Only include optional profile fields if they have values
@@ -628,12 +712,27 @@ export async function updateSeasonAccountAggregates(params: {
     return result.Attributes as SeasonAccountScore;
   } else {
     // Create new record
+    // Phase 9: Initialize per-type fields based on postType
+    const initialOriginalCount = postType === 'original' ? 1 : 0;
+    const initialOriginalScore = postType === 'original' ? postScoreToAdd : 0;
+    const initialQuoteCount = postType === 'quote' ? 1 : 0;
+    const initialQuoteScore = postType === 'quote' ? postScoreToAdd : 0;
+    const initialReplyCount = postType === 'reply' ? 1 : 0;
+    const initialReplyScore = postType === 'reply' ? postScoreToAdd : 0;
+
     const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
       calculateSeasonUserScore({
         totalPostScore: postScoreToAdd,
         postCount: 1,
         uniqueActiveDays: 1,
         lastSeenAt,
+        // Phase 9: Per-type fields
+        originalPostCount: initialOriginalCount,
+        originalTotalScore: initialOriginalScore,
+        quotePostCount: initialQuoteCount,
+        quoteTotalScore: initialQuoteScore,
+        replyPostCount: initialReplyCount,
+        replyTotalScore: initialReplyScore,
       });
 
     const newRecord: SeasonAccountScore = {
@@ -656,6 +755,13 @@ export async function updateSeasonAccountAggregates(params: {
       displayName,
       profileImageUrl,
       isRegistered: isRegistered ?? false,
+      // Phase 9: Per-type aggregation
+      originalPostCount: initialOriginalCount,
+      originalTotalScore: initialOriginalScore,
+      quotePostCount: initialQuoteCount,
+      quoteTotalScore: initialQuoteScore,
+      replyPostCount: initialReplyCount,
+      replyTotalScore: initialReplyScore,
       firstSeenAt: lastSeenAt,
       lastSeenAt,
     };
@@ -673,23 +779,70 @@ export async function updateSeasonAccountAggregates(params: {
 
 /**
  * Calculate user score for season leaderboard
+ * Phase 9: Supports per-type calculation with different decay rates
  */
 function calculateSeasonUserScore(params: {
   totalPostScore: number;
   postCount: number;
   uniqueActiveDays: number;
   lastSeenAt: string;
+  // Phase 9: Per-type fields (optional for backward compatibility)
+  originalPostCount?: number;
+  originalTotalScore?: number;
+  quotePostCount?: number;
+  quoteTotalScore?: number;
+  replyPostCount?: number;
+  replyTotalScore?: number;
 }): {
   rawScore: number;
   consistencyBonus: number;
   freshnessMultiplier: number;
   userScore: number;
 } {
-  const { totalPostScore, postCount, uniqueActiveDays, lastSeenAt } = params;
+  const {
+    totalPostScore,
+    postCount,
+    uniqueActiveDays,
+    lastSeenAt,
+    originalPostCount,
+    originalTotalScore,
+    quotePostCount,
+    quoteTotalScore,
+    replyPostCount,
+    replyTotalScore,
+  } = params;
 
-  // RawScore = totalPostScore × log₂(postCount + 1) / postCount
-  const effectivePosts = Math.log2(postCount + 1);
-  const rawScore = postCount > 0 ? (totalPostScore * effectivePosts) / postCount : 0;
+  let rawScore: number;
+
+  // Phase 9: Use per-type calculation if available
+  if (
+    originalPostCount !== undefined &&
+    quotePostCount !== undefined &&
+    replyPostCount !== undefined
+  ) {
+    // Per-type calculation with different decay rates
+    // Original/Quote: full log decay (exponent 1.0)
+    // Reply: weaker log decay (exponent 0.7)
+    const originalRaw =
+      originalPostCount > 0
+        ? ((originalTotalScore || 0) * Math.log2(originalPostCount + 1)) / originalPostCount
+        : 0;
+    const quoteRaw =
+      quotePostCount > 0
+        ? ((quoteTotalScore || 0) * Math.log2(quotePostCount + 1)) / quotePostCount
+        : 0;
+    const replyRaw =
+      replyPostCount > 0
+        ? ((replyTotalScore || 0) * Math.log2(replyPostCount + 1)) /
+          Math.pow(replyPostCount, SCORE_CONSTANTS.REPLY_DECAY_EXPONENT)
+        : 0;
+
+    rawScore = originalRaw + quoteRaw + replyRaw;
+  } else {
+    // Legacy: treat all posts as original (full decay)
+    const effectivePosts = Math.log2(postCount + 1);
+    rawScore = postCount > 0 ? (totalPostScore * effectivePosts) / postCount : 0;
+  }
 
   // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1
   const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
