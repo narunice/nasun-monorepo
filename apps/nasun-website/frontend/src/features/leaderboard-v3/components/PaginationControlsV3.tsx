@@ -42,7 +42,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
         {/* Left: Page info */}
         <div className="text-gray-400 text-sm">
-          Page {currentPage} of {totalPages} ({totalEntries} entries)
+          Page {currentPage} of {totalPages}
         </div>
 
         {/* Right: Navigation */}

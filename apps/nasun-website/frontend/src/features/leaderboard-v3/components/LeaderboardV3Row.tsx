@@ -4,9 +4,10 @@
  * Individual row in the leaderboard table with rank change indicator.
  */
 
-import React from 'react';
-import type { SeasonLeaderboardEntry } from '../types';
-import { RankChangeIndicatorV3 } from './RankChangeIndicatorV3';
+import React from "react";
+import { FaCrown } from "react-icons/fa";
+import type { SeasonLeaderboardEntry } from "../types";
+import { RankChangeIndicatorV3 } from "./RankChangeIndicatorV3";
 
 interface LeaderboardV3RowProps {
   entry: SeasonLeaderboardEntry;
@@ -17,37 +18,33 @@ interface LeaderboardV3RowProps {
 function DefaultAvatar({ username }: { username: string }) {
   const initial = username.charAt(0).toUpperCase();
   return (
-    <div className="w-10 h-10 rounded-2xl bg-gray-700 flex items-center justify-center text-nasun-white/60 font-semibold text-sm flex-shrink-0">
-      {initial}
+    <div className="w-10 h-10 rounded-2xl bg-gray-700 flex items-center justify-center flex-shrink-0">
+      <span className="text-gray-100 font-semibold">{initial}</span>
     </div>
   );
 }
 
-const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
-  entry,
-  isHighlighted = false,
-}) => {
+const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighted = false }) => {
   const isTopThree = entry.rank <= 3;
   const rankColors: Record<number, string> = {
-    1: 'text-yellow-400',
-    2: 'text-gray-300',
-    3: 'text-amber-600',
+    1: "text-yellow-400",
+    2: "text-gray-300",
+    3: "text-amber-600",
   };
 
   return (
     <div
       data-username={entry.username}
-      className={`grid grid-cols-12 gap-4 py-4 items-center transition-all duration-200 hover:bg-black hover:scale-[1.01] hover:shadow-sm ${
-        isTopThree ? 'bg-nasun-c4/5' : ''
-      } ${isHighlighted ? 'bg-yellow-900/30 border-l-4 border-yellow-500 scale-[1.02] shadow-lg' : ''}`}
+      className={`grid grid-cols-12 gap-4 px-6 py-2 md:py-3 items-center hover:bg-nasun-c4/5 ${
+        isTopThree ? "" : ""
+      } ${isHighlighted ? "bg-yellow-900/30 border-l-4 border-yellow-500" : ""}`}
     >
       {/* Rank */}
-      <div
-        className={`col-span-2 text-center font-bold text-lg ${
-          rankColors[entry.rank] || 'text-nasun-white/70'
-        }`}
-      >
-        {entry.rank}
+      <div className="col-span-2 flex items-center">
+        <span className="w-6 text-gray-100 font-bold">{entry.rank}</span>
+        <span className="w-5 flex items-center">
+          {isTopThree && <FaCrown className={`w-4 h-4 ${rankColors[entry.rank]}`} />}
+        </span>
       </div>
 
       {/* User with Avatar */}
@@ -60,9 +57,9 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
             className="w-10 h-10 rounded-2xl object-cover flex-shrink-0"
             loading="lazy"
             onError={(e) => {
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.style.display = "none";
               const fallback = e.currentTarget.nextElementSibling;
-              if (fallback) fallback.classList.remove('hidden');
+              if (fallback) fallback.classList.remove("hidden");
             }}
           />
         ) : (
@@ -76,8 +73,8 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
         {/* Name and Handle */}
         <div className="min-w-0 flex-1">
           {entry.displayName && (
-            <div className="text-nasun-white font-medium truncate flex items-center gap-1.5">
-              {entry.displayName}
+            <div className="truncate flex items-center gap-1.5">
+              <span className="text-gray-100 font-medium">{entry.displayName}</span>
               {entry.isRegistered && (
                 <span
                   className="inline-flex items-center justify-center w-4 h-4 bg-nasun-c3/20 rounded-full flex-shrink-0"
@@ -102,8 +99,8 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
             href={`https://x.com/${entry.username}`}
             target="_blank"
             rel="noopener noreferrer"
-            className={`hover:text-nasun-c3 transition-colors truncate block ${
-              entry.displayName ? 'text-nasun-white/50 text-sm' : 'text-nasun-white font-medium'
+            className={`hover:text-nasun-c3 truncate block ${
+              entry.displayName ? "text-gray-400" : "text-gray-100 font-medium"
             }`}
           >
             @{entry.originalUsername || entry.username}
@@ -113,7 +110,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
 
       {/* Score */}
       <div className="col-span-2 text-right">
-        <span className="text-nasun-c3 font-extrabold text-lg">{entry.userScore.toFixed(1)}</span>
+        <span className="text-blue-400 font-bold">{entry.userScore.toFixed(1)}</span>
       </div>
 
       {/* Rank Change */}
@@ -125,7 +122,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
             variant="short"
           />
         ) : (
-          <span className="text-gray-500">-</span>
+          <span className="text-gray-400">-</span>
         )}
       </div>
     </div>
