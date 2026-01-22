@@ -39,8 +39,8 @@ const SNAPSHOTS_TABLE =
 const SEASONS_TABLE =
   process.env.LEADERBOARD_V3_SEASONS_TABLE || DYNAMO_KEYS.SEASONS_TABLE;
 
-// TTL: 90 days in seconds
-const SNAPSHOT_TTL_DAYS = 90;
+// TTL: 180 days in seconds (final snapshots are permanent)
+const SNAPSHOT_TTL_DAYS = 180;
 
 /**
  * Get today's date string in YYYY-MM-DD format (KST)
@@ -231,7 +231,17 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
     // Create snapshot entries (limit to top 500)
     const MAX_SNAPSHOT_ENTRIES = 500;
     const snapshotTime = new Date().toISOString();
-    const ttl = Math.floor(Date.now() / 1000) + SNAPSHOT_TTL_DAYS * 24 * 60 * 60;
+
+    // Check if this is a final snapshot (today >= season endDate)
+    // Final snapshots are permanent (no TTL)
+    const isFinalSnapshot = todayDate >= activeSeason.endDate;
+    const ttl = isFinalSnapshot
+      ? undefined
+      : Math.floor(Date.now() / 1000) + SNAPSHOT_TTL_DAYS * 24 * 60 * 60;
+
+    if (isFinalSnapshot) {
+      console.log(`Final snapshot detected (${todayDate} >= ${activeSeason.endDate}), TTL disabled for permanent storage`);
+    }
 
     const snapshots: DailySnapshot[] = scoredAccounts
       .slice(0, MAX_SNAPSHOT_ENTRIES)
@@ -240,11 +250,12 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
         const previousRank = previousRanks.get(score.accountId);
         const rankChange = calculateRankChange(rank, previousRank);
 
-        return {
+        const snapshot: DailySnapshot = {
           pk: `${activeSeason.seasonId}#${todayDate}`,
           sk: `RANK#${String(rank).padStart(4, '0')}`,
           accountId: score.accountId,
           username: score.username,
+          originalUsername: score.originalUsername,
           platform: score.platform,
           userScore: score.userScore,
           rank,
@@ -261,8 +272,14 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
           isRegistered: score.isRegistered,
           snapshotDate: todayDate,
           snapshotTime,
-          ttl,
         };
+
+        // Only set TTL for non-final snapshots
+        if (ttl !== undefined) {
+          snapshot.ttl = ttl;
+        }
+
+        return snapshot;
       });
 
     // Write snapshots in batches

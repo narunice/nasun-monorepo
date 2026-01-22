@@ -24,6 +24,7 @@ type ViewMode = 'season' | 'cumulative';
 interface DisplayEntry {
   rank: number;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: string;
   userScore: number;
   postCount: number;
@@ -205,13 +206,13 @@ export function LeaderboardViewTab() {
                         {entry.profileImageUrl ? (
                           <img
                             src={entry.profileImageUrl}
-                            alt={entry.username}
+                            alt={entry.originalUsername || entry.username}
                             className="w-6 h-6 rounded-full"
                           />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-nasun-c5/30" />
                         )}
-                        <span className="text-nasun-white">@{entry.username}</span>
+                        <span className="text-nasun-white">@{entry.originalUsername || entry.username}</span>
                         {entry.isRegistered && (
                           <span className="text-nasun-c3 text-xs">✓</span>
                         )}

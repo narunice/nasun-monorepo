@@ -45,6 +45,7 @@ export interface ScoreBreakdown {
 export interface SeasonLeaderboardEntry {
   rank: number;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   userScore: number;
   postCount: number;
@@ -79,6 +80,7 @@ export type TimeRangeV3 = 'today' | '7d' | '4w';
 export interface TopClimberEntry {
   accountId: string;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   displayName?: string;
   profileImageUrl?: string;

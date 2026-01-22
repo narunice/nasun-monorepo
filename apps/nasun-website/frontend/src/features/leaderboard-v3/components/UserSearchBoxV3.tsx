@@ -137,7 +137,7 @@ export function UserSearchBoxV3({
                     {account.profileImageUrl ? (
                       <img
                         src={account.profileImageUrl}
-                        alt={account.username}
+                        alt={account.originalUsername || account.username}
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
@@ -149,7 +149,7 @@ export function UserSearchBoxV3({
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-nasun-white truncate">
-                        @{account.username}
+                        @{account.originalUsername || account.username}
                       </div>
                       {account.displayName && (
                         <div className="text-xs text-nasun-white/50 truncate">
