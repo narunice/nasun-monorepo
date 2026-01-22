@@ -186,6 +186,7 @@ export const handler = async (
       rawUrl: postUrl,
       platform: normalized.platform,
       username: normalized.username,
+      originalUsername: normalized.originalUsername,
       accountRole,
       contentSignals,
       createdBy: adminUsername,

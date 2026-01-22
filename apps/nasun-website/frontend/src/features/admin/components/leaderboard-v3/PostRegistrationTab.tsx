@@ -83,7 +83,7 @@ export function PostRegistrationTab() {
       } else if (result.success && result.post && result.account) {
         setSubmitMessage({
           type: 'success',
-          text: `Post registered! @${result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(1)})`,
+          text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(1)})`,
         });
         form.reset();
         urlInputRef.current?.focus();

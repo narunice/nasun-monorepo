@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { Trophy } from 'lucide-react';
 import { useTopClimbersV3 } from '../hooks/useTopClimbersV3';
 import type { TimeRangeV3 } from '../types';
 import { TIME_RANGE_LABELS } from '../types';
@@ -45,10 +46,13 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
   if (isLoading) {
     return (
       <div className="w-full">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-          <h3 className="text-lg font-medium text-nasun-white flex items-center gap-2 uppercase">
-            <span className="text-xl text-yellow-500">🏆</span> TOP CLIMBERS SPOTLIGHT
-          </h3>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+            <h3 className="font-medium text-nasun-white uppercase">
+              Top Climbers Spotlight
+            </h3>
+          </div>
           <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-lg animate-pulse">
             {TIME_RANGES.map((r) => (
               <div key={r} className="h-7 w-14 bg-nasun-c4/20 rounded-2xl mx-0.5"></div>
@@ -79,10 +83,13 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
   if (!data || data.climbers.length === 0) {
     return (
       <div className="w-full">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-          <h3 className="text-lg font-medium text-nasun-white flex items-center gap-2 uppercase">
-            <span className="text-xl text-yellow-500">🏆</span> TOP CLIMBERS SPOTLIGHT
-          </h3>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+            <h3 className="font-medium text-nasun-white uppercase">
+              Top Climbers Spotlight
+            </h3>
+          </div>
           <TimeRangeSelectorInline
             selected={timeRange}
             onSelect={setTimeRange}

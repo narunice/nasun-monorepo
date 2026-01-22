@@ -10,7 +10,8 @@ import { Platform } from '../types';
 export interface NormalizedUrl {
   normalizedUrl: string;
   platform: Platform;
-  username: string;
+  username: string; // lowercase for consistent lookups
+  originalUsername: string; // original casing for display
   postId: string;
   isValid: boolean;
   error?: string;
@@ -51,6 +52,7 @@ export function normalizeUrl(rawUrl: string): NormalizedUrl {
     normalizedUrl: '',
     platform: 'twitter',
     username: '',
+    originalUsername: '',
     postId: '',
     isValid: false,
   };
@@ -111,6 +113,7 @@ export function normalizeUrl(rawUrl: string): NormalizedUrl {
     result.normalizedUrl = `https://x.com/${username.toLowerCase()}/status/${postId}`;
     result.platform = 'twitter';
     result.username = username.toLowerCase();
+    result.originalUsername = username; // Preserve original casing
     result.postId = postId;
     result.isValid = true;
 

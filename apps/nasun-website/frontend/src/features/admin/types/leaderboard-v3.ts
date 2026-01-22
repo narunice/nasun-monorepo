@@ -21,6 +21,7 @@ export interface LeaderboardV3Account {
   accountId: string;
   platform: Platform;
   username: string;
+  originalUsername?: string; // Original casing for display
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
@@ -63,6 +64,7 @@ export interface ScoreBreakdown {
 export interface LeaderboardEntry {
   rank: number;
   username: string;
+  originalUsername?: string; // Original casing for display
   platform: Platform;
   userScore: number;
   postCount: number;

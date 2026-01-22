@@ -24,8 +24,10 @@ const positionDisplay: Record<number, { emoji: string; label: string }> = {
 };
 
 // Default avatar (V2 style: rounded-2xl)
-function DefaultAvatar({ username }: { username: string }) {
-  const initial = username.charAt(0).toUpperCase();
+function DefaultAvatar({ username, originalUsername }: { username: string; originalUsername?: string }) {
+  // Use originalUsername for initial if available (preserves intended casing)
+  const displayName = originalUsername || username;
+  const initial = displayName.charAt(0).toUpperCase();
   return (
     <div className="w-12 h-12 rounded-2xl bg-gray-700 flex items-center justify-center text-nasun-white/60 font-semibold text-lg">
       {initial}
@@ -60,7 +62,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
           {climber.profileImageUrl ? (
             <img
               src={climber.profileImageUrl}
-              alt={climber.displayName || climber.username}
+              alt={climber.displayName || climber.originalUsername || climber.username}
               className="w-12 h-12 rounded-2xl object-cover"
               loading="lazy"
               onError={(e) => {
@@ -70,10 +72,10 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
               }}
             />
           ) : (
-            <DefaultAvatar username={climber.username} />
+            <DefaultAvatar username={climber.username} originalUsername={climber.originalUsername} />
           )}
           <div className="hidden">
-            <DefaultAvatar username={climber.username} />
+            <DefaultAvatar username={climber.username} originalUsername={climber.originalUsername} />
           </div>
         </div>
 
@@ -83,7 +85,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
             <div className="text-nasun-white font-medium truncate text-sm">{climber.displayName}</div>
           )}
           <div className={`truncate ${climber.displayName ? 'text-nasun-white/50 text-xs' : 'text-nasun-white font-medium text-sm'}`}>
-            @{climber.username}
+            @{climber.originalUsername || climber.username}
           </div>
         </div>
 

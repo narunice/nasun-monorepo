@@ -93,12 +93,13 @@ export async function createPost(params: {
   rawUrl: string;
   platform: Platform;
   username: string;
+  originalUsername?: string; // Original casing for display
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
   createdBy: string;
   seasonId?: string; // If not provided, will use active season
 }): Promise<{ post: Post; account: Account; seasonAccountScore?: SeasonAccountScore }> {
-  const { normalizedUrl, rawUrl, platform, username, accountRole, contentSignals, createdBy } =
+  const { normalizedUrl, rawUrl, platform, username, originalUsername, accountRole, contentSignals, createdBy } =
     params;
 
   // Get active season if seasonId not provided
@@ -128,7 +129,7 @@ export async function createPost(params: {
     }
 
     // Create new account with profile data
-    account = await createAccount(platform, username, accountRole, profileData);
+    account = await createAccount(platform, username, accountRole, profileData, originalUsername);
   }
 
   // Calculate post score
@@ -182,6 +183,7 @@ export async function createPost(params: {
     isNewDay,
     newLastKnownRole: accountRole,
     lastSeenAt: now,
+    originalUsername, // Backfill for legacy accounts without originalUsername
   });
 
   // Phase 5: Update season-specific aggregates if seasonId exists
@@ -191,6 +193,7 @@ export async function createPost(params: {
       seasonId,
       accountId: account.accountId,
       username: account.username,
+      originalUsername: account.originalUsername || originalUsername,
       platform: account.platform,
       postScoreToAdd: postScore,
       signalCountToAdd: bonusSignalCount,
@@ -318,7 +321,8 @@ export async function createAccount(
     displayName?: string;
     profileImageUrl?: string;
     isRegistered?: boolean;
-  }
+  },
+  originalUsername?: string
 ): Promise<Account> {
   const now = new Date().toISOString();
 
@@ -326,6 +330,7 @@ export async function createAccount(
     accountId: uuidv4(),
     platform,
     username: username.toLowerCase(),
+    originalUsername: originalUsername || username, // Preserve original casing
     lastKnownRole: role,
     displayName: profileData?.displayName,
     profileImageUrl: profileData?.profileImageUrl,
@@ -351,6 +356,7 @@ export async function createAccount(
 
 /**
  * Update account aggregates after adding a post
+ * Also backfills originalUsername for legacy accounts that don't have it
  */
 export async function updateAccountAggregates(params: {
   accountId: string;
@@ -360,6 +366,7 @@ export async function updateAccountAggregates(params: {
   isNewDay: boolean;
   newLastKnownRole: AccountRole;
   lastSeenAt: string;
+  originalUsername?: string; // For backfilling legacy accounts
 }): Promise<Account> {
   const {
     accountId,
@@ -369,30 +376,43 @@ export async function updateAccountAggregates(params: {
     isNewDay,
     newLastKnownRole,
     lastSeenAt,
+    originalUsername,
   } = params;
+
+  // Build update expression - conditionally include originalUsername
+  // Only set if provided and account doesn't have it (attribute_not_exists or empty)
+  let updateExpression = `
+    SET totalPostScore = totalPostScore + :postScore,
+        postCount = postCount + :one,
+        signalCountTotal = signalCountTotal + :signalCount,
+        activeDates = :activeDates,
+        uniqueActiveDays = :uniqueDays,
+        lastKnownRole = :role,
+        lastSeenAt = :lastSeen
+  `;
+
+  const expressionAttributeValues: Record<string, unknown> = {
+    ':postScore': postScoreToAdd,
+    ':one': 1,
+    ':signalCount': signalCountToAdd,
+    ':activeDates': newActiveDates,
+    ':uniqueDays': newActiveDates.length,
+    ':role': newLastKnownRole,
+    ':lastSeen': lastSeenAt,
+  };
+
+  // Backfill originalUsername if provided
+  if (originalUsername) {
+    updateExpression += `, originalUsername = if_not_exists(originalUsername, :origUser)`;
+    expressionAttributeValues[':origUser'] = originalUsername;
+  }
 
   const result = await docClient.send(
     new UpdateCommand({
       TableName: ACCOUNTS_TABLE,
       Key: { accountId },
-      UpdateExpression: `
-        SET totalPostScore = totalPostScore + :postScore,
-            postCount = postCount + :one,
-            signalCountTotal = signalCountTotal + :signalCount,
-            activeDates = :activeDates,
-            uniqueActiveDays = :uniqueDays,
-            lastKnownRole = :role,
-            lastSeenAt = :lastSeen
-      `,
-      ExpressionAttributeValues: {
-        ':postScore': postScoreToAdd,
-        ':one': 1,
-        ':signalCount': signalCountToAdd,
-        ':activeDates': newActiveDates,
-        ':uniqueDays': newActiveDates.length,
-        ':role': newLastKnownRole,
-        ':lastSeen': lastSeenAt,
-      },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW',
     })
   );
@@ -493,6 +513,7 @@ export async function updateSeasonAccountAggregates(params: {
   seasonId: string;
   accountId: string;
   username: string;
+  originalUsername?: string;
   platform: Platform;
   postScoreToAdd: number;
   signalCountToAdd: number;
@@ -506,6 +527,7 @@ export async function updateSeasonAccountAggregates(params: {
     seasonId,
     accountId,
     username,
+    originalUsername,
     platform,
     postScoreToAdd,
     signalCountToAdd,
@@ -580,6 +602,10 @@ export async function updateSeasonAccountAggregates(params: {
     };
 
     // Only include optional profile fields if they have values
+    if (originalUsername !== undefined) {
+      updateParts.push('originalUsername = :originalUsername');
+      expressionValues[':originalUsername'] = originalUsername;
+    }
     if (displayName !== undefined) {
       updateParts.push('displayName = :displayName');
       expressionValues[':displayName'] = displayName;
@@ -616,6 +642,7 @@ export async function updateSeasonAccountAggregates(params: {
       accountId,
       seasonId,
       username,
+      originalUsername,
       platform,
       totalPostScore: postScoreToAdd,
       postCount: 1,
