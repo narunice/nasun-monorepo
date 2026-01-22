@@ -55,7 +55,9 @@ export class NftEventStack extends cdk.Stack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN, // 실수로 삭제 방지
-      pointInTimeRecovery: true, // 롤백용 (최대 35일)
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true, // 롤백용 (최대 35일)
+      },
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES, // 감사 로그용
       encryption: dynamodb.TableEncryption.AWS_MANAGED, // 암호화
     });
@@ -107,7 +109,9 @@ export class NftEventStack extends cdk.Stack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
       encryption: dynamodb.TableEncryption.AWS_MANAGED,
     });
 
