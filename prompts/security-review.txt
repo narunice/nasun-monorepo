@@ -1,0 +1,56 @@
+<SecurityReviewRequest>
+  <Project>
+    <Name>Nasun Website</Name>
+    <RepositoryType>pnpm monorepo</RepositoryType>
+    <Path>apps/nasun-website/frontend</Path>
+    <Language>TypeScript, React, TailwindCSS</Language>
+    <Framework>Vite</Framework>
+  </Project>
+
+  <Scope>
+    <FocusAreas>
+      <Area>전체 코드베이스 보안 점검</Area>
+      <Area>MetaMask 및 Web3 지갑 연결 로직</Area>
+      <Area>사용자 인증 및 OAuth (Twitter/X, Google)</Area>
+      <Area>자금 탈취 위험 (트랜잭션 서명, RPC 호출)</Area>
+      <Area>OWASP Top 10 취약점 (XSS, CSRF, Injection, Auth flaws)</Area>
+      <Area>환경변수 및 Secrets 관리 (.env.production, AWS Secrets Manager)</Area>
+      <Area>Content Security Policy (CSP) 설정</Area>
+    </FocusAreas>
+  </Scope>
+
+  <Tasks>
+    <Task>코드베이스 전체를 정적 분석하여 보안 취약점 탐지</Task>
+    <Task>MetaMask 지갑 연결 로직에서 자금 탈취 가능성 검토</Task>
+    <Task>사용자 입력 처리(XSS/Injection) 안전성 검증</Task>
+    <Task>OAuth 및 zkLogin 인증 흐름의 안전성 점검</Task>
+    <Task>Secrets 및 환경변수 노출 위험 확인</Task>
+    <Task>CSP 및 외부 API 호출 정책 검토</Task>
+    <Task>보안 모범 사례 준수 여부 평가</Task>
+  </Tasks>
+
+<documents>
+/home/naru/my_apps/nasun-monorepo/CLAUDE.md
+/home/naru/my_apps/nasun-monorepo/apps/nasun-website/CLAUDE.md
+  </documents>
+
+
+  <Deliverables>
+    <ReportFormat>Markdown</ReportFormat>
+    <Sections>
+      <Section>요약 (Summary)</Section>
+      <Section>발견된 취약점 (Findings)</Section>
+      <Section>심각도 분류 (Severity: Critical/High/Medium/Low)</Section>
+      <Section>취약점 상세 설명 (Details)</Section>
+      <Section>재현 방법 (Reproduction Steps)</Section>
+      <Section>권장 해결책 (Recommendations)</Section>
+    </Sections>
+  </Deliverables>
+
+  <Expectations>
+    <Quality>Production-grade</Quality>
+    <Mindset>Security-first</Mindset>
+    <Clarity>Explicit and Deterministic</Clarity>
+    <AdversarialTesting>Enabled</AdversarialTesting>
+  </Expectations>
+</SecurityReviewRequest>

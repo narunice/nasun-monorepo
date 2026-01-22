@@ -105,17 +105,17 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         .nasun-tweet-container .react-tweet-theme {
           --tweet-container-background: transparent;
           --tweet-color-blue-primary: rgb(29, 155, 240);
-          --tweet-color-hover: rgba(255, 255, 255, 0.03);
+          --tweet-color-hover: rgba(255, 255, 255, 0.1);
           --tweet-body-font-size: 16px;
           --tweet-body-line-height: 1.4;
           /* Control main tweet container border-radius */
-          --tweet-container-border-radius: 0.375rem;
-          --tweet-border-radius: 0.375rem;
+          --tweet-container-border-radius: 2px;
+          --tweet-border-radius: 2px;
           /* Critical: Set tweet-border to none - this variable is used by quoted-tweet-container.module.css */
           --tweet-border: none;
           --tweet-quoted-container-border: none;
           --tweet-quoted-border: none;
-          --tweet-quoted-bg-color: rgba(15, 15, 15, 0.6);
+          --tweet-quoted-bg-color: rgba(15, 15, 25, 0.6);
           --tweet-quoted-bg-color-hover: rgba(15, 15, 15, 0.6);
           margin: 0 !important;
         }
@@ -131,39 +131,31 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         .nasun-tweet-container > div > article {
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           background: rgba(30, 30, 30, 0.9) !important;
-          border-radius: 0.375rem !important; /* rounded-md (6px) */
+          border-radius: 2px !important; /* rounded-md (6px) */
           backdrop-filter: blur(8px);
           margin: 0 !important;
           overflow: hidden !important; /* Clip children to respect border-radius */
         }
 
-        /* Target the quoted tweet container div - this has the 12px border-radius */
+        /* Target the quoted tweet container div - apply rounded-lg (8px) */
         /* Using :has() to target parent div that contains the quoted article */
         .nasun-tweet-container article div:has(> article),
         .nasun-tweet-container article div:has(> article):hover,
         .nasun-tweet-container article div:has(> article):focus {
-          border: none !important;
-          border-radius: 0 !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          border-radius: 0.5rem !important; /* rounded-lg (8px) */
           background: rgba(15, 15, 15, 0.6) !important;
           box-shadow: none !important;
           outline: none !important;
           transition: none !important;
+          overflow: hidden !important;
         }
 
-        /* Reset ALL borders, outlines, shadows on ALL elements inside main article */
-        .nasun-tweet-container article *,
-        .nasun-tweet-container article *:hover,
-        .nasun-tweet-container article *:focus,
-        .nasun-tweet-container article *::before,
-        .nasun-tweet-container article *::after,
-        .nasun-tweet-container article *:hover::before,
-        .nasun-tweet-container article *:hover::after {
+        /* Reset borders on most elements, but EXCLUDE quoted tweet container */
+        .nasun-tweet-container article > *:not(:has(article)),
+        .nasun-tweet-container article > *:not(:has(article)):hover,
+        .nasun-tweet-container article > *:not(:has(article)):focus {
           border: none !important;
-          border-top: none !important;
-          border-bottom: none !important;
-          border-left: none !important;
-          border-right: none !important;
-          border-radius: 0 !important;
           outline: none !important;
           box-shadow: none !important;
         }
@@ -174,7 +166,7 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         .nasun-tweet-container article article:focus {
           border: none !important;
           background: transparent !important;
-          border-radius: 0 !important;
+          border-radius: 0.5rem !important; /* Match parent rounded-lg */
           margin: 0 !important;
           outline: none !important;
           box-shadow: none !important;
