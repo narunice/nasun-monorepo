@@ -65,7 +65,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
         environmentName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: environmentName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: environmentName === 'prod',
+      },
     });
 
     // GSI for URL lookup (deduplication)
@@ -100,7 +102,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
         environmentName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: environmentName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: environmentName === 'prod',
+      },
     });
 
     // GSI for username lookup
@@ -121,7 +125,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
         environmentName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: environmentName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: environmentName === 'prod',
+      },
     });
 
     // Snapshots table (Phase 5)
@@ -136,7 +142,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
         environmentName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: environmentName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: environmentName === 'prod',
+      },
       timeToLiveAttribute: 'ttl', // Enable TTL for auto-cleanup of old snapshots
     });
 
@@ -152,7 +160,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
         environmentName === 'prod'
           ? cdk.RemovalPolicy.RETAIN
           : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: environmentName === 'prod',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: environmentName === 'prod',
+      },
     });
 
     // GSI for season-based leaderboard ranking
@@ -197,7 +207,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
 
     // Common NodejsFunction options
     const nodejsFunctionDefaults = {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       environment: lambdaEnvironment,
       logRetention: logs.RetentionDays.ONE_MONTH,
       bundling: bundlingOptions,
@@ -321,6 +331,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Get Featured Feed Lambda (Phase 10)
+    const getFeaturedFeedLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3GetFeaturedFeedFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-get-featured-feed`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'get-featured-feed.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 512,
+        description: 'Leaderboard V3: Get featured content feed',
+      }
+    );
+
     // Search Accounts Lambda (Phase 8)
     const searchAccountsLambda = new NodejsFunction(
       this,
@@ -368,6 +393,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // Search Accounts permissions (Phase 8)
     this.accountsTable.grantReadData(searchAccountsLambda);
     this.seasonAccountsTable.grantReadData(searchAccountsLambda);
+
+    // Featured Feed permissions (Phase 10)
+    this.postsTable.grantReadData(getFeaturedFeedLambda);
+    this.accountsTable.grantReadData(getFeaturedFeedLambda);
+    this.seasonsTable.grantReadData(getFeaturedFeedLambda);
+    this.seasonAccountsTable.grantReadData(getFeaturedFeedLambda);
+    this.snapshotsTable.grantReadData(getFeaturedFeedLambda);
 
     // Grant read access to UserProfiles table for profile data lookup
     if (userProfilesTable) {
@@ -417,6 +449,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
     topClimbersResource.addMethod(
       'GET',
       new apigw.LambdaIntegration(getTopClimbersLambda)
+    );
+
+    // GET /v3/feed/featured
+    const feedResource = v3Resource.addResource('feed');
+    const featuredFeedResource = feedResource.addResource('featured');
+    featuredFeedResource.addMethod(
+      'GET',
+      new apigw.LambdaIntegration(getFeaturedFeedLambda)
     );
 
     // GET /v3/accounts/search?q={query}&limit={limit}&seasonId={seasonId}
