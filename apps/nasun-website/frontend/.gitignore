@@ -12,12 +12,13 @@ yarn-error.log*
 pnpm-debug.log*
 
 # 환경 변수 파일
+# SECURITY: .env 파일은 Git에서 추적하지 않음 (실제 secrets 포함)
+# 배포 시 CI/CD 또는 AWS Secrets Manager 사용 권장
 .env
 .env.*
+.env.local
+.env.*.local
 !.env.example
-!.env.staging
-!.env.production
-!.env.development
 
 # IDE/에디터 설정
 .vscode/

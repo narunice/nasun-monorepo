@@ -166,7 +166,7 @@ function PostDetailPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="font-bold text-white leading-snug mb-6 font-eurostile"
-                dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.title.rendered) }}
               />
 
               <motion.div
