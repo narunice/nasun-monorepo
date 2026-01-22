@@ -46,7 +46,7 @@ export class FollowerStack extends cdk.Stack {
     // ========================================
     this.collectFollowersFunction = new lambda.Function(this, 'CollectFollowersFunction', {
       functionName: 'nasun-collect-followers',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
         path.join(__dirname, '../lambda-src/collect-followers/dist')

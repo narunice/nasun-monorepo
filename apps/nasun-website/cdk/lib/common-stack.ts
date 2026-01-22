@@ -661,7 +661,9 @@ export class CommonStack extends cdk.Stack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN, // 프로덕션 데이터 보호
-      pointInTimeRecovery: true, // 백업 활성화
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true, // 백업 활성화
+      },
     });
 
     // GSI: 날짜별 조회용

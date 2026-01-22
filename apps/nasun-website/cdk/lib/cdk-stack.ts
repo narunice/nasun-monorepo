@@ -108,7 +108,9 @@ export class CdkStack extends cdk.Stack {
       sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     // 🆕 GSI for querying bookmark/retweet bonuses by date
@@ -1556,14 +1558,14 @@ export class CdkStack extends cdk.Stack {
       comment: "Process each tweet batch sequentially with rate limit compliance",
       maxConcurrency: 1,
       itemsPath: "$.batchSplitterResult.Payload.tweetBatches",
-      parameters: {
+      itemSelector: {
         "tweetBatch.$": "$$.Map.Item.Value",
         "targetUser.$": "$.getTargetTweetsResult.Payload.targetUser",
         "dateRange.$": "$.getTargetTweetsResult.Payload.dateRange",
         "collectionDate.$": "$.getTargetTweetsResult.Payload.collectionDate"
       }
     });
-    batchProcessingMap.iterator(highRateLimitChain);
+    batchProcessingMap.itemProcessor(highRateLimitChain);
 
     // Branch B: Target Bonus Group (existing functions)
     // Branch B: Mention Collection (Phase 2-1: Search mentions)
@@ -1607,7 +1609,7 @@ export class CdkStack extends cdk.Stack {
     const mentionBatchesMap = new stepfunctions.Map(this, "MentionBatchesMap", {
       comment: "Phase 2-2: Process mention batches sequentially (20 mentions per batch)",
       itemsPath: "$.parallelResults[1].mentionCollectorResult.Payload.mentionBatches",
-      parameters: {
+      itemSelector: {
         'mentionBatch.$': '$$.Map.Item.Value',
         'targetUser.$': '$.getTargetTweetsResult.Payload.targetUser',
         'targetTweetIds.$': '$.getTargetTweetsResult.Payload.targetTweetIds'  // 🆕 타겟 트윗 ID 목록 (중복 방지용, 2025-10-26)
@@ -1615,7 +1617,7 @@ export class CdkStack extends cdk.Stack {
       maxConcurrency: 1, // Sequential processing for rate limit compliance
       resultPath: "$.mentionDetailsResults"
     });
-    mentionBatchesMap.iterator(mentionDetailsCollectorTask);
+    mentionBatchesMap.itemProcessor(mentionDetailsCollectorTask);
 
     // Wait 5 minutes after mention details collection (for mentions found branch)
     const waitAfterMentionDetails1 = new stepfunctions.Wait(this, "WaitAfterMentionDetails1", {
@@ -1817,7 +1819,7 @@ export class CdkStack extends cdk.Stack {
     // Create V3 Pipeline with Score Calculator and Leaderboard Generator Integration
     this.leaderboardDataPipeline = new stepfunctions.StateMachine(this, "UnifiedPipelineWithScoring", {
       stateMachineName: "nasun-leaderboard-pipeline",
-      definition: v3Definition,
+      definitionBody: stepfunctions.DefinitionBody.fromChainable(v3Definition),
       timeout: cdk.Duration.hours(6),  // Increased from 3h to 6h for batch processing with 15min waits
       comment: "NASUN Complete Pipeline: Data Collection → Score Calculation → Leaderboard Generation",
       logs: {
