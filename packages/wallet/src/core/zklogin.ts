@@ -20,6 +20,7 @@ import {
   getZkLoginSignature,
   genAddressSeed,
 } from '@mysten/sui/zklogin';
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyResult } from 'jose';
 import { getSuiClient } from '../sui/client';
 import type {
   ZkLoginProvider,
@@ -44,6 +45,9 @@ const ZKLOGIN_SESSION_KEY = 'nasun:zklogin:session';
 
 /** Session storage key for zkLogin state */
 const ZKLOGIN_STATE_KEY = 'nasun:zklogin:state';
+
+/** Session storage key for OAuth CSRF state */
+const OAUTH_CSRF_STATE_KEY = 'nasun:zklogin:oauth_csrf_state';
 
 /** zkLogin configuration (set via configureZkLogin) */
 let zkLoginConfig: ZkLoginConfig | null = null;
@@ -161,11 +165,47 @@ export function clearZkLoginState(): void {
 }
 
 // ============================================
+// OAuth CSRF State Management
+// ============================================
+
+/**
+ * Generate and save OAuth CSRF state
+ */
+export function generateOAuthCsrfState(): string {
+  const state = crypto.randomUUID();
+  sessionStorage.setItem(OAUTH_CSRF_STATE_KEY, state);
+  return state;
+}
+
+/**
+ * Validate OAuth CSRF state from callback
+ */
+export function validateOAuthCsrfState(receivedState: string): boolean {
+  const savedState = sessionStorage.getItem(OAUTH_CSRF_STATE_KEY);
+  if (!savedState) {
+    throw new ZkLoginError('CSRF_STATE_MISSING', 'OAuth state not found - session may have expired');
+  }
+  if (savedState !== receivedState) {
+    throw new ZkLoginError('CSRF_STATE_MISMATCH', 'OAuth state mismatch - possible CSRF attack');
+  }
+  sessionStorage.removeItem(OAUTH_CSRF_STATE_KEY);
+  return true;
+}
+
+/**
+ * Clear OAuth CSRF state
+ */
+export function clearOAuthCsrfState(): void {
+  sessionStorage.removeItem(OAUTH_CSRF_STATE_KEY);
+}
+
+// ============================================
 // OAuth URL Generation
 // ============================================
 
 /**
  * Build OAuth URL for a provider (Step 2)
+ * Includes CSRF protection via state parameter
  */
 export function buildOAuthUrl(provider: ZkLoginProvider, nonce: string): string {
   if (!zkLoginConfig) {
@@ -177,31 +217,35 @@ export function buildOAuthUrl(provider: ZkLoginProvider, nonce: string): string 
     throw new ZkLoginError('PROVIDER_NOT_CONFIGURED', `Provider ${provider} not configured`);
   }
 
+  // Generate CSRF state for this OAuth request
+  const csrfState = generateOAuthCsrfState();
+
   switch (provider) {
     case 'google':
-      return buildGoogleOAuthUrl(config.clientId, config.redirectUri, nonce);
+      return buildGoogleOAuthUrl(config.clientId, config.redirectUri, nonce, csrfState);
     case 'apple':
-      return buildAppleOAuthUrl(config.clientId, config.redirectUri, nonce);
+      return buildAppleOAuthUrl(config.clientId, config.redirectUri, nonce, csrfState);
     case 'twitch':
-      return buildTwitchOAuthUrl(config.clientId, config.redirectUri, nonce);
+      return buildTwitchOAuthUrl(config.clientId, config.redirectUri, nonce, csrfState);
     default:
       throw new ZkLoginError('PROVIDER_NOT_CONFIGURED', `Provider ${provider} not supported yet`);
   }
 }
 
-function buildGoogleOAuthUrl(clientId: string, redirectUri: string, nonce: string): string {
+function buildGoogleOAuthUrl(clientId: string, redirectUri: string, nonce: string, state: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'id_token',
     scope: 'openid email profile',
     nonce: nonce,
+    state: state, // CSRF protection
     prompt: 'select_account', // Always show account selection screen
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
-function buildAppleOAuthUrl(clientId: string, redirectUri: string, nonce: string): string {
+function buildAppleOAuthUrl(clientId: string, redirectUri: string, nonce: string, state: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -209,19 +253,95 @@ function buildAppleOAuthUrl(clientId: string, redirectUri: string, nonce: string
     scope: 'openid email name',
     response_mode: 'fragment',
     nonce: nonce,
+    state: state, // CSRF protection
   });
   return `https://appleid.apple.com/auth/authorize?${params}`;
 }
 
-function buildTwitchOAuthUrl(clientId: string, redirectUri: string, nonce: string): string {
+function buildTwitchOAuthUrl(clientId: string, redirectUri: string, nonce: string, state: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'id_token',
     scope: 'openid',
     nonce: nonce,
+    state: state, // CSRF protection
   });
   return `https://id.twitch.tv/oauth2/authorize?${params}`;
+}
+
+// ============================================
+// JWT Verification (JWKS)
+// ============================================
+
+/** JWKS URLs for supported OAuth providers */
+const JWKS_URLS: Record<string, string> = {
+  google: 'https://www.googleapis.com/oauth2/v3/certs',
+  apple: 'https://appleid.apple.com/auth/keys',
+  twitch: 'https://id.twitch.tv/oauth2/keys',
+};
+
+/** Expected issuers for each provider */
+const EXPECTED_ISSUERS: Record<string, string[]> = {
+  google: ['https://accounts.google.com', 'accounts.google.com'],
+  apple: ['https://appleid.apple.com'],
+  twitch: ['https://id.twitch.tv/oauth2'],
+};
+
+/** Cache for JWKS to avoid repeated fetches */
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+/**
+ * Get or create cached JWKS for a provider
+ */
+function getJwks(provider: ZkLoginProvider): ReturnType<typeof createRemoteJWKSet> {
+  const url = JWKS_URLS[provider];
+  if (!url) {
+    throw new ZkLoginError('PROVIDER_NOT_CONFIGURED', `No JWKS URL for provider: ${provider}`);
+  }
+
+  let jwks = jwksCache.get(provider);
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(url));
+    jwksCache.set(provider, jwks);
+  }
+  return jwks;
+}
+
+/**
+ * Verify JWT signature using provider's JWKS (Step 3a)
+ * This ensures the JWT was actually issued by the OAuth provider
+ * and has not been tampered with
+ */
+export async function verifyJwtSignature(
+  jwt: string,
+  provider: ZkLoginProvider
+): Promise<JWTVerifyResult['payload']> {
+  const jwks = getJwks(provider);
+  const expectedIssuers = EXPECTED_ISSUERS[provider];
+
+  if (!expectedIssuers) {
+    throw new ZkLoginError('PROVIDER_NOT_CONFIGURED', `No expected issuers for provider: ${provider}`);
+  }
+
+  try {
+    const { payload } = await jwtVerify(jwt, jwks, {
+      issuer: expectedIssuers,
+    });
+    return payload;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    if (message.includes('signature')) {
+      throw new ZkLoginError('JWT_INVALID', 'JWT signature verification failed - token may be forged');
+    }
+    if (message.includes('expired')) {
+      throw new ZkLoginError('JWT_EXPIRED', 'JWT has expired');
+    }
+    if (message.includes('issuer')) {
+      throw new ZkLoginError('JWT_INVALID', 'JWT issuer verification failed');
+    }
+    throw new ZkLoginError('JWT_INVALID', `JWT verification failed: ${message}`);
+  }
 }
 
 // ============================================
@@ -261,7 +381,8 @@ export function parseJwt(jwt: string): {
 }
 
 /**
- * Validate JWT and check if it matches the session nonce
+ * Validate JWT claims (expiration, nonce)
+ * Note: For full security, use verifyJwtWithSignature() which also validates the signature
  */
 export function validateJwt(jwt: string, expectedNonce: string): boolean {
   try {
@@ -282,6 +403,29 @@ export function validateJwt(jwt: string, expectedNonce: string): boolean {
     if (error instanceof ZkLoginError) throw error;
     throw new ZkLoginError('JWT_INVALID', 'Failed to parse JWT');
   }
+}
+
+/**
+ * Verify JWT signature AND validate claims (recommended)
+ * This is the secure way to validate JWTs from OAuth providers
+ */
+export async function verifyJwtWithSignature(
+  jwt: string,
+  expectedNonce: string,
+  provider?: ZkLoginProvider
+): Promise<boolean> {
+  // If provider not specified, detect from JWT
+  const actualProvider = provider || detectProvider(jwt);
+
+  // 1. Verify signature using JWKS
+  const verifiedPayload = await verifyJwtSignature(jwt, actualProvider);
+
+  // 2. Check nonce from verified payload
+  if (verifiedPayload.nonce !== expectedNonce) {
+    throw new ZkLoginError('NONCE_MISMATCH', 'JWT nonce does not match session nonce');
+  }
+
+  return true;
 }
 
 /**
@@ -506,11 +650,11 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
     throw new ZkLoginError('SESSION_EXPIRED', 'No zkLogin session found. Please try logging in again.');
   }
 
-  // 2. Validate JWT
-  validateJwt(jwt, session.nonce);
-
-  // 3. Detect provider
+  // 2. Detect provider first (needed for signature verification)
   const provider = detectProvider(jwt);
+
+  // 3. Verify JWT signature AND validate claims (secure verification)
+  await verifyJwtWithSignature(jwt, session.nonce, provider);
 
   // 4. Fetch salt from backend
   const saltResponse = await fetchSalt(jwt);

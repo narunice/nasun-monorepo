@@ -62,3 +62,26 @@ export async function deleteNonce(walletAddress: string): Promise<void> {
     })
   );
 }
+
+/**
+ * DynamoDB에서 nonce 조회 후 즉시 삭제 (원자적 연산)
+ * Race condition 방지: 동시 요청 시 하나만 성공
+ */
+export async function getAndDeleteNonce(walletAddress: string): Promise<NonceData | null> {
+  const result = await dynamoClient.send(
+    new DeleteCommand({
+      TableName: tableName,
+      Key: { walletAddress },
+      ReturnValues: 'ALL_OLD', // Return the item that was deleted
+    })
+  );
+
+  if (!result.Attributes) {
+    return null;
+  }
+
+  return {
+    nonce: result.Attributes.nonce,
+    expiresAt: result.Attributes.expiresAt,
+  };
+}

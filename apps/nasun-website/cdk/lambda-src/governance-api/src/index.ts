@@ -24,6 +24,44 @@ import { bcs } from "@mysten/sui/bcs";
 // Configure ed25519 to use sha512
 ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
 
+/**
+ * Mask sensitive data in objects before logging to CloudWatch
+ * Prevents accidental exposure of secrets, signatures, and tokens
+ */
+function maskSensitiveData<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== "object") return obj;
+
+  const sensitiveFields = [
+    "signature",
+    "ethSignature",
+    "accessToken",
+    "privateKey",
+    "secret",
+    "password",
+    "token",
+    "apiKey",
+    "secretKey",
+  ];
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map((item) => maskSensitiveData(item)) as T;
+  }
+
+  // Handle objects
+  const masked = { ...obj } as Record<string, unknown>;
+  for (const key of Object.keys(masked)) {
+    const lowerKey = key.toLowerCase();
+    if (sensitiveFields.some((f) => lowerKey.includes(f.toLowerCase()))) {
+      masked[key] = "[REDACTED]";
+    } else if (typeof masked[key] === "object" && masked[key] !== null) {
+      masked[key] = maskSensitiveData(masked[key]);
+    }
+  }
+  return masked as T;
+}
+
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
@@ -556,7 +594,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           }),
         };
       } catch (error: any) {
-        console.error("NFT verification error:", error);
+        console.error("NFT verification error:", maskSensitiveData({ message: error.message, stack: error.stack }));
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -600,8 +638,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           try {
             const ethAddress = recoverAddressFromSignature(ethSignature.message, ethSignature.signature);
             hasNft = await verifyNftOwnership(ethAddress);
-          } catch (e) {
-            console.warn("ETH signature verification failed:", e);
+          } catch (e: any) {
+            console.warn("ETH signature verification failed:", maskSensitiveData({ message: e?.message }));
           }
         }
 
@@ -665,7 +703,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           body: JSON.stringify(certificate),
         };
       } catch (error: any) {
-        console.error("Certificate issuance error:", error);
+        console.error("Certificate issuance error:", maskSensitiveData({ message: error.message, stack: error.stack }));
         return {
           statusCode: 500,
           headers: corsHeaders,
@@ -787,7 +825,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           }),
         };
       } catch (error: any) {
-        console.error("Sponsor error:", error);
+        console.error("Sponsor error:", maskSensitiveData({ message: error.message, stack: error.stack }));
         return {
           statusCode: 500,
           headers: corsHeaders,
@@ -805,7 +843,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       body: JSON.stringify({ error: "Not found" }),
     };
   } catch (error: any) {
-    console.error("Governance API error:", error);
+    console.error("Governance API error:", maskSensitiveData({ message: error.message, stack: error.stack }));
     return {
       statusCode: 500,
       headers: corsHeaders,
