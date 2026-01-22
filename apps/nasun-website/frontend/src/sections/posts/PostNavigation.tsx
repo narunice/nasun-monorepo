@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import DOMPurify from "dompurify";
 import { Post } from "../../types/post.d";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 
@@ -47,7 +48,7 @@ const NavLink = ({
           <span className="text-sm text-gray-500 uppercase tracking-wider">{label}</span>
           <p
             className="font-bold line-clamp-2 group-hover:text-nasun-accent transition-all"
-            dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.title.rendered) }}
           />
         </div>
 
