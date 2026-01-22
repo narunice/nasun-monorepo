@@ -4,6 +4,7 @@
  * Keyboard Shortcuts:
  * - 1/2/3: Select role (Default/Proactive CT/KOL)
  * - Q/W/E: Toggle signals (Insight/Creative/High Reach)
+ * - R/T/Y: Select post type (Original/Quote/Reply) - Phase 9
  * - /: Focus URL input
  * - Ctrl+Enter: Submit post
  */
@@ -22,7 +23,9 @@ import {
   ROLE_LABELS,
   SIGNAL_LABELS,
   BONUS_SIGNALS,
+  POST_TYPE_LABELS,
   type AccountRole,
+  type PostType,
 } from '../../types/leaderboard-v3';
 
 // Extract username from URL for account lookup
@@ -83,7 +86,7 @@ export function PostRegistrationTab() {
       } else if (result.success && result.post && result.account) {
         setSubmitMessage({
           type: 'success',
-          text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(1)})`,
+          text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(2)})`,
         });
         form.reset();
         urlInputRef.current?.focus();
@@ -112,7 +115,7 @@ export function PostRegistrationTab() {
           <span className="w-1 h-4 bg-nasun-c3 rounded-full"></span>
           Keyboard Shortcuts
         </h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/60">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs text-nasun-white/60">
           <div>
             <span className="text-nasun-c3 font-mono">1 2 3</span>
             <span className="ml-2">Role</span>
@@ -120,6 +123,10 @@ export function PostRegistrationTab() {
           <div>
             <span className="text-nasun-c3 font-mono">Q W E</span>
             <span className="ml-2">Signals</span>
+          </div>
+          <div>
+            <span className="text-nasun-c3 font-mono">R T Y</span>
+            <span className="ml-2">Type</span>
           </div>
           <div>
             <span className="text-nasun-c3 font-mono">/</span>
@@ -221,14 +228,43 @@ export function PostRegistrationTab() {
             </div>
           </div>
 
+          {/* Post Type (Phase 9) */}
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
+              Post Type <span className="text-nasun-c3 font-mono ml-2">R T Y</span>
+            </label>
+            <div className="flex gap-3">
+              {(['original', 'quote', 'reply'] as PostType[]).map((type, index) => {
+                const shortcut = ['R', 'T', 'Y'][index];
+                const isActive = form.postType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => form.setPostType(type)}
+                    className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
+                      isActive
+                        ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg'
+                        : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
+                    }`}
+                  >
+                    <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
+                    {POST_TYPE_LABELS[type]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Score Preview */}
           <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-sm border border-nasun-c5/20">
             <div className="text-sm text-nasun-white/60">
               <span className="font-medium text-nasun-white">Score Preview:</span>{' '}
               {form.scorePreview.baseScore} × {form.scorePreview.roleMultiplier} + {form.scorePreview.signalBonus}
+              <span className="ml-2 text-nasun-white/40">({POST_TYPE_LABELS[form.postType]})</span>
             </div>
             <div className="text-2xl font-bold text-nasun-c3">
-              {form.scorePreview.totalScore.toFixed(1)}
+              {form.scorePreview.totalScore.toFixed(2)}
             </div>
           </div>
 

@@ -16,6 +16,9 @@ export type AccountRole = 'kol' | 'proactive_ct' | 'default';
 // Content signal types (matches backend)
 export type ContentSignal = 'standard' | 'insight' | 'creative' | 'high_reach';
 
+// Post type classification (Phase 9)
+export type PostType = 'original' | 'quote' | 'reply';
+
 // Account data (matches backend Account interface)
 export interface LeaderboardV3Account {
   accountId: string;
@@ -82,6 +85,7 @@ export interface CreatePostRequest {
   postUrl: string;
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
+  postType?: PostType; // Phase 9: defaults to 'original'
 }
 
 export interface CreatePostResponse {
@@ -162,6 +166,19 @@ export const SIGNAL_SHORTCUTS: Record<string, ContentSignal> = {
   'q': 'insight',
   'w': 'creative',
   'e': 'high_reach',
+};
+
+// Phase 9: Post type labels and shortcuts
+export const POST_TYPE_LABELS: Record<PostType, string> = {
+  original: 'Original',
+  quote: 'Quote',
+  reply: 'Reply',
+};
+
+export const POST_TYPE_SHORTCUTS: Record<string, PostType> = {
+  'r': 'original',
+  't': 'quote',
+  'y': 'reply',
 };
 
 // ============================================

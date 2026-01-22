@@ -12,11 +12,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { SectionLayout } from '@/components/layout/SectionLayout';
 import { useSeasons, useActiveSeason } from '../hooks/useSeasons';
 import { useSeasonLeaderboard } from '../hooks/useSeasonLeaderboard';
+import { usePaginationV3 } from '../hooks/usePaginationV3';
 import { SeasonSelector } from './SeasonSelector';
 import TopClimbersV3 from './TopClimbersV3';
 import LeaderboardV3Row from './LeaderboardV3Row';
 import { SnapshotViewerV3 } from './SnapshotViewerV3';
 import { UserSearchBoxV3 } from './UserSearchBoxV3';
+import PaginationControlsV3 from './PaginationControlsV3';
+
+const ITEMS_PER_PAGE = 50;
 
 export function LeaderboardV3() {
   const { data: seasons, isLoading: seasonsLoading } = useSeasons();
@@ -28,13 +32,32 @@ export function LeaderboardV3() {
   // Snapshot date for past rankings (optional)
   const [snapshotDate, setSnapshotDate] = useState<string | undefined>(undefined);
 
+  // Page state for query
+  const [page, setPage] = useState(1);
+
+  // Fetch leaderboard data
+  const {
+    data: leaderboardData,
+    isLoading: leaderboardLoading,
+    error: leaderboardError,
+  } = useSeasonLeaderboard({
+    seasonId: selectedSeasonId,
+    snapshotDate,
+    limit: ITEMS_PER_PAGE,
+    offset: (page - 1) * ITEMS_PER_PAGE,
+  });
+
+  // Pagination hook for UI (uses totalCount from query)
+  const pagination = usePaginationV3(leaderboardData?.totalCount ?? 0, ITEMS_PER_PAGE);
+
   // Highlighted user for search
   const [highlightedUsername, setHighlightedUsername] = useState<string | undefined>(undefined);
-  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [pendingScrollUsername, setPendingScrollUsername] = useState<string | undefined>(undefined);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Handle user search selection
-  const handleUserSelect = useCallback((username: string) => {
+  const handleUserSelect = useCallback((username: string, rank?: number) => {
     // Clear any existing timeout
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current);
@@ -42,19 +65,52 @@ export function LeaderboardV3() {
 
     setHighlightedUsername(username);
 
-    // Scroll to the highlighted row after a short delay
-    setTimeout(() => {
-      const row = document.querySelector(`[data-username="${username}"]`);
-      if (row) {
-        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Calculate target page from rank
+    if (rank) {
+      const targetPage = Math.ceil(rank / ITEMS_PER_PAGE);
+      if (targetPage !== page) {
+        // Need to change page first, then scroll after data loads
+        setPendingScrollUsername(username);
+        setPage(targetPage);
+        pagination.handlePageChange(targetPage);
+      } else {
+        // Same page, scroll immediately
+        setTimeout(() => {
+          const row = document.querySelector(`[data-username="${username}"]`);
+          if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
       }
-    }, 100);
+    } else {
+      // No rank info, try to scroll on current page
+      setTimeout(() => {
+        const row = document.querySelector(`[data-username="${username}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
 
     // Auto-clear highlight after 6 seconds
     highlightTimeoutRef.current = setTimeout(() => {
       setHighlightedUsername(undefined);
     }, 6000);
-  }, []);
+  }, [page, pagination]);
+
+  // Scroll to user after page change completes
+  useEffect(() => {
+    if (pendingScrollUsername && !leaderboardLoading) {
+      // Data loaded, now scroll to the user
+      setTimeout(() => {
+        const row = document.querySelector(`[data-username="${pendingScrollUsername}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setPendingScrollUsername(undefined);
+      }, 100);
+    }
+  }, [pendingScrollUsername, leaderboardLoading]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -72,16 +128,22 @@ export function LeaderboardV3() {
     }
   }, [activeSeason, selectedSeasonId]);
 
-  // Fetch leaderboard data
-  const {
-    data: leaderboardData,
-    isLoading: leaderboardLoading,
-    error: leaderboardError,
-  } = useSeasonLeaderboard({
-    seasonId: selectedSeasonId,
-    snapshotDate,
-    limit: 100,
-  });
+  // Handle page change - update local page state
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (pagination.handlePageChange(newPage)) {
+        setPage(newPage);
+      }
+    },
+    [pagination]
+  );
+
+  // Reset page when season or snapshot changes
+  useEffect(() => {
+    setPage(1);
+    pagination.resetToFirstPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSeasonId, snapshotDate]);
 
   // Get selected season info
   const selectedSeason = seasons?.find((s) => s.seasonId === selectedSeasonId);
@@ -184,7 +246,7 @@ export function LeaderboardV3() {
           </div>
 
           {/* Footer */}
-          <div className="py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center">
+          <div className="px-4 py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center">
             <span>Total: {leaderboardData.totalCount} contributors</span>
             <span>
               {snapshotDate ? `Snapshot: ${snapshotDate}` : 'Live'} |{' '}
@@ -192,6 +254,28 @@ export function LeaderboardV3() {
             </span>
           </div>
         </div>
+      )}
+
+      {/* Pagination */}
+      {leaderboardData && leaderboardData.totalCount > ITEMS_PER_PAGE && (
+        <PaginationControlsV3
+          currentPage={page}
+          totalPages={pagination.totalPages}
+          totalEntries={leaderboardData.totalCount}
+          pageInput={pagination.pageInput}
+          paginationRange={pagination.paginationRange}
+          hasPrev={pagination.hasPrevPage}
+          hasNext={pagination.hasNextPage}
+          onPageChange={handlePageChange}
+          onPageInputChange={pagination.handlePageInputChange}
+          onPageInputSubmit={(e) => {
+            e.preventDefault();
+            const pageNum = parseInt(pagination.pageInput, 10);
+            if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pagination.totalPages) {
+              handlePageChange(pageNum);
+            }
+          }}
+        />
       )}
 
       {/* Empty State */}

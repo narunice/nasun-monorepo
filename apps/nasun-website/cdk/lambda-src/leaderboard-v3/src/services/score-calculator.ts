@@ -4,7 +4,13 @@
  * Implements the scoring formulas from LEADERBOARD_V3_SPEC.md
  *
  * PostScore = Base × RoleMultiplier + SignalBonus
- * RawScore = Σ(PostScore) × log₂(PostCount + 1) / PostCount
+ *
+ * RawScore (per-type calculation, Phase 9):
+ *   OriginalRawScore = Σ(OriginalPostScore) × log₂(OriginalCount + 1) / OriginalCount
+ *   QuoteRawScore = Σ(QuotePostScore) × log₂(QuoteCount + 1) / QuoteCount
+ *   ReplyRawScore = Σ(ReplyPostScore) × log₂(ReplyCount + 1) / ReplyCount^0.7 (weaker decay)
+ *   TotalRawScore = OriginalRawScore + QuoteRawScore + ReplyRawScore
+ *
  * ConsistencyBonus = 1 + log₂(UniqueActiveDays + 1) × 0.1 (max 1.5)
  * FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 14)
  * UserScore = RawScore × ConsistencyBonus × FreshnessMultiplier
@@ -93,6 +99,50 @@ export function calculateRawScore(
 }
 
 /**
+ * Calculate raw score with weaker decay (for replies)
+ *
+ * Formula: RawScore = Σ(PostScore) × log₂(PostCount + 1) / PostCount^0.7
+ *
+ * This creates a gentler decay curve for replies to encourage engagement:
+ * - 1 reply: 1.00 (100% efficiency)
+ * - 2 replies: 0.97 (97% efficiency)
+ * - 4 replies: 0.88 (88% efficiency)
+ * - 8 replies: 0.75 (75% efficiency)
+ */
+export function calculateRawScoreWeakDecay(
+  totalPostScore: number,
+  postCount: number
+): number {
+  if (postCount <= 0 || totalPostScore <= 0) return 0;
+
+  const effectivePosts = calculateEffectivePosts(postCount);
+  const decayDivisor = Math.pow(postCount, SCORE_CONSTANTS.REPLY_DECAY_EXPONENT);
+  return totalPostScore * (effectivePosts / decayDivisor);
+}
+
+/**
+ * Calculate total raw score from per-type aggregations (Phase 9)
+ *
+ * - Original: full log decay
+ * - Quote: full log decay
+ * - Reply: weaker log decay (exponent 0.7)
+ */
+export function calculateTotalRawScoreByType(
+  originalCount: number,
+  originalScore: number,
+  quoteCount: number,
+  quoteScore: number,
+  replyCount: number,
+  replyScore: number
+): number {
+  const originalRaw = calculateRawScore(originalScore, originalCount);
+  const quoteRaw = calculateRawScore(quoteScore, quoteCount);
+  const replyRaw = calculateRawScoreWeakDecay(replyScore, replyCount);
+
+  return originalRaw + quoteRaw + replyRaw;
+}
+
+/**
  * Calculate consistency bonus based on unique active days
  *
  * Formula: ConsistencyBonus = 1 + log₂(UniqueActiveDays + 1) × 0.1
@@ -146,11 +196,34 @@ export function calculateFreshnessMultiplier(lastSeenAt: string): number {
  * It calculates scores at read-time to ensure freshness is always current.
  *
  * Formula: UserScore = RawScore × ConsistencyBonus × FreshnessMultiplier
+ *
+ * Phase 9: If per-type fields are available, use type-specific calculations
  */
 export function calculateUserScore(account: Account): ComputedUserScore {
   // Calculate each component
   const effectivePosts = calculateEffectivePosts(account.postCount);
-  const rawScore = calculateRawScore(account.totalPostScore, account.postCount);
+
+  // Phase 9: Use per-type calculation if available, otherwise fallback to legacy
+  let rawScore: number;
+  if (
+    account.originalPostCount !== undefined &&
+    account.quotePostCount !== undefined &&
+    account.replyPostCount !== undefined
+  ) {
+    // Per-type calculation with different decay rates
+    rawScore = calculateTotalRawScoreByType(
+      account.originalPostCount,
+      account.originalTotalScore || 0,
+      account.quotePostCount,
+      account.quoteTotalScore || 0,
+      account.replyPostCount,
+      account.replyTotalScore || 0
+    );
+  } else {
+    // Legacy: treat all posts as original (full decay)
+    rawScore = calculateRawScore(account.totalPostScore, account.postCount);
+  }
+
   const consistencyBonus = calculateConsistencyBonus(account.uniqueActiveDays);
   const freshnessMultiplier = calculateFreshnessMultiplier(account.lastSeenAt);
 

@@ -15,6 +15,9 @@ export type AccountRole = 'kol' | 'proactive_ct' | 'default';
 
 export type ContentSignal = 'standard' | 'insight' | 'creative' | 'high_reach';
 
+// Post type: original posts get full log decay, quotes get full decay, replies get weaker decay
+export type PostType = 'original' | 'quote' | 'reply';
+
 export const ROLE_MULTIPLIERS: Record<AccountRole, number> = {
   kol: 2.0,
   proactive_ct: 1.5,
@@ -35,6 +38,10 @@ export const SCORE_CONSTANTS = {
   CONSISTENCY_BONUS_MULTIPLIER: 0.1,
   CONSISTENCY_BONUS_MAX: 1.5, // cap at 30 days
   FRESHNESS_HALF_LIFE_DAYS: 14,
+  // Reply decay: use postCount^0.7 instead of postCount for weaker decay
+  // Original/Quote: log₂(N+1)/N (full decay)
+  // Reply: log₂(N+1)/N^0.7 (weaker decay, rewards engagement)
+  REPLY_DECAY_EXPONENT: 0.7,
 };
 
 // ============================================
@@ -53,6 +60,7 @@ export interface Post {
   username: string; // Denormalized for convenience
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
+  postType: PostType; // original, quote, or reply (Phase 9)
   baseScore: number; // Always 1.0
   roleMultiplier: number; // 1.0 / 1.5 / 2.0
   signalBonus: number; // 0 ~ 3
@@ -86,6 +94,14 @@ export interface Account {
   signalCountTotal: number; // Total Insight + Creative + High Reach checks
   uniqueActiveDays: number; // Count of unique active days
   activeDates: string[]; // Array of date strings (YYYY-MM-DD) for tracking
+
+  // Per-type aggregation (Phase 9)
+  originalPostCount: number;
+  originalTotalScore: number;
+  quotePostCount: number;
+  quoteTotalScore: number;
+  replyPostCount: number;
+  replyTotalScore: number;
 
   // Timestamps
   firstSeenAt: string; // ISO timestamp
@@ -159,6 +175,7 @@ export interface CreatePostRequest {
   postUrl: string;
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
+  postType?: PostType; // Optional, defaults to 'original'
 }
 
 /**
@@ -328,6 +345,13 @@ export interface SeasonAccountScore {
   signalCountTotal: number;
   uniqueActiveDays: number;
   activeDates: string[];
+  // Per-type aggregation (Phase 9)
+  originalPostCount: number;
+  originalTotalScore: number;
+  quotePostCount: number;
+  quoteTotalScore: number;
+  replyPostCount: number;
+  replyTotalScore: number;
   // Computed scores (updated on post registration)
   userScore: number;
   rawScore: number;
