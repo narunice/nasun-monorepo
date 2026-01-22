@@ -26,13 +26,12 @@ export class AdminStack extends cdk.Stack {
     const battalionTableName = props?.battalionTableName || "nasun-nft-whitelist";
     const hiddenProposalsTableName = props?.hiddenProposalsTableName || "HiddenProposals";
 
-    // Create HiddenProposals DynamoDB table
-    const hiddenProposalsTable = new dynamodb.Table(this, "HiddenProposalsTable", {
-      tableName: hiddenProposalsTableName,
-      partitionKey: { name: "proposalId", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // Reference existing HiddenProposals DynamoDB table
+    const hiddenProposalsTable = dynamodb.Table.fromTableName(
+      this,
+      "HiddenProposalsTable",
+      hiddenProposalsTableName
+    );
 
     // Reference existing DynamoDB tables
     const userProfilesTable = dynamodb.Table.fromTableName(
