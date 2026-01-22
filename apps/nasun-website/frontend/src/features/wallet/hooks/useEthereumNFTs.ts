@@ -14,8 +14,8 @@
  */
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { getEthereumNFTs } from '../../services/ethereumApi';
-import type { EthereumNFT } from '../../types/ethereum';
+import { getEthereumNFTs } from '../../../services/ethereumApi';
+import type { EthereumNFT } from '../../../types/ethereum';
 
 /**
  * Hook Options

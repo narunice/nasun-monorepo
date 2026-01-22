@@ -5,7 +5,7 @@ import { NFTTiers, TierData } from "../../../types/genesisNFTs.d";
 import { usePayAndMintSuiNFT } from "../../../hooks/PayAndMintNFT/usePayAndMintSuiNFT";
 import { useCurrentWallet as useCurrentSuiWallet } from "@mysten/dapp-kit";
 import { PriceConverter } from "./PriceConverter";
-import { ConnectSuiWallet } from "@/components/features/wallets/ConnectSuiWallet";
+import { ConnectSuiWallet } from "@/features/wallet";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 

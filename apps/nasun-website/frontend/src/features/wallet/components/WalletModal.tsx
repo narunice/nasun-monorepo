@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogOverlay,
-} from "../../ui/dialog";
+} from "../../../components/ui/dialog";
 
 export const WalletModal = ({ onClose }: { onClose: () => void }) => {
   return (

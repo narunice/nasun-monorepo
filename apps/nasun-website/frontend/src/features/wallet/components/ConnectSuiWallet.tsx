@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next"; // Import useTranslation
 
 import { cn } from "../../../utils/utils";
 
-import { Button } from "../../ui/button"; // Corrected relative path
+import { Button } from "../../../components/ui/button"; // Corrected relative path
 import {
   Command,
   CommandEmpty,
@@ -20,8 +20,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "../../ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+} from "../../../components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover";
 
 function SuiConnectedButton() {
   const { t } = useTranslation("common"); // Assuming common namespace for wallet text

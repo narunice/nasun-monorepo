@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { useMetaMaskConnection } from "../../hooks/wallet/useMetaMaskConnection";
+import { useMetaMaskConnection } from "@/features/wallet";
 import logger from "../../lib/logger";
 import {
   getConnectedWallet,
