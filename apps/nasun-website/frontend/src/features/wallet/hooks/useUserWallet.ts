@@ -1,6 +1,6 @@
 // /src/hooks/wallet/useUserWallet.ts
 
-import { useUserStore } from "../../store/userStore";
+import { useUserStore } from "../../../store/userStore";
 
 export const useUserWallet = () => {
   // Use separate selectors to avoid creating new objects on every render

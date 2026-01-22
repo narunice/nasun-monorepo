@@ -1,5 +1,5 @@
 import { useCurrentAccount as useCurrentSuiAccount, useSuiClientQuery } from "@mysten/dapp-kit";
-import { useEthereumNFTs } from "../../../hooks/wallet/useEthereumNFTs";
+import { useEthereumNFTs } from "@/features/wallet";
 
 interface UseUserAssetsProps {
   walletAddress?: string;

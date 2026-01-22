@@ -11,14 +11,14 @@
 
 import { useState } from 'react';
 import { useAuth } from "@/features/auth";
-import { useUserStore } from '../../store/userStore';
+import { useUserStore } from '../../../store/userStore';
 import {
   connectWallet,
   switchNetwork,
   signMessage,
   isMetaMaskInstalled,
-} from '../../utils/metamaskUtils';
-import { authenticateWithMetaMask } from '../../services/metamaskApi';
+} from '../../../utils/metamaskUtils';
+import { authenticateWithMetaMask } from '../../../services/metamaskApi';
 
 export type MetaMaskConnectionMode = 'login' | 'link';
 
