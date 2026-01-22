@@ -87,7 +87,7 @@ export function UserSearchBoxV3({
   const showDropdown = isOpen && debouncedQuery.length >= 2;
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-xs">
+    <div ref={containerRef} className="relative w-full">
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nasun-white/40" />
