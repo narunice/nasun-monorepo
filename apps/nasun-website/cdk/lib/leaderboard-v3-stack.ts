@@ -321,6 +321,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Search Accounts Lambda (Phase 8)
+    const searchAccountsLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3SearchAccountsFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-search-accounts`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'search-accounts.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Search accounts by username',
+      }
+    );
+
     // Grant DynamoDB permissions
     this.postsTable.grantReadWriteData(createPostLambda);
     this.postsTable.grantReadData(getLeaderboardLambda);
@@ -349,6 +364,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.accountsTable.grantReadData(adminStatsLambda);
     this.seasonsTable.grantReadData(adminStatsLambda);
     this.seasonAccountsTable.grantReadData(adminStatsLambda);
+
+    // Search Accounts permissions (Phase 8)
+    this.accountsTable.grantReadData(searchAccountsLambda);
+    this.seasonAccountsTable.grantReadData(searchAccountsLambda);
 
     // Grant read access to UserProfiles table for profile data lookup
     if (userProfilesTable) {
@@ -400,8 +419,16 @@ export class LeaderboardV3Stack extends cdk.Stack {
       new apigw.LambdaIntegration(getTopClimbersLambda)
     );
 
-    // GET /v3/accounts/{username}
+    // GET /v3/accounts/search?q={query}&limit={limit}&seasonId={seasonId}
+    // IMPORTANT: Define 'search' route BEFORE {username} to prevent path parameter collision
     const accountsResource = v3Resource.addResource('accounts');
+    const accountsSearchResource = accountsResource.addResource('search');
+    accountsSearchResource.addMethod(
+      'GET',
+      new apigw.LambdaIntegration(searchAccountsLambda)
+    );
+
+    // GET /v3/accounts/{username}
     const accountUsernameResource = accountsResource.addResource('{username}');
     accountUsernameResource.addMethod(
       'GET',

@@ -29,7 +29,7 @@ export const DashboardCard: React.FC<DashboardCardProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-xl p-4 lg:p-6 transition-all duration-200 ${variantStyles[variant]} ${className}`}
+      className={`rounded-sm p-4 lg:p-6 transition-all duration-200 ${variantStyles[variant]} ${className}`}
     >
       {title && (
         <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wide mb-3">

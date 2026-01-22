@@ -8,7 +8,7 @@
  * - Snapshot date picker for past rankings
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SectionLayout } from '@/components/layout/SectionLayout';
 import { OuterBox } from '@/components/ui/OuterBox';
 import { useSeasons, useActiveSeason } from '../hooks/useSeasons';
@@ -16,6 +16,8 @@ import { useSeasonLeaderboard } from '../hooks/useSeasonLeaderboard';
 import { SeasonSelector } from './SeasonSelector';
 import TopClimbersV3 from './TopClimbersV3';
 import LeaderboardV3Row from './LeaderboardV3Row';
+import { SnapshotViewerV3 } from './SnapshotViewerV3';
+import { UserSearchBoxV3 } from './UserSearchBoxV3';
 
 interface LeaderboardV3Props {
   showBreakdown?: boolean;
@@ -30,6 +32,43 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
 
   // Snapshot date for past rankings (optional)
   const [snapshotDate, setSnapshotDate] = useState<string | undefined>(undefined);
+
+  // Highlighted user for search
+  const [highlightedUsername, setHighlightedUsername] = useState<string | undefined>(undefined);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Handle user search selection
+  const handleUserSelect = useCallback((username: string) => {
+    // Clear any existing timeout
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+
+    setHighlightedUsername(username);
+
+    // Scroll to the highlighted row after a short delay
+    setTimeout(() => {
+      const row = document.querySelector(`[data-username="${username}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
+    // Auto-clear highlight after 6 seconds
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedUsername(undefined);
+    }, 6000);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Set default season when data loads
   useEffect(() => {
@@ -81,28 +120,8 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
             selectedSeasonId={selectedSeasonId}
             onSelect={handleSeasonChange}
             isLoading={seasonsLoading}
+            selectedSeason={selectedSeason}
           />
-        </div>
-      )}
-
-      {/* Season Info Banner */}
-      {selectedSeason && (
-        <div className="mb-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-nasun-c6/30 rounded-lg border border-nasun-c5/20">
-            <span className="text-nasun-white/70 text-sm">
-              {selectedSeason.startDate} - {selectedSeason.endDate}
-            </span>
-            {isSeasonEnded && (
-              <span className="px-2 py-0.5 bg-nasun-c5/30 rounded text-xs text-nasun-white/60">
-                Ended
-              </span>
-            )}
-            {selectedSeason.status === 'active' && (
-              <span className="px-2 py-0.5 bg-nasun-c3/20 rounded text-xs text-nasun-c3">
-                Active
-              </span>
-            )}
-          </div>
         </div>
       )}
 
@@ -113,28 +132,22 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
         </div>
       )}
 
-      {/* Snapshot Date Picker (for ended seasons) */}
-      {isSeasonEnded && (
-        <div className="mb-6 flex justify-center">
-          <div className="flex items-center gap-3 px-4 py-2 bg-nasun-c6/30 rounded-lg border border-nasun-c5/20">
-            <span className="text-nasun-white/50 text-sm">View Past Ranking:</span>
-            <input
-              type="date"
-              value={snapshotDate || ''}
-              onChange={(e) => setSnapshotDate(e.target.value || undefined)}
-              min={selectedSeason?.startDate}
-              max={selectedSeason?.endDate}
-              className="bg-transparent border border-nasun-c5/30 rounded px-2 py-1 text-sm text-nasun-white focus:outline-none focus:border-nasun-c3/50"
-            />
-            {snapshotDate && (
-              <button
-                onClick={() => setSnapshotDate(undefined)}
-                className="text-nasun-white/50 hover:text-nasun-white text-sm"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+      {/* Snapshot Viewer and Search */}
+      {selectedSeason && (
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+          <SnapshotViewerV3
+            selectedDate={snapshotDate}
+            onDateChange={setSnapshotDate}
+            minDate={selectedSeason.startDate}
+            maxDate={selectedSeason.endDate}
+            lastUpdated={leaderboardData?.calculatedAt}
+            isEnded={isSeasonEnded}
+          />
+          <UserSearchBoxV3
+            seasonId={selectedSeasonId}
+            onUserSelect={handleUserSelect}
+            placeholder="Search user..."
+          />
         </div>
       )}
 
@@ -161,31 +174,32 @@ export function LeaderboardV3({ showBreakdown = false }: LeaderboardV3Props) {
 
       {/* Leaderboard Table */}
       {leaderboardData && leaderboardData.entries.length > 0 && (
-        <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30 overflow-hidden">
+        <OuterBox color="c3" className="w-full border-nasun-c3/50 bg-gray-900/80 rounded-xl overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-nasun-c5/20 text-xs uppercase tracking-widest text-nasun-white/50 font-medium">
-            <div className="col-span-1 text-center">#</div>
-            <div className="col-span-3">User</div>
-            <div className="col-span-2 hidden md:block">Platform</div>
-            <div className="col-span-2 text-center">Posts</div>
-            <div className="col-span-1 text-center">Days</div>
-            <div className="col-span-2 text-right">Score</div>
-            <div className="col-span-1 text-center">Change</div>
+          <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-nasun-c3/30 text-xs uppercase tracking-wider text-gray-200 font-medium bg-nasun-c3/20">
+            <div className="col-span-1 text-center">RANK</div>
+            <div className="col-span-3">USER</div>
+            <div className="col-span-2 hidden md:block">PLATFORM</div>
+            <div className="col-span-2 text-center">POSTS</div>
+            <div className="col-span-1 text-center">DAYS</div>
+            <div className="col-span-2 text-right">SCORE</div>
+            <div className="col-span-1 text-center">CHANGE</div>
           </div>
 
           {/* Table Body */}
-          <div className="divide-y divide-nasun-c5/10">
+          <div ref={tableRef} className="divide-y divide-nasun-c3/10">
             {leaderboardData.entries.map((entry) => (
               <LeaderboardV3Row
                 key={`${entry.platform}-${entry.username}`}
                 entry={entry}
                 showBreakdown={showBreakdown}
+                isHighlighted={highlightedUsername === entry.username}
               />
             ))}
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-3 border-t border-nasun-c5/20 text-xs text-nasun-white/40 flex justify-between items-center">
+          <div className="px-4 py-3 border-t border-nasun-c3/20 text-xs text-nasun-white/40 flex justify-between items-center">
             <span>Total: {leaderboardData.totalCount} contributors</span>
             <span>
               {snapshotDate ? `Snapshot: ${snapshotDate}` : 'Live'} |{' '}

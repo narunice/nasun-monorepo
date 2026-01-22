@@ -96,7 +96,7 @@ export function SeasonManagementTab() {
       </div>
 
       {/* Seasons Table */}
-      <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+      <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         {isLoading ? (
           <div className="text-nasun-white/50 text-sm py-8 text-center">Loading seasons...</div>
         ) : !seasons?.length ? (

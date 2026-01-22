@@ -19,7 +19,7 @@ interface LeaderboardV3RowProps {
 function DefaultAvatar({ username }: { username: string }) {
   const initial = username.charAt(0).toUpperCase();
   return (
-    <div className="w-10 h-10 rounded-full bg-nasun-c5/30 flex items-center justify-center text-nasun-white/60 font-semibold text-sm flex-shrink-0">
+    <div className="w-10 h-10 rounded-2xl bg-gray-700 flex items-center justify-center text-nasun-white/60 font-semibold text-sm flex-shrink-0">
       {initial}
     </div>
   );
@@ -40,9 +40,9 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
   return (
     <div
       data-username={entry.username}
-      className={`grid grid-cols-12 gap-4 px-4 py-4 items-center transition-all hover:bg-white/5 ${
+      className={`grid grid-cols-12 gap-4 px-4 py-4 items-center transition-all duration-200 hover:bg-black hover:scale-[1.01] hover:shadow-sm ${
         isTopThree ? 'bg-nasun-c4/5' : ''
-      } ${isHighlighted ? 'bg-yellow-900/30 border-l-4 border-yellow-500 animate-pulse' : ''}`}
+      } ${isHighlighted ? 'bg-yellow-900/30 border-l-4 border-yellow-500 scale-[1.02] shadow-lg' : ''}`}
     >
       {/* Rank */}
       <div
@@ -60,7 +60,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
           <img
             src={entry.profileImageUrl}
             alt={entry.displayName || entry.username}
-            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+            className="w-10 h-10 rounded-2xl object-cover flex-shrink-0"
             loading="lazy"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
@@ -127,7 +127,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({
 
       {/* Score */}
       <div className="col-span-2 text-right">
-        <span className="text-nasun-c3 font-bold text-lg">{entry.userScore.toFixed(1)}</span>
+        <span className="text-nasun-c3 font-extrabold text-lg">{entry.userScore.toFixed(1)}</span>
         {showBreakdown && entry.breakdown && (
           <div className="text-xs text-nasun-white/40 mt-1">
             {entry.breakdown.rawScore.toFixed(1)} x {entry.breakdown.consistencyBonus.toFixed(2)} x{' '}

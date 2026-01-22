@@ -119,7 +119,7 @@ export function WhitelistManagement() {
 
             {/* Stats Error */}
             {statsError && (
-              <div className="p-4 bg-red-950/30 border border-red-900/50 rounded-lg text-red-400 text-sm flex items-center gap-3">
+              <div className="p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-sm flex items-center gap-3">
                 <span className="text-lg">⚠️</span>
                 Failed to load stats: {statsError.message}
               </div>
@@ -127,10 +127,10 @@ export function WhitelistManagement() {
 
             {/* Tabs & Content */}
             <div className="w-full">
-              <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-xl w-fit border border-nasun-c5/20">
+              <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-sm w-fit border border-nasun-c5/20">
                 <button
                   onClick={() => setActiveTab('genesis')}
-                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                  className={`px-6 py-2 rounded-sm font-medium transition-all ${
                     activeTab === 'genesis'
                       ? 'bg-nasun-c4 text-nasun-white shadow-lg'
                       : 'text-nasun-white/50 hover:text-nasun-white hover:bg-white/5'
@@ -140,7 +140,7 @@ export function WhitelistManagement() {
                 </button>
                 <button
                   onClick={() => setActiveTab('battalion')}
-                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                  className={`px-6 py-2 rounded-sm font-medium transition-all ${
                     activeTab === 'battalion'
                       ? 'bg-nasun-c4 text-nasun-white shadow-lg'
                       : 'text-nasun-white/50 hover:text-nasun-white hover:bg-white/5'
@@ -150,7 +150,7 @@ export function WhitelistManagement() {
                 </button>
               </div>
 
-              <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+              <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
                 <h3 className="text-xl font-medium text-nasun-white mb-2">
                   {activeTab === 'genesis' ? 'Genesis NFT Whitelist' : 'Battalion NFT Allowlist'}
                 </h3>
@@ -169,7 +169,7 @@ export function WhitelistManagement() {
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors"
+                        className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors"
                       />
                     </div>
                     <div className="space-y-2">
@@ -178,7 +178,7 @@ export function WhitelistManagement() {
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors"
+                        className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors"
                       />
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export function WhitelistManagement() {
 
                 {/* Error message */}
                 {error && (
-                  <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-lg text-red-400 text-sm flex items-center gap-3">
+                  <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-sm flex items-center gap-3">
                     <span className="text-lg">⚠️</span>
                     {error}
                   </div>

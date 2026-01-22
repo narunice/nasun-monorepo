@@ -17,7 +17,7 @@ function AdminFeatureCard({ title, description, icon, link, linkText, disabled }
   return (
     <DashboardCard className="flex flex-col h-full hover:border-nasun-c5/80 transition-all duration-300 group bg-gray-800/30">
       <div className="flex items-center justify-between mb-5">
-        <div className="text-3xl p-2 bg-nasun-c6/50 rounded-lg border border-nasun-c5/20 group-hover:border-nasun-c4/30 transition-colors">
+        <div className="text-3xl p-2 bg-nasun-c6/50 rounded-sm border border-nasun-c5/20 group-hover:border-nasun-c4/30 transition-colors">
           {icon}
         </div>
       </div>

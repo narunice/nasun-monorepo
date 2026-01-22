@@ -10,7 +10,24 @@ import type {
   TopClimbersResponse,
   GetSeasonLeaderboardParams,
   GetTopClimbersParams,
+  Platform,
 } from '../types';
+
+// Search result interface
+export interface SearchAccountResult {
+  accountId: string;
+  username: string;
+  platform: Platform;
+  displayName?: string;
+  profileImageUrl?: string;
+  userScore?: number;
+  rank?: number;
+}
+
+export interface SearchAccountsResponse {
+  accounts: SearchAccountResult[];
+  total: number;
+}
 
 const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
 
@@ -102,4 +119,41 @@ export async function getSeasons(): Promise<Season[]> {
 
   const data = await response.json();
   return data.seasons || [];
+}
+
+/**
+ * Search accounts by username (public)
+ * Returns matching accounts with optional rank info
+ */
+export async function searchAccounts(params: {
+  query: string;
+  limit?: number;
+  seasonId?: string;
+}): Promise<SearchAccountsResponse> {
+  const { query, limit = 10, seasonId } = params;
+
+  if (!query || query.length < 2) {
+    return { accounts: [], total: 0 };
+  }
+
+  const searchParams = new URLSearchParams();
+  searchParams.append('q', query);
+  searchParams.append('limit', limit.toString());
+  if (seasonId) searchParams.append('seasonId', seasonId);
+
+  const url = `${LEADERBOARD_V3_API_URL}/v3/accounts/search?${searchParams}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to search accounts: ${response.status}`);
+  }
+
+  return response.json();
 }

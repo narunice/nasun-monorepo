@@ -104,14 +104,14 @@ export function LeaderboardViewTab() {
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* View Mode Toggle */}
-      <OuterBox color="c6" padding="sm" className="w-full border-nasun-c5/30 bg-gray-800/30">
+      <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         <div className="flex items-center gap-4">
           <span className="text-sm text-nasun-white/60">View Mode:</span>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('season')}
               className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium transition-all',
+                'px-4 py-2 rounded-sm text-sm font-medium transition-all',
                 viewMode === 'season'
                   ? 'bg-nasun-c4 text-nasun-white'
                   : 'bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white'
@@ -122,7 +122,7 @@ export function LeaderboardViewTab() {
             <button
               onClick={() => setViewMode('cumulative')}
               className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium transition-all',
+                'px-4 py-2 rounded-sm text-sm font-medium transition-all',
                 viewMode === 'cumulative'
                   ? 'bg-nasun-c4 text-nasun-white'
                   : 'bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white'
@@ -136,7 +136,7 @@ export function LeaderboardViewTab() {
 
       {/* Season Selector (only for season mode) */}
       {viewMode === 'season' && (
-        <OuterBox color="c6" padding="sm" className="w-full border-nasun-c5/30 bg-gray-800/30">
+        <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
           <div className="flex items-center gap-4">
             <span className="text-sm text-nasun-white/60">Season:</span>
             <SeasonSelector
@@ -159,7 +159,7 @@ export function LeaderboardViewTab() {
       )}
 
       {/* Leaderboard Table */}
-      <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+      <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-nasun-white">
             {viewMode === 'season' ? 'Season Leaderboard' : 'Cumulative Leaderboard'}

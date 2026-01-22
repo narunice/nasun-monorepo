@@ -126,7 +126,7 @@ export function GovernanceManagement() {
 
             {/* Proposals List */}
             <div className="w-full">
-              <OuterBox color="c6" padding="sm" className="w-full border-nasun-c5/30 bg-gray-800/30 overflow-hidden">
+              <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30 overflow-hidden">
                 <h5 className="uppercase text-nasun-white/80 text-sm tracking-widest mb-6 px-2 flex items-center gap-2">
                   <span className="w-1 h-4 bg-nasun-c4 rounded-full"></span>
                   Proposals Table
@@ -201,7 +201,7 @@ export function GovernanceManagement() {
                               <div className="flex items-center justify-center gap-2">
                                 <button
                                   onClick={() => handleSelectProposal(proposal)}
-                                  className="p-2 bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-lg transition-all border border-nasun-c5/20"
+                                  className="p-2 bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/20"
                                   title="View Vote Details"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,7 +211,7 @@ export function GovernanceManagement() {
                                 <button
                                   onClick={() => handleToggleVisibility(proposal.id)}
                                   disabled={togglingId === proposal.id || isHiddenLoading}
-                                  className={`p-2 rounded-lg transition-all border disabled:opacity-30 ${
+                                  className={`p-2 rounded-sm transition-all border disabled:opacity-30 ${
                                     isHidden(proposal.id)
                                       ? 'bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
                                       : 'bg-nasun-c6/50 border-nasun-c5/20 text-nasun-white/70 hover:text-nasun-white'
@@ -245,7 +245,7 @@ export function GovernanceManagement() {
             {/* Voter Details Modal/Panel */}
             {selectedProposal && (
               <div className="w-full">
-                <OuterBox color="c1" padding="md" className="w-full border-nasun-c3/30 bg-gray-800/50">
+                <OuterBox color="c1" padding="md" className="w-full !border-nasun-c3/30 !bg-gray-800/50">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
                     <div>
                       <h4 className="text-xl font-semibold text-nasun-white mb-2">{selectedProposal.title}</h4>
