@@ -95,7 +95,7 @@ export function SeasonFormModal({
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-gray-900 border border-nasun-c5/30 rounded-lg w-full max-w-md p-6 shadow-2xl">
+      <div className="relative bg-gray-900 border border-nasun-c5/30 rounded-sm w-full max-w-md p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-medium text-nasun-white">
             {editingSeason ? 'Edit Season' : 'Create New Season'}
@@ -120,7 +120,7 @@ export function SeasonFormModal({
               onChange={(e) => setFormData({ ...formData, seasonId: e.target.value.toUpperCase() })}
               placeholder="SEASON1"
               disabled={!!editingSeason}
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm disabled:opacity-50"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm disabled:opacity-50"
             />
             {!editingSeason && (
               <p className="mt-1 text-xs text-nasun-white/40">
@@ -139,7 +139,7 @@ export function SeasonFormModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Season 1"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
             />
           </div>
 
@@ -153,7 +153,7 @@ export function SeasonFormModal({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="New Year Event"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
             />
           </div>
 
@@ -167,7 +167,7 @@ export function SeasonFormModal({
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
               />
             </div>
             <div>
@@ -178,13 +178,13 @@ export function SeasonFormModal({
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-lg px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
               />
             </div>
           </div>
 
           {/* Warning */}
-          <div className="p-3 bg-yellow-900/20 border border-yellow-900/30 rounded-lg">
+          <div className="p-3 bg-yellow-900/20 border border-yellow-900/30 rounded-sm">
             <p className="text-xs text-yellow-400">
               ⚠️ Season dates cannot overlap with existing seasons.
             </p>
@@ -192,7 +192,7 @@ export function SeasonFormModal({
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-900/30 border border-red-900/50 rounded-lg">
+            <div className="p-3 bg-red-900/30 border border-red-900/50 rounded-sm">
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}

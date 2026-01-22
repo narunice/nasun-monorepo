@@ -2,8 +2,8 @@
  * DashboardTab - Dashboard statistics for Leaderboard V3 Admin
  */
 
-import { OuterBox } from '@/components/ui/OuterBox';
-import { useAdminDashboard } from '../../hooks/useAdminDashboard';
+import { OuterBox } from "@/components/ui/OuterBox";
+import { useAdminDashboard } from "../../hooks/useAdminDashboard";
 
 export function DashboardTab() {
   const { data: stats, isLoading, error } = useAdminDashboard();
@@ -11,9 +11,7 @@ export function DashboardTab() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 w-full">
-        <div className="text-nasun-white/50 text-sm py-8 text-center">
-          Loading dashboard...
-        </div>
+        <div className="text-nasun-white/50 text-sm py-8 text-center">Loading dashboard...</div>
       </div>
     );
   }
@@ -21,9 +19,9 @@ export function DashboardTab() {
   if (error) {
     return (
       <div className="flex flex-col gap-6 w-full">
-        <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
+        <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
           <div className="text-red-400 text-sm">
-            Failed to load dashboard: {error instanceof Error ? error.message : 'Unknown error'}
+            Failed to load dashboard: {error instanceof Error ? error.message : "Unknown error"}
           </div>
         </OuterBox>
       </div>
@@ -34,31 +32,20 @@ export function DashboardTab() {
     <div className="flex flex-col gap-6 w-full">
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Posts"
-          value={stats?.totalPosts?.toLocaleString() || '0'}
-        />
-        <StatCard
-          title="Total Users"
-          value={stats?.totalAccounts?.toLocaleString() || '0'}
-        />
-        <StatCard
-          title="Active Season"
-          value={stats?.activeSeason?.name || 'None'}
-        />
+        <StatCard title="Total Posts" value={stats?.totalPosts?.toLocaleString() || "0"} />
+        <StatCard title="Total Users" value={stats?.totalAccounts?.toLocaleString() || "0"} />
+        <StatCard title="Active Season" value={stats?.activeSeason?.name || "None"} />
         <StatCard
           title="Today Posts"
-          value={stats?.todayStats?.postsCreated?.toLocaleString() || '0'}
+          value={stats?.todayStats?.postsCreated?.toLocaleString() || "0"}
         />
       </div>
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
-          <h3 className="text-lg font-medium text-nasun-white mb-4">
-            Recent Activity
-          </h3>
+        <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+          <h3 className="text-lg font-medium text-nasun-white mb-4">Recent Activity</h3>
           {!stats?.recentActivity?.length ? (
             <div className="text-nasun-white/50 text-sm">No recent activity.</div>
           ) : (
@@ -69,7 +56,7 @@ export function DashboardTab() {
                   className="flex items-start gap-2 text-sm py-2 border-b border-nasun-c5/10 last:border-0"
                 >
                   <span className="text-nasun-c3 shrink-0">
-                    {activity.type === 'post_created' ? '📝' : '👤'}
+                    {activity.type === "post_created" ? "📝" : "👤"}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-nasun-white truncate">{activity.description}</div>
@@ -84,13 +71,11 @@ export function DashboardTab() {
         </OuterBox>
 
         {/* Top 5 Preview */}
-        <OuterBox color="c6" className="w-full border-nasun-c5/30 bg-gray-800/30">
-          <h3 className="text-lg font-medium text-nasun-white mb-4">
-            Top 5 This Season
-          </h3>
+        <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+          <h3 className="text-lg font-medium text-nasun-white mb-4">Top 5 This Season</h3>
           {!stats?.topFive?.length ? (
             <div className="text-nasun-white/50 text-sm">
-              {stats?.activeSeason ? 'No users yet.' : 'No active season.'}
+              {stats?.activeSeason ? "No users yet." : "No active season."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -100,7 +85,13 @@ export function DashboardTab() {
                   className="flex items-center gap-3 py-2 border-b border-nasun-c5/10 last:border-0"
                 >
                   <span className="text-lg font-bold text-nasun-white/60 w-6 text-center">
-                    {user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : `#${user.rank}`}
+                    {user.rank === 1
+                      ? "🥇"
+                      : user.rank === 2
+                        ? "🥈"
+                        : user.rank === 3
+                          ? "🥉"
+                          : `#${user.rank}`}
                   </span>
                   <span className="text-nasun-white flex-1 truncate">@{user.username}</span>
                   <span className="text-nasun-c3 font-medium">{user.userScore.toFixed(2)}</span>
@@ -113,7 +104,7 @@ export function DashboardTab() {
 
       {/* Active Season Info */}
       {stats?.activeSeason && (
-        <OuterBox color="c6" padding="sm" className="w-full border-nasun-c5/30 bg-gray-800/30">
+        <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
           <div className="flex items-center justify-between text-sm">
             <div>
               <span className="text-nasun-white/60">Active Season: </span>
@@ -123,9 +114,13 @@ export function DashboardTab() {
               </span>
             </div>
             <div className="text-nasun-white/60">
-              <span className="text-nasun-c3 font-medium">{stats.activeSeason.totalAccounts}</span> users
-              {' | '}
-              <span className="text-nasun-c3 font-medium">{stats.activeSeason.totalPosts}</span> posts
+              <span className="text-nasun-c3 font-medium">{stats.activeSeason.totalAccounts}</span>{" "}
+              users
+              {" | "}
+              <span className="text-nasun-c3 font-medium">
+                {stats.activeSeason.totalPosts}
+              </span>{" "}
+              posts
             </div>
           </div>
         </OuterBox>
@@ -143,13 +138,9 @@ export function DashboardTab() {
 
 function StatCard({ title, value }: { title: string; value: string }) {
   return (
-    <OuterBox color="c6" padding="sm" className="border-nasun-c5/30 bg-gray-800/30">
-      <div className="text-xs uppercase tracking-widest text-nasun-white/50 mb-1">
-        {title}
-      </div>
-      <div className="text-2xl font-bold text-nasun-c3">
-        {value}
-      </div>
+    <OuterBox color="c6" padding="sm" className="!border-nasun-c5/30 !bg-gray-800/30">
+      <div className="text-xs uppercase tracking-widest text-nasun-white/50 mb-1">{title}</div>
+      <div className="text-2xl font-bold text-nasun-c3">{value}</div>
     </OuterBox>
   );
 }
@@ -161,8 +152,8 @@ function formatTimestamp(timestamp: string): string {
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
 
-  if (diffMins < 1) return 'just now';
+  if (diffMins < 1) return "just now";
   if (diffMins < 60) return `${diffMins} min ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

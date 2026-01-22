@@ -44,7 +44,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-sm transition-colors ${
                     isActive(item.path)
                       ? 'bg-nasun-c4 text-white'
                       : 'text-white/70 hover:bg-white/5 hover:text-white'
@@ -75,7 +75,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
           <button
             onClick={() => logout()}
-            className="w-full px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            className="w-full px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-sm transition-colors"
           >
             Logout
           </button>

@@ -23,11 +23,11 @@ const positionDisplay: Record<number, { emoji: string; label: string }> = {
   5: { emoji: '', label: '#5' },
 };
 
-// Default avatar
+// Default avatar (V2 style: rounded-2xl)
 function DefaultAvatar({ username }: { username: string }) {
   const initial = username.charAt(0).toUpperCase();
   return (
-    <div className="w-12 h-12 rounded-full bg-nasun-c5/30 flex items-center justify-center text-nasun-white/60 font-semibold text-lg">
+    <div className="w-12 h-12 rounded-2xl bg-gray-700 flex items-center justify-center text-nasun-white/60 font-semibold text-lg">
       {initial}
     </div>
   );
@@ -35,96 +35,116 @@ function DefaultAvatar({ username }: { username: string }) {
 
 const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
   const { emoji, label } = positionDisplay[position] || { emoji: '', label: `#${position}` };
+  const rankImprovement = climber.rankChange.direction === 'up' ? climber.rankChange.amount : 0;
 
   return (
-    <div className="bg-nasun-c6/30 border border-nasun-c5/20 rounded-lg p-4 hover:border-nasun-c3/30 hover:scale-[1.02] hover:shadow-lg transition-all">
-      {/* Position indicator */}
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-2xl">{emoji || label}</span>
-        {emoji && <span className="text-nasun-white/40 text-sm">{label}</span>}
-      </div>
+    <div className="relative bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-200">
+      {/* Medal badge - V2 style absolute positioning */}
+      {position <= 3 && (
+        <div className="absolute -top-3 -left-3 z-10 text-2xl xl:text-3xl">
+          {position === 1 ? '🥇' : position === 2 ? '🥈' : '🥉'}
+        </div>
+      )}
 
-      {/* Avatar and name */}
-      <div className="flex items-center gap-3 mb-3">
-        {climber.profileImageUrl ? (
-          <img
-            src={climber.profileImageUrl}
-            alt={climber.displayName || climber.username}
-            className="w-12 h-12 rounded-full object-cover"
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              const fallback = e.currentTarget.nextElementSibling;
-              if (fallback) fallback.classList.remove('hidden');
-            }}
-          />
-        ) : (
-          <DefaultAvatar username={climber.username} />
+      {/* Header: Avatar + Name + External link */}
+      <div className="flex items-start gap-3 mb-4 mt-2">
+        {/* Position label for 4th, 5th */}
+        {position > 3 && (
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-nasun-white/40 text-sm font-medium">{label}</span>
+          </div>
         )}
-        <div className="hidden">
-          <DefaultAvatar username={climber.username} />
-        </div>
 
-        <div className="min-w-0 flex-1">
-          {climber.displayName && (
-            <div className="text-nasun-white font-medium truncate">{climber.displayName}</div>
+        {/* Avatar */}
+        <div className="relative">
+          {climber.profileImageUrl ? (
+            <img
+              src={climber.profileImageUrl}
+              alt={climber.displayName || climber.username}
+              className="w-12 h-12 rounded-2xl object-cover"
+              loading="lazy"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const fallback = e.currentTarget.nextElementSibling;
+                if (fallback) fallback.classList.remove('hidden');
+              }}
+            />
+          ) : (
+            <DefaultAvatar username={climber.username} />
           )}
-          <a
-            href={`https://x.com/${climber.username}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`hover:text-nasun-c3 transition-colors truncate block ${
-              climber.displayName ? 'text-nasun-white/50 text-sm' : 'text-nasun-white font-medium'
-            }`}
-          >
-            @{climber.username}
-          </a>
-        </div>
-      </div>
-
-      {/* Rank change visualization */}
-      <div className="space-y-2">
-        {/* Rank transition */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-nasun-white/50">Rank</span>
-          <div className="flex items-center gap-2">
-            <span className="text-nasun-white/40">#{climber.previousRank}</span>
-            <span className="text-nasun-white/30">→</span>
-            <span className="text-nasun-white font-semibold">#{climber.currentRank}</span>
+          <div className="hidden">
+            <DefaultAvatar username={climber.username} />
           </div>
         </div>
 
-        {/* Rank improvement */}
-        <div className="flex items-center justify-between">
-          <span className="text-nasun-white/50 text-sm">Change</span>
-          <RankChangeIndicatorV3 direction={climber.rankChange.direction} amount={climber.rankChange.amount} variant="full" />
+        {/* Name and handle */}
+        <div className="min-w-0 flex-1">
+          {climber.displayName && (
+            <div className="text-nasun-white font-medium truncate text-sm">{climber.displayName}</div>
+          )}
+          <div className={`truncate ${climber.displayName ? 'text-nasun-white/50 text-xs' : 'text-nasun-white font-medium text-sm'}`}>
+            @{climber.username}
+          </div>
         </div>
 
-        {/* Current score */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-nasun-white/50">Score</span>
-          <span className="text-nasun-c3 font-bold">{climber.currentScore.toFixed(1)}</span>
-        </div>
-      </div>
-
-      {/* View profile link */}
-      <div className="mt-3 pt-3 border-t border-nasun-c5/10">
+        {/* External link */}
         <a
           href={`https://x.com/${climber.username}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-nasun-c3/70 hover:text-nasun-c3 text-xs flex items-center gap-1 transition-colors"
+          className="text-nasun-white/40 hover:text-nasun-c3 transition-colors flex-shrink-0"
         >
-          View Profile
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-            />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </a>
+      </div>
+
+      {/* Rank change section */}
+      <div className="space-y-3">
+        {/* Rank Change label + transition */}
+        <div className="text-sm">
+          <span className="text-nasun-white/50">Rank Change </span>
+          <span className="text-nasun-white/40">#{climber.previousRank}</span>
+          <span className="text-nasun-white/30 mx-1">→</span>
+          <span className="text-nasun-white font-semibold">#{climber.currentRank}</span>
+        </div>
+
+        {/* Rank improvement button (V2 style) */}
+        {climber.rankChange.direction === 'up' && (
+          <div className="bg-nasun-c5/80 rounded-md py-1.5 px-3 flex items-center justify-center gap-1.5">
+            <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+            <span className="text-green-300 font-semibold text-sm">
+              {rankImprovement} {rankImprovement === 1 ? 'rank' : 'ranks'}
+            </span>
+          </div>
+        )}
+        {climber.rankChange.direction === 'new' && (
+          <div className="bg-nasun-c5/80 rounded-md py-1.5 px-3 flex items-center justify-center gap-1.5">
+            <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+            <span className="text-green-300 font-semibold text-sm">NEW</span>
+          </div>
+        )}
+      </div>
+
+      {/* Stats section (V2 style) */}
+      <div className="border-t border-nasun-c4/50 pt-3 mt-3 space-y-1.5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-400">Point Increase</span>
+          <span className="text-gray-200">{climber.scoreIncrease?.toFixed(1) || '0'}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-400">Percentage</span>
+          <span className="text-gray-200">{climber.percentageIncrease?.toFixed(1) || '0.0'}%</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-400">Current Points</span>
+          <span className="text-gray-200">{climber.currentScore.toFixed(1)}</span>
+        </div>
       </div>
     </div>
   );
