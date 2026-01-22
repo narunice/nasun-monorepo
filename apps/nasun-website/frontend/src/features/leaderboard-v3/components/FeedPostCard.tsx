@@ -108,6 +108,9 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
           --tweet-color-hover: rgba(255, 255, 255, 0.03);
           --tweet-body-font-size: 14px;
           --tweet-body-line-height: 1.4;
+          /* Control main tweet container border-radius */
+          --tweet-container-border-radius: 0.125rem;
+          --tweet-border-radius: 0.125rem;
           /* Critical: Set tweet-border to none - this variable is used by quoted-tweet-container.module.css */
           --tweet-border: none;
           --tweet-quoted-container-border: none;
@@ -118,12 +121,14 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         }
 
         /* Dark subtle card styling - main tweet only (not nested) */
-        .nasun-tweet-container > div > article {
+        .nasun-tweet-container > div > article,
+        .nasun-tweet-container .react-tweet-theme > article {
           border: 1px solid rgba(255, 255, 255, 0.08) !important;
           background: rgba(20, 20, 20, 0.85) !important;
-          border-radius: 0.125rem !important;
+          border-radius: 0.125rem !important; /* rounded-sm (2px) */
           backdrop-filter: blur(8px);
           margin: 0 !important;
+          overflow: hidden !important;
         }
 
         /* Target the quoted tweet container div - this has the 12px border-radius */
