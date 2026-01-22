@@ -38,19 +38,33 @@
     *   **Right (Sidebar)**: My Rank Card + Nasun Content Feed (320px ~ 360px 고정 너비)
     *   **Sticky Position**: 스크롤 시 사이드바가 화면에 고정되도록 `sticky` 속성 적용
 *   **Mobile/Tablet (lg 미만)**:
-    *   리더보드 테이블 하단에 사이드바 섹션 배치
+    *   **My Rank Card**: 리더보드 테이블 **상단**에 배치 (즉각적인 순위 확인)
+    *   **Content Feed**: 리더보드 테이블 **하단**에 배치
     *   Sticky 속성 비활성화
 
 ```tsx
 <div className="flex flex-col lg:flex-row gap-6">
+  {/* Mobile: My Rank Card 상단 표시 */}
+  <div className="lg:hidden">
+    <MyRankCardV3 seasonId={selectedSeasonId} />
+  </div>
+
+  {/* Main Content */}
   <div className="flex-1 min-w-0">
     {/* 기존 리더보드 콘텐츠 */}
   </div>
-  <div className="w-full lg:w-[320px] xl:w-[360px] lg:flex-shrink-0">
+
+  {/* Desktop Sidebar */}
+  <div className="hidden lg:block lg:w-[320px] xl:w-[360px] lg:flex-shrink-0">
     <div className="lg:sticky lg:top-24 space-y-4">
       <MyRankCardV3 seasonId={selectedSeasonId} />
       <NasunContentFeed seasonId={selectedSeasonId} />
     </div>
+  </div>
+
+  {/* Mobile: Content Feed 하단 표시 */}
+  <div className="lg:hidden">
+    <NasunContentFeed seasonId={selectedSeasonId} />
   </div>
 </div>
 ```
@@ -479,7 +493,8 @@ curl "https://API_URL/v3/feed/featured?seasonId=SEASON1"
 
 ### 9.2 Frontend 확인
 - [ ] Desktop (lg+): 2-Column 레이아웃, 사이드바 sticky
-- [ ] Tablet/Mobile: 리더보드 테이블 하단에 사이드바 표시
+- [ ] Mobile: My Rank Card가 테이블 **상단**에 표시
+- [ ] Mobile: Content Feed가 테이블 **하단**에 표시
 - [ ] My Rank - 로그인 상태: 순위/점수/프로필 표시
 - [ ] My Rank - 비로그인 상태: "X 계정 연동" CTA 표시
 - [ ] My Rank - 순위 없음: "나선 트윗 찾기" CTA 표시
@@ -495,9 +510,28 @@ curl "https://API_URL/v3/feed/featured?seasonId=SEASON1"
 
 | 항목 | 결정 |
 |------|------|
-| 모바일 디자인 | 하단 배치 |
+| 모바일 디자인 | My Rank Card: 테이블 **상단**, Feed: 테이블 **하단** |
 | Snapshot 모드 | 사이드바 숨기지 않음, 항상 Live 데이터 표시 |
 | 뱃지 표시 | Ranker/Climber 구분 (금/은/동 메달 + 로켓) |
 | 캐시 정책 | staleTime 5분 |
 | 새 GSI 필요 여부 | 불필요 (기존 인덱스 활용) |
 | My Rank 인증 | useAuth hook의 user.twitterHandle 사용 |
+| 테마 지원 | 다크 모드만 지원 (라이트 모드 미지원) |
+| 데이터 공개 여부 | 순위/점수는 공개 데이터 |
+
+---
+
+## 11. 보안 고려사항 (Security Considerations)
+
+### 11.1 공개 데이터
+- 리더보드 순위, 점수, 순위 변동은 **공개 데이터**입니다.
+- `GET /v3/leaderboard/my-rank?username=XXX` API는 인증 없이 호출 가능합니다.
+- 다른 사용자의 username을 조회해도 보안 문제 없음 (공개 정보).
+
+### 11.2 X 공유 기능 (추후 구현 시)
+V2 레거시의 공유 기능(`handleShareToTwitter`)은 다음 보안 조치가 필요합니다:
+- **클라이언트 측 검증**: 로그인한 사용자 본인의 카드만 공유 버튼 활성화
+- **Rate Limiting**: 공유 API 호출 빈도 제한 (남용 방지)
+- **CSRF 방지**: 공유 액션에 대한 사용자 의도 확인
+
+> **Note**: Phase 10에서는 공유 기능을 구현하지 않습니다. 순위 조회 기능만 우선 구현합니다.

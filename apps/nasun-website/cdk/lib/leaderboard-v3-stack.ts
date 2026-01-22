@@ -346,6 +346,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Get My Rank Lambda (Phase 10)
+    const getMyRankLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3GetMyRankFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-get-my-rank`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'get-my-rank.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Get my rank for logged-in user',
+      }
+    );
+
     // Search Accounts Lambda (Phase 8)
     const searchAccountsLambda = new NodejsFunction(
       this,
@@ -401,6 +416,12 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonAccountsTable.grantReadData(getFeaturedFeedLambda);
     this.snapshotsTable.grantReadData(getFeaturedFeedLambda);
 
+    // My Rank permissions (Phase 10)
+    this.accountsTable.grantReadData(getMyRankLambda);
+    this.seasonsTable.grantReadData(getMyRankLambda);
+    this.seasonAccountsTable.grantReadData(getMyRankLambda);
+    this.snapshotsTable.grantReadData(getMyRankLambda);
+
     // Grant read access to UserProfiles table for profile data lookup
     if (userProfilesTable) {
       userProfilesTable.grantReadData(createPostLambda);
@@ -449,6 +470,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
     topClimbersResource.addMethod(
       'GET',
       new apigw.LambdaIntegration(getTopClimbersLambda)
+    );
+
+    // GET /v3/leaderboard/my-rank
+    const myRankResource = leaderboardResource.addResource('my-rank');
+    myRankResource.addMethod(
+      'GET',
+      new apigw.LambdaIntegration(getMyRankLambda)
     );
 
     // GET /v3/feed/featured

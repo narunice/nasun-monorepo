@@ -21,6 +21,7 @@ import { SnapshotViewerV3 } from "./SnapshotViewerV3";
 import { UserSearchBoxV3 } from "./UserSearchBoxV3";
 import PaginationControlsV3 from "./PaginationControlsV3";
 import { NasunContentFeed } from "./NasunContentFeed";
+import { MyRankCardV3 } from "./MyRankCardV3";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -211,7 +212,7 @@ export function LeaderboardV3() {
       {/* Loading State */}
       {leaderboardLoading && (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nasun-c3"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nasun-c3/50"></div>
         </div>
       )}
 
@@ -226,6 +227,13 @@ export function LeaderboardV3() {
       {!seasonsLoading && (!seasons || seasons.length === 0) && (
         <div className="text-center py-12">
           <p className="text-nasun-white/50 text-lg">No active season at the moment.</p>
+        </div>
+      )}
+
+      {/* Mobile: My Rank Card above table */}
+      {selectedSeasonId && (
+        <div className="lg:hidden mb-6">
+          <MyRankCardV3 seasonId={selectedSeasonId} />
         </div>
       )}
 
@@ -309,9 +317,16 @@ export function LeaderboardV3() {
           )}
         </div>
 
-        {/* Right Column: Featured Content Feed */}
+        {/* Right Column: Sidebar (My Rank + Feed) */}
         <div className="w-full lg:w-[320px] xl:w-[380px] lg:flex-shrink-0">
-          <div className="lg:sticky lg:top-24">
+          <div className="lg:sticky lg:top-24 space-y-6">
+            {/* Desktop: My Rank Card in sidebar */}
+            {selectedSeasonId && (
+              <div className="hidden lg:block">
+                <MyRankCardV3 seasonId={selectedSeasonId} />
+              </div>
+            )}
+            {/* Featured Content Feed */}
             <NasunContentFeed seasonId={selectedSeasonId} />
           </div>
         </div>

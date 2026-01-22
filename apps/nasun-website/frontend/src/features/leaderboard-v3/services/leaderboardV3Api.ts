@@ -12,6 +12,7 @@ import type {
   GetTopClimbersParams,
   Platform,
   FeaturedFeedResponse,
+  MyRankResponse,
 } from '../types';
 
 // Search result interface
@@ -180,6 +181,37 @@ export async function searchAccounts(params: {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to search accounts: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get my rank (public)
+ * Returns rank info for a specific user
+ */
+export async function getMyRank(params: {
+  username: string;
+  seasonId?: string;
+}): Promise<MyRankResponse> {
+  const { username, seasonId } = params;
+
+  const searchParams = new URLSearchParams();
+  searchParams.append('username', username);
+  if (seasonId) searchParams.append('seasonId', seasonId);
+
+  const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard/my-rank?${searchParams}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get my rank: ${response.status}`);
   }
 
   return response.json();

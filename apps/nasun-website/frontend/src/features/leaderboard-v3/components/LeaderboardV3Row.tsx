@@ -100,7 +100,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
             target="_blank"
             rel="noopener noreferrer"
             className={`hover:text-nasun-c3 truncate block ${
-              entry.displayName ? "text-gray-400" : "text-gray-100 font-medium"
+              entry.displayName ? "text-[11px] text-nasun-white/60" : "text-gray-100 font-medium"
             }`}
           >
             @{entry.originalUsername || entry.username}
@@ -110,7 +110,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
 
       {/* Score */}
       <div className="col-span-2 text-right">
-        <span className="text-blue-400 font-bold">{entry.userScore.toFixed(1)}</span>
+        <span className="text-nasun-white font-bold">{entry.userScore.toFixed(1)}</span>
       </div>
 
       {/* Rank Change */}

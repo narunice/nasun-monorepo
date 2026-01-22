@@ -21,7 +21,7 @@ interface PaginationControlsV3Props {
   onPageInputSubmit: (e: FormEvent) => void;
 }
 
-const buttonBase = 'px-3 py-1 text-sm rounded-lg transition-all';
+const buttonBase = 'px-3 py-1 text-sm rounded-sm transition-all';
 const buttonDisabled = 'disabled:opacity-50 disabled:cursor-not-allowed';
 const buttonStyle = `${buttonBase} ${buttonDisabled} bg-gray-700 hover:bg-gray-600 hover:scale-105 active:scale-95 text-gray-200`;
 
@@ -107,7 +107,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
               type="number"
               value={pageInput}
               onChange={(e) => onPageInputChange(e.target.value)}
-              className="w-14 px-2 py-1 text-sm border border-gray-600 rounded-lg bg-gray-800 text-white focus:border-nasun-c3 focus:outline-none"
+              className="w-14 px-2 py-1 text-sm border border-gray-600 rounded-sm bg-gray-800 text-white focus:border-nasun-c3 focus:outline-none"
               min="1"
               max={totalPages}
             />
