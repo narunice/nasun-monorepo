@@ -137,7 +137,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
               <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
                 {t("hero.subTagline")}
               </h4>
-              <Button variant="c1" size="lg" asChild className="mt-6">
+              <Button variant="white" size="lg" asChild className="mt-6">
                 <Link
                   to={import.meta.env.VITE_PADO_ALPHA_URL}
                   target="_blank"
