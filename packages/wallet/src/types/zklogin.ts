@@ -157,7 +157,9 @@ export type ZkLoginErrorType =
   | 'SESSION_EXPIRED'
   | 'SIGNATURE_FAILED'
   | 'NONCE_MISMATCH'
-  | 'PROVIDER_NOT_CONFIGURED';
+  | 'PROVIDER_NOT_CONFIGURED'
+  | 'CSRF_STATE_MISSING'
+  | 'CSRF_STATE_MISMATCH';
 
 /**
  * zkLogin specific error

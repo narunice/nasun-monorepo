@@ -9,7 +9,7 @@
 
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { ethers } from "ethers";
 import { Alchemy, Network } from "alchemy-sdk";
@@ -65,9 +65,16 @@ function maskSensitiveData<T>(obj: T): T {
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-// Configuration
-const LEADERBOARD_TABLE = process.env.LEADERBOARD_TABLE || "NasunLeaderboard";
-const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
+// Leaderboard V3 tables
+const LEADERBOARD_V3_ACCOUNTS_TABLE = process.env.LEADERBOARD_V3_ACCOUNTS_TABLE || "leaderboard-v3-accounts";
+const LEADERBOARD_V3_SEASONS_TABLE = process.env.LEADERBOARD_V3_SEASONS_TABLE || "leaderboard-v3-seasons";
+const LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE = process.env.LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE || "leaderboard-v3-season-accounts";
+
+// V3 Score formula constants (matches score-calculator.ts)
+const V3_FRESHNESS_HALF_LIFE_DAYS = 14;
+const V3_CONSISTENCY_BONUS_MULTIPLIER = 0.1;
+const V3_CONSISTENCY_BONUS_MAX = 1.5;
+const V3_REPLY_DECAY_EXPONENT = 0.7;
 
 // Voting Power weights
 const LEADERBOARD_WEIGHT = Number(process.env.LEADERBOARD_WEIGHT) || 1;
@@ -288,6 +295,213 @@ async function getProposalType(proposalId: string): Promise<number> {
   }
 }
 
+// ============================================
+// Leaderboard V3 Types & Query Functions
+// ============================================
+
+interface V3Account {
+  accountId: string;
+  platform: string;
+  username: string;
+}
+
+interface V3Season {
+  seasonId: string;
+  sk: string;
+  status: string;
+  endDate: string;
+}
+
+interface V3SeasonAccountScore {
+  pk: string;
+  sk: string;
+  accountId: string;
+  seasonId: string;
+  totalPostScore: number;
+  postCount: number;
+  uniqueActiveDays: number;
+  lastSeenAt: string;
+  originalPostCount?: number;
+  originalTotalScore?: number;
+  quotePostCount?: number;
+  quoteTotalScore?: number;
+  replyPostCount?: number;
+  replyTotalScore?: number;
+}
+
+/**
+ * Get V3 account by twitterHandle (lowercase, no @)
+ */
+async function getV3AccountByHandle(twitterHandle: string): Promise<V3Account | null> {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: LEADERBOARD_V3_ACCOUNTS_TABLE,
+        IndexName: "platform-username-index",
+        KeyConditionExpression: "platform = :platform AND username = :username",
+        ExpressionAttributeValues: {
+          ":platform": "twitter",
+          ":username": twitterHandle.toLowerCase(),
+        },
+        Limit: 1,
+      })
+    );
+    return (result.Items?.[0] as V3Account) || null;
+  } catch (error) {
+    console.error("Error looking up V3 account:", error);
+    return null;
+  }
+}
+
+/**
+ * Find the currently active season
+ */
+async function getV3ActiveSeason(): Promise<V3Season | null> {
+  try {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: LEADERBOARD_V3_SEASONS_TABLE,
+        FilterExpression: "sk = :sk AND #status = :status",
+        ExpressionAttributeNames: { "#status": "status" },
+        ExpressionAttributeValues: {
+          ":sk": "METADATA",
+          ":status": "active",
+        },
+      })
+    );
+    return (result.Items?.[0] as V3Season) || null;
+  } catch (error) {
+    console.error("Error finding active season:", error);
+    return null;
+  }
+}
+
+/**
+ * Find the most recently ended season (by endDate DESC)
+ */
+async function getV3MostRecentEndedSeason(): Promise<V3Season | null> {
+  try {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: LEADERBOARD_V3_SEASONS_TABLE,
+        FilterExpression: "sk = :sk AND #status = :status",
+        ExpressionAttributeNames: { "#status": "status" },
+        ExpressionAttributeValues: {
+          ":sk": "METADATA",
+          ":status": "ended",
+        },
+      })
+    );
+    if (!result.Items?.length) return null;
+    const sorted = result.Items.sort((a, b) =>
+      ((b as V3Season).endDate).localeCompare((a as V3Season).endDate)
+    );
+    return sorted[0] as V3Season;
+  } catch (error) {
+    console.error("Error finding last ended season:", error);
+    return null;
+  }
+}
+
+/**
+ * Get season-specific account score
+ */
+async function getV3SeasonAccountScore(
+  seasonId: string,
+  accountId: string
+): Promise<V3SeasonAccountScore | null> {
+  try {
+    const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
+    const result = await docClient.send(
+      new GetCommand({
+        TableName: LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE,
+        Key: { pk, sk: "SCORE" },
+      })
+    );
+    return (result.Item as V3SeasonAccountScore) || null;
+  } catch (error) {
+    console.error("Error getting season account score:", error);
+    return null;
+  }
+}
+
+/**
+ * Recalculate V3 UserScore at current time
+ * Applies fresh FreshnessMultiplier based on current timestamp
+ */
+function recalculateV3UserScore(score: V3SeasonAccountScore): number {
+  let rawScore: number;
+
+  // Phase 9: Per-type RawScore calculation
+  if (score.originalPostCount !== undefined &&
+      score.quotePostCount !== undefined &&
+      score.replyPostCount !== undefined) {
+    const originalRaw = score.originalPostCount > 0
+      ? ((score.originalTotalScore || 0) * Math.log2(score.originalPostCount + 1)) / score.originalPostCount
+      : 0;
+    const quoteRaw = (score.quotePostCount || 0) > 0
+      ? ((score.quoteTotalScore || 0) * Math.log2((score.quotePostCount || 0) + 1)) / (score.quotePostCount || 1)
+      : 0;
+    const replyRaw = (score.replyPostCount || 0) > 0
+      ? ((score.replyTotalScore || 0) * Math.log2((score.replyPostCount || 0) + 1)) /
+        Math.pow(score.replyPostCount || 1, V3_REPLY_DECAY_EXPONENT)
+      : 0;
+    rawScore = originalRaw + quoteRaw + replyRaw;
+  } else {
+    // Legacy: all posts treated as original
+    const effectivePosts = Math.log2(score.postCount + 1);
+    rawScore = score.postCount > 0 ? (score.totalPostScore * effectivePosts) / score.postCount : 0;
+  }
+
+  // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1, capped at 1.5
+  const consistencyBonus = Math.min(
+    1 + Math.log2(score.uniqueActiveDays + 1) * V3_CONSISTENCY_BONUS_MULTIPLIER,
+    V3_CONSISTENCY_BONUS_MAX
+  );
+
+  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / 14), calculated NOW
+  const daysSinceLast = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(score.lastSeenAt).getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const freshnessMultiplier = 1 / (1 + daysSinceLast / V3_FRESHNESS_HALF_LIFE_DAYS);
+
+  return rawScore * consistencyBonus * freshnessMultiplier;
+}
+
+/**
+ * Main V3 leaderboard score resolver
+ * Priority: Active Season > Last Ended Season > 0
+ */
+async function getV3LeaderboardScore(twitterHandle: string): Promise<number> {
+  if (!twitterHandle) return 0;
+
+  // 1. Find V3 account by twitterHandle
+  const account = await getV3AccountByHandle(twitterHandle);
+  if (!account) return 0;
+
+  // 2. Check active season first
+  const activeSeason = await getV3ActiveSeason();
+  if (activeSeason) {
+    const seasonScore = await getV3SeasonAccountScore(activeSeason.seasonId, account.accountId);
+    if (seasonScore) {
+      return recalculateV3UserScore(seasonScore);
+    }
+  }
+
+  // 3. Fallback: most recently ended season
+  const lastEnded = await getV3MostRecentEndedSeason();
+  if (lastEnded) {
+    const seasonScore = await getV3SeasonAccountScore(lastEnded.seasonId, account.accountId);
+    if (seasonScore) {
+      return recalculateV3UserScore(seasonScore);
+    }
+  }
+
+  // 4. No season data available
+  return 0;
+}
+
 // Initialize Alchemy SDK (lazy)
 let alchemyClient: Alchemy | null = null;
 function getAlchemyClient(): Alchemy {
@@ -309,7 +523,7 @@ const corsHeaders = {
 
 interface VotingPowerResponse {
   address: string;
-  twitterId?: string;
+  twitterHandle?: string;
   leaderboardScore: number;
   nftBonus: number;
   tokenBalance: number;
@@ -324,55 +538,14 @@ interface VotingPowerResponse {
 /**
  * Get user's Twitter ID from Cognito Identity ID
  */
-async function getTwitterIdFromIdentity(identityId: string): Promise<string | null> {
-  try {
-    const result = await docClient.send(
-      new GetCommand({
-        TableName: USER_PROFILES_TABLE,
-        Key: { identityId },
-      })
-    );
-
-    if (result.Item?.twitterId) {
-      return result.Item.twitterId as string;
-    }
-
-    // Check linkedAccounts
-    if (result.Item?.linkedAccounts?.twitter?.id) {
-      return result.Item.linkedAccounts.twitter.id as string;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error getting Twitter ID from identity:", error);
-    return null;
-  }
-}
-
 /**
- * Get user's leaderboard score from X engagement
+ * Get user's leaderboard score from V3 season system
+ * Uses twitterHandle to lookup V3 account, then resolves season score
  */
-async function getLeaderboardScore(twitterId: string): Promise<number> {
-  try {
-    const result = await docClient.send(
-      new GetCommand({
-        TableName: LEADERBOARD_TABLE,
-        Key: {
-          pk: `USER#${twitterId}`,
-          sk: "CUMULATIVE_SCORE",
-        },
-      })
-    );
-
-    if (result.Item?.totalScore) {
-      return Math.floor(result.Item.totalScore as number);
-    }
-
-    return 0;
-  } catch (error) {
-    console.error("Error getting leaderboard score:", error);
-    return 0;
-  }
+async function getLeaderboardScore(twitterHandle?: string): Promise<number> {
+  if (!twitterHandle) return 0;
+  const v3Score = await getV3LeaderboardScore(twitterHandle);
+  return Math.floor(v3Score);
 }
 
 /**
@@ -476,28 +649,22 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // GET /voting-power?identityId=xxx or GET /voting-power?twitterId=xxx
     if (path.endsWith("/voting-power") && event.httpMethod === "GET") {
-      const { identityId, twitterId: directTwitterId, nftBonus: nftBonusParam } = event.queryStringParameters || {};
+      const { identityId, twitterHandle: twitterHandleParam, nftBonus: nftBonusParam } = event.queryStringParameters || {};
 
-      let twitterId: string | undefined = directTwitterId;
+      const twitterHandle = twitterHandleParam?.toLowerCase().replace(/^@/, "");
 
-      // If identityId provided, look up twitterId
-      if (!twitterId && identityId) {
-        const resolved = await getTwitterIdFromIdentity(identityId);
-        twitterId = resolved ?? undefined;
-      }
-
-      if (!twitterId) {
+      if (!twitterHandle) {
         return {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({
-            error: "Missing twitterId or identityId parameter",
+            error: "Missing twitterHandle parameter",
           }),
         };
       }
 
-      // Get leaderboard score
-      const leaderboardScore = await getLeaderboardScore(twitterId);
+      // Get leaderboard score from V3
+      const leaderboardScore = await getLeaderboardScore(twitterHandle);
 
       // NFT bonus (will be verified separately via signature)
       const hasNft = nftBonusParam === "true";
@@ -510,7 +677,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       const response: VotingPowerResponse = {
         address: identityId || "",
-        twitterId,
+        twitterHandle,
         leaderboardScore,
         nftBonus: power.nft,
         tokenBalance,
@@ -616,7 +783,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
-      const { voter, proposalId, twitterId, ethSignature } = JSON.parse(event.body);
+      const { voter, proposalId, twitterHandle: rawTwitterHandle, ethSignature } = JSON.parse(event.body);
 
       if (!voter || !proposalId) {
         return {
@@ -627,10 +794,11 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
 
       try {
-        // 1. Calculate voting power (reuse existing logic)
+        // 1. Calculate voting power from V3 leaderboard
+        const twitterHandle = rawTwitterHandle?.toLowerCase().replace(/^@/, "");
         let leaderboardScore = 0;
-        if (twitterId) {
-          leaderboardScore = await getLeaderboardScore(twitterId);
+        if (twitterHandle) {
+          leaderboardScore = await getLeaderboardScore(twitterHandle);
         }
 
         let hasNft = false;

@@ -127,69 +127,72 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
       onClick={onClose}
     >
       <div
-        className="bg-nasun-c6 border border-nasun-c5/50 p-6 md:p-8 rounded-xl max-w-md w-full shadow-lg"
+        className="bg-nasun-c6/90 border border-nasun-c5/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
-          <h2 className="text-2xl font-medium text-nasun-white">{proposal.title}</h2>
+          <h4 className="text-nasun-white">{proposal.title}</h4>
           {hasVoted || isSuccess ? (
-            <div className="flex-shrink-0 text-sm px-3 py-1 font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+            <span className="flex-shrink-0 text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
               {t("vote.already_voted")}
-            </div>
+            </span>
           ) : (
-            <div className="flex-shrink-0 text-sm px-3 py-1 font-medium rounded-full bg-red-500/20 text-red-400 border border-red-500/50">
+            <span className="flex-shrink-0 text-xs px-2 py-0.5 font-medium rounded-sm bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30">
               {t("vote.not_voted_yet")}
-            </div>
+            </span>
           )}
         </div>
 
+        {/* Description */}
         {!confirmStep.show && (
-          <p className="mb-6 text-nasun-white/85">{proposal.description}</p>
+          <p className="mb-5 text-nasun-white/85">{proposal.description}</p>
         )}
-        <div className="flex flex-col gap-4">
+
+        <div className="flex flex-col gap-3">
           {/* Current Vote Counts */}
-          <div className="flex justify-between text-sm text-nasun-white/70">
+          <div className="flex justify-between text-sm text-nasun-white/60">
             <span>👍 {t("proposal.yes_votes")}: {proposal.yesVotes}</span>
             <span>👎 {t("proposal.no_votes")}: {proposal.noVotes}</span>
           </div>
 
           {/* Voting Power Display */}
           {isConnected && !hasVoted && !isSuccess && !confirmStep.show && (
-            <div className="bg-nasun-black/30 rounded-lg p-4 border border-nasun-c5/30">
-              {/* Gas Fee Badge - different for Poll vs Governance */}
-              <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-nasun-c5/20">
+            <div className="bg-gray-800/80 rounded-sm p-4 border border-nasun-c5/20">
+              {/* Gas Fee Badge */}
+              <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-nasun-c5/10">
                 {isSponsored ? (
                   <>
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/50">
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
                       Zero Gas Fee
                     </span>
-                    <span className="text-xs text-nasun-white/50">Sponsored by Nasun</span>
+                    <span className="text-xs text-nasun-white/40">Sponsored by Nasun</span>
                   </>
                 ) : (
                   <>
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/50">
+                    <span className="px-2 py-0.5 text-xs font-medium rounded-sm bg-nasun-c1/20 text-nasun-c1 border border-nasun-c1/40">
                       Gas Required
                     </span>
-                    <span className="text-xs text-nasun-white/50">You pay transaction fee</span>
+                    <span className="text-xs text-nasun-white/40">You pay transaction fee</span>
                   </>
                 )}
               </div>
 
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-nasun-white/70">Your Voting Power</span>
-                <span className="text-lg font-semibold text-nasun-c3">
+                <span className="text-sm text-nasun-white/60">Your Voting Power</span>
+                <span className="text-lg font-semibold text-nasun-c1">
                   {totalVotingPower}
                 </span>
               </div>
 
               {/* Voting Power Breakdown */}
-              <div className="text-xs text-nasun-white/50 space-y-1">
+              <div className="text-xs text-nasun-white/40 space-y-1">
                 <div className="flex justify-between">
                   <span>Base Power</span>
                   <span>{baseVotingPower}</span>
                 </div>
                 {nftBonus > 0 && (
-                  <div className="flex justify-between text-nasun-c3">
+                  <div className="flex justify-between text-nasun-c1">
                     <span>NFT Bonus</span>
                     <span>+{nftBonus}</span>
                   </div>
@@ -198,11 +201,11 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
               {/* NFT Verification Option */}
               {hasMetaMask && !nftVerification && (
-                <div className="mt-3 pt-3 border-t border-nasun-c5/20">
+                <div className="mt-3 pt-3 border-t border-nasun-c5/10">
                   <button
                     onClick={handleNftVerification}
                     disabled={isLoadingPower}
-                    className="w-full text-sm text-nasun-c4 hover:text-nasun-c3 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full text-sm text-nasun-c4 hover:text-nasun-c5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isLoadingPower ? (
                       "Verifying..."
@@ -220,7 +223,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
               {/* NFT Verified Badge */}
               {nftVerification?.hasNasunNft && (
-                <div className="mt-3 pt-3 border-t border-nasun-c5/20">
+                <div className="mt-3 pt-3 border-t border-nasun-c5/10">
                   <div className="flex items-center gap-2 text-sm text-green-400">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path
@@ -238,8 +241,8 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
           {/* Confirmation Step */}
           {confirmStep.show && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-              <h4 className="font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+            <div className="bg-nasun-c1/5 border border-nasun-c1/20 rounded-sm p-4">
+              <h5 className="text-nasun-c1 mb-3 flex items-center gap-2">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
@@ -248,14 +251,14 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                   />
                 </svg>
                 Confirm Your Vote
-              </h4>
+              </h5>
               <ul className="text-sm text-nasun-white/80 space-y-2 mb-4">
                 <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">•</span>
-                  <span>This vote <strong>cannot be undone</strong></span>
+                  <span className="text-nasun-c1">•</span>
+                  <span>This vote <strong className="text-nasun-white">cannot be undone</strong></span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">•</span>
+                  <span className="text-nasun-c1">•</span>
                   <span>
                     Vote direction:{" "}
                     <strong className={confirmStep.voteYes ? "text-green-400" : "text-red-400"}>
@@ -264,16 +267,16 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">•</span>
+                  <span className="text-nasun-c1">•</span>
                   <span>
-                    Voting power: <strong className="text-nasun-c3">{totalVotingPower}</strong>
+                    Voting power: <strong className="text-nasun-c1">{totalVotingPower}</strong>
                   </span>
                 </li>
               </ul>
               <div className="flex gap-3">
                 <Button
-                  variant="c5"
-                  size="md"
+                  variant="outlineC5"
+                  size="default"
                   onClick={() => setConfirmStep({ show: false, voteYes: null })}
                   className="flex-1"
                   disabled={isPending}
@@ -282,7 +285,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                 </Button>
                 <Button
                   variant={confirmStep.voteYes ? "green" : "destructive"}
-                  size="md"
+                  size="default"
                   onClick={() => vote(confirmStep.voteYes!)}
                   className="flex-1"
                   disabled={isPending}
@@ -295,12 +298,12 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
           {/* Vote Buttons */}
           {!confirmStep.show && (
-            <div className="flex justify-between gap-4">
+            <div className="flex justify-between gap-3">
               {isConnected ? (
                 <>
                   <Button
                     variant="green"
-                    size="lg"
+                    size="default"
                     disabled={votingDisable}
                     onClick={() => setConfirmStep({ show: true, voteYes: true })}
                     className="flex-1"
@@ -308,8 +311,8 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                     {t("vote.vote_yes")}
                   </Button>
                   <Button
-                    variant="destructive"
-                    size="lg"
+                    variant="scarlet"
+                    size="default"
                     disabled={votingDisable}
                     onClick={() => setConfirmStep({ show: true, voteYes: false })}
                     className="flex-1"
@@ -324,7 +327,8 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
               )}
             </div>
           )}
-          <Button variant="c5" size="lg" onClick={onClose} className="w-full">
+
+          <Button variant="outlineC5" size="default" onClick={onClose} className="w-full">
             {t("vote.close")}
           </Button>
         </div>

@@ -159,7 +159,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                 <img
                   src={leaderboardImage}
                   alt="Leaderboard Preview"
-                  className="w-full lg:w-auto lg:max-h-full lg:h-full object-contain rounded-lg lg:rounded-none"
+                  className="w-full lg:w-auto lg:max-h-full lg:h-full object-contain rounded-sm lg:rounded-none"
                 />
               </div>
             </div>

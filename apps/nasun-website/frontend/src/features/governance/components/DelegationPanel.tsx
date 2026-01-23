@@ -9,7 +9,7 @@ import { FC, useState } from "react";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useDelegation } from "../hooks/useDelegation";
-import { Button } from "@/components/ui";
+import { Button, OuterBox, DividerBox } from "@/components/ui";
 import { toast } from "react-toastify";
 
 interface DelegationPanelProps {
@@ -71,8 +71,8 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
   };
 
   return (
-    <div className={`bg-nasun-c6 border border-nasun-c5/50 rounded-xl p-6 ${className}`}>
-      <h3 className="text-lg font-semibold text-nasun-white mb-4">
+    <OuterBox color="n2" padding="md" className={`h-full ${className}`}>
+      <h3 className="text-lg font-medium text-nasun-white mb-4">
         Voting Power Delegation
       </h3>
 
@@ -86,12 +86,12 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
         </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c3 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c4 border-t-transparent"></div>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Current Delegation Status */}
-          <div className="bg-nasun-black/30 rounded-lg p-4">
+          <DividerBox color="n1" padding="sm">
             <h4 className="text-sm font-medium text-nasun-white/70 mb-3">
               Your Delegation Status
             </h4>
@@ -100,7 +100,7 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-nasun-white/70">Delegated to:</span>
-                  <span className="text-nasun-c3 font-mono text-sm">
+                  <span className="text-nasun-c4 font-mono text-sm">
                     {truncateAddress(delegationState.delegate || "")}
                   </span>
                 </div>
@@ -129,12 +129,12 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
                     value={delegateAddress}
                     onChange={(e) => setDelegateAddress(e.target.value)}
                     placeholder="0x..."
-                    className="w-full bg-nasun-black/50 border border-nasun-c5/30 rounded-lg px-4 py-2 text-nasun-white placeholder-nasun-white/30 focus:border-nasun-c3 focus:outline-none font-mono text-sm"
+                    className="w-full bg-nasun-black/50 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder-nasun-white/30 focus:border-nasun-c4 focus:outline-none font-mono text-sm transition-colors"
                   />
                 </div>
 
                 <Button
-                  variant="c3"
+                  variant="c4"
                   size="sm"
                   onClick={handleDelegate}
                   disabled={isPending || !delegateAddress.trim()}
@@ -144,10 +144,10 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
                 </Button>
               </div>
             )}
-          </div>
+          </DividerBox>
 
           {/* Incoming Delegations */}
-          <div className="bg-nasun-black/30 rounded-lg p-4">
+          <DividerBox color="n1" padding="sm">
             <h4 className="text-sm font-medium text-nasun-white/70 mb-3">
               Delegations Received
             </h4>
@@ -156,7 +156,7 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-nasun-white/70">Total delegators:</span>
-                  <span className="text-nasun-c3 font-semibold">
+                  <span className="text-nasun-c4 font-semibold">
                     {delegationState.delegatorCount}
                   </span>
                 </div>
@@ -169,11 +169,11 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
                 No one has delegated to you yet
               </p>
             )}
-          </div>
+          </DividerBox>
 
           {/* Info Box */}
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-blue-400 mb-2">
+          <div className="bg-nasun-c4/10 border border-nasun-c4/30 rounded-sm p-4">
+            <h4 className="text-sm font-medium text-nasun-c4 mb-2">
               How Delegation Works
             </h4>
             <ul className="text-xs text-nasun-white/70 space-y-1 list-disc list-inside">
@@ -186,7 +186,7 @@ export const DelegationPanel: FC<DelegationPanelProps> = ({ className = "" }) =>
           </div>
         </div>
       )}
-    </div>
+    </OuterBox>
   );
 };
 

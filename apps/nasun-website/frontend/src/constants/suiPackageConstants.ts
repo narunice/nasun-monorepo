@@ -1,14 +1,14 @@
 //optimistic account
 
-// Nasun Devnet - Governance Package V7 (deployed 2026-01-20, Chain ID: 56c8b101)
+// Nasun Devnet - Governance Package V8 (deployed 2026-01-23, Chain ID: 56c8b101)
 export const NASUN_DEVNET_PACKAGE_ID =
-  "0x85cbfc0e9a54331d0b2fd4cf68bf7228639ede99755945f8a098ef563b628843";
+  "0x07b91522177a221f11008eb4c5fa1a476b8d49ab52ef7946404b34fd00afacb0";
 export const NASUN_DEVNET_DASHBOARD_ID =
-  "0x542142dcf283834783cbf75e4b2e5bd32458a02171232738638b86de386acd0d";
+  "0x821f7dfd794e23a26d454624aeeeed0b05633c2a689ab360b1b800d95efde17c";
 export const NASUN_DEVNET_ADMIN_CAP =
-  "0x01fe93642a1bce4acae439d9062d7075749948a9e43ce6ccf19a116e8323b768";
+  "0x59b017a3cb4c1805d4c6ba2b542516197a2be9e91d77b036201456579e39576f";
 export const NASUN_DEVNET_UPGRADE_CAP =
-  "0x576ebf7a856ac802fe8ef63291d75d70367a9a0b4458deeb7b69db4c3bf910be";
+  "0xec1e44046cc468b68a26695542c025a09c21103d3e877e50b751d337ae6ac6a2";
 // Delegation Registry ID (TODO: Redeploy if needed)
 export const NASUN_DEVNET_DELEGATION_REGISTRY_ID =
   "";

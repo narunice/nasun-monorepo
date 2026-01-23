@@ -81,7 +81,7 @@ export function useSponsoredVote() {
         body: JSON.stringify({
           voter: voterAddress,
           proposalId,
-          twitterId: user?.twitterId,
+          twitterHandle: user?.twitterHandle,
           ethSignature,
         }),
       });

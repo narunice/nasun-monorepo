@@ -58,22 +58,22 @@ export const DESKTOP_NAVIGATION_STYLES = {
 export const MOBILE_NAVIGATION_STYLES = {
   // 메인 네비게이션 링크 (서브메뉴가 없는 항목)
   mainLink: {
-    base: "block text-base py-2 px-2 transition-all text-left rounded-lg !outline-none focus:!outline-none focus-visible:!outline-none focus-visible:!ring-0 active:!outline-none",
-    active: "bg-nasun-c5/20 rounded-2xl",
+    base: "block text-base py-1.5 px-2 transition-all text-left rounded-xl !outline-none focus:!outline-none focus-visible:!outline-none focus-visible:!ring-0 active:!outline-none",
+    active: "bg-nasun-c4/20",
     inactive: "text-nasun-black hover:bg-slate-800/60",
   },
 
   // 서브메뉴를 가진 부모 버튼
   parentButton: {
-    base: "flex items-center justify-between gap-2 w-full text-base py-2 px-2 transition-all rounded-lg !outline-none focus:!outline-none focus-visible:!outline-none focus-visible:!ring-0 active:!outline-none",
-    active: "bg-nasun-c5/20 rounded-2xl",
+    base: "flex items-center justify-between gap-2 w-full text-base py-1.5 px-2 transition-all rounded-xl !outline-none focus:!outline-none focus-visible:!outline-none focus-visible:!ring-0 active:!outline-none",
+    active: "bg-nasun-c4/20",
     inactive: "text-nasun-black hover:bg-slate-800/60",
   },
 
   // 서브메뉴 항목 (들여쓰기된 항목)
   subMenuItem: {
-    base: "block py-2 px-2 transition-all text-left rounded-lg !outline-none focus:!outline-none focus-visible:!outline-none focus-visible:!ring-0 active:!outline-none",
-    active: "text-nasun-black bg-nasun-c4/20 rounded-2xl",
+    base: "block py-1.5 px-3 transition-all text-left rounded-xl !outline-none focus:!outline-none focus-visible:!outline-none focus-visible:!ring-0 active:!outline-none",
+    active: "text-nasun-black bg-nasun-c4/20",
     inactive: "text-nasun-black hover:bg-slate-800/70 hover:text-white !border-none",
   },
 

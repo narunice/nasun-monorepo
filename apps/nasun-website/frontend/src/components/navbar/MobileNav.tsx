@@ -119,21 +119,21 @@ export default function MobileNav({
             // 메뉴 항목 간격 설정
             const getMarginClass = () => {
               if (index === 0) return ""; // 첫 번째 항목은 마진 없음
-              return "mt-3"; // 나머지 항목들은 일정한 간격
+              return "mt-1"; // 나머지 항목들은 일정한 간격
             };
 
             return (
               <div key={item.name} className={getMarginClass()}>
                 {item.subMenu ? (
-                  <div className="space-y-2">
+                  <div className="space-y-0.5">
                     {/* 1) 부모 메뉴: 클릭하면 토글만 */}
                     <button
                       onClick={() => toggleSubMenu(item.name)}
-                      className="flex items-center justify-between gap-2 w-full text-base py-2 px-2 transition-all rounded-lg text-nasun-black hover:bg-slate-800/70 hover:text-white"
+                      className={`flex items-center justify-between gap-2 w-full text-base py-1.5 px-2 transition-all rounded-xl text-nasun-black ${
+                        isActive(item) ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
+                      }`}
                     >
-                      <span className={isActive(item) ? "bg-nasun-c5/20 rounded-2xl px-2 py-0.5" : ""}>
-                        {item.name}
-                      </span>
+                      {item.name}
                       <FontAwesomeIcon
                         icon={faChevronDown}
                         className={`text-sm transition-transform ${
@@ -144,7 +144,7 @@ export default function MobileNav({
 
                     {/* 서브메뉴 */}
                     {isMenuOpen[item.name] && (
-                      <div className="ml-4 space-y-2">
+                      <div className="ml-4 border-l-2 border-nasun-c4/50 space-y-0.5">
                         {item.subMenu.map((subItem: SubMenuItem) =>
                           subItem.subMenu ? (
                             // 3단계 중첩: 인라인 렌더링 (토글 없이 항상 표시)
@@ -182,7 +182,7 @@ export default function MobileNav({
                             subItem.disabled ? (
                               <span
                                 key={subItem.name}
-                                className="block py-2 px-2 text-left rounded-lg text-nasun-black opacity-50 cursor-not-allowed"
+                                className="block py-1.5 px-3 text-left rounded-xl text-nasun-black opacity-50 cursor-not-allowed"
                               >
                                 <span className="flex items-center gap-2">
                                   {subItem.name}
@@ -201,7 +201,7 @@ export default function MobileNav({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => closeAllMenus()}
-                                className="block py-2 px-2 transition-all text-left rounded-lg text-nasun-black hover:bg-slate-800/70 hover:text-white"
+                                className="block py-1.5 px-3 transition-all text-left rounded-xl text-nasun-black hover:bg-slate-800/70 hover:text-white"
                               >
                                 <span className="flex items-center gap-2">
                                   {subItem.name}
@@ -213,11 +213,11 @@ export default function MobileNav({
                                 key={subItem.name}
                                 to={subItem.path}
                                 onClick={(e) => handleLinkClick(e, subItem.path)}
-                                className="block py-2 px-2 transition-all text-left rounded-lg text-nasun-black hover:bg-slate-800/70 hover:text-white"
+                                className={`block py-1.5 px-3 transition-all text-left rounded-xl text-nasun-black ${
+                                  isActive(subItem) ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
+                                }`}
                               >
-                                <span className={isActive(subItem) ? "bg-nasun-c5/20 rounded-2xl px-2 py-0.5" : ""}>
-                                  {subItem.name}
-                                </span>
+                                {subItem.name}
                               </Link>
                             )
                           )
@@ -229,11 +229,11 @@ export default function MobileNav({
                   <Link
                     to={item.path}
                     onClick={(e) => handleLinkClick(e, item.path)}
-                    className="block text-base py-2 px-2 transition-all text-left rounded-lg text-nasun-black hover:bg-slate-800/70 hover:text-white"
+                    className={`block text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
+                      isActive(item) ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
+                    }`}
                   >
-                    <span className={isActive(item) ? "bg-nasun-c5/20 rounded-2xl px-2 py-0.5" : ""}>
-                      {item.name}
-                    </span>
+                    {item.name}
                   </Link>
                 )}
               </div>
