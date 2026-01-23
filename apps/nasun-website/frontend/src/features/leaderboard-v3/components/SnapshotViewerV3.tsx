@@ -5,7 +5,7 @@
  * V2 SnapshotHeader pattern.
  */
 
-import { X } from 'lucide-react';
+import { X } from "lucide-react";
 
 interface SnapshotViewerV3Props {
   selectedDate: string | undefined;
@@ -21,7 +21,6 @@ export function SnapshotViewerV3({
   onDateChange,
   minDate,
   maxDate,
-  lastUpdated,
   isEnded = false,
 }: SnapshotViewerV3Props) {
   const handleClear = () => {
@@ -37,7 +36,7 @@ export function SnapshotViewerV3({
       <div className="flex items-center gap-2">
         <input
           type="date"
-          value={selectedDate || ''}
+          value={selectedDate || ""}
           onChange={(e) => onDateChange(e.target.value || undefined)}
           min={minDate}
           max={maxDate}
@@ -56,21 +55,20 @@ export function SnapshotViewerV3({
 
       {/* Status indicator */}
       {!selectedDate ? (
-        <span className="text-nasun-c3 font-medium text-sm">Latest Rankings</span>
+        <span className="text-nasun-c4/70 text-sm ">Viewing: Latest Rankings</span>
       ) : (
-        <span className="text-nasun-white/50 text-sm">
-          Viewing: {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
+        <span className="text-nasun-c4/90 text-sm">
+          Viewing:{" "}
+          {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
           })}
         </span>
       )}
 
       {isEnded && !selectedDate && (
-        <span className="px-2 py-0.5 bg-gray-600 rounded text-xs text-gray-200">
-          FINAL
-        </span>
+        <span className="px-2 py-0.5 bg-gray-600 rounded text-xs text-gray-200">FINAL</span>
       )}
     </div>
   );

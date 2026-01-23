@@ -113,31 +113,46 @@ function calculateTopClimbers(
 
   for (const [accountId, current] of currentSnapshot) {
     const previous = previousSnapshot.get(accountId);
-    if (!previous) continue;
 
-    const rankChange = previous.rank - current.rank;
-    if (rankChange > 0) {
-      climbers.push({
-        accountId,
-        username: current.username,
-        originalUsername: current.originalUsername,
-        platform: current.platform,
-        displayName: current.displayName,
-        profileImageUrl: current.profileImageUrl,
-        currentRank: current.rank,
-        previousRank: previous.rank,
-        rankChange: {
-          direction: 'up',
-          amount: rankChange,
-        },
-        currentScore: current.userScore,
-      });
+    let rankChange: number;
+    let direction: 'up' | 'new';
+
+    if (!previous) {
+      // New entry: appeared in current but not in previous
+      direction = 'new';
+      rankChange = 0;
+    } else {
+      rankChange = previous.rank - current.rank;
+      if (rankChange <= 0) continue; // Only include upward movement
+      direction = 'up';
     }
+
+    climbers.push({
+      accountId,
+      username: current.username,
+      originalUsername: current.originalUsername,
+      platform: current.platform,
+      displayName: current.displayName,
+      profileImageUrl: current.profileImageUrl,
+      currentRank: current.rank,
+      previousRank: previous?.rank || 0,
+      rankChange: {
+        direction,
+        amount: rankChange,
+      },
+      currentScore: current.userScore,
+    });
   }
 
-  return climbers
-    .sort((a, b) => b.rankChange.amount - a.rankChange.amount || a.currentRank - b.currentRank)
-    .slice(0, limit);
+  // Sort: prioritize actual climbers over new entries
+  climbers.sort((a, b) => {
+    if (a.rankChange.direction === 'new' && b.rankChange.direction !== 'new') return 1;
+    if (a.rankChange.direction !== 'new' && b.rankChange.direction === 'new') return -1;
+    if (b.rankChange.amount !== a.rankChange.amount) return b.rankChange.amount - a.rankChange.amount;
+    return a.currentRank - b.currentRank;
+  });
+
+  return climbers.slice(0, limit);
 }
 
 /**
@@ -204,16 +219,28 @@ export const handler = async (
     const todayDate = getTodayDateString();
     const sevenDaysAgo = getDateNDaysAgo(7);
     const currentSnapshot = await getSnapshot(seasonId, todayDate);
-    const previousSnapshot = await getSnapshot(seasonId, sevenDaysAgo);
-    
+
     // Fallback if today's snapshot not ready
     if (currentSnapshot.size === 0) {
       const yesterday = getDateNDaysAgo(1);
       const yesterdaySnapshot = await getSnapshot(seasonId, yesterday);
       for (const [k, v] of yesterdaySnapshot) currentSnapshot.set(k, v);
+      console.log(`[FeaturedFeed] Today snapshot empty, using yesterday's (${yesterday}), size=${yesterdaySnapshot.size}`);
     }
 
+    // Smart Fallback for previous snapshot: 7d → 1d
+    let previousDate = sevenDaysAgo;
+    let previousSnapshot = await getSnapshot(seasonId, previousDate);
+    if (previousSnapshot.size === 0) {
+      previousDate = getDateNDaysAgo(1);
+      previousSnapshot = await getSnapshot(seasonId, previousDate);
+      console.log(`[FeaturedFeed] 7-day snapshot empty, falling back to 1-day (${previousDate}), size=${previousSnapshot.size}`);
+    }
+
+    console.log(`[FeaturedFeed] Snapshot dates: current=${todayDate}, previous=${previousDate}, currentSize=${currentSnapshot.size}, previousSize=${previousSnapshot.size}`);
+
     const topClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, 3);
+    console.log(`[FeaturedFeed] Rankers: ${topRankers.length}, Climbers: ${topClimbers.length}`);
 
     // 3. Deduplicate and Map Badges
     const userMap = new Map<string, { account: any; badges: BadgeType[] }>();

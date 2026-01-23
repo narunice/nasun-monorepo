@@ -4,16 +4,7 @@ import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
-import {
-  ExternalLink,
-  User,
-  Layers,
-  ShieldCheck,
-  Zap,
-  Repeat,
-  Globe,
-  Lock,
-} from "lucide-react";
+import { ExternalLink, User, Layers, ShieldCheck, Zap, Repeat, Globe, Lock } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 
 export const UnifiedOnchain = () => {
@@ -26,16 +17,16 @@ export const UnifiedOnchain = () => {
         {t("unifiedOnchain.pageTitle")}
       </PageTitle>
 
-      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10 -mt-4 md:-mt-5 lg:-mt-6">
         {/* Subtitle Box */}
-        <OuterBox color="w1" padding="md">
-          <p className="text-nasun-white font-medium text-lg md:text-xl text-center">
+        <OuterBox color="w1" padding="md" className="!bg-[#3D3D3D]">
+          <p className="text-nasun-white font-medium text-lg md:text-xl text-center ">
             {t("unifiedOnchain.subtitle.text")}
           </p>
           <Button
             variant="c1"
             size="lg"
-            className="flex w-fit items-center gap-2 mt-6 mx-auto"
+            className="flex w-fit items-center gap-2 mt-6 mx-auto text-nasun-black"
             asChild
           >
             <a href="https://staging.pado.finance/" target="_blank" rel="noopener noreferrer">
@@ -73,7 +64,8 @@ export const UnifiedOnchain = () => {
 
             <div className="flex flex-col gap-4 pt-2">
               <DividerBox
-                color="c1"
+                color="w4"
+                hideDivider={true}
                 padding="sm"
                 title={t("unifiedOnchain.section2.box1.title")}
                 icon={<User className="w-5 h-5 text-nasun-c1" />}
@@ -88,7 +80,8 @@ export const UnifiedOnchain = () => {
               </DividerBox>
 
               <DividerBox
-                color="c1"
+                color="w4"
+                hideDivider={true}
                 padding="sm"
                 title={t("unifiedOnchain.section2.box2.title")}
                 icon={<ShieldCheck className="w-5 h-5 text-nasun-c1" />}
@@ -103,7 +96,8 @@ export const UnifiedOnchain = () => {
               </DividerBox>
 
               <DividerBox
-                color="c1"
+                color="w4"
+                hideDivider={true}
                 padding="sm"
                 title={t("unifiedOnchain.section2.box3.title")}
                 icon={<Lock className="w-5 h-5 text-nasun-c1" />}
@@ -129,7 +123,7 @@ export const UnifiedOnchain = () => {
             <p>{t("unifiedOnchain.section3.intro")}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <DividerBox color="w1" padding="sm" className="h-full">
+              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
                 <p>
                   <Trans
                     t={t}
@@ -138,7 +132,7 @@ export const UnifiedOnchain = () => {
                   />
                 </p>
               </DividerBox>
-              <DividerBox color="w1" padding="sm" className="h-full">
+              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
                 <p>
                   <Trans
                     t={t}
@@ -147,7 +141,7 @@ export const UnifiedOnchain = () => {
                   />
                 </p>
               </DividerBox>
-              <DividerBox color="w1" padding="sm" className="h-full">
+              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
                 <p>
                   <Trans
                     t={t}
@@ -156,7 +150,7 @@ export const UnifiedOnchain = () => {
                   />
                 </p>
               </DividerBox>
-              <DividerBox color="w1" padding="sm" className="h-full">
+              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
                 <p>
                   <Trans
                     t={t}
@@ -209,7 +203,7 @@ export const UnifiedOnchain = () => {
                           components={[<strong className="text-nasun-white font-medium" key="0" />]}
                         />
                       </li>
-                    )
+                    ),
                   )}
                 </ul>
               </div>
@@ -238,39 +232,36 @@ export const UnifiedOnchain = () => {
 
             <div className="grid md:grid-col-1 lg:grid-cols-3 gap-6 pt-2">
               <DividerBox
-                color="w1"
+                color="w4"
+                hideDivider={true}
                 padding="sm"
                 title={t("unifiedOnchain.section5.box1.title")}
                 icon={<Layers className="w-5 h-5 text-nasun-c1" />}
                 titleClassName="!text-nasun-c1"
               >
-                <p className="text-sm md:text-base">
-                  {t("unifiedOnchain.section5.box1.content")}
-                </p>
+                <p className="text-sm md:text-base">{t("unifiedOnchain.section5.box1.content")}</p>
               </DividerBox>
 
               <DividerBox
-                color="w1"
+                color="w4"
+                hideDivider={true}
                 padding="sm"
                 title={t("unifiedOnchain.section5.box2.title")}
                 icon={<Repeat className="w-5 h-5 text-nasun-c1" />}
                 titleClassName="!text-nasun-c1"
               >
-                <p className="text-sm md:text-base">
-                  {t("unifiedOnchain.section5.box2.content")}
-                </p>
+                <p className="text-sm md:text-base">{t("unifiedOnchain.section5.box2.content")}</p>
               </DividerBox>
 
               <DividerBox
-                color="w1"
+                color="w4"
+                hideDivider={true}
                 padding="sm"
                 title={t("unifiedOnchain.section5.box3.title")}
                 icon={<Globe className="w-5 h-5 text-nasun-c1" />}
-                titleClassName="!text-nasun-c1"
+                titleClassName="!text-nasun-c1 lg:min-h-[46px]"
               >
-                <p className="text-sm md:text-base">
-                  {t("unifiedOnchain.section5.box3.content")}
-                </p>
+                <p className="text-sm md:text-base">{t("unifiedOnchain.section5.box3.content")}</p>
               </DividerBox>
             </div>
 
@@ -294,7 +285,7 @@ export const UnifiedOnchain = () => {
               {(t("unifiedOnchain.section6.list", { returnObjects: true }) as string[]).map(
                 (item, index) => (
                   <li key={index}>{item}</li>
-                )
+                ),
               )}
             </ul>
 
@@ -318,7 +309,7 @@ export const UnifiedOnchain = () => {
               {(t("unifiedOnchain.section7.list", { returnObjects: true }) as string[]).map(
                 (item, index) => (
                   <li key={index}>{item}</li>
-                )
+                ),
               )}
             </ul>
 
@@ -348,7 +339,7 @@ export const UnifiedOnchain = () => {
                       components={[<strong className="text-nasun-white font-medium" key="0" />]}
                     />
                   </li>
-                )
+                ),
               )}
             </ul>
 
@@ -365,19 +356,19 @@ export const UnifiedOnchain = () => {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <DividerBox color="c1" padding="sm">
+              <DividerBox color="w4" hideDivider={true} padding="sm">
                 <p className="text-nasun-c1 font-medium flex items-center gap-2">
                   {t("unifiedOnchain.section9.box1.title")}
                 </p>
                 <p className="text-sm mt-1">{t("unifiedOnchain.section9.box1.content")}</p>
               </DividerBox>
-              <DividerBox color="c1" padding="sm">
+              <DividerBox color="w4" hideDivider={true} padding="sm">
                 <p className="text-nasun-c1 font-medium flex items-center gap-2">
                   {t("unifiedOnchain.section9.box2.title")}
                 </p>
                 <p className="text-sm mt-1">{t("unifiedOnchain.section9.box2.content")}</p>
               </DividerBox>
-              <DividerBox color="c1" padding="sm">
+              <DividerBox color="w4" hideDivider={true} padding="sm">
                 <p className="text-nasun-c1 font-medium flex items-center gap-2">
                   {t("unifiedOnchain.section9.box3.title")}
                 </p>

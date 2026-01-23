@@ -152,7 +152,7 @@ function MyRankCardV3Component({ seasonId }: MyRankCardV3Props) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={signInWithTwitter} variant="c3" size="sm" className="flex-1 text-xs">
+          <Button onClick={signInWithTwitter} variant="c4" size="sm" className="flex-1 text-xs">
             Sign in with
             <svg className="w-3.5 h-3.5 ml-1.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -178,11 +178,12 @@ function MyRankCardV3Component({ seasonId }: MyRankCardV3Props) {
             <p className="text-xs text-nasun-white/50 mt-0.5">Link your X to track your rank</p>
           </div>
         </div>
-        <Button onClick={signInWithTwitter} variant="c3" size="sm" className="w-full text-xs">
-          <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="currentColor">
+        <Button onClick={signInWithTwitter} variant="c4" size="sm" className="w-full text-xs">
+          Connect
+          <svg className="w-3.5 h-3.5 mx-1" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
           </svg>
-          Connect X Account
+          Account
         </Button>
       </div>
     );

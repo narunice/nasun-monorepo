@@ -35,7 +35,9 @@ type ColorVariant =
   | "n3"
   | "n4"
   | "n5"
-  | "w1";
+  | "w1"
+  | "w2"
+  | "w3";
 
 type PaddingVariant = "md" | "sm";
 
@@ -57,6 +59,8 @@ const variantStyles: Record<ColorVariant, string> = {
   n4: "border-nasun-c4/50 bg-nasun-c4/10", // climber card style
   n5: "bg-gradient-to-br from-nasun-c6/50 to-nasun-c3/5  border-nasun-c3/40", // dashboard hero style
   w1: "border-nasun-white/40 bg-nasun-gray/70",
+  w2: "border-nasun-c4/50 bg-[#212E57]/50", // Nasun Network Section style
+  w3: " border-nasun-white/50 bg-nasun-c4/90", // Nasun Token Section style
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {

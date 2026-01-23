@@ -15,25 +15,25 @@ const tokenUses: TokenUseCase[] = [
     key: "staking",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold",
+    titleClassName: "!text-[#B3E0FF] !font-bold !",
   },
   {
     key: "fee",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold",
+    titleClassName: "!text-[#B3E0FF] !font-bold ",
   },
   {
     key: "transfer",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold",
+    titleClassName: "!text-[#B3E0FF] !font-bold ",
   },
   {
     key: "governance",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold",
+    titleClassName: "!text-[#B3E0FF] !font-bold ",
   },
 ];
 
