@@ -65,10 +65,6 @@ export function NasunContentFeed({ seasonId }: NasunContentFeedProps) {
         )}
       </div>
 
-      {/* Footer Info */}
-      <div className="mt-2 px-1 text-[10px] text-nasun-white/40 uppercase tracking-widest text-center">
-        Recent posts from top rankers and climbers
-      </div>
     </div>
   );
 }

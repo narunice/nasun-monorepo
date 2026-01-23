@@ -6,7 +6,7 @@ import { MyRankCardV3 } from "./sidebar/MyRank";
 import { LeaderboardSidebar } from "./sidebar/LeaderboardSidebar";
 import { LeaderboardMainContent } from "./main/LeaderboardMainContent";
 import { useLeaderboardState } from "../hooks/useLeaderboardState";
-import { useStickySidebar } from "../hooks/useStickySidebar";
+import { useRef, useState, useEffect } from "react";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -30,7 +30,21 @@ export function LeaderboardV3() {
     handleUserSelect,
   } = useLeaderboardState();
 
-  const { rightColumnRef } = useStickySidebar();
+  // Measure right column height to constrain sidebar
+  const rightColumnRef = useRef<HTMLDivElement>(null);
+  const [rightColumnHeight, setRightColumnHeight] = useState(0);
+
+  useEffect(() => {
+    const el = rightColumnRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setRightColumnHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <SectionLayout className="!max-w-7xl px-auto">
@@ -94,6 +108,7 @@ export function LeaderboardV3() {
           <LeaderboardSidebar
             seasonId={selectedSeasonId}
             onUserSelect={handleUserSelect}
+            maxHeight={rightColumnHeight}
           />
         </div>
 
