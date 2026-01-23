@@ -1,47 +1,16 @@
-/**
- * NasunContentFeed Component
- *
- * Container for the featured posts stack.
- * Auto-rotates every 20 seconds with slide-up animation.
- */
-
-import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame } from "lucide-react";
 import { useFeaturedFeed } from "../hooks/useFeaturedFeed";
+import { useFeedRotation } from "../hooks/useFeedRotation";
 import { FeedPostCard } from "./FeedPostCard";
-import type { FeaturedFeedItem } from "../types";
 
 interface NasunContentFeedProps {
   seasonId?: string;
 }
 
-const ROTATION_INTERVAL = 20000; // 20 seconds
-
 export function NasunContentFeed({ seasonId }: NasunContentFeedProps) {
   const { data, isLoading, isError } = useFeaturedFeed(seasonId);
-  const [rotatedItems, setRotatedItems] = useState<FeaturedFeedItem[]>([]);
-
-  // Initialize/sync rotatedItems when data changes
-  useEffect(() => {
-    if (data?.items) {
-      setRotatedItems(data.items);
-    }
-  }, [data?.items]);
-
-  // Auto-rotation timer
-  useEffect(() => {
-    if (rotatedItems.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setRotatedItems((prev) => {
-        const [first, ...rest] = prev;
-        return [...rest, first];
-      });
-    }, ROTATION_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [rotatedItems.length]);
+  const rotatedItems = useFeedRotation(data?.items);
 
   return (
     <div className="flex flex-col">
