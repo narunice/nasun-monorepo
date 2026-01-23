@@ -80,7 +80,7 @@ export function useDirectVote() {
         body: JSON.stringify({
           voter: voterAddress,
           proposalId,
-          twitterId: user?.twitterId,
+          twitterHandle: user?.twitterHandle,
           ethSignature,
         }),
       });

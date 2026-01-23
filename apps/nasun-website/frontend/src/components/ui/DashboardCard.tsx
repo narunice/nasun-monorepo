@@ -7,7 +7,7 @@
 
 import React from "react";
 
-interface DashboardCardProps {
+interface DashboardCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
   children: React.ReactNode;
   className?: string;
@@ -26,10 +26,12 @@ export const DashboardCard: React.FC<DashboardCardProps> = ({
   children,
   className = "",
   variant = "default",
+  ...props
 }) => {
   return (
     <div
       className={`rounded-sm p-4 lg:p-6 transition-all duration-200 ${variantStyles[variant]} ${className}`}
+      {...props}
     >
       {title && (
         <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wide mb-3">

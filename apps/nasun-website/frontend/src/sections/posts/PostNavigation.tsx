@@ -47,7 +47,7 @@ const NavLink = ({
         <div className={direction === "next" ? "text-right" : "text-left"}>
           <span className="text-sm text-gray-500 uppercase tracking-wider">{label}</span>
           <p
-            className="font-bold line-clamp-2 group-hover:text-nasun-accent transition-all"
+            className="font-medium line-clamp-2 group-hover:text-nasun-accent transition-all"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.title.rendered) }}
           />
         </div>
@@ -76,7 +76,12 @@ const PostNavigation: React.FC<PostNavigationProps> = ({ previousPost, nextPost,
   return (
     <div className="mt-9 flex border-t border-gray-700">
       {previousPost ? (
-        <NavLink post={previousPost} direction="previous" label={t("post.previousPost")} basePath={basePath} />
+        <NavLink
+          post={previousPost}
+          direction="previous"
+          label={t("post.previousPost")}
+          basePath={basePath}
+        />
       ) : (
         <div className="w-1/2" />
       )}

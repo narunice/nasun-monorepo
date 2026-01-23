@@ -270,8 +270,10 @@ export class CommonStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/governance-api/dist"),
       timeout: cdk.Duration.seconds(30),
       environment: {
-        LEADERBOARD_TABLE: this.cumulativeLeaderboardTable.tableName,
-        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        // Leaderboard V3 tables (replaces V2 LEADERBOARD_TABLE)
+        LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
+        LEADERBOARD_V3_SEASONS_TABLE: "leaderboard-v3-seasons",
+        LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE: "leaderboard-v3-season-accounts",
         ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY || "",
         NASUN_NFT_CONTRACT_ADDRESS: process.env.NASUN_NFT_CONTRACT_ADDRESS || "",
         NFT_BONUS: process.env.NFT_BONUS || "2",
@@ -287,8 +289,13 @@ export class CommonStack extends cdk.Stack {
         removalPolicy: cdk.RemovalPolicy.DESTROY
       }),
     });
-    this.cumulativeLeaderboardTable.grantReadData(governanceApiLambda);
-    this.userProfilesTable.grantReadData(governanceApiLambda);
+    // Grant V3 leaderboard table read access
+    const v3AccountsTable = dynamodb.Table.fromTableName(this, "V3AccountsTableRef", "leaderboard-v3-accounts");
+    const v3SeasonsTable = dynamodb.Table.fromTableName(this, "V3SeasonsTableRef", "leaderboard-v3-seasons");
+    const v3SeasonAccountsTable = dynamodb.Table.fromTableName(this, "V3SeasonAccountsTableRef", "leaderboard-v3-season-accounts");
+    v3AccountsTable.grantReadData(governanceApiLambda);
+    v3SeasonsTable.grantReadData(governanceApiLambda);
+    v3SeasonAccountsTable.grantReadData(governanceApiLambda);
 
     // Grant Secrets Manager access for Oracle/Sponsor keypairs
     governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({

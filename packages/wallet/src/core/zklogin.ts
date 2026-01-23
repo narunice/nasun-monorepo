@@ -188,7 +188,8 @@ export function validateOAuthCsrfState(receivedState: string): boolean {
   if (savedState !== receivedState) {
     throw new ZkLoginError('CSRF_STATE_MISMATCH', 'OAuth state mismatch - possible CSRF attack');
   }
-  sessionStorage.removeItem(OAUTH_CSRF_STATE_KEY);
+  // Note: Do NOT remove state here - this runs in render phase and React StrictMode
+  // causes double-render which would fail on second call. State is cleared in completeZkLogin.
   return true;
 }
 
@@ -703,6 +704,7 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
   // 9. Save state and clear session
   saveZkLoginState(state);
   clearZkLoginSession();
+  clearOAuthCsrfState(); // Clean up CSRF state after successful completion
 
   return state;
 }

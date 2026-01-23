@@ -32,6 +32,7 @@ export { DividerBox } from "./DividerBox";
 export { OuterBox } from "./OuterBox";
 export { KeyPointsBox } from "./KeyPointsBox";
 export { CtaBox } from "./CtaBox";
+export { DashboardCard } from "./DashboardCard";
 export { default as CallToActionSection } from "./CallToAction";
 
 // Typography

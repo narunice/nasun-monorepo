@@ -14,7 +14,7 @@ const POSTS_PER_PAGE = 10;
 
 function CardSkeleton() {
   return (
-    <div className="bg-black rounded-2xl overflow-hidden border border-nasun-c3/30 animate-pulse">
+    <div className="bg-gray-900 rounded-sm overflow-hidden border border-nasun-white/10 animate-pulse">
       <div className="aspect-video bg-white/5" />
       <div className="p-6">
         <div className="flex items-center justify-between mb-3">
@@ -31,7 +31,7 @@ function CardSkeleton() {
 
 function FeaturedSkeleton() {
   return (
-    <div className="bg-black rounded-2xl overflow-hidden border border-nasun-c3/30 animate-pulse">
+    <div className="bg-gray-900 rounded-sm overflow-hidden border border-nasun-white/10 animate-pulse">
       <div className="flex flex-col md:flex-row">
         <div className="md:w-1/2 h-64 md:h-80 bg-white/5" />
         <div className="md:w-1/2 p-6 md:p-10">

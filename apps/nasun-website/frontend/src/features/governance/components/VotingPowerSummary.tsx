@@ -12,6 +12,7 @@ import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useDelegation } from "../hooks/useDelegation";
 import { useAuth } from "@/features/auth";
+import { OuterBox, DividerBox } from "@/components/ui";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { InfoCircledIcon, ChevronDownIcon, CheckCircledIcon } from "@radix-ui/react-icons";
 
@@ -32,10 +33,10 @@ const InfoTooltip: FC<{ content: string }> = ({ content }) => (
         side="top"
         align="center"
         sideOffset={5}
-        className="max-w-[250px] px-3 py-2 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg z-50"
+        className="max-w-[250px] px-3 py-2 bg-nasun-gray text-nasun-white/90 text-xs border border-nasun-white/10 rounded-sm z-50 shadow-lg"
       >
         {content}
-        <Tooltip.Arrow className="fill-gray-300" />
+        <Tooltip.Arrow className="fill-nasun-gray" />
       </Tooltip.Content>
     </Tooltip.Portal>
   </Tooltip.Root>
@@ -80,8 +81,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
   };
 
   return (
-    <div className={`bg-nasun-c6 border border-nasun-c5/50 rounded-xl p-6 ${className}`}>
-      <h3 className="text-lg font-semibold text-nasun-white mb-4">
+    <OuterBox color="n2" padding="md" className={`h-full ${className}`}>
+      <h3 className="text-lg font-medium text-nasun-white mb-4">
         Your Voting Power
       </h3>
 
@@ -95,24 +96,24 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
         </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c3 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c4 border-t-transparent"></div>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Total Power */}
-          <div className="text-center py-4 bg-nasun-black/30 rounded-lg">
-            <div className="text-4xl font-bold text-nasun-c3">
+          <DividerBox color="w2" padding="sm" className="text-center">
+            <div className="text-4xl font-bold text-nasun-c1">
               {totalPower.toLocaleString()}
             </div>
             <div className="text-sm text-nasun-white/50 mt-1">Total Voting Power</div>
-          </div>
+          </DividerBox>
 
           {/* Breakdown */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-nasun-white/70">Breakdown</h4>
 
             {/* Base Power */}
-            <div className="flex items-center justify-between py-2 border-b border-nasun-c5/20">
+            <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
                 <span className="text-nasun-white/80">Base</span>
                 <InfoTooltip content="Base voting power for connecting your Nasun wallet." />
@@ -122,14 +123,14 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
             </div>
 
             {/* Leaderboard Bonus */}
-            <div className="flex items-center justify-between py-2 border-b border-nasun-c5/20">
+            <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
                 <span className="text-nasun-white/80">Leaderboard Bonus</span>
                 <InfoTooltip content="Verify your X account to earn bonus voting power from community engagement on the leaderboard." />
                 {!hasLinkedX ? (
                   <button
                     onClick={handleLinkX}
-                    className="text-xs text-nasun-c4 hover:text-nasun-c3 hover:underline transition-colors"
+                    className="text-xs text-nasun-c4 hover:text-nasun-c5 hover:underline transition-colors"
                   >
                     Verify X Account →
                   </button>
@@ -137,13 +138,13 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                   <CheckCircledIcon className="w-4 h-4 text-green-400" />
                 )}
               </div>
-              <span className={`font-medium ${hasLinkedX && basePower > 1 ? "text-nasun-c3" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${hasLinkedX && basePower > 1 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
                 {hasLinkedX ? (basePower > 1 ? `+${(basePower - 1).toLocaleString()}` : "No Bonus") : "—"}
               </span>
             </div>
 
             {/* NFT Bonus */}
-            <div className="flex items-center justify-between py-2 border-b border-nasun-c5/20">
+            <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
                 <span className="text-nasun-white/80">NFT Bonus</span>
                 <InfoTooltip content="Verify Battalion NFT ownership with MetaMask to receive +2 voting power bonus." />
@@ -154,19 +155,18 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                     onClick={() => {
                       if (hasMetaMask) {
                         // NFT verification is done in vote modal
-                        // Could show a tooltip or scroll to proposals
                       } else {
                         // Open MetaMask install page
                         window.open("https://metamask.io/download/", "_blank");
                       }
                     }}
-                    className="text-xs text-nasun-c4 hover:text-nasun-c3 hover:underline transition-colors"
+                    className="text-xs text-nasun-c4 hover:text-nasun-c5 hover:underline transition-colors"
                   >
                     Verify Ownership →
                   </button>
                 )}
               </div>
-              <span className={`font-medium ${nftBonus > 0 ? "text-nasun-c3" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${nftBonus > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
                 {nftBonus > 0 ? `+${nftBonus.toLocaleString()}` : "—"}
               </span>
             </div>
@@ -182,14 +182,14 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                   </span>
                 )}
               </div>
-              <span className={`font-medium ${delegatedPower > 0 ? "text-nasun-c3" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${delegatedPower > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
                 {delegatedPower > 0 ? `+${delegatedPower.toLocaleString()}` : "—"}
               </span>
             </div>
           </div>
 
           {/* How Voting Power Works - Collapsible */}
-          <div className="mt-4 pt-4 border-t border-nasun-c5/30">
+          <div className="mt-4 pt-4 border-t border-nasun-white/10">
             <button
               onClick={() => setShowHowItWorks(!showHowItWorks)}
               className="flex items-center gap-2 text-sm text-nasun-white/60 hover:text-nasun-white/80 transition-colors w-full"
@@ -202,7 +202,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
             </button>
 
             {showHowItWorks && (
-              <div className="mt-3 p-3 bg-nasun-black/30 rounded-lg text-sm text-nasun-white/70 animate-in slide-in-from-top-2 duration-200">
+              <div className="mt-3 p-3 bg-nasun-black/30 rounded-sm text-sm text-nasun-white/70 animate-in slide-in-from-top-2 duration-200">
                 <ul className="space-y-3">
                   <li>
                     <span className="text-nasun-white font-medium">Base (1 power)</span>
@@ -220,8 +220,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                     <span className="text-nasun-white font-medium">Delegation</span>
                     <p className="mt-0.5 text-xs">Other community members can delegate their voting power to you. When they do, you vote on their behalf with combined power.</p>
                   </li>
-                  <li className="pt-2 border-t border-nasun-c5/20">
-                    <span className="text-yellow-400 font-medium flex items-center gap-1">
+                  <li className="pt-2 border-t border-nasun-white/10">
+                    <span className="text-nasun-c1 font-medium flex items-center gap-1">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
@@ -236,7 +236,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
           {/* Delegation Warning */}
           {delegationState?.hasDelegated && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-4">
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm p-3 mt-4">
               <p className="text-sm text-yellow-400">
                 Your voting power is delegated to another address. Revoke to vote directly.
               </p>
@@ -244,7 +244,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
           )}
         </div>
       )}
-    </div>
+    </OuterBox>
   );
 };
 
