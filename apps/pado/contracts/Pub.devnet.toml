@@ -7,9 +7,18 @@ chain-id = "56c8b101"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts" }
-published-at = "0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8"
-original-id = "0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8"
+published-at = "0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4"
+original-id = "0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x041a75e54e2348882a7aff32307757e93f4a2969dcc53dde1300c9b4d11cb967"
+upgrade-capability = "0x412c1b140f14e993ff27a2253bb73e00bc066868337b1f1106ce9f5d13bc2ee4"
+
+[[published]]
+source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts-prediction" }
+published-at = "0x414c60906fb0e1f0af87175c61d93b1aa2e118d59b764e96c9e16c17410bf249"
+original-id = "0x414c60906fb0e1f0af87175c61d93b1aa2e118d59b764e96c9e16c17410bf249"
+version = 1
+toolchain-version = "1.63.3"
+build-config = { flavor = "sui", edition = "2024" }
+upgrade-capability = "0xe459b5c0d487bc4bbc540e6ec130a00aaaf30db05e21657e747c661b8ed3e3af"

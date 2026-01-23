@@ -476,13 +476,14 @@ cd apps/pado/contracts
 
 **심볼 ID**: BTCUSD=1, ETHUSD=2, NASUSD=3 (8 decimals)
 
-#### Pado Tokens (NBTC, NUSDC, Faucet)
+#### Pado Tokens (NBTC, NUSDC, Faucet) - 2026-01-23 V5 Recovery
 
 | 컨트랙트             | ID              | 비고                |
 | -------------------- | --------------- | ------------------- |
-| pado_tokens          | `0x508ba1bd...` | NBTC/NUSDC + Faucet |
-| TokenFaucet (shared) | `0x5930a542...` | 토큰 민팅           |
-| ClaimRecord (shared) | `0xd5ea726f...` | 24시간 쿨다운       |
+| pado_tokens          | `0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4` | NBTC/NUSDC + Faucet |
+| TokenFaucet (shared) | `0x802d91521fc5ba0e590330cb500eb1c0399c6209b6b1db1cffe41e101a82521f` | 토큰 민팅           |
+| ClaimRecord (shared) | `0x036059bef5d600657b70300efd3ae4e885504ed52555f5684f2c5e33edd67757` | 24시간 쿨다운       |
+| UpgradeCap           | `0x412c1b140f14e993ff27a2253bb73e00bc066868337b1f1106ce9f5d13bc2ee4` | 업그레이드 권한     |
 
 #### Prediction Market
 
@@ -520,18 +521,18 @@ cd apps/pado/contracts
 - `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
 - `liquidation.move` - 청산 엔진 (5% 보너스)
 
-#### Governance (Nasun Website) - 2026-01-18 업데이트
+#### Governance (Nasun Website) - 2026-01-23 V5 Recovery
 
 | 컨트랙트                      | ID                                                                   | 비고                                |
 | ----------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
-| governance (v1-v4)            | deprecated                                                           | 이전 버전들 (더 이상 사용 안함)     |
-| governance (v5)               | `0xa4636c566d7d06bcb3802e248390007a09fb78837349bce3cb71eadd905937cf` | **현재 패키지** (2026-01-17 배포)   |
-| VotingPowerOracle (shared)    | `0x39dc3fece619659c248bbc16b5e2bf27ccf14ab9c7452d2e21e3c8b3a86369cf` | Ed25519 서명 검증                   |
-| CertificateRegistry (shared)  | `0x50390f76578f663bfc365e3ff8036fe7671a7a9fa3b041bc45e2bef62c76ebca` | 중복 발급 방지                      |
-| ProposalTypeRegistry (shared) | `0x4da0ef1eb2cfd06970ceebcc9524d3819b0c5174eca18af1090338b25d4de756` | 프로포절 유형 관리                  |
-| Dashboard (shared)            | `0x542142dcf283834783cbf75e4b2e5bd32458a02171232738638b86de386acd0d` | 프로포절 대시보드                   |
-| AdminCap                      | `0xbce95269bbf47f09a2980fd46ee40185c812b6f4088caf9ca70cbe2e5f9f76e2` | 관리자 권한                         |
-| UpgradeCap                    | `0x576ebf7a856ac802fe8ef63291d75d70367a9a0b4458deeb7b69db4c3bf910be` | 업그레이드 권한                     |
+| governance (v1-v7)            | deprecated                                                           | 이전 버전들 (더 이상 사용 안함)     |
+| governance (v8)               | `0x07b91522177a221f11008eb4c5fa1a476b8d49ab52ef7946404b34fd00afacb0` | **현재 패키지** (2026-01-23 배포)   |
+| VotingPowerOracle (shared)    | TODO                                                                 | Ed25519 서명 검증 (공개키 필요)     |
+| CertificateRegistry (shared)  | `0x1be93058998168aafeabc9838306b46fc69da21e7f009cbbc71a7150a900698d` | 중복 발급 방지                      |
+| ProposalTypeRegistry (shared) | `0x6810af6219c455996615d56307ef923b970e6b0e1dca6cf1a7c396aab6c08f0f` | 프로포절 유형 관리                  |
+| Dashboard (shared)            | `0x821f7dfd794e23a26d454624aeeeed0b05633c2a689ab360b1b800d95efde17c` | 프로포절 대시보드                   |
+| AdminCap                      | `0x59b017a3cb4c1805d4c6ba2b542516197a2be9e91d77b036201456579e39576f` | 관리자 권한                         |
+| UpgradeCap                    | `0xec1e44046cc468b68a26695542c025a09c21103d3e877e50b751d337ae6ac6a2` | 업그레이드 권한                     |
 
 **v5 Features:**
 

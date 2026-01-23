@@ -1,20 +1,20 @@
-import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { LeaderboardSidebar } from "../sidebar/LeaderboardSidebar";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-vi.mock("../../UserSearchBoxV3", () => ({
+// Mock sub-components using absolute paths to avoid path resolution issues
+vi.mock("@/features/leaderboard-v3/components/UserSearchBoxV3", () => ({
   UserSearchBoxV3: () => <div>User Search Box</div>,
 }));
 
-vi.mock("../sidebar/MyRank", () => ({
+vi.mock("@/features/leaderboard-v3/components/sidebar/MyRank", () => ({
   MyRankCardV3: () => <div>My Rank Card</div>,
 }));
 
-vi.mock("../../NasunContentFeed", () => ({
+vi.mock("@/features/leaderboard-v3/components/NasunContentFeed", () => ({
   NasunContentFeed: () => <div>Nasun Content Feed</div>,
 }));
 
-vi.mock("../../../hooks/useStickySidebar", () => ({
+vi.mock("@/features/leaderboard-v3/hooks/useStickySidebar", () => ({
   useStickySidebar: () => ({
     rightColumnHeight: 500,
     isFeedOverflowing: false,
@@ -22,9 +22,24 @@ vi.mock("../../../hooks/useStickySidebar", () => ({
   }),
 }));
 
+import { render, screen } from "@testing-library/react";
+import { LeaderboardSidebar } from "../sidebar/LeaderboardSidebar";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
 describe("LeaderboardSidebar", () => {
   it("renders all components", () => {
-    render(<LeaderboardSidebar seasonId="season1" onUserSelect={() => {}} />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <LeaderboardSidebar seasonId="season1" onUserSelect={() => {}} />
+      </QueryClientProvider>
+    );
 
     expect(screen.getByText("User Search Box")).toBeInTheDocument();
     expect(screen.getByText("My Rank Card")).toBeInTheDocument();
@@ -32,7 +47,11 @@ describe("LeaderboardSidebar", () => {
   });
 
   it("does not render MyRankCard when seasonId is missing", () => {
-    render(<LeaderboardSidebar seasonId={undefined} onUserSelect={() => {}} />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <LeaderboardSidebar seasonId={undefined} onUserSelect={() => {}} />
+      </QueryClientProvider>
+    );
 
     expect(screen.queryByText("My Rank Card")).not.toBeInTheDocument();
   });

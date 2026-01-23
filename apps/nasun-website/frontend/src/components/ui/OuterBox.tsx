@@ -68,7 +68,7 @@ const paddingStyles: Record<PaddingVariant, string> = {
   sm: "px-4 md:px-5 lg:px-6 py-3 md:py-4 lg:py-5",
 };
 
-interface OuterBoxProps {
+interface OuterBoxProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
   color?: ColorVariant;
@@ -80,12 +80,14 @@ export const OuterBox: React.FC<OuterBoxProps> = ({
   className = "",
   color = "n1",
   padding = "md",
+  ...props
 }) => {
   const paddingClass = paddingStyles[padding];
 
   return (
     <div
       className={`${paddingClass} backdrop-blur-lg rounded-sm shadow-lg border ${variantStyles[color]} ${className}`}
+      {...props}
     >
       {children}
     </div>

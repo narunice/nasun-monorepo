@@ -41,6 +41,7 @@ export function useDelegation(): UseDelegationReturn {
   const walletAddress = account?.address || zkState?.address;
 
   // Fetch delegation registry object
+  const hasRegistry = !!delegationRegistryId;
   const {
     data: registryData,
     isPending: isRegistryPending,
@@ -49,13 +50,13 @@ export function useDelegation(): UseDelegationReturn {
   } = useSuiClientQuery(
     "getObject",
     {
-      id: delegationRegistryId,
+      id: delegationRegistryId || "0x0", // Placeholder to satisfy type; query won't run if disabled
       options: {
         showContent: true,
       },
     },
     {
-      enabled: !!delegationRegistryId && !!isConnected,
+      enabled: hasRegistry && !!isConnected,
     }
   );
 
@@ -63,6 +64,18 @@ export function useDelegation(): UseDelegationReturn {
   useEffect(() => {
     if (!isConnected || !account) {
       setDelegationState(null);
+      return;
+    }
+
+    // If delegation registry is not configured, show empty state
+    if (!hasRegistry) {
+      setDelegationState({
+        hasDelegated: false,
+        delegate: null,
+        delegators: [],
+        delegatorCount: 0,
+      });
+      setIsLoading(false);
       return;
     }
 
@@ -79,7 +92,7 @@ export function useDelegation(): UseDelegationReturn {
 
     // For now, use a simpler approach - fetch delegation via devInspect
     fetchDelegationState();
-  }, [isConnected, account, registryData, isRegistryPending, registryError]);
+  }, [isConnected, account, hasRegistry, registryData, isRegistryPending, registryError]);
 
   const fetchDelegationState = async () => {
     if (!account || !packageId || !delegationRegistryId) return;
@@ -362,7 +375,7 @@ export function useDelegation(): UseDelegationReturn {
 
   return {
     delegationState,
-    isLoading: isLoading || isRegistryPending,
+    isLoading: isLoading || (hasRegistry && isRegistryPending),
     error,
     delegate,
     revoke,

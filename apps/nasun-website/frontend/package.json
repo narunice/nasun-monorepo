@@ -9,6 +9,8 @@
     "dev:test": "vite --mode test",
     "build": "tsc && vite build",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview --mode production",
     "convert:dark": "tsx scripts/convert-dark-classes.ts"
   },
@@ -68,6 +70,8 @@
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@nasun/tailwind-config": "workspace:*",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/dompurify": "^3.0.5",
     "@types/node": "^22.16.0",
     "@types/react": "^19.2.7",
@@ -75,16 +79,19 @@
     "@types/react-slick": "^0.23.13",
     "@types/slick-carousel": "^1.6.40",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.4.20",
     "depcheck": "^1.4.7",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
+    "jsdom": "^27.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.18.2",
-    "vite": "^7.3.0"
+    "vite": "^7.3.0",
+    "vitest": "^4.0.18"
   }
 }

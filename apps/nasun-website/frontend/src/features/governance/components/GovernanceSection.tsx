@@ -10,12 +10,13 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
-import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
+import { SectionLoading, InlineLoading, PageTitle, Button, OuterBox } from "@/components/ui";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { VotingPowerSummary } from "./VotingPowerSummary";
 import { DelegationPanel } from "./DelegationPanel";
 import { GovernanceStats } from "./GovernanceStats";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 /**
  * GovernanceSection
@@ -31,37 +32,32 @@ const GovernanceSection = () => {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   return (
-    <SectionLayout className="!max-w-6xl gap-6 md:gap-8">
+    <SectionLayout className="!max-w-6xl gap-6 md:gap-8 lg:gap-10">
       <PageTitle as="h2" align="center">
         {t("proposals:title")}
       </PageTitle>
 
       {/* User Governance Info Section */}
       {isConnected ? (
-        <div className="mb-6">
+        <div className="space-y-4">
           {/* Header with Wallet and Toggle */}
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
-            <button
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <Button
+              variant="filledOutlineC4"
+              size="lg"
               onClick={() => setIsInfoOpen(!isInfoOpen)}
-              className="flex items-center gap-2 px-4 py-2 bg-nasun-c6 border border-nasun-c5/50 rounded-lg hover:border-nasun-c4 transition-colors w-full sm:w-auto justify-center sm:justify-start"
+              className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
             >
-              <span className="text-nasun-white font-medium">My Governance Info</span>
-              <svg
-                className={`w-4 h-4 text-nasun-white/70 transition-transform ${isInfoOpen ? "rotate-180" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              <span>My Governance Info</span>
+              {isInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
             <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
           </div>
 
           {/* Collapsible Governance Info Panel */}
           {isInfoOpen && (
             <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <VotingPowerSummary />
                 <DelegationPanel />
               </div>
@@ -70,29 +66,25 @@ const GovernanceSection = () => {
           )}
         </div>
       ) : (
-        <div className="bg-nasun-c6 border border-nasun-c5/50 rounded-xl p-6 mb-6">
+        <OuterBox color="w1" padding="md" className="mb-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-nasun-white mb-1">
+              <h3 className="text-lg font-medium text-nasun-white mb-1">
                 {t("proposals:wallet.connect_required")}
               </h3>
               <p className="text-sm text-nasun-white/70">
                 {status === "locked"
                   ? t("proposals:wallet.locked")
-                  : "Connect your wallet to view your voting power and participate"
-                }
+                  : "Connect your wallet to view your voting power and participate"}
               </p>
             </div>
             <WalletConnect />
           </div>
-        </div>
+        </OuterBox>
       )}
 
       {/* Proposals Section */}
-      <div>
-        <h3 className="text-xl font-semibold text-nasun-white mb-4">
-          Active Proposals
-        </h3>
+      <div className="mt-4">
         <ErrorBoundary fallback={<div>{t("common:error.generic")}</div>}>
           <Suspense fallback={<SectionLoading showLayout={false} />}>
             <ProposalList />
@@ -166,7 +158,7 @@ const ProposalList = () => {
   }
 
   return (
-    <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {visibleProposalIds.map((id) => (
         <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
           <Suspense fallback={<InlineLoading size="sm" />}>
@@ -176,7 +168,7 @@ const ProposalList = () => {
                 // Poll for NFT with retry (up to 5 attempts, 2s interval)
                 // NFT mint happens on-chain and may take a few seconds
                 for (let i = 0; i < 5; i++) {
-                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  await new Promise((resolve) => setTimeout(resolve, 2000));
                   await refetchNfts();
                 }
               }}

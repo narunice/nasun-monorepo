@@ -20,7 +20,7 @@ export interface VotingPowerBreakdown {
 
 export interface VotingPowerData {
   address: string;
-  twitterId?: string;
+  twitterHandle?: string;
   leaderboardScore: number;
   nftBonus: number;
   tokenBalance: number;
@@ -39,7 +39,7 @@ interface UseVotingPowerReturn {
   nftVerification: NftVerificationResult | null;
   isLoading: boolean;
   error: string | null;
-  fetchVotingPower: (identityId?: string, twitterId?: string) => Promise<void>;
+  fetchVotingPower: (twitterHandle?: string) => Promise<void>;
   verifyNftOwnership: (proposalId: string) => Promise<NftVerificationResult | null>;
   clearNftVerification: () => void;
 }
@@ -94,14 +94,13 @@ export function useVotingPower(): UseVotingPowerReturn {
   /**
    * Fetch voting power from backend
    */
-  const fetchVotingPower = useCallback(async (identityId?: string, twitterId?: string) => {
+  const fetchVotingPower = useCallback(async (twitterHandle?: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
       const params = new URLSearchParams();
-      if (identityId) params.set("identityId", identityId);
-      if (twitterId) params.set("twitterId", twitterId);
+      if (twitterHandle) params.set("twitterHandle", twitterHandle);
       if (nftVerification?.hasNasunNft) params.set("nftBonus", "true");
 
       const response = await fetch(`${GOVERNANCE_API_URL}/voting-power?${params.toString()}`);

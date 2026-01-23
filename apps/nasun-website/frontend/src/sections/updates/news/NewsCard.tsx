@@ -58,7 +58,7 @@ export default function NewsCard({ post }: NewsCardProps) {
 
   return (
     <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }}>
-      <article className="group bg-black backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-c3/30 hover:border-nasun-c3 transition-all duration-300 h-full flex flex-col">
+      <article className="group bg-nasun-black rounded-sm overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 h-full flex flex-col">
         {/* Image: 16:9 aspect ratio */}
         <div className="aspect-video overflow-hidden">
           {imageUrl ? (
@@ -68,7 +68,7 @@ export default function NewsCard({ post }: NewsCardProps) {
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-nasun-c4/30 to-nasun-c3/20 flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-br from-nasun-c4/30 to-nasun-c5/20 flex items-center justify-center">
               <span className="text-white/40 text-lg">No Image</span>
             </div>
           )}
@@ -78,7 +78,7 @@ export default function NewsCard({ post }: NewsCardProps) {
         <div className="p-6 flex flex-col flex-grow">
           {/* Category badge and date */}
           <div className="flex items-center justify-between mb-3">
-            <Tag variant="outlineC3" size="sm" className="font-medium uppercase tracking-wider">
+            <Tag variant="outlineC1" size="sm" className="font-medium uppercase tracking-wider">
               {category}
             </Tag>
             <time className="text-sm text-gray-400" dateTime={post.date}>
@@ -87,7 +87,7 @@ export default function NewsCard({ post }: NewsCardProps) {
           </div>
 
           {/* Title */}
-          <h3 className="text-lg font-semibold line-clamp-2 mb-2 group-hover:text-nasun-c3 transition-colors">
+          <h3 className="text-lg font-semibold line-clamp-2 mb-2 group-hover:text-nasun-white transition-colors">
             {title}
           </h3>
 
@@ -95,9 +95,13 @@ export default function NewsCard({ post }: NewsCardProps) {
           <p className="text-gray-400 text-sm line-clamp-3 flex-grow">{excerpt}</p>
 
           {/* Read More button (visual only, card is clickable) */}
-          <div className="self-end mt-4 px-4 py-2 inline-flex items-center justify-center rounded-3xl bg-nasun-c2/20 text-white text-sm capitalize transition-all group-hover:bg-nasun-c2/30">
+          <Tag
+            variant="filledC1"
+            size="sm"
+            className="self-end mt-4 !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+          >
             Read More
-          </div>
+          </Tag>
         </div>
       </article>
     </Link>
