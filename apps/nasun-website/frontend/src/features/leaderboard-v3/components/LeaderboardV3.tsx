@@ -59,6 +59,41 @@ export function LeaderboardV3() {
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // Track right column height for feed max-height
+  const rightColumnRef = useRef<HTMLDivElement>(null);
+  const feedContainerRef = useRef<HTMLDivElement>(null);
+  const [rightColumnHeight, setRightColumnHeight] = useState<number>(0);
+  const [isFeedOverflowing, setIsFeedOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = rightColumnRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setRightColumnHeight(entry.contentRect.height);
+      }
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Check if feed content overflows its container
+  useEffect(() => {
+    const el = feedContainerRef.current;
+    if (!el) return;
+
+    const checkOverflow = () => {
+      setIsFeedOverflowing(el.scrollHeight > el.clientHeight + 1);
+    };
+
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Handle user search selection
   const handleUserSelect = useCallback(
     (username: string, rank?: number) => {
@@ -190,25 +225,6 @@ export function LeaderboardV3() {
         </div>
       )}
 
-      {/* Snapshot Viewer and Search */}
-      {selectedSeason && (
-        <div className="mb-3 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
-          <SnapshotViewerV3
-            selectedDate={snapshotDate}
-            onDateChange={setSnapshotDate}
-            minDate={selectedSeason.startDate}
-            maxDate={selectedSeason.endDate}
-            lastUpdated={leaderboardData?.calculatedAt}
-            isEnded={isSeasonEnded}
-          />
-          <UserSearchBoxV3
-            seasonId={selectedSeasonId}
-            onUserSelect={handleUserSelect}
-            placeholder="Search user..."
-          />
-        </div>
-      )}
-
       {/* Loading State */}
       {leaderboardLoading && (
         <div className="flex justify-center py-12">
@@ -232,15 +248,62 @@ export function LeaderboardV3() {
 
       {/* Mobile: My Rank Card above table */}
       {selectedSeasonId && (
-        <div className="lg:hidden mb-6">
+        <div className="md:hidden mb-6">
           <MyRankCardV3 seasonId={selectedSeasonId} />
         </div>
       )}
 
       {/* Main Content Area - 2 Column Layout */}
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* Left Column: Leaderboard Table */}
-        <div className="flex-1 min-w-0 w-full">
+      <div className="flex flex-col md:flex-row gap-8 items-start">
+        {/* Left Column: Sidebar (Search + My Rank + Feed) */}
+        <div className="w-full md:flex-1 lg:flex-none lg:w-[380px]">
+          <div
+            className="md:sticky md:top-24 flex flex-col gap-6"
+            style={{ maxHeight: rightColumnHeight > 0 ? `${rightColumnHeight}px` : undefined }}
+          >
+            {/* User Search */}
+            <div className="flex-shrink-0">
+              <UserSearchBoxV3
+                seasonId={selectedSeasonId}
+                onUserSelect={handleUserSelect}
+                placeholder="Search user..."
+              />
+            </div>
+            {/* Desktop: My Rank Card in sidebar */}
+            {selectedSeasonId && (
+              <div className="hidden md:block flex-shrink-0">
+                <MyRankCardV3 seasonId={selectedSeasonId} />
+              </div>
+            )}
+            {/* Featured Content Feed - constrained to remaining height */}
+            <div className="relative flex-1 min-h-0">
+              <div ref={feedContainerRef} className="overflow-hidden h-full">
+                <NasunContentFeed seasonId={selectedSeasonId} />
+              </div>
+              {/* Gradient fade when content overflows */}
+              {isFeedOverflowing && (
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-nasun-black to-transparent pointer-events-none" />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Leaderboard Table */}
+        <div ref={rightColumnRef} className="flex-1 min-w-0 w-full">
+          {/* Snapshot Viewer */}
+          {selectedSeason && (
+            <div className="mb-3">
+              <SnapshotViewerV3
+                selectedDate={snapshotDate}
+                onDateChange={setSnapshotDate}
+                minDate={selectedSeason.startDate}
+                maxDate={selectedSeason.endDate}
+                lastUpdated={leaderboardData?.calculatedAt}
+                isEnded={isSeasonEnded}
+              />
+            </div>
+          )}
+
           {leaderboardData && leaderboardData.entries.length > 0 && (
             <>
               <div className="w-full border border-nasun-c3/50 bg-gray-900/70 rounded-sm overflow-hidden">
@@ -315,20 +378,6 @@ export function LeaderboardV3() {
               <p className="text-gray-100">No entries found for this season.</p>
             </div>
           )}
-        </div>
-
-        {/* Right Column: Sidebar (My Rank + Feed) */}
-        <div className="w-full lg:w-[320px] xl:w-[380px] lg:flex-shrink-0">
-          <div className="lg:sticky lg:top-24 space-y-6">
-            {/* Desktop: My Rank Card in sidebar */}
-            {selectedSeasonId && (
-              <div className="hidden lg:block">
-                <MyRankCardV3 seasonId={selectedSeasonId} />
-              </div>
-            )}
-            {/* Featured Content Feed */}
-            <NasunContentFeed seasonId={selectedSeasonId} />
-          </div>
         </div>
       </div>
     </SectionLayout>

@@ -87,6 +87,14 @@ export function AdminDashboard() {
             />
 
             <AdminFeatureCard
+              title="Leaderboard V3"
+              description="Register posts, manage seasons, view leaderboard rankings, and monitor engagement scores."
+              icon="🏆"
+              link="/admin/leaderboard-v3"
+              linkText="Manage Leaderboard"
+            />
+
+            <AdminFeatureCard
               title="Blacklist Management"
               description="Manage user bans and restrictions. (Feature currently in planning phase)"
               icon="🚫"

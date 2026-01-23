@@ -2,9 +2,9 @@
  * PostRegistrationTab - Post registration form for Leaderboard V3 Admin
  *
  * Keyboard Shortcuts:
- * - 1/2/3: Select role (Default/Proactive CT/KOL)
- * - Q/W/E: Toggle signals (Insight/Creative/High Reach)
- * - R/T/Y: Select post type (Original/Quote/Reply) - Phase 9
+ * - 1/2/3: Select post type (Original/Quote/Reply)
+ * - Q/W/E: Select role (Default/Proactive CT/KOL)
+ * - A/S/D: Toggle signals (Insight/Creative/High Reach)
  * - /: Focus URL input
  * - Ctrl+Enter: Submit post
  */
@@ -118,15 +118,15 @@ export function PostRegistrationTab() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs text-nasun-white/60">
           <div>
             <span className="text-nasun-c3 font-mono">1 2 3</span>
-            <span className="ml-2">Role</span>
+            <span className="ml-2">Type</span>
           </div>
           <div>
             <span className="text-nasun-c3 font-mono">Q W E</span>
-            <span className="ml-2">Signals</span>
+            <span className="ml-2">Role</span>
           </div>
           <div>
-            <span className="text-nasun-c3 font-mono">R T Y</span>
-            <span className="ml-2">Type</span>
+            <span className="text-nasun-c3 font-mono">A S D</span>
+            <span className="ml-2">Signals</span>
           </div>
           <div>
             <span className="text-nasun-c3 font-mono">/</span>
@@ -146,6 +146,34 @@ export function PostRegistrationTab() {
         </h3>
 
         <div className="space-y-6">
+          {/* Post Type */}
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
+              Post Type <span className="text-nasun-c3 font-mono ml-2">1 2 3</span>
+            </label>
+            <div className="flex gap-3">
+              {(['original', 'quote', 'reply'] as PostType[]).map((type, index) => {
+                const shortcut = ['1', '2', '3'][index];
+                const isActive = form.postType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => form.setPostType(type)}
+                    className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
+                      isActive
+                        ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg'
+                        : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
+                    }`}
+                  >
+                    <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
+                    {POST_TYPE_LABELS[type]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* URL Input */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
@@ -179,10 +207,12 @@ export function PostRegistrationTab() {
           {/* Role Selection */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
-              Account Role <span className="text-nasun-c3 font-mono ml-2">1 2 3</span>
+              Account Role <span className="text-nasun-c3 font-mono ml-2">Q W E</span>
             </label>
             <div className="flex gap-3">
-              {(['default', 'proactive_ct', 'kol'] as AccountRole[]).map((role, index) => (
+              {(['default', 'proactive_ct', 'kol'] as AccountRole[]).map((role, index) => {
+                const shortcut = ['Q', 'W', 'E'][index];
+                return (
                 <button
                   key={role}
                   type="button"
@@ -193,21 +223,22 @@ export function PostRegistrationTab() {
                       : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
                   }`}
                 >
-                  <span className="text-nasun-c3 font-mono mr-2">{index + 1}</span>
+                  <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
                   {ROLE_LABELS[role]}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* Content Signals */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
-              Content Signals <span className="text-nasun-c3 font-mono ml-2">Q W E</span>
+              Content Signals <span className="text-nasun-c3 font-mono ml-2">A S D</span>
             </label>
             <div className="flex gap-3">
               {BONUS_SIGNALS.map((signal, index) => {
-                const shortcut = ['Q', 'W', 'E'][index];
+                const shortcut = ['A', 'S', 'D'][index];
                 const isActive = form.contentSignals.includes(signal);
                 return (
                   <button
@@ -222,34 +253,6 @@ export function PostRegistrationTab() {
                   >
                     <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
                     {SIGNAL_LABELS[signal]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Post Type (Phase 9) */}
-          <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
-              Post Type <span className="text-nasun-c3 font-mono ml-2">R T Y</span>
-            </label>
-            <div className="flex gap-3">
-              {(['original', 'quote', 'reply'] as PostType[]).map((type, index) => {
-                const shortcut = ['R', 'T', 'Y'][index];
-                const isActive = form.postType === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => form.setPostType(type)}
-                    className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
-                      isActive
-                        ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg'
-                        : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
-                    }`}
-                  >
-                    <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
-                    {POST_TYPE_LABELS[type]}
                   </button>
                 );
               })}
