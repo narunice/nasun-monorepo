@@ -1,6 +1,6 @@
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { DashboardCard } from '@/components/ui/DashboardCard';
-import type { TPSDataPoint } from '../../../../hooks/network/types';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { DashboardCard } from "@/components/ui/DashboardCard";
+import type { TPSDataPoint } from "../../../../hooks/network/types";
 
 interface TPSChartProps {
   data: TPSDataPoint[];
@@ -8,10 +8,14 @@ interface TPSChartProps {
 
 export function TPSChart({ data }: TPSChartProps) {
   return (
-    <DashboardCard className="p-4 bg-gray-800/20 border-nasun-c5/30">
+    <DashboardCard className="p-4 !bg-[#212E57]/50">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-nasun-white/60 text-xs uppercase tracking-widest font-semibold">TPS Trend</div>
-        <div className="text-[10px] text-nasun-white/40 tracking-tight">({data.length} data points)</div>
+        <div className="text-nasun-white/60 text-xs uppercase tracking-widest font-semibold">
+          TPS Trend
+        </div>
+        <div className="text-[10px] text-nasun-white/40 tracking-tight">
+          ({data.length} data points)
+        </div>
       </div>
       {data.length >= 2 ? (
         <div className="h-[180px] w-full min-w-0">
@@ -25,28 +29,28 @@ export function TPSChart({ data }: TPSChartProps) {
               </defs>
               <XAxis
                 dataKey="time"
-                tick={{ fill: 'rgba(250,247,244,0.3)', fontSize: 9 }}
-                axisLine={{ stroke: 'rgba(250,247,244,0.1)' }}
+                tick={{ fill: "rgba(250,247,244,0.3)", fontSize: 9 }}
+                axisLine={{ stroke: "rgba(250,247,244,0.1)" }}
                 tickLine={false}
                 minTickGap={60}
               />
               <YAxis
-                tick={{ fill: 'rgba(250,247,244,0.3)', fontSize: 9 }}
-                axisLine={{ stroke: 'rgba(250,247,244,0.1)' }}
+                tick={{ fill: "rgba(250,247,244,0.3)", fontSize: 9 }}
+                axisLine={{ stroke: "rgba(250,247,244,0.1)" }}
                 tickLine={false}
-                domain={[0, 'auto']}
+                domain={[0, "auto"]}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(25, 22, 21, 0.95)',
-                  border: '1px solid rgba(68, 139, 187, 0.3)',
-                  borderRadius: '8px',
-                  color: '#faf7f4',
-                  fontSize: '12px',
+                  backgroundColor: "rgba(25, 22, 21, 0.95)",
+                  border: "1px solid rgba(68, 139, 187, 0.3)",
+                  borderRadius: "8px",
+                  color: "#faf7f4",
+                  fontSize: "12px",
                 }}
-                itemStyle={{ color: '#94e1d3' }}
-                labelStyle={{ color: 'rgba(250,247,244,0.6)', marginBottom: '4px' }}
-                formatter={(value) => [`${value} tx/s`, 'TPS']}
+                itemStyle={{ color: "#94e1d3" }}
+                labelStyle={{ color: "rgba(250,247,244,0.6)", marginBottom: "4px" }}
+                formatter={(value) => [`${value} tx/s`, "TPS"]}
               />
               <Area
                 type="monotone"

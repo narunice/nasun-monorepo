@@ -112,7 +112,7 @@ export default function NewsSection() {
       {error && !loading && (
         <div className="text-center py-20">
           <p className="text-orange-400 mb-4">{error}</p>
-          <Button variant="default" onClick={() => refetch()}>
+          <Button variant="black" onClick={() => refetch()}>
             {tCommon("actions.retry") || "Retry"}
           </Button>
         </div>

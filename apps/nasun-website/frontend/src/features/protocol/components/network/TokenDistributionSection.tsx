@@ -40,7 +40,7 @@ const DistributionLabel: React.FC<DistributionLabelProps> = ({
   };
 
   return (
-    <div className="flex items-start gap-4 p-4 rounded-xl bg-gray-800 border border-nasun-white/10 hover:border-nasun-white/30 transition-all">
+    <div className="flex items-start gap-4 p-4 rounded-sm bg-gray-800 border border-nasun-white/10 hover:border-nasun-white/30 transition-all">
       {/* Color indicator */}
       <div
         className="w-3 h-12 rounded-full flex-shrink-0 mt-1"

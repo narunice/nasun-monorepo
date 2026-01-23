@@ -49,6 +49,8 @@ interface DividerBoxProps {
   padding?: PaddingVariant;
   /** hover 효과 비활성화 (기본값: false) */
   disableHover?: boolean;
+  /** Divider 선 숨기기 (기본값: false) */
+  hideDivider?: boolean;
 }
 
 const colorStyles: Record<
@@ -211,6 +213,7 @@ export const DividerBox = ({
   descriptionClassName = "",
   padding = "md",
   disableHover = false,
+  hideDivider = false,
 }: DividerBoxProps) => {
   const styles = colorStyles[color];
   const paddingClass = paddingStyles[padding];
@@ -243,7 +246,7 @@ export const DividerBox = ({
       )}
 
       {/* Divider (title이 있을 때만 표시) */}
-      {(title || rightTitle || rightAction) && (
+      {!hideDivider && (title || rightTitle || rightAction) && (
         <hr className={`${styles.border} mb-3 md:mb-4 lg:mb-5`} />
       )}
 

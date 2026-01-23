@@ -68,7 +68,9 @@ function MoveTogetherSection() {
 
       {/* Subtitle with highlight */}
       <div className="mb-3 md:mb-4 lg:mb-5 xl:mb-6 flex flex-col items-center">
-        <h4 className="text-nasun-c3/90 font-semibold text-center">{t("moveTogether.subtitle")}</h4>
+        <h4 className="  text-[#B3E0FF]  font-semibold text-center">
+          {t("moveTogether.subtitle")}
+        </h4>
       </div>
 
       {/* Description */}
@@ -80,25 +82,25 @@ function MoveTogetherSection() {
         {advantages.map((item) => (
           <div
             key={item.key}
-            className="border border-nasun-c3/50 rounded-2xl bg-[#1d2d2a] backdrop-blur-md p-6 md:p-8 transition-all hover:border-nasun-c3/80 hover:bg-nasun-c3/15 min-h-[140px] md:min-h-[160px]"
+            className="border border-nasun-c4/50    text-[#B3E0FF]  rounded-sm bg-[#212E57]/50 p-6 md:p-8 transition-all hover:border-nasun-white/30 min-h-[140px] md:min-h-[160px]"
           >
             <div className="flex items-center gap-6 h-full">
               {/* Icon Box */}
-              <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-xl bg-nasun-c2/20 border-3 border-nasun-c3 flex items-center justify-center">
+              <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-[#B3E0FF]/10 border-2 border-[#B3E0FF]/40 flex items-center justify-center">
                 <img
                   src={item.icon}
                   alt={t(item.titleKey)}
                   className="w-8 h-8 md:w-10 md:h-10 object-contain"
                   style={{
                     filter:
-                      "invert(89%) sepia(14%) saturate(575%) hue-rotate(116deg) brightness(96%) contrast(91%)",
+                      "invert(82%) sepia(25%) saturate(400%) hue-rotate(180deg) brightness(105%) contrast(100%)",
                   }}
                 />
               </div>
 
               {/* Text Content */}
               <div className="flex-1">
-                <h4 className="font-semibold text-nasun-c3 mb-2">{t(item.titleKey)}</h4>
+                <h4 className="font-semibold text-[#B3E0FF] mb-2">{t(item.titleKey)}</h4>
                 <p className="text-nasun-white/80">{t(item.descKey)}</p>
               </div>
             </div>

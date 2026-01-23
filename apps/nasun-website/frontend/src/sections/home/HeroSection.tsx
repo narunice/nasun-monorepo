@@ -209,15 +209,11 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                 className="flex items-center justify-center"
               >
                 {activeItem.id === "LOGO" ? (
-                  <h1 className="text-nasun-white text-5xl md:text-6xl lg:text-7xl text-center uppercase drop-shadow-lg flex items-baseline">
-                    <span
-                      className="!font-changeling font-semibold tracking-widest "
-                      style={{ fontSize: "1.3em" }}
-                    >
-                      N
-                    </span>
-                    <span className="!font-changeling font-semibold tracking-widest">ASUN</span>
-                  </h1>
+                  <img
+                    src="/nasun_symbol_white.svg"
+                    alt="NASUN"
+                    className="w-32 md:w-36 lg:w-40 xl:w-44 drop-shadow-lg"
+                  />
                 ) : (
                   <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wider text-center uppercase drop-shadow-lg">
                     {activeItem.content}

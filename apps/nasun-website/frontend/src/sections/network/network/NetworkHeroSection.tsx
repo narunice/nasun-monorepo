@@ -120,7 +120,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
             <h4 className=" text-nasun-white/70">for Coordinated Creation</h4>
           </div>
           <div className="flex justify-center mt-3">
-            <Button variant="defaultReverse" size="lg" asChild className="mt-5">
+            <Button variant="white" size="lg" asChild className="mt-5">
               <Link
                 to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                 target="_blank"
@@ -140,7 +140,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
             <FadeInUp>
               <h3 className="font-medium text-nasun-white">End-to-End Protocol</h3>
               <h5 className="text-nasun-white/70">for Coordinated Creation</h5>
-              <Button variant="defaultReverse" size="lg" asChild className="mt-5">
+              <Button variant="white" size="lg" asChild className="mt-5">
                 <Link
                   to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                   target="_blank"

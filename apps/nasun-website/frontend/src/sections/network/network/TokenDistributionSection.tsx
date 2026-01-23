@@ -5,10 +5,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Doughnut } from "react-chartjs-2";
-import {
-  distributionData,
-  type DistributionSubItem,
-} from "../../../constants/pageContent/vision";
+import { distributionData, type DistributionSubItem } from "../../../constants/pageContent/vision";
 import { useTokenChart } from "./TokenDistribution/useTokenChart";
 
 // Chart.js 등록
@@ -40,7 +37,7 @@ const DistributionLabel: React.FC<DistributionLabelProps> = ({
   };
 
   return (
-    <div className="flex items-start gap-4 p-4 rounded-xl bg-gray-800 border border-nasun-white/10 hover:border-nasun-white/30 transition-all">
+    <div className="flex items-start gap-4 p-4 rounded-sm bg-[#212E57]/50 border border-nasun-c4/50  hover:border-nasun-white/30 transition-all">
       {/* Color indicator */}
       <div
         className="w-3 h-12 rounded-full flex-shrink-0 mt-1"
@@ -137,7 +134,7 @@ function TokenDistributionSection() {
         </div>
       </div>
       {/* Bottom Description */}
-      <p className="text-center text-nasun-white/80 max-w-3xl mx-auto mt-16 whitespace-pre-line ">
+      <p className="text-sm text-nasun-white/70  mx-auto mt-12 whitespace-pre-line ">
         {t("distribution.description_bottom")}
       </p>
     </SectionLayout>
