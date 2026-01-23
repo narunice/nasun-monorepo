@@ -14,13 +14,35 @@ export const generateCodeVerifier = (length = 64): string => {
 
 /**
  * Parses a JWT token to extract its payload without verifying the signature.
+ * Handles Base64Url encoding and UTF-8 characters.
  * @param token The JWT token string.
  * @returns The parsed payload object or null if parsing fails.
  */
 export const parseJwt = (token: string): Record<string, unknown> | null => {
   try {
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+
+    // Replace Base64Url characters with Base64 characters
+    let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Add padding - required by atob in some browsers (e.g. Edge)
+    const padding = base64.length % 4;
+    if (padding) {
+      base64 += '='.repeat(4 - padding);
+    }
+
+    // Decode Base64 and handle UTF-8 characters correctly
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Error parsing JWT:', error);
     return null;
   }
 };
