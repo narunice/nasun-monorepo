@@ -129,7 +129,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
 
         // 현재 시간에 해당하는 아이템 찾기
         const currentRange = TIMELINE_RANGES.find(
-          (range) => currentTime >= range.start && currentTime < range.end
+          (range) => currentTime >= range.start && currentTime < range.end,
         );
 
         // 상태 업데이트 (불필요한 렌더링 방지)
@@ -210,12 +210,12 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
               >
                 {activeItem.id === "LOGO" ? (
                   <img
-                    src="/nasun_symbol_white.svg"
+                    src="/nasun-wordmark-white.svg"
                     alt="NASUN"
-                    className="w-32 md:w-36 lg:w-40 xl:w-44 drop-shadow-lg"
+                    className="h-[60px] md:h-[68px] lg:h-[82px] xl:h-24 drop-shadow-lg"
                   />
                 ) : (
-                  <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wider text-center uppercase drop-shadow-lg">
+                  <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wide text-center uppercase drop-shadow-lg">
                     {activeItem.content}
                   </h1>
                 )}
