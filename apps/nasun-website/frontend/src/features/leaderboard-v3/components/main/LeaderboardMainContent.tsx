@@ -2,7 +2,14 @@ import { forwardRef } from "react";
 import { SnapshotViewerV3 } from "../SnapshotViewerV3";
 import LeaderboardV3Row from "../LeaderboardV3Row";
 import PaginationControlsV3 from "../PaginationControlsV3";
-import type { SeasonLeaderboardResponse, Season } from "../../../types";
+import type { SeasonLeaderboardResponse, Season } from "../../types";
+
+interface PaginationState {
+  totalPages: number;
+  pageInput: string;
+  paginationRange: (number | string)[];
+  handlePageInputChange: (value: string) => void;
+}
 
 interface LeaderboardMainContentProps {
   leaderboardData?: SeasonLeaderboardResponse;
@@ -12,7 +19,7 @@ interface LeaderboardMainContentProps {
   isSeasonEnded?: boolean;
   highlightedUsername?: string;
   page: number;
-  pagination: any;
+  pagination: PaginationState;
   handlePageChange: (page: number) => void;
   ITEMS_PER_PAGE: number;
 }
@@ -31,10 +38,10 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
       handlePageChange,
       ITEMS_PER_PAGE,
     },
-    ref
+    ref,
   ) => {
     return (
-      <div ref={ref} className="flex-1 min-w-0 w-full">
+      <div ref={ref} className="flex-1 min-w-0 w-full ">
         {/* Snapshot Viewer */}
         {selectedSeason && (
           <div className="mb-3">
@@ -125,7 +132,7 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
         )}
       </div>
     );
-  }
+  },
 );
 
 LeaderboardMainContent.displayName = "LeaderboardMainContent";

@@ -366,7 +366,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         {
           name: "navigation.leaderboard",
           path: "/wave1/leaderboard",
-          element: Pages.Leaderboard,
+          element: Pages.LeaderboardV3,
         },
         {
           name: "navigation.genesisNft",
@@ -403,29 +403,29 @@ export const routesV2: EnhancedRouteConfigBuilder = {
 
   leaderboard: {
     path: "/wave1/leaderboard",
-    component: Pages.Leaderboard,
+    component: Pages.LeaderboardV3,
     navItem: {
       name: "navigation.leaderboard",
       path: "/wave1/leaderboard",
       hidden: true,
     },
     meta: {
-      title: "Leaderboard - NASUN",
-      description: "Engagement leaderboard",
+      title: "Community Leaderboard - NASUN",
+      description: "Community engagement leaderboard",
     },
   },
 
-  leaderboardV3: {
-    path: "/leaderboard-v3",
-    component: Pages.LeaderboardV3,
+  leaderboardV2: {
+    path: "/leaderboard-v2",
+    component: Pages.Leaderboard,
     navItem: {
-      name: "navigation.leaderboardV3",
-      path: "/leaderboard-v3",
+      name: "navigation.leaderboardV2",
+      path: "/leaderboard-v2",
       hidden: true,
     },
     meta: {
-      title: "Community Leaderboard - NASUN",
-      description: "Community engagement leaderboard with manual curation",
+      title: "Leaderboard (Legacy) - NASUN",
+      description: "Legacy engagement leaderboard (temporary)",
     },
   },
 

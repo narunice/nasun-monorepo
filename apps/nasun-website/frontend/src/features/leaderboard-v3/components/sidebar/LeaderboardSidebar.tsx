@@ -1,20 +1,18 @@
 import { UserSearchBoxV3 } from "../UserSearchBoxV3";
 import { MyRankCardV3 } from "./MyRank";
 import { NasunContentFeed } from "../NasunContentFeed";
-import { useStickySidebar } from "../../hooks/useStickySidebar";
 
 interface LeaderboardSidebarProps {
   seasonId?: string;
   onUserSelect: (username: string, rank?: number) => void;
+  maxHeight: number;
 }
 
-export function LeaderboardSidebar({ seasonId, onUserSelect }: LeaderboardSidebarProps) {
-  const { rightColumnHeight, isFeedOverflowing, feedContainerRef } = useStickySidebar();
-
+export function LeaderboardSidebar({ seasonId, onUserSelect, maxHeight }: LeaderboardSidebarProps) {
   return (
     <div
-      className="md:sticky md:top-24 flex flex-col gap-6"
-      style={{ maxHeight: rightColumnHeight > 0 ? `${rightColumnHeight}px` : undefined }}
+      className="flex flex-col gap-6"
+      style={{ height: maxHeight > 0 ? `${maxHeight}px` : undefined }}
     >
       {/* User Search */}
       <div className="flex-shrink-0">
@@ -31,13 +29,17 @@ export function LeaderboardSidebar({ seasonId, onUserSelect }: LeaderboardSideba
         </div>
       )}
       {/* Featured Content Feed - constrained to remaining height */}
-      <div className="relative flex-1 min-h-0">
-        <div ref={feedContainerRef} className="overflow-hidden h-full">
+      <div className={`relative flex-1 ${maxHeight > 0 ? 'min-h-0' : ''}`}>
+        <div className={maxHeight > 0 ? 'absolute inset-0 overflow-hidden' : ''}>
           <NasunContentFeed seasonId={seasonId} />
         </div>
-        {/* Gradient fade when content overflows */}
-        {isFeedOverflowing && (
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-nasun-black to-transparent pointer-events-none" />
+        {maxHeight > 0 && (
+          <>
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-nasun-black via-nasun-black/90 via-40% to-transparent pointer-events-none z-10" />
+            <div className="absolute bottom-1 left-0 right-0 z-20 px-1 text-[10px] text-nasun-white/40 uppercase tracking-widest text-center">
+              Recent posts from top rankers and climbers
+            </div>
+          </>
         )}
       </div>
     </div>
