@@ -155,55 +155,55 @@ export function usePostFormKeyboardShortcuts(
         activeElement instanceof HTMLInputElement ||
         activeElement instanceof HTMLTextAreaElement;
 
-      // Role shortcuts (1, 2, 3) - only when not in input
+      // Post type shortcuts (1, 2, 3) - only when not in input
       if (!isInputFocused) {
         if (e.key === '1') {
           e.preventDefault();
-          form.setAccountRole('default');
+          form.setPostType('original');
           return;
         }
         if (e.key === '2') {
           e.preventDefault();
-          form.setAccountRole('proactive_ct');
+          form.setPostType('quote');
           return;
         }
         if (e.key === '3') {
+          e.preventDefault();
+          form.setPostType('reply');
+          return;
+        }
+
+        // Role shortcuts (Q, W, E) - only when not in input
+        if (e.key.toLowerCase() === 'q') {
+          e.preventDefault();
+          form.setAccountRole('default');
+          return;
+        }
+        if (e.key.toLowerCase() === 'w') {
+          e.preventDefault();
+          form.setAccountRole('proactive_ct');
+          return;
+        }
+        if (e.key.toLowerCase() === 'e') {
           e.preventDefault();
           form.setAccountRole('kol');
           return;
         }
 
-        // Signal shortcuts (Q, W, E) - only when not in input
-        if (e.key.toLowerCase() === 'q') {
+        // Signal shortcuts (A, S, D) - only when not in input
+        if (e.key.toLowerCase() === 'a') {
           e.preventDefault();
           form.toggleSignal('insight');
           return;
         }
-        if (e.key.toLowerCase() === 'w') {
+        if (e.key.toLowerCase() === 's') {
           e.preventDefault();
           form.toggleSignal('creative');
           return;
         }
-        if (e.key.toLowerCase() === 'e') {
+        if (e.key.toLowerCase() === 'd') {
           e.preventDefault();
           form.toggleSignal('high_reach');
-          return;
-        }
-
-        // Phase 9: Post type shortcuts (R, T, Y) - only when not in input
-        if (e.key.toLowerCase() === 'r') {
-          e.preventDefault();
-          form.setPostType('original');
-          return;
-        }
-        if (e.key.toLowerCase() === 't') {
-          e.preventDefault();
-          form.setPostType('quote');
-          return;
-        }
-        if (e.key.toLowerCase() === 'y') {
-          e.preventDefault();
-          form.setPostType('reply');
           return;
         }
 
