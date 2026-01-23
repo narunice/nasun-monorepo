@@ -51,7 +51,7 @@ function TokenDistributionSection() {
           {/* 레이블 리스트 (오른쪽) */}
           <div className="w-full lg:w-1/2 space-y-6 px-6 lg:px-0">
             <CommunityLabelBlock
-              title={t("distribution.community_reserve.title")}
+              title={t("distribution.community_treasury.title")}
               amount={distributionData[0].amount}
               percentage={distributionData[0].value}
               color={colors[0].border}
@@ -64,19 +64,19 @@ function TokenDistributionSection() {
               color={colors[1].border}
             />
             <LabelBlock
-              title={t("distribution.early_contributors")}
+              title={t("distribution.early_contributors.title")}
               amount={distributionData[2].amount}
               percentage={distributionData[2].value}
               color={colors[2].border}
             />
             <LabelBlock
-              title={t("distribution.nasun_core")}
+              title={t("distribution.team_advisors.title")}
               amount={distributionData[3].amount}
               percentage={distributionData[3].value}
               color={colors[3].border}
             />
             <LabelBlock
-              title={t("distribution.testers")}
+              title={t("distribution.strategic_partners.title")}
               amount={distributionData[4].amount}
               percentage={distributionData[4].value}
               color={colors[4].border}

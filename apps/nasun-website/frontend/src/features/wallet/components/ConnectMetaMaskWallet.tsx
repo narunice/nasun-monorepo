@@ -43,7 +43,7 @@ function MetaMaskConnectedButton({
       <PopoverContent
         className={cn(
           "w-full p-0 mt-1 rounded-lg border bg-gray-800 shadow-sm z-50",
-          "border-gray-600"
+          "border-gray-600",
         )}
         align="end"
       >
@@ -56,7 +56,7 @@ function MetaMaskConnectedButton({
                   "hover:bg-gray-700",
                   "transition-all",
                   "data-[highlighted]:bg-gray-700",
-                  "data-[highlighted]:text-white"
+                  "data-[highlighted]:text-white",
                 )}
               >
                 <Check className="mr-2 h-4 w-4 text-white opacity-100" />
@@ -82,7 +82,7 @@ function MetaMaskConnectedButton({
                       : "cursor-pointer text-white hover:bg-gray-700",
                     "transition-all",
                     !isOnlyLoginMethod && "data-[highlighted]:bg-gray-700",
-                    !isOnlyLoginMethod && "data-[highlighted]:text-white"
+                    !isOnlyLoginMethod && "data-[highlighted]:text-white",
                   )}
                   onSelect={() => {
                     if (!isOnlyLoginMethod) {
@@ -142,7 +142,7 @@ export function ConnectMetaMaskWallet() {
     if (!isMetaMaskInstalled()) {
       alert(
         t("wallet.metamask_not_installed") ||
-          "MetaMask is not installed. Please install MetaMask extension."
+          "MetaMask is not installed. Please install MetaMask extension.",
       );
       return;
     }
@@ -156,7 +156,7 @@ export function ConnectMetaMaskWallet() {
     if (isOnlyLoginMethod) {
       alert(
         t("wallet.cannot_disconnect_only_method") ||
-          "Cannot disconnect. This is your only login method. Use the Logout button in the navigation bar to sign out."
+          "Cannot disconnect. This is your only login method. Use the Logout button in the navigation bar to sign out.",
       );
       return;
     }
@@ -164,7 +164,7 @@ export function ConnectMetaMaskWallet() {
     if (
       !confirm(
         t("wallet.confirm_disconnect") ||
-          "Are you sure you want to disconnect your MetaMask wallet?"
+          "Are you sure you want to disconnect your MetaMask wallet?",
       )
     ) {
       return;
@@ -178,7 +178,7 @@ export function ConnectMetaMaskWallet() {
       alert(
         t("wallet.disconnect_feature_coming_soon") ||
           "Wallet disconnect feature will be implemented soon. " +
-            "For now, please use the account unlinking feature in the Account Linking section."
+            "For now, please use the account unlinking feature in the Account Linking section.",
       );
 
       /* Future implementation:
@@ -207,7 +207,7 @@ export function ConnectMetaMaskWallet() {
     import.meta.env.VITE_ENABLE_METAMASK_LOGIN !== "true"
   ) {
     return (
-      <Button variant="default" size="sm" disabled className="w-full md:max-w-[60%]">
+      <Button variant="black" size="sm" disabled className="w-full md:max-w-[60%]">
         {t("myWalletStatus.notSupported", { ns: "myAccount" })}
       </Button>
     );
