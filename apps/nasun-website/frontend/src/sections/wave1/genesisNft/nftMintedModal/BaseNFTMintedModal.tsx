@@ -166,7 +166,7 @@ export const BaseNFTMintedModal = ({
                 {t("minted_modal.view_on_explorer")}
               </Button>
 
-              <Button variant="default" onClick={onClose} className="w-1/2">
+              <Button variant="black" onClick={onClose} className="w-1/2">
                 {t("minted_modal.close")}
               </Button>
             </div>

@@ -92,7 +92,7 @@ function NewsEventsSection() {
           ) : error ? (
             <div className="w-full text-center py-12 space-y-4">
               <p className="text-orange-400">{error}</p>
-              <Button variant="default" onClick={() => refetch()}>
+              <Button variant="black" onClick={() => refetch()}>
                 Retry
               </Button>
             </div>

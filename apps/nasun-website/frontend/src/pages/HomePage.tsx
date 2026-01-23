@@ -81,9 +81,9 @@ export default function HomePage() {
             </ScrollSnapSection>
 
             {/* VisionSection: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}
-            {/* Hero 비디오 로딩 후 시작 */}
+            {/* Hero와 동시에 로딩 시작 */}
             <ScrollSnapSection>
-              <VisionSection shouldLoadVideo={isVideoReady} onVideoReady={handleVisionVideoReady} />
+              <VisionSection shouldLoadVideo={true} onVideoReady={handleVisionVideoReady} />
             </ScrollSnapSection>
 
             {/* NewsEventsSection - 긴 컨텐츠 허용 */}

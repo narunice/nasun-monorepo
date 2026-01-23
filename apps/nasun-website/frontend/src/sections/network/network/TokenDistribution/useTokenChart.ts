@@ -4,7 +4,7 @@ import { distributionData } from "../../../../constants/pageContent/vision";
 
 // NASUN 색상 팔레트 (tailwind config 기준)
 const COLORS = [
-  { border: "#94e1d3", bg: "#94e1d3BB" }, // c1 (Community Treasury & Ecosystem)
+  { border: "#B3E0FF", bg: "#B3E0FFBB" }, // (Community Treasury & Ecosystem)
   { border: "#2A64C5", bg: "#2A64C5BB" }, // c5 (Team and Advisors)
   { border: "#ff9900", bg: "#ff9900BB" }, // c4 (Public Sales and Liquidity)
   { border: "#ff4d4f", bg: "#ff4d4fBB" }, // (Early Contributors, Testers & Campaigns)

@@ -109,7 +109,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             muted
             playsInline
             webkit-playsinline="true"
-            preload="metadata"
+            preload="auto"
             x-webkit-airplay="allow"
             onPlaying={handleVideoPlaying}
             className={`absolute top-0 left-0 w-full h-full object-cover object-center transition-opacity duration-500 ${

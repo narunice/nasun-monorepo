@@ -1,4 +1,4 @@
-import { DashboardCard } from '@/components/ui/DashboardCard';
+import { DashboardCard } from "@/components/ui/DashboardCard";
 
 interface EpochInfo {
   epoch: string;
@@ -22,19 +22,21 @@ function formatDuration(ms: number): string {
 
 export function EpochProgress({ epochInfo }: EpochProgressProps) {
   return (
-    <DashboardCard className="p-4 bg-gray-800/20 border-nasun-c5/30">
+    <DashboardCard className="p-4 !bg-[#212E57]/50 border-nasun-c5/30">
       <div className="text-nasun-white/60 text-xs uppercase tracking-widest font-semibold mb-4">
         Epoch Progress
       </div>
       {epochInfo ? (
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <span className="text-nasun-white text-base font-mono font-bold">Epoch {epochInfo.epoch}</span>
+            <span className="text-nasun-white text-base font-mono font-bold">
+              Epoch {epochInfo.epoch}
+            </span>
             <span className="text-nasun-white/50 text-xs font-light">
               {formatDuration(epochInfo.remainingMs)} remaining
             </span>
           </div>
-          
+
           <div className="relative">
             <div className="h-3 bg-nasun-c4/10 rounded-full overflow-hidden border border-nasun-c4/10">
               <div
@@ -51,26 +53,30 @@ export function EpochProgress({ epochInfo }: EpochProgressProps) {
 
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div className="space-y-1">
-              <div className="text-nasun-white/30 text-[10px] uppercase tracking-tighter font-semibold">Started</div>
+              <div className="text-nasun-white/30 text-[10px] uppercase tracking-tighter font-semibold">
+                Started
+              </div>
               <div className="text-nasun-white/70 font-mono text-xs">
-                {new Date(epochInfo.startTimestamp).toLocaleString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false
+                {new Date(epochInfo.startTimestamp).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
                 })}
               </div>
             </div>
             <div className="space-y-1 text-right">
-              <div className="text-nasun-white/30 text-[10px] uppercase tracking-tighter font-semibold">Estimated End</div>
+              <div className="text-nasun-white/30 text-[10px] uppercase tracking-tighter font-semibold">
+                Estimated End
+              </div>
               <div className="text-nasun-white/70 font-mono text-xs">
-                {new Date(epochInfo.endTimestamp).toLocaleString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false
+                {new Date(epochInfo.endTimestamp).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
                 })}
               </div>
             </div>
