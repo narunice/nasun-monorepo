@@ -17,7 +17,6 @@
     "deploy": "echo '\n❌ 배포 환경을 명시적으로 지정해주세요:\n\n  📦 개발 환경 배포:\n    pnpm deploy:dev\n\n  🚀 프로덕션 환경 배포:\n    pnpm deploy:prod\n' && exit 1",
     "deploy:dev": "bash scripts/deploy-safe-env.sh development",
     "deploy:prod": "bash scripts/deploy-safe-env.sh production",
-    "deploy:quick": "pnpm cdk deploy CdkStack --require-approval never",
     "deploy:all": "echo '\n❌ 배포 환경을 명시적으로 지정해주세요:\n\n  📦 개발 환경 전체 배포:\n    pnpm deploy:all:dev\n\n  🚀 프로덕션 환경 전체 배포:\n    pnpm deploy:all:prod\n' && exit 1",
     "deploy:all:dev": "bash scripts/deploy-all-with-sync-env.sh development",
     "deploy:all:prod": "bash scripts/deploy-all-with-sync-env.sh production",

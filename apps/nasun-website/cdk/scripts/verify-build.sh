@@ -62,30 +62,6 @@ fi
 echo ""
 
 # =============================================================================
-# Verify x-leaderboard build
-# =============================================================================
-echo "🔍 Checking x-leaderboard..."
-
-if [ ! -d "$CDK_ROOT/lambda-src/x-leaderboard/dist" ]; then
-  echo "  ❌ dist directory not found!"
-  echo "  💡 Run: cd lambda-src/x-leaderboard && pnpm build"
-  ERRORS=$((ERRORS + 1))
-else
-  echo "  ✅ dist directory found"
-
-  # Check for handler files in dist
-  HANDLER_COUNT=$(find "$CDK_ROOT/lambda-src/x-leaderboard/dist" -name "*.js" | wc -l)
-  if [ "$HANDLER_COUNT" -eq 0 ]; then
-    echo "  ❌ No JS files found in dist directory!"
-    ERRORS=$((ERRORS + 1))
-  else
-    echo "  ✅ $HANDLER_COUNT JS files found in dist"
-  fi
-fi
-
-echo ""
-
-# =============================================================================
 # Final result
 # =============================================================================
 if [ $ERRORS -gt 0 ]; then
