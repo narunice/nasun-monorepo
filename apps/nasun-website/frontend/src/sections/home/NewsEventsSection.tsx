@@ -154,7 +154,7 @@ function NewsEventsSection() {
                             <Tag
                               variant="filledC1"
                               size="sm"
-                              className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8 mt-1"
+                              className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8 mt-1"
                             >
                               {t("newsEvents.readMore")}
                             </Tag>

@@ -180,7 +180,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                     <Tag
                       variant="filledC1"
                       size="sm"
-                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
                     >
                       {t("wave1.leaderboard.cta")}
                     </Tag>
@@ -202,7 +202,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                     <Tag
                       variant="filledC1"
                       size="sm"
-                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
                     >
                       {t("wave1.battalionNft.cta")}
                     </Tag>
@@ -224,7 +224,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                     <Tag
                       variant="filledC1"
                       size="sm"
-                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
                     >
                       {t("wave1.earlyContributor.cta")}
                     </Tag>
