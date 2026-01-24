@@ -542,7 +542,7 @@ aws dynamodb query \
 ### 실행 방법
 
 ```bash
-cd /home/naru/my_apps/nasun-apps/nasun-website
+cd /home/naru/my_apps/nasun-monorepo/apps/x-leaderboard-v2-legacy
 ./daily_health_check.sh
 ```
 

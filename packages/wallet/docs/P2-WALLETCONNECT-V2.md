@@ -1,5 +1,6 @@
 # WalletConnect v2 Implementation Status
 
+> Last Updated: 2026-01-24
 > Status: **COMPLETED**
 > Package: @nasun/wallet
 

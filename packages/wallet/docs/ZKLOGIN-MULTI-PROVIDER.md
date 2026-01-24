@@ -1,7 +1,7 @@
 # zkLogin Multi-Provider Implementation Plan
 
-> Created: 2026-01-18
-> Status: **PARTIALLY IMPLEMENTED**
+> Last Updated: 2026-01-24
+> Status: **PARTIALLY IMPLEMENTED (3/5 providers)**
 > Target: Apple, Twitch, Facebook, Kakao
 
 ---
@@ -12,23 +12,28 @@ Plan to add 4 additional OAuth providers to the zkLogin authentication system.
 
 ### Current Implementation State
 
-| Provider | OAuth URL Builder | detectProvider | Salt API | UI Button | Status |
-|----------|-------------------|----------------|----------|-----------|--------|
-| Google | **Implemented** | **Implemented** | **Implemented** | **Implemented** | **Production** |
-| Apple | **Implemented** | **Implemented** | Pending | Pending | URL builder ready |
-| Twitch | **Implemented** | **Implemented** | Pending | Pending | URL builder ready |
-| Facebook | Pending | Partially Impl | Pending | Pending | Type detection only |
-| Kakao | Pending | Partially Impl | Pending | Pending | Type detection only |
+| Provider | OAuth URL Builder | detectProvider | JWKS/Issuer Config | Salt API | UI Button | Status |
+|----------|-------------------|----------------|-------------------|----------|-----------|--------|
+| Google | **Implemented** | **Implemented** | **Implemented** | **Implemented** | **Implemented** | **Production** |
+| Apple | **Implemented** | **Implemented** | **Implemented** | Pending | Pending | Backend needed |
+| Twitch | **Implemented** | **Implemented** | **Implemented** | Pending | Pending | Backend needed |
+| Facebook | Pending | Implemented (issuer detection) | Not configured | Pending | Pending | URL builder needed |
+| Kakao | Pending | Implemented (issuer detection) | Not configured | Pending | Pending | URL builder needed |
 
 **Implemented Files:**
-- `packages/wallet/src/core/zklogin.ts`: Contains `buildOAuthUrl` for Google, Apple, and Twitch. Contains `detectProvider` logic for all target providers.
+- `packages/wallet/src/core/zklogin.ts`:
+  - `buildOAuthUrl` dispatches to Google, Apple, Twitch URL builders
+  - `detectProvider` detects all 5 providers from JWT `iss` claim
+  - `JWKS_URLS` configured for Google, Apple, Twitch
+  - `EXPECTED_ISSUERS` configured for Google, Apple, Twitch
 
 ---
 
 ## 2. Remaining Work
 
-### Phase 1: Facebook & Kakao Support
+### Phase 1: Facebook & Kakao URL Builders
 - Implement `buildFacebookOAuthUrl` and `buildKakaoOAuthUrl` in `zklogin.ts`.
+- Add JWKS URLs and expected issuers for Facebook and Kakao.
 - Kakao requires Authorization Code Flow handling (Token Exchange).
 
 ### Phase 2: Backend (Salt API)
@@ -55,6 +60,6 @@ Kakao OIDC only supports Authorization Code Flow.
 
 ## 4. Priority
 
-1. **Apple**: High priority (Mobile users). Code is mostly ready.
-2. **Twitch**: Medium priority. Code is mostly ready.
-3. **Facebook/Kakao**: Lower priority. Requires more dev effort.
+1. **Apple**: High priority (Mobile users). URL builder + JWKS ready. Only Salt API + UI activation needed.
+2. **Twitch**: Medium priority. URL builder + JWKS ready. Only Salt API + UI activation needed.
+3. **Facebook/Kakao**: Lower priority. Requires URL builder, JWKS config, and Salt API.

@@ -1,5 +1,6 @@
 # Nasun Link v2 Implementation Status
 
+> Last Updated: 2026-01-24
 > Status: **COMPLETED**
 > Package: @nasun/wallet
 
@@ -28,12 +29,22 @@ Nasun Link v2 has been fully implemented, enabling secure token distribution via
 | `crypto.ts` | Cryptographic utilities: `generateEphemeralKeypair`, `encryptPayload`, `decryptPayload`. |
 | `types.ts` | Type definitions for Link configuration and data. |
 
-### 2.2. React Hooks (`packages/wallet/src/hooks/`)
+### 2.2. React Hook (`packages/wallet/src/hooks/`)
 
 | Hook | Description |
 |------|-------------|
-| `useNasunLink` | Provides methods to create (single/batch) and claim links. |
-| `useClaimLink` | Helper hook to parse URL and manage claim state for a specific link. |
+| `useNasunLink` | Unified hook for creating and claiming links. |
+
+**`useNasunLink` API:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `create` | `(config: LinkConfig) => Promise<{url, data}>` | Create a single claimable link |
+| `createBatch` | `(config: LinkConfig, count: number) => Promise<Array<{url, data}>>` | Create up to 100 links |
+| `claim` | `(linkData: LinkData, secret: string) => Promise<ClaimResult>` | Claim tokens from a link |
+| `validateClaim` | `(linkData: LinkData) => Promise<ClaimValidation>` | Check if link is claimable |
+| `parseUrl` | `(url: string) => {linkId, secret}` | Extract linkId and secret from URL |
+| `checkBalance` | `(address: string, coinType: string) => Promise<{balance, hasFunds}>` | Check ephemeral address balance |
 
 ---
 
@@ -67,13 +78,19 @@ const create = async () => {
 ```typescript
 import { useNasunLink } from '@nasun/wallet';
 
-const { claim, parseUrl } = useNasunLink();
+const { claim, parseUrl, validateClaim } = useNasunLink();
 
-const handleClaim = async (fullUrl) => {
+const handleClaim = async (fullUrl: string) => {
   const { linkId, secret } = parseUrl(fullUrl);
-  // Fetch linkData from storage using linkId...
-  const linkData = await fetchLinkData(linkId); 
-  
-  await claim(linkData, secret);
+  const linkData = await fetchLinkData(linkId);
+
+  const validation = await validateClaim(linkData);
+  if (!validation.isValid) {
+    console.error('Cannot claim:', validation.reason);
+    return;
+  }
+
+  const result = await claim(linkData, secret);
+  console.log('Claimed:', result.txDigest);
 };
 ```
