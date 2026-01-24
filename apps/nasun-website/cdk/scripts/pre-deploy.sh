@@ -50,37 +50,6 @@ cd "$CDK_ROOT"
 echo ""
 
 # =============================================================================
-# Build x-leaderboard (esbuild)
-# =============================================================================
-echo "📦 Building x-leaderboard..."
-cd "$CDK_ROOT/lambda-src/x-leaderboard"
-
-if [ -f "package.json" ]; then
-  # Use pnpm for x-leaderboard (it's configured correctly)
-  if [ ! -d "node_modules" ]; then
-    echo "📥 Installing dependencies with pnpm..."
-    pnpm install --silent
-  fi
-
-  # Build with esbuild
-  echo "🔨 Building with esbuild..."
-  pnpm build
-
-  # Verify build output
-  if [ -d "dist" ]; then
-    echo "✅ x-leaderboard built successfully!"
-  else
-    echo "❌ x-leaderboard build failed! Missing dist directory."
-    exit 1
-  fi
-else
-  echo "⚠️  No package.json found in x-leaderboard"
-fi
-
-cd "$CDK_ROOT"
-echo ""
-
-# =============================================================================
 # Build wallet-api (pnpm)
 # =============================================================================
 echo "📦 Building wallet-api..."
@@ -279,7 +248,6 @@ echo "✅ All Lambdas built successfully!"
 echo ""
 echo "📋 Build Summary:"
 echo "  ✅ auth-twitter: TypeScript compiled (npm)"
-echo "  ✅ x-leaderboard: esbuild completed (pnpm)"
 echo "  ✅ wallet-api: pnpm build completed"
 echo "  ✅ PriceAPI: pnpm build completed"
 echo "  ✅ sync-community-members: npm build completed"

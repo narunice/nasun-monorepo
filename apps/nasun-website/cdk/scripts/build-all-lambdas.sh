@@ -41,10 +41,9 @@ build_lambda() {
   fi
 }
 
-# 1. Main Auth & Leaderboard
+# 1. Main Auth & Services
 build_lambda "lambda-src/auth-twitter" "auth-twitter"
 build_lambda "lambda-src/link-account" "link-account"
-build_lambda "lambda-src/x-leaderboard" "x-leaderboard"
 build_lambda "lambda-src/zklogin-salt" "zklogin-salt"
 build_lambda "lambda-src/wallet-api" "wallet-api"
 build_lambda "lambda-src/deactivate-user-account" "deactivate-user-account"

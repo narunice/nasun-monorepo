@@ -92,32 +92,6 @@ fi
 cd "$CDK_ROOT"
 echo ""
 
-# Build x-leaderboard (pnpm)
-echo "📦 Building x-leaderboard..."
-cd "$CDK_ROOT/lambda-src/x-leaderboard"
-
-if [ -f "package.json" ]; then
-  if [ ! -d "node_modules" ]; then
-    echo "📥 Installing dependencies with pnpm..."
-    pnpm install --silent
-  fi
-
-  echo "🔨 Building with esbuild..."
-  pnpm build
-
-  if [ -d "dist" ]; then
-    echo "✅ x-leaderboard built successfully!"
-  else
-    echo "❌ x-leaderboard build failed!"
-    exit 1
-  fi
-else
-  echo "⚠️  No package.json found in x-leaderboard"
-fi
-
-cd "$CDK_ROOT"
-echo ""
-
 # Build wallet-api (pnpm)
 echo "📦 Building wallet-api..."
 cd "$CDK_ROOT/lambda-src/wallet-api"
@@ -236,24 +210,6 @@ fi
 
 echo ""
 
-# Verify x-leaderboard
-echo "🔍 Checking x-leaderboard..."
-if [ ! -d "$CDK_ROOT/lambda-src/x-leaderboard/dist" ]; then
-  echo "  ❌ dist directory not found!"
-  ERRORS=$((ERRORS + 1))
-else
-  echo "  ✅ dist directory found"
-  HANDLER_COUNT=$(find "$CDK_ROOT/lambda-src/x-leaderboard/dist" -name "*.js" | wc -l)
-  if [ "$HANDLER_COUNT" -eq 0 ]; then
-    echo "  ❌ No JS files found in dist directory!"
-    ERRORS=$((ERRORS + 1))
-  else
-    echo "  ✅ $HANDLER_COUNT JS files found in dist"
-  fi
-fi
-
-echo ""
-
 if [ $ERRORS -gt 0 ]; then
   echo "❌ 빌드 검증 실패! $ERRORS 개의 에러 발견"
   exit 1
@@ -341,9 +297,9 @@ echo ""
 echo "📊 CDK Diff (변경사항 확인)..."
 echo "================================================"
 if [ "$ENVIRONMENT" = "production" ]; then
-  pnpm cdk diff CdkStack --profile nasun-prod || true
+  pnpm cdk diff --all --profile nasun-prod || true
 else
-  pnpm cdk diff CdkStack || true
+  pnpm cdk diff --all || true
 fi
 echo ""
 
@@ -374,9 +330,9 @@ echo "================================================"
 # 프로덕션 환경일 때 AWS Profile 지정
 if [ "$ENVIRONMENT" = "production" ]; then
   echo "📍 AWS Profile: nasun-prod"
-  pnpm cdk deploy CdkStack --profile nasun-prod --require-approval never
+  pnpm cdk deploy --all --profile nasun-prod --require-approval never
 else
-  pnpm cdk deploy CdkStack --require-approval never
+  pnpm cdk deploy --all --require-approval never
 fi
 
 echo ""

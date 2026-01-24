@@ -30,8 +30,6 @@ export const Pages = {
   News: lazyWithRetry(() => import("../pages/NewsPage")),
   Callback: lazyWithRetry(() => import("@/features/auth").then(module => ({ default: module.Callback }))),
   Logout: lazyWithRetry(() => import("../pages/LogoutPage")),
-  Leaderboard: lazyWithRetry(() => import("../pages/LeaderboardPage")),
-  XLeaderboard: lazyWithRetry(() => import("../pages/LeaderboardPage")), // backward compatibility
   LeaderboardV3: lazyWithRetry(() => import("../pages/LeaderboardV3Page")),
   AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
   // Wave 1 Campaign Pages
@@ -412,20 +410,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Community Leaderboard - NASUN",
       description: "Community engagement leaderboard",
-    },
-  },
-
-  leaderboardV2: {
-    path: "/leaderboard-v2",
-    component: Pages.Leaderboard,
-    navItem: {
-      name: "navigation.leaderboardV2",
-      path: "/leaderboard-v2",
-      hidden: true,
-    },
-    meta: {
-      title: "Leaderboard (Legacy) - NASUN",
-      description: "Legacy engagement leaderboard (temporary)",
     },
   },
 

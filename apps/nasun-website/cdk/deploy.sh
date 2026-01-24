@@ -38,7 +38,7 @@ usage() {
     echo ""
     echo -e "${CYAN}옵션:${NC}"
     echo "  --skip-build              Lambda 빌드 건너뛰기"
-    echo "  --stack <StackName>       특정 스택만 배포 (예: CommonStack, AuthStack, CdkStack)"
+    echo "  --stack <StackName>       특정 스택만 배포 (예: CommonStack, AuthStack, MonitoringStack)"
     echo "  --dry-run                 실제 배포 없이 검증만"
     echo "  --yes                     확인 프롬프트 건너뛰기"
     echo ""
