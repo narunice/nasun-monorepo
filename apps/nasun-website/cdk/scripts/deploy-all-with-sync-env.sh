@@ -12,7 +12,7 @@
 #   1. 환경 변수 로드 (.env.development 또는 .env.production)
 #   2. 모든 Lambda 빌드
 #   3. 빌드 검증
-#   4. 모든 CDK 스택 배포 (AuthStack, CommonStack, CdkStack)
+#   4. 모든 CDK 스택 배포 (AuthStack, CommonStack, etc.)
 #   5. API 엔드포인트를 프론트엔드 .env 파일에 자동 동기화 (환경별)
 ###############################################################################
 
@@ -166,11 +166,6 @@ if [[ -z "$DRY_RUN" ]]; then
   # CommonStack 배포
   echo -e "${GREEN}   📍 CommonStack 배포 중...${NC}"
   pnpm cdk deploy CommonStack $PROFILE_ARG --require-approval never
-  echo ""
-
-  # CdkStack 배포
-  echo -e "${GREEN}   📍 CdkStack 배포 중...${NC}"
-  pnpm cdk deploy CdkStack $PROFILE_ARG --require-approval never
   echo ""
 
   # NftEventStack 배포

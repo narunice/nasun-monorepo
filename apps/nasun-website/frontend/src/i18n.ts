@@ -37,8 +37,6 @@ import enPrivacyPolicy from "./assets/locales/en/privacyPolicy.json";
 import koPrivacyPolicy from "./assets/locales/ko/privacyPolicy.json";
 import enTerms from "./assets/locales/en/terms.json";
 import koTerms from "./assets/locales/ko/terms.json";
-import enLeaderboard from "./assets/locales/en/leaderboard.json";
-import koLeaderboard from "./assets/locales/ko/leaderboard.json";
 import enBattalionNft from "./assets/locales/en/battalion-nft.json";
 import koBattalionNft from "./assets/locales/ko/battalion-nft.json";
 import enEarlyContributors from "./assets/locales/en/early-contributors.json";
@@ -76,7 +74,6 @@ i18n
         myAccount: enMyAccount,
         privacyPolicy: enPrivacyPolicy,
         terms: enTerms,
-        leaderboard: enLeaderboard,
         "battalion-nft": enBattalionNft,
         "early-contributors": enEarlyContributors,
         roadmap: enRoadmap,
@@ -102,7 +99,6 @@ i18n
         myAccount: koMyAccount,
         privacyPolicy: koPrivacyPolicy,
         terms: koTerms,
-        leaderboard: koLeaderboard,
         "battalion-nft": koBattalionNft,
         "early-contributors": koEarlyContributors,
         roadmap: koRoadmap,
@@ -137,7 +133,6 @@ i18n
       "myAccount",
       "privacyPolicy",
       "terms",
-      "leaderboard",
       "battalion-nft",
       "early-contributors",
       "notFound",
