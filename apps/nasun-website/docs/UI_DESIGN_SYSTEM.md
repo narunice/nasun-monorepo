@@ -14,7 +14,7 @@ Before implementing any UI, adhere to these key principles:
 1.  **Corner Radius**: Always use **`rounded-sm`**. Avoid `rounded-lg` or `rounded-md` to maintain a sharp, technical aesthetic.
 2.  **Color Usage**:
     *   **Avoid `nasun-c3` (Teal)**: Use `nasun-c4` (Blue) or `nasun-c1` (Gold) for interactive elements.
-    *   **Box Themes**: Prefer `w1`, `w2`, `w3`, `w4` variants for `OuterBox` and `DividerBox`.
+    *   **Box Themes**: Prefer `w1`~`w5` variants for `OuterBox` and `DividerBox`. These are the primary color props to use.
 3.  **Responsive Spacing**: Use the 3-step scale (`mobile -> md -> lg`) for all gaps and margins.
 4.  **Text Hierarchy**: Use `nasun-white` for emphasis and `nasun-white/80` for body text.
 
@@ -177,18 +177,30 @@ h4: text-xl/tight md:text-2xl/tight lg:text-3xl/tight
 
 **Corner Radius Rule**: Use `rounded-sm` everywhere.
 
+**Color Rule**: `nasun-c3` (Teal) 사용을 지양합니다. 인터랙티브 요소에는 `nasun-c4` (Blue) 또는 `nasun-c1` (Gold)을 사용하고, Box 컴포넌트에는 `w1`~`w5` variant를 우선 사용하세요.
+
 #### OuterBox
 For large container boxes/sections.
 
-*   **Recommended Props**: `color="w1"`, `color="w2"`, `color="w3"`, `color="w4"`
+*   **Recommended Props**: `color="w1"` ~ `color="w5"` (preferred over other color variants)
 *   **Padding**: `padding="md"` (24px-32px)
 
 #### DividerBox
 For content groups with a title and divider.
 
-*   **Recommended Props**: `color="w1"`, `color="w2"`, `color="w3"`, `color="w4"`
+*   **Recommended Props**: `color="w1"` ~ `color="w5"` (preferred over other color variants)
 *   **Padding**: `padding="sm"` (16px-24px)
 *   **Title Style**: Use `titleClassName="!text-nasun-c1"` if emphasis is needed.
+
+#### Wave Variant Reference
+
+| Variant | Background | Border | Usage |
+|---------|-----------|--------|-------|
+| `w1` | `bg-nasun-gray/70` | `border-nasun-white/40` | Default wave section |
+| `w2` | `bg-[#212E57]/50` | `border-nasun-c4/50` | Nasun Network section |
+| `w3` | `bg-nasun-c4/90` | `border-nasun-white/50` | Nasun Token section |
+| `w4` | `bg-nasun-gray/70` | `border-nasun-white/40` | Gold text variant (c1) |
+| `w5` | `bg-[#3D3D3D]` | `border-nasun-white/40` | Neutral dark card |
 
 ### 5.3 Cards (`DashboardCard`)
 
@@ -229,7 +241,7 @@ All form inputs use `rounded-sm`.
 +==================================================================+
 | Primary Action       | nasun-c4 (Blue)                          |
 | Highlights           | nasun-c1 (Gold)                          |
-| Box Themes           | w1, w2, w3, w4                           |
+| Box Themes           | w1, w2, w3, w4, w5 (preferred)           |
 | Avoid                | nasun-c3 (Teal)                          |
 +==================================================================+
 | COMPONENTS                                                       |

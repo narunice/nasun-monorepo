@@ -41,14 +41,14 @@ const LeaderboardInfoSection: React.FC = () => {
   }) as string[];
 
   return (
-    <SectionLayout className="!max-w-6xl ">
-      {/* Page Title */}
-      <PageTitle as="h2" align="center">
-        {t("info.pageTitle")}
-      </PageTitle>
+    <SectionLayout className="!max-w-6xl">
       <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+        <PageTitle as="h2" align="center">
+          {t("info.pageTitle")}
+        </PageTitle>
+
         {/* Introduction Box */}
-        <div className="flex flex-col  text-center mx-auto">
+        <div className="flex flex-col text-center mx-auto">
           <h6 className="font-medium">{t("info.intro.title")}</h6>
           <p className="pt-2">
             {t("info.intro.description")}{" "}
@@ -56,7 +56,7 @@ const LeaderboardInfoSection: React.FC = () => {
               href={FOLLOW_INTENT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-nasun-c3 underline underline-offset-4 decoration-nasun-c3/50 hover:text-sky-200 transition-colors"
+              className="text-nasun-c4 underline underline-offset-4 decoration-nasun-c4/50 hover:text-nasun-c4/70 transition-colors"
             >
               @{TARGET_ACCOUNT}
             </a>
@@ -77,7 +77,6 @@ const LeaderboardInfoSection: React.FC = () => {
               rightTitle={t("info.tiers.platinum.name")}
               icon={<span>👑</span>}
               titleClassName="!text-nasun-white"
-              className=""
             >
               <ul className="space-y-2 md:space-y-3 text-nasun-white/90 pl-2 md:pl-4">
                 <li className="flex items-start gap-3">
@@ -165,15 +164,15 @@ const LeaderboardInfoSection: React.FC = () => {
 
             {/* Beyond Tier - Rank 201+ */}
             <DividerBox
-              color="c3"
+              color="c4"
               title={t("info.tiers.beyond.rank")}
               rightTitle={t("info.tiers.beyond.name")}
               icon={<span>🏷️</span>}
-              titleClassName="!text-nasun-c3"
+              titleClassName="!text-nasun-c4"
             >
               <ul className="space-y-2 md:space-y-3 text-nasun-white/90 pl-2 md:pl-4">
                 <li className="flex items-start gap-3">
-                  <FontAwesomeIcon icon={faBullhorn} className="mt-1 w-4 h-4 text-nasun-c3" />
+                  <FontAwesomeIcon icon={faBullhorn} className="mt-1 w-4 h-4 text-nasun-c4" />
                   <span>{t("info.rewards.beyondRewards")}</span>
                 </li>
               </ul>
@@ -188,12 +187,7 @@ const LeaderboardInfoSection: React.FC = () => {
           </SectionTitle>
 
           <div className="max-w-3xl mx-auto space-y-4 md:space-y-6 mt-2 md:mt-3 lg:mt-4">
-            <DividerBox
-              color="w1"
-              disableHover={true}
-              title={t("info.scoringOverview.title")}
-              titleClassName=""
-            >
+            <DividerBox color="w1" disableHover={true} title={t("info.scoringOverview.title")}>
               <div className="space-y-4">
                 <p className="text-nasun-white/85 leading-relaxed">
                   {t("info.scoringOverview.description")}
@@ -214,7 +208,7 @@ const LeaderboardInfoSection: React.FC = () => {
 
             {/* Rules & Guidelines Box */}
             <DividerBox
-              color="c5"
+              color="w2"
               disableHover={true}
               title={t("info.rulesGuidelines.title")}
               titleClassName="!text-nasun-scarlet"
@@ -265,7 +259,7 @@ const LeaderboardInfoSection: React.FC = () => {
 
             {/* Data & Privacy Box */}
             <DividerBox
-              color="c5"
+              color="w2"
               disableHover={true}
               title={t("info.dataPrivacy.title")}
               titleClassName="!text-nasun-white"
@@ -279,13 +273,12 @@ const LeaderboardInfoSection: React.FC = () => {
               </ul>
               <p className="text-nasun-white/80 mt-3">{t("info.dataPrivacy.scoringNote")}</p>
             </DividerBox>
-
           </div>
         </section>
 
         {/* Go to Leaderboard Button */}
         <div className="flex justify-center">
-          <Link to="/wave1/leaderboard" className={buttonVariants({ variant: "c3", size: "xl" })}>
+          <Link to="/wave1/leaderboard" className={buttonVariants({ variant: "c4", size: "xl" })}>
             {t("info.goToLeaderboard")}
             <FontAwesomeIcon icon={faArrowRight} className="ml-2 w-4 h-4" />
           </Link>

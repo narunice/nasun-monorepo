@@ -9,12 +9,12 @@ function FoundersSection() {
   const { t } = useTranslation("team");
 
   return (
-    <SectionLayout className="!max-w-7xl ">
-      <PageTitle>{t("founders")}</PageTitle>
+    <SectionLayout className="!max-w-6xl">
+      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+        <PageTitle as="h2" align="center">{t("founders")}</PageTitle>
 
-      <div className="space-y-8 md:space-y-12">
         {TEAM_MEMBERS.map((member) => (
-          <TeamCard key={member.id} {...member} className="custom-class-if-needed" />
+          <TeamCard key={member.id} {...member} />
         ))}
       </div>
     </SectionLayout>

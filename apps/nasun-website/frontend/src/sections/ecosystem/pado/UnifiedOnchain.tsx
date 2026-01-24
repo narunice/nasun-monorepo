@@ -123,7 +123,7 @@ export const UnifiedOnchain = () => {
             <p>{t("unifiedOnchain.section3.intro")}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
+              <DividerBox color="w5" padding="sm" className="h-full">
                 <p>
                   <Trans
                     t={t}
@@ -132,7 +132,7 @@ export const UnifiedOnchain = () => {
                   />
                 </p>
               </DividerBox>
-              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
+              <DividerBox color="w5" padding="sm" className="h-full">
                 <p>
                   <Trans
                     t={t}
@@ -141,7 +141,7 @@ export const UnifiedOnchain = () => {
                   />
                 </p>
               </DividerBox>
-              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
+              <DividerBox color="w5" padding="sm" className="h-full">
                 <p>
                   <Trans
                     t={t}
@@ -150,7 +150,7 @@ export const UnifiedOnchain = () => {
                   />
                 </p>
               </DividerBox>
-              <DividerBox color="w1" padding="sm" className="h-full !bg-[#3D3D3D]">
+              <DividerBox color="w5" padding="sm" className="h-full">
                 <p>
                   <Trans
                     t={t}
