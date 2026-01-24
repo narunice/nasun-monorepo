@@ -98,7 +98,7 @@ export default function NewsCard({ post }: NewsCardProps) {
           <Tag
             variant="filledC1"
             size="sm"
-            className="self-end mt-4 !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+            className="self-end mt-4 !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
           >
             Read More
           </Tag>

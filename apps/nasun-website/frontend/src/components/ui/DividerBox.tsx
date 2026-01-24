@@ -21,7 +21,8 @@ type NasunColor =
   | "w1"
   | "w2"
   | "w3"
-  | "w4";
+  | "w4"
+  | "w5";
 
 type PaddingVariant = "md" | "sm";
 
@@ -206,6 +207,13 @@ const colorStyles: Record<
     background: "bg-nasun-gray/70",
     backgroundHover: "hover:bg-nasun-gray/40 transition-colors",
     text: "text-nasun-c1",
+  },
+  w5: {
+    border: "border-nasun-white/40",
+    borderHover: "hover:border-nasun-white/50 transition-colors",
+    background: "bg-[#3D3D3D]",
+    backgroundHover: "hover:bg-[#4A4A4A] transition-colors",
+    text: "text-nasun-white",
   },
 };
 

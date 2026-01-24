@@ -16,10 +16,10 @@ export const buttonVariants = cva(
         scarlet: "bg-nasun-scarlet text-nasun-white hover:bg-nasun-scarlet/80",
 
         // Amber: Solid amber button (c1)
-        c1: "bg-nasun-c1 text-nasun-black hover:bg-nasun-c1/80",
+        c1: "bg-nasun-c1 text-nasun-black hover:bg-nasun-c2",
 
         // Sunshine: Solid yellow button (c2)
-        c2: "bg-nasun-c2 text-nasun-black hover:bg-nasun-c2/80",
+        c2: "bg-nasun-c2 text-nasun-black hover:bg-nasun-c1",
 
         // Mint: Solid mint button (c3)
         c3: "bg-nasun-c3 text-nasun-black hover:bg-nasun-c3/80",
@@ -28,7 +28,7 @@ export const buttonVariants = cva(
         c4: "bg-nasun-c4 text-nasun-white hover:bg-sky-700",
 
         //  (c5)
-        c5: "bg-nasun-c5 text-nasun-white hover:bg-nasun-c5/80",
+        c5: "bg-nasun-c5 text-nasun-white hover:bg-nasun-c4",
 
         // Coral: Solid coral button
         coral: "bg-nasun-coral text-nasun-white hover:bg-nasun-coral/80",

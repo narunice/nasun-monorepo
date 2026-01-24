@@ -106,7 +106,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
             <Tag
               variant="filledC1"
               size="sm"
-              className="self-end !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c1/80 transition-all capitalize px-8"
+              className="self-end !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
             >
               Read More
               <ArrowTopRightIcon className="ml-2 w-4 h-4" />

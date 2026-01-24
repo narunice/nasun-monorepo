@@ -37,7 +37,9 @@ type ColorVariant =
   | "n5"
   | "w1"
   | "w2"
-  | "w3";
+  | "w3"
+  | "w4"
+  | "w5";
 
 type PaddingVariant = "md" | "sm";
 
@@ -61,6 +63,8 @@ const variantStyles: Record<ColorVariant, string> = {
   w1: "border-nasun-white/40 bg-nasun-gray/70",
   w2: "border-nasun-c4/50 bg-[#212E57]/50", // Nasun Network Section style
   w3: " border-nasun-white/50 bg-nasun-c4/90", // Nasun Token Section style
+  w4: "border-nasun-white/40 bg-nasun-gray/70", // Awards Section style
+  w5: "border-nasun-white/40 bg-[#3D3D3D]",
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {
