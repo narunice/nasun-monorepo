@@ -97,11 +97,11 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
             variant="outlineC1"
             size="sm"
             onClick={handleDownload}
-            disabled={isGeneratingImage}
+            disabled={isGenerating}
             className=""
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
-            {isGeneratingImage ? "..." : "Image"}
+            {isGenerating ? "..." : "Image"}
           </Button>
         </div>
       </div>
