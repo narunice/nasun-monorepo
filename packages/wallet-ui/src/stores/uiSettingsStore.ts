@@ -44,6 +44,8 @@ interface UISettingsState {
   hasCompletedOnboarding: boolean;
   /** Current navigation state */
   navigation: NavigationState;
+  /** Whether the NSA setup banner has been dismissed */
+  nsaBannerDismissed: boolean;
 }
 
 /**
@@ -64,6 +66,8 @@ interface UISettingsActions {
   navigateToView: (section: Section, view: View, params?: Record<string, string>) => void;
   /** Go back to home */
   goHome: () => void;
+  /** Dismiss the NSA setup banner */
+  dismissNsaBanner: () => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
 }
@@ -81,6 +85,7 @@ const DEFAULT_STATE: UISettingsState = {
     section: 'home',
     view: 'dashboard',
   },
+  nsaBannerDismissed: false,
 };
 
 /**
@@ -139,6 +144,10 @@ export const useUISettingsStore = create<UISettingsStore>()(
         });
       },
 
+      dismissNsaBanner: () => {
+        set({ nsaBannerDismissed: true });
+      },
+
       resetSettings: () => {
         set(DEFAULT_STATE);
       },
@@ -150,6 +159,7 @@ export const useUISettingsStore = create<UISettingsStore>()(
         isAdvancedMode: state.isAdvancedMode,
         userPurpose: state.userPurpose,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
+        nsaBannerDismissed: state.nsaBannerDismissed,
       }),
     }
   )

@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-import { DashboardCard } from '@/components/ui/DashboardCard';
-import { ChevronRight } from 'lucide-react';
-import type { AdminFeature } from '../config/adminConfig';
+import { Link } from "react-router-dom";
+import { DashboardCard } from "@/components/ui/DashboardCard";
+import { ChevronRight } from "lucide-react";
+import type { AdminFeature } from "../config/adminConfig";
 
-interface AdminFeatureCardProps extends AdminFeature {}
+type AdminFeatureCardProps = AdminFeature;
 
 export function AdminFeatureCard({
   title,
@@ -14,20 +14,21 @@ export function AdminFeatureCard({
   disabled,
 }: AdminFeatureCardProps) {
   return (
-    <DashboardCard className="flex flex-col h-full hover:border-nasun-c4/50 transition-all duration-300 group bg-gray-800/30">
+    <DashboardCard
+      variant="default"
+      className="flex flex-col h-full transition-all duration-300 group"
+    >
       <div className="flex items-center justify-between mb-5">
         <div className="text-3xl p-2 bg-nasun-c6/50 rounded-sm border border-nasun-c5/20 group-hover:border-nasun-c4/30 transition-colors">
           {icon}
         </div>
       </div>
 
-      <h3 className="text-lg font-medium text-nasun-white mb-3 group-hover:text-nasun-c4 transition-colors">
+      <h6 className="text-nasun-white font-medium mb-3 group-hover:text-nasun-c4 transition-colors">
         {title}
-      </h3>
+      </h6>
 
-      <p className="text-nasun-white/60 text-sm mb-6 flex-grow leading-relaxed">
-        {description}
-      </p>
+      <p className="text-nasun-white/60 text-sm mb-6 flex-grow leading-relaxed">{description}</p>
 
       {disabled ? (
         <div className="mt-auto pt-4 border-t border-nasun-c5/20 flex items-center text-nasun-white/30 text-sm font-medium cursor-not-allowed">
