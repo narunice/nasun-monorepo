@@ -22,6 +22,7 @@ import {
   getUnlockAttemptState,
   getAllTokens,
   LOCKOUT_TIERS,
+  useNsaStore,
   type NFTInfo,
   type NFTSortBy,
   type ZkLoginProvider,
@@ -46,6 +47,7 @@ import { PortfolioPanel } from "./PortfolioPanel";
 import { NasunLinkWizard } from "./NasunLinkWizard";
 import { AdvancedToggle } from "./AdvancedToggle";
 import { LedgerConnect, LedgerBrowserWarning, LedgerErrorDisplay } from "./ledger";
+import { NsaSetupWizard, NsaAccountInfo, NsaAddSigner, NsaBackupPanel, NsaGuardianSetup, NsaRecoveryPanel } from "./nsa";
 import { useAdvancedMode, useUISettingsStore } from "./stores";
 
 type ViewMode =
@@ -64,7 +66,13 @@ type ViewMode =
   | "ledger-select" // Ledger address selection
   | "address-book" // Address book management
   | "portfolio" // Portfolio dashboard
-  | "nasun-link"; // Nasun Link creation
+  | "nasun-link" // Nasun Link creation
+  | "nsa-setup" // Smart Account creation
+  | "nsa-info" // Smart Account overview
+  | "nsa-add-signer" // Add signer
+  | "nsa-backup" // Backup management
+  | "nsa-guardians" // Guardian setup
+  | "nsa-recovery"; // Recovery flow
 
 /**
  * Locked state UI with rate limiting countdown
@@ -275,6 +283,12 @@ export function WalletConnect({
   // UI Settings (Advanced mode)
   const isAdvancedMode = useAdvancedMode();
   const resetSettings = useUISettingsStore((state) => state.resetSettings);
+
+  // NSA (Smart Account) state
+  const nsaIsInitialized = useNsaStore((s) => s.isInitialized);
+  const nsaActiveRecoveryId = useNsaStore((s) => s.activeRecoveryId);
+  const nsaBannerDismissed = useUISettingsStore((s) => s.nsaBannerDismissed);
+  const dismissNsaBanner = useUISettingsStore((s) => s.dismissNsaBanner);
 
   // Track which provider is loading
   const [loadingProvider, setLoadingProvider] = useState<ZkLoginProvider | null>(null);
@@ -860,6 +874,30 @@ export function WalletConnect({
       );
     }
 
+    // NSA Smart Account views
+    if (viewMode === "nsa-setup") {
+      return (
+        <NsaSetupWizard onClose={() => setViewMode("main")} onSuccess={() => setViewMode("nsa-info")} />
+      );
+    }
+    if (viewMode === "nsa-info") {
+      return (
+        <NsaAccountInfo onClose={() => setViewMode("main")} onNavigate={(mode) => setViewMode(mode as ViewMode)} />
+      );
+    }
+    if (viewMode === "nsa-add-signer") {
+      return <NsaAddSigner onClose={() => setViewMode("nsa-info")} />;
+    }
+    if (viewMode === "nsa-backup") {
+      return <NsaBackupPanel onClose={() => setViewMode("nsa-info")} />;
+    }
+    if (viewMode === "nsa-guardians") {
+      return <NsaGuardianSetup onClose={() => setViewMode("nsa-info")} />;
+    }
+    if (viewMode === "nsa-recovery") {
+      return <NsaRecoveryPanel onClose={() => setViewMode("nsa-info")} />;
+    }
+
     // Ledger connected state (no software wallet)
     if (isLedgerConnected && ledgerAddress && status === "disconnected" && !isZkLoggedIn) {
       return (
@@ -1141,6 +1179,52 @@ export function WalletConnect({
                 )}
               </div>
 
+              {/* NSA Recovery Warning Banner */}
+              {nsaIsInitialized && nsaActiveRecoveryId && (
+                <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-xs text-red-700 dark:text-red-300 font-medium">Recovery in progress</span>
+                  </div>
+                  <button
+                    onClick={() => setViewMode("nsa-recovery")}
+                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
+                  >
+                    View
+                  </button>
+                </div>
+              )}
+
+              {/* NSA Setup Banner */}
+              {!nsaIsInitialized && !nsaBannerDismissed && (
+                <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      <span className="text-xs text-blue-700 dark:text-blue-300">Secure your account with Smart Account</span>
+                    </div>
+                    <button
+                      onClick={dismissNsaBanner}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setViewMode("nsa-setup")}
+                    className="mt-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                  >
+                    Set Up Smart Account →
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={() => setViewMode("send")}
                 className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -1230,6 +1314,19 @@ export function WalletConnect({
                 </svg>
                 Address Book
               </button>
+
+              {/* Smart Account menu button */}
+              {nsaIsInitialized && (
+                <button
+                  onClick={() => setViewMode("nsa-info")}
+                  className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Smart Account
+                </button>
+              )}
             </div>
           )}
 
@@ -1493,6 +1590,52 @@ export function WalletConnect({
                 )}
               </div>
 
+              {/* NSA Recovery Warning Banner */}
+              {nsaIsInitialized && nsaActiveRecoveryId && (
+                <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-xs text-red-700 dark:text-red-300 font-medium">Recovery in progress</span>
+                  </div>
+                  <button
+                    onClick={() => setViewMode("nsa-recovery")}
+                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
+                  >
+                    View
+                  </button>
+                </div>
+              )}
+
+              {/* NSA Setup Banner */}
+              {!nsaIsInitialized && !nsaBannerDismissed && (
+                <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      <span className="text-xs text-blue-700 dark:text-blue-300">Secure your account with Smart Account</span>
+                    </div>
+                    <button
+                      onClick={dismissNsaBanner}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setViewMode("nsa-setup")}
+                    className="mt-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                  >
+                    Set Up Smart Account →
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={() => setViewMode("send")}
                 className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -1612,6 +1755,19 @@ export function WalletConnect({
                 </svg>
                 Security Settings
               </button>
+
+              {/* Smart Account menu button */}
+              {nsaIsInitialized && (
+                <button
+                  onClick={() => setViewMode("nsa-info")}
+                  className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Smart Account
+                </button>
+              )}
 
               {/* Advanced Mode Features */}
               {isAdvancedMode && (
