@@ -55,8 +55,74 @@
     U+3130-318F, U+AC00-D7AF;
 }
 
-/* Adobe Font - Eurostile Extended (섹션 헤딩용) */
-/* <link rel="stylesheet" href="https://use.typekit.net/idl0drx.css"> */
+/* Rubik Font Faces */
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/rubik/Rubik-Light.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/rubik/Rubik-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/rubik/Rubik-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/rubik/Rubik-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/rubik/Rubik-Bold.woff2") format("woff2");
+}
+
+/* Changeling Neo Font Faces */
+@font-face {
+  font-family: "changeling-neo";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/changeling-neo/ChangellingNeo-Light.woff2") format("woff2");
+}
+@font-face {
+  font-family: "changeling-neo";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/changeling-neo/ChangellingNeo-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "changeling-neo";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/changeling-neo/ChangellingNeo-Bold.woff2") format("woff2");
+}
+
+/* Eurostile Extended Font Face */
+@font-face {
+  font-family: "eurostile-extended";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/eurostile-extended/EurostileExtended-Medium.woff2") format("woff2");
+}
 
 /* FoundersGrotesk Font Family */
 @font-face {

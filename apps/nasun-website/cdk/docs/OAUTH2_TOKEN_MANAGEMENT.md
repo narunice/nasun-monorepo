@@ -12,14 +12,14 @@ This document describes how OAuth 2.0 tokens are managed for the Nasun Community
 
 | Environment | Secret Name | AWS Account | Target Account |
 |-------------|-------------|-------------|----------------|
-| Development | `nasun-twitter-tokens` | 135808943968 | @Naru010110 (1863020068785004544) |
+| Development | `nasun-twitter-tokens` | 135808943968 | @Nasun_io (1725466995565752320) |
 | Production | `nasun-twitter-tokens-prod` | 466841130170 | @Nasun_io (1725466995565752320) |
 
 ### Environment Files
 
 ```
 apps/nasun-website/cdk/
-├── .env.development    # Development config (TARGET_USER_ID=1863020068785004544)
+├── .env.development    # Development config (TARGET_USER_ID=1725466995565752320)
 ├── .env.production     # Production config (TARGET_USER_ID=1725466995565752320)
 └── .env                # Currently loaded config (symlink or copy)
 ```
@@ -72,7 +72,7 @@ Use this checklist when re-authenticating OAuth 2.0 tokens.
 
 - [ ] **4. Log out of wrong X accounts in browser**
   - Open https://x.com in browser
-  - Ensure logged in as **@Naru010110** (dev) or **@Nasun_io** (prod)
+  - Ensure logged in as **@Nasun_io** (dev) or **@Nasun_io** (prod)
 
 ### Run Authentication
 
@@ -88,7 +88,7 @@ npx tsx setup-oauth2-auto.ts
   npx tsx scripts/verify-oauth-token.ts              # Development only
   npx tsx scripts/verify-oauth-token.ts --env=prod   # Production only
   npx tsx scripts/verify-oauth-token.ts --all        # Both environments
-  # Must show: @Naru010110 (dev) or @Nasun_io (prod)
+  # Must show: @Nasun_io (dev) or @Nasun_io (prod)
   ```
 
 - [ ] **6. Test Liking Users API**

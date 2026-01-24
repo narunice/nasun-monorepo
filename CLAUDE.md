@@ -527,7 +527,7 @@ cd apps/pado/contracts
 | ----------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
 | governance (v1-v7)            | deprecated                                                           | 이전 버전들 (더 이상 사용 안함)     |
 | governance (v8)               | `0x07b91522177a221f11008eb4c5fa1a476b8d49ab52ef7946404b34fd00afacb0` | **현재 패키지** (2026-01-23 배포)   |
-| VotingPowerOracle (shared)    | TODO                                                                 | Ed25519 서명 검증 (공개키 필요)     |
+| VotingPowerOracle (shared)    | `0x81aa26925e4865a7c419d266de6ddbedfa5d0ff697f066034d8b58f5ed7aeef6` | Ed25519 서명 검증                   |
 | CertificateRegistry (shared)  | `0x1be93058998168aafeabc9838306b46fc69da21e7f009cbbc71a7150a900698d` | 중복 발급 방지                      |
 | ProposalTypeRegistry (shared) | `0x6810af6219c455996615d56307ef923b970e6b0e1dca6cf1a7c396aab6c08f0f` | 프로포절 유형 관리                  |
 | Dashboard (shared)            | `0x821f7dfd794e23a26d454624aeeeed0b05633c2a689ab360b1b800d95efde17c` | 프로포절 대시보드                   |

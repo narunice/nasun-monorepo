@@ -1176,12 +1176,12 @@ export class LeaderboardGenerator {
     const knownMappings: Record<string, string> = {};
     
     // TARGET_USER_ID -> TARGET_USERNAME 매핑
-    const targetUserId = process.env.TARGET_USER_ID || "1863020068785004544";
-    const targetUsername = process.env.TARGET_USERNAME || "Naru010110";
+    const targetUserId = process.env.TARGET_USER_ID || "1725466995565752320";
+    const targetUsername = process.env.TARGET_USERNAME || "Nasun_io";
     knownMappings[targetUserId] = targetUsername;
     
     // ADMIN_USERNAMES에서 추가 매핑 (ID가 있는 경우)
-    const adminUsernames = (process.env.ADMIN_USERNAMES || "Naru010110,overclocksalmon").split(",");
+    const adminUsernames = (process.env.ADMIN_USERNAMES || "Nasun_io,overclocksalmon").split(",");
     // 하드코딩된 관리자 계정 ID는 유지 (overclocksalmon)
     knownMappings["1503536552164556804"] = "overclocksalmon";
 

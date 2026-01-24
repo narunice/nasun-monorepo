@@ -4,6 +4,7 @@ import { SectionLayout } from '@/components/layout/SectionLayout';
 import { Button } from '@/components/ui/button';
 import { PageTitle } from '@/components/ui/PageTitle';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 import type { BannedAccount } from '../types/index';
 
 const ADMIN_PASSWORD = import.meta.env.VITE_LEADERBOARD_V3_ADMIN_PASSWORD;
@@ -21,6 +22,7 @@ interface SearchResult {
 }
 
 export function BlacklistManagement() {
+  const { profile } = useAdminAuth();
   const {
     bannedAccounts,
     total,
@@ -64,7 +66,11 @@ export function BlacklistManagement() {
   const handleBanConfirm = async () => {
     if (!banTarget) return;
     try {
-      await ban({ accountId: banTarget.accountId, reason: banReason || undefined });
+      await ban({
+        accountId: banTarget.accountId,
+        reason: banReason || undefined,
+        adminUsername: profile?.email || profile?.username || 'admin',
+      });
       setBanTarget(null);
       setBanReason('');
       setSearchResults((prev) => prev.filter((r) => r.accountId !== banTarget.accountId));

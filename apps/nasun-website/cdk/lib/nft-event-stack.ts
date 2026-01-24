@@ -169,7 +169,7 @@ export class NftEventStack extends cdk.Stack {
 
     // 환경 변수 (cdk/.env에서 로드)
     const X_TARGET_USERNAME = process.env.X_TARGET_USERNAME || 'Nasun_io';
-    const X_TARGET_USER_ID = process.env.X_TARGET_USER_ID || '1863020068785004544';
+    const X_TARGET_USER_ID = process.env.X_TARGET_USER_ID || '1725466995565752320';
     const X_TARGET_TWEET_ID = process.env.X_TARGET_TWEET_ID || '';
 
     // Lambda 1: verify-eligibility

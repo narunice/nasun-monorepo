@@ -10,9 +10,9 @@ import { TokenManager } from './src/services/token-manager';
 
 async function main() {
   // Note: OAuth 2.0 User Context can only read followers of the authenticated user
-  // Development token is authorized by @Naru010110
-  const targetUserId = '1863020068785004544'; // Naru010110 (dev environment)
-  const targetUsername = 'Naru010110';
+  // Development token is authorized by @Nasun_io
+  const targetUserId = '1725466995565752320'; // Nasun_io (dev environment)
+  const targetUsername = 'Nasun_io';
 
   console.log(`\n🎯 Target: @${targetUsername} (${targetUserId})`);
   console.log('━'.repeat(50));

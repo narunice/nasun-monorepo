@@ -6,13 +6,13 @@
 //
 // TARGET_USER_ID (필수):
 //   - X API 호출에 사용되는 numeric ID
-//   - 예: "1863020068785004544" (Dev), "1936784207453507584" (Prod)
+//   - 예: "1725466995565752320" (@Nasun_io)
 //   - 용도: v2.tweets.search(), v2.userMentionTimeline() 등
 //   - ⚠️ X API v2는 Username으로 직접 호출 불가! 반드시 numeric ID 필요
 //
 // TARGET_USERNAME (필수):
 //   - 표시/로깅용 사용자명 (변경 가능)
-//   - 예: "Naru010110" (Dev), "Nasun_io" (Prod)
+//   - 예: "Nasun_io"
 //   - 용도: 멘션 텍스트 파싱, 로그 출력, 하드코딩 매핑 폴백
 //
 // ============================================================================
@@ -126,9 +126,9 @@ export function getEnvConfigV2(): EnvConfigV2 {
 
     // Twitter API (선택적)
     twitterBearerToken: getEnvVar("TWITTER_BEARER_TOKEN", ""), // 기본값으로 빈 문자열
-    targetUsername: getEnvVar("TARGET_USERNAME", "Naru010110"),
-    targetUserId: getEnvVar("TARGET_USER_ID", "1863020068785004544"),
-    adminUsernames: getEnvVar("ADMIN_USERNAMES", "Naru010110,overclocksalmon")
+    targetUsername: getEnvVar("TARGET_USERNAME", "Nasun_io"),
+    targetUserId: getEnvVar("TARGET_USER_ID", "1725466995565752320"),
+    adminUsernames: getEnvVar("ADMIN_USERNAMES", "Nasun_io,overclocksalmon")
       .split(",")
       .map(username => username.trim()),
     

@@ -66,7 +66,7 @@ const GovernanceSection = () => {
           )}
         </div>
       ) : (
-        <OuterBox color="w1" padding="md" className="mb-6">
+        <OuterBox color="w1" padding="md" className="mb-6 relative z-10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-medium text-nasun-white mb-1">

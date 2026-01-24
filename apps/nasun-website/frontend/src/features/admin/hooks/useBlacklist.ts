@@ -11,15 +11,20 @@ export function useBlacklist(adminPassword: string) {
     staleTime: 60_000, // 1 minute
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin', 'blacklist'] });
+    queryClient.invalidateQueries({ queryKey: ['leaderboard-v3'] });
+  };
+
   const banMutation = useMutation({
     mutationFn: (params: { accountId: string; reason?: string; adminUsername?: string }) =>
       banAccountApi(adminPassword, params.accountId, params.reason, params.adminUsername),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'blacklist'] }),
+    onSuccess: invalidateAll,
   });
 
   const unbanMutation = useMutation({
     mutationFn: (accountId: string) => unbanAccountApi(adminPassword, accountId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'blacklist'] }),
+    onSuccess: invalidateAll,
   });
 
   return {

@@ -98,7 +98,7 @@ export const EXCLUDED_ACCOUNTS_CONFIG = {
   DEFAULTS: {
     EXCLUDED_USERNAMES: '',
     EXCLUDED_USER_IDS: '',
-    ADMIN_USERNAMES: 'Naru010110,overclocksalmon'
+    ADMIN_USERNAMES: 'Nasun_io,overclocksalmon'
   },
   /** 구분자 */
   DELIMITER: ',',

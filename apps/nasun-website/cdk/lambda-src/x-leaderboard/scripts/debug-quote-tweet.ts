@@ -3,7 +3,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import { secureTokenManager } from '../src/services/secure-token-manager';
 
 const MISSING_TWEET_ID = "2009123468764467252";
-const TARGET_USER_ID = "1863020068785004544"; // Dev env: Naru010110
+const TARGET_USER_ID = "1725466995565752320"; // Dev env: Nasun_io
 
 async function main() {
   console.log("🚀 Debugging Quote Tweet retrieval...\n");
@@ -23,15 +23,15 @@ async function main() {
     const bearerClient = new TwitterApi(tokens.bearerToken!);
 
     // ============================================
-    // TEST 0: Verify Naru010110's actual user_id
+    // TEST 0: Verify Nasun_io's actual user_id
     // ============================================
     console.log("═".repeat(50));
-    console.log("TEST 0: Verify Naru010110's actual user_id");
+    console.log("TEST 0: Verify Nasun_io's actual user_id");
     console.log("═".repeat(50));
 
     try {
-      const user = await bearerClient.v2.userByUsername('Naru010110');
-      console.log("\n✅ Naru010110 user info:");
+      const user = await bearerClient.v2.userByUsername('Nasun_io');
+      console.log("\n✅ Nasun_io user info:");
       console.log(JSON.stringify(user.data, null, 2));
 
       if (user.data.id !== TARGET_USER_ID) {
