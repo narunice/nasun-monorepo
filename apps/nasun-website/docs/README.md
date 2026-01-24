@@ -1,8 +1,8 @@
 # NASUN Website 문서
 
 **프로젝트**: NASUN Website (nasun.io)
-**최종 업데이트**: 2026-01-12
-**버전**: 3.3.0 (Document Consolidation)
+**최종 업데이트**: 2026-01-24
+**버전**: 3.4.0 (Leaderboard V3 Documentation)
 
 ---
 
@@ -23,21 +23,15 @@
 - **[../CLAUDE.md](../CLAUDE.md)**
   프로젝트 전체 가이드 - 개발, 배포, 트러블슈팅 필수 읽기 자료
 
-### 🚀 최근 완료 프로젝트 (2025-11)
+### 🚀 최근 완료 프로젝트
 
-#### **리더보드 동적 구성 (완료)** ✅
-백엔드 설정만으로 프론트엔드 리더보드 탭 제어
-- **[LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md](./LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md)**
-  - API 기반 동적 구성 아키텍처
-  - 프론트엔드/백엔드 구현 상세
-  - 5/5 자동화 테스트 통과
-
-#### **Top Climbers Spotlight (완료)** ✅
-기간별 순위 급상승자 표시 기능
-- **[TOP_CLIMBERS_SPOTLIGHT_FEATURE.md](./TOP_CLIMBERS_SPOTLIGHT_FEATURE.md)**
-  - 반응형 그리드 레이아웃
-  - TimeRangeSelector (Today, 7D, 4W, 3M)
-  - UI/UX 개선 사항 (스크롤바, 폰트 등)
+#### **Community Leaderboard V3 (완료)** ✅
+관리자 큐레이션 기반 시즌 리더보드 시스템 (Phase 1-6 완료)
+- **[LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)**
+  - 시즌 기반 독립 리더보드
+  - Top Climbers Spotlight, Rank Change Indicators
+  - Featured Feed, My Rank Sidebar
+  - 라우트: `/wave1/leaderboard`
 
 #### **지갑 재연결 UX 개선 (완료)** ✅
 NFT Event 등록 후 지갑 해제 시 재연결 유도
@@ -105,17 +99,16 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ## 주요 프로젝트
 
-### ✅ 완료된 프로젝트 (2025-10 ~ 11)
+### ✅ 완료된 프로젝트
 
-#### 1. 리더보드 기능 확장
-- **Top Climbers Spotlight**: 순위 급상승자 표시
-- **동적 구성**: API 기반 리더보드 탭 제어
-- **Pagination**: 데이터 수집 범위 확대 (1000개)
+#### 1. Community Leaderboard V3 (2026-01)
+- **시즌 기반 독립 리더보드**: Phase 1-6 전체 완료
+- **Top Climbers Spotlight**: 순위 급상승자 하이라이트
+- **Featured Feed**: 큐레이팅된 포스트 피드
+- **My Rank Sidebar**: 로그인 사용자 순위 표시
 
-**문서**:
-- [TOP_CLIMBERS_SPOTLIGHT_FEATURE.md](./TOP_CLIMBERS_SPOTLIGHT_FEATURE.md)
-- [LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md](./LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md)
-- [PAGINATION_COMPREHENSIVE_COMPLETION_REPORT.md](./PAGINATION_COMPREHENSIVE_COMPLETION_REPORT.md)
+**문서**: [LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)
+**Legacy V2 문서**: [_legacy-leaderboard/](./_legacy-leaderboard/) (deprecated)
 
 ---
 
@@ -144,24 +137,13 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ### 📊 리더보드 시스템
 
-#### 기능 구현 보고서
-- **[LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md](./LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md)** ⭐ **NEW!**
-  리더보드 동적 구성 기능 구현 보고서
+#### V3 (현재 운영 중)
+- **[LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)** ⭐ **주요 참조**
+  Community Leaderboard V3 전체 기획안 및 구현 상태 (Phase 1-6 완료)
 
-- **[TOP_CLIMBERS_SPOTLIGHT_FEATURE.md](./TOP_CLIMBERS_SPOTLIGHT_FEATURE.md)** ⭐ **NEW!**
-  Top Climbers Spotlight 기능 명세
-
-- **[LEADERBOARD_DATA_COLLECTION_AND_SCORING_COMPREHENSIVE.md](./LEADERBOARD_DATA_COLLECTION_AND_SCORING_COMPREHENSIVE.md)**
-  리더보드 시스템 전체 아키텍처 및 데이터 수집 메커니즘
-
-- **[LEADERBOARD_MECHANISM_GUIDE.md](./LEADERBOARD_MECHANISM_GUIDE.md)**
-  리더보드 반영 메커니즘 상세 가이드 (targetDate vs added_at)
-
-- **[LEADERBOARD_SCORING-METRICS_v2.3.md](./LEADERBOARD_SCORING-METRICS_v2.3.md)**
-  점수 가중치 및 메트릭 (Option 2 반영)
-
-- **[LEADERBOARD_FEATURE_COMPLETION_HISTORY.md](./LEADERBOARD_FEATURE_COMPLETION_HISTORY.md)**
-  Phase 1-5 리더보드 기능 완료 히스토리
+#### Legacy V2 (deprecated)
+- **[_legacy-leaderboard/](./_legacy-leaderboard/)** - X API 기반 리더보드 관련 문서 (9개)
+  - 데이터 수집, 스코어링, 동적 구성, Top Climbers 등
 
 #### OAuth Token Management
 - **[../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md](../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md)** ⭐ **통합 문서**
@@ -199,12 +181,10 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ---
 
-## 유지된 핵심 문서 (14개)
+## 현재 문서 구조
 
-### 1. 종합 완료 보고서 (3개)
-- LEADERBOARD_DYNAMIC_CONFIG_IMPLEMENTATION_REPORT.md
-- TOP_CLIMBERS_SPOTLIGHT_FEATURE.md
-- PAGINATION_COMPREHENSIVE_COMPLETION_REPORT.md
+### 1. V3 리더보드 (1개)
+- LEADERBOARD_V3_SPEC.md
 
 ### 2. 개발 가이드 (4개)
 - BUILD_CONFIGURATION_GUIDE.md
@@ -212,26 +192,34 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 - API_ENDPOINT_SYNC_GUIDE.md
 - DEPLOYMENT_GUIDE.md
 
-### 3. 기술 문서 (6개)
-- LEADERBOARD_DATA_COLLECTION_AND_SCORING_COMPREHENSIVE.md
-- LEADERBOARD_MECHANISM_GUIDE.md
-- LEADERBOARD_FEATURE_COMPLETION_HISTORY.md
-- LEADERBOARD_SCORING-METRICS_v2.3.md
-- LEADERBOARD_EVENT_ADDITION_GUIDE.md
-- TARGET_ACCOUNT_ID_MIGRATION_ANALYSIS.md
+### 3. 기술 문서 (기타)
 - NFT_EVENT_COMPREHENSIVE_GUIDE.md
+- GOVERNANCE_ROADMAP.md
+- UI_DESIGN_SYSTEM.md
+- FEATURE_FEED_IMPLEMENTATION_PLAN.md
 
-### 4. OAuth 토큰 관리 (cdk/docs/)
+### 4. Legacy 리더보드 (archived)
+- `_legacy-leaderboard/` (9개 파일)
+
+### 5. OAuth 토큰 관리 (cdk/docs/)
 - ../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md (통합 문서)
 
-### 5. 인덱스 (1개)
+### 6. 인덱스 (1개)
 - README.md
 
 ---
 
 ## 문서 버전 히스토리
 
-### v3.3.0 (2026-01-12) - 리더보드 문서 통합/정리 ⭐ **최신**
+### v3.4.0 (2026-01-24) - Leaderboard V3 문서 정리 ⭐ **최신**
+- ✅ **V3 리더보드 Phase 6 완료 반영**: LEADERBOARD_V3_SPEC.md 업데이트
+- ✅ **Legacy 문서 이동 (3개)**: `_legacy-leaderboard/`로 아카이빙
+  - `LEADERBOARD_EVENT_ADDITION_GUIDE.md`
+  - `TOP_CLIMBERS_SPOTLIGHT_FEATURE.md`
+  - `_PAGINATION_COMPREHENSIVE_COMPLETION_REPORT.md`
+- ✅ **문서 구조 재정리**: V3 중심으로 목차 개편
+
+### v3.3.0 (2026-01-12) - 리더보드 문서 통합/정리
 - ✅ **삭제된 문서 (8개)**:
   - `LEADERBOARD_EVENT3_IMPLEMENTATION_PLAN.md` (구현 완료)
   - `LIKES_COLLECTION_BUG_COMPREHENSIVE_REPORT.md` (해결 완료)

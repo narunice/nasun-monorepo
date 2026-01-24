@@ -2504,10 +2504,10 @@ aws dynamodb query \
   - **✅ 리더보드 파이프라인 완전 자동화 완성 (2025-10-02)**
 
 ### 핵심 목표
-- X(Twitter) 사용자 참여도 추적 및 리더보드 제공
+- 커뮤니티 참여도 큐레이션 및 시즌 리더보드 제공 (V3)
 - 다중 인증 방식 지원 (Google, Twitter, MetaMask)
 - 계정 간 연결 기능으로 통합된 사용자 경험 제공
-- 실시간 데이터 수집 및 분석
+- DAO 거버넌스 (Proposal, Voting)
 
 ### 저장소
 - **위치**: `/home/naru/my_apps/nasun-monorepo/apps/nasun-website`
@@ -2623,11 +2623,14 @@ nasun-website/
 
 ## 주요 기능
 
-### 1. X(Twitter) 리더보드
-- 실시간 트윗 참여도 추적
-- 일일/누적 점수 계산
-- 순위 시스템
-- 북마크 기반 타겟 트윗 수집
+### 1. Community Leaderboard (V3)
+- 관리자 큐레이션 기반 커뮤니티 참여 순위 시스템
+- 시즌 기반 독립 리더보드 (Phase 1-6 완료)
+- Top Climbers Spotlight, Rank Change Indicators, Featured Feed
+- 라우트: `/wave1/leaderboard` (공개), `/admin/leaderboard-v3` (관리자)
+- 프론트엔드: `src/features/leaderboard-v3/`
+- 백엔드: `cdk/lambda-src/leaderboard-v3/`
+- Legacy V2 (X API 기반): `/leaderboard-v2` (임시, deprecated)
 
 ### 2. 다중 인증 시스템
 - **Google OAuth 2.0**
