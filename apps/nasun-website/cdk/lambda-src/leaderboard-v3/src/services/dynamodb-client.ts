@@ -289,6 +289,83 @@ export async function getAccountById(accountId: string): Promise<Account | null>
 }
 
 /**
+ * Ban an account (soft exclusion)
+ */
+export async function banAccount(params: {
+  accountId: string;
+  reason?: string;
+  bannedBy: string;
+}): Promise<Account> {
+  const { accountId, reason, bannedBy } = params;
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: ACCOUNTS_TABLE,
+      Key: { accountId },
+      UpdateExpression:
+        'SET isBanned = :banned, banReason = :reason, bannedAt = :at, bannedBy = :by',
+      ExpressionAttributeValues: {
+        ':banned': true,
+        ':reason': reason || 'No reason provided',
+        ':at': new Date().toISOString(),
+        ':by': bannedBy,
+      },
+      ConditionExpression: 'attribute_exists(accountId)',
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+  return result.Attributes as Account;
+}
+
+/**
+ * Unban an account
+ */
+export async function unbanAccount(accountId: string): Promise<Account> {
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: ACCOUNTS_TABLE,
+      Key: { accountId },
+      UpdateExpression: 'REMOVE isBanned, banReason, bannedAt, bannedBy',
+      ConditionExpression: 'attribute_exists(accountId)',
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+  return result.Attributes as Account;
+}
+
+/**
+ * Get all banned accounts (full data)
+ */
+export async function getBannedAccounts(): Promise<Account[]> {
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: ACCOUNTS_TABLE,
+      FilterExpression: 'isBanned = :banned',
+      ExpressionAttributeValues: { ':banned': true },
+    })
+  );
+  return (result.Items || []) as Account[];
+}
+
+/**
+ * Get banned account IDs only (lightweight, for public endpoint filtering)
+ */
+export async function getBannedAccountIds(): Promise<Set<string>> {
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: ACCOUNTS_TABLE,
+      FilterExpression: 'isBanned = :banned',
+      ExpressionAttributeValues: { ':banned': true },
+      ProjectionExpression: 'accountId',
+    })
+  );
+  const ids = new Set<string>();
+  for (const item of result.Items || []) {
+    ids.add((item as { accountId: string }).accountId);
+  }
+  return ids;
+}
+
+/**
  * Lookup user profile from UserProfiles table using twitterHandle-index GSI
  * Returns profile data if the user has logged in to Nasun website
  */

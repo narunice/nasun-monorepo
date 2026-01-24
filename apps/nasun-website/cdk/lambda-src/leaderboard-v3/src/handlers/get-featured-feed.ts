@@ -25,6 +25,7 @@ import {
   getActiveSeason,
   getSeasonById,
   getSeasonAccountScores,
+  getBannedAccountIds,
 } from '../services/dynamodb-client';
 
 // Initialize DynamoDB client
@@ -211,7 +212,9 @@ export const handler = async (
     
     // A. Top 3 Rankers
     const allScores = await getSeasonAccountScores(seasonId);
+    const bannedIds = await getBannedAccountIds();
     const topRankers = allScores
+      .filter((score) => !bannedIds.has(score.accountId))
       .sort((a, b) => b.userScore - a.userScore)
       .slice(0, 3);
 
@@ -239,7 +242,8 @@ export const handler = async (
 
     console.log(`[FeaturedFeed] Snapshot dates: current=${todayDate}, previous=${previousDate}, currentSize=${currentSnapshot.size}, previousSize=${previousSnapshot.size}`);
 
-    const topClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, 3);
+    const topClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, 3)
+      .filter((climber) => !bannedIds.has(climber.accountId));
     console.log(`[FeaturedFeed] Rankers: ${topRankers.length}, Climbers: ${topClimbers.length}`);
 
     // 3. Deduplicate and Map Badges

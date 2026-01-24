@@ -14,6 +14,8 @@ import type {
   DashboardStats,
 } from '../types/leaderboard-v3';
 
+import type { BannedAccountsResponse } from '../types';
+
 const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
 
 /**
@@ -46,6 +48,67 @@ export async function createPost(
   }
 
   return response.json();
+}
+
+/**
+ * Get list of banned accounts
+ */
+export async function getBannedAccounts(adminPassword: string): Promise<BannedAccountsResponse> {
+  const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/blacklist`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to fetch banned accounts: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Ban an account
+ */
+export async function banAccountApi(
+  adminPassword: string,
+  accountId: string,
+  reason?: string,
+  adminUsername?: string
+): Promise<void> {
+  const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/blacklist`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+      ...(adminUsername && { 'X-Admin-Username': adminUsername }),
+    },
+    body: JSON.stringify({ accountId, reason }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Ban failed: ${response.status}`);
+  }
+}
+
+/**
+ * Unban an account
+ */
+export async function unbanAccountApi(
+  adminPassword: string,
+  accountId: string
+): Promise<void> {
+  const response = await fetch(
+    `${LEADERBOARD_V3_API_URL}/v3/admin/blacklist/${encodeURIComponent(accountId)}`,
+    {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${adminPassword}` },
+    }
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Unban failed: ${response.status}`);
+  }
 }
 
 /**

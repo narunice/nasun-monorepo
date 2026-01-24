@@ -252,8 +252,13 @@ export const handler = async (
       });
     }
 
-    // Calculate top climbers
-    const climbers = calculateTopClimbers(currentSnapshot, previousSnapshot, limit);
+    // Calculate top climbers (filter banned accounts)
+    const { getBannedAccountIds } = await import('../services/dynamodb-client');
+    const bannedIds = await getBannedAccountIds();
+    const allClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, limit + 20);
+    const climbers = allClimbers
+      .filter((climber) => !bannedIds.has(climber.accountId))
+      .slice(0, limit);
 
     const response: TopClimbersResponse = {
       seasonId,
