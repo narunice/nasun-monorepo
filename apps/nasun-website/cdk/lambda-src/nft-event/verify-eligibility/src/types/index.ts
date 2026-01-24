@@ -178,7 +178,7 @@ export interface NftEventEnv {
   // X API Configuration
   X_API_BEARER_TOKEN: string;
   X_TARGET_USERNAME: string; // 팔로우 대상 username (예: "Nasun_io")
-  X_TARGET_USER_ID: string; // 팔로우 대상 User ID (예: "1863020068785004544")
+  X_TARGET_USER_ID: string; // 팔로우 대상 User ID (예: "1725466995565752320")
   X_TARGET_TWEET_ID: string; // 좋아요/리트윗 대상
 
   // Feature Flags

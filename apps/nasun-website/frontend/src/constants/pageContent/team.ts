@@ -13,7 +13,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     imageUrl: naru,
     socialLinks: {
       email: "naru@nasun.io",
-      twitter: "https://x.com/Naru010110",
+      twitter: "https://x.com/Nasun_io",
     },
     publications: [
       {

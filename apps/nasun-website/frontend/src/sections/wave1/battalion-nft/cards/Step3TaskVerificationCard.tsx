@@ -56,7 +56,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
   const [hasVerified, setHasVerified] = useState(false);
 
   const eventTweetId = import.meta.env.VITE_EVENT_TWEET_ID || "";
-  const targetTweetUrl = `https://x.com/Naru010110/status/${eventTweetId}`;
+  const targetTweetUrl = `https://x.com/Nasun_io/status/${eventTweetId}`;
 
   const handleVerify = async () => {
     try {

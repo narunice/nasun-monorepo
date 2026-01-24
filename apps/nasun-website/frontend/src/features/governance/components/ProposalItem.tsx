@@ -85,11 +85,11 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
         className={`flex flex-col relative h-full min-h-[320px] transition-all duration-200 ${bgClass} ${!isExpired ? "cursor-pointer hover:border-nasun-c4" : "cursor-not-allowed border-nasun-white/10"}`}
         onClick={handleCardClick}
       >
-        {/* Header: Title and Type Badge */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1">
-            {/* Type Badge above title, aligned right */}
-            <div className="flex justify-end mb-2 -mt-2 -mr-2">
+        {/* Header: Badges + Title */}
+        <div className="mb-3">
+          {/* Badges row: Type (left) + NFT (right) */}
+          <div className="flex justify-between items-center mb-2 -mt-2 -mx-2">
+            <div>
               {proposal.proposalType === "Poll" ? (
                 <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30">
                   Poll
@@ -100,19 +100,19 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
                 </span>
               )}
             </div>
-            <h6 className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white"}`}>
-              {proposal.title}
-            </h6>
+            {!!voteNft && (
+              <div title="You have voted">
+                <img
+                  className="w-6 h-6 rounded-full border border-nasun-c1/50"
+                  src={voteNft?.url}
+                  alt="Vote NFT"
+                />
+              </div>
+            )}
           </div>
-          {!!voteNft && (
-            <div className="flex-shrink-0" title="You have voted">
-              <img
-                className="w-6 h-6 rounded-full border border-nasun-c1/50"
-                src={voteNft?.url}
-                alt="Vote NFT"
-              />
-            </div>
-          )}
+          <h6 className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white"}`}>
+            {proposal.title}
+          </h6>
         </div>
 
         {/* Description with Expand/Collapse */}

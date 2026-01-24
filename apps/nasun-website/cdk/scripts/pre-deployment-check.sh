@@ -104,7 +104,7 @@ echo ""
 # 환경별 예상 계정 ID
 if [[ "$EXPECTED_ENV" == "development" ]]; then
   EXPECTED_ACCOUNT="135808943968"
-  EXPECTED_TARGET="Naru010110"
+  EXPECTED_TARGET="Nasun_io"
 elif [[ "$EXPECTED_ENV" == "production" ]]; then
   EXPECTED_ACCOUNT="466841130170"
   EXPECTED_TARGET="Nasun_io"

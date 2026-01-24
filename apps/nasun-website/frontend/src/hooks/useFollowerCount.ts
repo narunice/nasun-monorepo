@@ -67,8 +67,7 @@ const getPermanentData = (): number | null => {
 /**
  * Twitter/X 타겟 계정의 팔로워 수를 조회하는 Hook
  *
- * - Dev 환경: @Naru010110 팔로워 수
- * - Prod 환경: @Nasun_io 팔로워 수
+ * - 모든 환경: @Nasun_io 팔로워 수
  * - 30분 localStorage 캐싱 (Twitter API Rate Limit 보호)
  *
  * @example

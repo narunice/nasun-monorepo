@@ -3,7 +3,7 @@ import { secureTokenManager } from '../src/services/secure-token-manager';
 
 // Test with different tweets to see if the issue is tweet-specific
 const TEST_TWEETS = [
-  { id: "2009123468764467252", desc: "Target tweet (Naru010110 Quote Tweet)" },
+  { id: "2009123468764467252", desc: "Target tweet (Nasun_io Quote Tweet)" },
   { id: "2009072293826453669", desc: "Quoted tweet (bcherny)" },
 ];
 
