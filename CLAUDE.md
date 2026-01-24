@@ -132,7 +132,7 @@ Security expectations:
 | 앱                      | 패키지명                | 상태    | 배포 방식    | 설명                         |
 | ----------------------- | ----------------------- | ------- | ------------ | ---------------------------- |
 | `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | AWS Amplify  | Nasun Explorer (블록 탐색기) |
-| `apps/nasun-website`    | @nasun/nasun-website    | ✅ 완료 | EC2 스크립트 | 공식 웹사이트                |
+| `apps/nasun-website`    | @nasun/nasun-website    | ✅ 완료 | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`   | @nasun/gensol-website   | ✅ 완료 | EC2 스크립트 | GenSol 웹사이트              |
 | `apps/pado`             | @nasun/pado             | ✅ 완료 | -            | Pado 앱                      |
 

@@ -1,6 +1,6 @@
 # Nasun Community Leaderboard System v3 기획안
 
-## 구현 현황 (2026-01-21 업데이트)
+## 구현 현황 (2026-01-24 업데이트)
 
 | Phase | 설명 | 상태 |
 |-------|------|------|
@@ -9,7 +9,15 @@
 | Phase 3 | 공개 리더보드 | ✅ 완료 |
 | Phase 4 | 프로필 데이터 동기화 | ✅ 완료 |
 | Phase 5 | 시즌 기반 독립 리더보드 (백엔드) | ✅ 완료 |
-| Phase 6 | 시즌 기반 독립 리더보드 (프론트엔드) | ⏳ 예정 |
+| Phase 6 | 시즌 기반 독립 리더보드 (프론트엔드) | ✅ 완료 |
+
+### 현재 라우트
+
+| 라우트 | 페이지 | 상태 |
+|--------|--------|------|
+| `/wave1/leaderboard` | 공개 리더보드 (V3) | Active |
+| `/admin/leaderboard-v3` | Admin 포스트 등록/관리 | Active |
+| `/leaderboard-v2` | Legacy V2 (X API 기반) | Hidden, deprecated |
 
 ### Phase 5 구현 파일
 
@@ -316,10 +324,12 @@ interface LeaderboardEntry {
 ## 6. 리더보드 UI
 
 ### 공개 리더보드 페이지
-- v2와 독립된 새 라우트: `/leaderboard-v3`
-- 기간 선택: Weekly / Monthly / All-time
+- 라우트: `/wave1/leaderboard`
+- 시즌 선택기: 시즌별 독립 리더보드 조회
 - 컬럼: Rank, Username, Score, Posts, Active Days, Last Active
 - 검색: username으로 검색
+- Top Climbers Spotlight: 순위 상승자 하이라이트
+- Featured Feed: 큐레이팅된 포스트 피드
 
 ### 내 랭킹 카드
 - 로그인한 사용자의 X username 연동 시 표시
@@ -367,14 +377,14 @@ interface LeaderboardEntry {
 
 | Feature | 설명 | 우선순위 | 상태 |
 |---------|------|----------|------|
-| 시즌 기반 리더보드 | 독립적 시즌 관리 | **P0** | ✅ Phase 5 백엔드 완료 |
-| Daily Snapshots | 매일 스냅샷 자동 생성 | **P0** | ✅ Phase 5 백엔드 완료 |
-| Top Climbers | 순위 상승자 하이라이트 | **P1** | ✅ Phase 5 백엔드 완료 |
-| Rank Change Indicators | ↑↓=✨ 순위 변동 표시 | **P1** | ✅ Phase 5 백엔드 완료 |
+| 시즌 기반 리더보드 | 독립적 시즌 관리 | **P0** | ✅ Phase 5+6 완료 |
+| Daily Snapshots | 매일 스냅샷 자동 생성 | **P0** | ✅ Phase 5 완료 |
+| Top Climbers | 순위 상승자 하이라이트 | **P1** | ✅ Phase 5+6 완료 |
+| Rank Change Indicators | ↑↓=✨ 순위 변동 표시 | **P1** | ✅ Phase 5+6 완료 |
+| User Search + Highlight | 사용자 검색 + 자동 스크롤 | **P2** | ✅ Phase 6 완료 |
+| Snapshot Date Picker | 과거 날짜 스냅샷 조회 | **P2** | ✅ Phase 5 백엔드 완료 |
 | Bulk Import | CSV 일괄 업로드 | Medium | 미정 |
 | 플랫폼 확장 | Discord, Farcaster | Medium | 미정 |
-| User Search + Highlight | 사용자 검색 + 자동 스크롤 | **P2** | ⏳ 프론트엔드 구현 필요 |
-| Snapshot Date Picker | 과거 날짜 스냅샷 조회 | **P2** | ✅ Phase 5 백엔드 완료 |
 | Account Badges | Community Organizer 등 | Low | 미정 |
 | 온체인 연동 | NFT Badge 발급 | Low | 미정 |
 
@@ -420,13 +430,40 @@ interface LeaderboardEntry {
 23. get-top-climbers Lambda
 24. get-leaderboard Lambda 수정 (시즌/스냅샷 지원)
 
-### Phase 6: 시즌 기반 독립 리더보드 (프론트엔드) ⏳ 예정
+### Phase 6: 시즌 기반 독립 리더보드 (프론트엔드) ✅ 완료
 25. Admin 시즌 관리 UI
 26. 시즌 선택기 컴포넌트
-27. 스냅샷 날짜 선택기
-28. Top Climbers Spotlight 컴포넌트
-29. Rank Change Indicator 컴포넌트
-30. 사용자 검색 + 자동 하이라이트
+27. Top Climbers Spotlight 컴포넌트
+28. Rank Change Indicator 컴포넌트
+29. Featured Feed (NasunContentFeed)
+30. My Rank Sidebar
+
+### Phase 6 구현 파일
+
+**Page**
+- `frontend/src/pages/LeaderboardV3Page.tsx` - 공개 리더보드 페이지
+
+**Components**
+- `frontend/src/features/leaderboard-v3/components/LeaderboardV3.tsx` - 메인 컴포넌트
+- `frontend/src/features/leaderboard-v3/components/SeasonSelector.tsx` - 시즌 선택기
+- `frontend/src/features/leaderboard-v3/components/TopClimbersV3.tsx` - Top Climbers Spotlight
+- `frontend/src/features/leaderboard-v3/components/LeaderboardV3Row.tsx` - 랭킹 Row (Rank Change 포함)
+- `frontend/src/features/leaderboard-v3/components/main/LeaderboardMainContent.tsx` - 메인 콘텐츠 영역
+- `frontend/src/features/leaderboard-v3/components/sidebar/MyRank/` - My Rank 카드
+- `frontend/src/features/leaderboard-v3/components/NasunContentFeed.tsx` - Featured Feed
+- `frontend/src/features/leaderboard-v3/components/FeedPostCard.tsx` - 피드 포스트 카드
+- `frontend/src/features/leaderboard-v3/components/UserSearchBoxV3.tsx` - 사용자 검색
+
+**Hooks**
+- `frontend/src/features/leaderboard-v3/hooks/useSeasons.ts` - 시즌 목록 조회
+- `frontend/src/features/leaderboard-v3/hooks/useSeasonLeaderboard.ts` - 시즌 리더보드 조회
+- `frontend/src/features/leaderboard-v3/hooks/useTopClimbersV3.ts` - Top Climbers 조회
+- `frontend/src/features/leaderboard-v3/hooks/useMyRank.ts` - 내 랭킹 조회
+- `frontend/src/features/leaderboard-v3/hooks/useFeaturedFeed.ts` - Featured Feed 조회
+- `frontend/src/features/leaderboard-v3/hooks/useUserSearchV3.ts` - 사용자 검색
+
+**Services**
+- `frontend/src/features/leaderboard-v3/services/leaderboardV3Api.ts` - API 클라이언트
 
 ---
 
@@ -541,7 +578,7 @@ Admin 포스트 등록 → X handle 추출 → UserProfiles 조회 (GSI)
 V2 시스템에서는 이벤트 기간 리더보드가 전체 누적 데이터의 날짜 필터링에 의존했다.
 V3에서는 **시즌별 완전 독립 계산** 방식을 채택하여 더 유연하고 관리하기 쉬운 구조를 구현한다.
 
-### 구현 상태 (2026-01-21)
+### 구현 상태 (2026-01-24)
 
 | 항목 | 상태 | 파일 |
 |------|------|------|
@@ -552,7 +589,7 @@ V3에서는 **시즌별 완전 독립 계산** 방식을 채택하여 더 유연
 | Top Climbers Lambda | ✅ | `get-top-climbers.ts` |
 | 리더보드 시즌 지원 | ✅ | `get-leaderboard.ts` |
 | EventBridge 스케줄 | ✅ | 매일 09:00 KST |
-| 프론트엔드 UI | ⏳ | Phase 6 예정 |
+| 프론트엔드 UI | ✅ | Phase 6 완료 (`/wave1/leaderboard`) |
 
 ### V2 vs V3 비교
 
@@ -869,18 +906,18 @@ GET    /v3/leaderboard/top-climbers           # Top Climbers
 | Top Climbers Spotlight | 사용자 참여 동기 부여 | ✅ `get-top-climbers.ts` |
 | Rank Change Indicators (↑↓=✨) | 순위 변동 시각화 | ✅ `get-leaderboard.ts` |
 
-### P2 (중간) ✅ 백엔드 완료
+### P2 (중간) ✅ 완료
 
 | 기능 | 이유 | 상태 |
 |------|------|------|
 | Snapshot Date Picker | 과거 랭킹 조회 | ✅ `?snapshotDate=` 쿼리 |
-| User Search + Auto-highlight | UX 편의성 | ⏳ 프론트엔드 구현 필요 |
+| User Search + Auto-highlight | UX 편의성 | ✅ `UserSearchBoxV3.tsx` |
 
 ### P3 (낮음)
 
 | 기능 | 이유 | 상태 |
 |------|------|------|
-| My Rank Card | V3는 수동 큐레이션이라 덜 중요 | ⏳ 미정 |
+| My Rank Card | 로그인 시 사이드바에 표시 | ✅ `sidebar/MyRank/` |
 | Rank History Charts | 분석용 | ⏳ 미정 |
 
 ---
