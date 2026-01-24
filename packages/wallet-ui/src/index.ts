@@ -151,6 +151,16 @@ export type {
   LedgerAddress,
 } from './ledger';
 
+// NSA (Smart Account) components
+export {
+  NsaSetupWizard,
+  NsaAccountInfo,
+  NsaAddSigner,
+  NsaBackupPanel,
+  NsaGuardianSetup,
+  NsaRecoveryPanel,
+} from './nsa';
+
 // Shared components
 export { Tooltip, InlineTooltip } from './shared';
 export type { TooltipProps, InlineTooltipProps } from './shared';

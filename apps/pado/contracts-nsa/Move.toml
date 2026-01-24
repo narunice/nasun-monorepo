@@ -1,0 +1,14 @@
+[package]
+name = "nasun_smart_account"
+edition = "2024"
+version = "0.0.1"
+
+[dependencies]
+Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
+
+[addresses]
+nasun_smart_account = "0x0"
+
+[environments]
+devnet = "56c8b101"
+nasun-devnet = "56c8b101"

@@ -11,9 +11,11 @@ import { SignerManager } from '../core/signer/SignerManager';
 import { LocalSigner } from '../core/signer/adapters/LocalSigner';
 import { ZkLoginSigner } from '../core/signer/adapters/ZkLoginSigner';
 import { EVMSigner } from '../core/signer/adapters/EVMSigner';
+import { NsaSigner } from '../core/signer/adapters/NsaSigner';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { useChain } from './useChain';
+import { useNsaStore } from '../stores/nsaStore';
 import { hasEVMWallet, unlockEVMWallet } from '../core/evm/keystore';
 import { getSessionPassword } from '../sui/client';
 import type { SignerAdapter, SignerType } from '../core/signer/types';
@@ -63,6 +65,10 @@ export function useSigner(): UseSignerResult {
 
   // Track EVM wallet unlock state
   const [evmUnlocked, setEvmUnlocked] = useState(false);
+
+  // NSA store state
+  const nsaAccountObjectId = useNsaStore((s) => s.accountObjectId);
+  const nsaIsInitialized = useNsaStore((s) => s.isInitialized);
 
   // Subscribe to SignerManager changes
   const snapshot = useSyncExternalStore(
@@ -144,10 +150,33 @@ export function useSigner(): UseSignerResult {
     registerEVMSigner();
   }, [isEVM, chain.chainId, status]); // Re-run when chain changes or wallet status changes
 
+  // Register/unregister NsaSigner when SmartAccount is configured
+  useEffect(() => {
+    if (!nsaIsInitialized || !nsaAccountObjectId) {
+      if (SignerManager.has('nsa')) {
+        SignerManager.unregister('nsa');
+      }
+      return;
+    }
+
+    // Wrap the underlying Move signer (prefer local, fallback to zklogin)
+    const underlyingSigner = SignerManager.get('local') || SignerManager.get('zklogin');
+    if (underlyingSigner) {
+      SignerManager.register(new NsaSigner(underlyingSigner, nsaAccountObjectId));
+    } else {
+      if (SignerManager.has('nsa')) {
+        SignerManager.unregister('nsa');
+      }
+    }
+  }, [nsaIsInitialized, nsaAccountObjectId, snapshot.available.length]);
+
   // Auto-switch to appropriate signer when chain changes
+  // Priority on Move: nsa > local > zklogin
   useEffect(() => {
     if (isEVM && SignerManager.has('evm')) {
       SignerManager.switchTo('evm');
+    } else if (isMove && SignerManager.has('nsa')) {
+      SignerManager.switchTo('nsa');
     } else if (isMove && SignerManager.has('local')) {
       SignerManager.switchTo('local');
     } else if (isMove && SignerManager.has('zklogin')) {

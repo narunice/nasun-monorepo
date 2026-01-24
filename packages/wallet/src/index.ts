@@ -377,7 +377,81 @@ export { SignerManager } from './core/signer/SignerManager';
 export type { SignerManagerSnapshot } from './core/signer/SignerManager';
 
 // Signer Adapters
-export { LocalSigner, ZkLoginSigner, EVMSigner } from './core/signer/adapters';
+export { LocalSigner, ZkLoginSigner, EVMSigner, NsaSigner } from './core/signer/adapters';
+
+// ============================================
+// Nasun Smart Account (NSA)
+// ============================================
+
+// NSA Hooks
+export { useNasunSmartAccount } from './hooks/useNasunSmartAccount';
+export type { UseNasunSmartAccountResult } from './hooks/useNasunSmartAccount';
+export { useNsaRecovery } from './hooks/useNsaRecovery';
+export type { UseNsaRecoveryResult } from './hooks/useNsaRecovery';
+export { useNsaBackup } from './hooks/useNsaBackup';
+export type { UseNsaBackupResult } from './hooks/useNsaBackup';
+
+// NSA Store
+export { useNsaStore } from './stores/nsaStore';
+
+// NSA Core Module
+export {
+  fetchAccountState,
+  fetchRecoveryRequest,
+  findAccountsForAddress,
+  buildCreateAccount,
+  buildDeposit,
+  buildWithdraw,
+  buildAddSigner,
+  buildRemoveSigner,
+  buildSetGuardians,
+  buildUpdateThreshold,
+  buildInitiateRecovery,
+  buildApproveRecovery,
+  buildExecuteRecovery,
+  buildCancelRecovery,
+  createBackup,
+  restoreFromBackup,
+  validateBackupFormat,
+  computeRecoveryStatus,
+  getTimelockRemainingMs,
+  formatTimelockRemaining,
+  hasApproved,
+  getRemainingApprovalsNeeded,
+  canExecuteRecovery,
+  canCancelRecovery,
+  computeTimelockEnd,
+  validateGuardianConfig,
+} from './core/nsa';
+
+// NSA Types
+export type {
+  NsaSignerType,
+  NsaSignerInfo,
+  NsaAccountState,
+  NsaRecoveryRequestState,
+  RecoveryTier,
+  NsaBackupPackage,
+  NsaRecoveryStatus,
+  NsaErrorType,
+  NsaBalanceEntry,
+} from './types/nsa';
+export { NsaError, NSA_PACKAGE_ID, NSA_TIMELOCK_MS, NSA_SIGNER_TYPE_MAP } from './types/nsa';
+
+// NSA Internal Types
+export type {
+  CreateAccountParams,
+  DepositParams,
+  WithdrawParams,
+  AddSignerParams,
+  RemoveSignerParams,
+  SetGuardiansParams,
+  UpdateThresholdParams,
+  InitiateRecoveryParams,
+  ApproveRecoveryParams,
+  ExecuteRecoveryParams,
+  CancelRecoveryParams,
+} from './core/nsa';
 
 // ============================================
 // Multi-Chain Support (P1)

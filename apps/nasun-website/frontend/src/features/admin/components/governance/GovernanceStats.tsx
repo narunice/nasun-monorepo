@@ -12,32 +12,28 @@ export function GovernanceStats({ proposals, hiddenCount }: GovernanceStatsProps
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-      <DashboardCard className="bg-gray-800/30 border-nasun-c5/40 text-center">
+      <DashboardCard variant="default" className="text-center">
         <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Total
         </span>
         <span className="text-2xl font-bold text-nasun-white">{proposals.length}</span>
       </DashboardCard>
-      
-      <DashboardCard className="bg-gray-800/30 border-nasun-c5/40 text-center">
+
+      <DashboardCard variant="default" className="text-center">
         <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Active
         </span>
-        <span className="text-2xl font-bold text-nasun-c1">
-          {activeCount}
-        </span>
+        <span className="text-2xl font-bold text-nasun-c1">{activeCount}</span>
       </DashboardCard>
-      
-      <DashboardCard className="bg-gray-800/30 border-nasun-c5/40 text-center">
+
+      <DashboardCard variant="default" className="text-center">
         <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Expired
         </span>
-        <span className="text-2xl font-bold text-nasun-white/40">
-          {expiredCount}
-        </span>
+        <span className="text-2xl font-bold text-nasun-white/40">{expiredCount}</span>
       </DashboardCard>
-      
-      <DashboardCard className="bg-gray-800/30 border-nasun-c5/40 text-center">
+
+      <DashboardCard variant="default" className="text-center">
         <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Hidden
         </span>

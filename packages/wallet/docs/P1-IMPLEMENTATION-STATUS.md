@@ -8,13 +8,14 @@
 
 ## Overview
 
-Universal Web3 wallet library supporting Sui/Move and EVM chains. Provides core cryptography, signer abstraction, hardware wallet integration, account abstraction, payment UX, and zkLogin authentication.
+Universal Web3 wallet library supporting Sui/Move and EVM chains. Provides core cryptography, signer abstraction, hardware wallet integration, account abstraction, payment UX, zkLogin authentication, and Nasun Smart Account (NSA) with Trinity Recovery.
 
 **Related Docs:**
 - [WalletConnect v2](./P2-WALLETCONNECT-V2.md)
 - [EVM Account Abstraction](./P3-EVM-ACCOUNT-ABSTRACTION.md)
 - [Nasun Link v2](./P4-NASUN-LINK-V2.md)
 - [zkLogin Multi-Provider](./ZKLOGIN-MULTI-PROVIDER.md)
+- [NSA & Trinity Recovery](./P5-NSA-SMART-ACCOUNT.md)
 
 ---
 
@@ -30,10 +31,11 @@ src/
 │   ├── evm/                   EVM client, wallet, ERC-20
 │   ├── ledger/                Ledger hardware wallet
 │   ├── link/                  Nasun Link (token distribution URLs)
+│   ├── nsa/                   Nasun Smart Account (on-chain client, backup, recovery)
 │   ├── payment/               Payment intent, QR, validation
 │   ├── portfolio/             Price provider
 │   ├── signer/                Signer abstraction layer
-│   │   └── adapters/          6 signer implementations
+│   │   └── adapters/          7 signer implementations
 │   ├── walletconnect/         WalletConnect v2 SignClient
 │   ├── zkid/                  Zero-knowledge identity
 │   ├── crypto.ts              Mnemonic, AES, secure memory
@@ -41,12 +43,12 @@ src/
 │   ├── passkey.ts             WebAuthn/Passkey
 │   ├── rate-limit.ts          Brute-force lockout
 │   └── zklogin.ts             zkLogin OAuth + ZK proof
-├── hooks/                     33 React hooks
+├── hooks/                     36 React hooks
 ├── schemas/                   Zod RPC validation
 ├── stores/                    Zustand state stores
 ├── sui/                       Sui-specific utilities
 ├── types/                     Shared type definitions
-└── index.ts                   Package exports (1066 lines)
+└── index.ts                   Package exports
 ```
 
 ---
@@ -57,7 +59,7 @@ src/
 
 | File | Description |
 |------|-------------|
-| `types.ts` | SignerAdapter interface, ChainType enum |
+| `types.ts` | SignerAdapter interface, SignerType union (8 types) |
 | `SignerManager.ts` | Active signer state management |
 | `adapters/LocalSigner.ts` | Ed25519 keypair (Sui native) |
 | `adapters/ZkLoginSigner.ts` | zkLogin ZK proof signer |
@@ -65,6 +67,17 @@ src/
 | `adapters/LedgerSigner.ts` | Ledger hardware wallet |
 | `adapters/SmartAccountSigner.ts` | ERC-4337 Smart Account |
 | `adapters/SessionKeySigner.ts` | ERC-4337 session key |
+| `adapters/NsaSigner.ts` | Nasun Smart Account (wraps underlying signer) |
+
+### Nasun Smart Account (`core/nsa/`)
+
+| File | Description |
+|------|-------------|
+| `types.ts` | Operation parameter types (Create, Deposit, Withdraw, etc.) |
+| `client.ts` | On-chain query (fetchAccountState) + 12 TX builders |
+| `backup.ts` | Tier 2: PBKDF2 600K + AES-256-GCM encrypted backup |
+| `recovery.ts` | Tier 3: Guardian recovery status, timelock, validation |
+| `index.ts` | Module exports |
 
 ### EVM (`core/evm/`)
 
@@ -152,7 +165,7 @@ src/
 | `crypto.ts` | Mnemonic generation, AES-256-GCM, secure memory zeroing |
 | `keystore.ts` | PBKDF2 encrypted key storage (100K iterations) |
 | `passkey.ts` | WebAuthn credential create/authenticate |
-| `rate-limit.ts` | Brute-force lockout (8/12/16 attempts → 30s/5m/30m) |
+| `rate-limit.ts` | Brute-force lockout (8/12/16 attempts -> 30s/5m/30m) |
 | `zklogin.ts` | OAuth URL builder, JWT verify, ZK proof, salt API |
 
 ---
@@ -168,13 +181,13 @@ src/
 | `tokenFaucet.ts` | NBTC/NUSDC faucet (Move contract interaction) |
 
 **Auto-registered Token Faucets:**
-- `NSN` → nativeFaucetHandler (HTTP API)
-- `NBTC` → nbtcFaucetHandler (Move contract)
-- `NUSDC` → nusdcFaucetHandler (Move contract)
+- `NSN` -> nativeFaucetHandler (HTTP API)
+- `NBTC` -> nbtcFaucetHandler (Move contract)
+- `NUSDC` -> nusdcFaucetHandler (Move contract)
 
 ---
 
-## Hooks Reference (33 hooks)
+## Hooks Reference (36 hooks)
 
 ### Wallet Core
 | Hook | Description |
@@ -191,7 +204,7 @@ src/
 ### Signer
 | Hook | Description |
 |------|-------------|
-| `useSigner` | Active signer selection and management |
+| `useSigner` | Active signer selection and management (auto-registers NSA) |
 
 ### NFT & Staking
 | Hook | Description |
@@ -207,6 +220,13 @@ src/
 |------|-------------|
 | `useZkLogin` | zkLogin flow (init, callback, sign) |
 | `usePasskey` | WebAuthn credential management |
+
+### Nasun Smart Account (NSA)
+| Hook | Description |
+|------|-------------|
+| `useNasunSmartAccount` | Account creation, deposit, withdraw, signer/guardian management |
+| `useNsaRecovery` | Tier 3 guardian recovery flow (initiate, approve, execute, cancel) |
+| `useNsaBackup` | Tier 2 encrypted backup (create, restore, download, parse) |
 
 ### EVM
 | Hook | Description |
@@ -270,13 +290,15 @@ src/
 ### State Stores (`stores/`)
 | File | Description |
 |------|-------------|
-| `zkLoginStore.ts` | zkLogin session/credential Zustand store |
+| `zkLoginStore.ts` | zkLogin session/credential Zustand store (sessionStorage) |
 | `zkidStore.ts` | ZK-ID state store |
+| `nsaStore.ts` | NSA account state store (localStorage, persistent) |
 
 ### Type Definitions (`types/`)
 | File | Description |
 |------|-------------|
 | `nft.ts` | NFT display, collection types |
+| `nsa.ts` | NSA account, signer, recovery, backup types |
 | `passkey.ts` | WebAuthn credential types |
 | `portfolio.ts` | Portfolio, price types |
 | `staking.ts` | Validator, stake types |
@@ -284,3 +306,18 @@ src/
 
 ### Tests (`__tests__/`)
 18 test files: aa, addressBook, clear-signing, client, crypto, keystore, ledger, link, nft, payment, portfolio, rate-limit, sanity, staking, tokenTransaction, tokens, zkid
+
+---
+
+## On-Chain Contracts
+
+### Nasun Smart Account (`apps/pado/contracts-nsa/`)
+
+Move contract package implementing the SmartAccount vault and Guardian Recovery.
+
+| Module | Description |
+|--------|-------------|
+| `smart_account.move` | SmartAccount shared object, signer VecMap, Bag asset storage, deposit/withdraw |
+| `recovery.move` | RecoveryRequest shared object, guardian approval, 48h timelock, signer rotation |
+
+**Deployed:** Pending devnet deployment. Package ID placeholder: `0x0`.

@@ -1,4 +1,5 @@
 import { OuterBox } from '@/components/ui/OuterBox';
+import { InlineLoading } from '@/components/ui/InlineLoading';
 import type { ProposalSummary } from '@/features/admin/types';
 
 interface ProposalsTableProps {
@@ -20,11 +21,7 @@ export function ProposalsTable({
 }: ProposalsTableProps) {
   return (
     <div className="w-full">
-      <OuterBox
-        color="c6"
-        padding="sm"
-        className="w-full !border-nasun-c5/30 !bg-gray-800/30 overflow-hidden"
-      >
+      <OuterBox color="w5" padding="sm" className="w-full overflow-hidden">
         <h5 className="uppercase text-nasun-white/80 text-sm tracking-widest mb-6 px-2 flex items-center gap-2">
           <span className="w-1 h-4 bg-nasun-c4 rounded-full"></span>
           Proposals Table
@@ -148,7 +145,7 @@ export function ProposalsTable({
                         <button
                           onClick={() => onToggleVisibility(proposal.id)}
                           disabled={togglingId === proposal.id || isTogglingLoading}
-                          className={`p-2 rounded-sm transition-all border disabled:opacity-30 ${
+                          className={`p-2 rounded-sm transition-all border disabled:opacity-30 flex items-center justify-center ${
                             isHidden(proposal.id)
                               ? 'bg-nasun-c1/20 border-nasun-c1/30 text-nasun-c1 hover:bg-nasun-c1/30'
                               : 'bg-nasun-c6/50 border-nasun-c5/20 text-nasun-white/70 hover:text-nasun-white'
@@ -156,7 +153,7 @@ export function ProposalsTable({
                           title={isHidden(proposal.id) ? 'Unhide from Public' : 'Hide from Public'}
                         >
                           {togglingId === proposal.id ? (
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            <InlineLoading size="sm" />
                           ) : isHidden(proposal.id) ? (
                             <svg
                               className="w-4 h-4"
