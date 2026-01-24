@@ -13,8 +13,8 @@ Before implementing any UI, adhere to these key principles:
 
 1.  **Corner Radius**: Always use **`rounded-sm`**. Avoid `rounded-lg` or `rounded-md` to maintain a sharp, technical aesthetic.
 2.  **Color Usage**:
-    *   **Avoid `nasun-c3` (Teal)**: Use `nasun-c4` (Blue) or `nasun-c1` (Gold) for interactive elements.
-    *   **Box Themes**: Prefer `w1`~`w5` variants for `OuterBox` and `DividerBox`. These are the primary color props to use.
+    - **Avoid `nasun-c3` (Teal)**: Use `nasun-c4` (Blue) or `nasun-c1` (Gold) for interactive elements.
+    - **Box Themes**: Prefer `w1`, `w2`, `w3`, `w4`, `w5` variants for `OuterBox` and `DividerBox`. These are the primary color props to use.
 3.  **Responsive Spacing**: Use the 3-step scale (`mobile -> md -> lg`) for all gaps and margins.
 4.  **Text Hierarchy**: Use `nasun-white` for emphasis and `nasun-white/80` for body text.
 
@@ -23,6 +23,7 @@ Before implementing any UI, adhere to these key principles:
 ## 2. Page Layout Structure
 
 ### 2.1 Container
+
 All main content pages must use the `SectionLayout` wrapper.
 
 - **Component**: `<SectionLayout>`
@@ -33,14 +34,14 @@ All main content pages must use the `SectionLayout` wrapper.
 
 **A. Vertical Spacing (Between Sections)**
 Use `flex flex-col` on the parent container.
+
 ```tsx
-<div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
-  {/* Sections go here */}
-</div>
+<div className="flex flex-col gap-6 md:gap-8 lg:gap-10">{/* Sections go here */}</div>
 ```
 
 **B. Content Spacing (Inside Sections)**
 Spacing between paragraphs (`p`) or internal blocks.
+
 ```tsx
 <div className="space-y-2 md:space-y-3 lg:space-y-4">
   <p>...</p>
@@ -49,6 +50,7 @@ Spacing between paragraphs (`p`) or internal blocks.
 
 **C. Grid Layouts**
 Standard grids for cards and boxes.
+
 ```tsx
 // Standard 2-Column
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
@@ -66,23 +68,23 @@ Standard grids for cards and boxes.
 
 ### Brand Colors
 
-| Name | HEX | Tailwind Class | Usage |
-|------|-----|----------------|-------|
-| nasun-white | `#faf7f4` | `text-nasun-white`, `bg-nasun-white` | Primary text, backgrounds |
-| nasun-black | `#191615` | `text-nasun-black`, `bg-nasun-black` | Dark backgrounds |
-| nasun-gray | `#242424` | `bg-nasun-gray` | Dark UI components |
-| nasun-scarlet | `#fa3102` | `text-nasun-scarlet`, `bg-nasun-scarlet` | Warning, alerts |
+| Name          | HEX       | Tailwind Class                           | Usage                     |
+| ------------- | --------- | ---------------------------------------- | ------------------------- |
+| nasun-white   | `#faf7f4` | `text-nasun-white`, `bg-nasun-white`     | Primary text, backgrounds |
+| nasun-black   | `#191615` | `text-nasun-black`, `bg-nasun-black`     | Dark backgrounds          |
+| nasun-gray    | `#242424` | `bg-nasun-gray`                          | Dark UI components        |
+| nasun-scarlet | `#fa3102` | `text-nasun-scarlet`, `bg-nasun-scarlet` | Warning, alerts           |
 
 ### Palette Colors
 
-| Name | Usage | Status |
-|------|-------|--------|
-| `nasun-c1` | Gold/amber - rewards, highlights | ✅ Active |
-| `nasun-c2` | Light yellow - secondary highlights | ✅ Active |
-| `nasun-c3` | Teal/cyan | **⚠️ DEPRECATED (Avoid)** |
-| `nasun-c4` | Blue - interactive elements, primary buttons | ✅ Active |
-| `nasun-c5` | Deep blue - borders, secondary elements | ✅ Active |
-| `nasun-c6` | Navy - dark containers, sidebars | ✅ Active |
+| Name       | Usage                                        | Status                    |
+| ---------- | -------------------------------------------- | ------------------------- |
+| `nasun-c1` | Gold/amber - rewards, highlights             | ✅ Active                 |
+| `nasun-c2` | Light yellow - secondary highlights          | ✅ Active                 |
+| `nasun-c3` | Teal/cyan                                    | **⚠️ DEPRECATED (Avoid)** |
+| `nasun-c4` | Blue - interactive elements, primary buttons | ✅ Active                 |
+| `nasun-c5` | Deep blue - borders, secondary elements      | ✅ Active                 |
+| `nasun-c6` | Navy - dark containers, sidebars             | ✅ Active                 |
 
 ### Text Opacity Levels
 
@@ -110,11 +112,13 @@ bg-nasun-c4/20             /* Active/Logged-in badge */
 ## 4. Typography
 
 ### Font Families
-*   **English**: Rubik
-*   **Korean**: Pretendard
-*   **Special**: Founders Grotesk (`font-founders`), Eurostile (`font-eurostile`)
+
+- **English**: Rubik
+- **Korean**: Pretendard
+- **Special**: Founders Grotesk (`font-founders`), Eurostile (`font-eurostile`)
 
 ### Heading Styles (Global)
+
 Headings are strictly typed in `index.css`. Do not override sizes manually unless necessary.
 
 ```css
@@ -125,19 +129,21 @@ h4: text-xl/tight md:text-2xl/tight lg:text-3xl/tight
 ```
 
 ### Text Styling Rules
-*   **Emphasis**: Use `<strong className="text-nasun-white font-medium" />` inside `Trans`.
-*   **Brand Emphasis**: Use `text-nasun-c1` for key metrics or brand terms.
-*   **Introduction Text**: `text-lg font-light leading-relaxed text-nasun-white/90`.
-*   **Lists**:
-    ```tsx
-    <ul className="list-disc pl-6 space-y-2 marker:text-nasun-c1">
-      <li>List item</li>
-    </ul>
-    ```
+
+- **Emphasis**: Use `<strong className="text-nasun-white font-medium" />` inside `Trans`.
+- **Brand Emphasis**: Use `text-nasun-c1` for key metrics or brand terms.
+- **Introduction Text**: `text-lg font-light leading-relaxed text-nasun-white/90`.
+- **Lists**:
+  ```tsx
+  <ul className="list-disc pl-6 space-y-2 marker:text-nasun-c1">
+    <li>List item</li>
+  </ul>
+  ```
 
 ### Title Components
 
 **PageTitle** (H2)
+
 ```tsx
 <PageTitle as="h2" align="center">
   PAGE TITLE
@@ -146,6 +152,7 @@ h4: text-xl/tight md:text-2xl/tight lg:text-3xl/tight
 ```
 
 **SectionTitle** (H3/H4)
+
 ```tsx
 <SectionTitle as="h3" color="white" className="text-center">
   Section Title
@@ -158,18 +165,21 @@ h4: text-xl/tight md:text-2xl/tight lg:text-3xl/tight
 
 ### 5.1 Buttons (`Button`)
 
-| Variant | Usage | Style |
-|---------|-------|-------|
-| `c4` | **Primary Action** | Blue solid (`bg-nasun-c4`) |
-| `green` | Success/Confirm | Green solid (`bg-green-500`) |
-| `destructive` | Danger/Delete | Red solid (`bg-red-500`) |
-| `outlineC5` | Secondary | Blue outline (`ring-nasun-c5`) |
-| `ghost` | Tertiary | Text only (`hover:bg-nasun-c5/20`) |
+| Variant       | Usage              | Style                              |
+| ------------- | ------------------ | ---------------------------------- |
+| `c4`          | **Primary Action** | Blue solid (`bg-nasun-c4`)         |
+| `green`       | Success/Confirm    | Green solid (`bg-green-500`)       |
+| `destructive` | Danger/Delete      | Red solid (`bg-red-500`)           |
+| `outlineC5`   | Secondary          | Blue outline (`ring-nasun-c5`)     |
+| `ghost`       | Tertiary           | Text only (`hover:bg-nasun-c5/20`) |
 
 **Standard Layout**:
+
 ```tsx
 <div className="flex w-fit items-center gap-2 mt-6 mx-auto">
-  <Button variant="c1" size="lg">Action</Button>
+  <Button variant="c1" size="lg">
+    Action
+  </Button>
 </div>
 ```
 
@@ -180,36 +190,38 @@ h4: text-xl/tight md:text-2xl/tight lg:text-3xl/tight
 **Color Rule**: `nasun-c3` (Teal) 사용을 지양합니다. 인터랙티브 요소에는 `nasun-c4` (Blue) 또는 `nasun-c1` (Gold)을 사용하고, Box 컴포넌트에는 `w1`~`w5` variant를 우선 사용하세요.
 
 #### OuterBox
+
 For large container boxes/sections.
 
-*   **Recommended Props**: `color="w1"` ~ `color="w5"` (preferred over other color variants)
-*   **Padding**: `padding="md"` (24px-32px)
+- **Recommended Props**: `color="w1"` ~ `color="w5"` (preferred over other color variants)
+- **Padding**: `padding="md"` (24px-32px)
 
 #### DividerBox
+
 For content groups with a title and divider.
 
-*   **Recommended Props**: `color="w1"` ~ `color="w5"` (preferred over other color variants)
-*   **Padding**: `padding="sm"` (16px-24px)
-*   **Title Style**: Use `titleClassName="!text-nasun-c1"` if emphasis is needed.
+- **Recommended Props**: `color="w1"` ~ `color="w5"` (preferred over other color variants)
+- **Padding**: `padding="sm"` (16px-24px)
+- **Title Style**: Use `titleClassName="!text-nasun-c1"` if emphasis is needed.
 
 #### Wave Variant Reference
 
-| Variant | Background | Border | Usage |
-|---------|-----------|--------|-------|
-| `w1` | `bg-nasun-gray/70` | `border-nasun-white/40` | Default wave section |
-| `w2` | `bg-[#212E57]/50` | `border-nasun-c4/50` | Nasun Network section |
-| `w3` | `bg-nasun-c4/90` | `border-nasun-white/50` | Nasun Token section |
-| `w4` | `bg-nasun-gray/70` | `border-nasun-white/40` | Gold text variant (c1) |
-| `w5` | `bg-[#3D3D3D]` | `border-nasun-white/40` | Neutral dark card |
+| Variant | Background         | Border                  | Usage                  |
+| ------- | ------------------ | ----------------------- | ---------------------- |
+| `w1`    | `bg-nasun-gray/70` | `border-nasun-white/40` | Default wave section   |
+| `w2`    | `bg-[#212E57]/50`  | `border-nasun-c4/50`    | Nasun Network section  |
+| `w3`    | `bg-nasun-c4/90`   | `border-nasun-white/50` | Nasun Token section    |
+| `w4`    | `bg-nasun-gray/70` | `border-nasun-white/40` | Gold text variant (c1) |
+| `w5`    | `bg-[#3D3D3D]`     | `border-nasun-white/40` | Neutral dark card      |
 
 ### 5.3 Cards (`DashboardCard`)
 
-| Variant | Style |
-|---------|-------|
-| `default` | `bg-gray-800/30 border-nasun-c5/40` |
-| `hero` | Gradient background (`nasun-c6` to `c3`) |
-| `compact` | Minimal styling (`bg-nasun-c6/30`) |
-| `danger` | Red background (`bg-red-950/30`) |
+| Variant   | Style                                    |
+| --------- | ---------------------------------------- |
+| `default` | `bg-gray-800/30 border-nasun-c5/40`      |
+| `hero`    | Gradient background (`nasun-c6` to `c3`) |
+| `compact` | Minimal styling (`bg-nasun-c6/30`)       |
+| `danger`  | Red background (`bg-red-950/30`)         |
 
 ### 5.4 Form Elements
 

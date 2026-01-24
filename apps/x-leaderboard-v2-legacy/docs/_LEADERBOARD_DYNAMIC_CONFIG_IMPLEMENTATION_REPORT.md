@@ -311,7 +311,7 @@ const config = getEnvConfigV2();
 
 ```bash
 # 1. 백엔드 배포
-cd /home/naru/my_apps/nasun-apps/nasun-website/cdk
+cd /home/naru/my_apps/nasun-apps/x-leaderboard-v2-legacy/cdk
 pnpm cdk deploy CdkStack --require-approval never
 ```
 
@@ -372,7 +372,7 @@ curl -s https://bb4zdy0rwe.execute-api.ap-northeast-2.amazonaws.com/prod/api/lea
 
 ```bash
 # 프로덕션 빌드 테스트
-cd /home/naru/my_apps/nasun-apps/nasun-website/frontend
+cd /home/naru/my_apps/nasun-apps/x-leaderboard-v2-legacy/frontend
 npm run build
 ```
 
@@ -428,7 +428,7 @@ dist/assets/index-D9l1zdZ7.js  2,145.67 kB │ gzip: 733.77 kB
 #### 테스트 실행 결과
 
 ```bash
-cd /home/naru/my_apps/nasun-apps/nasun-website/cdk
+cd /home/naru/my_apps/nasun-apps/x-leaderboard-v2-legacy/cdk
 bash scripts/test-dynamic-config.sh
 ```
 

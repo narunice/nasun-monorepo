@@ -1,5 +1,6 @@
 # EVM Account Abstraction Implementation Status
 
+> Last Updated: 2026-01-24
 > Status: **COMPLETED**
 > Package: @nasun/wallet
 
@@ -25,17 +26,27 @@ ERC-4337 Account Abstraction has been fully implemented, enabling:
 | `paymaster.ts` | Manages `PimlicoPaymasterClient` instances and gas sponsorship logic. |
 | `types.ts` | Type definitions for Smart Accounts, UserOperations, and configurations. |
 
-### 2.2. Signer Adapter (`packages/wallet/src/core/signer/adapters/`)
+### 2.2. Signer Adapters (`packages/wallet/src/core/signer/adapters/`)
 
 | File | Description |
 |------|-------------|
 | `SmartAccountSigner.ts` | Adapts the Smart Account to the `SignerAdapter` interface. Handles `signMessage` and `sendTransaction` via UserOps. |
+| `SessionKeySigner.ts` | Session key signer for automated/delegated transactions within policy constraints. |
 
-### 2.3. React Hooks (`packages/wallet/src/hooks/`)
+### 2.3. Session Keys (`packages/wallet/src/core/aa/session-keys/`)
+
+| File | Description |
+|------|-------------|
+| `manager.ts` | SessionKeyManager class: create, validate, revoke session keys with permission policies. |
+| `index.ts` | Exports SessionKeyManager and permission factories. |
+
+### 2.4. React Hooks (`packages/wallet/src/hooks/`)
 
 | Hook | Description |
 |------|-------------|
-| `useSmartAccount` | comprehensive hook for managing Smart Account state, sending transactions (batch/single), and toggling sponsorship. |
+| `useSmartAccount` | Smart Account state, sending transactions (batch/single), toggling sponsorship. |
+| `useGaslessTransaction` | Gasless transaction submission via paymaster (P2 enhancement). |
+| `useSessionKey` | Session key creation, validation, and revocation. |
 
 ---
 
