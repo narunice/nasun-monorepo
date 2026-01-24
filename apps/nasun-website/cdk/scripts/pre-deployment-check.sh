@@ -104,7 +104,7 @@ echo ""
 # 환경별 예상 계정 ID
 if [[ "$EXPECTED_ENV" == "development" ]]; then
   EXPECTED_ACCOUNT="__AWS_DEV_ACCOUNT__"
-  EXPECTED_TARGET="Naru010110"
+  EXPECTED_TARGET="Nasun_io"
 elif [[ "$EXPECTED_ENV" == "production" ]]; then
   EXPECTED_ACCOUNT="__AWS_PROD_ACCOUNT__"
   EXPECTED_TARGET="Nasun_io"

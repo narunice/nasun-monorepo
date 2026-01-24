@@ -80,9 +80,9 @@ async function initializeServices(): Promise<void> {
   // Twitter API 서비스 초기화 (환경변수 + Secure Tokens)
   const twitterApiConfig = {
     cumulativeTableName: process.env.CUMULATIVE_TABLE_NAME || 'nasun-leaderboard-data',
-    targetUsername: process.env.TARGET_USERNAME || 'Naru010110',
-    targetUserId: process.env.TARGET_USER_ID || '1863020068785004544',
-    adminUsernames: (process.env.ADMIN_USERNAMES || 'Naru010110').split(','),
+    targetUsername: process.env.TARGET_USERNAME || 'Nasun_io',
+    targetUserId: process.env.TARGET_USER_ID || '1725466995565752320',
+    adminUsernames: (process.env.ADMIN_USERNAMES || 'Nasun_io').split(','),
     twitterApiKey: process.env.TWITTER_API_KEY || '',
     twitterApiSecret: process.env.TWITTER_API_SECRET || '',
     twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || '',

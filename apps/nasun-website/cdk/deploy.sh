@@ -10,7 +10,7 @@
 #   ./deploy.sh dev --dry-run     # 실제 배포 없이 검증만
 #
 # 환경별 설정:
-#   - dev:  AWS 계정 __AWS_DEV_ACCOUNT__, @Naru010110, nasun-twitter-tokens
+#   - dev:  AWS 계정 __AWS_DEV_ACCOUNT__, @Nasun_io, nasun-twitter-tokens
 #   - prod: AWS 계정 __AWS_PROD_ACCOUNT__, @GenSol_io, nasun-twitter-tokens-prod
 # =============================================================================
 
@@ -116,7 +116,7 @@ if [[ "$ENV" == "production" ]]; then
 else
     ENV_FILE=".env.development"
     AWS_PROFILE="default"
-    TARGET_ACCOUNT="@Naru010110"
+    TARGET_ACCOUNT="@Nasun_io"
     AWS_ACCOUNT_ID="__AWS_DEV_ACCOUNT__"
     PROFILE_FLAG=""
     NODE_ENV_VAL="development"

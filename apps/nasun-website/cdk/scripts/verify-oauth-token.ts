@@ -51,8 +51,8 @@ const ENV_CONFIGS = {
   development: {
     envFile: '.env.development',
     secretName: 'nasun-twitter-tokens',
-    targetUserId: '1863020068785004544',
-    targetUsername: 'Naru010110',
+    targetUserId: '1725466995565752320',
+    targetUsername: 'Nasun_io',
     awsAccount: '__AWS_DEV_ACCOUNT__',
     awsRegion: 'ap-northeast-2',
   },

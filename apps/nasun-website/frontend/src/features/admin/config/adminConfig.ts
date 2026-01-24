@@ -45,7 +45,7 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
   },
   {
     title: 'Blacklist Management',
-    description: 'Manage user bans and restrictions. (Feature currently in planning phase)',
+    description: 'Manage user bans and restrictions for the leaderboard.',
     icon: '🚫',
     link: '/admin/users',
     linkText: 'Manage Users',

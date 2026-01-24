@@ -335,7 +335,7 @@ log_section "7. 테스트 결과 요약"
 log_section "=================="
 
 log_info "📊 테스트 완료 시간: $(date)"
-log_info "🎯 타겟 계정: Naru010110"
+log_info "🎯 타겟 계정: Nasun_io"
 log_info "📅 테스트 날짜: $TARGET_DATE"
 
 echo ""

@@ -34,7 +34,7 @@ const env: NftEventEnv = {
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
   X_API_BEARER_TOKEN: process.env.X_API_BEARER_TOKEN!,
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || 'Nasun_io',
-  X_TARGET_USER_ID: process.env.X_TARGET_USER_ID || '1863020068785004544',
+  X_TARGET_USER_ID: process.env.X_TARGET_USER_ID || '1725466995565752320',
   X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID!,
   ENABLE_RATE_LIMIT_CACHE: process.env.ENABLE_RATE_LIMIT_CACHE || 'true',
   CACHE_TTL_MINUTES: process.env.CACHE_TTL_MINUTES || '15',
@@ -71,7 +71,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     const verificationService = new VerificationService({
       xApiConfig: {
         bearerToken: accessToken, // User Access Token 또는 App Bearer Token
-        targetUserId: env.X_TARGET_USER_ID, // Naru010110의 User ID (1863020068785004544)
+        targetUserId: env.X_TARGET_USER_ID, // @Nasun_io User ID (1725466995565752320)
         targetTweetId: env.X_TARGET_TWEET_ID,
         isUserContext: isUserContextAuth, // User Context OAuth 여부
       },

@@ -411,7 +411,7 @@ export class TwitterApiService {
   /**
    * 타겟 사용자의 원본 트윗(replies/retweets 제외) 조회
    *
-   * @param userId 타겟 사용자의 **numeric User ID** (예: "1863020068785004544")
+   * @param userId 타겟 사용자의 **numeric User ID** (예: "1725466995565752320")
    *               ⚠️ X API v2는 username으로 직접 호출 불가!
    * @param startTime 시작 시각 (ISO 8601)
    * @param endTime 종료 시각 (ISO 8601)
@@ -544,13 +544,13 @@ export class TwitterApiService {
    * - 그 댓글에 달린 인게이지먼트(likes/replies/retweets/quotes) 수집
    *
    * **데이터 예시**:
-   * - 타겟 원본 포스트: https://x.com/Naru010110/status/1976194953291452749
-   * - 타겟 댓글: https://x.com/Naru010110/status/1977255356427600360
+   * - 타겟 원본 포스트: https://x.com/Nasun_io/status/1976194953291452749
+   * - 타겟 댓글: https://x.com/Nasun_io/status/1977255356427600360
    * - 타겟 댓글에 달린 답글: https://x.com/Keymong368774/status/1977259878193545304
    *   → 이제 수집됨! ✅
    *
-   * @param userId 타겟 사용자의 **numeric User ID** (예: "1863020068785004544")
-   *                ⚠️ X API v2는 username("Naru010110")으로 직접 호출 불가!
+   * @param userId 타겟 사용자의 **numeric User ID** (예: "1725466995565752320")
+   *                ⚠️ X API v2는 username("Nasun_io")으로 직접 호출 불가!
    *                TARGET_USER_ID 환경변수에서 가져와야 함
    * @param startTime 시작 시각 (ISO 8601)
    * @param endTime 종료 시각 (ISO 8601)
@@ -1250,8 +1250,8 @@ export class TwitterApiService {
   /**
    * 타겟 사용자를 멘션한 트윗 목록 조회
    *
-   * @param userId 타겟 사용자의 **numeric User ID** (예: "1863020068785004544")
-   *               ⚠️ X API v2는 username("Naru010110")으로 직접 호출 불가!
+   * @param userId 타겟 사용자의 **numeric User ID** (예: "1725466995565752320")
+   *               ⚠️ X API v2는 username("Nasun_io")으로 직접 호출 불가!
    *               TARGET_USER_ID 환경변수에서 가져와야 함
    * @param startTime 시작 시각 (ISO 8601)
    * @param endTime 종료 시각 (ISO 8601)
@@ -1847,7 +1847,7 @@ export class TwitterApiService {
   }
 
   // 북마크된 트윗의 타겟 멘션 검증
-  async validateTargetMentionsInBookmark(bookmarkedTweet: any, targetUsernames: string[] = [process.env.TARGET_USERNAME || 'Naru010110']): Promise<{
+  async validateTargetMentionsInBookmark(bookmarkedTweet: any, targetUsernames: string[] = [process.env.TARGET_USERNAME || 'Nasun_io']): Promise<{
     isValid: boolean;
     mentionedTargetUsernames: string[];
     validationDetails: any;

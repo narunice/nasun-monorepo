@@ -23,8 +23,8 @@ TARGET_DATE="${1:-$(date +%Y-%m-%d)}"
 SECRET_NAME="nasun-twitter-tokens-dev"
 STATE_MACHINE_NAME="nasun-leaderboard-pipeline"
 STATE_MACHINE_ARN="arn:aws:states:${REGION}:${AWS_ACCOUNT_ID}:stateMachine:${STATE_MACHINE_NAME}"
-TARGET_USERNAME="Naru010110"
-TARGET_USER_ID="1863020068785004544"
+TARGET_USERNAME="Nasun_io"
+TARGET_USER_ID="1725466995565752320"
 REPORT_FILE="/tmp/pipeline-report-${TARGET_DATE}.txt"
 
 # 색상 정의

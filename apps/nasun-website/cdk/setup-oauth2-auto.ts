@@ -36,7 +36,7 @@ async function main() {
 
   // Environment detection
   const environment = process.env.ENVIRONMENT || process.env.NODE_ENV || 'development';
-  const targetUsername = process.env.X_TARGET_USERNAME || process.env.TARGET_USERNAME || 'Naru010110';
+  const targetUsername = process.env.X_TARGET_USERNAME || process.env.TARGET_USERNAME || 'Nasun_io';
   const targetUserId = process.env.X_TARGET_USER_ID || process.env.TARGET_USER_ID || '';
   const secretName = process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens';
 
