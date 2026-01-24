@@ -233,6 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearError();
     setIsLoading(true);
     localStorage.setItem("auth_provider_preference", "Google");
+    localStorage.setItem("auth_return_to", window.location.pathname);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/callback`;
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -249,6 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearError();
     setIsLoading(true);
     localStorage.setItem("auth_provider_preference", "Twitter");
+    localStorage.setItem("auth_return_to", window.location.pathname);
 
     try {
       const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/login`);

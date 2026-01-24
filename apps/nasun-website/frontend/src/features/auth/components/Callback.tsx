@@ -85,8 +85,9 @@ export default function Callback() {
     // Case 3: Processing is finished, and we are successfully authenticated
     if (!isLoading && isAuthenticated && user) {
       hasHandledRef.current = true;
-      const returnTo = localStorage.getItem('auth_return_to') || '/my-account';
+      const savedPath = localStorage.getItem('auth_return_to');
       localStorage.removeItem('auth_return_to');
+      const returnTo = (!savedPath || savedPath === '/') ? '/my-account' : savedPath;
       navigate(returnTo, { replace: true });
     }
 
