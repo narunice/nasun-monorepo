@@ -376,6 +376,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Blacklist Lambda (Phase 11)
+    const adminBlacklistLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdminBlacklistFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-admin-blacklist`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'admin-blacklist.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Admin blacklist management (ban/unban/list)',
+      }
+    );
+
     // Grant DynamoDB permissions
     this.postsTable.grantReadWriteData(createPostLambda);
     this.postsTable.grantReadData(getLeaderboardLambda);
@@ -408,6 +423,9 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // Search Accounts permissions (Phase 8)
     this.accountsTable.grantReadData(searchAccountsLambda);
     this.seasonAccountsTable.grantReadData(searchAccountsLambda);
+
+    // Admin Blacklist permissions (Phase 11)
+    this.accountsTable.grantReadWriteData(adminBlacklistLambda);
 
     // Featured Feed permissions (Phase 10)
     this.postsTable.grantReadData(getFeaturedFeedLambda);
@@ -530,6 +548,18 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // GET /v3/admin/stats - Dashboard statistics (Phase 7)
     const adminStatsResource = adminResource.addResource('stats');
     adminStatsResource.addMethod('GET', new apigw.LambdaIntegration(adminStatsLambda));
+
+    // Admin Blacklist routes (Phase 11)
+    // POST /v3/admin/blacklist - Ban account
+    // GET /v3/admin/blacklist - List banned accounts
+    const adminBlacklistResource = adminResource.addResource('blacklist');
+    const adminBlacklistIntegration = new apigw.LambdaIntegration(adminBlacklistLambda);
+    adminBlacklistResource.addMethod('POST', adminBlacklistIntegration);
+    adminBlacklistResource.addMethod('GET', adminBlacklistIntegration);
+
+    // DELETE /v3/admin/blacklist/{accountId} - Unban account
+    const adminBlacklistIdResource = adminBlacklistResource.addResource('{accountId}');
+    adminBlacklistIdResource.addMethod('DELETE', adminBlacklistIntegration);
 
     // ============================================
     // Outputs

@@ -13,7 +13,7 @@ import {
   PostType,
 } from '../types';
 import { normalizeUrl } from '../utils/url-normalizer';
-import { createPost, getPostByUrl } from '../services/dynamodb-client';
+import { createPost, getPostByUrl, getAccountByUsername } from '../services/dynamodb-client';
 
 // Admin password from environment
 const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
@@ -175,6 +175,17 @@ export const handler = async (
       return createResponse(400, {
         success: false,
         error: normalized.error || 'Invalid URL',
+      });
+    }
+
+    // Check if account is banned
+    const existingAccount = await getAccountByUsername(normalized.platform, normalized.username);
+    if (existingAccount?.isBanned) {
+      return createResponse(403, {
+        success: false,
+        error: 'This account is banned and cannot register posts',
+        // @ts-ignore - CreatePostResponse doesn't explicitly include username but it's useful for debugging
+        username: normalized.username,
       });
     }
 

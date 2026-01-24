@@ -91,9 +91,9 @@ async function searchAccounts(
 
   const accounts = (result.Items || []) as Account[];
 
-  // Filter and sort: exact matches first, then substring matches
+  // Filter banned accounts, then sort: exact matches first, then substring matches
   return accounts
-    .filter((a) => a.username.includes(normalizedQuery))
+    .filter((a) => a.username.includes(normalizedQuery) && !a.isBanned)
     .sort((a, b) => {
       // Exact match first
       if (a.username === normalizedQuery && b.username !== normalizedQuery) return -1;

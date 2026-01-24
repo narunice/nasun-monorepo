@@ -276,8 +276,8 @@ export const handler = async (
 
     // Get account by username
     const account = await getAccountByUsername(username);
-    if (!account) {
-      // User not found in leaderboard
+    if (!account || account.isBanned) {
+      // User not found or banned
       const notRankedResponse: MyRankResponse = {
         success: true,
         data: { status: 'not_ranked' },

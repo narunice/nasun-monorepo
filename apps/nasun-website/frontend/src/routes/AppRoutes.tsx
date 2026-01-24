@@ -16,6 +16,7 @@ const WhitelistManagement = lazy(() => import("../features/admin/pages/Whitelist
 const GovernanceManagement = lazy(() => import("../features/admin/pages/GovernanceManagement").then(m => ({ default: m.GovernanceManagement })));
 const CreateProposal = lazy(() => import("../features/admin/pages/CreateProposal").then(m => ({ default: m.CreateProposal })));
 const LeaderboardV3Admin = lazy(() => import("../features/admin/pages/LeaderboardV3Admin").then(m => ({ default: m.LeaderboardV3Admin })));
+const BlacklistManagement = lazy(() => import("../features/admin/pages/BlacklistManagement").then(m => ({ default: m.BlacklistManagement })));
 
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
@@ -451,6 +452,18 @@ const AppRoutes = () => {
                 <meta name="robots" content="noindex, nofollow" />
               </Helmet>
               <LeaderboardV3Admin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <Helmet>
+                <title>NASUN - Blacklist Management</title>
+                <meta name="robots" content="noindex, nofollow" />
+              </Helmet>
+              <BlacklistManagement />
             </AdminRoute>
           }
         />
