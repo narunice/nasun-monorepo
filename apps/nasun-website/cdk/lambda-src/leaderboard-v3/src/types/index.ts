@@ -106,6 +106,12 @@ export interface Account {
   // Timestamps
   firstSeenAt: string; // ISO timestamp
   lastSeenAt: string; // ISO timestamp of last post
+
+  // Ban status (soft exclusion)
+  isBanned?: boolean;
+  banReason?: string;
+  bannedAt?: string; // ISO 8601
+  bannedBy?: string; // Admin username
 }
 
 /**
@@ -230,6 +236,32 @@ export interface AdminAuthResponse {
   expiresAt?: string;
 }
 
+// Blacklist management types
+export interface BanAccountRequest {
+  accountId: string;
+  reason?: string;
+}
+
+export interface BannedAccountEntry {
+  accountId: string;
+  username: string;
+  originalUsername?: string;
+  platform: Platform;
+  displayName?: string;
+  profileImageUrl?: string;
+  postCount: number;
+  totalPostScore: number;
+  banReason?: string;
+  bannedAt?: string;
+  bannedBy?: string;
+}
+
+export interface BannedAccountsResponse {
+  success: true;
+  accounts: BannedAccountEntry[];
+  total: number;
+}
+
 // ============================================
 // DynamoDB Key Schemas
 // ============================================
@@ -240,6 +272,7 @@ export const DYNAMO_KEYS = {
   POSTS_PK: 'postId',
   POSTS_URL_INDEX: 'postUrl-index',
   POSTS_SEASON_INDEX: 'seasonId-createdAt-index',
+  POSTS_CREATED_AT_INDEX: 'createdAt-index',
 
   // Accounts table
   ACCOUNTS_TABLE: 'leaderboard-v3-accounts',

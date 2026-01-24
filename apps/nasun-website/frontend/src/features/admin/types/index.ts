@@ -79,3 +79,24 @@ export interface ExportOptions {
 export interface HiddenProposalsResponse {
   proposalIds: string[];
 }
+
+// Blacklist types
+export interface BannedAccount {
+  accountId: string;
+  username: string;
+  originalUsername?: string;
+  platform: string;
+  displayName?: string;
+  profileImageUrl?: string;
+  postCount: number;
+  totalPostScore: number;
+  banReason?: string;
+  bannedAt?: string;
+  bannedBy?: string;
+}
+
+export interface BannedAccountsResponse {
+  success: boolean;
+  accounts: BannedAccount[];
+  total: number;
+}

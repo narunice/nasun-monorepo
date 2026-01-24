@@ -45,6 +45,7 @@ import {
   getActiveSeason,
   getSeasonById,
   getSeasonAccountScores,
+  getBannedAccountIds,
 } from '../services/dynamodb-client';
 import { calculateUserScore, compareScores } from '../services/score-calculator';
 
@@ -390,8 +391,9 @@ export const handler = async (
 
       // Get all accounts and calculate real-time scores
       const accounts = await getAllAccounts();
+      const bannedIds = await getBannedAccountIds();
       const computedScores: ComputedUserScore[] = accounts
-        .filter((account) => account.postCount > 0)
+        .filter((account) => account.postCount > 0 && !bannedIds.has(account.accountId))
         .map((account) => calculateUserScore(account));
 
       computedScores.sort(compareScores);
@@ -483,8 +485,10 @@ export const handler = async (
       return createResponse(200, response);
     }
 
-    // Recalculate scores with current timestamp and sort
+    // Filter banned accounts and recalculate scores
+    const bannedIds = await getBannedAccountIds();
     const recalculatedScores = seasonScores
+      .filter((score) => !bannedIds.has(score.accountId))
       .map((score) => ({
         ...score,
         ...recalculateSeasonScore(score),
