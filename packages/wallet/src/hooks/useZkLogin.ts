@@ -23,6 +23,7 @@ import {
   clearOAuthCsrfState,
 } from '../core/zklogin';
 import { useZkLoginStore } from '../stores/zkLoginStore';
+import { useChainStore } from './useChain';
 
 /**
  * zkLogin hook options
@@ -176,6 +177,8 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
   const logout = useCallback(() => {
     disconnectZkLogin();
     clearStoreState();
+    // Reset chain to default (Nasun Devnet) on logout
+    useChainStore.getState().resetToDefault();
     queryClient.invalidateQueries({ queryKey: ['zklogin'] });
   }, [queryClient, clearStoreState]);
 

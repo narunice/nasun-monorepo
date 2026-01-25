@@ -8,6 +8,7 @@ import { getAllBalances } from '../sui/client';
 import type { MultiTokenBalanceInfo, TokenBalance } from '../types';
 import { useWallet } from './useWallet';
 import { useZkLoginStore } from '../stores/zkLoginStore';
+import { useChainStore } from './useChain';
 
 // Query key
 const MULTI_BALANCE_QUERY_KEY = 'wallet-multi-balance';
@@ -28,6 +29,7 @@ export interface UseMultiBalanceOptions {
 export function useMultiBalance(options?: UseMultiBalanceOptions) {
   const { account, status } = useWallet();
   const { state: zkState, isConnected: isZkLoggedIn } = useZkLoginStore();
+  const chainId = useChainStore((s) => s.currentChainId);
 
   // Determine target address (local wallet or zkLogin)
   const targetAddress = options?.address ?? account?.address ?? zkState?.address;
@@ -36,7 +38,7 @@ export function useMultiBalance(options?: UseMultiBalanceOptions) {
   const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn);
 
   return useQuery<MultiTokenBalanceInfo>({
-    queryKey: [MULTI_BALANCE_QUERY_KEY, targetAddress],
+    queryKey: [MULTI_BALANCE_QUERY_KEY, chainId, targetAddress],
     queryFn: async () => {
       if (!targetAddress) {
         throw new Error('No address provided');
@@ -84,6 +86,7 @@ export function useRefreshMultiBalance() {
   const queryClient = useQueryClient();
   const { account } = useWallet();
   const { state: zkState } = useZkLoginStore();
+  const chainId = useChainStore((s) => s.currentChainId);
 
   // Use wallet address or zkLogin address
   const address = account?.address ?? zkState?.address;
@@ -91,7 +94,7 @@ export function useRefreshMultiBalance() {
   return async () => {
     if (address) {
       await queryClient.invalidateQueries({
-        queryKey: [MULTI_BALANCE_QUERY_KEY, address],
+        queryKey: [MULTI_BALANCE_QUERY_KEY, chainId, address],
       });
     }
   };
@@ -102,10 +105,11 @@ export function useRefreshMultiBalance() {
  */
 export function useInvalidateMultiBalance() {
   const queryClient = useQueryClient();
+  const chainId = useChainStore((s) => s.currentChainId);
 
   return (address: string) => {
     queryClient.invalidateQueries({
-      queryKey: [MULTI_BALANCE_QUERY_KEY, address],
+      queryKey: [MULTI_BALANCE_QUERY_KEY, chainId, address],
     });
   };
 }

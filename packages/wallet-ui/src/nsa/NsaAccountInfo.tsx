@@ -273,7 +273,7 @@ export function NsaAccountInfo({ onClose, onNavigate, onAcceptProposal }: NsaAcc
           {accountObjectId && (
             <div className="space-y-1">
               <span className="text-xs text-gray-500 dark:text-zinc-400">Account ID</span>
-              <CopyableAddress address={accountObjectId} startChars={10} endChars={6} />
+              <CopyableAddress value={accountObjectId} shorten={10} />
             </div>
           )}
 
