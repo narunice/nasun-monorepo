@@ -15,20 +15,20 @@ export default function InfoRow({ label, value, mono, copyable, status, link }: 
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center py-2 border-b border-slate-700 last:border-b-0">
-      <div className="w-32 text-slate-400 text-sm flex-shrink-0">{label}</div>
+    <div className="flex flex-col sm:flex-row sm:items-center py-2 border-b border-border last:border-b-0">
+      <div className="w-32 text-muted-foreground text-sm flex-shrink-0">{label}</div>
       <div className={`flex-1 break-all ${mono ? 'font-mono text-sm' : ''}`}>
         {status ? (
-          <span className={`px-2 py-1 rounded text-xs ${status === 'success' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>
+          <span className={`px-2 py-1 rounded text-xs ${status === 'success' ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-destructive/20 text-destructive'}`}>
             {value}
           </span>
         ) : link ? (
-          <Link to={link} className="text-nasun-c4 hover:underline">{value}</Link>
+          <Link to={link} className="text-primary hover:underline">{value}</Link>
         ) : (
-          value
+          <span className="text-foreground">{value}</span>
         )}
         {copyable && (
-          <button onClick={handleCopy} className="ml-2 text-slate-500 hover:text-nasun-white text-xs">
+          <button onClick={handleCopy} className="ml-2 text-muted-foreground hover:text-foreground text-xs">
             [Copy]
           </button>
         )}

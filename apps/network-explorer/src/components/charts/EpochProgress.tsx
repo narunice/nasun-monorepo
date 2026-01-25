@@ -15,22 +15,22 @@ interface EpochProgressProps {
 
 export function EpochProgress({ epochInfo }: EpochProgressProps) {
   return (
-    <Card variant="c6" className="p-4">
-      <div className="text-nasun-white/60 text-sm uppercase tracking-wider mb-4">
+    <Card variant="default" className="p-4">
+      <div className="text-muted-foreground text-sm uppercase tracking-wider mb-4">
         Epoch Progress
       </div>
       {epochInfo ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-nasun-white text-lg font-mono">Epoch {epochInfo.epoch}</span>
-            <span className="text-nasun-white/60 text-sm">
+            <span className="text-foreground text-lg font-mono">Epoch {epochInfo.epoch}</span>
+            <span className="text-muted-foreground text-sm">
               {formatDuration(epochInfo.remainingMs)} remaining
             </span>
           </div>
           <div className="relative">
-            <div className="h-4 bg-nasun-c4/20 rounded-full overflow-hidden">
+            <div className="h-4 bg-primary/20 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-nasun-c4 to-nasun-c5 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
                 style={{ width: `${epochInfo.progress}%` }}
               />
             </div>
@@ -42,8 +42,8 @@ export function EpochProgress({ epochInfo }: EpochProgressProps) {
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <div className="text-nasun-white/40">Started</div>
-              <div className="text-nasun-white font-mono">
+              <div className="text-muted-foreground">Started</div>
+              <div className="text-foreground font-mono">
                 {new Date(epochInfo.startTimestamp).toLocaleString('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -53,8 +53,8 @@ export function EpochProgress({ epochInfo }: EpochProgressProps) {
               </div>
             </div>
             <div>
-              <div className="text-nasun-white/40">Est. End</div>
-              <div className="text-nasun-white font-mono">
+              <div className="text-muted-foreground">Est. End</div>
+              <div className="text-foreground font-mono">
                 {new Date(epochInfo.endTimestamp).toLocaleString('en-US', {
                   month: 'short',
                   day: 'numeric',
@@ -66,7 +66,7 @@ export function EpochProgress({ epochInfo }: EpochProgressProps) {
           </div>
         </div>
       ) : (
-        <div className="h-[200px] flex items-center justify-center text-nasun-white/40 text-sm">
+        <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
           Loading epoch info...
         </div>
       )}

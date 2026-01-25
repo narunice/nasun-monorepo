@@ -73,12 +73,12 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
     <div className="space-y-6">
       {/* Header with back button and raw data toggle */}
       <div className="flex items-center justify-between">
-        <Link to="/" className="text-nasun-c4 hover:underline">
+        <Link to="/" className="text-primary hover:underline">
           &larr; Back to Home
         </Link>
         <button
           onClick={() => setShowRawData(!showRawData)}
-          className="text-sm text-nasun-white/60 hover:text-nasun-c4 transition-colors"
+          className="text-sm text-muted-foreground hover:text-primary transition-colors"
         >
           {showRawData ? 'Hide Raw Data' : 'Show Raw Data'}
         </button>
@@ -87,8 +87,8 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
       {/* Main content: 2-column layout on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: NFT Image (large) */}
-        <Card variant="c6" className="p-4">
-          <div className="aspect-square rounded-lg overflow-hidden bg-nasun-c6/60">
+        <Card variant="default" className="p-4">
+          <div className="aspect-square rounded-lg overflow-hidden bg-muted/30">
             {mediaUrl ? (
               <NFTMedia
                 url={mediaUrl}
@@ -98,7 +98,7 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <svg
-                  className="w-16 h-16 text-nasun-white/20"
+                  className="w-16 h-16 text-muted-foreground/20"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -120,22 +120,22 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
           {/* Collection badge */}
           {(collectionName || moduleName) && (
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-nasun-c5/30 border border-nasun-c5/50 rounded-full text-xs text-nasun-c4 font-medium">
+              <span className="px-3 py-1 bg-secondary/20 border border-secondary/50 rounded-full text-xs text-primary font-medium">
                 {collectionName || moduleName}
               </span>
             </div>
           )}
 
           {/* NFT Name */}
-          <h1 className="text-2xl font-bold text-nasun-white">{name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{name}</h1>
 
           {/* Owner */}
           {ownerAddress && (
-            <Card variant="c6" className="p-4">
+            <Card variant="default" className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-nasun-c5/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
                   <svg
-                    className="w-5 h-5 text-nasun-c4"
+                    className="w-5 h-5 text-primary"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -149,23 +149,23 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs text-nasun-white/50 uppercase tracking-wide">Owner</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Owner</p>
                   <div className="flex items-center gap-1">
                     <Link
                       to={`/address/${ownerAddress}`}
-                      className="text-sm text-nasun-c4 hover:underline font-mono"
+                      className="text-sm text-primary hover:underline font-mono"
                     >
                       {shortenId(ownerAddress, 8)}
                     </Link>
                     <button
                       onClick={() => handleCopyOwner(ownerAddress)}
-                      className="p-0.5 text-nasun-white/40 hover:text-nasun-c4 transition-colors"
+                      className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
                       title={ownerCopied ? 'Copied!' : 'Copy address'}
                       type="button"
                     >
                       {ownerCopied ? (
                         <svg
-                          className="w-3.5 h-3.5 text-nasun-c3"
+                          className="w-3.5 h-3.5 dark:text-nasun-c3 text-teal-600"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -200,7 +200,7 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
           )}
 
           {/* Object Details */}
-          <Card variant="c6" className="p-4 space-y-3">
+          <Card variant="default" className="p-4 space-y-3">
             <CopyableId
               value={data.objectId}
               label="Object ID"
@@ -209,19 +209,19 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
               size="xs"
             />
             <div>
-              <p className="text-xs text-nasun-white/50 uppercase tracking-wide">Type</p>
-              <p className="text-xs text-nasun-white/80 font-mono mt-1 break-all">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Type</p>
+              <p className="text-xs text-muted-foreground font-mono mt-1 break-all">
                 {formatObjectType(data.type ?? undefined)}
               </p>
             </div>
             <div className="flex gap-6">
               <div>
-                <p className="text-xs text-nasun-white/50 uppercase tracking-wide">Version</p>
-                <p className="text-sm text-nasun-white mt-1">{data.version}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Version</p>
+                <p className="text-sm text-foreground mt-1">{data.version}</p>
               </div>
               <div>
-                <p className="text-xs text-nasun-white/50 uppercase tracking-wide">Digest</p>
-                <p className="text-sm text-nasun-white/80 font-mono mt-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Digest</p>
+                <p className="text-sm text-muted-foreground font-mono mt-1">
                   {shortenId(data.digest || '', 6)}
                 </p>
               </div>
@@ -233,7 +233,7 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
       {/* Description */}
       {description && (
         <SectionBox title="Description" color="c5">
-          <p className="text-nasun-white/80 text-sm leading-relaxed">{description}</p>
+          <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
         </SectionBox>
       )}
 
@@ -249,14 +249,14 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
         <>
           {content && (
             <SectionBox title="Content" color="c3">
-              <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c3/30 p-4 rounded-lg max-h-96 text-nasun-white/80">
+              <pre className="text-xs overflow-auto bg-muted/30 border border-border p-4 rounded-lg max-h-96 text-muted-foreground">
                 {JSON.stringify(content, null, 2)}
               </pre>
             </SectionBox>
           )}
 
           <SectionBox title="Raw Object Data" color="c6">
-            <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c5/30 p-4 rounded-lg max-h-96 text-nasun-white/80">
+            <pre className="text-xs overflow-auto bg-muted/30 border border-border p-4 rounded-lg max-h-96 text-muted-foreground">
               {JSON.stringify(object, null, 2)}
             </pre>
           </SectionBox>

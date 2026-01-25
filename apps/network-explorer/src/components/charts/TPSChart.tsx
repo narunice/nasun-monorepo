@@ -8,10 +8,10 @@ interface TPSChartProps {
 
 export function TPSChart({ data }: TPSChartProps) {
   return (
-    <Card variant="c6" className="p-4">
+    <Card variant="default" className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-nasun-white/60 text-sm uppercase tracking-wider">TPS Trend</div>
-        <div className="text-xs text-nasun-white/40">(Last {data.length} updates)</div>
+        <div className="text-muted-foreground text-sm uppercase tracking-wider">TPS Trend</div>
+        <div className="text-xs text-muted-foreground">(Last {data.length} updates)</div>
       </div>
       {data.length >= 2 ? (
         <div className="h-[200px] w-full min-w-0">
@@ -25,26 +25,26 @@ export function TPSChart({ data }: TPSChartProps) {
               </defs>
               <XAxis
                 dataKey="time"
-                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
-                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                tick={{ fill: '#888888', fontSize: 10 }}
+                axisLine={{ stroke: '#888888', opacity: 0.2 }}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
-                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                tick={{ fill: '#888888', fontSize: 10 }}
+                axisLine={{ stroke: '#888888', opacity: 0.2 }}
                 tickLine={false}
                 width={40}
                 domain={[0, 'auto']}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  backgroundColor: 'var(--background)',
+                  borderColor: 'var(--border)',
                   borderRadius: '8px',
-                  color: '#fff',
+                  color: 'var(--foreground)',
                 }}
-                labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
+                labelStyle={{ color: 'var(--muted-foreground)' }}
                 formatter={(value) => [`${value} tx/s`, 'TPS']}
               />
               <Area
@@ -58,7 +58,7 @@ export function TPSChart({ data }: TPSChartProps) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="h-[200px] flex items-center justify-center text-nasun-white/40 text-sm">
+        <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
           Collecting data... ({data.length}/2 points)
         </div>
       )}

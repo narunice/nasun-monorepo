@@ -26,16 +26,16 @@ export function CoinSymbol({ type, showFullType = false, className = '' }: CoinS
   if (isLoading) {
     return (
       <span className={`inline-flex items-center gap-1 ${className}`}>
-        <span className="text-nasun-white/50">...</span>
+        <span className="text-muted-foreground">...</span>
       </span>
     );
   }
 
   return (
     <span className={`inline-flex items-center gap-1 ${className}`} title={type}>
-      <span className="font-semibold text-nasun-c4">{symbol}</span>
+      <span className="font-semibold text-primary">{symbol}</span>
       {showFullType && coinType && (
-        <span className="text-nasun-white/50 text-xs font-mono">
+        <span className="text-muted-foreground text-xs font-mono">
           ({truncateType(coinType)})
         </span>
       )}
@@ -59,7 +59,7 @@ export function SimpleCoinSymbol({ type, className = '' }: SimpleCoinSymbolProps
   const displaySymbol = symbol === 'SUI' ? 'NSN' : symbol;
 
   return (
-    <span className={`font-semibold text-nasun-c4 ${className}`} title={type}>
+    <span className={`font-semibold text-primary ${className}`} title={type}>
       {displaySymbol}
     </span>
   );

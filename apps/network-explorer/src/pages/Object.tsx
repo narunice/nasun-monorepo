@@ -53,31 +53,31 @@ export default function ObjectPage() {
       {!isNFT && (
         <>
           <div className="mb-6">
-            <Link to="/" className="text-nasun-c4 hover:underline">
+            <Link to="/" className="text-primary hover:underline">
               &larr; Back to Home
             </Link>
           </div>
 
-          <h1 className="text-2xl font-bold mb-6">Object Details</h1>
+          <h1 className="text-2xl font-bold mb-6 text-foreground">Object Details</h1>
         </>
       )}
 
       {isLoading ? (
-        <div className="text-nasun-white/60">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       ) : error || !obj || obj.error ? (
-        <Card variant="c6" className="p-6">
-          <div className="text-nasun-white/80 mb-4">
+        <Card variant="default" className="p-6">
+          <div className="text-muted-foreground mb-4">
             Object not found
           </div>
           {obj?.error && (
-            <pre className="text-xs text-nasun-white/60 bg-nasun-c6/60 border border-nasun-c5/30 p-3 rounded-lg mb-4">
+            <pre className="text-xs text-muted-foreground bg-muted/30 border border-border p-3 rounded-lg mb-4">
               {JSON.stringify(obj.error, null, 2)}
             </pre>
           )}
           {id && (
-            <div className="text-sm text-nasun-white/60">
+            <div className="text-sm text-muted-foreground">
               Looking for an address instead?{' '}
-              <Link to={`/address/${id}`} className="text-nasun-c4 hover:underline">
+              <Link to={`/address/${id}`} className="text-primary hover:underline">
                 View as Address
               </Link>
             </div>
@@ -95,19 +95,19 @@ export default function ObjectPage() {
               <InfoRow label="Version" value={obj.data?.version || '-'} />
               <InfoRow label="Digest" value={obj.data?.digest || '-'} mono />
               {isCoinType(obj.data?.type) ? (
-                <div className="grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-nasun-c4/20">
-                  <span className="text-nasun-white/60 text-sm uppercase tracking-wider">Type</span>
+                <div className="grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-border">
+                  <span className="text-muted-foreground text-sm uppercase tracking-wider">Type</span>
                   <CoinSymbol type={obj.data?.type || ''} showFullType />
                 </div>
               ) : (
-                <div className="grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-nasun-c4/20">
-                  <span className="text-nasun-white/60 text-sm uppercase tracking-wider">Type</span>
+                <div className="grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-border">
+                  <span className="text-muted-foreground text-sm uppercase tracking-wider">Type</span>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-nasun-white text-sm">{formatObjectType(obj.data?.type ?? undefined)}</span>
+                    <span className="text-foreground text-sm">{formatObjectType(obj.data?.type ?? undefined)}</span>
                     {extractPackageId(obj.data?.type) && (
                       <Link
                         to={`/package/${extractPackageId(obj.data?.type)}`}
-                        className="text-xs text-nasun-c4 hover:underline"
+                        className="text-xs text-primary hover:underline"
                       >
                         View Package →
                       </Link>
@@ -127,7 +127,7 @@ export default function ObjectPage() {
           {/* Content */}
           {obj.data?.content && (
             <SectionBox title="Content" color="c3">
-              <JsonBlock data={obj.data.content} borderColor="border-nasun-c3/30" />
+              <JsonBlock data={obj.data.content} borderColor="border-border" />
             </SectionBox>
           )}
 
@@ -157,7 +157,7 @@ export default function ObjectPage() {
 
           {/* Raw Data */}
           <SectionBox title="Raw Object Data" color="c6">
-            <JsonBlock data={obj} borderColor="border-nasun-c5/30" />
+            <JsonBlock data={obj} borderColor="border-border" />
           </SectionBox>
         </div>
       )}
@@ -186,7 +186,7 @@ function getOwnerLink(owner: any): string | undefined {
 }
 
 // Reusable JSON block with copy button
-function JsonBlock({ data, borderColor = 'border-nasun-c5/30' }: { data: unknown; borderColor?: string }) {
+function JsonBlock({ data, borderColor = 'border-border' }: { data: unknown; borderColor?: string }) {
   const [copied, setCopied] = useState(false);
   const jsonString = JSON.stringify(data, null, 2);
 
@@ -205,7 +205,7 @@ function JsonBlock({ data, borderColor = 'border-nasun-c5/30' }: { data: unknown
       {/* Copy button - positioned inside JSON area, top-right */}
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-4 z-10 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-nasun-c5/40 hover:bg-nasun-c5/60 text-nasun-white/80 hover:text-nasun-white border border-nasun-c5/30"
+        className="absolute top-2 right-4 z-10 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-secondary/20 hover:bg-secondary/40 text-foreground border border-border"
       >
         {copied ? (
           <span className="flex items-center gap-1.5">
@@ -225,7 +225,7 @@ function JsonBlock({ data, borderColor = 'border-nasun-c5/30' }: { data: unknown
       </button>
 
       {/* JSON content with custom scrollbar and top padding for button space */}
-      <pre className={`text-xs overflow-auto bg-nasun-c6/60 border ${borderColor} pt-12 pb-4 px-4 rounded-lg max-h-96 text-nasun-white/80 custom-scrollbar`}>
+      <pre className={`text-xs overflow-auto bg-muted/30 border ${borderColor} pt-12 pb-4 px-4 rounded-lg max-h-96 text-foreground custom-scrollbar`}>
         {jsonString}
       </pre>
     </div>
