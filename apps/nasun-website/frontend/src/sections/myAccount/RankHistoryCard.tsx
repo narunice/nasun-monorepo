@@ -82,7 +82,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
           {t('rankHistory.title')}
         </h5>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c3 border-t-transparent" />
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c4 border-t-transparent" />
         </div>
       </OuterBox>
     );
@@ -101,7 +101,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
           </p>
           <Link
             to="/wave1/leaderboard"
-            className="text-nasun-c3 hover:text-nasun-c4 transition-colors text-sm"
+            className="text-nasun-c4 hover:text-nasun-white transition-colors text-sm"
           >
             {t('rankHistory.viewLeaderboard')}
           </Link>
@@ -126,7 +126,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
               onClick={() => setSelectedDays(option.value)}
               className={`px-2 py-1 text-xs rounded transition-colors ${
                 selectedDays === option.value
-                  ? 'bg-nasun-c3 text-nasun-c6'
+                  ? 'bg-nasun-c4 text-nasun-white'
                   : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
               }`}
             >
@@ -180,7 +180,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
       {/* View Full Leaderboard Link */}
       <Link
         to="/wave1/leaderboard"
-        className="flex items-center justify-center gap-2 pt-3 border-t border-nasun-c5/30 text-nasun-c3 hover:text-nasun-c4 transition-colors"
+        className="flex items-center justify-center gap-2 pt-3 border-t border-nasun-c5/30 text-nasun-c4 hover:text-nasun-white transition-colors"
       >
         {t('rankHistory.viewLeaderboard')}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

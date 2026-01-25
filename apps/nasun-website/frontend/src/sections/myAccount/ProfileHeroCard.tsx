@@ -48,6 +48,7 @@ function getLoginIdentifier(
     provider?: string;
     email?: string;
     twitterHandle?: string;
+    originalTwitterHandle?: string;
     walletAddress?: string;
   } | null,
 ): LoginIdentifier | null {
@@ -56,8 +57,11 @@ function getLoginIdentifier(
   switch (user.provider) {
     case "Google":
       return user.email ? { label: "Google", value: user.email } : null;
-    case "Twitter":
-      return user.twitterHandle ? { label: "X", value: `@${user.twitterHandle}` } : null;
+    case "Twitter": {
+      // Use original casing if available, fallback to twitterHandle
+      const displayHandle = user.originalTwitterHandle || user.twitterHandle;
+      return displayHandle ? { label: "X", value: `@${displayHandle}` } : null;
+    }
     case "MetaMask":
       return user.walletAddress
         ? {
@@ -217,7 +221,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 1. X (Twitter) */}
             <AccountItem
               provider="twitter"
-              identifier={twitterData?.twitterHandle ? `@${twitterData.twitterHandle}` : undefined}
+              identifier={twitterData?.twitterHandle ? `@${twitterData.originalTwitterHandle || twitterData.twitterHandle}` : undefined}
               statusBadge={
                 isTwitterPrimary ? <LoggedInBadge /> : twitterData ? <LinkedBadge /> : undefined
               }

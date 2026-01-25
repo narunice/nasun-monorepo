@@ -108,8 +108,10 @@
     "viewOnOpenSea": "OpenSea에서 보기"
   },
   "rankHistory": {
-    "title": "리더보드 히스토리",
+    "title": "순위 히스토리",
     "description": "일자별 랭킹 변화를 그래프로 확인하세요",
+    "loginRequired": "순위 히스토리를 보려면 로그인하세요",
+    "twitterRequired": "순위 히스토리를 보려면 X 계정을 연결하세요",
     "notConnected": "X 계정을 연결하고 커뮤니티 리더보드에 참여하세요.",
     "notParticipating": "아직 리더보드에 참여하지 않으셨습니다. @{{targetAccount}}와 상호작용하시면 랭킹이 기록됩니다.",
     "notParticipatingInPeriodOngoing": "아직 {{periodName}}에 참여하지 않으셨습니다. @{{targetAccount}}와 상호작용하시면 랭킹이 기록됩니다.",
@@ -130,15 +132,20 @@
     "loading": "히스토리 데이터를 불러오는 중...",
     "error": "히스토리 데이터 로드 실패",
     "unknownError": "알 수 없는 오류가 발생했습니다.",
-    "noData": "표시할 히스토리 데이터가 없습니다",
+    "noData": "아직 순위 히스토리가 없습니다",
     "noDataDescription": "선택한 기간 동안 랭킹 데이터가 없습니다.",
+    "viewLeaderboard": "리더보드 보기",
     "chart": {
       "rank": "순위",
-      "score": "포인트",
+      "score": "점수",
       "yAxisLabel": "순위",
       "noData": "데이터가 없습니다"
     },
     "stats": {
+      "current": "현재",
+      "best": "최상위",
+      "worst": "최하위",
+      "change": "변화",
       "bestRank": "최고 순위",
       "averageRank": "평균 순위",
       "scoreIncrease": "점수 증가",

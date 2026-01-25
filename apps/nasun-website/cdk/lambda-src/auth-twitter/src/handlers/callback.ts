@@ -186,8 +186,10 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
 
     const existingProfile = await dynamoClient.send(getCommand);
     
-    // Normalize twitterHandle to lowercase (X handles are case-insensitive)
+    // Normalize twitterHandle to lowercase for consistent lookups
+    // Keep original casing for display purposes
     const normalizedTwitterHandle = twitterUser.username.toLowerCase();
+    const originalTwitterHandle = twitterUser.username; // Preserve original casing
     let userProfile: any;
 
     if (existingProfile.Item) {
@@ -197,6 +199,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
         provider: 'Twitter',
         username: twitterUser.name,
         twitterHandle: normalizedTwitterHandle,
+        originalTwitterHandle: originalTwitterHandle,
         twitterId: twitterUser.id,
         profileImageUrl: twitterUser.profile_image_url,
         verified: twitterUser.verified,
@@ -207,10 +210,11 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       await dynamoClient.send(new UpdateItemCommand({
         TableName: USER_PROFILES_TABLE,
         Key: { identityId: { S: cognitoIdentity.identityId } },
-        UpdateExpression: 'SET username = :username, twitterHandle = :handle, profileImageUrl = :image, verified = :verified, updatedAt = :updatedAt',
+        UpdateExpression: 'SET username = :username, twitterHandle = :handle, originalTwitterHandle = :originalHandle, profileImageUrl = :image, verified = :verified, updatedAt = :updatedAt',
         ExpressionAttributeValues: {
           ':username': { S: twitterUser.name },
           ':handle': { S: normalizedTwitterHandle },
+          ':originalHandle': { S: originalTwitterHandle },
           ':image': { S: twitterUser.profile_image_url || '' },
           ':verified': { BOOL: twitterUser.verified || false },
           ':updatedAt': { S: userProfile.updatedAt },
@@ -223,6 +227,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
         provider: 'Twitter',
         username: twitterUser.name,
         twitterHandle: normalizedTwitterHandle,
+        originalTwitterHandle: originalTwitterHandle,
         twitterId: twitterUser.id,
         profileImageUrl: twitterUser.profile_image_url,
         verified: twitterUser.verified,
@@ -236,6 +241,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
           provider: { S: userProfile.provider },
           username: { S: userProfile.username },
           twitterHandle: { S: userProfile.twitterHandle },
+          originalTwitterHandle: { S: userProfile.originalTwitterHandle },
           twitterId: { S: userProfile.twitterId },
           profileImageUrl: { S: userProfile.profileImageUrl || '' },
           verified: { BOOL: userProfile.verified || false },
