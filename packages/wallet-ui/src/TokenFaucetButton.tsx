@@ -97,7 +97,7 @@ export function TokenFaucetButton({
     <button
       onClick={handleClick}
       disabled={loading || !canUseFaucet}
-      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
+      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
         ${message?.type === 'success'
           ? 'bg-green-500/20 text-green-400'
           : message?.type === 'error'

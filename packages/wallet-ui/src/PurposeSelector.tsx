@@ -116,7 +116,7 @@ export function PurposeSelector({
           <button
             key={option.value}
             onClick={() => handleSelect(option.value)}
-            className="flex flex-col items-center p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all group"
+            className="flex flex-col items-center p-4 rounded-md border-2 border-gray-200 dark:border-zinc-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all group"
           >
             <div className="p-3 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-3">
               {option.icon}

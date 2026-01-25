@@ -76,7 +76,7 @@ export function BalancePreview({
   if (!simulation.success) {
     return (
       <div
-        className={`p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 ${className}`}
+        className={`p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 ${className}`}
       >
         <div className="flex items-center gap-2">
           <span className="text-yellow-600 dark:text-yellow-400">⚠</span>
@@ -102,7 +102,7 @@ export function BalancePreview({
   if (!hasChanges) {
     return (
       <div
-        className={`p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 ${className}`}
+        className={`p-3 rounded-md bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 ${className}`}
       >
         <p className="text-sm text-gray-600 dark:text-gray-400">
           No balance changes expected
@@ -128,7 +128,7 @@ export function BalancePreview({
 
       {/* Token Changes */}
       {simulation.balanceChanges.length > 0 && (
-        <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="rounded-md bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 overflow-hidden">
           {simulation.balanceChanges.map((change, index) => (
             <TokenChangeRow
               key={`${change.token}-${index}`}
@@ -275,10 +275,10 @@ interface NFTChangeRowProps {
  */
 function NFTChangeRow({ change, variant }: NFTChangeRowProps) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+    <div className="flex items-center gap-3 p-3 rounded-md bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
       {/* NFT Image */}
       {change.imageUrl && variant === 'detailed' && (
-        <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+        <div className="w-10 h-10 rounded-md overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
           <img
             src={change.imageUrl}
             alt={change.name || 'NFT'}
@@ -335,7 +335,7 @@ function ApprovalChangeRow({ change, showTooltips }: ApprovalChangeRowProps) {
 
   return (
     <div
-      className={`flex items-center justify-between p-3 rounded-lg border ${
+      className={`flex items-center justify-between p-3 rounded-md border ${
         isUnlimited
           ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
           : isRevoking

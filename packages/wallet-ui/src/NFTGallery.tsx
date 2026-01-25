@@ -76,7 +76,7 @@ export function NFTGallery({
           {[...Array(compact ? 3 : 8)].map((_, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-zinc-800 rounded-lg overflow-hidden animate-pulse"
+              className="bg-white dark:bg-zinc-800 rounded-md overflow-hidden animate-pulse"
             >
               <div className="aspect-square bg-gray-100 dark:bg-zinc-700" />
               <div className="p-3">
@@ -99,7 +99,7 @@ export function NFTGallery({
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">My NFTs</h3>
           </div>
         )}
-        <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg p-4">
+        <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-md p-4">
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           <button
             onClick={() => refetch()}
@@ -124,7 +124,7 @@ export function NFTGallery({
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">My NFTs</h3>
           </div>
         )}
-        <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-6 text-center">
+        <div className="bg-gray-50 dark:bg-zinc-800 rounded-md p-6 text-center">
           <svg
             className="w-12 h-12 text-gray-400 dark:text-zinc-600 mx-auto mb-3"
             fill="none"

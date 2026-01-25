@@ -112,8 +112,8 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         </div>
 
         {/* NFT Preview */}
-        <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 mb-4">
-          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0">
+        <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800 rounded-md p-3 mb-4">
+          <div className="w-16 h-16 rounded-md overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0">
             {imageUrl ? (
               <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
             ) : (
@@ -131,7 +131,7 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         </div>
 
         {/* Recipient */}
-        <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 mb-4">
+        <div className="bg-gray-50 dark:bg-zinc-800 rounded-md p-3 mb-4">
           <CopyableAddress
             value={recipient}
             label="Sending to"
@@ -144,7 +144,7 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         </div>
 
         {/* Gas Fee */}
-        <div className="bg-gray-100 dark:bg-zinc-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-zinc-600">
+        <div className="bg-gray-100 dark:bg-zinc-700/50 rounded-md p-3 mb-4 border border-gray-200 dark:border-zinc-600">
           <p className="text-xs text-gray-500 dark:text-zinc-400">Estimated Gas Fee</p>
           <p className="text-sm text-gray-900 dark:text-white mt-1">
             ≈ 0.003 <span className="text-blue-400">NSN</span>
@@ -198,8 +198,8 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
       </div>
 
       {/* NFT Preview */}
-      <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 mb-4">
-        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0">
+      <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800 rounded-md p-3 mb-4">
+        <div className="w-16 h-16 rounded-md overflow-hidden bg-gray-100 dark:bg-zinc-700 flex-shrink-0">
           {imageUrl ? (
             <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
