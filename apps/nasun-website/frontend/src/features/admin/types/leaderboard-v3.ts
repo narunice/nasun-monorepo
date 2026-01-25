@@ -19,6 +19,9 @@ export type ContentSignal = 'standard' | 'insight' | 'creative' | 'high_reach';
 // Post type classification (Phase 9)
 export type PostType = 'original' | 'quote' | 'reply';
 
+// Account language for CT market size adjustment
+export type AccountLanguage = 'en' | 'zh' | 'ja' | 'ko';
+
 // Account data (matches backend Account interface)
 export interface LeaderboardV3Account {
   accountId: string;
@@ -86,6 +89,9 @@ export interface CreatePostRequest {
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
   postType?: PostType; // Phase 9: defaults to 'original'
+  // For new users: language and follower count for role calculation
+  language?: AccountLanguage;
+  followerCount?: number;
 }
 
 export interface CreatePostResponse {
@@ -180,6 +186,63 @@ export const POST_TYPE_SHORTCUTS: Record<string, PostType> = {
   't': 'quote',
   'y': 'reply',
 };
+
+// Language labels for CT market size adjustment
+export const LANGUAGE_LABELS: Record<AccountLanguage, string> = {
+  en: 'English',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ko: 'Korean',
+};
+
+// Follower thresholds by language (legacy - kept for backwards compatibility)
+export const FOLLOWER_THRESHOLDS: Record<AccountLanguage, { kol: number; proactive: number }> = {
+  en: { kol: 50000, proactive: 5000 },
+  zh: { kol: 30000, proactive: 3000 },
+  ja: { kol: 20000, proactive: 2000 },
+  ko: { kol: 10000, proactive: 1000 },
+};
+
+// Legacy: Calculate role from follower count and language (discrete)
+export function getRoleByFollowers(followerCount: number, language: AccountLanguage): AccountRole {
+  const thresholds = FOLLOWER_THRESHOLDS[language];
+  if (followerCount >= thresholds.kol) return 'kol';
+  if (followerCount >= thresholds.proactive) return 'proactive_ct';
+  return 'default';
+}
+
+// Language scale factors for follower normalization (matches backend)
+// Normalizes followers to English-equivalent scale
+export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
+  en: 1.0,   // Base scale
+  zh: 1.67,  // Chinese CT ~60% of English
+  ja: 2.5,   // Japanese CT ~40% of English
+  ko: 5.0,   // Korean CT ~20% of English
+};
+
+// Continuous role multiplier constants
+export const ROLE_MULTIPLIER_BASE = 1.0;
+export const ROLE_MULTIPLIER_LOG_FACTOR = 0.2;
+export const ROLE_MULTIPLIER_MAX = 2.0;
+
+/**
+ * Calculate continuous role multiplier based on follower count and language
+ * Formula: RoleMultiplier = 1 + log₁₀(normalizedFollowers + 1) × 0.2
+ * Range: 1.0 (0 followers) to 2.0 (100,000+ normalized followers)
+ */
+export function calculateRoleMultiplier(followerCount: number, language: AccountLanguage = 'en'): number {
+  if (followerCount <= 0) {
+    return ROLE_MULTIPLIER_BASE;
+  }
+
+  const scale = LANGUAGE_SCALE[language] || LANGUAGE_SCALE.en;
+  const normalizedFollowers = followerCount * scale;
+
+  const multiplier = ROLE_MULTIPLIER_BASE +
+    Math.log10(normalizedFollowers + 1) * ROLE_MULTIPLIER_LOG_FACTOR;
+
+  return Math.min(multiplier, ROLE_MULTIPLIER_MAX);
+}
 
 // ============================================
 // Season Types (Phase 5)

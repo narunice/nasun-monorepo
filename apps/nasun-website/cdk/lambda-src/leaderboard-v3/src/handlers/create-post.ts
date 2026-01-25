@@ -6,6 +6,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {
+  AccountLanguage,
   AccountRole,
   ContentSignal,
   CreatePostRequest,
@@ -100,6 +101,31 @@ function validateRequest(body: unknown): {
     postType = req.postType as PostType;
   }
 
+  // Validate language (optional, for new users)
+  const validLanguages: AccountLanguage[] = ['en', 'zh', 'ja', 'ko'];
+  let language: AccountLanguage | undefined;
+  if (req.language !== undefined) {
+    if (!validLanguages.includes(req.language as AccountLanguage)) {
+      return {
+        valid: false,
+        error: `language must be one of: ${validLanguages.join(', ')}`,
+      };
+    }
+    language = req.language as AccountLanguage;
+  }
+
+  // Validate followerCount (optional, for new users)
+  let followerCount: number | undefined;
+  if (req.followerCount !== undefined) {
+    if (typeof req.followerCount !== 'number' || req.followerCount < 0) {
+      return {
+        valid: false,
+        error: 'followerCount must be a non-negative number',
+      };
+    }
+    followerCount = req.followerCount;
+  }
+
   return {
     valid: true,
     data: {
@@ -107,6 +133,8 @@ function validateRequest(body: unknown): {
       accountRole: req.accountRole as AccountRole,
       contentSignals: signals,
       postType,
+      language,
+      followerCount,
     },
   };
 }
@@ -167,7 +195,7 @@ export const handler = async (
       });
     }
 
-    const { postUrl, accountRole, contentSignals, postType } = validation.data;
+    const { postUrl, accountRole, contentSignals, postType, language, followerCount } = validation.data;
 
     // Normalize URL
     const normalized = normalizeUrl(postUrl);
@@ -217,6 +245,8 @@ export const handler = async (
       contentSignals,
       postType, // Phase 9: Post type differentiation
       createdBy: adminUsername,
+      language, // For new users: CT market language
+      followerCount, // For new users: X follower count
     });
 
     return createResponse(201, {

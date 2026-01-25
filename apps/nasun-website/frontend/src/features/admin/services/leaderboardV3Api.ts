@@ -39,6 +39,10 @@ export async function createPost(
       postUrl: request.postUrl,
       accountRole: request.accountRole,
       contentSignals: request.contentSignals,
+      postType: request.postType,
+      // Only include language/followerCount for new users
+      ...(request.language && { language: request.language }),
+      ...(request.followerCount !== undefined && { followerCount: request.followerCount }),
     }),
   });
 
@@ -227,8 +231,8 @@ export async function getDashboardStats(adminPassword: string): Promise<Dashboar
 }
 
 /**
- * Calculate post score preview (client-side calculation)
- * This matches the backend calculation for UI preview
+ * Calculate post score preview (client-side calculation) - Legacy discrete version
+ * Kept for backwards compatibility
  */
 export function calculatePostScorePreview(
   accountRole: string,
@@ -260,5 +264,58 @@ export function calculatePostScorePreview(
     roleMultiplier,
     signalBonus,
     totalScore,
+  };
+}
+
+/**
+ * Calculate post score preview with continuous role multiplier
+ * Uses follower count and language for precise multiplier calculation
+ */
+export function calculatePostScorePreviewWithFollowers(
+  followerCount: number,
+  language: string,
+  contentSignals: string[]
+): { baseScore: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
+  const LANGUAGE_SCALE: Record<string, number> = {
+    en: 1.0,
+    zh: 1.67,
+    ja: 2.5,
+    ko: 5.0,
+  };
+
+  const SIGNAL_BONUSES: Record<string, number> = {
+    standard: 0,
+    insight: 1.0,
+    creative: 1.0,
+    high_reach: 1.0,
+  };
+
+  const BASE_SCORE = 1.0;
+  const ROLE_MULTIPLIER_BASE = 1.0;
+  const ROLE_MULTIPLIER_LOG_FACTOR = 0.2;
+  const ROLE_MULTIPLIER_MAX = 2.0;
+
+  // Calculate continuous role multiplier
+  let roleMultiplier = ROLE_MULTIPLIER_BASE;
+  if (followerCount > 0) {
+    const scale = LANGUAGE_SCALE[language] || LANGUAGE_SCALE.en;
+    const normalizedFollowers = followerCount * scale;
+    roleMultiplier = Math.min(
+      ROLE_MULTIPLIER_BASE + Math.log10(normalizedFollowers + 1) * ROLE_MULTIPLIER_LOG_FACTOR,
+      ROLE_MULTIPLIER_MAX
+    );
+  }
+
+  const signalBonus = contentSignals.reduce(
+    (sum, signal) => sum + (SIGNAL_BONUSES[signal] || 0),
+    0
+  );
+  const totalScore = BASE_SCORE * roleMultiplier + signalBonus;
+
+  return {
+    baseScore: BASE_SCORE,
+    roleMultiplier: Math.round(roleMultiplier * 1000) / 1000, // Round to 3 decimals
+    signalBonus,
+    totalScore: Math.round(totalScore * 1000) / 1000,
   };
 }

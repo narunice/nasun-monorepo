@@ -17,6 +17,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import {
   Account,
+  AccountLanguage,
   AccountRole,
   ContentSignal,
   DYNAMO_KEYS,
@@ -30,6 +31,7 @@ import {
 import {
   addActiveDate,
   calculatePostScore,
+  calculatePostScoreWithFollowers,
   countBonusSignals,
   getTodayDateString,
 } from './score-calculator';
@@ -101,6 +103,9 @@ export async function createPost(params: {
   postType?: PostType; // Phase 9: original, quote, or reply (default: original)
   createdBy: string;
   seasonId?: string; // If not provided, will use active season
+  // For new users: language and follower count for role calculation
+  language?: AccountLanguage;
+  followerCount?: number;
 }): Promise<{ post: Post; account: Account; seasonAccountScore?: SeasonAccountScore }> {
   const {
     normalizedUrl,
@@ -112,6 +117,8 @@ export async function createPost(params: {
     contentSignals,
     postType = 'original',
     createdBy,
+    language,
+    followerCount,
   } = params;
 
   // Get active season if seasonId not provided
@@ -140,13 +147,29 @@ export async function createPost(params: {
       }
     }
 
-    // Create new account with profile data
-    account = await createAccount(platform, username, accountRole, profileData, originalUsername);
+    // Create new account with profile data and language info
+    account = await createAccount(
+      platform,
+      username,
+      accountRole,
+      profileData,
+      originalUsername,
+      language || followerCount ? { language, followerCount } : undefined
+    );
   }
 
-  // Calculate post score
-  const { baseScore, roleMultiplier, signalBonus, postScore } = calculatePostScore(
-    accountRole,
+  // Calculate post score using continuous role multiplier
+  // Prefer params for new accounts, fallback to account data for existing accounts
+  const effectiveFollowerCount = isNewAccount
+    ? (followerCount ?? 0)
+    : (account.followerCount ?? followerCount ?? 0);
+  const effectiveLanguage: AccountLanguage = isNewAccount
+    ? (language || 'en')
+    : (account.language || language || 'en');
+
+  const { baseScore, roleMultiplier, signalBonus, postScore } = calculatePostScoreWithFollowers(
+    effectiveFollowerCount,
+    effectiveLanguage,
     contentSignals
   );
 
@@ -414,7 +437,11 @@ export async function createAccount(
     profileImageUrl?: string;
     isRegistered?: boolean;
   },
-  originalUsername?: string
+  originalUsername?: string,
+  languageData?: {
+    language?: AccountLanguage;
+    followerCount?: number;
+  }
 ): Promise<Account> {
   const now = new Date().toISOString();
 
@@ -424,6 +451,8 @@ export async function createAccount(
     username: username.toLowerCase(),
     originalUsername: originalUsername || username, // Preserve original casing
     lastKnownRole: role,
+    language: languageData?.language,
+    followerCount: languageData?.followerCount,
     displayName: profileData?.displayName,
     profileImageUrl: profileData?.profileImageUrl,
     isRegistered: profileData?.isRegistered ?? false,
@@ -536,6 +565,41 @@ export async function updateAccountAggregates(params: {
       Key: { accountId },
       UpdateExpression: updateExpression,
       ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  return result.Attributes as Account;
+}
+
+/**
+ * Update account language and follower count (for admin editing)
+ * Also recalculates role based on new values
+ */
+export async function updateAccountLanguageData(params: {
+  accountId: string;
+  language: AccountLanguage;
+  followerCount: number;
+}): Promise<Account> {
+  const { accountId, language, followerCount } = params;
+
+  // Import getRoleByFollowers dynamically to avoid circular dependency
+  const { getRoleByFollowers } = await import('./score-calculator');
+  const newRole = getRoleByFollowers(followerCount, language);
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: ACCOUNTS_TABLE,
+      Key: { accountId },
+      UpdateExpression: 'SET #lang = :lang, followerCount = :fc, lastKnownRole = :role',
+      ExpressionAttributeNames: {
+        '#lang': 'language', // 'language' is a reserved word in DynamoDB
+      },
+      ExpressionAttributeValues: {
+        ':lang': language,
+        ':fc': followerCount,
+        ':role': newRole,
+      },
       ReturnValues: 'ALL_NEW',
     })
   );
