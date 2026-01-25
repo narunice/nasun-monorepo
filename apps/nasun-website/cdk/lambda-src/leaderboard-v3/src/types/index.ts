@@ -18,6 +18,9 @@ export type ContentSignal = 'standard' | 'insight' | 'creative' | 'high_reach';
 // Post type: original posts get full log decay, quotes get full decay, replies get weaker decay
 export type PostType = 'original' | 'quote' | 'reply';
 
+// Language for CT market size adjustment
+export type AccountLanguage = 'en' | 'zh' | 'ja' | 'ko';
+
 export const ROLE_MULTIPLIERS: Record<AccountRole, number> = {
   kol: 2.0,
   proactive_ct: 1.5,
@@ -34,14 +37,38 @@ export const SIGNAL_BONUSES: Record<ContentSignal, number> = {
 // Score calculation constants
 export const SCORE_CONSTANTS = {
   BASE_SCORE: 1,
-  POST_SCORE_MAX: 5.0, // KOL(2.0) + all signals(3) = 5.0
+  POST_SCORE_MAX: 5.0, // max RoleMultiplier(2.0) + all signals(3) = 5.0
   CONSISTENCY_BONUS_MULTIPLIER: 0.1,
   CONSISTENCY_BONUS_MAX: 1.5, // cap at 30 days
-  FRESHNESS_HALF_LIFE_DAYS: 14,
+  FRESHNESS_HALF_LIFE_DAYS: 7, // Half-life reduced from 14 to 7 days for faster decay
   // Reply decay: use postCount^0.7 instead of postCount for weaker decay
   // Original/Quote: log₂(N+1)/N (full decay)
   // Reply: log₂(N+1)/N^0.7 (weaker decay, rewards engagement)
   REPLY_DECAY_EXPONENT: 0.7,
+  // Continuous role multiplier constants
+  // RoleMultiplier = BASE + log₁₀(normalizedFollowers + 1) × LOG_FACTOR
+  ROLE_MULTIPLIER_BASE: 1.0,
+  ROLE_MULTIPLIER_LOG_FACTOR: 0.2,
+  ROLE_MULTIPLIER_MAX: 2.0,
+};
+
+// Language scale factors for follower normalization
+// Normalizes followers to English-equivalent scale
+// Korean CT is ~1/5 the size of English CT, so Korean followers × 5 = normalized
+export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
+  en: 1.0, // Base scale
+  zh: 1.67, // Chinese CT ~60% of English
+  ja: 2.5, // Japanese CT ~40% of English
+  ko: 5.0, // Korean CT ~20% of English
+};
+
+// Legacy: Language-based follower thresholds (kept for backwards compatibility)
+// Use calculateRoleMultiplier() for new implementations
+export const FOLLOWER_THRESHOLDS: Record<AccountLanguage, { kol: number; proactive: number }> = {
+  en: { kol: 50000, proactive: 5000 },
+  zh: { kol: 30000, proactive: 3000 },
+  ja: { kol: 20000, proactive: 2000 },
+  ko: { kol: 10000, proactive: 1000 },
 };
 
 // ============================================
@@ -80,8 +107,10 @@ export interface Account {
   username: string; // Unique per platform (lowercase for consistent lookups)
   originalUsername?: string; // Original casing as provided by user (for display)
 
-  // Role tracking
+  // Role tracking (language-based follower thresholds)
   lastKnownRole: AccountRole;
+  language?: AccountLanguage; // CT market language for fair role assignment
+  followerCount?: number; // X follower count at registration time
 
   // Profile data (from UserProfiles table via Internal Data Sync)
   displayName?: string; // X display name
@@ -182,6 +211,9 @@ export interface CreatePostRequest {
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
   postType?: PostType; // Optional, defaults to 'original'
+  // For new users: language and follower count for role calculation
+  language?: AccountLanguage;
+  followerCount?: number;
 }
 
 /**
@@ -372,6 +404,8 @@ export interface SeasonAccountScore {
   username: string;
   originalUsername?: string; // Original casing for display
   platform: Platform;
+  language?: AccountLanguage; // CT market language
+  followerCount?: number; // X follower count
   // Season-specific aggregates
   totalPostScore: number;
   postCount: number;

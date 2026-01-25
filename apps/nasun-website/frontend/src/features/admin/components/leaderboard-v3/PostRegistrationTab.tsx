@@ -3,10 +3,11 @@
  *
  * Keyboard Shortcuts:
  * - 1/2/3: Select post type (Original/Quote/Reply)
- * - Q/W/E: Select role (Default/Proactive CT/KOL)
  * - A/S/D: Toggle signals (Insight/Creative/High Reach)
  * - /: Focus URL input
  * - Ctrl+Enter: Submit post
+ *
+ * Phase 11: Role selection removed, continuous RoleMultiplier based on follower count
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -20,12 +21,14 @@ import {
 } from '../../hooks/useLeaderboardV3';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
 import {
-  ROLE_LABELS,
   SIGNAL_LABELS,
   BONUS_SIGNALS,
   POST_TYPE_LABELS,
-  type AccountRole,
+  LANGUAGE_LABELS,
+  LANGUAGE_SCALE,
+  calculateRoleMultiplier,
   type PostType,
+  type AccountLanguage,
 } from '../../types/leaderboard-v3';
 
 // Extract username from URL for account lookup
@@ -60,12 +63,23 @@ export function PostRegistrationTab() {
     !!extractedUsername
   );
 
-  // Auto-fill role when account is found
+  // Auto-fill follower data when account is found, or mark as new user
   useEffect(() => {
     if (accountData?.found && accountData.account) {
-      form.setAccountRole(accountData.account.lastKnownRole);
+      form.setIsNewUser(false);
+      // Use existing account's follower data if available
+      const account = accountData.account as { followerCount?: number; language?: AccountLanguage };
+      if (account.followerCount !== undefined) {
+        form.setFollowerCount(account.followerCount);
+      }
+      if (account.language) {
+        form.setLanguage(account.language);
+      }
+    } else if (extractedUsername && !isLoadingAccount && !accountData?.found) {
+      // New user detected
+      form.setIsNewUser(true);
     }
-  }, [accountData]);
+  }, [accountData, extractedUsername, isLoadingAccount]);
 
   const handleSubmit = useCallback(async () => {
     if (!form.postUrl.trim()) {
@@ -115,14 +129,10 @@ export function PostRegistrationTab() {
           <span className="w-1 h-4 bg-nasun-c3 rounded-full"></span>
           Keyboard Shortcuts
         </h4>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs text-nasun-white/60">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/60">
           <div>
             <span className="text-nasun-c3 font-mono">1 2 3</span>
             <span className="ml-2">Type</span>
-          </div>
-          <div>
-            <span className="text-nasun-c3 font-mono">Q W E</span>
-            <span className="ml-2">Role</span>
           </div>
           <div>
             <span className="text-nasun-c3 font-mono">A S D</span>
@@ -195,41 +205,98 @@ export function PostRegistrationTab() {
                   <span>Looking up @{extractedUsername}...</span>
                 ) : accountData?.found ? (
                   <span className="text-nasun-c3">
-                    Found: @{accountData.account?.username} ({ROLE_LABELS[accountData.account?.lastKnownRole || 'default']}) - {accountData.account?.postCount} posts
+                    Found: @{accountData.account?.username} - {accountData.account?.postCount} posts
+                    {form.followerCount !== undefined && (
+                      <span className="ml-2 text-nasun-white/60">
+                        (Multiplier: {form.scorePreview.roleMultiplier.toFixed(3)})
+                      </span>
+                    )}
                   </span>
                 ) : (
-                  <span>New account: @{extractedUsername}</span>
+                  <span className="text-yellow-400">New account: @{extractedUsername} - Enter language and follower count below</span>
                 )}
               </div>
             )}
           </div>
 
-          {/* Role Selection */}
-          <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
-              Account Role <span className="text-nasun-c3 font-mono ml-2">Q W E</span>
-            </label>
-            <div className="flex gap-3">
-              {(['default', 'proactive_ct', 'kol'] as AccountRole[]).map((role, index) => {
-                const shortcut = ['Q', 'W', 'E'][index];
-                return (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => form.setAccountRole(role)}
-                  className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
-                    form.accountRole === role
-                      ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg'
-                      : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
-                  }`}
-                >
-                  <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
-                  {ROLE_LABELS[role]}
-                </button>
-                );
-              })}
+          {/* New User: Language & Follower Count */}
+          {form.isNewUser && (
+            <div className="p-4 bg-yellow-950/20 border border-yellow-900/30 rounded-sm space-y-4">
+              <div className="text-sm text-yellow-400 font-medium">
+                New User Detected - Enter account details for multiplier calculation
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Language Selection */}
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+                    Primary Language
+                  </label>
+                  <div className="flex gap-2">
+                    {(['en', 'zh', 'ja', 'ko'] as AccountLanguage[]).map((lang) => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => form.setLanguage(lang)}
+                        className={`flex-1 px-3 py-2 rounded-sm text-sm font-medium transition-all border ${
+                          form.language === lang
+                            ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white'
+                            : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
+                        }`}
+                      >
+                        {LANGUAGE_LABELS[lang]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Follower Count */}
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+                    X Follower Count
+                  </label>
+                  <input
+                    type="number"
+                    value={form.followerCount ?? ''}
+                    onChange={(e) => form.setFollowerCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                    placeholder="e.g., 5000"
+                    min="0"
+                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Language Scale Reference */}
+              <div className="text-xs text-nasun-white/40 mt-2">
+                <span className="font-medium text-nasun-white/60">{LANGUAGE_LABELS[form.language]} scale:</span>{' '}
+                ×{LANGUAGE_SCALE[form.language]} (normalized to EN equivalent)
+              </div>
+
+              {/* Calculated Multiplier */}
+              {form.followerCount !== undefined && (
+                <div className="text-sm flex items-center gap-4">
+                  <div>
+                    <span className="text-nasun-white/60">Followers:</span>{' '}
+                    <span className="text-nasun-white font-mono">
+                      {form.followerCount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-nasun-white/60">Normalized:</span>{' '}
+                    <span className="text-nasun-white font-mono">
+                      {(form.followerCount * LANGUAGE_SCALE[form.language]).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-nasun-white/60">Multiplier:</span>{' '}
+                    <span className="text-nasun-c3 font-bold font-mono">
+                      {calculateRoleMultiplier(form.followerCount, form.language).toFixed(3)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Content Signals */}
           <div>
