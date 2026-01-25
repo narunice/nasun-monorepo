@@ -11,6 +11,7 @@ import {
   getLeaderboard,
   getAccount,
   calculatePostScorePreview,
+  calculatePostScorePreviewWithFollowers,
 } from '../services/leaderboardV3Api';
 import type {
   CreatePostRequest,
@@ -18,6 +19,7 @@ import type {
   AccountRole,
   ContentSignal,
   PostType,
+  AccountLanguage,
 } from '../types/leaderboard-v3';
 
 // Query keys
@@ -86,14 +88,25 @@ export function useCreatePost() {
 /**
  * Hook for admin post submission form state
  * Phase 9: Added postType with persistent selection (not reset between submissions)
+ * Phase 10: Added language and followerCount for new user role calculation
+ * Phase 11: Continuous RoleMultiplier (removed discrete role selection)
  */
 export function usePostSubmissionForm() {
   const [postUrl, setPostUrl] = useState('');
-  const [accountRole, setAccountRole] = useState<AccountRole>('default');
+  const [accountRole, setAccountRole] = useState<AccountRole>('default'); // Legacy, kept for API compatibility
   const [contentSignals, setContentSignals] = useState<ContentSignal[]>([]);
   const [postType, setPostType] = useState<PostType>('original'); // Phase 9: Post type
 
-  const scorePreview = calculatePostScorePreview(accountRole, contentSignals);
+  // Phase 10: Language and follower count for multiplier calculation
+  const [language, setLanguage] = useState<AccountLanguage>('en');
+  const [followerCount, setFollowerCount] = useState<number | undefined>(undefined);
+  const [isNewUser, setIsNewUser] = useState(false);
+
+  // Phase 11: Use continuous RoleMultiplier when follower data is available
+  // For existing users without follower data, fall back to discrete role
+  const scorePreview = followerCount !== undefined
+    ? calculatePostScorePreviewWithFollowers(followerCount, language, contentSignals)
+    : calculatePostScorePreview(accountRole, contentSignals);
 
   const toggleSignal = useCallback((signal: ContentSignal) => {
     setContentSignals((prev) =>
@@ -108,6 +121,10 @@ export function usePostSubmissionForm() {
     setPostUrl('');
     setAccountRole('default');
     setContentSignals([]);
+    // Reset new user fields
+    setLanguage('en');
+    setFollowerCount(undefined);
+    setIsNewUser(false);
     // NOTE: postType is intentionally NOT reset to preserve user's selection
   }, []);
 
@@ -123,24 +140,37 @@ export function usePostSubmissionForm() {
     postType, // Phase 9
     setPostType, // Phase 9
 
-    // Score preview
+    // Phase 10: Language and follower fields (now used for all users with follower data)
+    language,
+    setLanguage,
+    followerCount,
+    setFollowerCount,
+    isNewUser,
+    setIsNewUser,
+
+    // Score preview (uses continuous multiplier when follower data available)
     scorePreview,
 
     // Actions
     reset,
 
-    // Build request
+    // Build request (includes language/followerCount when available)
     buildRequest: (): CreatePostRequest => ({
       postUrl,
-      accountRole,
+      accountRole, // Legacy field, backend now uses followerCount for multiplier
       contentSignals,
       postType, // Phase 9
+      // Include follower data for new users and existing users with data
+      ...(followerCount !== undefined
+        ? { language, followerCount }
+        : {}),
     }),
   };
 }
 
 /**
  * Hook for keyboard shortcuts in admin form
+ * Phase 11: Removed Q/W/E role shortcuts (role is now auto-calculated from follower count)
  */
 export function usePostFormKeyboardShortcuts(
   form: ReturnType<typeof usePostSubmissionForm>,
@@ -170,23 +200,6 @@ export function usePostFormKeyboardShortcuts(
         if (e.key === '3') {
           e.preventDefault();
           form.setPostType('reply');
-          return;
-        }
-
-        // Role shortcuts (Q, W, E) - only when not in input
-        if (e.key.toLowerCase() === 'q') {
-          e.preventDefault();
-          form.setAccountRole('default');
-          return;
-        }
-        if (e.key.toLowerCase() === 'w') {
-          e.preventDefault();
-          form.setAccountRole('proactive_ct');
-          return;
-        }
-        if (e.key.toLowerCase() === 'e') {
-          e.preventDefault();
-          form.setAccountRole('kol');
           return;
         }
 

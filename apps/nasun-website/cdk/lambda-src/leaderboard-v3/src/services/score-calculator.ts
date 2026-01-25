@@ -12,15 +12,18 @@
  *   TotalRawScore = OriginalRawScore + QuoteRawScore + ReplyRawScore
  *
  * ConsistencyBonus = 1 + log₂(UniqueActiveDays + 1) × 0.1 (max 1.5)
- * FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 14)
+ * FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 7) (7-day half-life)
  * UserScore = RawScore × ConsistencyBonus × FreshnessMultiplier
  */
 
 import {
   Account,
+  AccountLanguage,
   AccountRole,
   ComputedUserScore,
   ContentSignal,
+  FOLLOWER_THRESHOLDS,
+  LANGUAGE_SCALE,
   ROLE_MULTIPLIERS,
   SCORE_CONSTANTS,
   SIGNAL_BONUSES,
@@ -58,6 +61,94 @@ export function calculatePostScore(
     signalBonus,
     postScore: Math.min(postScore, SCORE_CONSTANTS.POST_SCORE_MAX),
   };
+}
+
+/**
+ * Calculate continuous role multiplier based on follower count and language
+ *
+ * Formula: RoleMultiplier = 1 + log₁₀(normalizedFollowers + 1) × 0.2
+ * Range: 1.0 (0 followers) to 2.0 (100,000+ normalized followers)
+ *
+ * Language normalization scales followers to English-equivalent:
+ * - Korean 10,000 followers × 5.0 = 50,000 normalized → 1.94 multiplier
+ * - English 10,000 followers × 1.0 = 10,000 normalized → 1.80 multiplier
+ */
+export function calculateRoleMultiplier(
+  followerCount: number,
+  language: AccountLanguage = 'en'
+): number {
+  if (followerCount <= 0) {
+    return SCORE_CONSTANTS.ROLE_MULTIPLIER_BASE;
+  }
+
+  const scale = LANGUAGE_SCALE[language] || LANGUAGE_SCALE.en;
+  const normalizedFollowers = followerCount * scale;
+
+  const multiplier =
+    SCORE_CONSTANTS.ROLE_MULTIPLIER_BASE +
+    Math.log10(normalizedFollowers + 1) * SCORE_CONSTANTS.ROLE_MULTIPLIER_LOG_FACTOR;
+
+  return Math.min(multiplier, SCORE_CONSTANTS.ROLE_MULTIPLIER_MAX);
+}
+
+/**
+ * Calculate post score using follower-based continuous multiplier
+ *
+ * Formula: PostScore = Base × RoleMultiplier + SignalBonus
+ * Range: 1.0 (0 followers + Standard) to 5.0 (max multiplier + all signals)
+ */
+export function calculatePostScoreWithFollowers(
+  followerCount: number,
+  language: AccountLanguage,
+  signals: ContentSignal[]
+): {
+  baseScore: number;
+  roleMultiplier: number;
+  signalBonus: number;
+  postScore: number;
+} {
+  const baseScore = SCORE_CONSTANTS.BASE_SCORE;
+  const roleMultiplier = calculateRoleMultiplier(followerCount, language);
+
+  const signalBonus = signals.reduce((sum, signal) => {
+    return sum + SIGNAL_BONUSES[signal];
+  }, 0);
+
+  const postScore = baseScore * roleMultiplier + signalBonus;
+
+  return {
+    baseScore,
+    roleMultiplier,
+    signalBonus,
+    postScore: Math.min(postScore, SCORE_CONSTANTS.POST_SCORE_MAX),
+  };
+}
+
+/**
+ * Legacy: Determine role based on follower count and language
+ * Use calculateRoleMultiplier() for new implementations
+ *
+ * Different CT markets have different scales:
+ * - English CT: ~10x larger than Korean CT
+ * - Uses language-specific thresholds for fair role assignment
+ *
+ * Example thresholds:
+ * - Korean KOL: 10,000+ followers
+ * - English KOL: 50,000+ followers
+ */
+export function getRoleByFollowers(
+  followerCount: number,
+  language: AccountLanguage = 'en'
+): AccountRole {
+  const thresholds = FOLLOWER_THRESHOLDS[language] || FOLLOWER_THRESHOLDS.en;
+
+  if (followerCount >= thresholds.kol) {
+    return 'kol';
+  }
+  if (followerCount >= thresholds.proactive) {
+    return 'proactive_ct';
+  }
+  return 'default';
 }
 
 /**
@@ -166,14 +257,14 @@ export function calculateConsistencyBonus(uniqueActiveDays: number): number {
 /**
  * Calculate freshness multiplier based on days since last activity
  *
- * Formula: FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 14)
+ * Formula: FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 7)
  *
- * This creates a gentle decay:
+ * This creates decay with 7-day half-life:
  * - Today: 1.00
- * - 7 days ago: 0.67
- * - 14 days ago: 0.50
- * - 30 days ago: 0.32
- * - 60 days ago: 0.19
+ * - 3 days ago: 0.70
+ * - 7 days ago: 0.50
+ * - 14 days ago: 0.33
+ * - 30 days ago: 0.19
  */
 export function calculateFreshnessMultiplier(lastSeenAt: string): number {
   const lastSeenDate = new Date(lastSeenAt);
