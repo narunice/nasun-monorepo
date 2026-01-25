@@ -142,7 +142,7 @@ function LockedStateUI({
       </h3>
 
       {isLocked && (
-        <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
+        <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded-mdtext-sm text-red-400">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -167,7 +167,7 @@ function LockedStateUI({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !isLocked && handleUnlock()}
-          className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-mdtext-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading || isLocked}
           autoFocus={!isLocked}
         />
@@ -211,7 +211,7 @@ function LockedStateUI({
           <button
             onClick={handleUnlock}
             disabled={isLoading || !password || isLocked}
-            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded text-sm md:text-base transition-colors"
+            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:text-zinc-400 text-white font-medium rounded-mdtext-sm md:text-base transition-colors"
           >
             {isLocked
               ? `Locked (${formatTime(lockoutRemaining)})`
@@ -604,7 +604,7 @@ export function WalletConnect({
               placeholder="Password (min. 8 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-mdtext-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
               autoFocus
             />
@@ -620,7 +620,7 @@ export function WalletConnect({
                 password === confirmPassword &&
                 handleCreate()
               }
-              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-mdtext-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
 
@@ -645,7 +645,7 @@ export function WalletConnect({
               <button
                 onClick={handleCreate}
                 disabled={isLoading || password.length < 8 || password !== confirmPassword}
-                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm md:text-base transition-colors"
+                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded-mdtext-sm md:text-base transition-colors"
               >
                 {isLoading ? "Creating..." : "Create"}
               </button>
@@ -712,7 +712,7 @@ export function WalletConnect({
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setViewMode("main")}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors"
             >
               <svg
                 className="w-5 h-5 text-gray-500"
@@ -789,7 +789,7 @@ export function WalletConnect({
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setViewMode("main")}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors"
             >
               <svg
                 className="w-5 h-5 text-gray-500"
@@ -844,7 +844,7 @@ export function WalletConnect({
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setViewMode("main")}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors"
             >
               <svg
                 className="w-5 h-5 text-gray-500"
@@ -873,7 +873,7 @@ export function WalletConnect({
               <button
                 onClick={() => setLedgerAccountIndex(Math.max(0, ledgerAccountIndex - 1))}
                 disabled={ledgerAccountIndex === 0}
-                className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 rounded hover:bg-gray-200 dark:hover:bg-zinc-600 disabled:opacity-50 transition-colors"
+                className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 rounded-mdhover:bg-gray-200 dark:hover:bg-zinc-600 disabled:opacity-50 transition-colors"
               >
                 -
               </button>
@@ -884,13 +884,13 @@ export function WalletConnect({
               </div>
               <button
                 onClick={() => setLedgerAccountIndex(ledgerAccountIndex + 1)}
-                className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 rounded hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
+                className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 rounded-mdhover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
               >
                 +
               </button>
             </div>
             {ledgerAddress && (
-              <div className="mt-3 p-2 bg-gray-50 dark:bg-zinc-800 rounded text-xs text-gray-600 dark:text-zinc-400 break-all">
+              <div className="mt-3 p-2 bg-gray-50 dark:bg-zinc-800 rounded-mdtext-xs text-gray-600 dark:text-zinc-400 break-all">
                 {ledgerAddress}
               </div>
             )}
@@ -899,7 +899,7 @@ export function WalletConnect({
           <div className="mt-4">
             <button
               onClick={() => setViewMode("main")}
-              className="w-full px-3 py-2 text-sm md:text-base bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              className="w-full px-3 py-2 text-sm md:text-base bg-blue-600 text-white rounded-mdhover:bg-blue-700 transition-colors"
             >
               Done
             </button>
@@ -976,7 +976,7 @@ export function WalletConnect({
           <div className="py-2 px-3 space-y-1">
             <button
               onClick={() => setViewMode("send")}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -990,7 +990,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setViewMode("ledger-select")}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1013,7 +1013,7 @@ export function WalletConnect({
               onClick={async () => {
                 await ledgerDisconnect();
               }}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-mdtransition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1040,7 +1040,7 @@ export function WalletConnect({
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                 Quick Start
               </span>
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded">
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-md">
                 Recommended
               </span>
             </div>
@@ -1064,7 +1064,7 @@ export function WalletConnect({
             </p>
             <button
               onClick={() => setViewMode("create")}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1078,7 +1078,7 @@ export function WalletConnect({
             </button>
             <button
               onClick={() => setViewMode("import")}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-mdtransition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1162,7 +1162,7 @@ export function WalletConnect({
 
           {/* NSA Recovery Warning Banner */}
           {nsaIsInitialized && nsaActiveRecoveryId && !showMoreMenu && (
-            <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-between">
+            <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-mdflex items-center justify-between">
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -1180,7 +1180,7 @@ export function WalletConnect({
 
           {/* NSA Setup Banner */}
           {!nsaIsInitialized && !nsaBannerDismissed && !showMoreMenu && (
-            <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1369,7 +1369,7 @@ export function WalletConnect({
 
           {/* NSA Recovery Warning Banner */}
           {nsaIsInitialized && nsaActiveRecoveryId && !showMoreMenu && (
-            <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-between">
+            <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-mdflex items-center justify-between">
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -1387,7 +1387,7 @@ export function WalletConnect({
 
           {/* NSA Setup Banner */}
           {!nsaIsInitialized && !nsaBannerDismissed && !showMoreMenu && (
-            <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1498,7 +1498,7 @@ export function WalletConnect({
       {/* Main button - consistent across all states */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm md:text-base transition-colors"
+        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-mdtext-sm md:text-base transition-colors"
       >
         <span className={`w-2 h-2 ${getStatusColor()} rounded-full`} />
         <span className="text-gray-900 dark:text-white font-mono">{getButtonText()}</span>
