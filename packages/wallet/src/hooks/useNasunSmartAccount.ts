@@ -16,10 +16,12 @@ import {
   buildProposeAddSigner,
   buildAcceptSignerProposal,
   buildCancelSignerProposal,
+  buildDeclineSignerProposal,
   buildRemoveSigner,
   buildSetGuardians,
   buildUpdateThreshold,
   findActiveProposalsForAccount,
+  findProposalsForPendingSigner,
 } from '../core/nsa/client';
 import { validateGuardianConfig } from '../core/nsa/recovery';
 import type { NsaSignerType, NsaAccountState, NsaSignerProposal } from '../types/nsa';
@@ -49,12 +51,18 @@ export interface UseNasunSmartAccountResult {
   acceptSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
   /** Cancel a pending signer proposal */
   cancelSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
+  /** Decline a signer proposal (called by pending signer) */
+  declineSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
   /** Remove a signer from the account */
   removeSigner: (signerToRemove: string, signer: SignerAdapter) => Promise<void>;
   /** Pending signer proposals */
   pendingProposals: NsaSignerProposal[];
   /** Refresh pending proposals from chain */
   refreshProposals: () => Promise<void>;
+  /** Incoming signer invitations for current address */
+  incomingInvitations: NsaSignerProposal[];
+  /** Refresh incoming invitations from chain */
+  refreshIncomingInvitations: (address: string) => Promise<void>;
   /** Set guardian configuration */
   setGuardians: (guardians: string[], threshold: number, recoveryOwner: string, signer: SignerAdapter) => Promise<void>;
   /** Update signing threshold */
@@ -278,6 +286,27 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     await refreshProposals();
   }, []);
 
+  const declineSignerProposal = useCallback(async (
+    proposalObjectId: string,
+    signer: SignerAdapter,
+  ): Promise<void> => {
+    const tx = buildDeclineSignerProposal({ proposalObjectId });
+    const client = getSuiClient();
+
+    tx.setSender(signer.address);
+    const txBytes = await tx.build({ client });
+    const { signature } = await signer.sign(txBytes);
+
+    await client.executeTransactionBlock({
+      transactionBlock: txBytes,
+      signature,
+      options: { showEffects: true },
+    });
+
+    // Refresh incoming invitations after declining
+    await refreshIncomingInvitations(signer.address);
+  }, []);
+
   const refreshProposals = useCallback(async () => {
     const accountObjectId = useNsaStore.getState().accountObjectId;
     if (!accountObjectId) return;
@@ -287,6 +316,17 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
       useNsaStore.getState().setPendingProposals(proposals);
     } catch {
       // Silently fail - proposals are supplementary info
+    }
+  }, []);
+
+  const refreshIncomingInvitations = useCallback(async (address: string) => {
+    if (!address) return;
+
+    try {
+      const invitations = await findProposalsForPendingSigner(address);
+      useNsaStore.getState().setIncomingInvitations(invitations);
+    } catch {
+      // Silently fail - invitations are supplementary info
     }
   }, []);
 
@@ -388,9 +428,12 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     proposeAddSigner,
     acceptSignerProposal,
     cancelSignerProposal,
+    declineSignerProposal,
     removeSigner,
     pendingProposals: store.pendingProposals,
     refreshProposals,
+    incomingInvitations: store.incomingInvitations,
+    refreshIncomingInvitations,
     setGuardians,
     updateThreshold,
     reset,

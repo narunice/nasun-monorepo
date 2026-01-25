@@ -48,6 +48,11 @@ export interface CancelSignerProposalParams {
   accountObjectId: string;
 }
 
+/** Parameters for declining a signer proposal (by pending signer) */
+export interface DeclineSignerProposalParams {
+  proposalObjectId: string;
+}
+
 /** Parameters for removing a signer */
 export interface RemoveSignerParams {
   accountObjectId: string;
