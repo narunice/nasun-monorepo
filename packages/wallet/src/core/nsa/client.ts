@@ -16,13 +16,16 @@ import type {
   NsaAccountState,
   NsaSignerInfo,
   NsaSignerType,
+  NsaSignerProposal,
   NsaRecoveryRequestState,
 } from '../../types/nsa';
 import type {
   CreateAccountParams,
   DepositParams,
   WithdrawParams,
-  AddSignerParams,
+  ProposeAddSignerParams,
+  AcceptSignerProposalParams,
+  CancelSignerProposalParams,
   RemoveSignerParams,
   SetGuardiansParams,
   UpdateThresholdParams,
@@ -158,20 +161,56 @@ export function buildWithdraw(params: WithdrawParams): Transaction {
 }
 
 /**
- * Build add_signer transaction
+ * Build propose_add_signer transaction (Phase 1: create proposal)
  */
-export function buildAddSigner(params: AddSignerParams): Transaction {
+export function buildProposeAddSigner(params: ProposeAddSignerParams): Transaction {
   const tx = new Transaction();
   const signerTypeNum = NSA_SIGNER_TYPE_MAP[params.signerType];
 
   tx.moveCall({
-    target: `${MODULE_SMART_ACCOUNT}::add_signer`,
+    target: `${MODULE_SMART_ACCOUNT}::propose_add_signer`,
     arguments: [
       tx.object(params.accountObjectId),
-      tx.pure.address(params.newSigner),
+      tx.pure.address(params.pendingSigner),
       tx.pure.u8(signerTypeNum),
       tx.pure.u8(params.weight),
       tx.pure.vector('u8', Array.from(new TextEncoder().encode(params.label))),
+      tx.object('0x6'), // Clock
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build accept_signer_proposal transaction (Phase 2: proof of ownership)
+ */
+export function buildAcceptSignerProposal(params: AcceptSignerProposalParams): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${MODULE_SMART_ACCOUNT}::accept_signer_proposal`,
+    arguments: [
+      tx.object(params.proposalObjectId),
+      tx.object(params.accountObjectId),
+      tx.object('0x6'), // Clock
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build cancel_signer_proposal transaction
+ */
+export function buildCancelSignerProposal(params: CancelSignerProposalParams): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${MODULE_SMART_ACCOUNT}::cancel_signer_proposal`,
+    arguments: [
+      tx.object(params.proposalObjectId),
+      tx.object(params.accountObjectId),
       tx.object('0x6'), // Clock
     ],
   });
@@ -307,6 +346,68 @@ export function buildCancelRecovery(params: CancelRecoveryParams): Transaction {
   return tx;
 }
 
+// === Proposal Queries ===
+
+/**
+ * Fetch SignerProposal state from chain
+ */
+export async function fetchSignerProposal(objectId: string): Promise<NsaSignerProposal> {
+  const client = getSuiClient();
+
+  const obj = await client.getObject({
+    id: objectId,
+    options: { showContent: true },
+  });
+
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    throw new NsaError('ACCOUNT_NOT_FOUND', `SignerProposal not found: ${objectId}`);
+  }
+
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  return parseProposalFields(objectId, fields);
+}
+
+/**
+ * Find active (not executed, not cancelled, not expired) proposals for an account.
+ * Uses queryEvents to find SignerProposalCreated events, then filters by current state.
+ */
+export async function findActiveProposalsForAccount(accountObjectId: string): Promise<NsaSignerProposal[]> {
+  const client = getSuiClient();
+
+  const events = await client.queryEvents({
+    query: {
+      MoveEventType: `${NSA_PACKAGE_ID}::smart_account::SignerProposalCreated`,
+    },
+    order: 'descending',
+    limit: 50,
+  });
+
+  const proposals: NsaSignerProposal[] = [];
+  const now = Date.now();
+
+  for (const event of events.data) {
+    const parsed = event.parsedJson as Record<string, unknown> | undefined;
+    if (!parsed) continue;
+
+    const eventAccountId = parsed.account_id as string;
+    if (eventAccountId !== accountObjectId) continue;
+
+    const proposalId = parsed.proposal_id as string;
+    if (!proposalId) continue;
+
+    try {
+      const proposal = await fetchSignerProposal(proposalId);
+      if (!proposal.isExecuted && !proposal.isCancelled && proposal.expiresAt > now) {
+        proposals.push(proposal);
+      }
+    } catch {
+      // Proposal may have been deleted or not accessible
+    }
+  }
+
+  return proposals;
+}
+
 // === Internal Helpers ===
 
 const SIGNER_TYPE_REVERSE: Record<number, NsaSignerType> = {
@@ -315,6 +416,22 @@ const SIGNER_TYPE_REVERSE: Record<number, NsaSignerType> = {
   2: 'local',
   3: 'hardware',
 };
+
+function parseProposalFields(objectId: string, fields: Record<string, unknown>): NsaSignerProposal {
+  return {
+    objectId,
+    accountId: (fields.account_id as { bytes?: string })?.bytes || fields.account_id as string || '',
+    proposer: fields.proposer as string,
+    pendingSigner: fields.pending_signer as string,
+    signerType: SIGNER_TYPE_REVERSE[Number(fields.signer_type)] || 'local',
+    weight: Number(fields.weight),
+    label: decodeLabel(fields.label as number[] | string),
+    createdAt: Number(fields.created_at),
+    expiresAt: Number(fields.expires_at),
+    isExecuted: Boolean(fields.is_executed),
+    isCancelled: Boolean(fields.is_cancelled),
+  };
+}
 
 function parseAccountFields(objectId: string, fields: Record<string, unknown>): NsaAccountState {
   const signersRaw = fields.signers as { fields: { contents: Array<{ fields: { key: string; value: { fields: Record<string, unknown> } } }> } } | undefined;

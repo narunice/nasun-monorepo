@@ -47,7 +47,7 @@ import { PortfolioPanel } from "./PortfolioPanel";
 import { NasunLinkWizard } from "./NasunLinkWizard";
 import { AdvancedToggle } from "./AdvancedToggle";
 import { LedgerConnect, LedgerBrowserWarning, LedgerErrorDisplay } from "./ledger";
-import { NsaSetupWizard, NsaAccountInfo, NsaAddSigner, NsaBackupPanel, NsaGuardianSetup, NsaRecoveryPanel } from "./nsa";
+import { NsaSetupWizard, NsaAccountInfo, NsaAddSigner, NsaAcceptProposal, NsaBackupPanel, NsaGuardianSetup, NsaRecoveryPanel } from "./nsa";
 import { useAdvancedMode, useUISettingsStore } from "./stores";
 
 type ViewMode =
@@ -69,7 +69,8 @@ type ViewMode =
   | "nasun-link" // Nasun Link creation
   | "nsa-setup" // Smart Account creation
   | "nsa-info" // Smart Account overview
-  | "nsa-add-signer" // Add signer
+  | "nsa-add-signer" // Propose signer
+  | "nsa-accept-proposal" // Accept signer proposal
   | "nsa-backup" // Backup management
   | "nsa-guardians" // Guardian setup
   | "nsa-recovery"; // Recovery flow
@@ -887,6 +888,9 @@ export function WalletConnect({
     }
     if (viewMode === "nsa-add-signer") {
       return <NsaAddSigner onClose={() => setViewMode("nsa-info")} />;
+    }
+    if (viewMode === "nsa-accept-proposal") {
+      return <NsaAcceptProposal onClose={() => setViewMode("nsa-info")} />;
     }
     if (viewMode === "nsa-backup") {
       return <NsaBackupPanel onClose={() => setViewMode("nsa-info")} />;

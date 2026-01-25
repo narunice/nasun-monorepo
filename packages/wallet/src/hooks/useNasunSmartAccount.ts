@@ -13,13 +13,16 @@ import {
   buildCreateAccount,
   buildDeposit,
   buildWithdraw,
-  buildAddSigner,
+  buildProposeAddSigner,
+  buildAcceptSignerProposal,
+  buildCancelSignerProposal,
   buildRemoveSigner,
   buildSetGuardians,
   buildUpdateThreshold,
+  findActiveProposalsForAccount,
 } from '../core/nsa/client';
 import { validateGuardianConfig } from '../core/nsa/recovery';
-import type { NsaSignerType, NsaAccountState } from '../types/nsa';
+import type { NsaSignerType, NsaAccountState, NsaSignerProposal } from '../types/nsa';
 import type { SignerAdapter } from '../core/signer/types';
 import { getSuiClient } from '../sui/client';
 
@@ -40,10 +43,18 @@ export interface UseNasunSmartAccountResult {
   deposit: (coinType: string, coinObjectId: string, signer: SignerAdapter) => Promise<string>;
   /** Withdraw coins from SmartAccount */
   withdraw: (coinType: string, amount: bigint, recipient: string, signer: SignerAdapter) => Promise<string>;
-  /** Add a new signer to the account */
-  addSigner: (newSigner: string, signerType: NsaSignerType, weight: number, label: string, signer: SignerAdapter) => Promise<void>;
+  /** Propose adding a new signer (Phase 1: creates proposal) */
+  proposeAddSigner: (pendingSigner: string, signerType: NsaSignerType, weight: number, label: string, signer: SignerAdapter) => Promise<string>;
+  /** Accept a signer proposal (Phase 2: proof of ownership) */
+  acceptSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
+  /** Cancel a pending signer proposal */
+  cancelSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
   /** Remove a signer from the account */
   removeSigner: (signerToRemove: string, signer: SignerAdapter) => Promise<void>;
+  /** Pending signer proposals */
+  pendingProposals: NsaSignerProposal[];
+  /** Refresh pending proposals from chain */
+  refreshProposals: () => Promise<void>;
   /** Set guardian configuration */
   setGuardians: (guardians: string[], threshold: number, recoveryOwner: string, signer: SignerAdapter) => Promise<void>;
   /** Update signing threshold */
@@ -104,8 +115,24 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     }
 
     const objectId = created.objectId;
-    const accountState = await fetchAccountState(objectId);
-    useNsaStore.getState().initialize(objectId, accountState);
+
+    // Shared objects may not be immediately queryable after creation.
+    // Wait for the transaction to be fully indexed before fetching state.
+    await client.waitForTransaction({ digest: result.digest });
+
+    // Retry fetchAccountState with backoff for eventual consistency
+    let accountState;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        accountState = await fetchAccountState(objectId);
+        break;
+      } catch {
+        if (attempt === 4) throw new Error(`SmartAccount created (${objectId}) but not yet queryable. Try refreshing.`);
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
+
+    useNsaStore.getState().initialize(objectId, accountState!);
 
     return objectId;
   }, []);
@@ -161,23 +188,57 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     return result.digest;
   }, [refreshState]);
 
-  const addSigner = useCallback(async (
-    newSigner: string,
+  const proposeAddSigner = useCallback(async (
+    pendingSigner: string,
     signerType: NsaSignerType,
     weight: number,
     label: string,
+    signer: SignerAdapter,
+  ): Promise<string> => {
+    const accountObjectId = useNsaStore.getState().accountObjectId;
+    if (!accountObjectId) throw new Error('No SmartAccount configured');
+
+    const tx = buildProposeAddSigner({
+      accountObjectId,
+      pendingSigner,
+      signerType,
+      weight,
+      label,
+    });
+    const client = getSuiClient();
+
+    tx.setSender(signer.address);
+    const txBytes = await tx.build({ client });
+    const { signature } = await signer.sign(txBytes);
+
+    const result = await client.executeTransactionBlock({
+      transactionBlock: txBytes,
+      signature,
+      options: { showEffects: true, showObjectChanges: true },
+    });
+
+    // Find the created SignerProposal object
+    const created = result.objectChanges?.find(
+      (change: { type: string; objectType?: string }) =>
+        change.type === 'created' && change.objectType?.includes('SignerProposal')
+    );
+
+    if (!created || created.type !== 'created') {
+      throw new Error('SignerProposal creation failed: object not found in effects');
+    }
+
+    await refreshProposals();
+    return created.objectId;
+  }, []);
+
+  const acceptSignerProposal = useCallback(async (
+    proposalObjectId: string,
     signer: SignerAdapter,
   ): Promise<void> => {
     const accountObjectId = useNsaStore.getState().accountObjectId;
     if (!accountObjectId) throw new Error('No SmartAccount configured');
 
-    const tx = buildAddSigner({
-      accountObjectId,
-      newSigner,
-      signerType,
-      weight,
-      label,
-    });
+    const tx = buildAcceptSignerProposal({ proposalObjectId, accountObjectId });
     const client = getSuiClient();
 
     tx.setSender(signer.address);
@@ -191,7 +252,43 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     });
 
     await refreshState();
+    await refreshProposals();
   }, [refreshState]);
+
+  const cancelSignerProposal = useCallback(async (
+    proposalObjectId: string,
+    signer: SignerAdapter,
+  ): Promise<void> => {
+    const accountObjectId = useNsaStore.getState().accountObjectId;
+    if (!accountObjectId) throw new Error('No SmartAccount configured');
+
+    const tx = buildCancelSignerProposal({ proposalObjectId, accountObjectId });
+    const client = getSuiClient();
+
+    tx.setSender(signer.address);
+    const txBytes = await tx.build({ client });
+    const { signature } = await signer.sign(txBytes);
+
+    await client.executeTransactionBlock({
+      transactionBlock: txBytes,
+      signature,
+      options: { showEffects: true },
+    });
+
+    await refreshProposals();
+  }, []);
+
+  const refreshProposals = useCallback(async () => {
+    const accountObjectId = useNsaStore.getState().accountObjectId;
+    if (!accountObjectId) return;
+
+    try {
+      const proposals = await findActiveProposalsForAccount(accountObjectId);
+      useNsaStore.getState().setPendingProposals(proposals);
+    } catch {
+      // Silently fail - proposals are supplementary info
+    }
+  }, []);
 
   const removeSigner = useCallback(async (
     signerToRemove: string,
@@ -288,8 +385,12 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     refreshState,
     deposit,
     withdraw,
-    addSigner,
+    proposeAddSigner,
+    acceptSignerProposal,
+    cancelSignerProposal,
     removeSigner,
+    pendingProposals: store.pendingProposals,
+    refreshProposals,
     setGuardians,
     updateThreshold,
     reset,

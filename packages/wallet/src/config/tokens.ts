@@ -32,13 +32,13 @@ export const DEVNET_TOKENS: TokenConfig[] = [
     symbol: 'NBTC',
     name: 'Nasun BTC',
     decimals: 8,
-    type: '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nbtc::NBTC',
+    type: '0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4::nbtc::NBTC',
   },
   {
     symbol: 'NUSDC',
     name: 'Nasun USDC',
     decimals: 6,
-    type: '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489::nusdc::NUSDC',
+    type: '0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4::nusdc::NUSDC',
   },
 ];
 

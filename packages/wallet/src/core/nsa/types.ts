@@ -27,13 +27,25 @@ export interface WithdrawParams {
   recipient: string;
 }
 
-/** Parameters for adding a signer */
-export interface AddSignerParams {
+/** Parameters for proposing a new signer (Phase 1 of 2-phase commit) */
+export interface ProposeAddSignerParams {
   accountObjectId: string;
-  newSigner: string;
+  pendingSigner: string;
   signerType: NsaSignerType;
   weight: number;
   label: string;
+}
+
+/** Parameters for accepting a signer proposal (Phase 2 - proof of ownership) */
+export interface AcceptSignerProposalParams {
+  proposalObjectId: string;
+  accountObjectId: string;
+}
+
+/** Parameters for cancelling a signer proposal */
+export interface CancelSignerProposalParams {
+  proposalObjectId: string;
+  accountObjectId: string;
 }
 
 /** Parameters for removing a signer */
