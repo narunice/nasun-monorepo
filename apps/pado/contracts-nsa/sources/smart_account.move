@@ -159,6 +159,13 @@ module nasun_smart_account::smart_account {
         timestamp: u64,
     }
 
+    public struct SignerProposalDeclined has copy, drop {
+        account_id: ID,
+        proposal_id: ID,
+        declined_by: address,
+        timestamp: u64,
+    }
+
     // === Public Entry Functions ===
 
     public entry fun create_account(
@@ -379,6 +386,31 @@ module nasun_smart_account::smart_account {
         event::emit(SignerProposalCancelled {
             proposal_id: object::id(proposal),
             cancelled_by: sender,
+            timestamp: clock.timestamp_ms(),
+        });
+    }
+
+    /// Decline a pending signer proposal. Only the pending_signer can decline.
+    /// This is different from cancel: decline means the invitee explicitly refused.
+    public entry fun decline_signer_proposal(
+        proposal: &mut SignerProposal,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = ctx.sender();
+
+        // Only pending signer can decline
+        assert!(sender == proposal.pending_signer, ENotPendingSigner);
+        assert!(!proposal.is_executed, EProposalAlreadyExecuted);
+        assert!(!proposal.is_cancelled, EProposalAlreadyCancelled);
+
+        // Mark as cancelled (reuse existing field for compatibility)
+        proposal.is_cancelled = true;
+
+        event::emit(SignerProposalDeclined {
+            account_id: proposal.account_id,
+            proposal_id: object::id(proposal),
+            declined_by: sender,
             timestamp: clock.timestamp_ms(),
         });
     }

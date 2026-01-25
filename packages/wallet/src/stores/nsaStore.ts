@@ -24,6 +24,8 @@ interface NsaStoreState {
   activeRecoveryId: string | null;
   /** Pending signer proposals for this account */
   pendingProposals: NsaSignerProposal[];
+  /** Incoming invitations (proposals where current user is pending signer) */
+  incomingInvitations: NsaSignerProposal[];
 }
 
 interface NsaStoreActions {
@@ -37,6 +39,8 @@ interface NsaStoreActions {
   setActiveRecovery: (requestId: string | null) => void;
   /** Set pending signer proposals */
   setPendingProposals: (proposals: NsaSignerProposal[]) => void;
+  /** Set incoming invitations */
+  setIncomingInvitations: (invitations: NsaSignerProposal[]) => void;
   /** Clear all NSA state (logout/reset) */
   clearState: () => void;
   /** Mark as initialized */
@@ -56,6 +60,7 @@ export const useNsaStore = create<NsaStore>()(
       lastFetchedAt: null,
       activeRecoveryId: null,
       pendingProposals: [],
+      incomingInvitations: [],
 
       // Actions
       setAccountObjectId: (objectId) =>
@@ -76,6 +81,9 @@ export const useNsaStore = create<NsaStore>()(
       setPendingProposals: (proposals) =>
         set({ pendingProposals: proposals }),
 
+      setIncomingInvitations: (invitations) =>
+        set({ incomingInvitations: invitations }),
+
       clearState: () =>
         set({
           accountObjectId: null,
@@ -85,6 +93,7 @@ export const useNsaStore = create<NsaStore>()(
           lastFetchedAt: null,
           activeRecoveryId: null,
           pendingProposals: [],
+          incomingInvitations: [],
         }),
 
       initialize: (objectId, state) =>
