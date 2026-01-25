@@ -219,11 +219,17 @@ export function PostRegistrationTab() {
             )}
           </div>
 
-          {/* New User: Language & Follower Count */}
-          {form.isNewUser && (
-            <div className="p-4 bg-yellow-950/20 border border-yellow-900/30 rounded-sm space-y-4">
-              <div className="text-sm text-yellow-400 font-medium">
-                New User Detected - Enter account details for multiplier calculation
+          {/* Language & Follower Count - Show for both new and existing users */}
+          {extractedUsername && !isLoadingAccount && (
+            <div className={`p-4 rounded-sm space-y-4 ${
+              form.isNewUser
+                ? 'bg-yellow-950/20 border border-yellow-900/30'
+                : 'bg-nasun-c5/10 border border-nasun-c5/30'
+            }`}>
+              <div className={`text-sm font-medium ${form.isNewUser ? 'text-yellow-400' : 'text-nasun-c3'}`}>
+                {form.isNewUser
+                  ? 'New User Detected - Enter account details for multiplier calculation'
+                  : 'Account Multiplier Settings'}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
