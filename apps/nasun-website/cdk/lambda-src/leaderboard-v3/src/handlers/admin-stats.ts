@@ -25,6 +25,7 @@ import {
   Season,
   SeasonAccountScore,
   Post,
+  SCORE_CONSTANTS,
 } from '../types';
 import { getActiveSeason, getSeasonAccountScores } from '../services/dynamodb-client';
 
@@ -196,7 +197,7 @@ async function getTopFive(seasonId: string): Promise<
       const daysSinceLastPost = Math.floor(
         (Date.now() - new Date(score.lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
       );
-      const freshnessMultiplier = 1 / (1 + daysSinceLastPost / 14);
+      const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
       const userScore = score.rawScore * score.consistencyBonus * freshnessMultiplier;
       return { ...score, userScore };
     })

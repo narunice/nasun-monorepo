@@ -48,20 +48,22 @@ export function NasunContentFeed({ seasonId }: NasunContentFeedProps) {
         )}
 
         {!isLoading && !isError && rotatedItems.length > 0 && (
-          <AnimatePresence mode="popLayout">
-            {rotatedItems.map((item) => (
-              <motion.div
-                key={item.postId}
-                layout
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-              >
-                <FeedPostCard item={item} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          <div className="flex flex-col gap-4" style={{ overflowAnchor: "none" }}>
+            <AnimatePresence mode="popLayout">
+              {rotatedItems.map((item) => (
+                <motion.div
+                  key={item.postId}
+                  layout
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                >
+                  <FeedPostCard item={item} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         )}
       </div>
 

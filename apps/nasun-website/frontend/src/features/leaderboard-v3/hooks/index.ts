@@ -8,3 +8,4 @@ export * from './useTopClimbersV3';
 export * from './useUserSearchV3';
 export * from './useFeaturedFeed';
 export * from './useMyRank';
+export * from './useRankHistory';
