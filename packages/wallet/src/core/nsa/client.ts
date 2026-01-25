@@ -26,6 +26,7 @@ import type {
   ProposeAddSignerParams,
   AcceptSignerProposalParams,
   CancelSignerProposalParams,
+  DeclineSignerProposalParams,
   RemoveSignerParams,
   SetGuardiansParams,
   UpdateThresholdParams,
@@ -219,6 +220,23 @@ export function buildCancelSignerProposal(params: CancelSignerProposalParams): T
 }
 
 /**
+ * Build decline_signer_proposal transaction (called by pending signer)
+ */
+export function buildDeclineSignerProposal(params: DeclineSignerProposalParams): Transaction {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${MODULE_SMART_ACCOUNT}::decline_signer_proposal`,
+    arguments: [
+      tx.object(params.proposalObjectId),
+      tx.object('0x6'), // Clock
+    ],
+  });
+
+  return tx;
+}
+
+/**
  * Build remove_signer transaction
  */
 export function buildRemoveSigner(params: RemoveSignerParams): Transaction {
@@ -391,6 +409,47 @@ export async function findActiveProposalsForAccount(accountObjectId: string): Pr
 
     const eventAccountId = parsed.account_id as string;
     if (eventAccountId !== accountObjectId) continue;
+
+    const proposalId = parsed.proposal_id as string;
+    if (!proposalId) continue;
+
+    try {
+      const proposal = await fetchSignerProposal(proposalId);
+      if (!proposal.isExecuted && !proposal.isCancelled && proposal.expiresAt > now) {
+        proposals.push(proposal);
+      }
+    } catch {
+      // Proposal may have been deleted or not accessible
+    }
+  }
+
+  return proposals;
+}
+
+/**
+ * Find active proposals where the given address is the pending signer.
+ * This enables automatic discovery of invitations without needing Proposal ID.
+ */
+export async function findProposalsForPendingSigner(address: string): Promise<NsaSignerProposal[]> {
+  const client = getSuiClient();
+
+  const events = await client.queryEvents({
+    query: {
+      MoveEventType: `${NSA_PACKAGE_ID}::smart_account::SignerProposalCreated`,
+    },
+    order: 'descending',
+    limit: 50,
+  });
+
+  const proposals: NsaSignerProposal[] = [];
+  const now = Date.now();
+
+  for (const event of events.data) {
+    const parsed = event.parsedJson as Record<string, unknown> | undefined;
+    if (!parsed) continue;
+
+    const eventPendingSigner = parsed.pending_signer as string;
+    if (eventPendingSigner?.toLowerCase() !== address.toLowerCase()) continue;
 
     const proposalId = parsed.proposal_id as string;
     if (!proposalId) continue;

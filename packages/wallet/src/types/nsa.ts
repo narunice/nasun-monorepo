@@ -108,7 +108,7 @@ export interface NsaBalanceEntry {
 }
 
 /** NSA module package address (devnet) */
-export const NSA_PACKAGE_ID = '0x1086f48c599e2a1ed1d0e541425d94c9f2a5be309c4ddec2cbd2eebc3ed16f30';
+export const NSA_PACKAGE_ID = '0x90227aff359b0ebbcf7fd6814cd6dd06d014a69b974905ac399ba9401c9995e2';
 
 /** On-chain SignerProposal state (2-phase signer addition) */
 export interface NsaSignerProposal {
