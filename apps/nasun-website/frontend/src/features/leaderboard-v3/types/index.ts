@@ -186,3 +186,62 @@ export interface MyRankResponse {
   seasonId?: string;
   calculatedAt: string;
 }
+
+// ============================================
+// Rank History Types (Phase 12)
+// ============================================
+
+// Valid date range options for rank history
+export type DateRangeOptionV3 = 7 | 14 | 30 | 90;
+
+// Single rank history entry
+export interface RankHistoryEntry {
+  date: string; // YYYY-MM-DD
+  rank: number;
+  userScore: number;
+  postCount: number;
+  rankChange?: RankChange;
+}
+
+// Statistics calculated from rank history
+export interface RankHistoryStats {
+  bestRank: number;
+  worstRank: number;
+  averageRank: number;
+  currentRank: number;
+  totalDays: number;
+  scoreIncrease: number;
+  rankImprovement: number;
+}
+
+// User profile for rank history display
+export interface RankHistoryProfile {
+  username: string;
+  originalUsername?: string;
+  displayName?: string;
+  profileImageUrl?: string;
+}
+
+// Complete rank history data
+export interface RankHistoryData {
+  history: RankHistoryEntry[];
+  stats: RankHistoryStats;
+  profile: RankHistoryProfile;
+}
+
+// API response for rank history
+export interface RankHistoryResponse {
+  success: boolean;
+  data?: RankHistoryData;
+  error?: string;
+  seasonId?: string;
+  calculatedAt: string;
+}
+
+// Date range labels for UI
+export const DATE_RANGE_LABELS: Record<DateRangeOptionV3, string> = {
+  7: '7D',
+  14: '2W',
+  30: '4W',
+  90: '3M',
+};
