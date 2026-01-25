@@ -229,7 +229,7 @@ function ActionItem({ action, variant, showIcon }: ActionItemProps) {
   }
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
       {showIcon && (
         <InlineTooltip tooltip={config.tooltip}>
           <span

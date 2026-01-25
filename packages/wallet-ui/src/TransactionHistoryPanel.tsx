@@ -253,7 +253,7 @@ export function TransactionHistoryPanel({
   // Loading state
   if (isLoading) {
     return (
-      <div className={`bg-white dark:bg-zinc-800 rounded-md ${className}`}>
+      <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
             <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
@@ -280,7 +280,7 @@ export function TransactionHistoryPanel({
   // Error state
   if (error) {
     return (
-      <div className={`bg-white dark:bg-zinc-800 rounded-md ${className}`}>
+      <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
             <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
@@ -289,7 +289,7 @@ export function TransactionHistoryPanel({
           </div>
         )}
         <div className="p-4">
-          <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-md p-3">
+          <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg p-3">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             <button
               onClick={() => refetch()}
@@ -306,7 +306,7 @@ export function TransactionHistoryPanel({
   // Empty state
   if (transactions.length === 0) {
     return (
-      <div className={`bg-white dark:bg-zinc-800 rounded-md ${className}`}>
+      <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
             <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
@@ -352,7 +352,7 @@ export function TransactionHistoryPanel({
   const displayedTxs = expanded ? transactions : transactions.slice(0, 5);
 
   return (
-    <div className={`bg-white dark:bg-zinc-800 rounded-md ${className}`}>
+    <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
       {!hideHeader && (
         <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
           <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">

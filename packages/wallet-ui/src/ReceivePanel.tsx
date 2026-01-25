@@ -95,7 +95,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
   if (!address) {
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-md">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">
           Please connect your wallet first.
         </p>
@@ -134,7 +134,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
       {/* QR Code */}
       <div className="flex justify-center mb-4">
-        <div className="p-3 bg-white rounded-md">
+        <div className="p-3 bg-white rounded-lg">
           {qrLoading || isGenerating ? (
             <div className="w-[200px] h-[200px] flex items-center justify-center">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />

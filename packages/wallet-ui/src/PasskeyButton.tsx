@@ -125,7 +125,7 @@ export function PasskeyButton({
     return (
       <button
         disabled
-        className={`flex items-center gap-2 px-4 py-2 bg-gray-600 text-gray-300 rounded-md cursor-not-allowed ${className}`}
+        className={`flex items-center gap-2 px-4 py-2 bg-gray-600 text-gray-300 rounded-lg cursor-not-allowed ${className}`}
       >
         <Spinner />
         <span>Loading...</span>
@@ -138,7 +138,7 @@ export function PasskeyButton({
     return (
       <button
         disabled
-        className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md cursor-not-allowed ${className}`}
+        className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg cursor-not-allowed ${className}`}
       >
         <Spinner />
         <span>Authenticating...</span>
@@ -152,7 +152,7 @@ export function PasskeyButton({
       <div className={`relative ${className}`}>
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
         >
           <PasskeyIcon />
           {compact ? (
@@ -164,7 +164,7 @@ export function PasskeyButton({
         </button>
 
         {showMenu && (
-          <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md shadow-lg z-50">
+          <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
             <div className="p-2 border-b border-gray-200 dark:border-zinc-700">
               <div className="text-xs text-gray-500 dark:text-gray-400">Address</div>
               <div className="text-sm font-mono text-gray-900 dark:text-white truncate">
@@ -195,7 +195,7 @@ export function PasskeyButton({
       <div className="flex flex-col gap-2">
         <button
           onClick={handleUnlock}
-          className={`flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors ${className}`}
+          className={`flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${className}`}
         >
           <PasskeyIcon />
           <span>Unlock with Passkey</span>
@@ -210,7 +210,7 @@ export function PasskeyButton({
   // Setup state - show registration form
   if (viewState === 'setup') {
     return (
-      <div className={`flex flex-col gap-3 p-4 bg-gray-100 dark:bg-zinc-800 rounded-md ${className}`}>
+      <div className={`flex flex-col gap-3 p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg ${className}`}>
         <h3 className="text-sm font-medium text-gray-900 dark:text-white">
           Setup Passkey Wallet
         </h3>
@@ -222,19 +222,19 @@ export function PasskeyButton({
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
           placeholder="Enter your name"
-          className="px-3 py-2 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <div className="flex gap-2">
           <button
             onClick={() => setViewState('idle')}
-            className="flex-1 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-gray-300 rounded-md transition-colors"
+            className="flex-1 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSetup}
             disabled={!userName.trim()}
-            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-md transition-colors disabled:cursor-not-allowed"
+            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
           >
             Create Wallet
           </button>
@@ -250,7 +250,7 @@ export function PasskeyButton({
   return (
     <button
       onClick={() => setViewState('setup')}
-      className={`flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors ${className}`}
+      className={`flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${className}`}
     >
       <PasskeyIcon />
       <span>Setup Passkey Wallet</span>

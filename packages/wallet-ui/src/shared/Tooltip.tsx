@@ -129,7 +129,7 @@ export function Tooltip({
           role="tooltip"
           className={`
             absolute z-50 px-3 py-2 max-w-xs
-            bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-md shadow-lg
+            bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-lg
             ${POSITION_STYLES[adjustedPosition]}
             animate-fade-in
           `}
