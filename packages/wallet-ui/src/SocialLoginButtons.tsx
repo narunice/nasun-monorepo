@@ -131,7 +131,7 @@ export function SocialLoginButtons({
             onClick={() => onLogin(provider)}
             disabled={isLoading}
             className={`
-              flex items-center justify-center gap-3 w-full rounded-lg
+              flex items-center justify-center gap-3 w-full rounded-md
               border border-gray-200 dark:border-zinc-700
               font-medium transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed

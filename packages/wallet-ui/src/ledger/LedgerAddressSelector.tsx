@@ -126,7 +126,7 @@ export function LedgerAddressSelector({
       </div>
 
       {/* Address list */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
         {addresses.map((addr) => (
           <AddressRow
             key={addr.index}
@@ -296,7 +296,7 @@ export function LedgerAddressDropdown({
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-left hover:border-gray-400 dark:hover:border-gray-500 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-left hover:border-gray-400 dark:hover:border-gray-500 transition-colors disabled:opacity-50"
       >
         <div>
           {selectedAddress ? (
@@ -321,7 +321,7 @@ export function LedgerAddressDropdown({
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 max-h-60 overflow-y-auto">
             {addresses.map((addr) => (
               <button
                 key={addr.index}
