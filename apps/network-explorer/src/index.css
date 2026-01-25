@@ -2,32 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Nasun 다크 테마 (Explorer 기본) */
-  --background: #191615;
-  --text: #faf7f4;
+@layer base {
+  :root {
+    /* Base */
+    --background: 26 18% 9%; /* #191615 nasun-black */
+    --foreground: 40 29% 97%; /* #faf7f4 nasun-white */
 
-  font-family: "Rubik", system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    /* Card */
+    --card: 205 46% 20%; /* #1b374a nasun-c6 */
+    --card-foreground: 40 29% 97%;
+
+    /* Popover */
+    --popover: 26 18% 9%;
+    --popover-foreground: 40 29% 97%;
+
+    /* Primary */
+    --primary: 204 47% 50%; /* #448BBB nasun-c4 */
+    --primary-foreground: 40 29% 97%;
+
+    /* Secondary */
+    --secondary: 218 64% 47%; /* #2A64C5 nasun-c5 */
+    --secondary-foreground: 40 29% 97%;
+
+    /* Muted */
+    --muted: 205 46% 30%;
+    --muted-foreground: 40 29% 60%; /* nasun-white/60 */
+
+    /* Accent */
+    --accent: 205 46% 30%;
+    --accent-foreground: 40 29% 97%;
+
+    /* Destructive */
+    --destructive: 11 98% 49%; /* #fa3102 scarlet */
+    --destructive-foreground: 40 29% 97%;
+
+    /* Border */
+    --border: 204 47% 50%; /* #448BBB nasun-c4 */
+    --input: 205 46% 30%;
+    --ring: 204 47% 50%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Nasun Legacy Variables (for backwards compatibility if needed) */
+    --nasun-black: #191615;
+    --nasun-white: #faf7f4;
+  }
+
+  .light {
+    /* Base */
+    --background: 40 29% 97%; /* #faf7f4 nasun-white */
+    --foreground: 26 18% 9%; /* #191615 nasun-black */
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 26 18% 9%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 26 18% 9%;
+
+    /* Primary */
+    --primary: 204 47% 50%; /* #448BBB nasun-c4 */
+    --primary-foreground: 40 29% 97%;
+
+    /* Secondary */
+    --secondary: 218 64% 47%; /* #2A64C5 nasun-c5 */
+    --secondary-foreground: 40 29% 97%;
+
+    /* Muted */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Accent */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* Destructive */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Border */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 215 20.2% 65.1%;
+  }
 }
 
-/* 라이트 모드 지원 (추후 사용) */
-.light {
-  --background: #faf7f4;
-  --text: #191615;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: var(--background);
-  color: var(--text);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Rubik", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  }
 }
 
 /* Custom scrollbar - subtle and modern */
@@ -41,31 +110,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(128, 128, 128, 0.4);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-/* Light mode scrollbar */
-.light ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
-}
-
-/* Firefox scrollbar */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-
-.light * {
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  background: rgba(128, 128, 128, 0.6);
 }
 
 /* Custom scrollbar for code blocks - more prominent */
@@ -75,14 +125,17 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  @apply bg-muted/20 rounded-md;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, rgba(99, 102, 241, 0.5), rgba(139, 92, 246, 0.5));
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light .custom-scrollbar::-webkit-scrollbar-thumb {
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {

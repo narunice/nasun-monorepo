@@ -57,42 +57,42 @@ export default function Transactions() {
   return (
     <>
       <div className="mb-6">
-        <Link to="/" className="text-nasun-c4 hover:underline">
+        <Link to="/" className="text-primary hover:underline">
           &larr; Back to Home
         </Link>
       </div>
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Transactions</h1>
+        <h1 className="text-2xl font-bold text-foreground">Transactions</h1>
         {isFetching && (
-          <span className="flex items-center gap-1 text-xs text-nasun-white/60">
-            <span className="w-2 h-2 bg-nasun-c4 rounded-full animate-pulse" />
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
             loading...
           </span>
         )}
       </div>
 
       {isLoading ? (
-        <div className="text-nasun-white/60">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       ) : data?.data && data.data.length > 0 ? (
         <>
-          <div className="rounded-xl overflow-hidden border border-nasun-c4/50 bg-nasun-c6/80 backdrop-blur-md">
+          <div className="rounded-xl overflow-hidden border border-border bg-card backdrop-blur-md">
             <table className="w-full">
-              <thead className="bg-nasun-c6/80 border-b border-nasun-c4/30">
+              <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Digest</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Time</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Checkpoint</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Digest</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Time</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Checkpoint</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-nasun-c4/20">
+              <tbody className="divide-y divide-border">
                 {data.data.map((tx) => (
-                  <tr key={tx.digest} className="hover:bg-nasun-c4/10 transition-colors">
+                  <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">
                       <Link
                         to={`/tx/${tx.digest}`}
-                        className="font-mono text-sm text-nasun-c4 hover:underline"
+                        className="font-mono text-sm text-primary hover:underline"
                       >
                         {truncateDigest(tx.digest)}
                       </Link>
@@ -100,16 +100,16 @@ export default function Transactions() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 text-xs rounded ${
                         tx.effects?.status?.status === 'success'
-                          ? 'bg-nasun-c3/20 text-nasun-c3'
-                          : 'bg-nasun-c1/20 text-nasun-c1'
+                          ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                          : 'bg-destructive/20 text-destructive'
                       }`}>
                         {tx.effects?.status?.status || 'unknown'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-nasun-white/60 text-sm">
+                    <td className="px-4 py-3 text-muted-foreground text-sm">
                       {formatTimestamp(tx.timestampMs)}
                     </td>
-                    <td className="px-4 py-3 text-nasun-white/60 font-mono">
+                    <td className="px-4 py-3 text-muted-foreground font-mono">
                       {tx.checkpoint || '-'}
                     </td>
                   </tr>
@@ -123,22 +123,22 @@ export default function Transactions() {
             <button
               onClick={handlePrevPage}
               disabled={pageIndex === 0}
-              className="px-4 py-2 bg-nasun-c6/80 border border-nasun-c4/50 hover:bg-nasun-c4/20 disabled:bg-nasun-c6/40 disabled:text-nasun-white/30 disabled:border-nasun-c5/20 rounded-xl transition-all active:scale-[0.97]"
+              className="px-4 py-2 bg-card border border-border hover:bg-primary/10 disabled:bg-muted disabled:text-muted-foreground disabled:border-border/50 rounded-xl transition-all active:scale-[0.97] text-foreground"
             >
               &larr; Previous
             </button>
-            <span className="text-nasun-white/60">Page {pageIndex + 1}</span>
+            <span className="text-muted-foreground">Page {pageIndex + 1}</span>
             <button
               onClick={handleNextPage}
               disabled={!data?.hasNextPage}
-              className="px-4 py-2 bg-nasun-c6/80 border border-nasun-c4/50 hover:bg-nasun-c4/20 disabled:bg-nasun-c6/40 disabled:text-nasun-white/30 disabled:border-nasun-c5/20 rounded-xl transition-all active:scale-[0.97]"
+              className="px-4 py-2 bg-card border border-border hover:bg-primary/10 disabled:bg-muted disabled:text-muted-foreground disabled:border-border/50 rounded-xl transition-all active:scale-[0.97] text-foreground"
             >
               Next &rarr;
             </button>
           </div>
         </>
       ) : (
-        <Card variant="c6" className="p-8 text-center text-nasun-white/60">
+        <Card variant="default" className="p-8 text-center text-muted-foreground">
           No transactions found
         </Card>
       )}

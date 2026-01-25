@@ -3,6 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  
 }
 
 interface State {
@@ -24,12 +25,12 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-nasun-black text-white">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
           <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
-          <p className="mb-4 text-nasun-white/60">Please refresh the page to continue</p>
+          <p className="mb-4 text-muted-foreground">Please refresh the page to continue</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-nasun-c4 rounded hover:bg-nasun-c5 transition-colors"
+            className="px-6 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
           >
             Refresh
           </button>

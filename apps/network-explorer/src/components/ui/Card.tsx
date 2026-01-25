@@ -3,12 +3,12 @@ import React from 'react';
 export type CardVariant = 'default' | 'c3' | 'c4' | 'c5' | 'c6' | 'gradient';
 
 const variantStyles: Record<CardVariant, string> = {
-  default: 'bg-nasun-c6/90 border-nasun-c5/50',
-  c3: 'bg-nasun-c3/10 border-nasun-c3/50',
-  c4: 'bg-nasun-c4/10 border-nasun-c4/50',
-  c5: 'bg-nasun-c5/10 border-nasun-c5/50',
-  c6: 'bg-nasun-c6/80 border-nasun-c5/30',
-  gradient: 'bg-gradient-to-r from-nasun-c5/20 to-nasun-c4/40 border-nasun-c4/50',
+  default: 'bg-card text-card-foreground border-border/50',
+  c3: 'bg-nasun-c3/10 border-nasun-c3/50 text-foreground',
+  c4: 'bg-nasun-c4/10 border-nasun-c4/50 text-foreground',
+  c5: 'bg-nasun-c5/10 border-nasun-c5/50 text-foreground',
+  c6: 'bg-nasun-c6/80 border-nasun-c5/30 text-nasun-white', // Keep c6 dark/navy even in light mode? Or maybe use muted? Let's keep it specific for now.
+  gradient: 'bg-gradient-to-r from-nasun-c5/20 to-nasun-c4/40 border-nasun-c4/50 text-foreground',
 };
 
 export interface CardProps {

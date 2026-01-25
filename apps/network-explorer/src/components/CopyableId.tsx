@@ -70,11 +70,11 @@ export default function CopyableId({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <span className="text-xs text-nasun-white/50 uppercase tracking-wide">{label}</span>
+        <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
       )}
       <div className="flex items-center">
         <span
-          className={`${textSize} text-nasun-white/80 font-mono break-all ${className}`}
+          className={`${textSize} text-foreground font-mono break-all ${className}`}
           title={value}
         >
           {displayValue}
@@ -84,13 +84,13 @@ export default function CopyableId({
         {showCopy && (
           <button
             onClick={handleCopy}
-            className="p-0.5 ml-1 text-nasun-white/40 hover:text-nasun-c4 transition-colors shrink-0"
+            className="p-0.5 ml-1 text-muted-foreground hover:text-primary transition-colors shrink-0"
             title={copied ? 'Copied!' : 'Copy to clipboard'}
             type="button"
           >
             {copied ? (
               <svg
-                className="w-3.5 h-3.5 text-nasun-c3"
+                className="w-3.5 h-3.5 dark:text-nasun-c3 text-teal-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -124,7 +124,7 @@ export default function CopyableId({
         {showLink && (
           <Link
             to={getLinkPath(value, linkType)}
-            className="p-0.5 text-nasun-white/40 hover:text-nasun-c4 transition-colors shrink-0"
+            className="p-0.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
             title="View details"
           >
             <svg

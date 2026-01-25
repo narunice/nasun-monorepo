@@ -60,19 +60,19 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
   const structCount = Object.keys(module.structs).length;
 
   return (
-    <div className="border border-nasun-c5/30 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between bg-nasun-c6/30 hover:bg-nasun-c6/50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between bg-card hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-nasun-c4 font-mono font-medium">{name}</span>
-          <span className="text-xs text-nasun-white/40">
+          <span className="text-primary font-mono font-medium">{name}</span>
+          <span className="text-xs text-muted-foreground">
             {functionCount} functions, {structCount} structs
           </span>
         </div>
         <svg
-          className={`w-5 h-5 text-nasun-white/60 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -82,28 +82,28 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
       </button>
 
       {isExpanded && (
-        <div className="p-4 bg-nasun-black/50 space-y-4">
+        <div className="p-4 bg-muted/30 space-y-4">
           {/* Functions */}
           {functionCount > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-nasun-c3 mb-2">Functions</h4>
+              <h4 className="text-sm font-medium text-primary mb-2">Functions</h4>
               <div className="space-y-2">
                 {Object.entries(module.exposedFunctions).map(([fnName, fn]) => (
-                  <div key={fnName} className="bg-nasun-c6/20 rounded p-2">
+                  <div key={fnName} className="bg-card border border-border rounded p-2">
                     <div className="flex items-start gap-2">
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        fn.visibility === 'Public' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                        fn.visibility === 'Public' ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
                       }`}>
                         {fn.visibility}
                       </span>
                       {fn.isEntry && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400">
                           entry
                         </span>
                       )}
-                      <code className="text-nasun-white font-mono text-sm">{fnName}</code>
+                      <code className="text-foreground font-mono text-sm">{fnName}</code>
                     </div>
-                    <div className="mt-1 text-xs text-nasun-white/60 font-mono">
+                    <div className="mt-1 text-xs text-muted-foreground font-mono">
                       ({fn.parameters.map((p, i) => (
                         <span key={i}>
                           {i > 0 && ', '}
@@ -111,7 +111,7 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
                         </span>
                       ))})
                       {fn.return.length > 0 && (
-                        <span className="text-nasun-c3">
+                        <span className="text-muted-foreground">
                           {' → '}
                           {fn.return.map((r, i) => (
                             <span key={i}>
@@ -131,20 +131,20 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
           {/* Structs */}
           {structCount > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-nasun-c4 mb-2">Structs</h4>
+              <h4 className="text-sm font-medium text-primary mb-2">Structs</h4>
               <div className="space-y-2">
                 {Object.entries(module.structs).map(([structName, struct]) => (
-                  <div key={structName} className="bg-nasun-c6/20 rounded p-2">
+                  <div key={structName} className="bg-card border border-border rounded p-2">
                     <div className="flex items-center gap-2">
-                      <code className="text-nasun-white font-mono text-sm">{structName}</code>
+                      <code className="text-foreground font-mono text-sm">{structName}</code>
                       {struct.abilities.abilities.length > 0 && (
-                        <span className="text-xs text-nasun-white/40">
+                        <span className="text-xs text-muted-foreground">
                           has {struct.abilities.abilities.join(', ')}
                         </span>
                       )}
                     </div>
                     {struct.fields.length > 0 && (
-                      <div className="mt-1 text-xs text-nasun-white/60 font-mono pl-2">
+                      <div className="mt-1 text-xs text-muted-foreground font-mono pl-2">
                         {struct.fields.map((field, i) => (
                           <div key={i}>
                             {field.name}: {formatType(field.type as FunctionParam)}
@@ -174,23 +174,23 @@ export default function Package() {
   });
 
   if (isLoading) {
-    return <div className="text-nasun-white/60">Loading package...</div>;
+    return <div className="text-muted-foreground">Loading package...</div>;
   }
 
   if (error || !modules) {
     return (
       <>
         <div className="mb-6">
-          <Link to="/" className="text-nasun-c4 hover:underline">
+          <Link to="/" className="text-primary hover:underline">
             &larr; Back to Home
           </Link>
         </div>
-        <Card variant="c3" className="p-6">
-          <h2 className="text-lg font-semibold text-red-400">Package Not Found</h2>
-          <p className="text-nasun-white/60 mt-2">
+        <Card variant="default" className="p-6 border-destructive/50">
+          <h2 className="text-lg font-semibold text-destructive">Package Not Found</h2>
+          <p className="text-muted-foreground mt-2">
             Could not load package: {id}
           </p>
-          <p className="text-nasun-white/40 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             This may not be a valid package ID, or the package may not exist on this network.
           </p>
         </Card>
@@ -211,7 +211,7 @@ export default function Package() {
   return (
     <>
       <div className="mb-6">
-        <Link to="/" className="text-nasun-c4 hover:underline">
+        <Link to="/" className="text-primary hover:underline">
           &larr; Back to Home
         </Link>
       </div>
@@ -224,17 +224,17 @@ export default function Package() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card variant="c4" className="p-4">
-          <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Modules</div>
-          <div className="text-2xl font-mono text-nasun-white">{moduleNames.length}</div>
+        <Card variant="default" className="p-4">
+          <div className="text-muted-foreground text-sm uppercase tracking-wider">Modules</div>
+          <div className="text-2xl font-mono text-foreground">{moduleNames.length}</div>
         </Card>
-        <Card variant="c3" className="p-4">
-          <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Functions</div>
-          <div className="text-2xl font-mono text-nasun-c3">{totalFunctions}</div>
+        <Card variant="default" className="p-4">
+          <div className="text-muted-foreground text-sm uppercase tracking-wider">Functions</div>
+          <div className="text-2xl font-mono dark:text-nasun-c3 text-teal-600">{totalFunctions}</div>
         </Card>
-        <Card variant="c5" className="p-4">
-          <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Structs</div>
-          <div className="text-2xl font-mono text-nasun-white">{totalStructs}</div>
+        <Card variant="default" className="p-4">
+          <div className="text-muted-foreground text-sm uppercase tracking-wider">Structs</div>
+          <div className="text-2xl font-mono text-foreground">{totalStructs}</div>
         </Card>
       </div>
 
