@@ -135,7 +135,7 @@ export function TransactionPreview({
       <div className="px-5 py-4 space-y-4">
         {/* Primary action summary */}
         {summary.actions.length > 0 && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex items-center gap-3 p-3 rounded-md bg-gray-50 dark:bg-gray-800/50">
             <ActionIcon action={summary.actions[0]} />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -211,7 +211,7 @@ export function TransactionPreview({
       {/* Confirmation for critical risk */}
       {requiresConfirmation && (
         <div className="px-5 pb-4">
-          <label className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 cursor-pointer">
+          <label className="flex items-start gap-3 p-3 rounded-md bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 cursor-pointer">
             <input
               type="checkbox"
               checked={confirmed}
@@ -236,14 +236,14 @@ export function TransactionPreview({
         <button
           onClick={onReject}
           disabled={isLoading}
-          className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="flex-1 px-4 py-2.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={onApprove}
           disabled={isLoading || !canApprove}
-          className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg text-white transition-colors ${
+          className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-md text-white transition-colors ${
             canApprove
               ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
               : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
@@ -334,7 +334,7 @@ function ActionIcon({ action }: { action: { type: string } }) {
   };
 
   return (
-    <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-lg">
+    <span className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-lg">
       {icons[action.type] || '⌘'}
     </span>
   );

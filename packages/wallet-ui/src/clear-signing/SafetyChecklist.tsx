@@ -99,7 +99,7 @@ export function SafetyChecklist({
   if (factors.length === 0) {
     return (
       <div
-        className={`p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 ${className}`}
+        className={`p-3 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 ${className}`}
       >
         <div className="flex items-center gap-2">
           <span className="text-green-600 dark:text-green-400">✓</span>
@@ -190,7 +190,7 @@ function FactorItem({ factor, showMitigation }: FactorItemProps) {
 
   return (
     <div
-      className={`rounded-lg border ${config.bgStyles} overflow-hidden transition-all`}
+      className={`rounded-md border ${config.bgStyles} overflow-hidden transition-all`}
     >
       <button
         onClick={() => setShowDetails(!showDetails)}

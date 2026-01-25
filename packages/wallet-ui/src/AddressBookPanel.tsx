@@ -179,7 +179,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
           sortedEntries.map((entry) => (
             <div
               key={entry.address}
-              className={`p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg border border-gray-200 dark:border-zinc-600/50 ${
+              className={`p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-md border border-gray-200 dark:border-zinc-600/50 ${
                 onSelect ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700' : ''
               }`}
               onClick={onSelect ? () => handleSelect(entry.address) : undefined}

@@ -166,7 +166,7 @@ export function LedgerConnect({
         onClick={handleClick}
         disabled={isLoading}
         className={`
-          flex items-center gap-2 rounded-lg border font-medium transition-all
+          flex items-center gap-2 rounded-md border font-medium transition-all
           ${SIZE_STYLES[size]}
           ${config.bgStyles}
           ${config.styles}
@@ -194,7 +194,7 @@ export function LedgerConnect({
 
       {/* Dropdown menu */}
       {variant === 'dropdown' && dropdownOpen && isConnected && (
-        <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-10">
+        <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-10">
           {/* Device info */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
@@ -235,7 +235,7 @@ export function LedgerConnect({
                   setDropdownOpen(false);
                   onDisconnect();
                 }}
-                className="w-full px-3 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                className="w-full px-3 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
               >
                 Disconnect
               </button>
@@ -276,7 +276,7 @@ export function LedgerBrowserWarning({ className = '' }: { className?: string })
 
   return (
     <div
-      className={`p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 ${className}`}
+      className={`p-4 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 ${className}`}
     >
       <div className="flex items-start gap-3">
         <span className="text-xl text-yellow-500 dark:text-yellow-400">🌐</span>

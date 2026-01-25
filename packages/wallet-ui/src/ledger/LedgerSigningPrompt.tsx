@@ -158,7 +158,7 @@ export function LedgerSigningPrompt({
           <div className="px-8 pb-6">
             <button
               onClick={onCancel}
-              className="w-full px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="w-full px-4 py-2.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
@@ -222,7 +222,7 @@ export function LedgerSigningIndicator({
 
   return (
     <div
-      className={`flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 ${className}`}
+      className={`flex items-center gap-3 p-4 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 ${className}`}
     >
       <div className="animate-pulse">
         <span className="text-2xl">🔑</span>

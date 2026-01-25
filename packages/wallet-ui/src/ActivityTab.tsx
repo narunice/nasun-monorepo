@@ -47,7 +47,7 @@ export function ActivityTab({
               <button
                 key={proposal.objectId}
                 onClick={() => onProposalClick?.(proposal)}
-                className="w-full p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                className="w-full p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
