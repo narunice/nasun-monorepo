@@ -26,6 +26,23 @@
 
 ---
 
+## Deployed Backend (AWS)
+
+| Resource | Value |
+|----------|-------|
+| **API Endpoint** | `https://8t2yw2ukoj.execute-api.ap-northeast-2.amazonaws.com/prod` |
+| **Executor Address** | `0xa952b023c471e51457eb71b5c9e7424f0799103fc2336d79c0ffc2164c5ca854` |
+| **Lambda ARN** | `arn:aws:lambda:ap-northeast-2:135808943968:function:blind-executor` |
+| **CloudFormation Stack** | `BlindStack` |
+
+**Secrets Manager:**
+- `blind/openai` - OpenAI API key (placeholder - needs real key)
+- `blind/executor` - Executor wallet private key
+
+**Deployed:** 2026-01-25
+
+---
+
 ## Architecture
 
 ```
@@ -167,13 +184,13 @@ public entry fun claim_timeout_refund(...)
 
 **Reference:** [faucet.move](../apps/pado/contracts/sources/faucet.move) - Shared Object, Balance, Clock 패턴
 
-**Tasks:**
-1. [ ] Create `apps/blind/contracts/` folder structure
-2. [ ] Write `Move.toml` (reference pado_tokens)
-3. [ ] Implement `blind.move` with escrow logic
-4. [ ] Build: `/home/naru/my_apps/nasun-devnet/sui/target/release/sui move build`
-5. [ ] Deploy to devnet
-6. [ ] Record PACKAGE_ID, REGISTRY_ID in `.env`
+**Tasks:** (Completed 2026-01-25)
+1. [x] Create `apps/blind/contracts/` folder structure
+2. [x] Write `Move.toml` (reference pado_tokens)
+3. [x] Implement `blind.move` with escrow logic
+4. [x] Build: `/home/naru/my_apps/nasun-devnet/sui/target/release/sui move build`
+5. [x] Deploy to devnet
+6. [x] Record PACKAGE_ID, REGISTRY_ID in `.env`
 
 ---
 
@@ -202,13 +219,18 @@ public entry fun claim_timeout_refund(...)
 
 **Reference:** [nasun-website governance-api](../apps/nasun-website/cdk/lambda-src/governance-api/) - Lambda + Sui 트랜잭션 패턴
 
-**Tasks:**
-1. [ ] Create `apps/blind/cdk/` folder structure
-2. [ ] Implement OpenAI service wrapper
-3. [ ] Implement Sui client for proof submission
-4. [ ] Create Lambda handler
-5. [ ] Write CDK stack (API Gateway + Lambda)
-6. [ ] Deploy and test API endpoints
+**Tasks:** (Completed 2026-01-25)
+1. [x] Create `apps/blind/cdk/` folder structure
+2. [x] Implement OpenAI service wrapper
+3. [x] Implement Sui client for proof submission
+4. [x] Create Lambda handler
+5. [x] Write CDK stack (API Gateway + Lambda)
+6. [x] Deploy and test API endpoints
+
+**API Endpoints:**
+- `GET /health` - Health check
+- `GET /info` - Executor info
+- `POST /execute` - Execute AI request
 
 ---
 
