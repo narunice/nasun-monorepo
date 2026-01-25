@@ -3,7 +3,7 @@
  * Displays SmartAccount state, signer list, and navigation to sub-flows
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useNasunSmartAccount,
   useNsaStore,
@@ -16,6 +16,7 @@ import { CopyableAddress } from '../CopyableAddress';
 interface NsaAccountInfoProps {
   onClose: () => void;
   onNavigate: (mode: string) => void;
+  onAcceptProposal?: (proposalId: string) => void;
 }
 
 const SIGNER_TYPE_LABELS: Record<string, string> = {
@@ -53,35 +54,113 @@ function formatTimeRemaining(expiresAt: number): string {
   return '<1h';
 }
 
-function PendingProposalCard({ proposal, onCancel }: { proposal: NsaSignerProposal; onCancel?: () => void }) {
+interface PendingProposalCardProps {
+  proposal: NsaSignerProposal;
+  currentAddress?: string;
+  onAccept?: () => void;
+  onCancel?: () => void;
+  onDecline?: () => void;
+  isLoading?: boolean;
+}
+
+function PendingProposalCard({ proposal, currentAddress, onAccept, onCancel, onDecline, isLoading }: PendingProposalCardProps) {
+  const [copied, setCopied] = useState(false);
+  const isAcceptor = currentAddress && proposal.pendingSigner.toLowerCase() === currentAddress.toLowerCase();
+  const isProposer = currentAddress && proposal.proposer.toLowerCase() === currentAddress.toLowerCase();
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(proposal.objectId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = proposal.objectId;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between py-2 px-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+    <div className="py-2 px-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-medium text-amber-800 dark:text-amber-300 truncate">
             {proposal.label || 'Unnamed'}
           </span>
-          <span className="text-[10px] text-amber-600 dark:text-amber-400">
+          <span
+            className="text-[10px] text-amber-600 dark:text-amber-400 cursor-help"
+            title={new Date(proposal.expiresAt).toLocaleString('en-US')}
+          >
             {formatTimeRemaining(proposal.expiresAt)}
           </span>
         </div>
+        <button
+          onClick={handleCopyId}
+          className="text-[10px] text-amber-600 dark:text-amber-500 hover:text-amber-800 dark:hover:text-amber-300 flex items-center gap-0.5"
+          title="Copy Proposal ID"
+        >
+          {copied ? (
+            <>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Copied
+            </>
+          ) : (
+            <>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy ID
+            </>
+          )}
+        </button>
+      </div>
+      <div className="flex items-center justify-between">
         <span className="text-[10px] text-amber-600 dark:text-amber-500 font-mono">
           {proposal.pendingSigner.slice(0, 8)}...{proposal.pendingSigner.slice(-4)}
         </span>
+        <div className="flex items-center gap-2">
+          {isAcceptor && onAccept && (
+            <button
+              onClick={onAccept}
+              disabled={isLoading}
+              className="text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded disabled:opacity-50"
+            >
+              Accept
+            </button>
+          )}
+          {isAcceptor && onDecline && (
+            <button
+              onClick={onDecline}
+              disabled={isLoading}
+              className="text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 disabled:opacity-50"
+            >
+              {isLoading ? 'Declining...' : 'Decline'}
+            </button>
+          )}
+          {isProposer && onCancel && (
+            <button
+              onClick={onCancel}
+              disabled={isLoading}
+              className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
-      {onCancel && (
-        <button
-          onClick={onCancel}
-          className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 px-2"
-        >
-          Cancel
-        </button>
-      )}
     </div>
   );
 }
 
-function TrinityProgress({ accountState }: { accountState: { signers: NsaSignerInfo[]; guardians: string[] } | null }) {
+function RecoveryReadiness({ accountState }: { accountState: { signers: NsaSignerInfo[]; guardians: string[] } | null }) {
   const hasMultipath = (accountState?.signers?.length ?? 0) >= 2;
   const hasBackup = typeof window !== 'undefined' && localStorage.getItem('nasun:nsa-backup-created') === 'true';
   const hasGuardian = (accountState?.guardians?.length ?? 0) > 0;
@@ -90,7 +169,7 @@ function TrinityProgress({ accountState }: { accountState: { signers: NsaSignerI
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500 dark:text-zinc-400">Security Level</span>
+        <span className="text-xs text-gray-500 dark:text-zinc-400">Recovery Readiness</span>
         <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">{completed}/3</span>
       </div>
       <div className="flex gap-1">
@@ -110,20 +189,49 @@ function TrinityProgress({ accountState }: { accountState: { signers: NsaSignerI
   );
 }
 
-export function NsaAccountInfo({ onClose, onNavigate }: NsaAccountInfoProps) {
-  const { accountState, accountObjectId, isLoading, refreshState, pendingProposals, refreshProposals, cancelSignerProposal } = useNasunSmartAccount();
+export function NsaAccountInfo({ onClose, onNavigate, onAcceptProposal }: NsaAccountInfoProps) {
+  const { accountState, accountObjectId, isLoading, refreshState, pendingProposals, refreshProposals, cancelSignerProposal, declineSignerProposal } = useNasunSmartAccount();
   const activeRecoveryId = useNsaStore((s) => s.activeRecoveryId);
   const { signer } = useSigner();
+  const [decliningProposalId, setDecliningProposalId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshState();
     refreshProposals();
   }, []);
 
-  const handleCancelProposal = async (proposalId: string) => {
+  const handleDeclineProposal = async (proposalId: string, label: string) => {
     if (!signer) return;
+
+    const confirmed = window.confirm(
+      `Decline the invitation "${label}"?\n\nThis action is recorded on-chain. The proposer will see that you declined.`
+    );
+    if (!confirmed) return;
+
+    setDecliningProposalId(proposalId);
+    try {
+      await declineSignerProposal(proposalId, signer);
+      await refreshProposals();
+    } catch (err) {
+      console.error('Failed to decline proposal:', err);
+      alert('Failed to decline proposal. Please try again.');
+    } finally {
+      setDecliningProposalId(null);
+    }
+  };
+
+  const handleCancelProposal = async (proposalId: string, label: string) => {
+    if (!signer) return;
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Cancel the proposal for "${label}"?\n\nThe pending signer will no longer be able to accept this invitation.`
+    );
+    if (!confirmed) return;
+
     try {
       await cancelSignerProposal(proposalId, signer);
+      await refreshProposals();
     } catch (err) {
       console.error('Failed to cancel proposal:', err);
     }
@@ -169,8 +277,8 @@ export function NsaAccountInfo({ onClose, onNavigate }: NsaAccountInfoProps) {
             </div>
           )}
 
-          {/* Trinity Security Progress */}
-          <TrinityProgress accountState={accountState} />
+          {/* Recovery Readiness */}
+          <RecoveryReadiness accountState={accountState} />
 
           {/* Signers */}
           <div className="space-y-1.5">
@@ -200,7 +308,11 @@ export function NsaAccountInfo({ onClose, onNavigate }: NsaAccountInfoProps) {
                   <PendingProposalCard
                     key={p.objectId}
                     proposal={p}
-                    onCancel={() => handleCancelProposal(p.objectId)}
+                    currentAddress={signer?.address}
+                    onAccept={() => onAcceptProposal?.(p.objectId)}
+                    onCancel={() => handleCancelProposal(p.objectId, p.label || 'Unnamed')}
+                    onDecline={() => handleDeclineProposal(p.objectId, p.label || 'Unnamed')}
+                    isLoading={decliningProposalId === p.objectId}
                   />
                 ))}
               </div>
