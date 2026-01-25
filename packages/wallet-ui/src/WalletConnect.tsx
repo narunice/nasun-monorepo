@@ -1156,7 +1156,7 @@ export function WalletConnect({
               onSecuritySettings={() => {}}
               onAddressBook={() => { setShowMoreMenu(false); setViewMode("address-book"); }}
               onLock={() => {}}
-              onDisconnect={() => { setShowMoreMenu(false); handleZkLogout(); }}
+              onDisconnect={() => { setShowMoreMenu(false); zkLogout(); }}
             />
           )}
 
