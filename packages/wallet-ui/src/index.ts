@@ -79,12 +79,6 @@ export type { SecurityProgressProps } from './SecurityProgress';
 export { CopyableAddress } from './CopyableAddress';
 export type { CopyableAddressProps } from './CopyableAddress';
 
-// New UI components (v2)
-export { BalanceCard } from './BalanceCard';
-export { MoreMenu } from './MoreMenu';
-export { AssetsTab } from './AssetsTab';
-export { ActivityTab } from './ActivityTab';
-
 // Security components
 export { SecuritySettings } from './SecuritySettings';
 export { AddressBookPanel } from './AddressBookPanel';

@@ -82,7 +82,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
   // Wallet not connected
   if (!isWalletConnected || !connectedAddress) {
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-md">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">Please connect your wallet first.</p>
       </div>
     );
@@ -96,7 +96,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
       : selectedToken;
 
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-md w-full">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,7 +166,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
     const riskLevel = getRiskLevel();
 
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-md w-full">
+      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
         {/* Header with Status Badge */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
@@ -354,7 +354,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
   const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas && hasEnoughBalance;
 
   return (
-    <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-md w-full">
+    <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Send Token</h3>
         {onClose && (

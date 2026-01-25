@@ -134,7 +134,7 @@ export function ErrorMessage({
   if (variant === 'toast') {
     return (
       <div
-        className={`flex items-start gap-3 p-4 rounded-md border shadow-lg ${bgStyles} ${className}`}
+        className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${bgStyles} ${className}`}
         role="alert"
       >
         <span className={`text-xl ${iconStyles}`}>{config.icon}</span>
@@ -159,7 +159,7 @@ export function ErrorMessage({
 
   return (
     <div
-      className={`rounded-md border ${bgStyles} overflow-hidden ${className}`}
+      className={`rounded-lg border ${bgStyles} overflow-hidden ${className}`}
       role="alert"
     >
       {/* Header */}
@@ -198,7 +198,7 @@ export function ErrorMessage({
           {onRetry && (
             <button
               onClick={onRetry}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Try Again
             </button>
@@ -279,7 +279,7 @@ export function GenericErrorMessage({
 }) {
   return (
     <div
-      className={`rounded-md border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 ${className}`}
+      className={`rounded-lg border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 ${className}`}
       role="alert"
     >
       <div className="flex items-start gap-3">
@@ -307,7 +307,7 @@ export function GenericErrorMessage({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 px-4 py-2 text-sm font-medium rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           Try Again
         </button>

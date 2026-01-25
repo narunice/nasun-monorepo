@@ -78,7 +78,7 @@ export function ImportWallet({
   // Import method selection screen
   if (mode === 'select') {
     return (
-      <div className="p-4 bg-white dark:bg-zinc-800 rounded-md">
+      <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import Wallet</h3>
         <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-4">
           Choose how to import your existing wallet
@@ -87,10 +87,10 @@ export function ImportWallet({
         <div className="space-y-3 mb-4">
           <button
             onClick={() => setMode('mnemonic')}
-            className="w-full p-4 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-md text-left transition-colors group"
+            className="w-full p-4 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-lg text-left transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 dark:bg-zinc-600 group-hover:bg-gray-300 dark:group-hover:bg-zinc-500 rounded-md flex items-center justify-center transition-colors">
+              <div className="w-10 h-10 bg-gray-200 dark:bg-zinc-600 group-hover:bg-gray-300 dark:group-hover:bg-zinc-500 rounded-lg flex items-center justify-center transition-colors">
                 <svg className="w-5 h-5 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -104,10 +104,10 @@ export function ImportWallet({
 
           <button
             onClick={() => setMode('privatekey')}
-            className="w-full p-4 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-md text-left transition-colors group"
+            className="w-full p-4 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-lg text-left transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 dark:bg-zinc-600 group-hover:bg-gray-300 dark:group-hover:bg-zinc-500 rounded-md flex items-center justify-center transition-colors">
+              <div className="w-10 h-10 bg-gray-200 dark:bg-zinc-600 group-hover:bg-gray-300 dark:group-hover:bg-zinc-500 rounded-lg flex items-center justify-center transition-colors">
                 <svg className="w-5 h-5 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
@@ -133,7 +133,7 @@ export function ImportWallet({
   // Mnemonic input screen
   if (mode === 'mnemonic') {
     return (
-      <div className="p-4 bg-white dark:bg-zinc-800 rounded-md">
+      <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
         <button
           onClick={() => setMode('select')}
           className="flex items-center gap-1 text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
@@ -225,7 +225,7 @@ export function ImportWallet({
 
   // Private key input screen
   return (
-    <div className="p-4 bg-white dark:bg-zinc-800 rounded-md">
+    <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
       <button
         onClick={() => setMode('select')}
         className="flex items-center gap-1 text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"

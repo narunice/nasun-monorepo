@@ -67,7 +67,7 @@ export function TokenSelector({
         disabled={disabled}
         className={`
           flex items-center justify-between gap-2 w-full px-3 py-2
-          bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-md
+          bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg
           text-gray-900 dark:text-white text-sm font-medium
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-zinc-600 cursor-pointer'}
           transition-colors
@@ -98,7 +98,7 @@ export function TokenSelector({
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 py-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md shadow-lg">
+        <div className="absolute z-50 w-full mt-1 py-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg">
           {availableTokens.map((token) => {
             const balance = getBalance(token.symbol);
             const isSelected = token.symbol === value;

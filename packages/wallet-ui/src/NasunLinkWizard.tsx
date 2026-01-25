@@ -261,7 +261,7 @@ export function NasunLinkWizard({
           <select
             value={form.coinType}
             onChange={(e) => updateForm('coinType', e.target.value)}
-            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="NSN">NSN</option>
             <option value="NUSDC">NUSDC</option>
@@ -280,7 +280,7 @@ export function NasunLinkWizard({
               value={form.amount}
               onChange={(e) => updateForm('amount', e.target.value.replace(/[^0-9.]/g, ''))}
               placeholder="0.00"
-              className="w-full px-3 py-2 pr-16 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 pr-16 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-zinc-400">
               {form.coinType}
@@ -305,7 +305,7 @@ export function NasunLinkWizard({
               <button
                 key={opt.value}
                 onClick={() => updateForm('linkType', opt.value as LinkType)}
-                className={`px-3 py-2 rounded-md border text-sm transition-colors ${
+                className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
                   form.linkType === opt.value
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                     : 'border-gray-300 dark:border-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500'
@@ -329,7 +329,7 @@ export function NasunLinkWizard({
             onChange={(e) => updateForm('message', e.target.value)}
             placeholder="Welcome gift!"
             maxLength={100}
-            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
@@ -343,7 +343,7 @@ export function NasunLinkWizard({
           {onCancel && (
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
+              className="flex-1 px-4 py-2 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -351,7 +351,7 @@ export function NasunLinkWizard({
           <button
             onClick={() => setStep('conditions')}
             disabled={!hasEnoughBalance}
-            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white disabled:text-gray-500 dark:disabled:text-zinc-400 rounded-md transition-colors"
+            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white disabled:text-gray-500 dark:disabled:text-zinc-400 rounded-lg transition-colors"
           >
             Next
           </button>
@@ -390,7 +390,7 @@ export function NasunLinkWizard({
               onChange={(e) => updateForm('maxClaims', parseInt(e.target.value) || 1)}
               min={1}
               max={1000}
-              className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
               Total: {formatBalance(parsedAmount * BigInt(form.maxClaims), decimals)} {form.coinType}
@@ -406,7 +406,7 @@ export function NasunLinkWizard({
           <select
             value={form.expirationHours}
             onChange={(e) => updateForm('expirationHours', parseInt(e.target.value))}
-            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value={1}>1 hour</option>
             <option value={6}>6 hours</option>
@@ -436,13 +436,13 @@ export function NasunLinkWizard({
               value={form.password}
               onChange={(e) => updateForm('password', e.target.value)}
               placeholder="Enter password"
-              className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           )}
         </div>
 
         {/* Summary */}
-        <div className="bg-gray-50 dark:bg-zinc-800 rounded-md p-4 mb-6">
+        <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 mb-6">
           <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Summary</h4>
           <div className="space-y-1 text-sm text-gray-600 dark:text-zinc-400">
             <p>Amount: {form.amount} {form.coinType}</p>
@@ -460,14 +460,14 @@ export function NasunLinkWizard({
         <div className="flex gap-3">
           <button
             onClick={() => setStep('amount')}
-            className="flex-1 px-4 py-2 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
+            className="flex-1 px-4 py-2 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
           >
             Back
           </button>
           <button
             onClick={handleCreate}
             disabled={isLoading || (form.requirePassword && !form.password)}
-            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white disabled:text-gray-500 dark:disabled:text-zinc-400 rounded-md transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white disabled:text-gray-500 dark:disabled:text-zinc-400 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -507,7 +507,7 @@ export function NasunLinkWizard({
         </div>
 
         {/* Link display */}
-        <div className="bg-gray-50 dark:bg-zinc-800 rounded-md p-4 mb-4">
+        <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 mb-4">
           <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1 font-mono break-all">
             {createdLink.url.fullUrl}
           </p>
@@ -516,7 +516,7 @@ export function NasunLinkWizard({
         {/* Copy button */}
         <button
           onClick={handleCopy}
-          className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+          className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {copied ? (
             <>
@@ -558,7 +558,7 @@ export function NasunLinkWizard({
             setCreatedLink(null);
             setForm(DEFAULT_FORM);
           }}
-          className="w-full mt-4 px-4 py-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+          className="w-full mt-4 px-4 py-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
         >
           Create Another Link
         </button>
@@ -566,7 +566,7 @@ export function NasunLinkWizard({
         {onCancel && (
           <button
             onClick={onCancel}
-            className="w-full mt-2 px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
+            className="w-full mt-2 px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
           >
             Done
           </button>

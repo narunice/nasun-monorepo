@@ -274,7 +274,7 @@ export function LinkClaimPage({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter link password"
-                className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           )}
@@ -288,7 +288,7 @@ export function LinkClaimPage({
           <button
             onClick={handleClaim}
             disabled={isClaiming || hasFunds === false || (requiresPassword && !password)}
-            className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white disabled:text-gray-500 dark:disabled:text-zinc-400 rounded-md transition-colors font-medium flex items-center justify-center gap-2"
+            className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white disabled:text-gray-500 dark:disabled:text-zinc-400 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
           >
             {isClaiming ? (
               <>
