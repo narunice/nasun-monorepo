@@ -94,13 +94,13 @@ export function BlacklistManagement() {
 
   return (
     <AdminLayout>
-      <SectionLayout className="!max-w-6xl !pt-12">
+      <SectionLayout className="!max-w-6xl !pt-0">
         {/* Header */}
         <div className="mb-10">
-          <PageTitle as="h3" align="left" className="!mb-4">
+          <PageTitle as="h3" align="left" className="">
             Blacklist Management
           </PageTitle>
-          <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
+          <p className="text-nasun-white/60 max-w-2xl  -mt-6">
             Manage banned accounts on the leaderboard. Banned accounts are hidden from rankings and
             cannot register new posts.
           </p>
@@ -108,7 +108,7 @@ export function BlacklistManagement() {
 
         <div className="flex flex-col gap-8 w-full">
           {/* Search Section */}
-          <OuterBox color="w5" padding="md">
+          <OuterBox color="w1" padding="md">
             <h3 className="text-nasun-white font-medium text-lg mb-4">Search Account</h3>
             <div className="flex gap-3">
               <input
@@ -170,10 +170,8 @@ export function BlacklistManagement() {
           </OuterBox>
 
           {/* Banned Accounts Table */}
-          <OuterBox color="w5" padding="md">
-            <h3 className="text-nasun-white font-medium text-lg mb-4">
-              Banned Accounts ({total})
-            </h3>
+          <OuterBox color="w2" padding="md">
+            <h3 className="text-nasun-white font-medium text-lg mb-4">Banned Accounts ({total})</h3>
 
             {bannedAccounts.length === 0 ? (
               <p className="text-nasun-white/40 text-center py-8">No banned accounts</p>
@@ -214,9 +212,7 @@ export function BlacklistManagement() {
                             ? new Date(account.bannedAt).toLocaleString("en-US")
                             : "-"}
                         </td>
-                        <td className="py-3 px-2 text-nasun-white/40">
-                          {account.bannedBy || "-"}
-                        </td>
+                        <td className="py-3 px-2 text-nasun-white/40">{account.bannedBy || "-"}</td>
                         <td className="py-3 px-2 text-right">
                           <Button
                             variant="outlineC5"

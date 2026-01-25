@@ -126,12 +126,12 @@ export function CreateProposal() {
 
   return (
     <AdminLayout>
-      <SectionLayout className="!max-w-3xl !pt-12">
+      <SectionLayout className="!max-w-3xl !pt-0">
         <div className="mb-8">
-          <PageTitle as="h3" align="left" className="!mb-2">
+          <PageTitle as="h3" align="left" className="">
             Create Proposal
           </PageTitle>
-          <p className="text-nasun-white/60">
+          <p className="text-nasun-white/60 -mt-6">
             Create a new governance proposal or poll. Requires AdminCap access.
           </p>
         </div>
@@ -146,13 +146,13 @@ export function CreateProposal() {
                   {isLocalWalletConnected
                     ? `Connected: ${account?.address?.slice(0, 10)}...${account?.address?.slice(-8)}`
                     : isZkConnected
-                    ? "zkLogin connected (cannot create proposals - use Local Wallet)"
-                    : "Connect your Nasun Wallet to create proposals"}
+                      ? "zkLogin connected (cannot create proposals - use Local Wallet)"
+                      : "Connect your Nasun Wallet to create proposals"}
                 </p>
                 {isZkConnected && !isLocalWalletConnected && (
                   <p className="text-amber-400 text-xs mt-1">
-                    zkLogin wallet cannot own AdminCap. Please import the admin private key via Local
-                    Wallet.
+                    zkLogin wallet cannot own AdminCap. Please import the admin private key via
+                    Local Wallet.
                   </p>
                 )}
                 {!isLocalWalletConnected && !isZkConnected && (
@@ -166,113 +166,115 @@ export function CreateProposal() {
           </OuterBox>
 
           {/* Create Proposal Form */}
-          <OuterBox color="w5" padding="md" as="form" onSubmit={handleSubmit}>
-            <h2 className="text-lg font-medium text-nasun-white mb-6">Proposal Details</h2>
+          <OuterBox color="w5" padding="md">
+            <form onSubmit={handleSubmit}>
+              <h2 className="text-lg font-medium text-nasun-white mb-6">Proposal Details</h2>
 
-            {/* Title */}
-            <div className="mb-6">
-              <label className="block text-sm text-nasun-white/70 mb-2">Title</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Enter proposal title"
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none"
-                disabled={isSubmitting}
-              />
-            </div>
+              {/* Title */}
+              <div className="mb-6">
+                <label className="block text-sm text-nasun-white/70 mb-2">Title</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Enter proposal title"
+                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none"
+                  disabled={isSubmitting}
+                />
+              </div>
 
-            {/* Description */}
-            <div className="mb-6">
-              <label className="block text-sm text-nasun-white/70 mb-2">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter proposal description"
-                rows={4}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none resize-none"
-                disabled={isSubmitting}
-              />
-            </div>
+              {/* Description */}
+              <div className="mb-6">
+                <label className="block text-sm text-nasun-white/70 mb-2">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter proposal description"
+                  rows={4}
+                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none resize-none"
+                  disabled={isSubmitting}
+                />
+              </div>
 
-            {/* Proposal Type */}
-            <div className="mb-6">
-              <label className="block text-sm text-nasun-white/70 mb-2">Proposal Type</label>
+              {/* Proposal Type */}
+              <div className="mb-6">
+                <label className="block text-sm text-nasun-white/70 mb-2">Proposal Type</label>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, proposalType: "Governance" })}
+                    className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
+                      formData.proposalType === "Governance"
+                        ? "bg-amber-500/10 border-amber-500/50 text-amber-400"
+                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <div className="font-medium">Governance</div>
+                    <div className="text-xs mt-1 opacity-70">User pays gas fee</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, proposalType: "Poll" })}
+                    className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
+                      formData.proposalType === "Poll"
+                        ? "bg-blue-500/10 border-blue-500/50 text-blue-400"
+                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <div className="font-medium">Poll</div>
+                    <div className="text-xs mt-1 opacity-70">Sponsored (zero gas)</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="mb-8">
+                <label className="block text-sm text-nasun-white/70 mb-2">Voting Duration</label>
+                <select
+                  value={formData.durationHours}
+                  onChange={(e) =>
+                    setFormData({ ...formData, durationHours: Number(e.target.value) })
+                  }
+                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none [&>option]:bg-nasun-c6 [&>option]:text-nasun-white"
+                  disabled={isSubmitting}
+                >
+                  <option value={24}>24 hours</option>
+                  <option value={48}>48 hours</option>
+                  <option value={72}>72 hours (3 days)</option>
+                  <option value={168}>168 hours (7 days)</option>
+                  <option value={336}>336 hours (14 days)</option>
+                </select>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-sm">
+                  <p className="text-red-400 text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* Submit Button */}
               <div className="flex gap-4">
-                <button
+                <Button
                   type="button"
-                  onClick={() => setFormData({ ...formData, proposalType: "Governance" })}
-                  className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
-                    formData.proposalType === "Governance"
-                      ? "bg-amber-500/10 border-amber-500/50 text-amber-400"
-                      : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
-                  }`}
+                  variant="ghost"
+                  onClick={() => navigate("/admin/governance")}
                   disabled={isSubmitting}
                 >
-                  <div className="font-medium">Governance</div>
-                  <div className="text-xs mt-1 opacity-70">User pays gas fee</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, proposalType: "Poll" })}
-                  className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
-                    formData.proposalType === "Poll"
-                      ? "bg-blue-500/10 border-blue-500/50 text-blue-400"
-                      : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
-                  }`}
-                  disabled={isSubmitting}
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="c4"
+                  className="flex-1"
+                  disabled={!canCreateProposal || isSubmitting}
                 >
-                  <div className="font-medium">Poll</div>
-                  <div className="text-xs mt-1 opacity-70">Sponsored (zero gas)</div>
-                </button>
+                  {isSubmitting ? "Creating..." : "Create Proposal"}
+                </Button>
               </div>
-            </div>
-
-            {/* Duration */}
-            <div className="mb-8">
-              <label className="block text-sm text-nasun-white/70 mb-2">Voting Duration</label>
-              <select
-                value={formData.durationHours}
-                onChange={(e) =>
-                  setFormData({ ...formData, durationHours: Number(e.target.value) })
-                }
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none [&>option]:bg-nasun-c6 [&>option]:text-nasun-white"
-                disabled={isSubmitting}
-              >
-                <option value={24}>24 hours</option>
-                <option value={48}>48 hours</option>
-                <option value={72}>72 hours (3 days)</option>
-                <option value={168}>168 hours (7 days)</option>
-                <option value={336}>336 hours (14 days)</option>
-              </select>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-sm">
-                <p className="text-red-400 text-sm">{error}</p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="flex gap-4">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => navigate("/admin/governance")}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="c4"
-                className="flex-1"
-                disabled={!canCreateProposal || isSubmitting}
-              >
-                {isSubmitting ? "Creating..." : "Create Proposal"}
-              </Button>
-            </div>
+            </form>
           </OuterBox>
 
           {/* Info */}
