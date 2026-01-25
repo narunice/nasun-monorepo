@@ -20,11 +20,11 @@ interface NsaAddSignerProps {
 
 type Step = 'form' | 'confirm' | 'submitting' | 'success';
 
-const SIGNER_TYPES: { value: NsaSignerType; label: string }[] = [
-  { value: 'passkey', label: 'Passkey (Face ID / Fingerprint)' },
-  { value: 'zklogin', label: 'zkLogin (OAuth)' },
-  { value: 'local', label: 'Local Keypair' },
-  { value: 'hardware', label: 'Hardware Wallet' },
+const SIGNER_TYPES: { value: NsaSignerType; label: string; description: string }[] = [
+  { value: 'passkey', label: 'Passkey', description: 'Most secure. Uses device biometrics (Face ID, fingerprint).' },
+  { value: 'zklogin', label: 'zkLogin', description: 'Sign in with Google. No seed phrase needed.' },
+  { value: 'local', label: 'Local Keypair', description: 'Traditional wallet. Seed phrase stored on device.' },
+  { value: 'hardware', label: 'Hardware Wallet', description: 'Ledger or similar. Keys never leave the device.' },
 ];
 
 function isValidSuiAddress(addr: string): boolean {
@@ -39,6 +39,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
   const [label, setLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [proposalId, setProposalId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { proposeAddSigner, accountState } = useNasunSmartAccount();
   const { signer } = useSigner();
@@ -104,7 +105,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
               className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
             {address && !isAddressValid && (
-              <p className="text-xs text-red-400 mt-1">Invalid Sui address format</p>
+              <p className="text-xs text-red-400 mt-1">Invalid NSN address format</p>
             )}
             {isDuplicate && (
               <p className="text-xs text-red-400 mt-1">This address is already a signer</p>
@@ -113,16 +114,43 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
 
           {/* Type */}
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Signer Type</label>
-            <select
-              value={signerType}
-              onChange={(e) => setSignerType(e.target.value as NsaSignerType)}
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1.5 block">Signer Type</label>
+            <div className="space-y-1.5">
               {SIGNER_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setSignerType(t.value)}
+                  className={`w-full px-3 py-2 text-left rounded border transition-colors ${
+                    signerType === t.value
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400'
+                      : 'bg-gray-50 dark:bg-zinc-700/50 border-gray-200 dark:border-zinc-600 hover:border-gray-300 dark:hover:border-zinc-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                      signerType === t.value
+                        ? 'border-blue-500 dark:border-blue-400'
+                        : 'border-gray-300 dark:border-zinc-500'
+                    }`}>
+                      {signerType === t.value && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" />
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium ${
+                      signerType === t.value
+                        ? 'text-blue-700 dark:text-blue-300'
+                        : 'text-gray-700 dark:text-zinc-300'
+                    }`}>
+                      {t.label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-zinc-400 mt-0.5 ml-5.5 pl-[22px]">
+                    {t.description}
+                  </p>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Label */}
@@ -149,6 +177,9 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
               onChange={(e) => setWeight(Math.max(1, Math.min(10, Number(e.target.value))))}
               className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">
+              Signing power for this signer. Combined weight of signers must reach threshold ({accountState?.threshold ?? 1}) to approve transactions.
+            </p>
           </div>
 
           <button
@@ -258,7 +289,44 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
 
         {proposalId && (
           <div className="w-full p-3 bg-gray-100 dark:bg-zinc-700 rounded mb-4">
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Proposal ID</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-500 dark:text-zinc-400">Proposal ID</p>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(proposalId);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = proposalId;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }
+                }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+              >
+                {copied ? (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
             <p className="text-xs font-mono text-gray-900 dark:text-white break-all">
               {proposalId}
             </p>

@@ -97,9 +97,9 @@ export function NsaSetupWizard({ onClose, onSuccess }: NsaSetupWizardProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Trinity Recovery</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Never Lose Access</p>
               <p className="text-xs text-gray-600 dark:text-zinc-400 mt-0.5">
-                Three layers of protection: multipath login, encrypted backup, guardian recovery.
+                Recover from anything: multiple login methods, encrypted backup, and trusted guardians.
               </p>
             </div>
           </div>

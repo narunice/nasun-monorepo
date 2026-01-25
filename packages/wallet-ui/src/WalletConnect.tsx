@@ -23,6 +23,7 @@ import {
   getAllTokens,
   LOCKOUT_TIERS,
   useNsaStore,
+  useNasunSmartAccount,
   type NFTInfo,
   type NFTSortBy,
   type ZkLoginProvider,
@@ -288,8 +289,33 @@ export function WalletConnect({
   // NSA (Smart Account) state
   const nsaIsInitialized = useNsaStore((s) => s.isInitialized);
   const nsaActiveRecoveryId = useNsaStore((s) => s.activeRecoveryId);
+  const nsaPendingProposals = useNsaStore((s) => s.pendingProposals);
+  const nsaIncomingInvitations = useNsaStore((s) => s.incomingInvitations);
+  const nsaAccountState = useNsaStore((s) => s.accountState);
   const nsaBannerDismissed = useUISettingsStore((s) => s.nsaBannerDismissed);
   const dismissNsaBanner = useUISettingsStore((s) => s.dismissNsaBanner);
+  const { refreshIncomingInvitations } = useNasunSmartAccount();
+
+  // Recovery Readiness calculation
+  const nsaHasMultipath = (nsaAccountState?.signers?.length ?? 0) >= 2;
+  const nsaHasBackup = typeof window !== 'undefined' && localStorage.getItem('nasun:nsa-backup-created') === 'true';
+  const nsaHasGuardian = (nsaAccountState?.guardians?.length ?? 0) > 0;
+  const nsaRecoveryCompleted = [nsaHasMultipath, nsaHasBackup, nsaHasGuardian].filter(Boolean).length;
+
+  // Auto-refresh incoming invitations when wallet connects
+  useEffect(() => {
+    if (account?.address) {
+      refreshIncomingInvitations(account.address);
+    }
+  }, [account?.address, refreshIncomingInvitations]);
+
+  // Count pending proposals where current user is the acceptor (from existing Smart Account)
+  const pendingForMeFromAccount = nsaPendingProposals.filter(
+    (p) => account?.address && p.pendingSigner.toLowerCase() === account.address.toLowerCase()
+  ).length;
+
+  // Total pending for me = from existing account + incoming invitations (discovered automatically)
+  const pendingForMe = pendingForMeFromAccount + nsaIncomingInvitations.length;
 
   // Track which provider is loading
   const [loadingProvider, setLoadingProvider] = useState<ZkLoginProvider | null>(null);
@@ -310,6 +336,7 @@ export function WalletConnect({
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>("main");
+  const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -321,6 +348,7 @@ export function WalletConnect({
   const [nftCursor, setNftCursor] = useState<string | undefined>(undefined);
   const [accumulatedNfts, setAccumulatedNfts] = useState<NFTInfo[]>([]);
   const [sendRecipient, setSendRecipient] = useState<string | undefined>(undefined);
+  const [proposalBannerDismissed, setProposalBannerDismissed] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -883,14 +911,29 @@ export function WalletConnect({
     }
     if (viewMode === "nsa-info") {
       return (
-        <NsaAccountInfo onClose={() => setViewMode("main")} onNavigate={(mode) => setViewMode(mode as ViewMode)} />
+        <NsaAccountInfo
+          onClose={() => setViewMode("main")}
+          onNavigate={(mode) => setViewMode(mode as ViewMode)}
+          onAcceptProposal={(proposalId) => {
+            setSelectedProposalId(proposalId);
+            setViewMode("nsa-accept-proposal");
+          }}
+        />
       );
     }
     if (viewMode === "nsa-add-signer") {
       return <NsaAddSigner onClose={() => setViewMode("nsa-info")} />;
     }
     if (viewMode === "nsa-accept-proposal") {
-      return <NsaAcceptProposal onClose={() => setViewMode("nsa-info")} />;
+      return (
+        <NsaAcceptProposal
+          onClose={() => {
+            setSelectedProposalId("");
+            setViewMode("nsa-info");
+          }}
+          initialProposalId={selectedProposalId}
+        />
+      );
     }
     if (viewMode === "nsa-backup") {
       return <NsaBackupPanel onClose={() => setViewMode("nsa-info")} />;
@@ -986,10 +1029,18 @@ export function WalletConnect({
     if (status === "disconnected" && !isZkLoggedIn && !isLedgerConnected) {
       return (
         <div className="py-3 px-4 w-full ">
-          {/* Social Login Section */}
-          <div className="mb-4">
-            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-3 text-center">
-              Quick start with social login
+          {/* Quick Start Section - Social Login (Recommended) */}
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                Quick Start
+              </span>
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded">
+                Recommended
+              </span>
+            </div>
+            <p className="text-xs text-blue-600 dark:text-blue-400 text-center mb-3">
+              No seed phrase needed
             </p>
             <SocialLoginButtons
               onLogin={handleSocialLogin}
@@ -1001,11 +1052,14 @@ export function WalletConnect({
             {zkError && <p className="text-xs text-red-400 mt-2 text-center">{zkError.message}</p>}
           </div>
 
-          {/* Password Wallet Options */}
+          {/* Traditional Wallet Options */}
           <div className="space-y-1">
+            <p className="text-[10px] text-gray-400 dark:text-zinc-500 uppercase tracking-wider text-center mb-2">
+              Or use traditional wallet
+            </p>
             <button
               onClick={() => setViewMode("create")}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1229,6 +1283,13 @@ export function WalletConnect({
                 </div>
               )}
 
+              {/* QUICK ACTIONS Section */}
+              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                  Quick Actions
+                </p>
+              </div>
+
               <button
                 onClick={() => setViewMode("send")}
                 className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -1258,6 +1319,13 @@ export function WalletConnect({
                 </svg>
                 Receive
               </button>
+
+              {/* PORTFOLIO Section */}
+              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                  Portfolio
+                </p>
+              </div>
 
               <button
                 onClick={() => setViewMode("staking")}
@@ -1304,6 +1372,13 @@ export function WalletConnect({
                 Create Link
               </button>
 
+              {/* ACCOUNT Section */}
+              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                  Account
+                </p>
+              </div>
+
               <button
                 onClick={() => setViewMode("address-book")}
                 className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -1328,7 +1403,20 @@ export function WalletConnect({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  Smart Account
+                  <span className="flex-1">Smart Account</span>
+                  {/* Recovery Readiness badge */}
+                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                    nsaRecoveryCompleted === 3
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400'
+                  }`}>
+                    {nsaRecoveryCompleted}/3 {nsaRecoveryCompleted === 3 && '✓'}
+                  </span>
+                  {pendingForMe > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-full">
+                      {pendingForMe}
+                    </span>
+                  )}
                 </button>
               )}
             </div>
@@ -1483,6 +1571,38 @@ export function WalletConnect({
               size="xs"
             />
           </div>
+
+          {/* Pending proposal notification banner */}
+          {pendingForMe > 0 && !proposalBannerDismissed && (
+            <div className="mx-3 mt-2 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <button
+                onClick={() => {
+                  setProposalBannerDismissed(true);
+                  // If there are incoming invitations, go directly to accept flow
+                  if (nsaIncomingInvitations.length > 0) {
+                    setSelectedProposalId(nsaIncomingInvitations[0].objectId);
+                    setViewMode("nsa-accept-proposal");
+                  } else {
+                    setViewMode("nsa-info");
+                  }
+                }}
+                className="flex-1 text-left text-xs text-blue-800 dark:text-blue-300"
+              >
+                You have {pendingForMe} pending signer invitation{pendingForMe > 1 ? "s" : ""}. Tap to view.
+              </button>
+              <button
+                onClick={() => setProposalBannerDismissed(true)}
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* Tab navigation */}
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
@@ -1640,6 +1760,13 @@ export function WalletConnect({
                 </div>
               )}
 
+              {/* QUICK ACTIONS Section */}
+              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                  Quick Actions
+                </p>
+              </div>
+
               <button
                 onClick={() => setViewMode("send")}
                 className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -1669,6 +1796,13 @@ export function WalletConnect({
                 </svg>
                 Receive
               </button>
+
+              {/* PORTFOLIO Section */}
+              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                  Portfolio
+                </p>
+              </div>
 
               <button
                 onClick={() => setViewMode("staking")}
@@ -1714,6 +1848,13 @@ export function WalletConnect({
                 </svg>
                 Create Link
               </button>
+
+              {/* ACCOUNT Section */}
+              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
+                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                  Account
+                </p>
+              </div>
 
               <button
                 onClick={() => setViewMode("export")}
@@ -1769,7 +1910,20 @@ export function WalletConnect({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  Smart Account
+                  <span className="flex-1">Smart Account</span>
+                  {/* Recovery Readiness badge */}
+                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                    nsaRecoveryCompleted === 3
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400'
+                  }`}>
+                    {nsaRecoveryCompleted}/3 {nsaRecoveryCompleted === 3 && '✓'}
+                  </span>
+                  {pendingForMe > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-full">
+                      {pendingForMe}
+                    </span>
+                  )}
                 </button>
               )}
 

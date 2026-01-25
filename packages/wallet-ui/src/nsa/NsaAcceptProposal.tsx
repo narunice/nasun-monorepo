@@ -6,7 +6,7 @@
  * to prove ownership and complete registration as a signer.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   useNasunSmartAccount,
   useSigner,
@@ -50,8 +50,16 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
   const { acceptSignerProposal, accountObjectId } = useNasunSmartAccount();
   const { signer } = useSigner();
 
-  const fetchProposal = useCallback(async () => {
-    if (!proposalId.trim()) {
+  // Auto-fetch when initialProposalId is provided (skip input step)
+  useEffect(() => {
+    if (initialProposalId && step === 'input' && !isLoading && !proposal) {
+      fetchProposalById(initialProposalId);
+    }
+  }, [initialProposalId]);
+
+  // Fetch proposal by ID (used by both auto-fetch and manual input)
+  const fetchProposalById = useCallback(async (id: string) => {
+    if (!id.trim()) {
       setError('Please enter a proposal ID');
       return;
     }
@@ -60,7 +68,7 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
     setError(null);
 
     try {
-      const fetched = await fetchSignerProposal(proposalId.trim());
+      const fetched = await fetchSignerProposal(id.trim());
 
       // Validate proposal state
       if (fetched.isExecuted) {
@@ -95,7 +103,11 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
     } finally {
       setIsLoading(false);
     }
-  }, [proposalId, signer]);
+  }, [signer]);
+
+  const fetchProposal = useCallback(async () => {
+    await fetchProposalById(proposalId);
+  }, [proposalId, fetchProposalById]);
 
   const handleAccept = async () => {
     if (!signer || !proposal) {
@@ -180,13 +192,21 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
         </div>
 
         <div className="space-y-3 mb-4">
+          {/* Account info section */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Smart Account</p>
+            <p className="text-xs font-mono text-blue-800 dark:text-blue-300">
+              {proposal.accountId.slice(0, 10)}...{proposal.accountId.slice(-8)}
+            </p>
+          </div>
+
           <div className="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500 dark:text-zinc-400">Label</span>
+              <span className="text-gray-500 dark:text-zinc-400">Your Role</span>
               <span className="text-gray-900 dark:text-white">{proposal.label}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500 dark:text-zinc-400">Type</span>
+              <span className="text-gray-500 dark:text-zinc-400">Signer Type</span>
               <span className="text-gray-900 dark:text-white">
                 {SIGNER_TYPE_LABELS[proposal.signerType] || proposal.signerType}
               </span>
@@ -197,10 +217,15 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500 dark:text-zinc-400">Expires</span>
-              <span className="text-gray-900 dark:text-white">{formatTimeRemaining(proposal.expiresAt)}</span>
+              <span
+                className="text-gray-900 dark:text-white cursor-help"
+                title={new Date(proposal.expiresAt).toLocaleString('en-US')}
+              >
+                {formatTimeRemaining(proposal.expiresAt)}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500 dark:text-zinc-400">Proposer</span>
+              <span className="text-gray-500 dark:text-zinc-400">Invited by</span>
               <span className="text-gray-900 dark:text-white font-mono text-xs">
                 {proposal.proposer.slice(0, 8)}...{proposal.proposer.slice(-6)}
               </span>
