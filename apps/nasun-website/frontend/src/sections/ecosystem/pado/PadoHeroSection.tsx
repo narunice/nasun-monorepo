@@ -6,7 +6,6 @@ import waldenVideoMobile from "../../../assets/videos/Walden-Dex-Token-Mobile-rf
 import { Button } from "@/components/ui";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface PadoHeroSectionProps {
@@ -20,7 +19,6 @@ interface PadoHeroSectionProps {
  * Pado 페이지의 Hero 섹션 - 반응형 배경 동영상과 텍스트+아이콘
  */
 function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
-  const { t } = useTranslation("pado");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -133,9 +131,9 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
             pointer-events-auto"
           >
             <FadeInUp>
-              <h2 className="">{t("hero.tagline")}</h2>
+              <h2 className="">The Next Wave</h2>
               <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
-                {t("hero.subTagline")}
+                of Financial Autonomy
               </h4>
               <Button variant="white" size="lg" asChild className="mt-6">
                 <Link
@@ -143,7 +141,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {t("hero.button")}
+                  Pado Open Alpha
                   <ExternalLink className="w-4 h-4 ml-2" />
                 </Link>
               </Button>

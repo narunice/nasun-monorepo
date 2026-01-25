@@ -143,8 +143,8 @@
     },
     "stats": {
       "current": "Current",
-      "best": "Best",
-      "worst": "Worst",
+      "best": "Highest",
+      "worst": "Lowest",
       "change": "Change",
       "bestRank": "Best Rank",
       "averageRank": "Average Rank",

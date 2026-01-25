@@ -9,6 +9,7 @@ export interface LinkedAccount {
   profileImageUrl?: string;
   // Twitter-specific
   twitterHandle?: string;
+  originalTwitterHandle?: string; // Original casing for display
   twitterId?: string;
   // Google-specific
   email?: string;
@@ -24,6 +25,7 @@ export interface UserData {
   email?: string; // email from Google
   // Twitter-specific fields
   twitterHandle?: string;
+  originalTwitterHandle?: string; // Original casing for display
   twitterId?: string;
   profileImageUrl?: string;
   // MetaMask-specific fields
