@@ -137,15 +137,15 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
       <div className="border-t border-nasun-c4/50 pt-3 mt-3 space-y-1.5">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">Point Increase</span>
-          <span className="text-gray-200">{climber.scoreIncrease?.toFixed(1) || '0'}</span>
+          <span className="text-gray-200">{climber.scoreIncrease?.toFixed(2) || '0'}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">Percentage</span>
-          <span className="text-gray-200">{climber.percentageIncrease?.toFixed(1) || '0.0'}%</span>
+          <span className="text-gray-200">{climber.percentageIncrease?.toFixed(2) || '0.00'}%</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">Current Points</span>
-          <span className="text-gray-200">{climber.currentScore.toFixed(1)}</span>
+          <span className="text-gray-200">{climber.currentScore.toFixed(2)}</span>
         </div>
       </div>
     </div>
