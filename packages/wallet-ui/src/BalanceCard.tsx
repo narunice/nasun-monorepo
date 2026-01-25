@@ -5,14 +5,16 @@
  * Used in the new wallet UI structure to reduce vertical space.
  */
 
-import { useState } from "react";
 import {
   useMultiBalance,
-  useNetwork,
   useChain,
   useEVMBalance,
   getStoredEVMAddress,
 } from "@nasun/wallet";
+
+// Convert null to undefined for hook parameter compatibility
+const nullToUndefined = <T,>(value: T | null): T | undefined =>
+  value === null ? undefined : value;
 
 interface BalanceCardProps {
   /** Wallet address to display balance for */
@@ -34,12 +36,11 @@ export function BalanceCard({
   onMore,
   moreMenuOpen = false,
 }: BalanceCardProps) {
-  const { data: balances, isLoading: balancesLoading } = useMultiBalance(address);
-  const { networkType, isEVM } = useNetwork();
-  const { chain } = useChain();
+  const { data: balances, isLoading: balancesLoading } = useMultiBalance({ address });
+  const { isEVM, chain } = useChain();
   const storedEVMAddress = getStoredEVMAddress();
-  const { data: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(
-    isEVM ? storedEVMAddress : undefined
+  const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(
+    isEVM ? nullToUndefined(storedEVMAddress) : undefined
   );
 
   const isLoading = isEVM ? evmBalanceLoading : balancesLoading;

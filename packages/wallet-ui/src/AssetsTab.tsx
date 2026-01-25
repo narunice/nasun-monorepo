@@ -16,6 +16,10 @@ import {
   type NFTInfo,
   type NFTSortBy,
 } from "@nasun/wallet";
+
+// Convert null to undefined for hook parameter compatibility
+const nullToUndefined = <T,>(value: T | null): T | undefined =>
+  value === null ? undefined : value;
 import { NFTCard } from "./NFTCard";
 import { TokenFaucetButton } from "./TokenFaucetButton";
 
@@ -49,12 +53,12 @@ export function AssetsTab({
   onNftSortChange,
 }: AssetsTabProps) {
   const [showNfts, setShowNfts] = useState(true);
-  const { data: balances, isLoading: balancesLoading } = useMultiBalance(address);
-  const { networkType, isEVM } = useNetwork();
-  const { chain } = useChain();
+  const { data: balances, isLoading: balancesLoading } = useMultiBalance({ address });
+  const { networkType } = useNetwork();
+  const { chain, isEVM } = useChain();
   const storedEVMAddress = getStoredEVMAddress();
-  const { data: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(
-    isEVM ? storedEVMAddress : undefined
+  const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(
+    isEVM ? nullToUndefined(storedEVMAddress) : undefined
   );
 
   return (

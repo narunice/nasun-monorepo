@@ -14,6 +14,7 @@ import {
   useNetwork,
   useLedger,
   useChain,
+  useChainStore,
   useEVMBalance,
   getStoredEVMAddress,
   shortenAddressResponsive,
@@ -465,6 +466,9 @@ export function WalletConnect({
 
     try {
       const result = await createWalletWithBackup(password);
+      // Reset UI settings and chain to defaults
+      resetSettings();
+      useChainStore.getState().resetToDefault();
       setMnemonic(result.mnemonic);
       setPassword("");
       setConfirmPassword("");
@@ -472,7 +476,7 @@ export function WalletConnect({
     } catch {
       // Error is stored in state
     }
-  }, [password, confirmPassword, createWalletWithBackup]);
+  }, [password, confirmPassword, createWalletWithBackup, resetSettings]);
 
   // After mnemonic backup confirmed
   const handleBackupConfirmed = useCallback(() => {
@@ -503,20 +507,26 @@ export function WalletConnect({
   const handleImportMnemonic = useCallback(
     async (mnemonicPhrase: string, pwd: string) => {
       await importFromMnemonic(mnemonicPhrase, pwd);
+      // Reset UI settings and chain to defaults
+      resetSettings();
+      useChainStore.getState().resetToDefault();
       setViewMode("main");
       setShowDropdown(false);
     },
-    [importFromMnemonic],
+    [importFromMnemonic, resetSettings],
   );
 
   // Import from private key
   const handleImportPrivateKey = useCallback(
     async (privateKey: string, pwd: string) => {
       await importFromPrivateKey(privateKey, pwd);
+      // Reset UI settings and chain to defaults
+      resetSettings();
+      useChainStore.getState().resetToDefault();
       setViewMode("main");
       setShowDropdown(false);
     },
-    [importFromPrivateKey],
+    [importFromPrivateKey, resetSettings],
   );
 
   // Export private key
@@ -1555,21 +1565,35 @@ export function WalletConnect({
 
     // Unlocked state - show wallet menu with tabs
     if (status === "unlocked" && account) {
+      // Determine which address to display based on chain type
+      const displayAddress = isEVM && storedEVMAddress ? storedEVMAddress : account.address;
+      const addressLabel = isEVM
+        ? storedEVMAddress
+          ? `${chain.name} Address`
+          : "EVM Wallet Not Configured"
+        : "Connected Address";
+
       return (
         <div className="w-full ">
           {/* Address header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
             <span className="text-xs text-gray-500 dark:text-zinc-400 block mb-1">
-              Connected Address
+              {addressLabel}
             </span>
-            <CopyableAddress
-              value={account.address}
-              shorten={8}
-              showCopy
-              showExplorer
-              explorerType="address"
-              size="xs"
-            />
+            {isEVM && !storedEVMAddress ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Re-import with your mnemonic to enable EVM support
+              </p>
+            ) : (
+              <CopyableAddress
+                value={displayAddress}
+                shorten={8}
+                showCopy
+                showExplorer
+                explorerType="address"
+                size="xs"
+              />
+            )}
           </div>
 
           {/* Pending proposal notification banner */}
