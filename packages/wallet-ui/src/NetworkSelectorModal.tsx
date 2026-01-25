@@ -66,10 +66,10 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
     return chains.filter((c) => c.name.toLowerCase().includes(searchLower));
   };
 
-  // Separate mainnets and testnets
-  const moveMainnets = filterChains(moveChains.filter((c) => !c.testnet));
+  // UI-level filter: Only show testnets during development phase
+  // Mainnets are hidden to prevent handling real monetary value
+  // Re-enable by removing the testnet filter when ready for mainnet
   const moveTestnets = filterChains(moveChains.filter((c) => c.testnet));
-  const evmMainnets = filterChains(evmChains.filter((c) => !c.testnet));
   const evmTestnets = filterChains(evmChains.filter((c) => c.testnet));
 
   const renderChainItem = (
@@ -259,25 +259,8 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
 
         {/* Network List */}
         <div className="flex-1 overflow-y-auto py-3">
-          {/* Nasun Networks - Always enabled */}
-          {renderSection(
-            'Nasun Networks',
-            [...moveMainnets, ...moveTestnets],
-            true
-          )}
-
-          {/* EVM Mainnets */}
-          {evmMainnets.length > 0 && (
-            <>
-              <div className="border-t border-gray-100 dark:border-zinc-700 my-2" />
-              {renderSection(
-                'EVM Mainnets',
-                evmMainnets,
-                isAdvancedMode,
-                'Advanced Mode'
-              )}
-            </>
-          )}
+          {/* Nasun Networks (Testnets) - Always enabled */}
+          {renderSection('Nasun Networks', moveTestnets, true)}
 
           {/* EVM Testnets */}
           {evmTestnets.length > 0 && (
@@ -303,15 +286,11 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           )}
 
           {/* No results */}
-          {search &&
-            moveMainnets.length === 0 &&
-            moveTestnets.length === 0 &&
-            evmMainnets.length === 0 &&
-            evmTestnets.length === 0 && (
-              <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-500">
-                No networks found for "{search}"
-              </div>
-            )}
+          {search && moveTestnets.length === 0 && evmTestnets.length === 0 && (
+            <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-500">
+              No networks found for "{search}"
+            </div>
+          )}
         </div>
       </div>
     </>
