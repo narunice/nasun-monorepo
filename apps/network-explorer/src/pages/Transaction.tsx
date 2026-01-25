@@ -29,18 +29,18 @@ export default function Transaction() {
   return (
     <>
       <div className="mb-6">
-        <Link to="/" className="text-nasun-c4 hover:underline">
+        <Link to="/" className="text-primary hover:underline">
           &larr; Back to Home
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold mb-6">Transaction Details</h1>
+      <h1 className="text-2xl font-bold mb-6 text-foreground">Transaction Details</h1>
 
       {isLoading ? (
-        <div className="text-nasun-white/60">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       ) : error || !tx ? (
-        <Card variant="c6" className="p-4 border-nasun-c1/50">
-          <span className="text-nasun-c1">Transaction not found or error occurred</span>
+        <Card variant="default" className="p-4 border-destructive/50">
+          <span className="text-destructive">Transaction not found or error occurred</span>
         </Card>
       ) : (
         <div className="space-y-6">
@@ -67,25 +67,25 @@ export default function Transaction() {
           {/* Gas */}
           <SectionBox title="Gas" color="c5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card variant="c5" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">
                   Gas Budget
                 </div>
-                <div className="font-mono text-nasun-white">
+                <div className="font-mono text-foreground">
                   {formatSoe(tx.transaction?.data?.gasData?.budget)}
                 </div>
               </Card>
-              <Card variant="c5" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">
                   Gas Price
                 </div>
-                <div className="font-mono text-nasun-white">
+                <div className="font-mono text-foreground">
                   {formatSoe(tx.transaction?.data?.gasData?.price)}
                 </div>
               </Card>
-              <Card variant="c5" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Gas Used</div>
-                <div className="font-mono text-nasun-white">
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">Gas Used</div>
+                <div className="font-mono text-foreground">
                   {tx.effects?.gasUsed
                     ? formatSoe(
                         BigInt(tx.effects.gasUsed.computationCost) +
@@ -105,7 +105,7 @@ export default function Transaction() {
                 {tx.objectChanges.map((change, idx) => (
                   <div
                     key={idx}
-                    className="bg-nasun-c6/60 border border-nasun-c3/30 rounded-lg p-3 flex items-center justify-between"
+                    className="bg-muted/30 border border-border rounded-lg p-3 flex items-center justify-between"
                   >
                     <div>
                       <span
@@ -116,14 +116,14 @@ export default function Transaction() {
                       {"objectId" in change && (
                         <Link
                           to={`/object/${change.objectId}`}
-                          className="font-mono text-sm text-nasun-c4 hover:underline"
+                          className="font-mono text-sm text-primary hover:underline"
                         >
                           {change.objectId}
                         </Link>
                       )}
                     </div>
                     {"objectType" in change && (
-                      <span className="text-nasun-white/60 text-sm truncate max-w-xs">
+                      <span className="text-muted-foreground text-sm truncate max-w-xs">
                         {formatObjectType(change.objectType)}
                       </span>
                     )}
@@ -155,17 +155,17 @@ export default function Transaction() {
 function getChangeTypeColor(type: string) {
   switch (type) {
     case "created":
-      return "bg-nasun-c3/30 text-nasun-c3";
+      return "bg-green-500/20 text-green-600 dark:text-green-400";
     case "mutated":
-      return "bg-nasun-c4/30 text-nasun-c4";
+      return "bg-primary/20 text-primary";
     case "deleted":
-      return "bg-nasun-c1/30 text-nasun-c1";
+      return "bg-destructive/20 text-destructive";
     case "wrapped":
-      return "bg-nasun-c5/30 text-nasun-c5";
+      return "bg-secondary/20 text-secondary";
     case "published":
-      return "bg-nasun-c2/30 text-nasun-c1";
+      return "bg-blue-500/20 text-blue-600 dark:text-blue-400";
     default:
-      return "bg-nasun-c6/60 text-nasun-white/60";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -184,12 +184,12 @@ function EventCard({ type, data }: { type: string; data: unknown }) {
   };
 
   return (
-    <div className="bg-nasun-c6/60 border border-nasun-c4/30 rounded-lg p-3">
+    <div className="bg-muted/30 border border-border rounded-lg p-3">
       <div className="flex items-center justify-between mb-1">
-        <div className="text-sm text-nasun-white/60">{formatObjectType(type)}</div>
+        <div className="text-sm text-muted-foreground">{formatObjectType(type)}</div>
         <button
           onClick={handleCopy}
-          className="px-2 py-1 text-xs font-medium rounded transition-all duration-200 bg-nasun-c4/30 hover:bg-nasun-c4/50 text-nasun-white/70 hover:text-nasun-white"
+          className="px-2 py-1 text-xs font-medium rounded transition-all duration-200 bg-secondary/20 hover:bg-secondary/40 text-foreground"
         >
           {copied ? (
             <span className="flex items-center gap-1">
@@ -218,7 +218,7 @@ function EventCard({ type, data }: { type: string; data: unknown }) {
           )}
         </button>
       </div>
-      <pre className="text-xs overflow-auto bg-nasun-c6/80 p-2 rounded text-nasun-white/80 custom-scrollbar max-h-48">
+      <pre className="text-xs overflow-auto bg-muted/50 p-2 rounded text-foreground custom-scrollbar max-h-48">
         {jsonString}
       </pre>
     </div>
@@ -245,7 +245,7 @@ function RawDataSection({ data }: { data: unknown }) {
         {/* Copy button - positioned inside JSON area, top-right */}
         <button
           onClick={handleCopy}
-          className="absolute top-2 right-4 z-10 px-3 py-1.5 mr-2 text-xs font-medium rounded-md transition-all duration-200 bg-nasun-c5/40 hover:bg-nasun-c5/60 text-nasun-white/80 hover:text-nasun-white border border-nasun-c5/30"
+          className="absolute top-2 right-4 z-10 px-3 py-1.5 mr-2 text-xs font-medium rounded-md transition-all duration-200 bg-secondary/20 hover:bg-secondary/40 text-foreground border border-border"
         >
           {copied ? (
             <span className="flex items-center gap-1.5">
@@ -275,7 +275,7 @@ function RawDataSection({ data }: { data: unknown }) {
         </button>
 
         {/* JSON content with custom scrollbar and top padding for button space */}
-        <pre className="text-xs overflow-auto bg-nasun-c6/60 border border-nasun-c5/30 pt-12 pb-4 px-4 rounded-lg max-h-96 text-nasun-white/80 custom-scrollbar">
+        <pre className="text-xs overflow-auto bg-muted/50 border border-border pt-12 pb-4 px-4 rounded-lg max-h-96 text-foreground custom-scrollbar">
           {jsonString}
         </pre>
       </div>

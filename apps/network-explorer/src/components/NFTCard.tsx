@@ -33,10 +33,10 @@ export default function NFTCard({ objectId, type, display, content }: NFTCardPro
   return (
     <Link
       to={`/object/${objectId}`}
-      className="group block bg-nasun-c6/60 border border-nasun-c4/30 rounded-xl overflow-hidden hover:border-nasun-c4/60 hover:bg-nasun-c6/80 transition-all duration-200"
+      className="group block bg-card border border-border rounded-xl overflow-hidden hover:border-primary/60 hover:bg-muted/50 transition-all duration-200"
     >
       {/* 미디어 영역 */}
-      <div className="aspect-square overflow-hidden bg-nasun-c6/40">
+      <div className="aspect-square overflow-hidden bg-muted/30">
         {mediaUrl ? (
           <NFTMedia
             url={mediaUrl}
@@ -44,7 +44,7 @@ export default function NFTCard({ objectId, type, display, content }: NFTCardPro
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-nasun-white/30">
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
             <svg
               className="w-12 h-12"
               fill="none"
@@ -64,10 +64,10 @@ export default function NFTCard({ objectId, type, display, content }: NFTCardPro
 
       {/* 정보 영역 */}
       <div className="p-3">
-        <h3 className="text-sm font-medium text-nasun-white truncate group-hover:text-nasun-c4 transition-colors">
+        <h3 className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
           {name}
         </h3>
-        <p className="text-xs text-nasun-white/50 truncate mt-1 font-mono">
+        <p className="text-xs text-muted-foreground truncate mt-1 font-mono">
           {objectId.slice(0, 8)}...{objectId.slice(-6)}
         </p>
       </div>

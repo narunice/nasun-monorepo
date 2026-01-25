@@ -46,13 +46,13 @@ export function SearchBar() {
         type="text"
         name="query"
         placeholder="Search by Transaction Digest, Object ID, or Address"
-        className="flex-1 bg-nasun-c6/80 border border-nasun-c4/50 rounded-xl px-4 py-3 text-nasun-white placeholder-nasun-white/40 focus:outline-none focus:border-nasun-c4 backdrop-blur-md transition-colors"
+        className="flex-1 bg-card border border-input rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary backdrop-blur-md transition-colors"
         disabled={isSearching}
       />
       <button
         type="submit"
         disabled={isSearching}
-        className="bg-nasun-c4 hover:bg-nasun-c5 hover:brightness-110 disabled:bg-nasun-c6 disabled:text-nasun-white/50 px-6 py-3 rounded-xl font-medium transition-all active:scale-[0.97]"
+        className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground px-6 py-3 rounded-xl font-medium transition-all active:scale-[0.97] text-primary-foreground"
       >
         {isSearching ? 'Searching...' : 'Search'}
       </button>

@@ -27,23 +27,23 @@ export default function Validators() {
   return (
     <>
       <div className="mb-6">
-        <Link to="/" className="text-nasun-c4 hover:underline">
+        <Link to="/" className="text-primary hover:underline">
           &larr; Back to Home
         </Link>
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Validators</h1>
+          <h1 className="text-2xl font-bold text-foreground">Validators</h1>
           {isFetching && (
-            <span className="flex items-center gap-1 text-xs text-nasun-white/60">
-              <span className="w-2 h-2 bg-nasun-c4 rounded-full animate-pulse" />
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
               updating...
             </span>
           )}
         </div>
         {dataUpdatedAt && (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             Last updated: {formatLastUpdated(new Date(dataUpdatedAt))}
           </span>
         )}
@@ -52,23 +52,23 @@ export default function Validators() {
         {/* Network Staking Summary */}
         {data && (
           <section className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Network Staking Summary</h2>
+            <h2 className="text-lg font-semibold mb-4 text-foreground">Network Staking Summary</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card variant="c4" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Current Epoch</div>
-                <div className="text-lg font-mono text-nasun-white">{data.epoch}</div>
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">Current Epoch</div>
+                <div className="text-lg font-mono text-foreground">{data.epoch}</div>
               </Card>
-              <Card variant="c4" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Total Staked</div>
-                <div className="text-lg font-mono text-nasun-white">{formatBalance(data.totalStake)} NSN</div>
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">Total Staked</div>
+                <div className="text-lg font-mono text-foreground">{formatBalance(data.totalStake)} NSN</div>
               </Card>
-              <Card variant="c4" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Active Validators</div>
-                <div className="text-lg font-mono text-nasun-white">{data.activeValidators.length}</div>
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">Active Validators</div>
+                <div className="text-lg font-mono text-foreground">{data.activeValidators.length}</div>
               </Card>
-              <Card variant="c4" className="p-4">
-                <div className="text-nasun-white/60 text-sm uppercase tracking-wider">Avg APY</div>
-                <div className="text-lg font-mono text-nasun-white">
+              <Card variant="default" className="p-4">
+                <div className="text-muted-foreground text-sm uppercase tracking-wider">Avg APY</div>
+                <div className="text-lg font-mono text-foreground">
                   {data.activeValidators.length > 0
                     ? formatPercentage(
                         data.activeValidators.reduce((sum, v) => sum + v.apy, 0) / data.activeValidators.length
@@ -82,27 +82,27 @@ export default function Validators() {
 
         {/* Validators Table */}
         {isLoading ? (
-          <div className="text-nasun-white/60">Loading...</div>
+          <div className="text-muted-foreground">Loading...</div>
         ) : data?.activeValidators && data.activeValidators.length > 0 ? (
-          <div className="rounded-xl overflow-hidden border border-nasun-c4/50 bg-nasun-c6/80 backdrop-blur-md">
+          <div className="rounded-xl overflow-hidden border border-border bg-card backdrop-blur-md">
             <table className="w-full">
-              <thead className="bg-nasun-c6/80 border-b border-nasun-c4/30">
+              <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Validator</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Address</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-nasun-white/80">Stake</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-nasun-white/80">APY</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-nasun-white/80">Commission</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-nasun-white/80">Voting Power</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Validator</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Address</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-muted-foreground">Stake</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-muted-foreground">APY</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-muted-foreground">Commission</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-muted-foreground">Voting Power</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-nasun-c4/20">
+              <tbody className="divide-y divide-border">
                 {data.activeValidators.map((validator) => (
-                  <tr key={validator.address} className="hover:bg-nasun-c4/10 transition-colors">
+                  <tr key={validator.address} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">
                       <Link
                         to={`/validator/${validator.address}`}
-                        className="flex items-center gap-2 text-nasun-c4 hover:underline"
+                        className="flex items-center gap-2 text-primary hover:underline"
                       >
                         {validator.imageUrl && (
                           <img
@@ -112,29 +112,29 @@ export default function Validators() {
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         )}
-                        <span className="font-medium">{validator.name || 'Unnamed'}</span>
+                        <span className="font-medium text-foreground">{validator.name || 'Unnamed'}</span>
                       </Link>
                     </td>
                     <td className="px-4 py-3">
                       <Link
                         to={`/validator/${validator.address}`}
-                        className="font-mono text-sm text-nasun-white/60 hover:text-nasun-white hover:underline"
+                        className="font-mono text-sm text-muted-foreground hover:text-foreground hover:underline"
                       >
                         {truncateAddress(validator.address)}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-nasun-white/80">
+                    <td className="px-4 py-3 text-right font-mono text-muted-foreground">
                       {formatBalance(validator.stakingPoolSuiBalance)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="text-nasun-c3 font-medium">
+                      <span className="dark:text-nasun-c3 text-teal-600 font-medium">
                         {formatPercentage(validator.apy)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-nasun-white/60">
+                    <td className="px-4 py-3 text-right text-muted-foreground">
                       {validator.commissionRate}%
                     </td>
-                    <td className="px-4 py-3 text-right text-nasun-white/60">
+                    <td className="px-4 py-3 text-right text-muted-foreground">
                       {validator.votingPower}
                     </td>
                   </tr>
@@ -143,7 +143,7 @@ export default function Validators() {
             </table>
           </div>
         ) : (
-          <Card variant="c6" className="p-8 text-center text-nasun-white/60">
+          <Card variant="default" className="p-8 text-center text-muted-foreground">
             No validators found
           </Card>
         )}

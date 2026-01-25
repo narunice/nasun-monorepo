@@ -109,18 +109,18 @@ export default function Address() {
   return (
     <>
       <div className="mb-6">
-        <Link to="/" className="text-nasun-c4 hover:underline">
+        <Link to="/" className="text-primary hover:underline">
           &larr; Back to Home
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold mb-6">Address Details</h1>
+      <h1 className="text-2xl font-bold mb-6 text-foreground">Address Details</h1>
 
       {isLoading ? (
-        <div className="text-nasun-white/60">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       ) : error || !addressInfo ? (
-        <Card variant="c6" className="p-4 border-nasun-c1/50">
-          <span className="text-nasun-c1">Address not found or error occurred</span>
+        <Card variant="default" className="p-4 border-destructive/50">
+          <span className="text-destructive">Address not found or error occurred</span>
         </Card>
       ) : (
         <div className="space-y-6">
@@ -144,21 +144,21 @@ export default function Address() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {addressInfo.allBalances && addressInfo.allBalances.length > 0 ? (
                   addressInfo.allBalances.map((bal) => (
-                    <Card key={bal.coinType} variant="c4" className="p-4">
-                      <div className="text-nasun-white/60 text-sm uppercase tracking-wider mb-1">
+                    <Card key={bal.coinType} variant="default" className="p-4">
+                      <div className="text-muted-foreground text-sm uppercase tracking-wider mb-1">
                         <CoinSymbol type={bal.coinType} />
                       </div>
-                      <div className="text-xl font-bold text-nasun-c4">
+                      <div className="text-xl font-bold text-primary">
                         {formatTokenBalance(bal.totalBalance, bal.coinType)}
                       </div>
-                      <div className="text-xs text-nasun-white/40 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {bal.coinObjectCount} coin object{bal.coinObjectCount !== 1 ? 's' : ''}
                       </div>
                     </Card>
                   ))
                 ) : (
-                  <Card variant="c4" className="p-4">
-                    <div className="text-nasun-white/60">No tokens found</div>
+                  <Card variant="default" className="p-4">
+                    <div className="text-muted-foreground">No tokens found</div>
                   </Card>
                 )}
               </div>
@@ -202,7 +202,7 @@ export default function Address() {
                         <button
                           onClick={handleLoadMore}
                           disabled={isLoadingMore}
-                          className="w-full mt-4 py-2 text-nasun-c4 hover:bg-nasun-c4/10 rounded border border-nasun-c4/30 transition-colors disabled:opacity-50"
+                          className="w-full mt-4 py-2 text-primary hover:bg-primary/10 rounded border border-primary/30 transition-colors disabled:opacity-50"
                         >
                           {isLoadingMore ? 'Loading...' : 'Load More Objects'}
                         </button>
@@ -214,30 +214,30 @@ export default function Address() {
                   <SectionBox title={`Other Objects (${otherObjects.length}${hasNextPage ? '+' : ''})`} color="c3">
                     {otherObjects.length > 0 ? (
                       <>
-                        <div className="overflow-x-auto rounded-lg border border-nasun-c3/30">
+                        <div className="overflow-x-auto rounded-lg border border-border">
                           <table className="w-full">
-                            <thead className="bg-nasun-c6/60 border-b border-nasun-c3/30">
+                            <thead className="bg-muted/50 border-b border-border">
                               <tr>
-                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Object ID</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Type</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Version</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Object ID</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Type</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Version</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-nasun-c3/20">
+                            <tbody className="divide-y divide-border">
                               {otherObjects.map((obj, idx) => (
-                                <tr key={obj.data?.objectId ?? idx} className="hover:bg-nasun-c3/10 transition-colors">
+                                <tr key={obj.data?.objectId ?? idx} className="hover:bg-muted/50 transition-colors">
                                   <td className="px-4 py-3">
                                     <Link
                                       to={`/object/${obj.data?.objectId}`}
-                                      className="font-mono text-sm text-nasun-c4 hover:underline"
+                                      className="font-mono text-sm text-primary hover:underline"
                                     >
                                       {truncateId(obj.data?.objectId ?? '')}
                                     </Link>
                                   </td>
-                                  <td className="px-4 py-3 text-nasun-white/60 text-sm max-w-xs truncate">
+                                  <td className="px-4 py-3 text-muted-foreground text-sm max-w-xs truncate">
                                     {formatObjectType(obj.data?.type ?? undefined)}
                                   </td>
-                                  <td className="px-4 py-3 text-nasun-white/60 font-mono">
+                                  <td className="px-4 py-3 text-muted-foreground font-mono">
                                     {obj.data?.version || '-'}
                                   </td>
                                 </tr>
@@ -250,14 +250,14 @@ export default function Address() {
                           <button
                             onClick={handleLoadMore}
                             disabled={isLoadingMore}
-                            className="w-full mt-4 py-2 text-nasun-c3 hover:bg-nasun-c3/10 rounded border border-nasun-c3/30 transition-colors disabled:opacity-50"
+                            className="w-full mt-4 py-2 dark:text-nasun-c3 text-teal-600 hover:bg-muted/50 rounded border border-border transition-colors disabled:opacity-50"
                           >
                             {isLoadingMore ? 'Loading...' : 'Load More Objects'}
                           </button>
                         )}
                       </>
                     ) : (
-                      <div className="text-nasun-white/60 text-center py-8">
+                      <div className="text-muted-foreground text-center py-8">
                         No objects owned by this address
                       </div>
                     )}
@@ -269,25 +269,25 @@ export default function Address() {
             {/* Transaction History */}
             <SectionBox title="Transaction History" color="c5">
               {txLoading ? (
-                <div className="text-nasun-white/60 text-center py-8">Loading transactions...</div>
+                <div className="text-muted-foreground text-center py-8">Loading transactions...</div>
               ) : transactions && transactions.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-nasun-c5/30">
+                <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full">
-                    <thead className="bg-nasun-c6/60 border-b border-nasun-c5/30">
+                    <thead className="bg-muted/50 border-b border-border">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Digest</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Time</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-nasun-white/80">Checkpoint</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Digest</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Time</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Checkpoint</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-nasun-c5/20">
+                    <tbody className="divide-y divide-border">
                       {transactions.map((tx) => (
-                        <tr key={tx.digest} className="hover:bg-nasun-c5/10 transition-colors">
+                        <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3">
                             <Link
                               to={`/tx/${tx.digest}`}
-                              className="font-mono text-sm text-nasun-c4 hover:underline"
+                              className="font-mono text-sm text-primary hover:underline"
                             >
                               {truncateDigest(tx.digest)}
                             </Link>
@@ -295,16 +295,16 @@ export default function Address() {
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 text-xs rounded ${
                               tx.effects?.status?.status === 'success'
-                                ? 'bg-nasun-c3/20 text-nasun-c3'
-                                : 'bg-nasun-c1/20 text-nasun-c1'
+                                ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                                : 'bg-destructive/20 text-destructive'
                             }`}>
                               {tx.effects?.status?.status || 'unknown'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-nasun-white/60 text-sm">
+                          <td className="px-4 py-3 text-muted-foreground text-sm">
                             {formatTimestamp(tx.timestampMs)}
                           </td>
-                          <td className="px-4 py-3 text-nasun-white/60 font-mono">
+                          <td className="px-4 py-3 text-muted-foreground font-mono">
                             {tx.checkpoint || '-'}
                           </td>
                         </tr>
@@ -313,7 +313,7 @@ export default function Address() {
                   </table>
                 </div>
               ) : (
-                <div className="text-nasun-white/60 text-center py-8">
+                <div className="text-muted-foreground text-center py-8">
                   No transactions found for this address
                 </div>
               )}

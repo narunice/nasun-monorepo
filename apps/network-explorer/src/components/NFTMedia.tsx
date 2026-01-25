@@ -24,10 +24,10 @@ export default function NFTMedia({ url, name, className = '' }: NFTMediaProps) {
   if (!resolvedUrl || error) {
     return (
       <div
-        className={`flex items-center justify-center bg-nasun-c6/60 border border-nasun-c5/30 rounded-lg ${className}`}
+        className={`flex items-center justify-center bg-muted/30 border border-border rounded-lg ${className}`}
         style={{ minHeight: '120px' }}
       >
-        <div className="text-center text-nasun-white/40 p-4">
+        <div className="text-center text-muted-foreground/50 p-4">
           <svg
             className="w-8 h-8 mx-auto mb-2 opacity-50"
             fill="none"
