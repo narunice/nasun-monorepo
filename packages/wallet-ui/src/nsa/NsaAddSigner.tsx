@@ -1,6 +1,10 @@
 /**
  * NsaAddSigner Component
- * Form to add a new signer to the SmartAccount
+ * Form to propose adding a new signer to the SmartAccount.
+ *
+ * 2-Phase Signer Addition:
+ * Phase 1: Existing signer proposes a new signer (this component)
+ * Phase 2: Pending signer accepts the proposal (NsaAcceptProposal)
  */
 
 import { useState } from 'react';
@@ -34,8 +38,9 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
   const [weight, setWeight] = useState(1);
   const [label, setLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [proposalId, setProposalId] = useState<string | null>(null);
 
-  const { addSigner, accountState } = useNasunSmartAccount();
+  const { proposeAddSigner, accountState } = useNasunSmartAccount();
   const { signer } = useSigner();
 
   const isAddressValid = isValidSuiAddress(address);
@@ -56,10 +61,11 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
     setError(null);
 
     try {
-      await addSigner(address, signerType, weight, label, signer);
+      const createdProposalId = await proposeAddSigner(address, signerType, weight, label, signer);
+      setProposalId(createdProposalId);
       setStep('success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add signer');
+      setError(err instanceof Error ? err.message : 'Failed to create proposal');
       setStep('confirm');
     }
   };
@@ -77,7 +83,13 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Add Signer</h3>
+          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Propose Signer</h3>
+        </div>
+
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded mb-4">
+          <p className="text-xs text-blue-800 dark:text-blue-300">
+            This creates a proposal. The new signer must accept it from their wallet to complete registration.
+          </p>
         </div>
 
         <div className="space-y-3">
@@ -144,7 +156,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
             disabled={!isFormValid || !!isDuplicate}
             className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 text-white font-medium rounded text-sm transition-colors mt-2"
           >
-            Review
+            Review Proposal
           </button>
         </div>
       </div>
@@ -164,7 +176,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Signer</h3>
+          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Proposal</h3>
         </div>
 
         <div className="space-y-3 mb-4">
@@ -193,7 +205,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
 
           <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
             <p className="text-xs text-amber-800 dark:text-amber-300">
-              This signer will have authority to operate on your Smart Account.
+              The proposal expires in 7 days. The owner of the address must accept it to become a signer.
             </p>
           </div>
 
@@ -211,7 +223,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
             onClick={handleSubmit}
             className="flex-1 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
           >
-            Add Signer
+            Create Proposal
           </button>
         </div>
       </div>
@@ -224,7 +236,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
       <div className="p-4 w-full">
         <div className="flex flex-col items-center justify-center py-8">
           <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm text-gray-700 dark:text-zinc-300">Adding signer...</p>
+          <p className="text-sm text-gray-700 dark:text-zinc-300">Creating proposal...</p>
         </div>
       </div>
     );
@@ -239,10 +251,26 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Signer Added</h3>
-        <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4">
-          {label} has been registered as a signer.
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Proposal Created</h3>
+        <p className="text-xs text-gray-500 dark:text-zinc-400 text-center mb-3">
+          Share the proposal ID with "{label}" so they can accept it.
         </p>
+
+        {proposalId && (
+          <div className="w-full p-3 bg-gray-100 dark:bg-zinc-700 rounded mb-4">
+            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Proposal ID</p>
+            <p className="text-xs font-mono text-gray-900 dark:text-white break-all">
+              {proposalId}
+            </p>
+          </div>
+        )}
+
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded w-full mb-4">
+          <p className="text-xs text-blue-800 dark:text-blue-300">
+            The new signer must go to "Accept Proposal" in their wallet and sign with the proposed address to complete registration.
+          </p>
+        </div>
+
         <button
           onClick={onClose}
           className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"

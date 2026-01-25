@@ -24,6 +24,11 @@ module nasun_smart_account::smart_account {
     const EGuardianOverlapsWithSigner: u64 = 9;
     const EInvalidGuardianThreshold: u64 = 10;
     const EMaxGuardiansReached: u64 = 11;
+    const EProposalExpired: u64 = 12;
+    const EProposalNotForThisAccount: u64 = 13;
+    const ENotPendingSigner: u64 = 14;
+    const EProposalAlreadyExecuted: u64 = 15;
+    const EProposalAlreadyCancelled: u64 = 16;
 
     // === Constants ===
 
@@ -31,6 +36,7 @@ module nasun_smart_account::smart_account {
     const MAX_GUARDIANS: u64 = 5;
     const MAX_WEIGHT: u8 = 10;
     const SIGNER_TYPE_MAX: u8 = 3;
+    const PROPOSAL_TTL_MS: u64 = 604_800_000; // 7 days
 
     // === Structs ===
 
@@ -51,6 +57,22 @@ module nasun_smart_account::smart_account {
         weight: u8,
         added_at: u64,
         label: vector<u8>,
+    }
+
+    /// 2-phase signer addition: proposal object (shared).
+    /// The pending_signer must call accept_signer_proposal to prove ownership.
+    public struct SignerProposal has key {
+        id: UID,
+        account_id: ID,
+        proposer: address,
+        pending_signer: address,
+        signer_type: u8,
+        weight: u8,
+        label: vector<u8>,
+        created_at: u64,
+        expires_at: u64,
+        is_executed: bool,
+        is_cancelled: bool,
     }
 
     // === Events ===
@@ -108,6 +130,32 @@ module nasun_smart_account::smart_account {
         withdrawer: address,
         recipient: address,
         amount: u64,
+        timestamp: u64,
+    }
+
+    public struct SignerProposalCreated has copy, drop {
+        account_id: ID,
+        proposal_id: ID,
+        proposer: address,
+        pending_signer: address,
+        signer_type: u8,
+        weight: u8,
+        expires_at: u64,
+        timestamp: u64,
+    }
+
+    public struct SignerProposalAccepted has copy, drop {
+        account_id: ID,
+        proposal_id: ID,
+        new_signer: address,
+        signer_type: u8,
+        weight: u8,
+        timestamp: u64,
+    }
+
+    public struct SignerProposalCancelled has copy, drop {
+        proposal_id: ID,
+        cancelled_by: address,
         timestamp: u64,
     }
 
@@ -211,39 +259,127 @@ module nasun_smart_account::smart_account {
         });
     }
 
-    public entry fun add_signer(
-        account: &mut SmartAccount,
-        new_signer: address,
+    /// Phase 1: Existing signer proposes adding a new signer.
+    /// Creates a SignerProposal shared object that the pending_signer must accept.
+    public entry fun propose_add_signer(
+        account: &SmartAccount,
+        pending_signer: address,
         signer_type: u8,
         weight: u8,
         label: vector<u8>,
         clock: &Clock,
-        ctx: &TxContext,
+        ctx: &mut TxContext,
     ) {
         let sender = ctx.sender();
         assert_is_signer(account, sender);
         assert!(signer_type <= SIGNER_TYPE_MAX, EInvalidSignerType);
         assert!(weight > 0 && weight <= MAX_WEIGHT, EInvalidWeight);
-        assert!(!account.signers.contains(&new_signer), ESignerAlreadyExists);
+        assert!(!account.signers.contains(&pending_signer), ESignerAlreadyExists);
         assert!((account.signers.length() as u64) < MAX_SIGNERS, EMaxSignersReached);
-        assert!(!account.guardians.contains(&new_signer), EGuardianOverlapsWithSigner);
+        assert!(!account.guardians.contains(&pending_signer), EGuardianOverlapsWithSigner);
+
+        let now = clock.timestamp_ms();
+        let expires_at = now + PROPOSAL_TTL_MS;
+        let account_id = object::id(account);
+
+        let proposal = SignerProposal {
+            id: object::new(ctx),
+            account_id,
+            proposer: sender,
+            pending_signer,
+            signer_type,
+            weight,
+            label,
+            created_at: now,
+            expires_at,
+            is_executed: false,
+            is_cancelled: false,
+        };
+
+        let proposal_id = object::id(&proposal);
+
+        event::emit(SignerProposalCreated {
+            account_id,
+            proposal_id,
+            proposer: sender,
+            pending_signer,
+            signer_type,
+            weight,
+            expires_at,
+            timestamp: now,
+        });
+
+        transfer::share_object(proposal);
+    }
+
+    /// Phase 2: The pending signer accepts the proposal, proving address ownership.
+    /// Only the pending_signer address can call this (on-chain ownership proof).
+    public entry fun accept_signer_proposal(
+        proposal: &mut SignerProposal,
+        account: &mut SmartAccount,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = ctx.sender();
+
+        // Core security: only the pending signer can accept (ownership proof)
+        assert!(sender == proposal.pending_signer, ENotPendingSigner);
+        assert!(proposal.account_id == object::id(account), EProposalNotForThisAccount);
+        assert!(!proposal.is_executed, EProposalAlreadyExecuted);
+        assert!(!proposal.is_cancelled, EProposalAlreadyCancelled);
+        assert!(clock.timestamp_ms() < proposal.expires_at, EProposalExpired);
+
+        // Re-validate account constraints at execution time
+        assert!(!account.signers.contains(&sender), ESignerAlreadyExists);
+        assert!((account.signers.length() as u64) < MAX_SIGNERS, EMaxSignersReached);
 
         let now = clock.timestamp_ms();
 
-        account.signers.insert(new_signer, SignerInfo {
-            signer_type,
-            weight,
+        account.signers.insert(sender, SignerInfo {
+            signer_type: proposal.signer_type,
+            weight: proposal.weight,
             added_at: now,
-            label,
+            label: proposal.label,
         });
 
+        proposal.is_executed = true;
+
         event::emit(SignerAdded {
-            account_id: object::id(account),
-            signer_address: new_signer,
-            signer_type,
-            weight,
-            added_by: sender,
+            account_id: proposal.account_id,
+            signer_address: sender,
+            signer_type: proposal.signer_type,
+            weight: proposal.weight,
+            added_by: proposal.proposer,
             timestamp: now,
+        });
+
+        event::emit(SignerProposalAccepted {
+            account_id: proposal.account_id,
+            proposal_id: object::id(proposal),
+            new_signer: sender,
+            signer_type: proposal.signer_type,
+            weight: proposal.weight,
+            timestamp: now,
+        });
+    }
+
+    /// Cancel a pending signer proposal. Proposer or any existing signer can cancel.
+    public entry fun cancel_signer_proposal(
+        proposal: &mut SignerProposal,
+        account: &SmartAccount,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = ctx.sender();
+        assert!(sender == proposal.proposer || is_signer(account, sender), ENotAuthorized);
+        assert!(!proposal.is_executed, EProposalAlreadyExecuted);
+
+        proposal.is_cancelled = true;
+
+        event::emit(SignerProposalCancelled {
+            proposal_id: object::id(proposal),
+            cancelled_by: sender,
+            timestamp: clock.timestamp_ms(),
         });
     }
 
