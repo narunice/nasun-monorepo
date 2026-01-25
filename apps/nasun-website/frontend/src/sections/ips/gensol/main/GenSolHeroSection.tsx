@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 
 // 배경 이미지
@@ -17,7 +16,6 @@ import { FadeInUp } from "@/components/ui/FadeInUp";
  * - 중앙 하단: 타이틀 + 설명 텍스트
  */
 function GenSolHeroSection() {
-  const { t } = useTranslation("genSol");
   const [isMobile, setIsMobile] = useState(false);
 
   // 반응형 이미지 선택을 위한 viewport 감지
@@ -57,9 +55,15 @@ function GenSolHeroSection() {
       <div className="hidden lg:block absolute inset-x-0 bottom-[14%] z-20 text-center px-12 lg:px-20">
         <div className="items-center mx-auto">
           <FadeInUp>
-            <h1 className="font-bold !font-rubik text-nasun-white mb-6">{t("hero.title")}</h1>
+            <h1 className="font-bold !font-rubik text-nasun-white mb-6">
+              Our First Original IP - GEN SOL
+            </h1>
             <p className=" text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
-              {t("hero.description")}
+              A bold sci-fi universe designed to power games, films, streaming shows and merchandise
+              at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and
+              compelling characters driven by purpose and conflict. Beyond traditional mediums, we
+              aim to pioneer new forms of entertainment that blur the lines between the digital and
+              physical worlds.
             </p>
           </FadeInUp>
         </div>
@@ -90,10 +94,14 @@ function GenSolHeroSection() {
         <div className="relative mt-[10%] md:-mt-[2%] z-20 text-center px-6 md:px-12 pb-16 md:pb-20 mx-auto ">
           <div className="">
             <h1 className="font-bold !font-rubik text-nasun-white mb-6 max-w-md md:max-w-[530px] mx-auto">
-              {t("hero.title")}
+              Our First Original IP - GEN SOL
             </h1>
             <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug max-w-[410px] md:max-w-[590px] mx-auto">
-              {t("hero.description")}
+              A bold sci-fi universe designed to power games, films, streaming shows and merchandise
+              at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and
+              compelling characters driven by purpose and conflict. Beyond traditional mediums, we
+              aim to pioneer new forms of entertainment that blur the lines between the digital and
+              physical worlds.
             </p>
           </div>
         </div>
