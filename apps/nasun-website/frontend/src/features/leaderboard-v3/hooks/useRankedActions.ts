@@ -33,8 +33,7 @@ export function useRankedActions(seasonId: string | undefined, data: MyRankData 
     const rank = data?.rank;
     const seasonName = seasonId || "current";
     const message = `I'm ranked #${rank} on @Nasun_io ${seasonName} Leaderboard!`;
-    const url = getShareUrl();
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
     window.open(twitterUrl, "_blank", "width=550,height=420");
   };
 
