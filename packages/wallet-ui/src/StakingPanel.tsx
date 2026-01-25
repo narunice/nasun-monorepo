@@ -47,7 +47,7 @@ export function StakingPanel({
   const isWalletConnected = (status === 'unlocked' && account) || isZkConnected;
   if (!isWalletConnected) {
     return (
-      <div className={`bg-gray-100 dark:bg-zinc-800 rounded-md ${compact ? 'p-3' : 'p-4'}`}>
+      <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
         <p className="text-gray-500 dark:text-zinc-400 text-sm text-center">
           Please connect your wallet first.
         </p>
@@ -56,7 +56,7 @@ export function StakingPanel({
   }
 
   return (
-    <div className={`bg-gray-100 dark:bg-zinc-800 rounded-md ${compact ? 'w-full' : 'min-w-[360px]'}`}>
+    <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'w-full' : 'min-w-[360px]'}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Staking</h3>
@@ -174,7 +174,7 @@ function StakeTab({ compact }: StakeTabProps) {
       <div className="p-4 space-y-4">
         <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Stake</h4>
 
-        <div className="bg-gray-200 dark:bg-zinc-700 rounded-md p-3 space-y-3">
+        <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3 space-y-3">
           <div>
             <p className="text-xs text-gray-500 dark:text-zinc-400">Validator</p>
             <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedValidator.name}</p>
@@ -391,7 +391,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
       <div className="p-4 space-y-4">
         <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Unstake</h4>
 
-        <div className="bg-gray-200 dark:bg-zinc-700 rounded-md p-3">
+        <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3">
           <p className="text-xs text-gray-500 dark:text-zinc-400">Amount to Unstake</p>
           <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
             {formatStakedAmount(selectedStake.principal)}{' '}
@@ -442,7 +442,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
   if (stakes.length === 0) {
     return (
       <div className="p-4">
-        <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded-md p-6 text-center">
+        <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg p-6 text-center">
           <svg
             className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-500 mb-3"
             fill="none"

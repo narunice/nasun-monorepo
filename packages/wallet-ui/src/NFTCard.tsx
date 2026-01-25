@@ -60,7 +60,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
         tabIndex={0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        className="bg-white dark:bg-zinc-800 rounded-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+        className="bg-white dark:bg-zinc-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
       >
         {/* Image */}
         <div className="aspect-square">
@@ -93,7 +93,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="bg-white dark:bg-zinc-800 rounded-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all group"
+      className="bg-white dark:bg-zinc-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all group"
     >
       {/* Image */}
       <div className="aspect-square relative">

@@ -165,7 +165,7 @@ export function LedgerErrorDisplay({
   if (variant === 'toast') {
     return (
       <div
-        className={`flex items-start gap-3 p-4 rounded-md border shadow-lg ${bgStyles} ${className}`}
+        className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${bgStyles} ${className}`}
         role="alert"
       >
         <span className={`text-xl ${iconStyles}`}>{config.icon}</span>
@@ -225,7 +225,7 @@ export function LedgerErrorDisplay({
           {onRetry && (
             <button
               onClick={onRetry}
-              className="flex-1 px-4 py-2.5 text-sm font-medium rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Try Again
             </button>
@@ -283,7 +283,7 @@ function LedgerDeviceIllustration({
     <div className="relative">
       {/* Device body */}
       <div
-        className={`w-28 h-16 rounded-md border-2 ${deviceColor} bg-white dark:bg-gray-800 flex items-center justify-center relative`}
+        className={`w-28 h-16 rounded-lg border-2 ${deviceColor} bg-white dark:bg-gray-800 flex items-center justify-center relative`}
       >
         {/* Screen */}
         <div className="w-20 h-8 bg-gray-900 dark:bg-black rounded flex items-center justify-center text-white text-lg">

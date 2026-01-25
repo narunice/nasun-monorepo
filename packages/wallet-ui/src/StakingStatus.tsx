@@ -31,8 +31,8 @@ export function StakingStatus({
     return (
       <div className="p-4">
         <div className="animate-pulse space-y-3">
-          <div className="h-20 bg-gray-200 dark:bg-zinc-700 rounded-md" />
-          <div className="h-16 bg-gray-200 dark:bg-zinc-700 rounded-md" />
+          <div className="h-20 bg-gray-200 dark:bg-zinc-700 rounded-lg" />
+          <div className="h-16 bg-gray-200 dark:bg-zinc-700 rounded-lg" />
         </div>
       </div>
     );
@@ -40,7 +40,7 @@ export function StakingStatus({
 
   if (error) {
     return (
-      <div className="p-4 bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-md">
+      <div className="p-4 bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg">
         <p className="text-sm text-red-600 dark:text-red-400">Failed to load staking data</p>
       </div>
     );
@@ -48,7 +48,7 @@ export function StakingStatus({
 
   if (stakes.length === 0) {
     return (
-      <div className="p-4 bg-gray-200/50 dark:bg-zinc-700/50 rounded-md">
+      <div className="p-4 bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg">
         <div className="text-center">
           <svg
             className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-500 mb-3"
@@ -76,7 +76,7 @@ export function StakingStatus({
     <div className="space-y-4">
       {/* Summary Card */}
       {!hideSummary && (
-        <div className={`bg-gray-200/50 dark:bg-zinc-700/50 rounded-md ${compact ? 'p-3' : 'p-4'}`}>
+        <div className={`bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-500 dark:text-zinc-400">Total Staked</p>
@@ -136,7 +136,7 @@ function StakePositionCard({
   const totalRewards = stakes.reduce((sum, s) => sum + (s.estimatedReward || 0n), 0n);
 
   return (
-    <div className={`bg-gray-200/50 dark:bg-zinc-700/50 rounded-md border border-gray-300 dark:border-zinc-600 ${compact ? 'p-3' : 'p-4'}`}>
+    <div className={`bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg border border-gray-300 dark:border-zinc-600 ${compact ? 'p-3' : 'p-4'}`}>
       {/* Validator header */}
       <div className="flex items-center gap-3 mb-3">
         {validator?.imageUrl ? (

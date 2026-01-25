@@ -66,10 +66,10 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
     return chains.filter((c) => c.name.toLowerCase().includes(searchLower));
   };
 
-  // UI-level filter: Only show testnets during development phase
-  // Mainnets are hidden to prevent handling real monetary value
-  // Re-enable by removing the testnet filter when ready for mainnet
+  // Separate mainnets and testnets
+  const moveMainnets = filterChains(moveChains.filter((c) => !c.testnet));
   const moveTestnets = filterChains(moveChains.filter((c) => c.testnet));
+  const evmMainnets = filterChains(evmChains.filter((c) => !c.testnet));
   const evmTestnets = filterChains(evmChains.filter((c) => c.testnet));
 
   const renderChainItem = (
@@ -93,7 +93,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
         disabled={isChainDisabled}
         className={`
           w-full px-4 py-3 text-left flex items-center justify-between
-          transition-colors text-sm rounded-md mb-1
+          transition-colors text-sm rounded-lg mb-1
           ${
             !isChainDisabled
               ? 'hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer'
@@ -213,7 +213,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           </h3>
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
           >
             <svg
               className="w-5 h-5"
@@ -252,15 +252,32 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
               placeholder="Search networks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-700 border-0 rounded-md text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
         {/* Network List */}
         <div className="flex-1 overflow-y-auto py-3">
-          {/* Nasun Networks (Testnets) - Always enabled */}
-          {renderSection('Nasun Networks', moveTestnets, true)}
+          {/* Nasun Networks - Always enabled */}
+          {renderSection(
+            'Nasun Networks',
+            [...moveMainnets, ...moveTestnets],
+            true
+          )}
+
+          {/* EVM Mainnets */}
+          {evmMainnets.length > 0 && (
+            <>
+              <div className="border-t border-gray-100 dark:border-zinc-700 my-2" />
+              {renderSection(
+                'EVM Mainnets',
+                evmMainnets,
+                isAdvancedMode,
+                'Advanced Mode'
+              )}
+            </>
+          )}
 
           {/* EVM Testnets */}
           {evmTestnets.length > 0 && (
@@ -277,7 +294,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
 
           {/* Hint when Advanced Mode is off */}
           {!isAdvancedMode && evmChains.length > 0 && (
-            <div className="mx-4 mt-2 px-4 py-3 bg-gray-50 dark:bg-zinc-700/50 rounded-md">
+            <div className="mx-4 mt-2 px-4 py-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
               <p className="text-xs text-gray-500 dark:text-zinc-400">
                 Enable <span className="font-medium">Advanced Mode</span> in
                 Settings to access EVM networks.
@@ -286,11 +303,15 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           )}
 
           {/* No results */}
-          {search && moveTestnets.length === 0 && evmTestnets.length === 0 && (
-            <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-500">
-              No networks found for "{search}"
-            </div>
-          )}
+          {search &&
+            moveMainnets.length === 0 &&
+            moveTestnets.length === 0 &&
+            evmMainnets.length === 0 &&
+            evmTestnets.length === 0 && (
+              <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-500">
+                No networks found for "{search}"
+              </div>
+            )}
         </div>
       </div>
     </>
