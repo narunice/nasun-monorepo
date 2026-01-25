@@ -64,7 +64,7 @@ const followerStack = new FollowerStack(app, 'FollowerStack', {
 // Leaderboard V3 stack (Independent manual curation system)
 const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
   env: { region: 'ap-northeast-2' },
-  environmentName: nodeEnv === 'production' ? 'prod' : 'dev',
+  environmentName: 'prod',
   adminPassword: process.env.LEADERBOARD_V3_ADMIN_PASSWORD || 'change-me-in-production',
   userProfilesTableName: 'UserProfiles', // For Internal Data Sync (profile image/displayName lookup)
 });

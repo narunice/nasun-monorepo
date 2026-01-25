@@ -15,6 +15,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as events from 'aws-cdk-lib/aws-events';
@@ -434,15 +435,23 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonAccountsTable.grantReadData(getFeaturedFeedLambda);
     this.snapshotsTable.grantReadData(getFeaturedFeedLambda);
 
-    // My Rank permissions (Phase 10)
-    this.accountsTable.grantReadData(getMyRankLambda);
+    // My Rank permissions (Phase 10) - ReadWrite for profile sync (accounts + season-accounts)
+    this.accountsTable.grantReadWriteData(getMyRankLambda);
     this.seasonsTable.grantReadData(getMyRankLambda);
-    this.seasonAccountsTable.grantReadData(getMyRankLambda);
+    this.seasonAccountsTable.grantReadWriteData(getMyRankLambda);
     this.snapshotsTable.grantReadData(getMyRankLambda);
 
-    // Grant read access to UserProfiles table for profile data lookup
+    // Grant read access to UserProfiles table + GSI for profile data lookup
     if (userProfilesTable) {
       userProfilesTable.grantReadData(createPostLambda);
+      userProfilesTable.grantReadData(getMyRankLambda);
+      // fromTableName() doesn't include GSI permissions - add explicitly
+      const userProfilesIndexPolicy = new iam.PolicyStatement({
+        actions: ['dynamodb:Query'],
+        resources: [`${userProfilesTable.tableArn}/index/*`],
+      });
+      createPostLambda.addToRolePolicy(userProfilesIndexPolicy);
+      getMyRankLambda.addToRolePolicy(userProfilesIndexPolicy);
     }
 
     // ============================================
