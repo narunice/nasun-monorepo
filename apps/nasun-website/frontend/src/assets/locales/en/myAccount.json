@@ -108,8 +108,10 @@
     "viewOnOpenSea": "View on OpenSea"
   },
   "rankHistory": {
-    "title": "LEADERBOARD HISTORY",
+    "title": "RANK HISTORY",
     "description": "View your daily ranking changes over time",
+    "loginRequired": "Log in to view your rank history",
+    "twitterRequired": "Connect your X account to view rank history",
     "notConnected": "Please connect your X account to participate the community leaderboard.",
     "notParticipating": "You haven't participated in the leaderboard yet. Engage with @{{targetAccount}} to start building your rank history.",
     "notParticipatingInPeriodOngoing": "You haven't participated in {{periodName}} yet. Engage with @{{targetAccount}} to start building your rank history.",
@@ -130,15 +132,20 @@
     "loading": "Loading history data...",
     "error": "Failed to load history data",
     "unknownError": "An unknown error occurred.",
-    "noData": "No history data to display",
+    "noData": "No rank history available yet",
     "noDataDescription": "No ranking data available for the selected period.",
+    "viewLeaderboard": "View Leaderboard",
     "chart": {
       "rank": "Rank",
-      "score": "Points",
+      "score": "Score",
       "yAxisLabel": "Rank",
       "noData": "No data available"
     },
     "stats": {
+      "current": "Current",
+      "best": "Best",
+      "worst": "Worst",
+      "change": "Change",
       "bestRank": "Best Rank",
       "averageRank": "Average Rank",
       "scoreIncrease": "Score Increase",
