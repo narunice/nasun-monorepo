@@ -11,8 +11,8 @@ import type { TokenFaucetHandler } from '../types';
 // Devnet Token Faucet Configuration
 // These are the deployed contract addresses on Nasun Devnet
 export const DEVNET_TOKEN_FAUCET = {
-  package: '0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489',
-  faucet: '0x5930a54235a835a9d93c6e42d049c5da42255fca0b40199352cfc72fd23fdf5e',
+  package: '0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4',
+  faucet: '0x802d91521fc5ba0e590330cb500eb1c0399c6209b6b1db1cffe41e101a82521f',
 };
 
 /**

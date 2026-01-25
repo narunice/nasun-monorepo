@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { NsaAccountState, NsaSignerInfo } from '../types/nsa';
+import type { NsaAccountState, NsaSignerInfo, NsaSignerProposal } from '../types/nsa';
 
 interface NsaStoreState {
   /** SmartAccount object ID (null if not yet created) */
@@ -22,6 +22,8 @@ interface NsaStoreState {
   lastFetchedAt: number | null;
   /** Active recovery request object ID (if any) */
   activeRecoveryId: string | null;
+  /** Pending signer proposals for this account */
+  pendingProposals: NsaSignerProposal[];
 }
 
 interface NsaStoreActions {
@@ -33,6 +35,8 @@ interface NsaStoreActions {
   setLoading: (loading: boolean) => void;
   /** Set active recovery request */
   setActiveRecovery: (requestId: string | null) => void;
+  /** Set pending signer proposals */
+  setPendingProposals: (proposals: NsaSignerProposal[]) => void;
   /** Clear all NSA state (logout/reset) */
   clearState: () => void;
   /** Mark as initialized */
@@ -51,6 +55,7 @@ export const useNsaStore = create<NsaStore>()(
       isLoading: false,
       lastFetchedAt: null,
       activeRecoveryId: null,
+      pendingProposals: [],
 
       // Actions
       setAccountObjectId: (objectId) =>
@@ -68,6 +73,9 @@ export const useNsaStore = create<NsaStore>()(
       setActiveRecovery: (requestId) =>
         set({ activeRecoveryId: requestId }),
 
+      setPendingProposals: (proposals) =>
+        set({ pendingProposals: proposals }),
+
       clearState: () =>
         set({
           accountObjectId: null,
@@ -76,6 +84,7 @@ export const useNsaStore = create<NsaStore>()(
           isLoading: false,
           lastFetchedAt: null,
           activeRecoveryId: null,
+          pendingProposals: [],
         }),
 
       initialize: (objectId, state) =>

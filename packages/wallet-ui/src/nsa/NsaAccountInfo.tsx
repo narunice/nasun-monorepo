@@ -7,7 +7,9 @@ import { useEffect } from 'react';
 import {
   useNasunSmartAccount,
   useNsaStore,
+  useSigner,
   type NsaSignerInfo,
+  type NsaSignerProposal,
 } from '@nasun/wallet';
 import { CopyableAddress } from '../CopyableAddress';
 
@@ -37,6 +39,44 @@ function SignerBadge({ info }: { info: NsaSignerInfo }) {
       <span className="text-xs text-gray-400 dark:text-zinc-500 font-mono">
         {info.address.slice(0, 6)}...{info.address.slice(-4)}
       </span>
+    </div>
+  );
+}
+
+function formatTimeRemaining(expiresAt: number): string {
+  const remaining = expiresAt - Date.now();
+  if (remaining <= 0) return 'Expired';
+  const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h`;
+  return '<1h';
+}
+
+function PendingProposalCard({ proposal, onCancel }: { proposal: NsaSignerProposal; onCancel?: () => void }) {
+  return (
+    <div className="flex items-center justify-between py-2 px-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-amber-800 dark:text-amber-300 truncate">
+            {proposal.label || 'Unnamed'}
+          </span>
+          <span className="text-[10px] text-amber-600 dark:text-amber-400">
+            {formatTimeRemaining(proposal.expiresAt)}
+          </span>
+        </div>
+        <span className="text-[10px] text-amber-600 dark:text-amber-500 font-mono">
+          {proposal.pendingSigner.slice(0, 8)}...{proposal.pendingSigner.slice(-4)}
+        </span>
+      </div>
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 px-2"
+        >
+          Cancel
+        </button>
+      )}
     </div>
   );
 }
@@ -71,12 +111,23 @@ function TrinityProgress({ accountState }: { accountState: { signers: NsaSignerI
 }
 
 export function NsaAccountInfo({ onClose, onNavigate }: NsaAccountInfoProps) {
-  const { accountState, accountObjectId, isLoading, refreshState } = useNasunSmartAccount();
+  const { accountState, accountObjectId, isLoading, refreshState, pendingProposals, refreshProposals, cancelSignerProposal } = useNasunSmartAccount();
   const activeRecoveryId = useNsaStore((s) => s.activeRecoveryId);
+  const { signer } = useSigner();
 
   useEffect(() => {
     refreshState();
+    refreshProposals();
   }, []);
+
+  const handleCancelProposal = async (proposalId: string) => {
+    if (!signer) return;
+    try {
+      await cancelSignerProposal(proposalId, signer);
+    } catch (err) {
+      console.error('Failed to cancel proposal:', err);
+    }
+  };
 
   return (
     <div className="p-4 w-full">
@@ -138,6 +189,24 @@ export function NsaAccountInfo({ onClose, onNavigate }: NsaAccountInfoProps) {
             </div>
           </div>
 
+          {/* Pending Proposals */}
+          {pendingProposals.length > 0 && (
+            <div className="space-y-1.5">
+              <span className="text-xs text-gray-500 dark:text-zinc-400">
+                Pending Proposals ({pendingProposals.length})
+              </span>
+              <div className="space-y-1">
+                {pendingProposals.map((p) => (
+                  <PendingProposalCard
+                    key={p.objectId}
+                    proposal={p}
+                    onCancel={() => handleCancelProposal(p.objectId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Guardians */}
           <div className="space-y-1">
             <span className="text-xs text-gray-500 dark:text-zinc-400">
@@ -155,7 +224,17 @@ export function NsaAccountInfo({ onClose, onNavigate }: NsaAccountInfoProps) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
-              Add Signer
+              Propose Signer
+            </button>
+
+            <button
+              onClick={() => onNavigate('nsa-accept-proposal')}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Accept Proposal
             </button>
 
             <button

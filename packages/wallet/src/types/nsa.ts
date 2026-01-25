@@ -108,7 +108,22 @@ export interface NsaBalanceEntry {
 }
 
 /** NSA module package address (devnet) */
-export const NSA_PACKAGE_ID = '0x73c87f5b49441f467f55f0ffad3ac472e81c9f605b294e747c90f57f9dc500c0';
+export const NSA_PACKAGE_ID = '0x1086f48c599e2a1ed1d0e541425d94c9f2a5be309c4ddec2cbd2eebc3ed16f30';
+
+/** On-chain SignerProposal state (2-phase signer addition) */
+export interface NsaSignerProposal {
+  objectId: string;
+  accountId: string;
+  proposer: string;
+  pendingSigner: string;
+  signerType: NsaSignerType;
+  weight: number;
+  label: string;
+  createdAt: number;
+  expiresAt: number;
+  isExecuted: boolean;
+  isCancelled: boolean;
+}
 
 /** Timelock duration in milliseconds (48 hours) */
 export const NSA_TIMELOCK_MS = 172_800_000;
