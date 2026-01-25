@@ -13,6 +13,19 @@
 
 ---
 
+## Deployed Contracts (Nasun Devnet)
+
+| Contract | ID | Description |
+|----------|----|----|
+| **Package** | `0x2b1515ad3454d0199fda7dab70ccff737d8c8acfeb7ed181263c43b73566e697` | blind 모듈 |
+| **BlindRegistry** | `0xd4ca7c8c34138886361b7f5253d68efa84afe29b00f4f53c0c34a356dca4bc7f` | Shared object (요청 저장소) |
+| **UpgradeCap** | `0x6dee91dceed0dc32f778ee258f63f1a1a8ac3e2e45ede095f06c0240e8c9b811` | 업그레이드 권한 |
+
+**Deployment TX:** `9SaaFnQNkG6JBMTNbRT56C4ys5pcjGeSxKZuxcMxLwfK`
+**Deployed:** 2026-01-25
+
+---
+
 ## Architecture
 
 ```
