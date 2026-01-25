@@ -39,6 +39,7 @@ import {
   SeasonLeaderboardEntry,
   SeasonLeaderboardResponse,
   DYNAMO_KEYS,
+  SCORE_CONSTANTS,
 } from '../types';
 import {
   getAllAccounts,
@@ -225,7 +226,7 @@ function recalculateSeasonScore(score: SeasonAccountScore): {
   const daysSinceLastPost = Math.floor(
     (Date.now() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
   );
-  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / 14);
+  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
   const userScore = rawScore * consistencyBonus * freshnessMultiplier;
 
   return {

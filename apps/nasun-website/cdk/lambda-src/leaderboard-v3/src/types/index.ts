@@ -169,7 +169,7 @@ export interface ComputedUserScore {
   effectivePosts: number; // log₂(postCount + 1)
   rawScore: number; // totalPostScore × effectivePosts / postCount
   consistencyBonus: number; // 1 + log₂(uniqueActiveDays + 1) × 0.1
-  freshnessMultiplier: number; // 1 / (1 + daysSinceLastPost / 14)
+  freshnessMultiplier: number; // 1 / (1 + daysSinceLastPost / FRESHNESS_HALF_LIFE_DAYS)
   userScore: number; // rawScore × consistencyBonus × freshnessMultiplier
 }
 

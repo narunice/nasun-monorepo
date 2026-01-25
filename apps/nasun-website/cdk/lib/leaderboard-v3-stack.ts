@@ -9,7 +9,8 @@
  *                    leaderboard-v3-seasons, leaderboard-v3-snapshots,
  *                    leaderboard-v3-season-accounts
  * - Lambda functions: create-post, get-leaderboard, get-account,
- *                     admin-seasons, generate-snapshot, get-top-climbers
+ *                     admin-seasons, generate-snapshot, get-top-climbers,
+ *                     get-my-rank, get-rank-history
  * - API Gateway: /v3/posts, /v3/leaderboard, /v3/accounts, /v3/admin/seasons
  */
 
@@ -147,6 +148,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
         pointInTimeRecoveryEnabled: environmentName === 'prod',
       },
       timeToLiveAttribute: 'ttl', // Enable TTL for auto-cleanup of old snapshots
+    });
+
+    // GSI for user rank history lookup
+    this.snapshotsTable.addGlobalSecondaryIndex({
+      indexName: 'accountId-snapshotDate-index',
+      partitionKey: { name: 'accountId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'snapshotDate', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // Season-Accounts table (Phase 5)
@@ -362,6 +371,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Get Rank History Lambda (Phase 12)
+    const getRankHistoryLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3GetRankHistoryFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-get-rank-history`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'get-rank-history.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Get user rank history over time',
+      }
+    );
+
     // Search Accounts Lambda (Phase 8)
     const searchAccountsLambda = new NodejsFunction(
       this,
@@ -441,6 +465,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonAccountsTable.grantReadWriteData(getMyRankLambda);
     this.snapshotsTable.grantReadData(getMyRankLambda);
 
+    // Rank History permissions (Phase 12)
+    this.accountsTable.grantReadData(getRankHistoryLambda);
+    this.seasonsTable.grantReadData(getRankHistoryLambda);
+    this.snapshotsTable.grantReadData(getRankHistoryLambda);
+
     // Grant read access to UserProfiles table + GSI for profile data lookup
     if (userProfilesTable) {
       userProfilesTable.grantReadData(createPostLambda);
@@ -504,6 +533,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
     myRankResource.addMethod(
       'GET',
       new apigw.LambdaIntegration(getMyRankLambda)
+    );
+
+    // GET /v3/leaderboard/rank-history
+    const rankHistoryResource = leaderboardResource.addResource('rank-history');
+    rankHistoryResource.addMethod(
+      'GET',
+      new apigw.LambdaIntegration(getRankHistoryLambda)
     );
 
     // GET /v3/feed/featured

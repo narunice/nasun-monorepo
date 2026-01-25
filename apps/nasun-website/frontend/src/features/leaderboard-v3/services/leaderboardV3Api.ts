@@ -13,6 +13,8 @@ import type {
   Platform,
   FeaturedFeedResponse,
   MyRankResponse,
+  RankHistoryResponse,
+  DateRangeOptionV3,
 } from '../types';
 
 // Search result interface
@@ -212,6 +214,39 @@ export async function getMyRank(params: {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to get my rank: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get rank history (public)
+ * Returns rank history over time for a specific user
+ */
+export async function getRankHistory(params: {
+  username: string;
+  seasonId?: string;
+  days?: DateRangeOptionV3;
+}): Promise<RankHistoryResponse> {
+  const { username, seasonId, days } = params;
+
+  const searchParams = new URLSearchParams();
+  searchParams.append('username', username);
+  if (seasonId) searchParams.append('seasonId', seasonId);
+  if (days) searchParams.append('days', days.toString());
+
+  const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard/rank-history?${searchParams}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get rank history: ${response.status}`);
   }
 
   return response.json();

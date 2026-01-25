@@ -23,6 +23,7 @@ import {
   RankChange,
   SeasonAccountScore,
   DYNAMO_KEYS,
+  SCORE_CONSTANTS,
 } from '../types';
 import { getActiveSeason, getSeasonAccountScores } from '../services/dynamodb-client';
 
@@ -171,11 +172,11 @@ function recalculateUserScore(score: SeasonAccountScore): {
   // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1
   const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
 
-  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / 14)
+  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / FRESHNESS_HALF_LIFE_DAYS)
   const daysSinceLastPost = Math.floor(
     (Date.now() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
   );
-  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / 14);
+  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
 
   // UserScore = rawScore × consistencyBonus × freshnessMultiplier
   const userScore = rawScore * consistencyBonus * freshnessMultiplier;
