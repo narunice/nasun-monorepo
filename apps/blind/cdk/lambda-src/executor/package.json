@@ -1,0 +1,22 @@
+{
+  "name": "blind-executor",
+  "version": "1.0.0",
+  "description": "Blind AI Executor Lambda - Processes AI requests and submits proofs on-chain",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --external:@aws-sdk/*",
+    "build:tsc": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.0.0",
+    "@mysten/sui": "^1.0.0",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.0.0"
+  }
+}

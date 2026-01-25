@@ -1,0 +1,27 @@
+{
+  "name": "@nasun/blind-cdk",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "cdk": "bin/cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:lambda": "cd lambda-src/executor && pnpm run build",
+    "build:all": "pnpm run build:lambda && pnpm run build",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "pnpm run build:all && cdk deploy",
+    "destroy": "cdk destroy"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "^2.211.0",
+    "typescript": "~5.6.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.211.0",
+    "constructs": "^10.0.0",
+    "dotenv": "^17.2.2"
+  }
+}
