@@ -110,7 +110,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
 
       {/* Score */}
       <div className="col-span-2 text-right">
-        <span className="text-nasun-white font-bold">{entry.userScore.toFixed(1)}</span>
+        <span className="text-nasun-white font-bold">{entry.userScore.toFixed(2)}</span>
       </div>
 
       {/* Rank Change */}
