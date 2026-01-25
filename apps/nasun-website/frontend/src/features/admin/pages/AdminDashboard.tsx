@@ -13,7 +13,7 @@ export function AdminDashboard() {
           <PageTitle as="h3" align="left" className="">
             Admin Dashboard
           </PageTitle>
-          <p className="text-nasun-white/60 max-w-2xl -mt-6 leading-relaxed">
+          <p className="text-nasun-white/60 max-w-2xl -mt-6 ">
             Manage whitelist exports, governance proposals, and monitor platform health through the
             centralized admin console.
           </p>

@@ -33,14 +33,14 @@ export function LeaderboardV3Admin() {
 
   return (
     <AdminLayout>
-      <SectionLayout className="!max-w-6xl !pt-12">
+      <SectionLayout className="!max-w-6xl !pt-0">
         {/* Header */}
         <div className="w-full mb-8 flex items-end justify-between">
           <div>
-            <PageTitle as="h3" align="left" className="!mb-2">
+            <PageTitle as="h3" align="left" className="">
               Leaderboard V3 Admin
             </PageTitle>
-            <p className="text-nasun-white/60 text-sm font-light">
+            <p className="text-nasun-white/60 -mt-6">
               Manage seasons, posts, and view leaderboard data.
             </p>
           </div>

@@ -72,12 +72,12 @@ export function WhitelistManagement() {
 
   return (
     <AdminLayout>
-      <SectionLayout className="!max-w-6xl !pt-12">
+      <SectionLayout className="!max-w-6xl !pt-0">
         <div className="w-full mb-10 text-left">
-          <PageTitle as="h3" align="left" className="!mb-4">
+          <PageTitle as="h3" align="left" className="">
             Whitelist Export
           </PageTitle>
-          <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
+          <p className="text-nasun-white/60 max-w-2xl -mt-6">
             Download NFT whitelist and allowlist data as CSV files for OpenSea or internal analysis.
           </p>
         </div>
@@ -257,8 +257,8 @@ export function WhitelistManagement() {
                     OpenSea Format
                   </span>
                   <p className="text-nasun-white/50 text-xs mt-1 leading-relaxed">
-                    Optimized for OpenSea Allowlist upload. Includes only mandatory columns:
-                    Wallet address, Mint limit, and Price.
+                    Optimized for OpenSea Allowlist upload. Includes only mandatory columns: Wallet
+                    address, Mint limit, and Price.
                   </p>
                 </div>
               </div>

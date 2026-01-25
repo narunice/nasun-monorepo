@@ -37,13 +37,13 @@ export function GovernanceManagement() {
 
   return (
     <AdminLayout>
-      <SectionLayout className="!max-w-6xl !pt-12">
+      <SectionLayout className="!max-w-6xl !pt-0">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 w-full">
           <div>
-            <PageTitle as="h3" align="left" className="!mb-4">
+            <PageTitle as="h3" align="left" className="">
               Governance Management
             </PageTitle>
-            <p className="text-nasun-white/60 text-lg font-light max-w-2xl leading-relaxed">
+            <p className="text-nasun-white/60  max-w-2xl  -mt-6">
               Review on-chain proposals, monitor voting power distribution, and manage content
               visibility.
             </p>
