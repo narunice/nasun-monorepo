@@ -47,7 +47,7 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { acceptSignerProposal, accountObjectId } = useNasunSmartAccount();
+  const { acceptSignerProposal } = useNasunSmartAccount();
   const { signer } = useSigner();
 
   // Auto-fetch when initialProposalId is provided (skip input step)

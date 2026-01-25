@@ -22,6 +22,7 @@ import { createEVMWalletFromMnemonic, deleteEVMWallet } from '../core/evm';
 import { clearAddressBook } from './useAddressBook';
 import { getPublicKeyFromKeypair, getAddressFromKeypair, getSecretKeyFromKeypair } from '../core/crypto';
 import { saveSessionPassword, getSessionPassword, clearSessionPassword } from '../sui/client';
+import { useChainStore } from './useChain';
 
 // Internal state (keypair is not stored in the store)
 let currentKeypair: Ed25519Keypair | null = null;
@@ -162,6 +163,8 @@ export const useWallet = create<WalletStore>((set, get) => ({
   lockWallet: () => {
     currentKeypair = null;
     clearSessionPassword();
+    // Reset chain to default (Nasun Devnet) on lock
+    useChainStore.getState().resetToDefault();
     const address = getStoredAddress();
     set({
       status: address ? 'locked' : 'disconnected',

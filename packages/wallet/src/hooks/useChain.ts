@@ -25,6 +25,8 @@ interface ChainState {
   currentChainId: string;
   /** Set the current chain */
   setChain: (chainId: string) => void;
+  /** Reset to default chain (Nasun Devnet) */
+  resetToDefault: () => void;
 }
 
 /**
@@ -41,6 +43,9 @@ export const useChainStore = create<ChainState>()(
           return;
         }
         set({ currentChainId: chainId });
+      },
+      resetToDefault: () => {
+        set({ currentChainId: DEFAULT_CHAIN_ID });
       },
     }),
     {
