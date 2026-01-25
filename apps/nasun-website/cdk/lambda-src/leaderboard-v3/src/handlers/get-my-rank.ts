@@ -15,6 +15,7 @@ import {
   DynamoDBDocumentClient,
   QueryCommand,
   ScanCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import {
   Account,
@@ -43,6 +44,8 @@ const SEASON_ACCOUNTS_TABLE =
   process.env.LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE || DYNAMO_KEYS.SEASON_ACCOUNTS_TABLE;
 const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
+const USER_PROFILES_TABLE =
+  process.env.USER_PROFILES_TABLE || 'UserProfiles';
 
 function createResponse(
   statusCode: number,
@@ -237,6 +240,106 @@ async function getRankChange(
   return snapshot.rankChange;
 }
 
+/**
+ * Sync profile data from UserProfiles table to Account + SeasonAccounts tables.
+ * Called lazily when user checks their rank, ensuring fresh profile data
+ * is reflected in both the My Rank card and the leaderboard table.
+ */
+async function syncProfileFromUserProfiles(
+  account: Account,
+  seasonId?: string
+): Promise<{ displayName?: string; profileImageUrl?: string }> {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: USER_PROFILES_TABLE,
+        IndexName: 'twitterHandle-index',
+        KeyConditionExpression: 'twitterHandle = :handle',
+        ExpressionAttributeValues: {
+          ':handle': account.username,
+        },
+        Limit: 1,
+      })
+    );
+
+    if (!result.Items || result.Items.length === 0) {
+      return {};
+    }
+
+    const profile = result.Items[0] as {
+      username?: string;
+      profileImageUrl?: string;
+    };
+
+    const freshDisplayName = profile.username;
+    const freshProfileImage = profile.profileImageUrl;
+
+    const resolvedDisplayName = freshDisplayName || account.displayName;
+    const resolvedProfileImage = freshProfileImage || account.profileImageUrl;
+
+    const updates: Promise<unknown>[] = [];
+
+    // Update Account table if profile data changed
+    const accountNeedsUpdate =
+      (freshDisplayName && freshDisplayName !== account.displayName) ||
+      (freshProfileImage && freshProfileImage !== account.profileImageUrl);
+
+    if (accountNeedsUpdate) {
+      updates.push(
+        docClient.send(
+          new UpdateCommand({
+            TableName: ACCOUNTS_TABLE,
+            Key: { accountId: account.accountId },
+            UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img, isRegistered = :reg',
+            ExpressionAttributeValues: {
+              ':dn': resolvedDisplayName,
+              ':img': resolvedProfileImage,
+              ':reg': true,
+            },
+          })
+        )
+      );
+    }
+
+    // Always sync profile to SeasonAccounts table (leaderboard table reads from here)
+    if (seasonId && resolvedDisplayName) {
+      updates.push(
+        docClient.send(
+          new UpdateCommand({
+            TableName: SEASON_ACCOUNTS_TABLE,
+            Key: {
+              pk: `SEASON#${seasonId}#ACCOUNT#${account.accountId}`,
+              sk: 'SCORE',
+            },
+            UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img, isRegistered = :reg',
+            ExpressionAttributeValues: {
+              ':dn': resolvedDisplayName,
+              ':img': resolvedProfileImage,
+              ':reg': true,
+            },
+            ConditionExpression: 'attribute_exists(pk)',
+          })
+        ).catch(() => { /* Season-account record may not exist yet */ })
+      );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+
+    return {
+      displayName: resolvedDisplayName,
+      profileImageUrl: resolvedProfileImage,
+    };
+  } catch (error) {
+    console.warn('Profile sync failed (non-critical):', error);
+    return {
+      displayName: account.displayName,
+      profileImageUrl: account.profileImageUrl,
+    };
+  }
+}
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -287,6 +390,9 @@ export const handler = async (
       return createResponse(200, notRankedResponse);
     }
 
+    // Sync profile data from UserProfiles (lazy refresh to both accounts + season-accounts)
+    const freshProfile = await syncProfileFromUserProfiles(account, seasonId);
+
     // Get season account score
     const seasonScore = await getSeasonAccountScore(seasonId, account.accountId);
     if (!seasonScore) {
@@ -297,8 +403,8 @@ export const handler = async (
           status: 'not_ranked',
           username: account.username,
           originalUsername: account.originalUsername,
-          displayName: account.displayName,
-          profileImageUrl: account.profileImageUrl,
+          displayName: freshProfile.displayName || account.displayName,
+          profileImageUrl: freshProfile.profileImageUrl || account.profileImageUrl,
         },
         seasonId,
         calculatedAt: new Date().toISOString(),
@@ -316,7 +422,7 @@ export const handler = async (
     // Get rank change from yesterday
     const rankChange = await getRankChange(seasonId, account.accountId);
 
-    // Build response
+    // Build response (prefer fresh profile data from UserProfiles)
     const data: MyRankData = {
       status: 'ranked',
       rank,
@@ -324,8 +430,8 @@ export const handler = async (
       postCount: seasonScore.postCount,
       username: seasonScore.username,
       originalUsername: seasonScore.originalUsername || account.originalUsername,
-      displayName: seasonScore.displayName || account.displayName,
-      profileImageUrl: seasonScore.profileImageUrl || account.profileImageUrl,
+      displayName: freshProfile.displayName || seasonScore.displayName || account.displayName,
+      profileImageUrl: freshProfile.profileImageUrl || seasonScore.profileImageUrl || account.profileImageUrl,
       rankChange,
       totalUsers,
     };
