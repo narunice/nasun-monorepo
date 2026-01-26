@@ -55,24 +55,22 @@ USER enclave
 
 # Environment variables for Nitro mode
 # USE_VSOCK=false for now because @aspect-build/vsock doesn't exist
-# In production, need to implement native vsock binding
+# TCP mode will work for now (enclave has no network, but useful for testing init)
 ENV NODE_ENV=production
 ENV USE_VSOCK=false
-ENV USE_OPENAI_PROXY=false
+ENV USE_OPENAI_PROXY=true
 ENV NITRO_MODE=true
 
-# Vsock port (not TCP port - Enclave has no network)
-# Communication happens via vsock CID addressing
+# TCP port (vsock will use the same port number)
 ENV ENCLAVE_PORT=5050
 
-# Health check (will fail since no network, but useful for local testing)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "console.log('Enclave process running')" || exit 1
+# Clear entrypoint - docker-entrypoint.sh causes issues in Nitro
+ENTRYPOINT []
 
-# Run the Enclave
+# Run the Enclave directly with Node.js
 # In Nitro, this process will:
-# 1. Listen on vsock port 5050
+# 1. Listen on vsock/TCP port 5050
 # 2. Receive requests from Host
 # 3. Process cryptographic operations
 # 4. Send proxy requests to Host for OpenAI
-CMD ["node", "dist/enclave/main.js"]
+CMD ["/usr/local/bin/node", "/app/dist/enclave/main.js"]
