@@ -150,10 +150,10 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         {/* Divider */}
         <div className="border-t border-gray-200 dark:border-zinc-700 my-4" />
 
-        {/* Advanced Mode Toggle */}
+        {/* Pro Mode Toggle */}
         <AdvancedToggle />
 
-        {/* Advanced Mode Features */}
+        {/* Pro Mode Features */}
         {isAdvancedMode && (
           <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
             {/* Session Keys */}
