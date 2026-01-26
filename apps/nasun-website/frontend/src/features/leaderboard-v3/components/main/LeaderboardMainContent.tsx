@@ -79,7 +79,7 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
                 <span className="col-span-2 text-center font-medium text-nasun-white uppercase relative group cursor-help">
                   CHANGE
                   <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
-                    Rank change compared to yesterday's snapshot
+                    Rank change compared to today's snapshot
                   </span>
                 </span>
               </div>
