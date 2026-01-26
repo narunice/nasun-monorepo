@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import {
   useTransactionHistory,
+  useAddressBook,
   shortenAddress,
   type TransactionHistoryItem,
   type TokenTransfer,
@@ -22,6 +23,10 @@ interface TransactionHistoryPanelProps {
   className?: string;
   /** Auto-refresh interval in milliseconds (default: 30000) */
   refetchInterval?: number;
+  /** Callback when Send button is clicked for an address */
+  onSend?: (address: string) => void;
+  /** Callback when Address Book button is clicked (for adding or editing) */
+  onAddressBook?: (address: string) => void;
 }
 
 /**
@@ -105,16 +110,22 @@ function TransferItem({ transfer }: { transfer: TokenTransfer }) {
 function TransactionItem({
   tx,
   onClick,
+  onSend,
+  onAddressBook,
 }: {
   tx: TransactionHistoryItem;
   onClick?: (digest: string) => void;
+  onSend?: (address: string) => void;
+  onAddressBook?: (address: string) => void;
 }) {
+  const { getEntry } = useAddressBook();
   const isIn = tx.direction === 'in';
   const hasTransfers = tx.transfers.length > 0;
   const isContractCall = !hasTransfers && tx.status === 'success';
 
-  // Get primary counterparty
+  // Get primary counterparty and address book entry
   const counterparty = tx.counterparties[0];
+  const addressEntry = counterparty ? getEntry(counterparty) : undefined;
 
   // Determine display label
   const getLabel = () => {
@@ -181,10 +192,62 @@ function TransactionItem({
               {getLabel()}
             </p>
             {counterparty && hasTransfers && (
-              <p className="text-xs text-gray-500 dark:text-zinc-400 truncate max-w-[120px]">
-                {isIn ? 'From: ' : 'To: '}
-                <span className="font-mono">{shortenAddress(counterparty, 4)}</span>
-              </p>
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400">
+                <span>{isIn ? 'From: ' : 'To: '}</span>
+                {addressEntry?.label ? (
+                  <>
+                    <span className="text-gray-700 dark:text-zinc-300 font-medium truncate max-w-[60px]">
+                      {addressEntry.label}
+                    </span>
+                    <span className="font-mono text-gray-400 dark:text-zinc-500">
+                      ({shortenAddress(counterparty, 3)})
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-mono">{shortenAddress(counterparty, 4)}</span>
+                )}
+
+                {/* Quick action buttons */}
+                <div className="flex items-center gap-0.5 ml-0.5">
+                  {/* Address Book button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddressBook?.(counterparty);
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+                    title={addressEntry ? 'Edit in Address Book' : 'Add to Address Book'}
+                  >
+                    {addressEntry ? (
+                      // Book icon for editing
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    ) : (
+                      // Plus icon for adding
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Send button */}
+                  {onSend && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSend(counterparty);
+                      }}
+                      className="p-0.5 text-gray-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+                      title="Send to this address"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -236,6 +299,8 @@ export function TransactionHistoryPanel({
   hideHeader = false,
   className = '',
   refetchInterval = 30000,
+  onSend,
+  onAddressBook,
 }: TransactionHistoryPanelProps) {
   const { data: transactions, isLoading, error, hasNextPage, refetch } = useTransactionHistory({
     limit,
@@ -378,7 +443,13 @@ export function TransactionHistoryPanel({
       {/* Transaction list */}
       <div className="divide-y divide-gray-100 dark:divide-zinc-700">
         {displayedTxs.map((tx) => (
-          <TransactionItem key={tx.digest} tx={tx} onClick={handleTxClick} />
+          <TransactionItem
+            key={tx.digest}
+            tx={tx}
+            onClick={handleTxClick}
+            onSend={onSend}
+            onAddressBook={onAddressBook}
+          />
         ))}
       </div>
 

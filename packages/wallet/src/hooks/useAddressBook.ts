@@ -24,6 +24,9 @@ interface AddressBookStore {
   // Add or update address after successful transaction
   recordTransaction: (address: string, label?: string) => void;
 
+  // Manually add a new address to the address book
+  addAddress: (address: string, label?: string) => void;
+
   // Mark address as trusted
   trustAddress: (address: string) => void;
 
@@ -95,6 +98,35 @@ export const useAddressBook = create<AddressBookStore>()(
               entries: {
                 ...state.addressBook.entries,
                 [normalized]: newEntry,
+              },
+              updatedAt: now,
+            },
+          };
+        });
+      },
+
+      addAddress: (address: string, label?: string) => {
+        const normalized = address.toLowerCase();
+        const now = Date.now();
+
+        set((state) => {
+          // Skip if already exists
+          if (normalized in state.addressBook.entries) {
+            return state;
+          }
+
+          return {
+            addressBook: {
+              entries: {
+                ...state.addressBook.entries,
+                [normalized]: {
+                  address: normalized,
+                  label,
+                  firstTransactionAt: now,
+                  lastTransactionAt: now,
+                  transactionCount: 0,
+                  isTrusted: false,
+                },
               },
               updatedAt: now,
             },

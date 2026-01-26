@@ -3,7 +3,7 @@
  * Manage saved addresses with labels, trust status, and transaction history
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAddressBook, shortenAddress } from '@nasun/wallet';
 import { CopyableAddress } from './CopyableAddress';
 
@@ -12,21 +12,63 @@ interface AddressBookPanelProps {
   onSelect?: (address: string) => void;
   onSend?: (address: string) => void;
   compact?: boolean;
+  /** Pre-fill address for adding/editing */
+  initialAddress?: string;
 }
 
-export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }: AddressBookPanelProps) {
+export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, initialAddress }: AddressBookPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingAddress, setEditingAddress] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // New address addition state
+  const [addingNew, setAddingNew] = useState(false);
+  const [newAddress, setNewAddress] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+
   const {
     getAllEntries,
+    getEntry,
+    addAddress,
     updateLabel,
     trustAddress,
     untrustAddress,
     removeAddress,
   } = useAddressBook();
+
+  // Handle initialAddress prop
+  useEffect(() => {
+    if (initialAddress) {
+      const existingEntry = getEntry(initialAddress);
+      if (existingEntry) {
+        // Address already exists - go to edit mode
+        setEditingAddress(initialAddress);
+        setEditLabel(existingEntry.label || '');
+      } else {
+        // New address - go to add mode
+        setAddingNew(true);
+        setNewAddress(initialAddress);
+        setNewLabel('');
+      }
+    }
+  }, [initialAddress, getEntry]);
+
+  const handleAddNew = () => {
+    const trimmedAddress = newAddress.trim();
+    if (trimmedAddress) {
+      addAddress(trimmedAddress, newLabel.trim() || undefined);
+      setAddingNew(false);
+      setNewAddress('');
+      setNewLabel('');
+    }
+  };
+
+  const handleCancelAdd = () => {
+    setAddingNew(false);
+    setNewAddress('');
+    setNewLabel('');
+  };
 
   const entries = getAllEntries();
 
@@ -150,6 +192,57 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false }:
           className="w-full pl-10 pr-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-zinc-400"
         />
       </div>
+
+      {/* Add New Address Section */}
+      {addingNew ? (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+            Add New Address
+          </h4>
+          <input
+            type="text"
+            placeholder="0x..."
+            value={newAddress}
+            onChange={(e) => setNewAddress(e.target.value)}
+            className="w-full px-3 py-2 mb-2 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-zinc-400"
+            autoFocus={!initialAddress}
+          />
+          <input
+            type="text"
+            placeholder="Label (optional)"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddNew();
+              if (e.key === 'Escape') handleCancelAdd();
+            }}
+            className="w-full px-3 py-2 mb-3 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-zinc-400"
+            autoFocus={!!initialAddress}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddNew}
+              disabled={!newAddress.trim()}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-sm transition-colors"
+            >
+              Add
+            </button>
+            <button
+              onClick={handleCancelAdd}
+              className="px-3 py-1.5 text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white text-sm transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAddingNew(true)}
+          className="mb-4 w-full py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded border border-dashed border-blue-300 dark:border-blue-700 transition-colors"
+        >
+          + Add New Address
+        </button>
+      )}
 
       {/* Address List */}
       <div className="space-y-2 max-h-[400px] overflow-y-auto">
