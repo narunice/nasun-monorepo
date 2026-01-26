@@ -729,13 +729,14 @@ export function WalletConnect({
     if (viewMode === "portfolio") {
       return (
         <div className="py-3 px-4 w-full">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-gray-900 dark:text-white md:text-base">Portfolio</h3>
             <button
               onClick={() => setViewMode("main")}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+              className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
             >
               <svg
-                className="w-5 h-5 text-gray-500"
+                className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -744,11 +745,10 @@ export function WalletConnect({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
+                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
             </button>
-            <h3 className="font-medium text-gray-900 dark:text-white md:text-base">Portfolio</h3>
           </div>
           <PortfolioPanel />
         </div>
@@ -1298,16 +1298,11 @@ export function WalletConnect({
                 </button>
                 {/* More menu dropdown */}
                 {showMoreMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
                     <MoreMenu
-                      isZkLogin={true}
                       nsaIsInitialized={nsaIsInitialized}
                       nsaRecoveryCompleted={nsaRecoveryCompleted}
                       pendingForMe={pendingForMe}
-                      onStaking={() => {
-                        setViewMode("staking");
-                        setShowMoreMenu(false);
-                      }}
                       onPortfolio={() => {
                         setViewMode("portfolio");
                         setShowMoreMenu(false);
@@ -1318,26 +1313,6 @@ export function WalletConnect({
                       }}
                       onSmartAccount={() => {
                         setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
-                        setShowMoreMenu(false);
-                      }}
-                      onExportKey={() => {
-                        setViewMode("export");
-                        setShowMoreMenu(false);
-                      }}
-                      onSecuritySettings={() => {
-                        setViewMode("settings");
-                        setShowMoreMenu(false);
-                      }}
-                      onAddressBook={() => {
-                        setViewMode("address-book");
-                        setShowMoreMenu(false);
-                      }}
-                      onLock={() => {
-                        lockWallet();
-                        setShowMoreMenu(false);
-                      }}
-                      onDisconnect={() => {
-                        zkLogout();
                         setShowMoreMenu(false);
                       }}
                     />
@@ -1889,16 +1864,11 @@ export function WalletConnect({
                 </button>
                 {/* More menu dropdown */}
                 {showMoreMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
                     <MoreMenu
-                      isZkLogin={false}
                       nsaIsInitialized={nsaIsInitialized}
                       nsaRecoveryCompleted={nsaRecoveryCompleted}
                       pendingForMe={pendingForMe}
-                      onStaking={() => {
-                        setViewMode("staking");
-                        setShowMoreMenu(false);
-                      }}
                       onPortfolio={() => {
                         setViewMode("portfolio");
                         setShowMoreMenu(false);
@@ -1911,27 +1881,6 @@ export function WalletConnect({
                         setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
                         setShowMoreMenu(false);
                       }}
-                      onExportKey={() => {
-                        setViewMode("export");
-                        setShowMoreMenu(false);
-                      }}
-                      onSecuritySettings={() => {
-                        setViewMode("settings");
-                        setShowMoreMenu(false);
-                      }}
-                      onAddressBook={() => {
-                        setViewMode("address-book");
-                        setShowMoreMenu(false);
-                      }}
-                      onLock={() => {
-                        lockWallet();
-                        setShowMoreMenu(false);
-                      }}
-                      onDelete={() => {
-                        handleDelete();
-                        setShowMoreMenu(false);
-                      }}
-                      showDelete={true}
                     />
                   </div>
                 )}
