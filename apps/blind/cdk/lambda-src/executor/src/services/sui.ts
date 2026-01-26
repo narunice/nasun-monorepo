@@ -100,7 +100,13 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
     }
 
     const dfFields = dynamicField.data.content.fields as Record<string, unknown>;
-    const value = dfFields.value as Record<string, unknown>;
+    const valueWrapper = dfFields.value as { fields?: Record<string, unknown> } | Record<string, unknown>;
+    // Handle both nested (value.fields) and flat (value) structures
+    const value = ('fields' in valueWrapper && valueWrapper.fields)
+      ? valueWrapper.fields
+      : valueWrapper as Record<string, unknown>;
+
+    console.log('[Sui] Request value structure:', JSON.stringify(value, null, 2));
 
     return {
       requestId: Number(value.request_id),
