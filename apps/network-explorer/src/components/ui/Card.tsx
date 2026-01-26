@@ -1,14 +1,13 @@
 import React from 'react';
 
-export type CardVariant = 'default' | 'c3' | 'c4' | 'c5' | 'c6' | 'gradient';
+export type CardVariant = 'default' | 'c4' | 'c5' | 'c6' | 'gradient';
 
 const variantStyles: Record<CardVariant, string> = {
-  default: 'bg-card text-card-foreground border-border/20',
-  c3: 'bg-nasun-c3/10 border-nasun-c3/50 text-foreground',
+  default: 'bg-nasun-gray/5 dark:bg-nasun-gray/30 text-foreground border-nasun-c5/30',
   c4: 'bg-nasun-c4/5 border-nasun-c4/30 text-foreground',
   c5: 'bg-nasun-c5/10 border-nasun-c5/50 text-foreground',
-  c6: 'bg-nasun-c6/80 border-nasun-c5/30 text-nasun-white', // Keep c6 dark/navy even in light mode? Or maybe use muted? Let's keep it specific for now.
-  gradient: 'bg-gradient-to-r from-nasun-c5/10 to-nasun-c4/20 border-nasun-c4/20 text-foreground',
+  c6: 'bg-nasun-c6/80 border-nasun-c5/30 text-nasun-white',
+  gradient: 'bg-gradient-to-r from-nasun-c6 to-nasun-c5/40 border-nasun-c4/20 text-nasun-white',
 };
 
 export interface CardProps {
@@ -37,16 +36,15 @@ export function Card({
 }: CardProps) {
   const variantStyle = variantStyles[variant];
   const hoverStyle = hover
-    ? 'hover:shadow-xl hover:scale-[1.01] transition-all duration-200'
+    ? 'hover:shadow-md hover:border-nasun-c4/40 transition-all duration-200'
     : '';
 
   return (
     <div
       className={`
-        rounded-xl
+        rounded-sm
         border
-        backdrop-blur-md
-        shadow-lg
+        backdrop-blur-sm
         ${variantStyle}
         ${hoverStyle}
         ${className}

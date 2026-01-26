@@ -225,15 +225,15 @@ export default function Package() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card variant="default" className="p-4">
-          <div className="text-muted-foreground text-sm uppercase tracking-wider">Modules</div>
+          <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Modules</div>
           <div className="text-2xl font-mono text-foreground">{moduleNames.length}</div>
         </Card>
         <Card variant="default" className="p-4">
-          <div className="text-muted-foreground text-sm uppercase tracking-wider">Functions</div>
+          <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Functions</div>
           <div className="text-2xl font-mono dark:text-nasun-c3 text-teal-600">{totalFunctions}</div>
         </Card>
         <Card variant="default" className="p-4">
-          <div className="text-muted-foreground text-sm uppercase tracking-wider">Structs</div>
+          <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Structs</div>
           <div className="text-2xl font-mono text-foreground">{totalStructs}</div>
         </Card>
       </div>
