@@ -13,6 +13,7 @@ export const tagVariants = cva(
         filledC3: "border border-nasun-c3/80 bg-nasun-c3/10 text-nasun-c3 ",
         filledC4: "border border-nasun-c4/80 bg-nasun-c4/10 text-nasun-c4 ",
         filledC5: "border border-nasun-c5/80 bg-nasun-c5/10 text-nasun-c5 ",
+        filledC7: "border border-nasun-c7/80 bg-nasun-c7/10 text-nasun-c7 ",
         filledGensolRed:
           "border border-nasun-gensol-red bg-nasun-gensol-red/20 text-nasun-gensol-red",
 
@@ -23,6 +24,7 @@ export const tagVariants = cva(
         outlineC3: "border border-nasun-c3/70 bg-transparent text-nasun-c3",
         outlineC4: "border border-nasun-c4/70 bg-transparent text-nasun-c4",
         outlineC5: "border border-nasun-c5/70 bg-transparent text-nasun-c5",
+        outlineC7: "border border-nasun-c7/70 bg-transparent text-nasun-c7",
         outlineGensolRed: "border border-nasun-gensol-red/70 bg-transparent text-nasun-gensol-red",
       },
       size: {

@@ -10,16 +10,16 @@
  * Phase 11: Role selection removed, continuous RoleMultiplier based on follower count
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { OuterBox } from '@/components/ui/OuterBox';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { OuterBox } from "@/components/ui/OuterBox";
+import { Button } from "@/components/ui/button";
 import {
   usePostSubmissionForm,
   useCreatePost,
   useLeaderboardV3Account,
   usePostFormKeyboardShortcuts,
-} from '../../hooks/useLeaderboardV3';
-import { useAdminAuth } from '../../hooks/useAdminAuth';
+} from "../../hooks/useLeaderboardV3";
+import { useAdminAuth } from "../../hooks/useAdminAuth";
 import {
   SIGNAL_LABELS,
   BONUS_SIGNALS,
@@ -29,12 +29,12 @@ import {
   calculateRoleMultiplier,
   type PostType,
   type AccountLanguage,
-} from '../../types/leaderboard-v3';
+} from "../../types/leaderboard-v3";
 
 // Extract username from URL for account lookup
 function extractUsernameFromUrl(url: string): string | null {
   try {
-    const normalized = url.replace('twitter.com', 'x.com');
+    const normalized = url.replace("twitter.com", "x.com");
     const match = normalized.match(/(?:x\.com|twitter\.com)\/([a-zA-Z0-9_]+)/);
     return match ? match[1] : null;
   } catch {
@@ -43,7 +43,10 @@ function extractUsernameFromUrl(url: string): string | null {
 }
 
 export function PostRegistrationTab() {
-  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const urlInputRef = useRef<HTMLInputElement>(null);
   const form = usePostSubmissionForm();
@@ -52,15 +55,15 @@ export function PostRegistrationTab() {
 
   // Admin identifier: twitterHandle > username > email
   const adminIdentifier = useMemo(() => {
-    return profile?.twitterHandle || profile?.username || profile?.email || 'unknown';
+    return profile?.twitterHandle || profile?.username || profile?.email || "unknown";
   }, [profile]);
 
   // Extract username from URL for account lookup
   const extractedUsername = extractUsernameFromUrl(form.postUrl);
   const { data: accountData, isLoading: isLoadingAccount } = useLeaderboardV3Account(
     extractedUsername,
-    'twitter',
-    !!extractedUsername
+    "twitter",
+    !!extractedUsername,
   );
 
   // Auto-fill follower data when account is found, or mark as new user
@@ -83,7 +86,7 @@ export function PostRegistrationTab() {
 
   const handleSubmit = useCallback(async () => {
     if (!form.postUrl.trim()) {
-      setSubmitMessage({ type: 'error', text: 'Please enter a post URL' });
+      setSubmitMessage({ type: "error", text: "Please enter a post URL" });
       return;
     }
 
@@ -96,20 +99,20 @@ export function PostRegistrationTab() {
       });
 
       if (result.isDuplicate) {
-        setSubmitMessage({ type: 'error', text: 'This post has already been registered' });
+        setSubmitMessage({ type: "error", text: "This post has already been registered" });
       } else if (result.success && result.post && result.account) {
         setSubmitMessage({
-          type: 'success',
+          type: "success",
           text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(2)})`,
         });
         form.reset();
         urlInputRef.current?.focus();
       } else {
-        setSubmitMessage({ type: 'error', text: result.error || 'Failed to register post' });
+        setSubmitMessage({ type: "error", text: result.error || "Failed to register post" });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to register post';
-      setSubmitMessage({ type: 'error', text: message });
+      const message = err instanceof Error ? err.message : "Failed to register post";
+      setSubmitMessage({ type: "error", text: message });
     }
   }, [form, createPostMutation, adminIdentifier]);
 
@@ -117,8 +120,8 @@ export function PostRegistrationTab() {
   const { handleKeyDown } = usePostFormKeyboardShortcuts(form, handleSubmit, urlInputRef);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
   return (
@@ -126,24 +129,24 @@ export function PostRegistrationTab() {
       {/* Keyboard Shortcuts Reference */}
       <OuterBox color="n3" padding="sm" className="w-full">
         <h4 className="text-sm font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
-          <span className="w-1 h-4 bg-nasun-c3 rounded-full"></span>
+          <span className="w-1 h-4 bg-nasun-c7 rounded-full"></span>
           Keyboard Shortcuts
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/60">
           <div>
-            <span className="text-nasun-c3 font-mono">1 2 3</span>
+            <span className="text-nasun-c7 font-mono">1 2 3</span>
             <span className="ml-2">Type</span>
           </div>
           <div>
-            <span className="text-nasun-c3 font-mono">A S D</span>
+            <span className="text-nasun-c7 font-mono">A S D</span>
             <span className="ml-2">Signals</span>
           </div>
           <div>
-            <span className="text-nasun-c3 font-mono">/</span>
+            <span className="text-nasun-c7 font-mono">/</span>
             <span className="ml-2">Focus URL</span>
           </div>
           <div>
-            <span className="text-nasun-c3 font-mono">Ctrl+Enter</span>
+            <span className="text-nasun-c7 font-mono">Ctrl+Enter</span>
             <span className="ml-2">Submit</span>
           </div>
         </div>
@@ -151,19 +154,17 @@ export function PostRegistrationTab() {
 
       {/* Post Submission Form */}
       <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
-        <h3 className="text-xl font-medium text-nasun-white mb-6">
-          Register Post
-        </h3>
+        <h3 className="text-xl font-medium text-nasun-white mb-6">Register Post</h3>
 
         <div className="space-y-6">
           {/* Post Type */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
-              Post Type <span className="text-nasun-c3 font-mono ml-2">1 2 3</span>
+              Post Type <span className="text-nasun-c7 font-mono ml-2">1 2 3</span>
             </label>
             <div className="flex gap-3">
-              {(['original', 'quote', 'reply'] as PostType[]).map((type, index) => {
-                const shortcut = ['1', '2', '3'][index];
+              {(["original", "quote", "reply"] as PostType[]).map((type, index) => {
+                const shortcut = ["1", "2", "3"][index];
                 const isActive = form.postType === type;
                 return (
                   <button
@@ -172,11 +173,11 @@ export function PostRegistrationTab() {
                     onClick={() => form.setPostType(type)}
                     className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
                       isActive
-                        ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg'
-                        : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
+                        ? "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
+                        : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
                     }`}
                   >
-                    <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
+                    <span className="text-nasun-c7 font-mono mr-2">{shortcut}</span>
                     {POST_TYPE_LABELS[type]}
                   </button>
                 );
@@ -187,7 +188,7 @@ export function PostRegistrationTab() {
           {/* URL Input */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
-              Post URL <span className="text-nasun-c3 font-mono ml-2">/</span>
+              Post URL <span className="text-nasun-c7 font-mono ml-2">/</span>
             </label>
             <input
               ref={urlInputRef}
@@ -196,7 +197,7 @@ export function PostRegistrationTab() {
               onChange={(e) => form.setPostUrl(e.target.value)}
               placeholder="https://x.com/username/status/..."
               autoFocus
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
             />
             {/* Account lookup status */}
             {extractedUsername && (
@@ -204,7 +205,7 @@ export function PostRegistrationTab() {
                 {isLoadingAccount ? (
                   <span>Looking up @{extractedUsername}...</span>
                 ) : accountData?.found ? (
-                  <span className="text-nasun-c3">
+                  <span className="text-nasun-c7">
                     Found: @{accountData.account?.username} - {accountData.account?.postCount} posts
                     {form.followerCount !== undefined && (
                       <span className="ml-2 text-nasun-white/60">
@@ -213,7 +214,9 @@ export function PostRegistrationTab() {
                     )}
                   </span>
                 ) : (
-                  <span className="text-yellow-400">New account: @{extractedUsername} - Enter language and follower count below</span>
+                  <span className="text-yellow-400">
+                    New account: @{extractedUsername} - Enter language and follower count below
+                  </span>
                 )}
               </div>
             )}
@@ -221,15 +224,19 @@ export function PostRegistrationTab() {
 
           {/* Language & Follower Count - Show for both new and existing users */}
           {extractedUsername && !isLoadingAccount && (
-            <div className={`p-4 rounded-sm space-y-4 ${
-              form.isNewUser
-                ? 'bg-yellow-950/20 border border-yellow-900/30'
-                : 'bg-nasun-c5/10 border border-nasun-c5/30'
-            }`}>
-              <div className={`text-sm font-medium ${form.isNewUser ? 'text-yellow-400' : 'text-nasun-c3'}`}>
+            <div
+              className={`p-4 rounded-sm space-y-4 ${
+                form.isNewUser
+                  ? "bg-yellow-950/20 border border-yellow-900/30"
+                  : "bg-nasun-c5/10 border border-nasun-c5/30"
+              }`}
+            >
+              <div
+                className={`text-sm font-medium ${form.isNewUser ? "text-yellow-400" : "text-nasun-c7"}`}
+              >
                 {form.isNewUser
-                  ? 'New User Detected - Enter account details for multiplier calculation'
-                  : 'Account Multiplier Settings'}
+                  ? "New User Detected - Enter account details for multiplier calculation"
+                  : "Account Multiplier Settings"}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -239,15 +246,15 @@ export function PostRegistrationTab() {
                     Primary Language
                   </label>
                   <div className="flex gap-2">
-                    {(['en', 'zh', 'ja', 'ko'] as AccountLanguage[]).map((lang) => (
+                    {(["en", "zh", "ja", "ko"] as AccountLanguage[]).map((lang) => (
                       <button
                         key={lang}
                         type="button"
                         onClick={() => form.setLanguage(lang)}
                         className={`flex-1 px-3 py-2 rounded-sm text-sm font-medium transition-all border ${
                           form.language === lang
-                            ? 'bg-nasun-c4 border-nasun-c4 text-nasun-white'
-                            : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
+                            ? "bg-nasun-c4 border-nasun-c4 text-nasun-white"
+                            : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
                         }`}
                       >
                         {LANGUAGE_LABELS[lang]}
@@ -263,18 +270,24 @@ export function PostRegistrationTab() {
                   </label>
                   <input
                     type="number"
-                    value={form.followerCount ?? ''}
-                    onChange={(e) => form.setFollowerCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                    value={form.followerCount ?? ""}
+                    onChange={(e) =>
+                      form.setFollowerCount(
+                        e.target.value ? parseInt(e.target.value, 10) : undefined,
+                      )
+                    }
                     placeholder="e.g., 5000"
                     min="0"
-                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm"
+                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
                   />
                 </div>
               </div>
 
               {/* Language Scale Reference */}
               <div className="text-xs text-nasun-white/40 mt-2">
-                <span className="font-medium text-nasun-white/60">{LANGUAGE_LABELS[form.language]} scale:</span>{' '}
+                <span className="font-medium text-nasun-white/60">
+                  {LANGUAGE_LABELS[form.language]} scale:
+                </span>{" "}
                 ×{LANGUAGE_SCALE[form.language]} (normalized to EN equivalent)
               </div>
 
@@ -282,20 +295,20 @@ export function PostRegistrationTab() {
               {form.followerCount !== undefined && (
                 <div className="text-sm flex items-center gap-4">
                   <div>
-                    <span className="text-nasun-white/60">Followers:</span>{' '}
+                    <span className="text-nasun-white/60">Followers:</span>{" "}
                     <span className="text-nasun-white font-mono">
                       {form.followerCount.toLocaleString()}
                     </span>
                   </div>
                   <div>
-                    <span className="text-nasun-white/60">Normalized:</span>{' '}
+                    <span className="text-nasun-white/60">Normalized:</span>{" "}
                     <span className="text-nasun-white font-mono">
                       {(form.followerCount * LANGUAGE_SCALE[form.language]).toLocaleString()}
                     </span>
                   </div>
                   <div>
-                    <span className="text-nasun-white/60">Multiplier:</span>{' '}
-                    <span className="text-nasun-c3 font-bold font-mono">
+                    <span className="text-nasun-white/60">Multiplier:</span>{" "}
+                    <span className="text-nasun-c7 font-bold font-mono">
                       {calculateRoleMultiplier(form.followerCount, form.language).toFixed(3)}
                     </span>
                   </div>
@@ -307,11 +320,11 @@ export function PostRegistrationTab() {
           {/* Content Signals */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
-              Content Signals <span className="text-nasun-c3 font-mono ml-2">A S D</span>
+              Content Signals <span className="text-nasun-c7 font-mono ml-2">A S D</span>
             </label>
             <div className="flex gap-3">
               {BONUS_SIGNALS.map((signal, index) => {
-                const shortcut = ['A', 'S', 'D'][index];
+                const shortcut = ["A", "S", "D"][index];
                 const isActive = form.contentSignals.includes(signal);
                 return (
                   <button
@@ -320,11 +333,11 @@ export function PostRegistrationTab() {
                     onClick={() => form.toggleSignal(signal)}
                     className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
                       isActive
-                        ? 'bg-nasun-c3/20 border-nasun-c3/50 text-nasun-c3 shadow-lg'
-                        : 'bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50'
+                        ? "bg-nasun-c7/20 border-nasun-c7/50 text-nasun-c7 shadow-lg"
+                        : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
                     }`}
                   >
-                    <span className="text-nasun-c3 font-mono mr-2">{shortcut}</span>
+                    <span className="text-nasun-c7 font-mono mr-2">{shortcut}</span>
                     {SIGNAL_LABELS[signal]}
                   </button>
                 );
@@ -335,11 +348,12 @@ export function PostRegistrationTab() {
           {/* Score Preview */}
           <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-sm border border-nasun-c5/20">
             <div className="text-sm text-nasun-white/60">
-              <span className="font-medium text-nasun-white">Score Preview:</span>{' '}
-              {form.scorePreview.baseScore} × {form.scorePreview.roleMultiplier} + {form.scorePreview.signalBonus}
+              <span className="font-medium text-nasun-white">Score Preview:</span>{" "}
+              {form.scorePreview.baseScore} × {form.scorePreview.roleMultiplier} +{" "}
+              {form.scorePreview.signalBonus}
               <span className="ml-2 text-nasun-white/40">({POST_TYPE_LABELS[form.postType]})</span>
             </div>
-            <div className="text-2xl font-bold text-nasun-c3">
+            <div className="text-2xl font-bold text-nasun-c7">
               {form.scorePreview.totalScore.toFixed(2)}
             </div>
           </div>
@@ -348,9 +362,9 @@ export function PostRegistrationTab() {
           {submitMessage && (
             <div
               className={`p-4 rounded-sm text-sm ${
-                submitMessage.type === 'success'
-                  ? 'bg-green-950/30 border border-green-900/50 text-green-400'
-                  : 'bg-red-950/30 border border-red-900/50 text-red-400'
+                submitMessage.type === "success"
+                  ? "bg-green-950/30 border border-green-900/50 text-green-400"
+                  : "bg-red-950/30 border border-red-900/50 text-red-400"
               }`}
             >
               {submitMessage.text}
@@ -366,14 +380,10 @@ export function PostRegistrationTab() {
               size="lg"
               className="flex-1"
             >
-              {createPostMutation.isPending ? 'Submitting...' : 'Register Post'}
+              {createPostMutation.isPending ? "Submitting..." : "Register Post"}
               <span className="ml-2 text-xs opacity-60 font-mono">Ctrl+Enter</span>
             </Button>
-            <Button
-              onClick={form.reset}
-              variant="outlineC5"
-              size="lg"
-            >
+            <Button onClick={form.reset} variant="outlineC5" size="lg">
               Clear
             </Button>
           </div>

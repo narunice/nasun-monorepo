@@ -40,7 +40,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
   const getStepColor = (status: "completed" | "current" | "upcoming"): string => {
     switch (status) {
       case "completed":
-        return "bg-nasun-c3 text-white border-nasun-c3";
+        return "bg-nasun-c7 text-white border-nasun-c7";
       case "current":
         return "bg-nasun-c4 text-white border-nasun-c4";
       case "upcoming":
@@ -51,7 +51,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
   const getLineColor = (fromStep: EventStep): string => {
     const status = getStepStatus(fromStep);
     if (status === "completed") {
-      return "bg-nasun-c3";
+      return "bg-nasun-c7";
     }
     return "bg-gray-600";
   };
@@ -106,7 +106,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                       className={`
                         text-center break-words
                         ${status === "current" ? "text-nasun-c4" : ""}
-                        ${status === "completed" ? "text-nasun-c3" : ""}
+                        ${status === "completed" ? "text-nasun-c7" : ""}
                         ${status === "upcoming" ? "text-gray-400" : ""}
                       `}
                     >
@@ -170,7 +170,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                   <p
                     className={`
                       ${status === "current" ? "text-nasun-c4" : ""}
-                      ${status === "completed" ? "text-nasun-c3" : ""}
+                      ${status === "completed" ? "text-nasun-c7" : ""}
                       ${status === "upcoming" ? "text-gray-400" : ""}
                     `}
                   >
@@ -185,7 +185,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                   </span>
                 )}
                 {status === "completed" && (
-                  <span className="px-3 py-1 text-nasun-c3 bg-nasun-c3/20 rounded-full text-sm flex-shrink-0">
+                  <span className="px-3 py-1 text-nasun-c7 bg-nasun-c7/20 rounded-full text-sm flex-shrink-0">
                     {t("stepper.statusCompleted")}
                   </span>
                 )}

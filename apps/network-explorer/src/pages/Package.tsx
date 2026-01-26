@@ -60,7 +60,7 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
   const structCount = Object.keys(module.structs).length;
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border/20 rounded-lg overflow-hidden">
       <button
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-center justify-between bg-card hover:bg-muted/50 transition-colors"
@@ -89,7 +89,7 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
               <h4 className="text-sm font-medium text-primary mb-2">Functions</h4>
               <div className="space-y-2">
                 {Object.entries(module.exposedFunctions).map(([fnName, fn]) => (
-                  <div key={fnName} className="bg-card border border-border rounded p-2">
+                  <div key={fnName} className="bg-card border border-border/20 rounded p-2">
                     <div className="flex items-start gap-2">
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         fn.visibility === 'Public' ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
@@ -134,7 +134,7 @@ function ModuleItem({ name, module, isExpanded, onToggle }: ModuleItemProps) {
               <h4 className="text-sm font-medium text-primary mb-2">Structs</h4>
               <div className="space-y-2">
                 {Object.entries(module.structs).map(([structName, struct]) => (
-                  <div key={structName} className="bg-card border border-border rounded p-2">
+                  <div key={structName} className="bg-card border border-border/20 rounded p-2">
                     <div className="flex items-center gap-2">
                       <code className="text-foreground font-mono text-sm">{structName}</code>
                       {struct.abilities.abilities.length > 0 && (

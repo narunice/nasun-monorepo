@@ -180,6 +180,7 @@
     "goToMyAccount": "My Account에서 재연결",
     "info": {
       "title": "등록 정보",
+      "allowlistBatch": "허용리스트 배치",
       "wallet": "지갑 주소",
       "username": "X 계정",
       "registeredAt": "등록 시간",

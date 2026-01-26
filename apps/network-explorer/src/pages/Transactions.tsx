@@ -76,9 +76,9 @@ export default function Transactions() {
         <div className="text-muted-foreground">Loading...</div>
       ) : data?.data && data.data.length > 0 ? (
         <>
-          <div className="rounded-xl overflow-hidden border border-border bg-card backdrop-blur-md">
+          <div className="rounded-xl overflow-hidden border border-border/20 bg-card/60 backdrop-blur-md">
             <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
+              <thead className="bg-muted/50 border-b border-border/20">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Digest</th>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Status</th>
@@ -86,7 +86,7 @@ export default function Transactions() {
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Checkpoint</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/20">
                 {data.data.map((tx) => (
                   <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">

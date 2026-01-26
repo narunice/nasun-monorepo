@@ -214,16 +214,16 @@ export default function Address() {
                   <SectionBox title={`Other Objects (${otherObjects.length}${hasNextPage ? '+' : ''})`} color="c3">
                     {otherObjects.length > 0 ? (
                       <>
-                        <div className="overflow-x-auto rounded-lg border border-border">
+                        <div className="overflow-x-auto rounded-lg border border-border/20 bg-card/60 backdrop-blur-md">
                           <table className="w-full">
-                            <thead className="bg-muted/50 border-b border-border">
+                            <thead className="bg-muted/50 border-b border-border/20">
                               <tr>
                                 <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Object ID</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Type</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Version</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-border">
+                            <tbody className="divide-y divide-border/20">
                               {otherObjects.map((obj, idx) => (
                                 <tr key={obj.data?.objectId ?? idx} className="hover:bg-muted/50 transition-colors">
                                   <td className="px-4 py-3">
@@ -271,9 +271,9 @@ export default function Address() {
               {txLoading ? (
                 <div className="text-muted-foreground text-center py-8">Loading transactions...</div>
               ) : transactions && transactions.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-border">
+                <div className="overflow-x-auto rounded-lg border border-border/20 bg-card/60 backdrop-blur-md">
                   <table className="w-full">
-                    <thead className="bg-muted/50 border-b border-border">
+                    <thead className="bg-muted/50 border-b border-border/20">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Digest</th>
                         <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Status</th>
@@ -281,7 +281,7 @@ export default function Address() {
                         <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Checkpoint</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody className="divide-y divide-border/20">
                       {transactions.map((tx) => (
                         <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3">

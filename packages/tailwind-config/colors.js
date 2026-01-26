@@ -20,6 +20,7 @@ module.exports = {
     c4: "#448BBB", // color-4 (blue)
     c5: "#2A64C5", // color-5 (deep blue)
     c6: "#1b374a", // color-6 (dark blue/navy)
+    c7: "#B3E0FF", // color-7 (light blue)
 
     // Gensol colors
     "gensol-red": "#d52933",

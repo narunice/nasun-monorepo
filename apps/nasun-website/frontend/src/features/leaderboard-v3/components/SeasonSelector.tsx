@@ -36,7 +36,7 @@ export function SeasonSelector({
   const StatusBadge = ({ status }: { status: string }) => {
     if (status === 'active') {
       return (
-        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c3/20 text-nasun-c3">
+        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c7/20 text-nasun-c7">
           Live
         </span>
       );

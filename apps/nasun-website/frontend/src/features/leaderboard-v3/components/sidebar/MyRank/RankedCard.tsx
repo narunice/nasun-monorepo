@@ -43,13 +43,13 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
     <div>
       <div
         ref={cardRef}
-        className="p-5 bg-gradient-to-br from-nasun-c3/20 via-nasun-c5/20 to-nasun-c4/30 border border-nasun-c3/30 rounded-sm"
+        className="p-5 bg-gradient-to-br from-nasun-c7/20 via-nasun-c5/20 to-nasun-c4/30 border border-nasun-c7/30 rounded-sm"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-nasun-c3/20 rounded-lg">
-              <Trophy className="w-4 h-4 text-nasun-c3" />
+            <div className="p-1.5 bg-nasun-c7/20 rounded-lg">
+              <Trophy className="w-4 h-4 text-nasun-c7" />
             </div>
             <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">My Rank</h4>
           </div>
@@ -66,10 +66,10 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
             <img
               src={data.profileImageUrl}
               alt={data.displayName || data.originalUsername || data.username}
-              className="w-14 h-14 rounded-2xl border-2 border-nasun-c3/50"
+              className="w-14 h-14 rounded-2xl border-2 border-nasun-c7/50"
             />
           ) : (
-            <div className="w-14 h-14 rounded-full bg-nasun-c4/30 flex items-center justify-center border-2 border-nasun-c3/30">
+            <div className="w-14 h-14 rounded-full bg-nasun-c4/30 flex items-center justify-center border-2 border-nasun-c7/30">
               <User className="w-6 h-6 text-nasun-white/40" />
             </div>
           )}
@@ -77,7 +77,7 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
           {/* Rank & Score */}
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-nasun-c3">#{data.rank}</span>
+              <span className="text-3xl font-black text-nasun-c7">#{data.rank}</span>
               {data.totalUsers && (
                 <span className="text-xs text-nasun-white/40">/ {data.totalUsers}</span>
               )}
