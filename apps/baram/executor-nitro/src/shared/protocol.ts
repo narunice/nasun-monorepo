@@ -202,7 +202,7 @@ export const HOST_HTTP_PORT = 3000; // Host HTTP server port
 /**
  * Protocol version for compatibility checking
  */
-export const PROTOCOL_VERSION = '1.2.0'; // Bumped for local LLM support
+export const PROTOCOL_VERSION = '1.3.0'; // Bumped for native vsock support
 
 /**
  * Local LLM model configurations

@@ -28,6 +28,7 @@
 | Phase C-1: 로컬 시뮬레이션 | ✅ 완료 | Docker 기반 Host + Enclave 통신 |
 | Phase C-2: Nitro 부팅 | ✅ 완료 | EC2 Spot + EIF 빌드 + Enclave 부팅 |
 | Phase C-3: Local LLM | ✅ 완료 | node-llama-cpp 통합, 프라이버시 보호 |
+| Phase C-4: vsock 통신 | ✅ 완료 | node-vsock native binding 통합 |
 
 ---
 
@@ -188,6 +189,7 @@ apps/baram/
 | 1.0.0 | Initial protocol (TCP simulation) |
 | 1.1.0 | OpenAI proxy support for Nitro |
 | 1.2.0 | Local LLM support (node-llama-cpp) |
+| 1.3.0 | Native vsock support (node-vsock) |
 
 ---
 
@@ -221,11 +223,31 @@ docker run -it --rm -e USE_LOCAL_LLM=false -e USE_OPENAI_PROXY=true -p 5050:5050
 # Build EIF (Enclave Image Format)
 nitro-cli build-enclave --docker-uri baram-enclave:local-llm --output-file baram-enclave.eif
 
-# Run Enclave (8GB memory for 3B model)
-nitro-cli run-enclave --eif-path baram-enclave.eif --cpu-count 2 --memory 8192 --debug-mode
+# Run Enclave (8GB memory for 3B model, CID 16 for vsock)
+nitro-cli run-enclave \
+  --eif-path baram-enclave.eif \
+  --cpu-count 2 \
+  --memory 8192 \
+  --enclave-cid 16 \
+  --debug-mode
 
 # Check console output
 nitro-cli console --enclave-id <enclave-id>
+
+# Run Host process with vsock (on parent EC2 instance)
+cd apps/baram/executor-nitro
+USE_VSOCK=true ENCLAVE_CID=16 node dist/host/main.js
+```
+
+**vsock Communication Flow:**
+```
+Parent EC2 (CID 3)                    Enclave (CID 16)
+┌────────────────────┐                ┌────────────────────┐
+│  Host Process      │   vsock:5050   │  Enclave Process   │
+│  (USE_VSOCK=true)  │ ◄────────────► │  (VsockServer)     │
+│                    │                │                    │
+│  ENCLAVE_CID=16    │                │  Listens on :5050  │
+└────────────────────┘                └────────────────────┘
 ```
 
 ### Instance Requirements
@@ -247,7 +269,8 @@ nitro-cli console --enclave-id <enclave-id>
 
 | Commit | Description | Date |
 |--------|-------------|------|
-| TBD | feat(baram): Phase C-3 - Local LLM integration for privacy | 2026-01-26 |
+| TBD | feat(baram): Phase C-4 - Native vsock support for Nitro | 2026-01-26 |
+| `eae29d3` | feat(baram): Phase C-3 - Local LLM integration for privacy | 2026-01-26 |
 | `13de257` | feat(baram): Phase C-2 - Nitro Enclave boots successfully on EC2 | 2026-01-26 |
 | `52bf68b` | fix(wallet): reset chain to Nasun Devnet on wallet create/import/logout | 2026-01-26 |
 | `3d8b72f` | feat(blind): implement Phase 2 - Lambda Backend deployed to AWS | 2026-01-25 |
@@ -257,12 +280,36 @@ nitro-cli console --enclave-id <enclave-id>
 
 ## Future Roadmap
 
-### Phase C-4: vsock 통신 구현
-- [ ] vsock native bindings 통합
-- [ ] Host ↔ Enclave vsock 통신 검증
-- [ ] Attestation document 검증 로직
+### Phase C-4: vsock 통신 구현 ✅ 완료
 
-### Phase C-5: 더 큰 모델 지원
+**목표:** TCP 시뮬레이션에서 실제 vsock 통신으로 전환
+
+**구현 완료:**
+- [x] `node-vsock` 패키지 통합 (napi-rs 기반 native binding)
+- [x] `VsockClientSocket`, `VsockServer` 클래스 업데이트
+- [x] `VsockSocketWrapper` - net.Socket 호환 인터페이스
+- [x] CID 상수 수정 (HOST=3, GUEST_DEFAULT=16)
+- [x] TCP 모드 호환성 유지 (USE_VSOCK=false)
+
+**vsock vs TCP 모드:**
+
+| 환경변수 | 모드 | 사용 환경 |
+|----------|------|-----------|
+| `USE_VSOCK=false` | TCP | 로컬 개발, Docker |
+| `USE_VSOCK=true` | vsock | AWS Nitro Enclave |
+
+**CID (Context ID) 값:**
+
+| CID | 의미 |
+|-----|------|
+| 3 | Host (Parent EC2 instance) |
+| 16+ | Enclave (nitro-cli --enclave-cid로 설정) |
+
+### Phase C-5: Attestation 검증 (예정)
+- [ ] Attestation document 검증 로직
+- [ ] PCR 값 검증
+
+### Phase C-6: 더 큰 모델 지원
 - [ ] Llama 3.2 7B 테스트 (r6i.2xlarge, 64GB)
 - [ ] Model selection UI 추가
 
@@ -286,4 +333,5 @@ nitro-cli console --enclave-id <enclave-id>
 | [executor-nitro/src/enclave/inference.ts](../apps/baram/executor-nitro/src/enclave/inference.ts) | 3가지 추론 모드 |
 | [executor-nitro/src/enclave/local-llm.ts](../apps/baram/executor-nitro/src/enclave/local-llm.ts) | node-llama-cpp 래퍼 |
 | [executor-nitro/src/shared/protocol.ts](../apps/baram/executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 |
+| [executor-nitro/src/shared/vsock.ts](../apps/baram/executor-nitro/src/shared/vsock.ts) | vsock/TCP 추상화 레이어 |
 | [executor-nitro/docker/Dockerfile.nitro](../apps/baram/executor-nitro/docker/Dockerfile.nitro) | Enclave 이미지 |

@@ -5,12 +5,12 @@
  *
  * Environment variables:
  * - USE_VSOCK=true: Use vsock for Nitro Enclave
- * - ENCLAVE_CID: Enclave CID (default: 3 for guest)
+ * - ENCLAVE_CID: Enclave CID (default: 16 for guest, or assigned by Nitro CLI)
  *
  * In AWS Nitro:
- * - Parent instance CID: 2
- * - Enclave CID: 3 (or assigned by Nitro CLI)
- * - Uses AF_VSOCK socket family
+ * - Parent instance CID: 3 (VMADDR_CID_HOST)
+ * - Enclave CID: 16+ (assigned by Nitro CLI, can be set with --enclave-cid)
+ * - Uses AF_VSOCK socket family via node-vsock package
  *
  * In local simulation:
  * - Uses standard TCP sockets
@@ -21,11 +21,11 @@ import * as net from 'net';
 import { EventEmitter } from 'events';
 import { ENCLAVE_PORT } from './protocol.js';
 
-// Vsock CID constants
-export const VSOCK_CID_ANY = -1; // VMADDR_CID_ANY
+// Vsock CID constants (AWS Nitro specific)
+export const VSOCK_CID_ANY = -1; // VMADDR_CID_ANY (for server binding)
 export const VSOCK_CID_HYPERVISOR = 0; // VMADDR_CID_HYPERVISOR
-export const VSOCK_CID_HOST = 2; // VMADDR_CID_HOST (parent instance)
-export const VSOCK_CID_GUEST = 3; // Default guest CID
+export const VSOCK_CID_HOST = 3; // VMADDR_CID_HOST (parent instance in Nitro)
+export const VSOCK_CID_GUEST_DEFAULT = 16; // Default guest CID (can vary)
 
 /**
  * Check if we're running in vsock mode (Nitro Enclave)
@@ -36,10 +36,11 @@ export function isVsockMode(): boolean {
 
 /**
  * Get the Enclave CID from environment or default
+ * In Nitro, the CID is assigned when running the enclave (--enclave-cid flag)
  */
 export function getEnclaveCid(): number {
   const cid = process.env.ENCLAVE_CID;
-  return cid ? parseInt(cid, 10) : VSOCK_CID_GUEST;
+  return cid ? parseInt(cid, 10) : VSOCK_CID_GUEST_DEFAULT;
 }
 
 /**
@@ -53,13 +54,17 @@ export interface VsockConnectionOptions {
   cid?: number;
 }
 
+// Import node-vsock types (dynamically loaded to avoid build errors on non-Linux)
+type NodeVsockSocket = import('node-vsock').VsockSocket;
+
 /**
- * VsockClient - Unified client for TCP/vsock
+ * VsockClientSocket - Unified client for TCP/vsock
  *
  * Automatically selects transport based on USE_VSOCK environment variable.
  */
 export class VsockClientSocket extends EventEmitter {
-  private socket: net.Socket | null = null;
+  private tcpSocket: net.Socket | null = null;
+  private vsockSocket: NodeVsockSocket | null = null;
   private options: VsockConnectionOptions;
   private useVsock: boolean;
 
@@ -96,24 +101,24 @@ export class VsockClientSocket extends EventEmitter {
 
     console.log(`[Vsock] Connecting via TCP to ${host}:${port}...`);
 
-    this.socket = net.createConnection({ host, port });
+    this.tcpSocket = net.createConnection({ host, port });
 
-    this.socket.on('connect', () => {
+    this.tcpSocket.on('connect', () => {
       console.log('[Vsock] TCP connection established');
       resolve();
     });
 
-    this.socket.on('data', (data) => {
+    this.tcpSocket.on('data', (data) => {
       this.emit('data', data);
     });
 
-    this.socket.on('close', () => {
+    this.tcpSocket.on('close', () => {
       this.emit('close');
     });
 
-    this.socket.on('error', (err) => {
+    this.tcpSocket.on('error', (err) => {
       this.emit('error', err);
-      if (!this.socket?.connecting) {
+      if (!this.tcpSocket?.connecting) {
         reject(err);
       }
     });
@@ -122,8 +127,8 @@ export class VsockClientSocket extends EventEmitter {
   /**
    * Connect using vsock (AWS Nitro)
    *
-   * Uses the native vsock implementation.
-   * Requires `vsock` kernel module and AF_VSOCK support.
+   * Uses node-vsock native binding for AF_VSOCK support.
+   * Requires Linux kernel with vsock module loaded.
    */
   private connectVsock(
     resolve: () => void,
@@ -134,38 +139,41 @@ export class VsockClientSocket extends EventEmitter {
 
     console.log(`[Vsock] Connecting via vsock to CID ${cid}:${port}...`);
 
-    // In AWS Nitro, we use a custom vsock implementation
-    // For now, we use a workaround via socat or native binding
-    // Native vsock requires: npm install @aspect-build/vsock or custom binding
     try {
-      // Try to load native vsock module
+      // Dynamically load node-vsock (only available on Linux)
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const vsock = require('@aspect-build/vsock');
-      this.socket = vsock.connect(cid, port) as net.Socket;
+      const { VsockSocket } = require('node-vsock') as typeof import('node-vsock');
 
-      this.socket.on('connect', () => {
+      this.vsockSocket = new VsockSocket();
+
+      this.vsockSocket.on('connect', () => {
         console.log('[Vsock] Vsock connection established');
         resolve();
       });
 
-      this.socket.on('data', (data: Buffer) => {
+      this.vsockSocket.on('data', (data: Buffer) => {
         this.emit('data', data);
       });
 
-      this.socket.on('close', () => {
+      this.vsockSocket.on('end', () => {
         this.emit('close');
       });
 
-      this.socket.on('error', (err: Error) => {
+      this.vsockSocket.on('error', (err: Error) => {
         this.emit('error', err);
-        reject(err);
+        if (!this.vsockSocket?.connecting) {
+          reject(err);
+        }
       });
-    } catch {
-      // Fallback: try alternative vsock module or fail gracefully
-      console.error('[Vsock] Native vsock module not available');
-      console.error('[Vsock] Install: npm install @aspect-build/vsock');
-      console.error('[Vsock] Or use TCP mode: unset USE_VSOCK');
-      reject(new Error('Vsock module not available'));
+
+      // Initiate connection
+      this.vsockSocket.connect(cid, port);
+    } catch (error) {
+      console.error('[Vsock] Failed to load node-vsock:', error);
+      console.error('[Vsock] Install: npm install node-vsock');
+      console.error('[Vsock] Note: node-vsock only works on Linux');
+      console.error('[Vsock] For local testing, use TCP mode: unset USE_VSOCK');
+      reject(new Error(`Vsock module not available: ${error}`));
     }
   }
 
@@ -173,19 +181,35 @@ export class VsockClientSocket extends EventEmitter {
    * Write data to the socket
    */
   write(data: string | Buffer): boolean {
-    if (!this.socket) {
-      throw new Error('Socket not connected');
+    if (this.useVsock) {
+      if (!this.vsockSocket) {
+        throw new Error('Vsock not connected');
+      }
+      // node-vsock uses synchronous write
+      if (typeof data === 'string') {
+        this.vsockSocket.writeTextSync(data);
+      } else {
+        this.vsockSocket.writeSync(data);
+      }
+      return true;
+    } else {
+      if (!this.tcpSocket) {
+        throw new Error('TCP socket not connected');
+      }
+      return this.tcpSocket.write(data);
     }
-    return this.socket.write(data);
   }
 
   /**
    * Close the connection
    */
   end(): void {
-    if (this.socket) {
-      this.socket.end();
-      this.socket = null;
+    if (this.useVsock && this.vsockSocket) {
+      this.vsockSocket.end();
+      this.vsockSocket = null;
+    } else if (this.tcpSocket) {
+      this.tcpSocket.end();
+      this.tcpSocket = null;
     }
   }
 
@@ -193,9 +217,15 @@ export class VsockClientSocket extends EventEmitter {
    * Check if connected
    */
   get connected(): boolean {
-    return this.socket !== null && !this.socket.destroyed;
+    if (this.useVsock) {
+      return this.vsockSocket !== null && !this.vsockSocket.destroyed;
+    }
+    return this.tcpSocket !== null && !this.tcpSocket.destroyed;
   }
 }
+
+// Import node-vsock types (dynamically loaded)
+type NodeVsockServer = import('node-vsock').VsockServer;
 
 /**
  * VsockServer - Unified server for TCP/vsock
@@ -203,7 +233,8 @@ export class VsockClientSocket extends EventEmitter {
  * Automatically selects transport based on USE_VSOCK environment variable.
  */
 export class VsockServer extends EventEmitter {
-  private server: net.Server | null = null;
+  private tcpServer: net.Server | null = null;
+  private vsockServer: NodeVsockServer | null = null;
   private useVsock: boolean;
   private port: number;
 
@@ -235,16 +266,16 @@ export class VsockServer extends EventEmitter {
   ): void {
     console.log(`[Vsock] Starting TCP server on port ${this.port}...`);
 
-    this.server = net.createServer((socket) => {
+    this.tcpServer = net.createServer((socket) => {
       this.emit('connection', socket);
     });
 
-    this.server.on('error', (err) => {
+    this.tcpServer.on('error', (err) => {
       this.emit('error', err);
       reject(err);
     });
 
-    this.server.listen(this.port, '0.0.0.0', () => {
+    this.tcpServer.listen(this.port, '0.0.0.0', () => {
       console.log(`[Vsock] TCP server listening on 0.0.0.0:${this.port}`);
       resolve();
     });
@@ -253,8 +284,10 @@ export class VsockServer extends EventEmitter {
   /**
    * Listen using vsock (AWS Nitro)
    *
-   * In Nitro Enclave, the server listens on VMADDR_CID_ANY (-1)
-   * to accept connections from the parent instance.
+   * In Nitro Enclave, the server listens on a port and accepts
+   * connections from the parent instance (CID 3).
+   *
+   * Note: node-vsock's VsockServer binds to VMADDR_CID_ANY automatically.
    */
   private listenVsock(
     resolve: () => void,
@@ -263,27 +296,34 @@ export class VsockServer extends EventEmitter {
     console.log(`[Vsock] Starting vsock server on port ${this.port}...`);
 
     try {
+      // Dynamically load node-vsock (only available on Linux)
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const vsock = require('@aspect-build/vsock');
-      this.server = vsock.createServer((socket: net.Socket) => {
-        this.emit('connection', socket);
-      });
+      const { VsockServer: NodeVsockServerClass } = require('node-vsock') as typeof import('node-vsock');
 
-      this.server!.on('error', (err: Error) => {
+      this.vsockServer = new NodeVsockServerClass();
+
+      this.vsockServer.on('error', (err: Error) => {
         this.emit('error', err);
         reject(err);
       });
 
-      // Listen on VMADDR_CID_ANY to accept from any CID
-      this.server!.listen(this.port, VSOCK_CID_ANY, () => {
-        console.log(`[Vsock] Vsock server listening on CID_ANY:${this.port}`);
-        resolve();
+      this.vsockServer.on('connection', (socket: NodeVsockSocket) => {
+        // Wrap the vsock socket in a compatible interface
+        this.emit('connection', new VsockSocketWrapper(socket));
       });
-    } catch {
-      console.error('[Vsock] Native vsock module not available');
-      console.error('[Vsock] Install: npm install @aspect-build/vsock');
-      console.error('[Vsock] Or use TCP mode: unset USE_VSOCK');
-      reject(new Error('Vsock module not available'));
+
+      // Start listening on the port
+      this.vsockServer.listen(this.port);
+
+      // node-vsock doesn't have a callback for listen, resolve immediately
+      console.log(`[Vsock] Vsock server listening on port ${this.port}`);
+      resolve();
+    } catch (error) {
+      console.error('[Vsock] Failed to load node-vsock:', error);
+      console.error('[Vsock] Install: npm install node-vsock');
+      console.error('[Vsock] Note: node-vsock only works on Linux');
+      console.error('[Vsock] For local testing, use TCP mode: unset USE_VSOCK');
+      reject(new Error(`Vsock module not available: ${error}`));
     }
   }
 
@@ -292,15 +332,87 @@ export class VsockServer extends EventEmitter {
    */
   close(): Promise<void> {
     return new Promise((resolve) => {
-      if (this.server) {
-        this.server.close(() => {
-          console.log('[Vsock] Server closed');
+      if (this.useVsock && this.vsockServer) {
+        this.vsockServer.close();
+        console.log('[Vsock] Vsock server closed');
+        resolve();
+      } else if (this.tcpServer) {
+        this.tcpServer.close(() => {
+          console.log('[Vsock] TCP server closed');
           resolve();
         });
       } else {
         resolve();
       }
     });
+  }
+}
+
+/**
+ * Wrapper for node-vsock VsockSocket to provide net.Socket-like interface
+ *
+ * This wrapper ensures the vsock socket can be used with the same API
+ * as TCP sockets in the Enclave message handler.
+ */
+class VsockSocketWrapper extends EventEmitter {
+  private vsockSocket: NodeVsockSocket;
+
+  constructor(vsockSocket: NodeVsockSocket) {
+    super();
+    this.vsockSocket = vsockSocket;
+
+    // Forward events
+    this.vsockSocket.on('data', (data: Buffer) => {
+      this.emit('data', data);
+    });
+
+    this.vsockSocket.on('error', (err: Error) => {
+      this.emit('error', err);
+    });
+
+    this.vsockSocket.on('end', () => {
+      this.emit('close');
+    });
+  }
+
+  /**
+   * Write data to the socket
+   */
+  write(data: string | Buffer): boolean {
+    if (typeof data === 'string') {
+      this.vsockSocket.writeTextSync(data);
+    } else {
+      this.vsockSocket.writeSync(data);
+    }
+    return true;
+  }
+
+  /**
+   * End the connection
+   */
+  end(): void {
+    this.vsockSocket.end();
+  }
+
+  /**
+   * Destroy the socket
+   */
+  destroy(): void {
+    this.vsockSocket.destroy();
+  }
+
+  /**
+   * Check if socket is destroyed
+   */
+  get destroyed(): boolean {
+    return this.vsockSocket.destroyed;
+  }
+
+  /**
+   * Set encoding (no-op for compatibility)
+   */
+  setEncoding(_encoding: string): void {
+    // node-vsock always returns Buffer, encoding is handled at protocol level
   }
 }
 
