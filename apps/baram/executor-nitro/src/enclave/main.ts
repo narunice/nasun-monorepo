@@ -41,9 +41,12 @@ import { initializeCrypto, getPublicKey, decrypt, destroyKeyPair } from './crypt
 import {
   initializeInference,
   initializeInferenceProxy,
+  initializeInferenceLocal,
   executeInference,
   isInferenceReady,
   isInProxyMode,
+  isInLocalMode,
+  unloadModel,
   type OpenAIProxyFunction,
 } from './inference.js';
 
@@ -298,6 +301,17 @@ function handleConnection(socket: net.Socket): void {
 async function startEnclave(): Promise<void> {
   const useVsock = isVsockMode();
   const useProxy = useOpenAIProxy();
+  const useLocalLLM = process.env.USE_LOCAL_LLM === 'true';
+
+  // Determine inference mode description
+  let inferenceDesc: string;
+  if (useLocalLLM) {
+    inferenceDesc = 'Local LLM (Privacy Protected)';
+  } else if (useProxy) {
+    inferenceDesc = 'Proxy (via Host)';
+  } else {
+    inferenceDesc = 'Direct OpenAI';
+  }
 
   console.log('========================================');
   console.log('  Baram TEE Enclave');
@@ -305,7 +319,7 @@ async function startEnclave(): Promise<void> {
   console.log(`Protocol Version: ${PROTOCOL_VERSION}`);
   console.log(`Module ID: ${MODULE_ID}`);
   console.log(`Transport: ${useVsock ? 'vsock (Nitro)' : 'TCP (Simulation)'}`);
-  console.log(`OpenAI Mode: ${useProxy ? 'Proxy (via Host)' : 'Direct'}`);
+  console.log(`Inference Mode: ${inferenceDesc}`);
   console.log('');
 
   // Initialize crypto
@@ -313,7 +327,14 @@ async function startEnclave(): Promise<void> {
   console.log(`[Enclave] Public key ready (${publicKey.substring(0, 20)}...)`);
 
   // Initialize inference based on mode
-  if (useProxy) {
+  if (useLocalLLM) {
+    // Local LLM mode: Run inference entirely within the Enclave
+    // Prompts NEVER leave the TEE - complete privacy protection
+    const modelPath = process.env.MODEL_PATH || '/app/models/llama-3.2-3b-instruct-q4_k_m.gguf';
+    console.log(`[Enclave] Loading local LLM from ${modelPath}...`);
+    await initializeInferenceLocal({ modelPath });
+    console.log('[Enclave] Local LLM ready - prompts are privacy protected');
+  } else if (useProxy) {
     // Proxy mode: Host will call OpenAI for us
     initializeInferenceProxy(createProxyFunction());
   } else {
@@ -321,7 +342,7 @@ async function startEnclave(): Promise<void> {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) {
       console.error('[Enclave] ERROR: OPENAI_API_KEY environment variable not set');
-      console.error('[Enclave] In Nitro mode, use USE_OPENAI_PROXY=true instead');
+      console.error('[Enclave] In Nitro mode, use USE_LOCAL_LLM=true or USE_OPENAI_PROXY=true');
       process.exit(1);
     }
     initializeInference(openaiKey);
@@ -344,6 +365,9 @@ async function startEnclave(): Promise<void> {
     const shutdown = async () => {
       console.log('\n[Enclave] Shutting down...');
       destroyKeyPair();
+      if (isInLocalMode()) {
+        await unloadModel();
+      }
       await server.close();
       process.exit(0);
     };
@@ -361,9 +385,12 @@ async function startEnclave(): Promise<void> {
     });
 
     // Graceful shutdown
-    const shutdown = () => {
+    const shutdown = async () => {
       console.log('\n[Enclave] Shutting down...');
       destroyKeyPair();
+      if (isInLocalMode()) {
+        await unloadModel();
+      }
       server.close(() => {
         console.log('[Enclave] Server closed');
         process.exit(0);

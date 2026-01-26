@@ -8,6 +8,10 @@ dist/
 eif/
 *.eif
 
+# LLM model files (download with scripts/download-model.sh)
+# These are large (~2GB) and should not be committed
+models/*.gguf
+
 # Environment variables (contains secrets)
 .env
 

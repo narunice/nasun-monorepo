@@ -1,14 +1,25 @@
 /**
  * Protocol definitions for Enclave ↔ Host communication
  *
- * In production AWS Nitro:
- * - Communication happens over vsock (virtual socket)
- * - Enclave is completely isolated from network
- * - Host acts as proxy between external world and Enclave
+ * Inference Modes:
  *
- * In local simulation:
- * - Communication happens over TCP socket
- * - Same message format and flow
+ * 1. Local LLM Mode (USE_LOCAL_LLM=true):
+ *    - LLM runs inside Enclave using llama.cpp
+ *    - Prompts NEVER leave the TEE - complete privacy protection
+ *    - Requires model file in Docker image
+ *
+ * 2. Proxy Mode (USE_OPENAI_PROXY=true):
+ *    - Host proxies OpenAI calls for Enclave
+ *    - Decrypted prompts visible to Host (partial privacy)
+ *
+ * 3. Direct Mode (neither):
+ *    - Enclave calls OpenAI directly
+ *    - Only works in simulation (Nitro has no network)
+ *
+ * Transport:
+ *
+ * - Production AWS Nitro: vsock (virtual socket)
+ * - Local simulation: TCP socket
  */
 
 // Message types for Host → Enclave requests
@@ -114,8 +125,7 @@ export interface HealthCheckResponse extends EnclaveResponse {
  * 7. Enclave → Host: INFERENCE_RESULT
  *
  * Security note: In proxy mode, the Host sees the plaintext prompt.
- * This is a trade-off for Nitro's network isolation.
- * Future: Run local LLM inside Enclave or use KMS-proxy pattern.
+ * For complete privacy, use Local LLM mode (USE_LOCAL_LLM=true) instead.
  */
 export interface OpenAIProxyRequest extends EnclaveResponse {
   type: 'OPENAI_PROXY_REQUEST';
@@ -192,7 +202,37 @@ export const HOST_HTTP_PORT = 3000; // Host HTTP server port
 /**
  * Protocol version for compatibility checking
  */
-export const PROTOCOL_VERSION = '1.1.0'; // Bumped for OpenAI proxy support
+export const PROTOCOL_VERSION = '1.2.0'; // Bumped for local LLM support
+
+/**
+ * Local LLM model configurations
+ *
+ * These models run entirely within the Enclave - prompts never leave the TEE.
+ */
+export const LOCAL_MODEL_CONFIG = {
+  'llama-3.2-3b-local': {
+    maxTokens: 512,
+    contextSize: 2048,
+    description: 'Llama 3.2 3B Instruct (Q4_K_M quantized)',
+    fileSize: '~2GB',
+    memoryRequired: '~4GB',
+  },
+  'llama-3.2-1b-local': {
+    maxTokens: 512,
+    contextSize: 2048,
+    description: 'Llama 3.2 1B Instruct (Q4_K_M quantized)',
+    fileSize: '~800MB',
+    memoryRequired: '~2GB',
+  },
+} as const;
+
+/**
+ * Check if local LLM mode is enabled
+ * When enabled, prompts are processed entirely within the Enclave
+ */
+export function useLocalLLM(): boolean {
+  return process.env.USE_LOCAL_LLM === 'true';
+}
 
 /**
  * Check if running in Nitro mode (Enclave has no network)
