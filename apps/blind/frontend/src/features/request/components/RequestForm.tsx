@@ -1,11 +1,13 @@
 /**
- * RequestForm - AI computation request form
+ * RequestForm - AI computation request form with executor selection
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCreateRequest, RequestStatus } from '../hooks/useCreateRequest';
-import { MODEL_PRICING, ModelId, DEFAULT_MODEL } from '@/config/network';
+import { useExecutors, ExecutorInfo } from '../hooks/useExecutors';
+import { MODEL_PRICING, ModelId, DEFAULT_MODEL, BLIND_CONFIG } from '@/config/network';
 import { ResultDisplay } from './ResultDisplay';
+import { ExecutorSelector } from './ExecutorSelector';
 
 const models = Object.entries(MODEL_PRICING).map(([id, config]) => ({
   id: id as ModelId,
@@ -67,7 +69,20 @@ function StatusIndicator({ status }: { status: RequestStatus }) {
 export function RequestForm() {
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState<ModelId>(DEFAULT_MODEL);
+  const [selectedExecutor, setSelectedExecutor] = useState<ExecutorInfo | null>(null);
+  const [showExecutorSelector, setShowExecutorSelector] = useState(false);
+
+  const { executors } = useExecutors();
   const { status, error, result, createRequest, reset } = useCreateRequest();
+
+  // Auto-select first executor if none selected
+  useEffect(() => {
+    if (!selectedExecutor && executors.length > 0) {
+      // Try to find the default executor from config, otherwise use first
+      const defaultExecutor = executors.find(e => e.operator === BLIND_CONFIG.executorAddress);
+      setSelectedExecutor(defaultExecutor || executors[0]);
+    }
+  }, [executors, selectedExecutor]);
 
   const isProcessing = status === 'creating' || status === 'executing';
   const selectedModelConfig = MODEL_PRICING[selectedModel];
@@ -75,13 +90,18 @@ export function RequestForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || isProcessing) return;
-    await createRequest(prompt.trim(), selectedModel);
+    if (!prompt.trim() || isProcessing || !selectedExecutor) return;
+    await createRequest(prompt.trim(), selectedModel, selectedExecutor);
   };
 
   const handleReset = () => {
     reset();
     setPrompt('');
+  };
+
+  const handleExecutorSelect = (executor: ExecutorInfo) => {
+    setSelectedExecutor(executor);
+    setShowExecutorSelector(false);
   };
 
   return (
@@ -146,6 +166,55 @@ export function RequestForm() {
             </div>
           </div>
 
+          {/* Executor Selection */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+              Executor
+            </label>
+
+            {showExecutorSelector ? (
+              <div className="space-y-2">
+                <ExecutorSelector
+                  selectedExecutor={selectedExecutor?.operator || null}
+                  onSelect={handleExecutorSelect}
+                  disabled={isProcessing}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowExecutorSelector(false)}
+                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowExecutorSelector(true)}
+                disabled={isProcessing}
+                className="w-full p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-left hover:border-[var(--color-text-muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {selectedExecutor ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-[var(--color-text-primary)]">
+                        {selectedExecutor.name}
+                      </div>
+                      <div className="text-xs text-[var(--color-text-muted)]">
+                        {selectedExecutor.teeTypeName} | Reputation: {selectedExecutor.reputation}/1000
+                      </div>
+                    </div>
+                    <span className="text-sm text-blind-1">Change</span>
+                  </div>
+                ) : (
+                  <div className="text-[var(--color-text-muted)]">
+                    Select an executor...
+                  </div>
+                )}
+              </button>
+            )}
+          </div>
+
           {/* Submit Button */}
           <div className="flex items-center justify-between pt-2">
             <StatusIndicator status={status} />
@@ -163,7 +232,7 @@ export function RequestForm() {
 
               <button
                 type="submit"
-                disabled={!prompt.trim() || isProcessing}
+                disabled={!prompt.trim() || isProcessing || !selectedExecutor}
                 className="px-6 py-2 bg-blind-1 hover:bg-blind-2 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isProcessing ? (

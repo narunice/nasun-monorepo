@@ -14,6 +14,22 @@ export const BLIND_CONFIG = {
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
 } as const;
 
+// Executor Registry Configuration
+export const EXECUTOR_CONFIG = {
+  packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || '',
+  registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || '',
+} as const;
+
+// TEE Types
+export const TEE_TYPES = {
+  0: 'None',
+  1: 'AWS Nitro',
+  2: 'Intel SGX',
+  3: 'AMD SEV',
+} as const;
+
+export type TeeType = keyof typeof TEE_TYPES;
+
 // Token Configuration
 export const TOKEN_CONFIG = {
   nusdcType: import.meta.env.VITE_NUSDC_TYPE || '',
