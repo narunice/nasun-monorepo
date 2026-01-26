@@ -231,7 +231,7 @@ function LockedStateUI({
   );
 }
 
-type TabMode = "tokens" | "nfts" | "history";
+type TabMode = "assets" | "history" | "account";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -354,7 +354,7 @@ export function WalletConnect({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [mnemonic, setMnemonic] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabMode>("tokens");
+  const [activeTab, setActiveTab] = useState<TabMode>("assets");
   const [nftSortBy, setNftSortBy] = useState<NFTSortBy>("newest");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1226,24 +1226,14 @@ export function WalletConnect({
           {/* Tab navigation for zkLogin */}
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
-              onClick={() => setActiveTab("tokens")}
+              onClick={() => setActiveTab("assets")}
               className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
-                activeTab === "tokens"
+                activeTab === "assets"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
-              Tokens
-            </button>
-            <button
-              onClick={() => setActiveTab("nfts")}
-              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
-                activeTab === "nfts"
-                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
-            >
-              NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
+              Assets
             </button>
             <button
               onClick={() => setActiveTab("history")}
@@ -1255,10 +1245,20 @@ export function WalletConnect({
             >
               History
             </button>
+            <button
+              onClick={() => setActiveTab("account")}
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
+                activeTab === "account"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Account
+            </button>
           </div>
 
           {/* Tokens tab content */}
-          {activeTab === "tokens" && (
+          {activeTab === "assets" && (
             <div className="py-1">
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
@@ -1559,67 +1559,106 @@ export function WalletConnect({
             </div>
           )}
 
-          {/* NFTs tab content */}
-          {activeTab === "nfts" && (
-            <div className="p-3">
-              {nftsLoading && accumulatedNfts.length === 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {[...Array(6)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : accumulatedNfts.length === 0 ? (
-                <div className="text-center py-6">
-                  <svg
-                    className="w-10 h-10 text-gray-400 dark:text-zinc-600 mx-auto mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
+          {/* Account tab content for zkLogin */}
+          {activeTab === "account" && (
+            <div className="py-1">
+              {/* Address Book */}
+              <button
+                onClick={() => setViewMode("address-book")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Address Book
+              </button>
+
+              {/* Smart Account */}
+              {nsaIsInitialized ? (
+                <button
+                  onClick={() => setViewMode("nsa-info")}
+                  className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <p className="text-sm text-gray-500 dark:text-zinc-400">No NFTs found</p>
-                </div>
+                  <span className="flex-1">Smart Account</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                    nsaRecoveryCompleted === 3
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
+                  }`}>
+                    {nsaRecoveryCompleted}/3
+                  </span>
+                </button>
               ) : (
-                <>
-                  {/* Sort dropdown */}
-                  <div className="flex justify-end mb-2">
-                    <select
-                      value={nftSortBy}
-                      onChange={(e) => setNftSortBy(e.target.value as NFTSortBy)}
-                      className="text-xs px-2 py-1 bg-transparent border border-gray-200 dark:border-zinc-600 rounded text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="newest">Newest</option>
-                      <option value="oldest">Oldest</option>
-                      <option value="name_asc">Name A-Z</option>
-                      <option value="name_desc">Name Z-A</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
-                    {accumulatedNfts.map((nft) => (
-                      <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
-                    ))}
-                  </div>
-                  {/* Load More button */}
-                  {nftsHasNextPage && (
-                    <button
-                      onClick={handleLoadMoreNfts}
-                      disabled={nftsLoading}
-                      className="w-full mt-2 py-2 text-sm md:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
-                    >
-                      {nftsLoading ? "Loading..." : "Load More NFTs"}
-                    </button>
-                  )}
-                </>
+                <button
+                  onClick={() => setViewMode("nsa-setup")}
+                  className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span className="flex-1">Smart Account</span>
+                  <span className="text-xs text-blue-500 dark:text-blue-400">Setup</span>
+                </button>
               )}
+
+              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+
+              {/* Portfolio */}
+              <button
+                onClick={() => setViewMode("staking")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Staking
+              </button>
+
+              <button
+                onClick={() => setViewMode("portfolio")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Portfolio
+              </button>
+
+              <button
+                onClick={() => setViewMode("nasun-link")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Create Link
+              </button>
+
+              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+
+              {/* Pro Mode Toggle */}
+              <div className="px-3 py-2">
+                <AdvancedToggle compact showDescription={false} />
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+
+              {/* Disconnect */}
+              <button
+                onClick={() => {
+                  zkLogout();
+                  setShowDropdown(false);
+                }}
+                className="w-full px-3 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Disconnect
+              </button>
             </div>
           )}
 
@@ -1846,24 +1885,14 @@ export function WalletConnect({
           {/* Tab navigation */}
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
             <button
-              onClick={() => setActiveTab("tokens")}
+              onClick={() => setActiveTab("assets")}
               className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
-                activeTab === "tokens"
+                activeTab === "assets"
                   ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
                   : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
-              Tokens
-            </button>
-            <button
-              onClick={() => setActiveTab("nfts")}
-              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
-                activeTab === "nfts"
-                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
-            >
-              NFTs {nfts.length > 0 && <span className="text-xs ml-1">({nfts.length})</span>}
+              Assets
             </button>
             <button
               onClick={() => setActiveTab("history")}
@@ -1875,10 +1904,20 @@ export function WalletConnect({
             >
               History
             </button>
+            <button
+              onClick={() => setActiveTab("account")}
+              className={`flex-1 px-4 py-2 text-sm md:text-base font-medium transition-colors ${
+                activeTab === "account"
+                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                  : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Account
+            </button>
           </div>
 
           {/* Tokens tab content */}
-          {activeTab === "tokens" && (
+          {activeTab === "assets" && (
             <div className="py-1">
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
@@ -2245,67 +2284,140 @@ export function WalletConnect({
             </div>
           )}
 
-          {/* NFTs tab content */}
-          {activeTab === "nfts" && (
-            <div className="p-3">
-              {nftsLoading && accumulatedNfts.length === 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {[...Array(6)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : accumulatedNfts.length === 0 ? (
-                <div className="text-center py-6">
-                  <svg
-                    className="w-10 h-10 text-gray-400 dark:text-zinc-600 mx-auto mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
+          {/* Account tab content for software wallet */}
+          {activeTab === "account" && (
+            <div className="py-1">
+              {/* Address Book */}
+              <button
+                onClick={() => setViewMode("address-book")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Address Book
+              </button>
+
+              {/* Security Settings */}
+              <button
+                onClick={() => setViewMode("settings")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Security Settings
+              </button>
+
+              {/* Export Private Key */}
+              <button
+                onClick={() => setViewMode("export")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                Export Private Key
+              </button>
+
+              {/* Smart Account */}
+              {nsaIsInitialized ? (
+                <button
+                  onClick={() => setViewMode("nsa-info")}
+                  className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <p className="text-sm text-gray-500 dark:text-zinc-400">No NFTs found</p>
-                </div>
+                  <span className="flex-1">Smart Account</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                    nsaRecoveryCompleted === 3
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
+                  }`}>
+                    {nsaRecoveryCompleted}/3
+                  </span>
+                </button>
               ) : (
-                <>
-                  {/* Sort dropdown */}
-                  <div className="flex justify-end mb-2">
-                    <select
-                      value={nftSortBy}
-                      onChange={(e) => setNftSortBy(e.target.value as NFTSortBy)}
-                      className="text-xs px-2 py-1 bg-transparent border border-gray-200 dark:border-zinc-600 rounded text-gray-600 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="newest">Newest</option>
-                      <option value="oldest">Oldest</option>
-                      <option value="name_asc">Name A-Z</option>
-                      <option value="name_desc">Name Z-A</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto p-0.5">
-                    {accumulatedNfts.map((nft) => (
-                      <NFTCard key={nft.objectId} nft={nft} compact onClick={setSelectedNFT} />
-                    ))}
-                  </div>
-                  {/* Load More button */}
-                  {nftsHasNextPage && (
-                    <button
-                      onClick={handleLoadMoreNfts}
-                      disabled={nftsLoading}
-                      className="w-full mt-2 py-2 text-sm md:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50"
-                    >
-                      {nftsLoading ? "Loading..." : "Load More NFTs"}
-                    </button>
-                  )}
-                </>
+                <button
+                  onClick={() => setViewMode("nsa-setup")}
+                  className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span className="flex-1">Smart Account</span>
+                  <span className="text-xs text-blue-500 dark:text-blue-400">Setup</span>
+                </button>
               )}
+
+              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+
+              {/* Portfolio */}
+              <button
+                onClick={() => setViewMode("staking")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Staking
+              </button>
+
+              <button
+                onClick={() => setViewMode("portfolio")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Portfolio
+              </button>
+
+              <button
+                onClick={() => setViewMode("nasun-link")}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Create Link
+              </button>
+
+              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+
+              {/* Pro Mode Toggle */}
+              <div className="px-3 py-2">
+                <AdvancedToggle compact showDescription={false} />
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+
+              {/* Lock Wallet */}
+              <button
+                onClick={() => {
+                  lockWallet();
+                  setShowDropdown(false);
+                }}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Lock Wallet
+              </button>
+
+              {/* Delete Wallet */}
+              <button
+                onClick={handleDelete}
+                className="w-full px-3 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Wallet
+              </button>
             </div>
           )}
 
@@ -2326,46 +2438,6 @@ export function WalletConnect({
               }}
             />
           )}
-
-          {/* Lock & Delete Wallet */}
-          <div className="border-t border-gray-200 dark:border-zinc-700">
-            <button
-              onClick={() => {
-                lockWallet();
-                setShowDropdown(false);
-              }}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              Lock
-            </button>
-            <button
-              onClick={handleDelete}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-              Delete Wallet
-            </button>
-          </div>
-
-          {/* Network Selector */}
-          <div className="border-t border-gray-200 dark:border-zinc-700">
-            <NetworkSelector />
-          </div>
         </div>
       );
     }
