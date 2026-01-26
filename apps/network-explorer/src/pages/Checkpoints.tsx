@@ -75,13 +75,17 @@ export default function Checkpoints() {
         )}
       </div>
 
-        {isLoading ? (
-          <div className="text-muted-foreground">Loading...</div>
-        ) : data?.data && data.data.length > 0 ? (
-          <>
-            <div className="rounded-xl overflow-hidden border border-border bg-card backdrop-blur-md">
-              <table className="w-full">
-                <thead className="bg-muted/50 border-b border-border">
+                    {isLoading ? (
+
+                      <div className="text-muted-foreground">Loading...</div>
+
+                    ) : data?.data && data.data.length > 0 ? (
+
+                      <>
+
+                        <div className="rounded-xl overflow-hidden border border-border/20 bg-card/60 backdrop-blur-md">
+
+                          <table className="w-full">                <thead className="bg-muted/50 border-b border-border/20">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Sequence</th>
                     <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Digest</th>
@@ -91,7 +95,7 @@ export default function Checkpoints() {
                     <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-muted-foreground">Gas Used</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/20">
                   {data.data.map((checkpoint) => (
                     <tr key={checkpoint.sequenceNumber} className="hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-3">

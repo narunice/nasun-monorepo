@@ -7,7 +7,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-nasun-c4 focus:ring-offset-2 focus:ring-offset-background"
+      className="relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none"
       style={{
         backgroundColor: isDark ? "rgb(75, 85, 99)" : "rgb(209, 213, 219)",
       }}
@@ -17,15 +17,15 @@ export function ThemeToggle() {
     >
       {/* Sliding knob with icon */}
       <span
-        className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-md transition-transform duration-200 ${
-          isDark ? "translate-x-8" : "translate-x-1"
+        className={`inline-flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-md transition-transform duration-200 ${
+          isDark ? "translate-x-5" : "translate-x-1"
         }`}
       >
         {/* Sun Icon (shown when light mode) */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="12"
-          height="12"
+          width="10"
+          height="10"
           viewBox="0 0 24 24"
           fill="none"
           stroke="rgb(234, 179, 8)"
@@ -48,8 +48,8 @@ export function ThemeToggle() {
         {/* Moon Icon (shown when dark mode) */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="12"
-          height="12"
+          width="10"
+          height="10"
           viewBox="0 0 24 24"
           fill="rgb(99, 102, 241)"
           stroke="rgb(99, 102, 241)"

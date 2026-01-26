@@ -1,4 +1,4 @@
-/// Executor Registry - Manages registered AI executors for Blind
+/// Executor Registry - Manages registered AI executors for Baram
 ///
 /// Phase B MVP:
 /// - Whitelist-based executor registration (AdminCap required)
@@ -9,7 +9,7 @@
 /// - Phase C: TEE attestation verification
 /// - Phase D: Stake requirements, slashing mechanism
 /// - Phase E: Tiered system (Validator/Staked/Open)
-module blind_executor::executor {
+module baram_executor::executor {
     use sui::table::{Self, Table};
     use sui::clock::Clock;
     use sui::event;
@@ -229,8 +229,8 @@ module blind_executor::executor {
         info.tee_attestation = tee_attestation;
     }
 
-    /// Update executor stats after job completion (called by BlindRegistry)
-    /// For MVP, admin calls this. Future: automated via BlindRegistry integration
+    /// Update executor stats after job completion (called by BaramRegistry)
+    /// For MVP, admin calls this. Future: automated via BaramRegistry integration
     public entry fun update_executor_stats(
         _admin: &AdminCap,
         registry: &mut ExecutorRegistry,

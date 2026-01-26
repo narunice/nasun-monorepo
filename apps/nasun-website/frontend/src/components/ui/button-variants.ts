@@ -29,6 +29,7 @@ export const buttonVariants = cva(
 
         //  (c5)
         c5: "bg-nasun-c5 text-nasun-white hover:bg-nasun-c4",
+        c7: "bg-nasun-c7 text-nasun-white hover:bg-nasun-c7/80",
 
         // Coral: Solid coral button
         coral: "bg-nasun-coral text-nasun-white hover:bg-nasun-coral/80",
@@ -62,6 +63,8 @@ export const buttonVariants = cva(
         // Outline c5 (투명 배경)
         outlineC5:
           "ring-1 ring-inset ring-nasun-c5/70 bg-transparent text-nasun-c5 hover:bg-nasun-c5/10",
+        outlineC7:
+          "ring-1 ring-inset ring-nasun-c7/70 bg-transparent text-nasun-c7 hover:bg-nasun-c7/10",
 
         // Outline Coral (투명 배경)
         outlineCoral:
@@ -93,6 +96,8 @@ export const buttonVariants = cva(
         // Filled Outline c5 (연한 배경색)
         filledOutlineC5:
           "ring-1 ring-inset ring-nasun-c5/70 bg-nasun-c5/10 text-nasun-c5 hover:bg-transparent hover:ring-nasun-c5",
+        filledOutlineC7:
+          "ring-1 ring-inset ring-nasun-c7/70 bg-nasun-c7/10 text-nasun-c7 hover:bg-transparent hover:ring-nasun-c7",
 
         // Filled Outline Coral (연한 배경색)
         filledOutlineCoral:

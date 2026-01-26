@@ -1,7 +1,7 @@
 {
-  "name": "blind-executor",
+  "name": "baram-executor",
   "version": "1.0.0",
-  "description": "Blind AI Executor Lambda - Processes AI requests and submits proofs on-chain",
+  "description": "Baram AI Executor Lambda - Processes AI requests and submits proofs on-chain",
   "main": "dist/index.js",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --external:@aws-sdk/*",

@@ -81,12 +81,12 @@ export default function Validators() {
         )}
 
         {/* Validators Table */}
-        {isLoading ? (
-          <div className="text-muted-foreground">Loading...</div>
-        ) : data?.activeValidators && data.activeValidators.length > 0 ? (
-          <div className="rounded-xl overflow-hidden border border-border bg-card backdrop-blur-md">
-            <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
+      {isLoading ? (
+        <div className="text-muted-foreground">Loading...</div>
+      ) : data?.activeValidators && data.activeValidators.length > 0 ? (
+        <div className="rounded-xl overflow-hidden border border-border/20 bg-card/60 backdrop-blur-md">
+          <table className="w-full">
+              <thead className="bg-muted/50 border-b border-border/20">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Validator</th>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Address</th>
@@ -96,7 +96,7 @@ export default function Validators() {
                   <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-muted-foreground">Voting Power</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/20">
                 {data.activeValidators.map((validator) => (
                   <tr key={validator.address} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">

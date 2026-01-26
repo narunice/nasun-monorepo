@@ -110,10 +110,9 @@ export function useExecutors(): UseExecutorsReturn {
 
           if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
             const content = fieldData.data.content.fields as Record<string, unknown>;
-            const valueWrapper = content.value as { fields?: Record<string, unknown> } | Record<string, unknown>;
-            const value = ('fields' in valueWrapper && valueWrapper.fields)
-              ? valueWrapper.fields
-              : valueWrapper as Record<string, unknown>;
+            const valueWrapper = content.value as { fields?: Record<string, unknown> };
+            // Handle both nested (value.fields) and flat (value) structures
+            const value = valueWrapper.fields ?? (valueWrapper as unknown as Record<string, unknown>);
 
             const info = parseExecutorInfo(value);
             if (info.isActive) {

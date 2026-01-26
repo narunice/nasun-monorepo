@@ -14,8 +14,8 @@ module.exports = {
         'sans': ['Rubik', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // Blind brand colors (purple/violet gradient)
-        'blind': {
+        // Baram brand colors (purple/violet gradient)
+        'baram': {
           1: '#6366f1', // Primary - indigo
           2: '#8b5cf6', // Secondary - violet
           3: '#a78bfa', // Accent - light violet

@@ -1,4 +1,4 @@
-/// Blind - Private AI Computation Settlement
+/// Baram - Private AI Computation Settlement
 ///
 /// Core concept: Escrow + Execution Proof = Trustless Settlement
 ///
@@ -6,7 +6,7 @@
 /// 1. Executor submits proof -> payment released to executor
 /// 2. Timeout reached -> user can claim refund
 /// 3. User cancels before execution -> user gets refund
-module blind::blind {
+module baram::baram {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::clock::Clock;
@@ -43,7 +43,7 @@ module blind::blind {
 
     /// Shared registry for all compute requests
     /// Anyone can read, only specific addresses can modify specific requests
-    public struct BlindRegistry has key {
+    public struct BaramRegistry has key {
         id: UID,
         next_request_id: u64,
         requests: Table<u64, ComputeRequest>,
@@ -122,7 +122,7 @@ module blind::blind {
     // ========== Init ==========
 
     fun init(ctx: &mut TxContext) {
-        let registry = BlindRegistry {
+        let registry = BaramRegistry {
             id: object::new(ctx),
             next_request_id: 1,
             requests: table::new(ctx),
@@ -138,14 +138,14 @@ module blind::blind {
     /// Create a new compute request with NUSDC escrow
     ///
     /// Arguments:
-    /// - registry: Shared BlindRegistry
+    /// - registry: Shared BaramRegistry
     /// - payment: NUSDC coin for payment
     /// - prompt_hash: SHA-256 hash of the encrypted prompt (32 bytes)
     /// - model: AI model identifier (e.g., "gpt-4o-mini")
     /// - executor: Address of the executor who will process this request
     /// - clock: Sui Clock object for timestamp
     public entry fun create_request(
-        registry: &mut BlindRegistry,
+        registry: &mut BaramRegistry,
         payment: Coin<NUSDC>,
         prompt_hash: vector<u8>,
         model: String,
@@ -219,7 +219,7 @@ module blind::blind {
     /// Cancel request and get refund (only before execution starts)
     /// Can only be called by the requester
     public entry fun cancel_request(
-        registry: &mut BlindRegistry,
+        registry: &mut BaramRegistry,
         request_id: u64,
         clock: &Clock,
         ctx: &mut TxContext
@@ -258,7 +258,7 @@ module blind::blind {
     /// Claim refund after timeout (executor didn't complete in time)
     /// Can only be called by the requester
     public entry fun claim_timeout_refund(
-        registry: &mut BlindRegistry,
+        registry: &mut BaramRegistry,
         request_id: u64,
         clock: &Clock,
         ctx: &mut TxContext
@@ -301,7 +301,7 @@ module blind::blind {
 
     /// Mark request as executing (optional, for status tracking)
     public entry fun mark_executing(
-        registry: &mut BlindRegistry,
+        registry: &mut BaramRegistry,
         request_id: u64,
         clock: &Clock,
         ctx: &mut TxContext
@@ -323,7 +323,7 @@ module blind::blind {
     /// Submit execution proof and receive payment
     /// Can only be called by the designated executor
     public entry fun submit_proof(
-        registry: &mut BlindRegistry,
+        registry: &mut BaramRegistry,
         request_id: u64,
         result_hash: vector<u8>,
         execution_time_ms: u64,
@@ -376,7 +376,7 @@ module blind::blind {
     // ========== View Functions ==========
 
     /// Get request status (returns 255 if not found)
-    public fun get_request_status(registry: &BlindRegistry, request_id: u64): u8 {
+    public fun get_request_status(registry: &BaramRegistry, request_id: u64): u8 {
         if (!table::contains(&registry.requests, request_id)) {
             return 255
         };
@@ -385,37 +385,37 @@ module blind::blind {
     }
 
     /// Get request price
-    public fun get_request_price(registry: &BlindRegistry, request_id: u64): u64 {
+    public fun get_request_price(registry: &BaramRegistry, request_id: u64): u64 {
         let request = table::borrow(&registry.requests, request_id);
         request.price
     }
 
     /// Get request requester
-    public fun get_request_requester(registry: &BlindRegistry, request_id: u64): address {
+    public fun get_request_requester(registry: &BaramRegistry, request_id: u64): address {
         let request = table::borrow(&registry.requests, request_id);
         request.requester
     }
 
     /// Get request executor
-    public fun get_request_executor(registry: &BlindRegistry, request_id: u64): address {
+    public fun get_request_executor(registry: &BaramRegistry, request_id: u64): address {
         let request = table::borrow(&registry.requests, request_id);
         request.executor
     }
 
     /// Get request timeout timestamp
-    public fun get_request_timeout(registry: &BlindRegistry, request_id: u64): u64 {
+    public fun get_request_timeout(registry: &BaramRegistry, request_id: u64): u64 {
         let request = table::borrow(&registry.requests, request_id);
         request.timeout_at
     }
 
     /// Get request result hash (empty if not completed)
-    public fun get_request_result_hash(registry: &BlindRegistry, request_id: u64): vector<u8> {
+    public fun get_request_result_hash(registry: &BaramRegistry, request_id: u64): vector<u8> {
         let request = table::borrow(&registry.requests, request_id);
         request.result_hash
     }
 
     /// Get registry statistics
-    public fun get_registry_stats(registry: &BlindRegistry): (u64, u64, u64, u64) {
+    public fun get_registry_stats(registry: &BaramRegistry): (u64, u64, u64, u64) {
         (
             registry.next_request_id - 1,  // total created
             registry.total_completed,
@@ -425,7 +425,7 @@ module blind::blind {
     }
 
     /// Check if request exists
-    public fun request_exists(registry: &BlindRegistry, request_id: u64): bool {
+    public fun request_exists(registry: &BaramRegistry, request_id: u64): bool {
         table::contains(&registry.requests, request_id)
     }
 

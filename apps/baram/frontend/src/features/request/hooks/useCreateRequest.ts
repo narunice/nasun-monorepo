@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react';
 import { useSigner } from '@nasun/wallet';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
-import { BLIND_CONFIG, TOKEN_CONFIG, NETWORK_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
+import { BARAM_CONFIG, TOKEN_CONFIG, NETWORK_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
 import type { ExecutorInfo } from './useExecutors';
 
 export type RequestStatus = 'idle' | 'creating' | 'executing' | 'completed' | 'error';
@@ -167,9 +167,9 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       // Call create_request with selected executor
       tx.moveCall({
-        target: BLIND_CONFIG.packageId + '::blind::create_request',
+        target: BARAM_CONFIG.packageId + '::baram::create_request',
         arguments: [
-          tx.object(BLIND_CONFIG.registryId), // registry
+          tx.object(BARAM_CONFIG.registryId), // registry
           paymentCoin, // payment
           tx.pure.vector('u8', promptHashBytes), // prompt_hash
           tx.pure.string(model), // model
@@ -204,7 +204,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       // 5. Extract request ID from events
       const createEvent = txResult.events?.find(
-        e => e.type.includes('::blind::RequestCreated')
+        e => e.type.includes('::baram::RequestCreated')
       );
 
       if (!createEvent) {
@@ -218,7 +218,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
       setStatus('executing');
 
       const encryptedPrompt = encodePrompt(prompt);
-      const executorUrl = executor.endpointUrl || BLIND_CONFIG.backendUrl;
+      const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
 
       console.log('Calling executor:', executorUrl);
 

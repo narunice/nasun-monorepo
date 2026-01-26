@@ -1,14 +1,13 @@
 [package]
-name = "blind"
+name = "baram"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x2b1515ad3454d0199fda7dab70ccff737d8c8acfeb7ed181263c43b73566e697"
 
 [dependencies]
 pado_tokens = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts" }
 
 [addresses]
-blind = "0x2b1515ad3454d0199fda7dab70ccff737d8c8acfeb7ed181263c43b73566e697"
+baram = "0x0"
 pado = "0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4"
 
 [environments]

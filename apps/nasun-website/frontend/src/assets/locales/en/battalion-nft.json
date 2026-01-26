@@ -180,6 +180,7 @@
     "goToMyAccount": "Go to My Account to Reconnect",
     "info": {
       "title": "Registration Info",
+      "allowlistBatch": "Allowlist Batch",
       "wallet": "Wallet Address",
       "username": "X Account",
       "registeredAt": "Registered At",

@@ -1,4 +1,4 @@
-// Blind Network Configuration
+// Baram Network Configuration
 export const NETWORK_CONFIG = {
   rpcUrl: import.meta.env.VITE_SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
   faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
@@ -6,10 +6,10 @@ export const NETWORK_CONFIG = {
   networkName: import.meta.env.VITE_NETWORK_NAME || 'Nasun Devnet',
 } as const;
 
-// Blind Contract Configuration
-export const BLIND_CONFIG = {
-  packageId: import.meta.env.VITE_BLIND_PACKAGE_ID || '',
-  registryId: import.meta.env.VITE_BLIND_REGISTRY_ID || '',
+// Baram Contract Configuration
+export const BARAM_CONFIG = {
+  packageId: import.meta.env.VITE_BARAM_PACKAGE_ID || '',
+  registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || '',
   executorAddress: import.meta.env.VITE_EXECUTOR_ADDRESS || '',
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
 } as const;

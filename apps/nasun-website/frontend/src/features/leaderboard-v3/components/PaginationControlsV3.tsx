@@ -73,7 +73,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
               disabled={typeof page !== 'number' || page === currentPage}
               className={`${buttonBase} disabled:cursor-not-allowed ${
                 page === currentPage
-                  ? 'bg-nasun-c3 text-black font-medium'
+                  ? 'bg-nasun-c7 text-black font-medium'
                   : typeof page === 'number'
                     ? 'bg-gray-700 hover:bg-gray-600 hover:scale-105 active:scale-95 text-gray-200'
                     : 'bg-transparent text-gray-400 cursor-default'
@@ -107,7 +107,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
               type="number"
               value={pageInput}
               onChange={(e) => onPageInputChange(e.target.value)}
-              className="w-14 px-2 py-1 text-sm border border-gray-600 rounded-sm bg-gray-800 text-white focus:border-nasun-c3 focus:outline-none"
+              className="w-14 px-2 py-1 text-sm border border-gray-600 rounded-sm bg-gray-800 text-white focus:border-nasun-c7 focus:outline-none"
               min="1"
               max={totalPages}
             />

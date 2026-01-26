@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useCreateRequest, RequestStatus } from '../hooks/useCreateRequest';
 import { useExecutors, ExecutorInfo } from '../hooks/useExecutors';
-import { MODEL_PRICING, ModelId, DEFAULT_MODEL, BLIND_CONFIG } from '@/config/network';
+import { MODEL_PRICING, ModelId, DEFAULT_MODEL, BARAM_CONFIG } from '@/config/network';
 import { ResultDisplay } from './ResultDisplay';
 import { ExecutorSelector } from './ExecutorSelector';
 
@@ -20,12 +20,12 @@ function StatusIndicator({ status }: { status: RequestStatus }) {
   const statusConfig = {
     creating: {
       text: 'Creating request...',
-      color: 'text-blind-1',
+      color: 'text-baram-1',
       animate: true,
     },
     executing: {
       text: 'AI processing...',
-      color: 'text-blind-2',
+      color: 'text-baram-2',
       animate: true,
     },
     completed: {
@@ -79,7 +79,7 @@ export function RequestForm() {
   useEffect(() => {
     if (!selectedExecutor && executors.length > 0) {
       // Try to find the default executor from config, otherwise use first
-      const defaultExecutor = executors.find(e => e.operator === BLIND_CONFIG.executorAddress);
+      const defaultExecutor = executors.find(e => e.operator === BARAM_CONFIG.executorAddress);
       setSelectedExecutor(defaultExecutor || executors[0]);
     }
   }, [executors, selectedExecutor]);
@@ -128,7 +128,7 @@ export function RequestForm() {
               placeholder="Enter your prompt here..."
               rows={4}
               disabled={isProcessing}
-              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blind-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-baram-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
             />
           </div>
 
@@ -146,7 +146,7 @@ export function RequestForm() {
                   disabled={isProcessing}
                   className={`p-3 rounded-md border text-left transition-all ${
                     selectedModel === model.id
-                      ? 'border-blind-1 bg-blind-1/10'
+                      ? 'border-baram-1 bg-baram-1/10'
                       : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] hover:border-[var(--color-text-muted)]'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
@@ -154,7 +154,7 @@ export function RequestForm() {
                     <span className="font-medium text-[var(--color-text-primary)]">
                       {model.name}
                     </span>
-                    <span className="text-sm text-blind-1">
+                    <span className="text-sm text-baram-1">
                       {(model.price / 1e6).toFixed(2)} NUSDC
                     </span>
                   </div>
@@ -204,7 +204,7 @@ export function RequestForm() {
                         {selectedExecutor.teeTypeName} | Reputation: {selectedExecutor.reputation}/1000
                       </div>
                     </div>
-                    <span className="text-sm text-blind-1">Change</span>
+                    <span className="text-sm text-baram-1">Change</span>
                   </div>
                 ) : (
                   <div className="text-[var(--color-text-muted)]">
@@ -233,7 +233,7 @@ export function RequestForm() {
               <button
                 type="submit"
                 disabled={!prompt.trim() || isProcessing || !selectedExecutor}
-                className="px-6 py-2 bg-blind-1 hover:bg-blind-2 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2 bg-baram-1 hover:bg-baram-2 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isProcessing ? (
                   'Processing...'

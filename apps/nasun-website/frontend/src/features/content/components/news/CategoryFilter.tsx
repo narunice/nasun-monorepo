@@ -1,6 +1,6 @@
 // sections/news/CategoryFilter.tsx
 import { useTranslation } from "react-i18next";
-import { Tag } from "../../../ui/tag";
+import { Tag } from "@/components/ui/tag";
 import { categories, CategoryType } from "./categoryUtils";
 
 interface CategoryFilterProps {
@@ -17,10 +17,10 @@ export default function CategoryFilter({ activeCategory, onCategoryChange }: Cat
         <button
           key={cat.key}
           onClick={() => onCategoryChange(cat.key)}
-          className="focus:outline-none focus:ring-2 focus:ring-nasun-c3/50 rounded-full"
+          className="focus:outline-none focus:ring-2 focus:ring-nasun-c7/50 rounded-full"
         >
           <Tag
-            variant={activeCategory === cat.key ? "filledC3" : "outlineC3"}
+            variant={activeCategory === cat.key ? "filledc7" : "outlinec7"}
             size="md"
             className="cursor-pointer hover:opacity-80 transition-opacity uppercase"
           >
