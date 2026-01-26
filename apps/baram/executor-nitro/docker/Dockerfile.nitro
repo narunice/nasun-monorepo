@@ -1,13 +1,19 @@
-# Nitro Enclave Dockerfile
+# Nitro Enclave Dockerfile with Local LLM Support
 # This Dockerfile is optimized for building an Enclave Image Format (EIF)
 #
-# Build: docker build -f docker/Dockerfile.nitro -t baram-enclave:nitro ..
-# EIF:   nitro-cli build-enclave --docker-image baram-enclave:nitro --output-file baram-enclave.eif
+# Prerequisites:
+#   ./scripts/download-model.sh  # Download ~2GB model file
+#
+# Build: docker build -f docker/Dockerfile.nitro -t baram-enclave:local-llm ..
+# EIF:   nitro-cli build-enclave --docker-uri baram-enclave:local-llm --output-file baram-enclave.eif
+#
+# Local test:
+#   docker run -it --rm -e USE_LOCAL_LLM=true -p 5050:5050 baram-enclave:local-llm
 #
 # Key constraints for Nitro Enclaves:
-# - No network access
+# - No network access (prompts stay in TEE with local LLM)
 # - No persistent storage
-# - Limited memory (configured at runtime)
+# - Limited memory (8GB recommended for 3B model)
 # - Communication only via vsock
 
 # Use Alpine for smaller image size (important for EIF)
@@ -15,8 +21,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+# Install build dependencies (including cmake and git for llama.cpp native bindings)
+# node-llama-cpp clones llama.cpp from GitHub and builds it during npm install
+# linux-headers provides linux/limits.h required by llama.cpp
+RUN apk add --no-cache python3 make g++ cmake git linux-headers
 
 # Copy package files
 COPY package.json package-lock.json* ./
@@ -39,6 +47,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install runtime dependencies for llama.cpp native bindings
+# libgomp is required for OpenMP parallelization in llama.cpp
+RUN apk add --no-cache libstdc++ libgcc libgomp
+
 # Create non-root user for security
 RUN addgroup -S enclave && adduser -S enclave -G enclave
 
@@ -46,6 +58,12 @@ RUN addgroup -S enclave && adduser -S enclave -G enclave
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
+
+# Copy model files if they exist (for local LLM mode)
+# Models are downloaded separately via scripts/download-model.sh
+# Note: Docker will fail if models/ directory doesn't exist
+#       Run scripts/download-model.sh first, or use USE_LOCAL_LLM=false
+COPY --chown=enclave:enclave models/ ./models/
 
 # Set ownership
 RUN chown -R enclave:enclave /app
@@ -58,8 +76,15 @@ USER enclave
 # TCP mode will work for now (enclave has no network, but useful for testing init)
 ENV NODE_ENV=production
 ENV USE_VSOCK=false
-ENV USE_OPENAI_PROXY=true
 ENV NITRO_MODE=true
+
+# Inference mode configuration:
+# - USE_LOCAL_LLM=true: Run LLM inside Enclave (complete privacy)
+# - USE_OPENAI_PROXY=true: Proxy OpenAI calls through Host (partial privacy)
+# - Neither: Direct OpenAI calls (requires OPENAI_API_KEY, no TEE privacy)
+ENV USE_LOCAL_LLM=true
+ENV USE_OPENAI_PROXY=false
+ENV MODEL_PATH=/app/models/llama-3.2-3b-instruct-q4_k_m.gguf
 
 # TCP port (vsock will use the same port number)
 ENV ENCLAVE_PORT=5050

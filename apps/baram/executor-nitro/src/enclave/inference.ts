@@ -19,6 +19,13 @@
 import OpenAI from 'openai';
 import { sha256 } from './crypto.js';
 import { useOpenAIProxy, generateRequestId } from '../shared/protocol.js';
+import {
+  initializeLocalLLM,
+  generateCompletion,
+  isLocalLLMReady,
+  unloadModel,
+  type LocalLLMConfig,
+} from './local-llm.js';
 
 /**
  * Supported models and their configurations
@@ -73,7 +80,11 @@ let openaiClient: OpenAI | null = null;
 // Proxy function - set when in proxy mode
 let proxyFunction: OpenAIProxyFunction | null = null;
 
-// Operation mode
+// Operation mode: 'direct' | 'proxy' | 'local'
+type InferenceMode = 'direct' | 'proxy' | 'local';
+let inferenceMode: InferenceMode = 'direct';
+
+// Legacy compatibility
 let isProxyMode: boolean = false;
 
 /**
@@ -90,6 +101,7 @@ export function initializeInference(apiKey: string): void {
     apiKey,
   });
   isProxyMode = false;
+  inferenceMode = 'direct';
 
   console.log('[Enclave/Inference] OpenAI client initialized (direct mode)');
 }
@@ -102,8 +114,25 @@ export function initializeInference(apiKey: string): void {
 export function initializeInferenceProxy(proxy: OpenAIProxyFunction): void {
   proxyFunction = proxy;
   isProxyMode = true;
+  inferenceMode = 'proxy';
 
   console.log('[Enclave/Inference] Proxy mode initialized (Host will call OpenAI)');
+}
+
+/**
+ * Initialize the inference module for local LLM mode (Nitro Enclave with privacy)
+ *
+ * This mode runs the LLM entirely within the Enclave.
+ * Prompts NEVER leave the TEE - complete privacy protection.
+ *
+ * @param config - Local LLM configuration
+ */
+export async function initializeInferenceLocal(config?: LocalLLMConfig): Promise<void> {
+  await initializeLocalLLM(config);
+  inferenceMode = 'local';
+  isProxyMode = false;
+
+  console.log('[Enclave/Inference] Local LLM mode initialized (prompts stay in TEE)');
 }
 
 /**
@@ -119,6 +148,13 @@ export async function executeInference(
   prompt: string,
   model: string
 ): Promise<InferenceResult> {
+  // Local mode uses its own model, skip config check
+  if (inferenceMode === 'local') {
+    const startTime = Date.now();
+    console.log(`[Enclave/Inference] Executing inference with local LLM`);
+    return executeLocal(prompt, startTime);
+  }
+
   const config = MODEL_CONFIG[model];
   if (!config) {
     throw new Error(`Unsupported model: ${model}. Supported: ${Object.keys(MODEL_CONFIG).join(', ')}`);
@@ -239,17 +275,70 @@ async function executeViaProxy(
 }
 
 /**
+ * Execute inference using local LLM (complete privacy)
+ *
+ * The prompt is processed entirely within the Enclave.
+ * No data leaves the TEE.
+ */
+async function executeLocal(prompt: string, startTime: number): Promise<InferenceResult> {
+  try {
+    const { result, tokensUsed } = await generateCompletion(prompt, {
+      maxTokens: 512,
+      temperature: 0.7,
+    });
+
+    const executionTimeMs = Date.now() - startTime;
+    const resultHash = sha256(result);
+
+    console.log(`[Enclave/Inference] Local inference completed in ${executionTimeMs}ms`);
+
+    return {
+      result,
+      resultHash,
+      executionTimeMs,
+      model: 'llama-3.2-3b-local',
+      tokensUsed,
+    };
+  } catch (error) {
+    console.error('[Enclave/Inference] Local inference failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Check if inference module is initialized
  */
 export function isInferenceReady(): boolean {
-  return isProxyMode ? proxyFunction !== null : openaiClient !== null;
+  switch (inferenceMode) {
+    case 'local':
+      return isLocalLLMReady();
+    case 'proxy':
+      return proxyFunction !== null;
+    case 'direct':
+    default:
+      return openaiClient !== null;
+  }
 }
 
 /**
  * Check if running in proxy mode
  */
 export function isInProxyMode(): boolean {
-  return isProxyMode;
+  return inferenceMode === 'proxy';
+}
+
+/**
+ * Check if running in local LLM mode
+ */
+export function isInLocalMode(): boolean {
+  return inferenceMode === 'local';
+}
+
+/**
+ * Get current inference mode
+ */
+export function getInferenceMode(): InferenceMode {
+  return inferenceMode;
 }
 
 /**
@@ -258,3 +347,7 @@ export function isInProxyMode(): boolean {
 export function getSupportedModels(): string[] {
   return Object.keys(MODEL_CONFIG);
 }
+
+// Re-export types and functions for convenience
+export type { LocalLLMConfig };
+export { unloadModel };
