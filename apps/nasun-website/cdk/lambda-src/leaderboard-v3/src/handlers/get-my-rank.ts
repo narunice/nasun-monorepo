@@ -64,12 +64,11 @@ function createResponse(
 }
 
 /**
- * Get yesterday's date string (KST)
+ * Get today's date string (KST)
  */
-function getYesterdayDateString(): string {
+function getTodayDateString(): string {
   const date = new Date();
   date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  date.setDate(date.getDate() - 1);
   return date.toISOString().split('T')[0];
 }
 
@@ -214,17 +213,17 @@ async function calculateRank(
 }
 
 /**
- * Get rank change by comparing current rank with yesterday's snapshot (KST)
+ * Get rank change by comparing current rank with today's snapshot (KST)
  */
 async function getRankChange(
   seasonId: string,
   accountId: string,
   currentRank: number
 ): Promise<RankChange> {
-  const yesterdayStr = getYesterdayDateString(); // KST
-  const pk = `${seasonId}#${yesterdayStr}`;
+  const todayStr = getTodayDateString(); // KST
+  const pk = `${seasonId}#${todayStr}`;
 
-  // Query for the user's rank in yesterday's snapshot
+  // Query for the user's rank in today's snapshot
   const result = await docClient.send(
     new QueryCommand({
       TableName: SNAPSHOTS_TABLE,
@@ -238,7 +237,7 @@ async function getRankChange(
   );
 
   if (!result.Items || result.Items.length === 0) {
-    // No previous snapshot - user is new
+    // No snapshot for today - user is new or snapshot not generated yet
     return { direction: 'new', amount: 0 };
   }
 
@@ -431,7 +430,7 @@ export const handler = async (
       seasonScore.userScore || 0
     );
 
-    // Get rank change from yesterday (real-time calculation)
+    // Get rank change from today's snapshot (real-time calculation)
     const rankChange = await getRankChange(seasonId, account.accountId, rank);
 
     // Build response (prefer fresh profile data from UserProfiles)

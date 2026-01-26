@@ -81,12 +81,11 @@ function createResponse(statusCode: number, body: object): APIGatewayProxyResult
 }
 
 /**
- * Get yesterday's date string (KST)
+ * Get today's date string (KST)
  */
-function getYesterdayDateString(): string {
+function getTodayDateString(): string {
   const date = new Date();
   date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  date.setDate(date.getDate() - 1);
   return date.toISOString().split('T')[0];
 }
 
@@ -150,11 +149,11 @@ async function getAllPublicSeasons(): Promise<
 }
 
 /**
- * Get previous day's rank map from snapshot
+ * Get today's snapshot rank map (most recent snapshot)
  */
-async function getPreviousDayRanks(seasonId: string): Promise<Map<string, number>> {
-  const yesterdayDate = getYesterdayDateString();
-  const pk = `${seasonId}#${yesterdayDate}`;
+async function getTodaySnapshotRanks(seasonId: string): Promise<Map<string, number>> {
+  const todayDate = getTodayDateString();
+  const pk = `${seasonId}#${todayDate}`;
   const rankMap = new Map<string, number>();
 
   try {
@@ -496,15 +495,15 @@ export const handler = async (
       }))
       .sort((a, b) => b.userScore - a.userScore);
 
-    // Get previous day ranks for rank change
-    const previousRanks = await getPreviousDayRanks(seasonId);
+    // Get today's snapshot ranks for rank change comparison
+    const snapshotRanks = await getTodaySnapshotRanks(seasonId);
 
     const totalCount = recalculatedScores.length;
     const paginatedScores = recalculatedScores.slice(offset, offset + limit);
 
     const entries: SeasonLeaderboardEntry[] = paginatedScores.map((score, index) => {
       const rank = offset + index + 1;
-      const previousRank = previousRanks.get(score.accountId);
+      const previousRank = snapshotRanks.get(score.accountId);
       const rankChange = calculateRankChange(rank, previousRank);
       return toSeasonLeaderboardEntry(score, rank, rankChange, includeBreakdown);
     });
