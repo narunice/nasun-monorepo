@@ -16,7 +16,7 @@ export interface NetworkSelectorModalProps {
 
 /**
  * Modal for selecting blockchain network
- * Shows Move chains always, EVM chains only in Advanced Mode
+ * Shows Move chains always, EVM chains only in Pro Mode
  */
 export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
   const { chain: currentChain, moveChains, evmChains } = useChain();
@@ -142,7 +142,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           </div>
         </div>
 
-        {/* Badge for disabled sections (e.g. Advanced Mode required) */}
+        {/* Badge for disabled sections (e.g. Pro Mode required) */}
         {!sectionEnabled && disabledReason && (
           <span className="text-xs text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
             {disabledReason}
@@ -266,18 +266,18 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
             true
           )}
 
-          {/* EVM Mainnets */}
-          {evmMainnets.length > 0 && (
+          {/* EVM Mainnets - Hidden for development wallet to avoid real asset deposits */}
+          {/* {evmMainnets.length > 0 && (
             <>
               <div className="border-t border-gray-100 dark:border-zinc-700 my-2" />
               {renderSection(
                 'EVM Mainnets',
                 evmMainnets,
                 isAdvancedMode,
-                'Advanced Mode'
+                'Pro Mode'
               )}
             </>
-          )}
+          )} */}
 
           {/* EVM Testnets */}
           {evmTestnets.length > 0 && (
@@ -287,16 +287,16 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
                 'EVM Testnets',
                 evmTestnets,
                 isAdvancedMode,
-                'Advanced Mode'
+                'Pro Mode'
               )}
             </>
           )}
 
-          {/* Hint when Advanced Mode is off */}
+          {/* Hint when Pro Mode is off */}
           {!isAdvancedMode && evmChains.length > 0 && (
             <div className="mx-4 mt-2 px-4 py-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
               <p className="text-xs text-gray-500 dark:text-zinc-400">
-                Enable <span className="font-medium">Advanced Mode</span> in
+                Enable <span className="font-medium">Pro Mode</span> in
                 Settings to access EVM networks.
               </p>
             </div>

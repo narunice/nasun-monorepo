@@ -64,13 +64,19 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
                 <span className="col-span-2 text-left font-medium text-nasun-white uppercase">
                   RANK
                 </span>
-                <span className="col-span-6 text-left font-medium text-nasun-white uppercase">
+                <span
+                  className="col-span-6 text-left font-medium text-nasun-white uppercase cursor-help"
+                  title="Checkmark indicates a registered community member on Nasun"
+                >
                   USER
                 </span>
                 <span className="col-span-2 text-right font-medium text-nasun-white uppercase">
                   SCORE
                 </span>
-                <span className="col-span-2 text-center font-medium text-nasun-white uppercase">
+                <span
+                  className="col-span-2 text-center font-medium text-nasun-white uppercase cursor-help"
+                  title="Rank change compared to yesterday's snapshot"
+                >
                   CHANGE
                 </span>
               </div>

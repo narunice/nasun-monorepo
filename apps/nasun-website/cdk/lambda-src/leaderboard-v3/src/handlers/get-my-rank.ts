@@ -64,6 +64,16 @@ function createResponse(
 }
 
 /**
+ * Get yesterday's date string (KST)
+ */
+function getYesterdayDateString(): string {
+  const date = new Date();
+  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
+}
+
+/**
  * Get active season
  */
 async function getActiveSeason(): Promise<Season | null> {
@@ -204,18 +214,14 @@ async function calculateRank(
 }
 
 /**
- * Get rank change from yesterday's snapshot
+ * Get rank change by comparing current rank with yesterday's snapshot (KST)
  */
 async function getRankChange(
   seasonId: string,
-  accountId: string
-): Promise<RankChange | undefined> {
-  // Get yesterday's date
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-
+  accountId: string,
+  currentRank: number
+): Promise<RankChange> {
+  const yesterdayStr = getYesterdayDateString(); // KST
   const pk = `${seasonId}#${yesterdayStr}`;
 
   // Query for the user's rank in yesterday's snapshot
@@ -237,7 +243,13 @@ async function getRankChange(
   }
 
   const snapshot = result.Items[0] as DailySnapshot;
-  return snapshot.rankChange;
+  const previousRank = snapshot.rank;
+
+  // Real-time calculation (same logic as get-leaderboard.ts)
+  const change = previousRank - currentRank;
+  if (change > 0) return { direction: 'up', amount: change };
+  if (change < 0) return { direction: 'down', amount: Math.abs(change) };
+  return { direction: 'same', amount: 0 };
 }
 
 /**
@@ -419,8 +431,8 @@ export const handler = async (
       seasonScore.userScore || 0
     );
 
-    // Get rank change from yesterday
-    const rankChange = await getRankChange(seasonId, account.accountId);
+    // Get rank change from yesterday (real-time calculation)
+    const rankChange = await getRankChange(seasonId, account.accountId, rank);
 
     // Build response (prefer fresh profile data from UserProfiles)
     const data: MyRankData = {

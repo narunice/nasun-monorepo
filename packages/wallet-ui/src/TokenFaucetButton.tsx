@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useTokenFaucet, hasTokenFaucet, useNetwork } from '@nasun/wallet';
+import { useTokenFaucet, hasTokenFaucet, useNetwork, useMultiBalance } from '@nasun/wallet';
 
 interface TokenFaucetButtonProps {
   /** Token symbol (e.g., 'NSN', 'NBTC') */
@@ -28,12 +28,17 @@ export function TokenFaucetButton({
 }: TokenFaucetButtonProps) {
   const { isDevnet, isTestnet } = useNetwork();
   const { requestFaucet, isLoading, canUseFaucet } = useTokenFaucet();
+  const { data: balances } = useMultiBalance({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loading = isLoading(symbol);
 
+  // Check if NSN is needed for gas fee (for non-NSN tokens)
+  const nsnBalance = balances?.native?.balance ?? 0n;
+  const needsNsnFirst = symbol !== 'NSN' && nsnBalance === 0n;
+
   const handleClick = useCallback(async () => {
-    if (loading || !canUseFaucet) return;
+    if (loading || !canUseFaucet || needsNsnFirst) return;
 
     setMessage(null);
 
@@ -53,7 +58,10 @@ export function TokenFaucetButton({
 
     // Auto-hide message
     setTimeout(() => setMessage(null), 3000);
-  }, [loading, canUseFaucet, requestFaucet, symbol, onSuccess, onError]);
+  }, [loading, canUseFaucet, needsNsnFirst, requestFaucet, symbol, onSuccess, onError]);
+
+  // Tooltip message for when NSN is needed
+  const nsnRequiredMessage = `NSN tokens are required for gas fees. Please get NSN first before requesting ${symbol}.`;
 
   // Only show on devnet/testnet
   if (!isDevnet && !isTestnet) return null;
@@ -65,17 +73,19 @@ export function TokenFaucetButton({
     return (
       <button
         onClick={handleClick}
-        disabled={loading || !canUseFaucet}
+        disabled={loading || !canUseFaucet || needsNsnFirst}
         className={`px-2 py-0.5 text-xs font-medium rounded transition-colors
           ${message?.type === 'success'
             ? 'bg-green-500/20 text-green-400'
             : message?.type === 'error'
             ? 'bg-red-500/20 text-red-400'
+            : needsNsnFirst
+            ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400'
             : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
           }
           disabled:opacity-50 disabled:cursor-not-allowed
           ${className}`}
-        title={`Get ${symbol} from Faucet`}
+        title={needsNsnFirst ? nsnRequiredMessage : `Get ${symbol} from Faucet`}
       >
         {loading ? (
           <span className="flex items-center gap-1">
@@ -94,20 +104,24 @@ export function TokenFaucetButton({
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading || !canUseFaucet}
-      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
-        ${message?.type === 'success'
-          ? 'bg-green-500/20 text-green-400'
-          : message?.type === 'error'
-          ? 'bg-red-500/20 text-red-400'
-          : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
-        }
-        disabled:opacity-50 disabled:cursor-not-allowed
-        flex items-center gap-1.5
-        ${className}`}
-    >
+    <div className="inline-flex flex-col">
+      <button
+        onClick={handleClick}
+        disabled={loading || !canUseFaucet || needsNsnFirst}
+        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
+          ${message?.type === 'success'
+            ? 'bg-green-500/20 text-green-400'
+            : message?.type === 'error'
+            ? 'bg-red-500/20 text-red-400'
+            : needsNsnFirst
+            ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400'
+            : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
+          }
+          disabled:opacity-50 disabled:cursor-not-allowed
+          flex items-center gap-1.5
+          ${className}`}
+        title={needsNsnFirst ? nsnRequiredMessage : undefined}
+      >
       {loading ? (
         <>
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -131,6 +145,12 @@ export function TokenFaucetButton({
           <span>Faucet</span>
         </>
       )}
-    </button>
+      </button>
+      {needsNsnFirst && (
+        <p className="text-xs text-amber-500 dark:text-amber-400 mt-1">
+          NSN required for gas fees
+        </p>
+      )}
+    </div>
   );
 }
