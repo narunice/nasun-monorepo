@@ -356,7 +356,7 @@ export function WalletConnect({
   const [showDropdown, setShowDropdown] = useState(false);
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabMode>("assets");
-  const [nftSortBy, setNftSortBy] = useState<NFTSortBy>("newest");
+  const [nftSortBy, _setNftSortBy] = useState<NFTSortBy>("newest");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [nftCursor, setNftCursor] = useState<string | undefined>(undefined);
@@ -393,7 +393,7 @@ export function WalletConnect({
   const {
     data: nfts = [],
     isLoading: nftsLoading,
-    hasNextPage: nftsHasNextPage,
+    hasNextPage: _nftsHasNextPage,
     nextCursor: nftsNextCursor,
   } = useNFTs({
     limit: 50,
@@ -422,7 +422,7 @@ export function WalletConnect({
     setNftCursor(undefined);
   }, [nftSortBy]);
 
-  const handleLoadMoreNfts = () => {
+  const _handleLoadMoreNfts = () => {
     if (nftsNextCursor) {
       setNftCursor(nftsNextCursor);
     }
@@ -1457,228 +1457,38 @@ export function WalletConnect({
                 )}
               </div>
 
-              {/* NSA Recovery Warning Banner */}
-              {nsaIsInitialized && nsaActiveRecoveryId && (
-                <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                      />
-                    </svg>
-                    <span className="text-xs text-red-700 dark:text-red-300 font-medium">
-                      Recovery in progress
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setViewMode("nsa-recovery")}
-                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
-                  >
-                    View
-                  </button>
-                </div>
-              )}
-
-              {/* NSA Setup Banner */}
-              {!nsaIsInitialized && !nsaBannerDismissed && (
-                <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              {/* NFT Preview Section */}
+              {!isEVM && (
+                <div className="px-3 py-2">
+                  <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
+                    NFTs {accumulatedNfts.length > 0 && `(${accumulatedNfts.length})`}
+                  </p>
+                  {nftsLoading && accumulatedNfts.length === 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[...Array(3)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
                         />
-                      </svg>
-                      <span className="text-xs text-blue-700 dark:text-blue-300">
-                        Secure your account with Smart Account
-                      </span>
+                      ))}
                     </div>
-                    <button
-                      onClick={dismissNsaBanner}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
+                  ) : accumulatedNfts.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 text-center py-4">
+                      No NFTs found
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {accumulatedNfts.slice(0, 6).map((nft) => (
+                        <NFTCard
+                          key={nft.objectId}
+                          nft={nft}
+                          compact
+                          onClick={(n) => setSelectedNFT(n)}
                         />
-                      </svg>
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setViewMode("nsa-setup")}
-                    className="mt-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                  >
-                    Set Up Smart Account →
-                  </button>
-                </div>
-              )}
-
-              {/* QUICK ACTIONS Section */}
-              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
-                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
-                  Quick Actions
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewMode("send")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
-                </svg>
-                Send Token
-              </button>
-
-              <button
-                onClick={() => setViewMode("receive")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                  />
-                </svg>
-                Receive
-              </button>
-
-              {/* PORTFOLIO Section */}
-              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
-                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
-                  Portfolio
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewMode("staking")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Staking
-              </button>
-
-              <button
-                onClick={() => setViewMode("portfolio")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-                Portfolio
-              </button>
-
-              <button
-                onClick={() => setViewMode("nasun-link")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                  />
-                </svg>
-                Create Link
-              </button>
-
-              {/* ACCOUNT Section */}
-              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
-                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
-                  Account
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewMode("address-book")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                Address Book
-              </button>
-
-              {/* Smart Account menu button */}
-              {nsaIsInitialized && (
-                <button
-                  onClick={() => setViewMode("nsa-info")}
-                  className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                    />
-                  </svg>
-                  <span className="flex-1">Smart Account</span>
-                  {/* Recovery Readiness badge */}
-                  <span
-                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
-                      nsaRecoveryCompleted === 3
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
-                    }`}
-                  >
-                    {nsaRecoveryCompleted}/3 {nsaRecoveryCompleted === 3 && "✓"}
-                  </span>
-                  {pendingForMe > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-full">
-                      {pendingForMe}
-                    </span>
+                      ))}
+                    </div>
                   )}
-                </button>
+                </div>
               )}
             </div>
           )}
@@ -2239,294 +2049,38 @@ export function WalletConnect({
                 )}
               </div>
 
-              {/* NSA Recovery Warning Banner */}
-              {nsaIsInitialized && nsaActiveRecoveryId && (
-                <div className="mx-3 mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                      />
-                    </svg>
-                    <span className="text-xs text-red-700 dark:text-red-300 font-medium">
-                      Recovery in progress
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setViewMode("nsa-recovery")}
-                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
-                  >
-                    View
-                  </button>
-                </div>
-              )}
-
-              {/* NSA Setup Banner */}
-              {!nsaIsInitialized && !nsaBannerDismissed && (
-                <div className="mx-3 mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                        />
-                      </svg>
-                      <span className="text-xs text-blue-700 dark:text-blue-300">
-                        Secure your account with Smart Account
-                      </span>
-                    </div>
-                    <button
-                      onClick={dismissNsaBanner}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setViewMode("nsa-setup")}
-                    className="mt-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                  >
-                    Set Up Smart Account →
-                  </button>
-                </div>
-              )}
-
-              {/* QUICK ACTIONS Section */}
-              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
-                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
-                  Quick Actions
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewMode("send")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
-                </svg>
-                Send Token
-              </button>
-
-              <button
-                onClick={() => setViewMode("receive")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                  />
-                </svg>
-                Receive
-              </button>
-
-              {/* PORTFOLIO Section */}
-              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
-                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
-                  Portfolio
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewMode("staking")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Staking
-              </button>
-
-              <button
-                onClick={() => setViewMode("portfolio")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-                Portfolio
-              </button>
-
-              <button
-                onClick={() => setViewMode("nasun-link")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                  />
-                </svg>
-                Create Link
-              </button>
-
-              {/* ACCOUNT Section */}
-              <div className="border-t border-gray-200 dark:border-zinc-700 mt-2 pt-2">
-                <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium">
-                  Account
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewMode("export")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-                  />
-                </svg>
-                Export Private Key
-              </button>
-
-              <button
-                onClick={() => setViewMode("address-book")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                Address Book
-              </button>
-
-              <button
-                onClick={() => setViewMode("settings")}
-                className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                  />
-                </svg>
-                Security Settings
-              </button>
-
-              {/* Smart Account menu button */}
-              {nsaIsInitialized && (
-                <button
-                  onClick={() => setViewMode("nsa-info")}
-                  className="w-full px-3 py-2 text-left text-sm md:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                    />
-                  </svg>
-                  <span className="flex-1">Smart Account</span>
-                  {/* Recovery Readiness badge */}
-                  <span
-                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
-                      nsaRecoveryCompleted === 3
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
-                    }`}
-                  >
-                    {nsaRecoveryCompleted}/3 {nsaRecoveryCompleted === 3 && "✓"}
-                  </span>
-                  {pendingForMe > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-full">
-                      {pendingForMe}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Pro Mode Features */}
-              {isAdvancedMode && (
-                <>
-                  <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
-                  <p className="px-3 py-1 text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
-                    Developer
+              {/* NFT Preview Section */}
+              {!isEVM && (
+                <div className="px-3 py-2">
+                  <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
+                    NFTs {accumulatedNfts.length > 0 && `(${accumulatedNfts.length})`}
                   </p>
-
-                  {/* Account Info */}
-                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Account Type:</span>
-                      <span className="text-gray-700 dark:text-zinc-300">
-                        {isZkLoggedIn ? "zkLogin" : isLedgerConnected ? "Ledger" : "Local"}
-                      </span>
+                  {nftsLoading && accumulatedNfts.length === 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[...Array(3)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="aspect-square bg-gray-200 dark:bg-zinc-700 rounded animate-pulse"
+                        />
+                      ))}
                     </div>
-                    {account?.address && (
-                      <div className="flex justify-between">
-                        <span>Full Address:</span>
-                        <span className="font-mono text-[10px] text-gray-700 dark:text-zinc-300 break-all max-w-[180px] text-right">
-                          {account.address}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Network Info */}
-                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span>Network:</span>
-                      <span className="text-gray-700 dark:text-zinc-300">{chain.name}</span>
+                  ) : accumulatedNfts.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 text-center py-4">
+                      No NFTs found
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {accumulatedNfts.slice(0, 6).map((nft) => (
+                        <NFTCard
+                          key={nft.objectId}
+                          nft={nft}
+                          compact
+                          onClick={(n) => setSelectedNFT(n)}
+                        />
+                      ))}
                     </div>
-                  </div>
-                </>
+                  )}
+                </div>
               )}
             </div>
           )}
