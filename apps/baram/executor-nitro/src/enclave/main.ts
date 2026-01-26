@@ -352,7 +352,7 @@ async function startEnclave(): Promise<void> {
     process.on('SIGTERM', shutdown);
   } else {
     // Simulation mode: use TCP
-    const server = require('net').createServer(handleConnection);
+    const server = net.createServer(handleConnection);
 
     server.listen(ENCLAVE_PORT, '0.0.0.0', () => {
       console.log(`[Enclave] TCP server listening on 0.0.0.0:${ENCLAVE_PORT}`);
