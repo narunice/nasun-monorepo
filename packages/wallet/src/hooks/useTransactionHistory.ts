@@ -111,6 +111,49 @@ function formatAmount(amount: bigint, decimals: number): string {
 }
 
 /**
+ * Determine transaction direction based on net asset flow, not gas payer
+ * This provides better UX for cases like Faucet where user pays gas but receives tokens
+ */
+function determineDirection(
+  transfers: TokenTransfer[],
+  sender: string | undefined,
+  address: string
+): TransactionDirection {
+  // No transfers (contract call) - use sender as fallback
+  if (transfers.length === 0) {
+    return sender === address ? 'out' : 'in';
+  }
+
+  // Count directions
+  const inTransfers = transfers.filter(t => t.direction === 'in');
+  const outTransfers = transfers.filter(t => t.direction === 'out');
+
+  // Only received tokens
+  if (inTransfers.length > 0 && outTransfers.length === 0) {
+    return 'in';
+  }
+
+  // Only sent tokens
+  if (outTransfers.length > 0 && inTransfers.length === 0) {
+    return 'out';
+  }
+
+  // Mixed: determine by dominant flow (exclude gas token)
+  // If receiving valuable tokens while paying small gas, it's 'in'
+  const nonGasTransfers = transfers.filter(
+    t => t.symbol !== 'NSN' && t.symbol !== 'NASUN'
+  );
+
+  if (nonGasTransfers.length > 0) {
+    const nonGasIn = nonGasTransfers.filter(t => t.direction === 'in').length;
+    return nonGasIn > 0 ? 'in' : 'out';
+  }
+
+  // Fallback to sender-based direction
+  return sender === address ? 'out' : 'in';
+}
+
+/**
  * Extract counterparty addresses from a transaction
  */
 function extractCounterparties(
@@ -228,9 +271,9 @@ async function fetchTransactionHistory(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transfers = parseBalanceChanges(tx.balanceChanges as any, address);
 
-      // Determine primary direction based on gas payer
+      // Determine direction based on net asset flow (not just gas payer)
       const sender = tx.transaction?.data?.sender;
-      const direction: TransactionDirection = sender === address ? 'out' : 'in';
+      const direction = determineDirection(transfers, sender, address);
 
       // Filter by direction if specified
       if (options.direction && options.direction !== direction) {
