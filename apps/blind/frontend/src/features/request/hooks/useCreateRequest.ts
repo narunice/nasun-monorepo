@@ -7,6 +7,7 @@ import { useSigner } from '@nasun/wallet';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
 import { BLIND_CONFIG, TOKEN_CONFIG, NETWORK_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
+import type { ExecutorInfo } from './useExecutors';
 
 export type RequestStatus = 'idle' | 'creating' | 'executing' | 'completed' | 'error';
 
@@ -22,7 +23,7 @@ export interface UseCreateRequestReturn {
   status: RequestStatus;
   error: string | null;
   result: RequestResult | null;
-  createRequest: (prompt: string, model: ModelId) => Promise<void>;
+  createRequest: (prompt: string, model: ModelId, executor: ExecutorInfo) => Promise<void>;
   reset: () => void;
 }
 
@@ -107,7 +108,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
     setResult(null);
   }, []);
 
-  const createRequest = useCallback(async (prompt: string, model: ModelId) => {
+  const createRequest = useCallback(async (prompt: string, model: ModelId, executor: ExecutorInfo) => {
     if (!address || !signer) {
       setError('Wallet not connected');
       return;
@@ -116,6 +117,11 @@ export function useCreateRequest(): UseCreateRequestReturn {
     const modelConfig = MODEL_PRICING[model];
     if (!modelConfig) {
       setError('Invalid model selected');
+      return;
+    }
+
+    if (!executor) {
+      setError('No executor selected');
       return;
     }
 
@@ -133,6 +139,8 @@ export function useCreateRequest(): UseCreateRequestReturn {
         model,
         price: price / 1e6,
         promptHash,
+        executor: executor.name,
+        executorAddress: executor.operator,
       });
 
       // 2. Get NUSDC coins for payment
@@ -157,7 +165,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
         [tx.pure.u64(price)]
       );
 
-      // Call create_request
+      // Call create_request with selected executor
       tx.moveCall({
         target: BLIND_CONFIG.packageId + '::blind::create_request',
         arguments: [
@@ -165,7 +173,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
           paymentCoin, // payment
           tx.pure.vector('u8', promptHashBytes), // prompt_hash
           tx.pure.string(model), // model
-          tx.pure.address(BLIND_CONFIG.executorAddress), // executor
+          tx.pure.address(executor.operator), // executor from registry
           tx.object('0x6'), // Clock
         ],
       });
@@ -206,12 +214,15 @@ export function useCreateRequest(): UseCreateRequestReturn {
       const requestId = Number((createEvent.parsedJson as { request_id: string }).request_id);
       console.log('Request ID:', requestId);
 
-      // 6. Call backend to execute
+      // 6. Call executor's backend to execute
       setStatus('executing');
 
       const encryptedPrompt = encodePrompt(prompt);
+      const executorUrl = executor.endpointUrl || BLIND_CONFIG.backendUrl;
 
-      const executeResponse = await fetch(BLIND_CONFIG.backendUrl + '/execute', {
+      console.log('Calling executor:', executorUrl);
+
+      const executeResponse = await fetch(executorUrl + '/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
