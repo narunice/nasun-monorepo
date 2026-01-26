@@ -4,28 +4,28 @@ export type SectionColor = 'c3' | 'c4' | 'c5' | 'c6';
 
 const colorStyles: Record<SectionColor, { border: string; bg: string; text: string; divider: string }> = {
   c3: {
-    border: 'border-nasun-c3/50',
-    bg: 'bg-nasun-c3/10',
-    text: 'dark:text-nasun-c3 text-teal-600',
-    divider: 'border-nasun-c3/30',
+    border: 'border-nasun-white/20',
+    bg: 'bg-nasun-gray/40',
+    text: 'text-nasun-white/80',
+    divider: 'border-nasun-white/10',
   },
   c4: {
-    border: 'border-primary/50',
-    bg: 'bg-primary/10',
-    text: 'text-primary',
-    divider: 'border-primary/30',
+    border: 'border-nasun-c4/40',
+    bg: 'bg-nasun-c4/5',
+    text: 'text-nasun-c4',
+    divider: 'border-nasun-c4/20',
   },
   c5: {
-    border: 'border-secondary/50',
-    bg: 'bg-secondary/10',
-    text: 'text-secondary',
-    divider: 'border-secondary/30',
+    border: 'border-nasun-c5/50',
+    bg: 'bg-nasun-c5/10',
+    text: 'text-nasun-c5',
+    divider: 'border-nasun-c5/30',
   },
   c6: {
-    border: 'border-border',
-    bg: 'bg-card',
-    text: 'text-foreground',
-    divider: 'border-border',
+    border: 'border-nasun-white/20',
+    bg: 'bg-nasun-gray/60',
+    text: 'text-nasun-white',
+    divider: 'border-nasun-white/20',
   },
 };
 
@@ -61,9 +61,9 @@ export function SectionBox({
     <section
       className={`
         p-4 md:p-6
-        rounded-xl
+        rounded-sm
         border
-        backdrop-blur-md
+        backdrop-blur-sm
         ${styles.border}
         ${styles.bg}
         ${className}
@@ -72,10 +72,10 @@ export function SectionBox({
       {title && (
         <>
           <div className="flex items-center justify-between mb-4">
-            <h2 className={`text-lg font-semibold ${styles.text}`}>{title}</h2>
-            {rightTitle && <div className="text-sm text-muted-foreground">{rightTitle}</div>}
+            <h2 className={`text-lg font-semibold tracking-wide ${styles.text}`}>{title}</h2>
+            {rightTitle && <div className="text-sm text-nasun-white/60">{rightTitle}</div>}
           </div>
-          <hr className={`border-t ${styles.divider} mb-4`} />
+          <hr className={`border-t ${styles.divider} mb-6`} />
         </>
       )}
       {children}
