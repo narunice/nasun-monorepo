@@ -1,6 +1,6 @@
-# Enclave Dockerfile
-# In production, this would be built as a Nitro Enclave image (EIF)
-# For local simulation, we use a standard Node.js container
+# Enclave Dockerfile (Local Simulation)
+# For production Nitro Enclave, use Dockerfile.nitro instead
+# This Dockerfile is for local TCP-based simulation
 
 FROM node:20-slim
 
