@@ -15,14 +15,16 @@
 export type EnclaveRequestType =
   | 'GET_PUBLIC_KEY'
   | 'EXECUTE_INFERENCE'
-  | 'HEALTH_CHECK';
+  | 'HEALTH_CHECK'
+  | 'OPENAI_PROXY_RESPONSE'; // Response from Host's OpenAI proxy
 
 // Message types for Enclave → Host responses
 export type EnclaveResponseType =
   | 'PUBLIC_KEY'
   | 'INFERENCE_RESULT'
   | 'HEALTH_STATUS'
-  | 'ERROR';
+  | 'ERROR'
+  | 'OPENAI_PROXY_REQUEST'; // Request from Enclave for Host to call OpenAI
 
 /**
  * Base request structure from Host to Enclave
@@ -100,6 +102,48 @@ export interface HealthCheckResponse extends EnclaveResponse {
 }
 
 /**
+ * OpenAI Proxy Protocol (for Nitro mode where Enclave has no network)
+ *
+ * Flow:
+ * 1. Host → Enclave: EXECUTE_INFERENCE (encrypted prompt)
+ * 2. Enclave decrypts prompt
+ * 3. Enclave → Host: OPENAI_PROXY_REQUEST (plaintext prompt) ⚠️
+ * 4. Host calls OpenAI API
+ * 5. Host → Enclave: OPENAI_PROXY_RESPONSE (result)
+ * 6. Enclave generates result hash and attestation
+ * 7. Enclave → Host: INFERENCE_RESULT
+ *
+ * Security note: In proxy mode, the Host sees the plaintext prompt.
+ * This is a trade-off for Nitro's network isolation.
+ * Future: Run local LLM inside Enclave or use KMS-proxy pattern.
+ */
+export interface OpenAIProxyRequest extends EnclaveResponse {
+  type: 'OPENAI_PROXY_REQUEST';
+  payload: {
+    proxyRequestId: string; // Internal ID for this proxy request
+    model: string;
+    prompt: string; // Decrypted prompt (plaintext)
+    maxTokens?: number;
+    temperature?: number;
+  };
+}
+
+export interface OpenAIProxyResponse extends EnclaveRequest {
+  type: 'OPENAI_PROXY_RESPONSE';
+  payload: {
+    proxyRequestId: string; // Matches the request
+    success: boolean;
+    result?: string;
+    error?: string;
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    };
+  };
+}
+
+/**
  * Attestation Document
  *
  * In production AWS Nitro:
@@ -148,7 +192,27 @@ export const HOST_HTTP_PORT = 3000; // Host HTTP server port
 /**
  * Protocol version for compatibility checking
  */
-export const PROTOCOL_VERSION = '1.0.0';
+export const PROTOCOL_VERSION = '1.1.0'; // Bumped for OpenAI proxy support
+
+/**
+ * Check if running in Nitro mode (Enclave has no network)
+ */
+export function isNitroMode(): boolean {
+  return process.env.USE_VSOCK === 'true' || process.env.NITRO_MODE === 'true';
+}
+
+/**
+ * Check if OpenAI proxy mode is enabled
+ * In Nitro mode, Enclave cannot access network, so Host proxies OpenAI calls
+ */
+export function useOpenAIProxy(): boolean {
+  // Default to proxy mode in Nitro
+  const explicit = process.env.USE_OPENAI_PROXY;
+  if (explicit !== undefined) {
+    return explicit === 'true';
+  }
+  return isNitroMode();
+}
 
 /**
  * Create a simulated attestation document

@@ -2,16 +2,19 @@
  * Enclave Main Entry Point
  *
  * This is the main process running inside the Enclave.
- * It listens for requests from the Host via TCP (simulating vsock).
  *
- * In production AWS Nitro:
- * - Listens on vsock (CID-based addressing)
- * - No network access, no disk access
- * - Only communicates via vsock to Host
+ * Two modes of operation:
  *
- * In local simulation:
- * - Listens on TCP socket
- * - Same message protocol
+ * 1. Local Simulation (TCP):
+ *    - Listens on TCP socket
+ *    - Direct OpenAI API calls
+ *    - Simulated attestation
+ *
+ * 2. AWS Nitro (vsock + proxy):
+ *    - Listens on vsock (CID-based addressing)
+ *    - No network access, no disk access
+ *    - OpenAI calls proxied through Host
+ *    - Real attestation from /dev/attestation
  */
 
 import * as net from 'net';
@@ -19,6 +22,9 @@ import {
   ENCLAVE_PORT,
   PROTOCOL_VERSION,
   createSimulatedAttestation,
+  useOpenAIProxy,
+  isNitroMode,
+  generateRequestId,
   type EnclaveRequest,
   type EnclaveResponse,
   type GetPublicKeyRequest,
@@ -27,17 +33,113 @@ import {
   type ExecuteInferenceResponse,
   type HealthCheckRequest,
   type HealthCheckResponse,
+  type OpenAIProxyRequest,
+  type OpenAIProxyResponse,
 } from '../shared/protocol.js';
+import { createVsockServer, isVsockMode } from '../shared/vsock.js';
 import { initializeCrypto, getPublicKey, decrypt, destroyKeyPair } from './crypto.js';
-import { initializeInference, executeInference, isInferenceReady } from './inference.js';
+import {
+  initializeInference,
+  initializeInferenceProxy,
+  executeInference,
+  isInferenceReady,
+  isInProxyMode,
+  type OpenAIProxyFunction,
+} from './inference.js';
 
 const MODULE_ID = 'baram-enclave-v1';
 const startTime = Date.now();
 
+// For proxy mode: pending proxy requests
+const pendingProxyRequests = new Map<
+  string,
+  {
+    resolve: (response: OpenAIProxyResponse['payload']) => void;
+    reject: (error: Error) => void;
+  }
+>();
+
+// Active socket for sending proxy requests back to Host
+let activeSocket: net.Socket | null = null;
+
+/**
+ * Create proxy function for inference module
+ * This sends OPENAI_PROXY_REQUEST to Host and waits for response
+ */
+function createProxyFunction(): OpenAIProxyFunction {
+  return async (request) => {
+    return new Promise((resolve, reject) => {
+      if (!activeSocket) {
+        reject(new Error('No active connection to Host'));
+        return;
+      }
+
+      // Store pending request
+      pendingProxyRequests.set(request.proxyRequestId, { resolve, reject });
+
+      // Send proxy request to Host
+      const proxyRequest: OpenAIProxyRequest = {
+        type: 'OPENAI_PROXY_REQUEST',
+        requestId: request.proxyRequestId,
+        success: true, // This is a request, success field required by base type
+        payload: {
+          proxyRequestId: request.proxyRequestId,
+          model: request.model,
+          prompt: request.prompt,
+          maxTokens: request.maxTokens,
+          temperature: request.temperature,
+        },
+      };
+
+      console.log(`[Enclave] Sending OPENAI_PROXY_REQUEST to Host (${request.proxyRequestId})`);
+      activeSocket.write(JSON.stringify(proxyRequest) + '\n');
+
+      // Timeout after 60 seconds
+      setTimeout(() => {
+        if (pendingProxyRequests.has(request.proxyRequestId)) {
+          pendingProxyRequests.delete(request.proxyRequestId);
+          reject(new Error('Proxy request timeout'));
+        }
+      }, 60000);
+    });
+  };
+}
+
+/**
+ * Handle OPENAI_PROXY_RESPONSE from Host
+ */
+function handleProxyResponse(response: OpenAIProxyResponse): void {
+  const proxyRequestId = response.payload.proxyRequestId;
+  const pending = pendingProxyRequests.get(proxyRequestId);
+
+  if (pending) {
+    pendingProxyRequests.delete(proxyRequestId);
+    pending.resolve(response.payload);
+  } else {
+    console.warn(`[Enclave] Received proxy response for unknown request: ${proxyRequestId}`);
+  }
+}
+
+/**
+ * Get attestation document
+ *
+ * In Nitro: reads from /dev/attestation/attestation_doc
+ * In simulation: returns simulated attestation
+ */
+async function getAttestation(moduleId: string): Promise<ReturnType<typeof createSimulatedAttestation>> {
+  if (isNitroMode()) {
+    // TODO: Implement real attestation reading
+    // const attestationDoc = await readAttestationDocument();
+    // return parseAttestationDocument(attestationDoc);
+    console.log('[Enclave] Real attestation not implemented yet, using simulated');
+  }
+  return createSimulatedAttestation(moduleId);
+}
+
 /**
  * Handle incoming request from Host
  */
-async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse> {
+async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse | null> {
   console.log(`[Enclave] Received request: ${request.type} (${request.requestId})`);
 
   try {
@@ -60,7 +162,7 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse> 
           success: true,
           payload: {
             publicKey,
-            attestation: createSimulatedAttestation(MODULE_ID),
+            attestation: await getAttestation(MODULE_ID),
           },
         };
         return response;
@@ -75,7 +177,7 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse> 
         const prompt = decrypt(encryptedPrompt);
         console.log(`[Enclave] Prompt decrypted successfully (${prompt.length} chars)`);
 
-        // Execute inference
+        // Execute inference (direct or proxy mode)
         const result = await executeInference(prompt, model);
 
         const response: ExecuteInferenceResponse = {
@@ -86,7 +188,7 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse> 
             result: result.result,
             resultHash: result.resultHash,
             executionTimeMs: result.executionTimeMs,
-            attestation: createSimulatedAttestation(MODULE_ID),
+            attestation: await getAttestation(MODULE_ID),
           },
         };
         return response;
@@ -104,6 +206,12 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse> 
           },
         };
         return response;
+      }
+
+      case 'OPENAI_PROXY_RESPONSE': {
+        // This is a response from Host for our proxy request
+        handleProxyResponse(request as unknown as OpenAIProxyResponse);
+        return null; // No response needed, this completes a pending request
       }
 
       default:
@@ -128,89 +236,143 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse> 
 }
 
 /**
+ * Handle socket connection from Host
+ */
+function handleConnection(socket: net.Socket): void {
+  console.log('[Enclave] Host connected');
+  activeSocket = socket;
+
+  let buffer = '';
+
+  socket.on('data', async (data) => {
+    buffer += data.toString();
+
+    // Check for complete message (newline-delimited JSON)
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      try {
+        const request: EnclaveRequest = JSON.parse(line);
+        const response = await handleRequest(request);
+
+        // Only send response if one was generated (proxy responses don't need a reply)
+        if (response) {
+          socket.write(JSON.stringify(response) + '\n');
+        }
+      } catch (error) {
+        console.error('[Enclave] Failed to parse request:', error);
+        const errorResponse: EnclaveResponse = {
+          type: 'ERROR',
+          requestId: 'unknown',
+          success: false,
+          payload: null,
+          error: 'Invalid JSON request',
+        };
+        socket.write(JSON.stringify(errorResponse) + '\n');
+      }
+    }
+  });
+
+  socket.on('close', () => {
+    console.log('[Enclave] Host disconnected');
+    activeSocket = null;
+
+    // Reject all pending proxy requests
+    for (const [id, pending] of pendingProxyRequests) {
+      pending.reject(new Error('Connection closed'));
+    }
+    pendingProxyRequests.clear();
+  });
+
+  socket.on('error', (err) => {
+    console.error('[Enclave] Socket error:', err);
+  });
+}
+
+/**
  * Start the Enclave server
  */
 async function startEnclave(): Promise<void> {
+  const useVsock = isVsockMode();
+  const useProxy = useOpenAIProxy();
+
   console.log('========================================');
-  console.log('  Baram TEE Enclave (Local Simulation)');
+  console.log('  Baram TEE Enclave');
   console.log('========================================');
   console.log(`Protocol Version: ${PROTOCOL_VERSION}`);
   console.log(`Module ID: ${MODULE_ID}`);
+  console.log(`Transport: ${useVsock ? 'vsock (Nitro)' : 'TCP (Simulation)'}`);
+  console.log(`OpenAI Mode: ${useProxy ? 'Proxy (via Host)' : 'Direct'}`);
   console.log('');
 
   // Initialize crypto
   const publicKey = await initializeCrypto();
   console.log(`[Enclave] Public key ready (${publicKey.substring(0, 20)}...)`);
 
-  // Initialize inference
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    console.error('[Enclave] ERROR: OPENAI_API_KEY environment variable not set');
-    process.exit(1);
+  // Initialize inference based on mode
+  if (useProxy) {
+    // Proxy mode: Host will call OpenAI for us
+    initializeInferenceProxy(createProxyFunction());
+  } else {
+    // Direct mode: Enclave calls OpenAI directly
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      console.error('[Enclave] ERROR: OPENAI_API_KEY environment variable not set');
+      console.error('[Enclave] In Nitro mode, use USE_OPENAI_PROXY=true instead');
+      process.exit(1);
+    }
+    initializeInference(openaiKey);
   }
-  initializeInference(openaiKey);
 
-  // Create TCP server (simulating vsock)
-  const server = net.createServer((socket) => {
-    console.log('[Enclave] Client connected');
+  // Start server
+  if (useVsock) {
+    // Nitro mode: use vsock abstraction
+    const server = createVsockServer(ENCLAVE_PORT);
 
-    let buffer = '';
-
-    socket.on('data', async (data) => {
-      buffer += data.toString();
-
-      // Check for complete message (newline-delimited JSON)
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        try {
-          const request: EnclaveRequest = JSON.parse(line);
-          const response = await handleRequest(request);
-          socket.write(JSON.stringify(response) + '\n');
-        } catch (error) {
-          console.error('[Enclave] Failed to parse request:', error);
-          const errorResponse: EnclaveResponse = {
-            type: 'ERROR',
-            requestId: 'unknown',
-            success: false,
-            payload: null,
-            error: 'Invalid JSON request',
-          };
-          socket.write(JSON.stringify(errorResponse) + '\n');
-        }
-      }
+    server.on('connection', handleConnection);
+    server.on('error', (err) => {
+      console.error('[Enclave] Server error:', err);
     });
 
-    socket.on('close', () => {
-      console.log('[Enclave] Client disconnected');
-    });
+    await server.listen();
+    console.log('[Enclave] Ready to receive requests from Host via vsock');
 
-    socket.on('error', (err) => {
-      console.error('[Enclave] Socket error:', err);
-    });
-  });
-
-  server.listen(ENCLAVE_PORT, '0.0.0.0', () => {
-    console.log(`[Enclave] Listening on port ${ENCLAVE_PORT}`);
-    console.log('[Enclave] Ready to receive requests from Host');
-    console.log('');
-  });
-
-  // Graceful shutdown
-  const shutdown = () => {
-    console.log('\n[Enclave] Shutting down...');
-    destroyKeyPair();
-    server.close(() => {
-      console.log('[Enclave] Server closed');
+    // Graceful shutdown
+    const shutdown = async () => {
+      console.log('\n[Enclave] Shutting down...');
+      destroyKeyPair();
+      await server.close();
       process.exit(0);
-    });
-  };
+    };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+  } else {
+    // Simulation mode: use TCP
+    const server = require('net').createServer(handleConnection);
+
+    server.listen(ENCLAVE_PORT, '0.0.0.0', () => {
+      console.log(`[Enclave] TCP server listening on 0.0.0.0:${ENCLAVE_PORT}`);
+      console.log('[Enclave] Ready to receive requests from Host');
+      console.log('');
+    });
+
+    // Graceful shutdown
+    const shutdown = () => {
+      console.log('\n[Enclave] Shutting down...');
+      destroyKeyPair();
+      server.close(() => {
+        console.log('[Enclave] Server closed');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+  }
 }
 
 // Start the Enclave

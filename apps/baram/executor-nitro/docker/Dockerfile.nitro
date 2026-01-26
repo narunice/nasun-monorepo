@@ -1,0 +1,78 @@
+# Nitro Enclave Dockerfile
+# This Dockerfile is optimized for building an Enclave Image Format (EIF)
+#
+# Build: docker build -f docker/Dockerfile.nitro -t baram-enclave:nitro ..
+# EIF:   nitro-cli build-enclave --docker-image baram-enclave:nitro --output-file baram-enclave.eif
+#
+# Key constraints for Nitro Enclaves:
+# - No network access
+# - No persistent storage
+# - Limited memory (configured at runtime)
+# - Communication only via vsock
+
+# Use Alpine for smaller image size (important for EIF)
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
+COPY package.json package-lock.json* ./
+COPY tsconfig.json ./
+
+# Install all dependencies (including dev for tsc)
+RUN npm ci
+
+# Copy source code
+COPY src/ ./src/
+
+# Build TypeScript
+RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --omit=dev
+
+# Production image
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -S enclave && adduser -S enclave -G enclave
+
+# Copy built artifacts from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+# Set ownership
+RUN chown -R enclave:enclave /app
+
+# Switch to non-root user
+USER enclave
+
+# Environment variables for Nitro mode
+# USE_VSOCK=false for now because @aspect-build/vsock doesn't exist
+# In production, need to implement native vsock binding
+ENV NODE_ENV=production
+ENV USE_VSOCK=false
+ENV USE_OPENAI_PROXY=false
+ENV NITRO_MODE=true
+
+# Vsock port (not TCP port - Enclave has no network)
+# Communication happens via vsock CID addressing
+ENV ENCLAVE_PORT=5050
+
+# Health check (will fail since no network, but useful for local testing)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "console.log('Enclave process running')" || exit 1
+
+# Run the Enclave
+# In Nitro, this process will:
+# 1. Listen on vsock port 5050
+# 2. Receive requests from Host
+# 3. Process cryptographic operations
+# 4. Send proxy requests to Host for OpenAI
+CMD ["node", "dist/enclave/main.js"]

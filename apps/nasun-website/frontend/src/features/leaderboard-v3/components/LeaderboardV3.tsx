@@ -30,16 +30,16 @@ export function LeaderboardV3() {
     handleUserSelect,
   } = useLeaderboardState();
 
-  // Measure right column height to constrain sidebar
-  const rightColumnRef = useRef<HTMLDivElement>(null);
-  const [rightColumnHeight, setRightColumnHeight] = useState(0);
+  // Measure main content height to constrain sidebar
+  const mainContentRef = useRef<HTMLDivElement>(null);
+  const [mainContentHeight, setMainContentHeight] = useState(0);
 
   useEffect(() => {
-    const el = rightColumnRef.current;
+    const el = mainContentRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setRightColumnHeight(entry.contentRect.height);
+        setMainContentHeight(entry.contentRect.height);
       }
     });
     observer.observe(el);
@@ -103,18 +103,9 @@ export function LeaderboardV3() {
 
       {/* Main Content Area - 2 Column Layout */}
       <div className="flex flex-col md:flex-row gap-8 items-start">
-        {/* Left Column: Sidebar (Search + My Rank + Feed) */}
-        <div className="w-full md:flex-1 lg:flex-none lg:w-[380px]">
-          <LeaderboardSidebar
-            seasonId={selectedSeasonId}
-            onUserSelect={handleUserSelect}
-            maxHeight={rightColumnHeight}
-          />
-        </div>
-
-        {/* Right Column: Leaderboard Table */}
+        {/* Left Column: Leaderboard Table */}
         <LeaderboardMainContent
-          ref={rightColumnRef}
+          ref={mainContentRef}
           leaderboardData={leaderboardData}
           selectedSeason={selectedSeason}
           snapshotDate={snapshotDate}
@@ -126,6 +117,15 @@ export function LeaderboardV3() {
           handlePageChange={handlePageChange}
           ITEMS_PER_PAGE={ITEMS_PER_PAGE}
         />
+
+        {/* Right Column: Sidebar (Search + My Rank + Feed) */}
+        <div className="w-full md:flex-1 lg:flex-none lg:w-[380px]">
+          <LeaderboardSidebar
+            seasonId={selectedSeasonId}
+            onUserSelect={handleUserSelect}
+            maxHeight={mainContentHeight}
+          />
+        </div>
       </div>
     </SectionLayout>
   );

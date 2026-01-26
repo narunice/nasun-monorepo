@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 
+# EIF output (Enclave Image Format for AWS Nitro)
+eif/
+*.eif
+
 # Environment variables (contains secrets)
 .env
 
