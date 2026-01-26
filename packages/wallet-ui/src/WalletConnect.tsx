@@ -245,6 +245,10 @@ interface WalletConnectProps {
   addressEndChars?: number;
   /** @deprecated Use addressStartChars instead */
   addressLength?: number;
+  /** Button style variant */
+  variant?: string;
+  /** Button size variant */
+  size?: "default" | "sm";
 }
 
 export function WalletConnect({
@@ -254,6 +258,8 @@ export function WalletConnect({
   addressStartChars: _addressStartChars,
   addressEndChars: _addressEndChars,
   addressLength: _addressLength = 6,
+  variant,
+  size = "default",
 }: WalletConnectProps) {
   const {
     status,
@@ -299,12 +305,12 @@ export function WalletConnect({
 
   // NSA (Smart Account) state
   const nsaIsInitialized = useNsaStore((s) => s.isInitialized);
-  const nsaActiveRecoveryId = useNsaStore((s) => s.activeRecoveryId);
+  const _nsaActiveRecoveryId = useNsaStore((s) => s.activeRecoveryId);
   const nsaPendingProposals = useNsaStore((s) => s.pendingProposals);
   const nsaIncomingInvitations = useNsaStore((s) => s.incomingInvitations);
   const nsaAccountState = useNsaStore((s) => s.accountState);
-  const nsaBannerDismissed = useUISettingsStore((s) => s.nsaBannerDismissed);
-  const dismissNsaBanner = useUISettingsStore((s) => s.dismissNsaBanner);
+  const _nsaBannerDismissed = useUISettingsStore((s) => s.nsaBannerDismissed);
+  const _dismissNsaBanner = useUISettingsStore((s) => s.dismissNsaBanner);
   const { refreshIncomingInvitations } = useNasunSmartAccount();
 
   // Recovery Readiness calculation
@@ -421,12 +427,6 @@ export function WalletConnect({
   useEffect(() => {
     setNftCursor(undefined);
   }, [nftSortBy]);
-
-  const _handleLoadMoreNfts = () => {
-    if (nftsNextCursor) {
-      setNftCursor(nftsNextCursor);
-    }
-  };
 
   // Fetch token balances (NSN, NBTC, NUSDC)
   const { data: balances, isLoading: balancesLoading } = useMultiBalance({
@@ -778,11 +778,15 @@ export function WalletConnect({
     if (viewMode === "address-book") {
       return (
         <AddressBookPanel
-          onClose={() => setViewMode("main")}
+          onClose={() => {
+            setViewMode("main");
+            setSendRecipient(undefined);
+          }}
           onSend={(address) => {
             setSendRecipient(address);
             setViewMode("send");
           }}
+          initialAddress={sendRecipient}
         />
       );
     }
@@ -1574,7 +1578,18 @@ export function WalletConnect({
           {/* History tab content */}
           {activeTab === "history" && (
             <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
-              <TransactionHistoryPanel hideHeader limit={10} />
+              <TransactionHistoryPanel
+                hideHeader
+                limit={10}
+                onSend={(address) => {
+                  setSendRecipient(address);
+                  setViewMode("send");
+                }}
+                onAddressBook={(address) => {
+                  setSendRecipient(address);
+                  setViewMode("address-book");
+                }}
+              />
             </div>
           )}
 
@@ -2174,7 +2189,18 @@ export function WalletConnect({
           {/* History tab content */}
           {activeTab === "history" && (
             <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
-              <TransactionHistoryPanel hideHeader limit={10} />
+              <TransactionHistoryPanel
+                hideHeader
+                limit={10}
+                onSend={(address) => {
+                  setSendRecipient(address);
+                  setViewMode("send");
+                }}
+                onAddressBook={(address) => {
+                  setSendRecipient(address);
+                  setViewMode("address-book");
+                }}
+              />
             </div>
           )}
 
@@ -2200,12 +2226,34 @@ export function WalletConnect({
       {/* Main button - consistent across all states */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm md:text-base transition-colors"
+        className={`flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
+          variant === "filledOutlineC7"
+            ? `ring-1 ring-inset ring-nasun-c7/70 bg-nasun-c7/10 text-nasun-c7 hover:bg-transparent hover:ring-nasun-c7 rounded-full ${
+                size === "sm"
+                  ? "text-xs lg:text-sm px-5 md:px-7 lg:px-9 py-1"
+                  : "text-sm md:text-base px-3 py-2"
+              }`
+            : `bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded ${
+                size === "sm"
+                  ? "text-xs lg:text-sm px-4 py-1"
+                  : "text-sm md:text-base px-3 py-2"
+              }`
+        }`}
       >
-        <span className={`w-2 h-2 ${getStatusColor()} rounded-full`} />
-        <span className="text-gray-900 dark:text-white font-mono">{getButtonText()}</span>
+        <span className={`w-2 h-2 ${getStatusColor()} rounded-full flex-shrink-0`} />
+        <span
+          className={`font-mono truncate ${
+            variant === "filledOutlineC7" ? "" : "text-gray-900 dark:text-white"
+          }`}
+        >
+          {getButtonText()}
+        </span>
         <svg
-          className={`w-4 h-4 text-gray-500 dark:text-zinc-400 transition-transform ${showDropdown ? "rotate-180" : ""}`}
+          className={`w-4 h-4 flex-shrink-0 transition-transform ${showDropdown ? "rotate-180" : ""} ${
+            variant === "filledOutlineC7"
+              ? "text-nasun-c7"
+              : "text-gray-500 dark:text-zinc-400"
+          }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
