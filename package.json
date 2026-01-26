@@ -35,6 +35,8 @@
       "esbuild"
     ],
     "overrides": {
+      "react": "19.2.3",
+      "react-dom": "19.2.3",
       "@mysten/sui": "1.45.2",
       "happy-dom": ">=20.0.0",
       "valibot": ">=1.2.0",
