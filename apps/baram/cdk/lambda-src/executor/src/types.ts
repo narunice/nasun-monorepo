@@ -1,5 +1,5 @@
 /**
- * Blind Executor Types
+ * Baram Executor Types
  */
 
 export interface ExecuteRequest {

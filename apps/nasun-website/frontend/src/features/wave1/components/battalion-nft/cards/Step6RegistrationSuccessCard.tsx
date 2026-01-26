@@ -10,12 +10,12 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
-import type { NftWhitelist } from "../../../../../types/battalion-nft";
-import { Button } from "../../../../ui/button";
+import type { NftWhitelist } from "@/types/battalion-nft";
+import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { DividerBox } from "../../../../ui";
+import { DividerBox } from "@/components/ui";
 import { BattalionNftCard } from "../BattalionNftCard";
 
 interface RegistrationSuccessCardProps {
@@ -106,7 +106,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
       {/* Whitelist Info - 등록 정보 */}
       <DividerBox
-        color="c3"
+        color="c7"
         icon={
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -125,7 +125,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
           {whitelist.allowlistBatchId && (
             <p>
               <span className="font-medium">{t("step6.info.allowlistBatch")}:</span>{" "}
-              <span className="block md:inline text-nasun-c3 font-semibold">
+              <span className="block md:inline text-nasun-c7 font-semibold">
                 Allowlist #{whitelist.allowlistBatchId}
               </span>
             </p>

@@ -51,7 +51,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
       <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c3 border-t-transparent" />
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c7 border-t-transparent" />
         </div>
       </OuterBox>
     );
@@ -98,7 +98,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
       {/* View All Link */}
       <Link
         to="/network/governance"
-        className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-nasun-c5/30 text-nasun-c3 hover:text-nasun-c4 transition-colors"
+        className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-nasun-c5/30 text-nasun-c7 hover:text-nasun-c4 transition-colors"
       >
         View All
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

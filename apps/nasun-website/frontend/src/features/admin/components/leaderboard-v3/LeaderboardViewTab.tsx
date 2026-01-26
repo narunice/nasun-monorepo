@@ -8,18 +8,18 @@
  * - CSV Export
  */
 
-import { useState, useMemo } from 'react';
-import { OuterBox } from '@/components/ui/OuterBox';
-import { Button } from '@/components/ui/button';
-import { useSeasons } from '@/features/leaderboard-v3/hooks/useSeasons';
-import { useSeasonLeaderboard } from '@/features/leaderboard-v3/hooks/useSeasonLeaderboard';
-import { SeasonSelector } from '@/features/leaderboard-v3/components/SeasonSelector';
-import { RankChangeIndicatorV3 } from '@/features/leaderboard-v3/components/RankChangeIndicatorV3';
-import { useCumulativeLeaderboard } from '../../hooks/useCumulativeLeaderboard';
-import { cn } from '../../../../utils/utils';
-import type { RankChange } from '@/features/leaderboard-v3/types';
+import { useState, useMemo } from "react";
+import { OuterBox } from "@/components/ui/OuterBox";
+import { Button } from "@/components/ui/button";
+import { useSeasons } from "@/features/leaderboard-v3/hooks/useSeasons";
+import { useSeasonLeaderboard } from "@/features/leaderboard-v3/hooks/useSeasonLeaderboard";
+import { SeasonSelector } from "@/features/leaderboard-v3/components/SeasonSelector";
+import { RankChangeIndicatorV3 } from "@/features/leaderboard-v3/components/RankChangeIndicatorV3";
+import { useCumulativeLeaderboard } from "../../hooks/useCumulativeLeaderboard";
+import { cn } from "../../../../utils/utils";
+import type { RankChange } from "@/features/leaderboard-v3/types";
 
-type ViewMode = 'season' | 'cumulative';
+type ViewMode = "season" | "cumulative";
 
 interface DisplayEntry {
   rank: number;
@@ -36,53 +36,47 @@ interface DisplayEntry {
 }
 
 export function LeaderboardViewTab() {
-  const [viewMode, setViewMode] = useState<ViewMode>('season');
+  const [viewMode, setViewMode] = useState<ViewMode>("season");
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
 
   const { data: seasons = [] } = useSeasons();
 
   // Season leaderboard (for season mode)
-  const {
-    data: seasonLeaderboard,
-    isLoading: isSeasonLoading,
-  } = useSeasonLeaderboard({
+  const { data: seasonLeaderboard, isLoading: isSeasonLoading } = useSeasonLeaderboard({
     seasonId: selectedSeasonId,
     limit: 100,
     breakdown: true,
   });
 
   // Cumulative leaderboard (for cumulative mode)
-  const {
-    data: cumulativeLeaderboard,
-    isLoading: isCumulativeLoading,
-  } = useCumulativeLeaderboard({
+  const { data: cumulativeLeaderboard, isLoading: isCumulativeLoading } = useCumulativeLeaderboard({
     limit: 100,
     breakdown: true,
-    enabled: viewMode === 'cumulative',
+    enabled: viewMode === "cumulative",
   });
 
   // Select data based on view mode
-  const isLoading = viewMode === 'season' ? isSeasonLoading : isCumulativeLoading;
+  const isLoading = viewMode === "season" ? isSeasonLoading : isCumulativeLoading;
   const entries: DisplayEntry[] = useMemo(() => {
-    if (viewMode === 'season') {
+    if (viewMode === "season") {
       return seasonLeaderboard?.entries || [];
     }
     return cumulativeLeaderboard?.entries || [];
   }, [viewMode, seasonLeaderboard, cumulativeLeaderboard]);
 
-  const totalCount = viewMode === 'season'
-    ? seasonLeaderboard?.totalCount || 0
-    : cumulativeLeaderboard?.totalCount || 0;
+  const totalCount =
+    viewMode === "season"
+      ? seasonLeaderboard?.totalCount || 0
+      : cumulativeLeaderboard?.totalCount || 0;
 
-  const calculatedAt = viewMode === 'season'
-    ? seasonLeaderboard?.calculatedAt
-    : cumulativeLeaderboard?.calculatedAt;
+  const calculatedAt =
+    viewMode === "season" ? seasonLeaderboard?.calculatedAt : cumulativeLeaderboard?.calculatedAt;
 
   // Export to CSV
   const handleExportCsv = () => {
     if (!entries.length) return;
 
-    const headers = ['Rank', 'Username', 'Platform', 'Score', 'Posts', 'Days', 'Last Activity'];
+    const headers = ["Rank", "Username", "Platform", "Score", "Posts", "Days", "Last Activity"];
     const rows = entries.map((e) => [
       e.rank,
       e.username,
@@ -93,12 +87,12 @@ export function LeaderboardViewTab() {
       e.lastActivity,
     ]);
 
-    const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
+    const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `leaderboard-${viewMode}-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `leaderboard-${viewMode}-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
   };
 
@@ -110,23 +104,23 @@ export function LeaderboardViewTab() {
           <span className="text-sm text-nasun-white/60">View Mode:</span>
           <div className="flex gap-2">
             <button
-              onClick={() => setViewMode('season')}
+              onClick={() => setViewMode("season")}
               className={cn(
-                'px-4 py-2 rounded-sm text-sm font-medium transition-all',
-                viewMode === 'season'
-                  ? 'bg-nasun-c4 text-nasun-white'
-                  : 'bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white'
+                "px-4 py-2 rounded-sm text-sm font-medium transition-all",
+                viewMode === "season"
+                  ? "bg-nasun-c4 text-nasun-white"
+                  : "bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white",
               )}
             >
               Season Leaderboard
             </button>
             <button
-              onClick={() => setViewMode('cumulative')}
+              onClick={() => setViewMode("cumulative")}
               className={cn(
-                'px-4 py-2 rounded-sm text-sm font-medium transition-all',
-                viewMode === 'cumulative'
-                  ? 'bg-nasun-c4 text-nasun-white'
-                  : 'bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white'
+                "px-4 py-2 rounded-sm text-sm font-medium transition-all",
+                viewMode === "cumulative"
+                  ? "bg-nasun-c4 text-nasun-white"
+                  : "bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white",
               )}
             >
               Cumulative (All-time)
@@ -136,7 +130,7 @@ export function LeaderboardViewTab() {
       </OuterBox>
 
       {/* Season Selector (only for season mode) */}
-      {viewMode === 'season' && (
+      {viewMode === "season" && (
         <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
           <div className="flex items-center gap-4">
             <span className="text-sm text-nasun-white/60">Season:</span>
@@ -150,11 +144,11 @@ export function LeaderboardViewTab() {
       )}
 
       {/* Cumulative Mode Notice */}
-      {viewMode === 'cumulative' && (
+      {viewMode === "cumulative" && (
         <OuterBox color="n3" padding="sm" className="w-full">
           <div className="text-sm text-nasun-white/80">
-            <strong>Cumulative View:</strong> Shows all-time rankings across all seasons.
-            This view is admin-only and requires authentication.
+            <strong>Cumulative View:</strong> Shows all-time rankings across all seasons. This view
+            is admin-only and requires authentication.
           </div>
         </OuterBox>
       )}
@@ -163,7 +157,7 @@ export function LeaderboardViewTab() {
       <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-nasun-white">
-            {viewMode === 'season' ? 'Season Leaderboard' : 'Cumulative Leaderboard'}
+            {viewMode === "season" ? "Season Leaderboard" : "Cumulative Leaderboard"}
           </h3>
           <Button
             onClick={handleExportCsv}
@@ -189,7 +183,7 @@ export function LeaderboardViewTab() {
                   <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Posts</th>
                   <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Days</th>
                   <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Score</th>
-                  {viewMode === 'season' && (
+                  {viewMode === "season" && (
                     <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Change</th>
                   )}
                 </tr>
@@ -212,18 +206,20 @@ export function LeaderboardViewTab() {
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-nasun-c5/30" />
                         )}
-                        <span className="text-nasun-white">@{entry.originalUsername || entry.username}</span>
-                        {entry.isRegistered && (
-                          <span className="text-nasun-c3 text-xs">✓</span>
-                        )}
+                        <span className="text-nasun-white">
+                          @{entry.originalUsername || entry.username}
+                        </span>
+                        {entry.isRegistered && <span className="text-nasun-c7 text-xs">✓</span>}
                       </div>
                     </td>
                     <td className="py-3 px-2 text-right text-nasun-white/80">{entry.postCount}</td>
-                    <td className="py-3 px-2 text-right text-nasun-white/80">{entry.uniqueActiveDays}</td>
+                    <td className="py-3 px-2 text-right text-nasun-white/80">
+                      {entry.uniqueActiveDays}
+                    </td>
                     <td className="py-3 px-2 text-right text-nasun-c3 font-medium">
                       {entry.userScore.toFixed(2)}
                     </td>
-                    {viewMode === 'season' && (
+                    {viewMode === "season" && (
                       <td className="py-3 px-2 text-right">
                         {entry.rankChange && (
                           <RankChangeIndicatorV3
@@ -247,9 +243,7 @@ export function LeaderboardViewTab() {
             <span>
               Showing {entries.length} of {totalCount}
             </span>
-            {calculatedAt && (
-              <span>Last updated: {new Date(calculatedAt).toLocaleString()}</span>
-            )}
+            {calculatedAt && <span>Last updated: {new Date(calculatedAt).toLocaleString()}</span>}
           </div>
         )}
       </OuterBox>

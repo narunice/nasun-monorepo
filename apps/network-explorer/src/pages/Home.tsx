@@ -128,9 +128,9 @@ export default function Home() {
         {txLoading ? (
           <div className="text-muted-foreground">Loading...</div>
         ) : recentTxs && recentTxs.length > 0 ? (
-          <div className="rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+          <div className="rounded-xl overflow-hidden border border-border/20 bg-card/60 shadow-sm backdrop-blur-md">
             <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
+              <thead className="bg-muted/50 border-b border-border/20">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">
                     Digest
@@ -143,7 +143,7 @@ export default function Home() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/20">
                 {recentTxs.map((tx) => (
                   <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">

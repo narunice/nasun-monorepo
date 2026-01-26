@@ -1,5 +1,5 @@
 /**
- * Blind - Private AI Computation
+ * Baram - Private AI Computation
  * Main Entry Point
  */
 
@@ -30,7 +30,7 @@ configureWallet({
   sessionPersist: true,
 });
 
-console.log('Blind Config:', {
+console.log('Baram Config:', {
   network: NETWORK_CONFIG.networkName,
   rpcUrl: NETWORK_CONFIG.rpcUrl,
 });

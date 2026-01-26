@@ -1,5 +1,5 @@
 /**
- * Sui Client Service - Blind contract interaction
+ * Sui Client Service - Baram contract interaction
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -11,8 +11,8 @@ let suiClient: SuiClient | null = null;
 let executorKeypair: Ed25519Keypair | null = null;
 
 // Contract configuration
-let BLIND_PACKAGE_ID = '';
-let BLIND_REGISTRY_ID = '';
+let BARAM_PACKAGE_ID = '';
+let BARAM_REGISTRY_ID = '';
 
 /**
  * Initialize Sui client and executor keypair
@@ -24,8 +24,8 @@ export function initSui(config: {
   executorPrivateKey: string;
 }): void {
   suiClient = new SuiClient({ url: config.rpcUrl });
-  BLIND_PACKAGE_ID = config.packageId;
-  BLIND_REGISTRY_ID = config.registryId;
+  BARAM_PACKAGE_ID = config.packageId;
+  BARAM_REGISTRY_ID = config.registryId;
 
   // Private key is hex-encoded 32-byte seed
   executorKeypair = Ed25519Keypair.fromSecretKey(
@@ -69,14 +69,14 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
   const client = getClient();
 
   try {
-    // Get the BlindRegistry shared object
+    // Get the BaramRegistry shared object
     const registry = await client.getObject({
-      id: BLIND_REGISTRY_ID,
+      id: BARAM_REGISTRY_ID,
       options: { showContent: true },
     });
 
     if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-      console.error('[Sui] Failed to get BlindRegistry');
+      console.error('[Sui] Failed to get BaramRegistry');
       return null;
     }
 
@@ -201,9 +201,9 @@ export async function submitProof(
   const resultHashBytes = Array.from(Buffer.from(resultHash, 'hex'));
 
   tx.moveCall({
-    target: `${BLIND_PACKAGE_ID}::blind::submit_proof`,
+    target: `${BARAM_PACKAGE_ID}::baram::submit_proof`,
     arguments: [
-      tx.object(BLIND_REGISTRY_ID), // registry
+      tx.object(BARAM_REGISTRY_ID), // registry
       tx.pure.u64(requestId), // request_id
       tx.pure.vector('u8', resultHashBytes), // result_hash
       tx.pure.u64(executionTimeMs), // execution_time_ms
@@ -240,9 +240,9 @@ export async function markExecuting(requestId: number): Promise<string> {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${BLIND_PACKAGE_ID}::blind::mark_executing`,
+    target: `${BARAM_PACKAGE_ID}::baram::mark_executing`,
     arguments: [
-      tx.object(BLIND_REGISTRY_ID),
+      tx.object(BARAM_REGISTRY_ID),
       tx.pure.u64(requestId),
       tx.object('0x6'), // Clock
     ],

@@ -3,7 +3,6 @@
  */
 
 import { RequestResult } from '../hooks/useCreateRequest';
-import { NETWORK_CONFIG } from '@/config/network';
 
 interface ResultDisplayProps {
   result: RequestResult;
@@ -57,7 +56,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           href={explorerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-blind-1 hover:text-blind-2 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-baram-1 hover:text-baram-2 transition-colors"
         >
           <span>View settlement transaction</span>
           <svg

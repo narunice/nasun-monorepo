@@ -225,7 +225,7 @@ function JsonBlock({ data, borderColor = 'border-border' }: { data: unknown; bor
       </button>
 
       {/* JSON content with custom scrollbar and top padding for button space */}
-      <pre className={`text-xs overflow-auto bg-muted/30 border ${borderColor} pt-12 pb-4 px-4 rounded-lg max-h-96 text-foreground custom-scrollbar`}>
+      <pre className={`text-xs overflow-auto bg-muted/30 border ${borderColor}/20 pt-12 pb-4 px-4 rounded-lg max-h-96 text-foreground custom-scrollbar`}>
         {jsonString}
       </pre>
     </div>

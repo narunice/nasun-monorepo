@@ -28,7 +28,7 @@ use_environment = "devnet"
 manifest_digest = "E2EF92175C2575B1EA85274B70A9CFD8DE08662B35A68669746BBE7BAC06C17A"
 deps = { MoveStdlib = "MoveStdlib_1" }
 
-[pinned.devnet.blind]
+[pinned.devnet.baram]
 source = { root = true }
 use_environment = "devnet"
 manifest_digest = "A413797A9D5097BC82647A2FCB9B619C91F10A2E7E4A39D13FC9AF8771C4A0FA"
@@ -38,40 +38,4 @@ deps = { pado_tokens = "pado_tokens", std = "MoveStdlib", sui = "Sui" }
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts" }
 use_environment = "devnet"
 manifest_digest = "D753EFE50789161503BEDFF442C2F3653AE256963623AA8BF35DD0142DB99258"
-deps = { Sui = "Sui_1" }
-
-[pinned.testnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "563c15820b27dec9cbe75f826a3b6243ef44da1a" }
-use_environment = "testnet"
-manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
-deps = {}
-
-[pinned.testnet.MoveStdlib_1]
-source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/move-stdlib" }
-use_environment = "testnet"
-manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
-deps = {}
-
-[pinned.testnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "563c15820b27dec9cbe75f826a3b6243ef44da1a" }
-use_environment = "testnet"
-manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
-deps = { MoveStdlib = "MoveStdlib" }
-
-[pinned.testnet.Sui_1]
-source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
-use_environment = "testnet"
-manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
-deps = { MoveStdlib = "MoveStdlib_1" }
-
-[pinned.testnet.blind]
-source = { root = true }
-use_environment = "testnet"
-manifest_digest = "AB5DCC87C2ED81C75902D1C35D9BCD523C129AA8B4B9DACCC201CD7F18F4462F"
-deps = { pado_tokens = "pado_tokens", std = "MoveStdlib", sui = "Sui" }
-
-[pinned.testnet.pado_tokens]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts" }
-use_environment = "testnet"
-manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
 deps = { Sui = "Sui_1" }

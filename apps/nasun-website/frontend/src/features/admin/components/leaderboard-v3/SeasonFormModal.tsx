@@ -2,9 +2,9 @@
  * SeasonFormModal - Create/Edit season modal
  */
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import type { Season, CreateSeasonRequest } from '../../types/leaderboard-v3';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import type { Season, CreateSeasonRequest } from "../../types/leaderboard-v3";
 
 interface SeasonFormModalProps {
   isOpen: boolean;
@@ -22,11 +22,11 @@ export function SeasonFormModal({
   isSubmitting,
 }: SeasonFormModalProps) {
   const [formData, setFormData] = useState<CreateSeasonRequest>({
-    seasonId: '',
-    name: '',
-    description: '',
-    startDate: '',
-    endDate: '',
+    seasonId: "",
+    name: "",
+    description: "",
+    startDate: "",
+    endDate: "",
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -37,17 +37,17 @@ export function SeasonFormModal({
         setFormData({
           seasonId: editingSeason.seasonId,
           name: editingSeason.name,
-          description: editingSeason.description || '',
+          description: editingSeason.description || "",
           startDate: editingSeason.startDate,
           endDate: editingSeason.endDate,
         });
       } else {
         setFormData({
-          seasonId: '',
-          name: '',
-          description: '',
-          startDate: '',
-          endDate: '',
+          seasonId: "",
+          name: "",
+          description: "",
+          startDate: "",
+          endDate: "",
         });
       }
       setError(null);
@@ -60,30 +60,30 @@ export function SeasonFormModal({
 
     // Validation
     if (!formData.seasonId.trim()) {
-      setError('Season ID is required');
+      setError("Season ID is required");
       return;
     }
     if (!formData.name.trim()) {
-      setError('Name is required');
+      setError("Name is required");
       return;
     }
     if (!formData.startDate) {
-      setError('Start date is required');
+      setError("Start date is required");
       return;
     }
     if (!formData.endDate) {
-      setError('End date is required');
+      setError("End date is required");
       return;
     }
     if (formData.startDate >= formData.endDate) {
-      setError('Start date must be before end date');
+      setError("Start date must be before end date");
       return;
     }
 
     try {
       await onSubmit(formData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save season');
+      setError(err instanceof Error ? err.message : "Failed to save season");
     }
   };
 
@@ -98,12 +98,9 @@ export function SeasonFormModal({
       <div className="relative bg-gray-900 border border-nasun-c5/30 rounded-sm w-full max-w-md p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-medium text-nasun-white">
-            {editingSeason ? 'Edit Season' : 'Create New Season'}
+            {editingSeason ? "Edit Season" : "Create New Season"}
           </h3>
-          <button
-            onClick={onClose}
-            className="text-nasun-white/50 hover:text-nasun-white text-xl"
-          >
+          <button onClick={onClose} className="text-nasun-white/50 hover:text-nasun-white text-xl">
             ×
           </button>
         </div>
@@ -120,7 +117,7 @@ export function SeasonFormModal({
               onChange={(e) => setFormData({ ...formData, seasonId: e.target.value.toUpperCase() })}
               placeholder="SEASON1"
               disabled={!!editingSeason}
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors font-mono text-sm disabled:opacity-50"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm disabled:opacity-50"
             />
             {!editingSeason && (
               <p className="mt-1 text-xs text-nasun-white/40">
@@ -139,7 +136,7 @@ export function SeasonFormModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Season 1"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
             />
           </div>
 
@@ -153,7 +150,7 @@ export function SeasonFormModal({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="New Year Event"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
             />
           </div>
 
@@ -167,7 +164,7 @@ export function SeasonFormModal({
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
               />
             </div>
             <div>
@@ -178,7 +175,7 @@ export function SeasonFormModal({
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c3/50 transition-colors text-sm"
+                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
               />
             </div>
           </div>
@@ -209,18 +206,8 @@ export function SeasonFormModal({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="c4"
-              size="lg"
-              className="flex-1"
-              disabled={isSubmitting}
-            >
-              {isSubmitting
-                ? 'Saving...'
-                : editingSeason
-                  ? 'Update Season'
-                  : 'Create Season'}
+            <Button type="submit" variant="c4" size="lg" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : editingSeason ? "Update Season" : "Create Season"}
             </Button>
           </div>
         </form>

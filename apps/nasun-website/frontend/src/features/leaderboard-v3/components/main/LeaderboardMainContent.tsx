@@ -58,9 +58,9 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
 
         {leaderboardData && leaderboardData.entries.length > 0 && (
           <>
-            <div className="w-full border border-nasun-c3/50 bg-gray-900/70 rounded-sm overflow-hidden">
+            <div className="w-full border border-nasun-c7/50 bg-gray-900/70 rounded-sm overflow-hidden">
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-nasun-c3/20">
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-nasun-c7/20">
                 <span className="col-span-2 text-left font-medium text-nasun-white uppercase">
                   RANK
                 </span>

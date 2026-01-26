@@ -17,16 +17,16 @@
     --popover-foreground: 40 29% 97%;
 
     /* Primary */
-    --primary: 204 47% 50%; /* #448BBB nasun-c4 */
-    --primary-foreground: 40 29% 97%;
+    --primary: 203 100% 85%; /* #B3E0FF nasun-c7 */
+    --primary-foreground: 205 46% 10%;
 
     /* Secondary */
     --secondary: 218 64% 47%; /* #2A64C5 nasun-c5 */
     --secondary-foreground: 40 29% 97%;
 
     /* Muted */
-    --muted: 205 46% 30%;
-    --muted-foreground: 40 29% 60%; /* nasun-white/60 */
+    --muted: 205 46% 25%;
+    --muted-foreground: 40 29% 70%; /* nasun-white/70 */
 
     /* Accent */
     --accent: 205 46% 30%;
@@ -37,9 +37,9 @@
     --destructive-foreground: 40 29% 97%;
 
     /* Border */
-    --border: 204 47% 50%; /* #448BBB nasun-c4 */
+    --border: 203 100% 85%; /* #B3E0FF nasun-c7 */
     --input: 205 46% 30%;
-    --ring: 204 47% 50%;
+    --ring: 203 100% 85%;
 
     /* Radius */
     --radius: 0.75rem;
@@ -63,7 +63,7 @@
     --popover-foreground: 26 18% 9%;
 
     /* Primary */
-    --primary: 204 47% 50%; /* #448BBB nasun-c4 */
+    --primary: 203 100% 40%; /* Slightly darker nasun-c7 for light mode accessibility */
     --primary-foreground: 40 29% 97%;
 
     /* Secondary */

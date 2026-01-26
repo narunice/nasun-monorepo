@@ -221,7 +221,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 1. X (Twitter) */}
             <AccountItem
               provider="twitter"
-              identifier={twitterData?.twitterHandle ? `@${twitterData.originalTwitterHandle || twitterData.twitterHandle}` : undefined}
+              identifier={
+                twitterData?.twitterHandle
+                  ? `@${twitterData.originalTwitterHandle || twitterData.twitterHandle}`
+                  : undefined
+              }
               statusBadge={
                 isTwitterPrimary ? <LoggedInBadge /> : twitterData ? <LinkedBadge /> : undefined
               }
@@ -230,7 +234,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   <Button
                     key="link"
                     size="sm"
-                    variant="filledOutlineC3"
+                    variant="filledOutlineC7"
                     onClick={handleLinkTwitter}
                     disabled={isLinking}
                   >
@@ -262,7 +266,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   <Button
                     key="link"
                     size="sm"
-                    variant="filledOutlineC3"
+                    variant="filledOutlineC7"
                     onClick={handleLinkGoogle}
                     disabled={isLinking}
                   >
@@ -305,7 +309,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   <Button
                     key="link"
                     size="sm"
-                    variant="filledOutlineC3"
+                    variant="filledOutlineC7"
                     onClick={handleLinkMetaMask}
                     disabled={isMetaMaskLinking || isLinking}
                   >
@@ -316,7 +320,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ) : // Case 2: Linked but Inactive or Different -> Activate/Switch Button
                 !isMetaMaskActive ? (
                   <div key="actions" className="flex gap-2">
-                    <Button size="sm" variant="filledOutlineC3" onClick={handleActivateMetaMask}>
+                    <Button size="sm" variant="filledOutlineC7" onClick={handleActivateMetaMask}>
                       {isDifferentWalletActive ? "Switch" : "Activate"}
                     </Button>
                     {!isMetaMaskPrimary && (
@@ -354,11 +358,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   : "Not connected"
               }
               statusBadge={isNasunConnected ? <ConnectedBadge /> : undefined}
-              actions={[
-                <div key="connect" className="nasun-wallet-connect relative z-50">
-                  <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
-                </div>,
-              ]}
+                            actions={[
+                              <div key="connect" className="nasun-wallet-connect relative z-50">
+                                <WalletConnect variant="filledOutlineC7" size="sm" dropdownPosition="bottom" dropdownAlign="right" />
+                              </div>,
+                            ]}
             >
               <p className="text-xs text-nasun-white/60 leading-relaxed">
                 * This is a prototype on Devnet. Test purpose only.

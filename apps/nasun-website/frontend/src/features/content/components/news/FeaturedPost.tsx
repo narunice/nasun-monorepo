@@ -1,8 +1,8 @@
 // sections/news/FeaturedPost.tsx
 import { Link } from "react-router-dom";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
-import { Post } from "../../../types/post.d";
-import { Tag } from "../../../ui/tag";
+import { Post } from "@/types/post.d";
+import { Tag } from "@/components/ui/tag";
 
 interface FeaturedPostProps {
   post: Post;
@@ -40,7 +40,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
 
   return (
     <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }} className="block group">
-      <article className="bg-black backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-c3/30 hover:border-nasun-c3 transition-all duration-300">
+      <article className="bg-black backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-c7/30 hover:border-nasun-c7 transition-all duration-300">
         {/* Horizontal card layout */}
         <div className="flex flex-col md:flex-row">
           {/* Left: Image */}
@@ -52,7 +52,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
                 className="block w-full h-64 md:h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
               />
             ) : (
-              <div className="w-full h-64 md:h-full min-h-[300px] bg-gradient-to-br from-nasun-c4/30 to-nasun-c3/20 flex items-center justify-center">
+              <div className="w-full h-64 md:h-full min-h-[300px] bg-gradient-to-br from-nasun-c4/30 to-nasun-c7/20 flex items-center justify-center">
                 <span className="text-white/40 text-lg">No Image</span>
               </div>
             )}
@@ -62,16 +62,16 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
           <div className="md:w-1/2 p-6 md:p-10 flex flex-col justify-center">
             {/* Featured badge */}
             <div className="flex items-center gap-3 mb-4">
-              <Tag variant="filledC3" size="sm" className="font-medium uppercase tracking-wider">
+              <Tag variant="filledc7" size="sm" className="font-medium uppercase tracking-wider">
                 Featured
               </Tag>
-              <Tag variant="outlineC3" size="sm" className="font-medium uppercase tracking-wider">
+              <Tag variant="outlinec7" size="sm" className="font-medium uppercase tracking-wider">
                 {category}
               </Tag>
             </div>
 
             {/* Title */}
-            <h2 className="text-2xl md:text-3xl font-semibold mb-4 line-clamp-3 group-hover:text-nasun-c3 transition-colors">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4 line-clamp-3 group-hover:text-nasun-c7 transition-colors">
               {title}
             </h2>
 

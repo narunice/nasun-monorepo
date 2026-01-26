@@ -22,3 +22,12 @@ version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x6dee91dceed0dc32f778ee258f63f1a1a8ac3e2e45ede095f06c0240e8c9b811"
+
+[[published]]
+source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts" }
+published-at = "0x4ad59600a98ca11f9e07b76fce24a7eb98c7201a8700f3930fb7890ca1e3ff0c"
+original-id = "0x4ad59600a98ca11f9e07b76fce24a7eb98c7201a8700f3930fb7890ca1e3ff0c"
+version = 1
+toolchain-version = "1.63.3"
+build-config = { flavor = "sui", edition = "2024" }
+upgrade-capability = "0xcb489149beadc254b874034175cdf0a9d767ca444ef471d39089b7693fa1b208"

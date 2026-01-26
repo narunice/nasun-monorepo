@@ -39,23 +39,23 @@ const BADGE_CONFIG: Record<
   "climber-1": {
     icon: "🚀",
     label: "Climber",
-    color: "text-nasun-c3",
-    bgColor: "bg-nasun-c3/10",
-    borderColor: "border-nasun-c3/20",
+    color: "text-nasun-c7",
+    bgColor: "bg-nasun-c7/10",
+    borderColor: "border-nasun-c7/20",
   },
   "climber-2": {
     icon: "🚀",
     label: "Climber",
-    color: "text-nasun-c3",
-    bgColor: "bg-nasun-c3/10",
-    borderColor: "border-nasun-c3/20",
+    color: "text-nasun-c7",
+    bgColor: "bg-nasun-c7/10",
+    borderColor: "border-nasun-c7/20",
   },
   "climber-3": {
     icon: "🚀",
     label: "Climber",
-    color: "text-nasun-c3",
-    bgColor: "bg-nasun-c3/10",
-    borderColor: "border-nasun-c3/20",
+    color: "text-nasun-c7",
+    bgColor: "bg-nasun-c7/10",
+    borderColor: "border-nasun-c7/20",
   },
 };
 

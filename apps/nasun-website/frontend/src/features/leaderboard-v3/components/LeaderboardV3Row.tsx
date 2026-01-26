@@ -77,11 +77,11 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
               <span className="text-gray-100 font-medium">{entry.displayName}</span>
               {entry.isRegistered && (
                 <span
-                  className="inline-flex items-center justify-center w-4 h-4 bg-nasun-c3/20 rounded-full flex-shrink-0"
+                  className="inline-flex items-center justify-center w-4 h-4 bg-nasun-c7/20 rounded-full flex-shrink-0"
                   title="Registered Member"
                 >
                   <svg
-                    className="w-2.5 h-2.5 text-nasun-c3"
+                    className="w-2.5 h-2.5 text-nasun-c7"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -99,7 +99,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
             href={`https://x.com/${entry.username}`}
             target="_blank"
             rel="noopener noreferrer"
-            className={`hover:text-nasun-c3 truncate block ${
+            className={`hover:text-nasun-c7 truncate block ${
               entry.displayName ? "text-[11px] text-nasun-white/60" : "text-gray-100 font-medium"
             }`}
           >

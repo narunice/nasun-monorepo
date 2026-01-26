@@ -1,11 +1,11 @@
 /**
- * Blind - Main App Component
+ * Baram - Main App Component
  */
 
 import { WalletConnect, BalanceDisplay } from '@nasun/wallet-ui';
 import { useWallet } from '@nasun/wallet';
 import { RequestForm } from './features/request/components/RequestForm';
-import { NETWORK_CONFIG, BLIND_CONFIG } from './config/network';
+import { NETWORK_CONFIG, BARAM_CONFIG } from './config/network';
 
 export default function App() {
   const { status } = useWallet();
@@ -17,12 +17,12 @@ export default function App() {
       <header className="border-b border-[var(--color-border)] px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blind-1 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-baram-1 flex items-center justify-center">
               <span className="text-white font-bold text-sm">B</span>
             </div>
             <div>
               <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                Blind
+                Baram
               </h1>
               <p className="text-xs text-[var(--color-text-muted)]">
                 Private AI Computation
@@ -43,8 +43,8 @@ export default function App() {
         {!isConnected ? (
           // Not Connected State
           <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-2xl bg-blind-1/10 flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-blind-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-16 h-16 rounded-2xl bg-baram-1/10 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-baram-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
@@ -79,7 +79,7 @@ export default function App() {
                 <li>Result delivered, payment released automatically</li>
               </ol>
               <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-                Executor: {BLIND_CONFIG.executorAddress.slice(0, 10)}...
+                Executor: {BARAM_CONFIG.executorAddress.slice(0, 10)}...
               </p>
             </div>
           </div>

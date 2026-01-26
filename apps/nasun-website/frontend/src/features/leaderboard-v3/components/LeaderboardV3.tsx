@@ -76,7 +76,7 @@ export function LeaderboardV3() {
       {/* Loading State */}
       {leaderboardLoading && (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nasun-c3/50"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nasun-c7/50"></div>
         </div>
       )}
 

@@ -6,25 +6,25 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
-export interface BlindStackProps extends cdk.StackProps {
+export interface BaramStackProps extends cdk.StackProps {
   // Contract addresses
-  blindPackageId: string;
-  blindRegistryId: string;
+  baramPackageId: string;
+  baramRegistryId: string;
 
   // Sui RPC URL
   suiRpcUrl?: string;
 }
 
-export class BlindStack extends cdk.Stack {
+export class BaramStack extends cdk.Stack {
   public readonly apiGateway: apigateway.RestApi;
   public readonly executorLambda: lambda.Function;
 
-  constructor(scope: Construct, id: string, props: BlindStackProps) {
+  constructor(scope: Construct, id: string, props: BaramStackProps) {
     super(scope, id, props);
 
     const {
-      blindPackageId,
-      blindRegistryId,
+      baramPackageId,
+      baramRegistryId,
       suiRpcUrl = 'https://rpc.devnet.nasun.io',
     } = props;
 
@@ -34,18 +34,18 @@ export class BlindStack extends cdk.Stack {
     const openaiSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       'OpenAISecret',
-      'blind/openai'
+      'baram/openai'
     );
 
     const executorSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       'ExecutorSecret',
-      'blind/executor'
+      'baram/executor'
     );
 
     // Create Lambda function for executor
     this.executorLambda = new lambda.Function(this, 'ExecutorLambda', {
-      functionName: 'blind-executor',
+      functionName: 'baram-executor',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(
@@ -55,12 +55,12 @@ export class BlindStack extends cdk.Stack {
       memorySize: 512,
       environment: {
         SUI_RPC_URL: suiRpcUrl,
-        BLIND_PACKAGE_ID: blindPackageId,
-        BLIND_REGISTRY_ID: blindRegistryId,
-        OPENAI_SECRET_NAME: 'blind/openai',
-        EXECUTOR_SECRET_NAME: 'blind/executor',
+        BARAM_PACKAGE_ID: baramPackageId,
+        BARAM_REGISTRY_ID: baramRegistryId,
+        OPENAI_SECRET_NAME: 'baram/openai',
+        EXECUTOR_SECRET_NAME: 'baram/executor',
       },
-      description: 'Blind AI Executor - Processes AI requests and submits proofs on-chain',
+      description: 'Baram AI Executor - Processes AI requests and submits proofs on-chain',
     });
 
     // Grant Lambda access to secrets
@@ -68,9 +68,9 @@ export class BlindStack extends cdk.Stack {
     executorSecret.grantRead(this.executorLambda);
 
     // Create API Gateway
-    this.apiGateway = new apigateway.RestApi(this, 'BlindApi', {
-      restApiName: 'Blind Executor API',
-      description: 'API for Blind AI computation execution',
+    this.apiGateway = new apigateway.RestApi(this, 'BaramApi', {
+      restApiName: 'Baram Executor API',
+      description: 'API for Baram AI computation execution',
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
@@ -107,7 +107,7 @@ export class BlindStack extends cdk.Stack {
     // Outputs
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: this.apiGateway.url,
-      description: 'Blind Executor API endpoint',
+      description: 'Baram Executor API endpoint',
     });
 
     new cdk.CfnOutput(this, 'ExecutorLambdaArn', {

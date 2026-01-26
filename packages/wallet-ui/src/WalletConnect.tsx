@@ -305,12 +305,9 @@ export function WalletConnect({
 
   // NSA (Smart Account) state
   const nsaIsInitialized = useNsaStore((s) => s.isInitialized);
-  const _nsaActiveRecoveryId = useNsaStore((s) => s.activeRecoveryId);
   const nsaPendingProposals = useNsaStore((s) => s.pendingProposals);
   const nsaIncomingInvitations = useNsaStore((s) => s.incomingInvitations);
   const nsaAccountState = useNsaStore((s) => s.accountState);
-  const _nsaBannerDismissed = useUISettingsStore((s) => s.nsaBannerDismissed);
-  const _dismissNsaBanner = useUISettingsStore((s) => s.dismissNsaBanner);
   const { refreshIncomingInvitations } = useNasunSmartAccount();
 
   // Recovery Readiness calculation
@@ -400,7 +397,6 @@ export function WalletConnect({
     data: nfts = [],
     isLoading: nftsLoading,
     hasNextPage: _nftsHasNextPage,
-    nextCursor: nftsNextCursor,
   } = useNFTs({
     limit: 50,
     cursor: nftCursor,

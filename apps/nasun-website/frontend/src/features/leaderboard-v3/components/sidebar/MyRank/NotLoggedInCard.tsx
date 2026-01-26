@@ -8,8 +8,8 @@ export function NotLoggedInCard() {
   return (
     <div className="p-5 bg-gradient-to-br from-nasun-c5/20 to-nasun-c4/30 border border-white/10 rounded-sm">
       <div className="flex items-start gap-3 mb-4">
-        <div className="p-2 bg-nasun-c3/20 rounded-lg">
-          <Trophy className="w-5 h-5 text-nasun-c3" />
+        <div className="p-2 bg-nasun-c7/20 rounded-lg">
+          <Trophy className="w-5 h-5 text-nasun-c7" />
         </div>
         <div>
           <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">My Rank</h4>

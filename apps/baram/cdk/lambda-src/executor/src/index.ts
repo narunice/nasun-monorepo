@@ -1,5 +1,5 @@
 /**
- * Blind Executor Lambda Handler
+ * Baram Executor Lambda Handler
  *
  * Flow:
  * 1. Receive execute request with requestId and encrypted prompt
@@ -66,14 +66,14 @@ async function loadSecrets(): Promise<void> {
 
   // Load OpenAI API key
   const openaiSecret = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: process.env.OPENAI_SECRET_NAME || 'blind/openai' })
+    new GetSecretValueCommand({ SecretId: process.env.OPENAI_SECRET_NAME || 'baram/openai' })
   );
   const openaiData = JSON.parse(openaiSecret.SecretString!);
   openaiApiKey = openaiData.apiKey;
 
   // Load executor private key
   const executorSecret = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: process.env.EXECUTOR_SECRET_NAME || 'blind/executor' })
+    new GetSecretValueCommand({ SecretId: process.env.EXECUTOR_SECRET_NAME || 'baram/executor' })
   );
   const executorData = JSON.parse(executorSecret.SecretString!);
   executorPrivateKey = executorData.privateKey;
@@ -95,8 +95,8 @@ async function initialize(): Promise<void> {
   // Initialize Sui client
   initSui({
     rpcUrl: process.env.SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
-    packageId: process.env.BLIND_PACKAGE_ID || '',
-    registryId: process.env.BLIND_REGISTRY_ID || '',
+    packageId: process.env.BARAM_PACKAGE_ID || '',
+    registryId: process.env.BARAM_REGISTRY_ID || '',
     executorPrivateKey: executorPrivateKey!,
   });
 
@@ -228,8 +228,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         headers: corsHeaders,
         body: JSON.stringify({
           executor: getExecutorAddress(),
-          packageId: process.env.BLIND_PACKAGE_ID,
-          registryId: process.env.BLIND_REGISTRY_ID,
+          packageId: process.env.BARAM_PACKAGE_ID,
+          registryId: process.env.BARAM_REGISTRY_ID,
           supportedModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
           network: 'Nasun Devnet',
         }),

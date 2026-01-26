@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { SectionLayout } from "../../../layout/SectionLayout";
-import { PageTitle } from "../../../ui/PageTitle";
-import { Button } from "../../../ui/button";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { PageTitle } from "@/components/ui/PageTitle";
+import { Button } from "@/components/ui/button";
 import usePosts from "../../../../hooks/wordpress/usePosts";
 import NewsCard from "./NewsCard";
 import FeaturedPost from "./FeaturedPost";
@@ -14,7 +14,7 @@ const POSTS_PER_PAGE = 10;
 
 function CardSkeleton() {
   return (
-    <div className="bg-black rounded-2xl overflow-hidden border border-nasun-c3/30 animate-pulse">
+    <div className="bg-black rounded-2xl overflow-hidden border border-nasun-c7/30 animate-pulse">
       <div className="aspect-video bg-white/5" />
       <div className="p-6">
         <div className="flex items-center justify-between mb-3">
@@ -31,7 +31,7 @@ function CardSkeleton() {
 
 function FeaturedSkeleton() {
   return (
-    <div className="bg-black rounded-2xl overflow-hidden border border-nasun-c3/30 animate-pulse">
+    <div className="bg-black rounded-2xl overflow-hidden border border-nasun-c7/30 animate-pulse">
       <div className="flex flex-col md:flex-row">
         <div className="md:w-1/2 h-64 md:h-80 bg-white/5" />
         <div className="md:w-1/2 p-6 md:p-10">

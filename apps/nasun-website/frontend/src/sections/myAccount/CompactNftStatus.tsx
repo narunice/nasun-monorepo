@@ -42,7 +42,7 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
     <h6 className="text-nasun-white ">{title}</h6>
     <div className="flex items-center justify-between">
       {isLoading ? (
-        <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c3 border-t-transparent" />
+        <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c7 border-t-transparent" />
       ) : isRegistered ? (
         <span className="text-green-400 text-sm">✓ Registered</span>
       ) : (
@@ -57,7 +57,7 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
             )
           : renderJoinButton ||
             (onJoin && (
-              <Button onClick={onJoin} variant="filledOutlineC3" size="sm">
+              <Button onClick={onJoin} variant="filledOutlineC7" size="sm">
                 Join
               </Button>
             )))}
@@ -193,7 +193,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
           onWithdraw={handleGenesisWithdraw}
           renderJoinButton={
             <JoinWhitelistButton
-              variant="filledOutlineC3"
+              variant="filledOutlineC7"
               size="sm"
               onSuccess={() => refetchFounders()}
             >

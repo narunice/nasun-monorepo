@@ -32,7 +32,7 @@ function ExecutorCard({
       disabled={disabled}
       className={`w-full p-3 rounded-lg border text-left transition-all ${
         isSelected
-          ? 'border-blind-1 bg-blind-1/10'
+          ? 'border-baram-1 bg-baram-1/10'
           : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] hover:border-[var(--color-text-muted)]'
       } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
@@ -113,7 +113,7 @@ export function ExecutorSelector({
         <p className="text-sm text-[var(--color-error)] mb-2">{error}</p>
         <button
           onClick={refresh}
-          className="text-sm text-blind-1 hover:underline"
+          className="text-sm text-baram-1 hover:underline"
         >
           Retry
         </button>
