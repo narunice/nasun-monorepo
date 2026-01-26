@@ -90,3 +90,38 @@ export function formatDuration(ms: number): string {
   const remainingSeconds = seconds % 60;
   return `${minutes}m ${remainingSeconds}s`;
 }
+
+// Truncate generic ID
+export function truncateId(id: string, startLen: number = 10, endLen: number = 8): string {
+  if (id.length <= startLen + endLen + 3) return id;
+  return `${id.slice(0, startLen)}...${id.slice(-endLen)}`;
+}
+
+// Token Balance Format (considering decimals)
+// Known decimals: NSN=9, NUSDC=6, NBTC=8
+export function formatTokenBalance(balance: string, coinType: string): string {
+  const value = BigInt(balance);
+
+  // Known decimals
+  let decimals = 9; // Default (NSN/SUI)
+  if (coinType.includes('::nusdc::')) decimals = 6;
+  else if (coinType.includes('::nbtc::')) decimals = 8;
+
+  const divisor = BigInt(10 ** decimals);
+  const integerPart = value / divisor;
+  const remainder = value % divisor;
+
+  if (remainder === BigInt(0)) {
+    return integerPart.toLocaleString();
+  }
+
+  // Max 4 fractional digits
+  const fractionalStr = remainder.toString().padStart(decimals, '0');
+  const trimmed = fractionalStr.slice(0, 4).replace(/0+$/, '');
+
+  if (trimmed === '') {
+    return integerPart.toLocaleString();
+  }
+
+  return `${integerPart.toLocaleString()}.${trimmed}`;
+}
