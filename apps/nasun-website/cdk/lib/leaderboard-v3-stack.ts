@@ -437,6 +437,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.snapshotsTable.grantReadWriteData(generateSnapshotLambda); // Write snapshots, read previous
     this.snapshotsTable.grantReadData(getTopClimbersLambda); // Read snapshots for comparison
     this.seasonsTable.grantReadData(getTopClimbersLambda); // Read season info
+    this.accountsTable.grantReadData(getTopClimbersLambda); // Read banned accounts
     this.postsTable.grantReadData(adminSeasonsLambda); // Check posts before delete
 
     // Admin Stats permissions (Phase 7)

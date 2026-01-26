@@ -1,12 +1,13 @@
 /**
- * Advanced Mode Toggle Component
+ * Pro Mode Toggle Component
  *
- * Allows users to switch between simple and advanced wallet modes.
- * Advanced mode reveals additional features like:
+ * Allows users to switch between simple and pro wallet modes.
+ * Pro mode reveals additional features like:
  * - Smart Account status
  * - Session Key management
  * - ZK-ID proofs
  * - WalletConnect sessions
+ * - Multi-chain support
  */
 
 import { useUISettingsStore } from './stores/uiSettingsStore';
@@ -36,11 +37,11 @@ export function AdvancedToggle({
               compact ? 'text-sm' : ''
             }`}
           >
-            Advanced Mode
+            Pro Mode
           </span>
           {showDescription && (
             <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-              Show developer tools and detailed settings
+              Unlock multi-chain support and advanced features
             </p>
           )}
         </div>
@@ -59,7 +60,7 @@ export function AdvancedToggle({
               : 'bg-gray-200 dark:bg-zinc-600'
           }`}
         >
-          <span className="sr-only">Toggle advanced mode</span>
+          <span className="sr-only">Toggle pro mode</span>
           <span
             className={`pointer-events-none inline-block ${
               compact ? 'h-4 w-4' : 'h-5 w-5'
