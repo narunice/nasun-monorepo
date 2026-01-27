@@ -80,10 +80,10 @@ export function TokenFaucetButton({
             : message?.type === 'error'
             ? 'bg-red-500/20 text-red-400'
             : needsNsnFirst
-            ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400'
-            : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
+            ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-500 opacity-50'
+            : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-500 disabled:opacity-50'
           }
-          disabled:opacity-50 disabled:cursor-not-allowed
+          disabled:cursor-not-allowed
           ${className}`}
         title={needsNsnFirst ? nsnRequiredMessage : `Get ${symbol} from Faucet`}
       >
@@ -114,10 +114,10 @@ export function TokenFaucetButton({
             : message?.type === 'error'
             ? 'bg-red-500/20 text-red-400'
             : needsNsnFirst
-            ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400'
-            : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
+            ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-500 opacity-50'
+            : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-500 disabled:opacity-50'
           }
-          disabled:opacity-50 disabled:cursor-not-allowed
+          disabled:cursor-not-allowed
           flex items-center gap-1.5
           ${className}`}
         title={needsNsnFirst ? nsnRequiredMessage : undefined}
@@ -147,7 +147,7 @@ export function TokenFaucetButton({
       )}
       </button>
       {needsNsnFirst && (
-        <p className="text-xs text-amber-500 dark:text-amber-400 mt-1">
+        <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">
           NSN required for gas fees
         </p>
       )}

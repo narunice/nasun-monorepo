@@ -1553,21 +1553,6 @@ export function WalletConnect({
                 <AdvancedToggle compact showDescription={false} />
               </div>
 
-              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
-
-              {/* Session */}
-              <button
-                onClick={() => {
-                  zkLogout();
-                  setShowDropdown(false);
-                }}
-                className="w-full px-3 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Disconnect
-              </button>
             </div>
           )}
 
@@ -1589,6 +1574,22 @@ export function WalletConnect({
             </div>
           )}
 
+          {/* Session Actions - Always visible */}
+          <div className="border-t border-gray-200 dark:border-zinc-700 px-3 py-2">
+            <button
+              onClick={() => {
+                zkLogout();
+                setShowDropdown(false);
+              }}
+              className="w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
+
           {/* NFT Detail Modal for zkLogin */}
           {selectedNFT && (
             <NFTDetail
@@ -1599,37 +1600,6 @@ export function WalletConnect({
               }}
             />
           )}
-
-          {/* Pro Mode Toggle for zkLogin */}
-          <div className="px-3 py-2 border-t border-gray-200 dark:border-zinc-700">
-            <AdvancedToggle compact showDescription={false} />
-          </div>
-
-          {/* Disconnect Button */}
-          <div className="border-t border-gray-200 dark:border-zinc-700">
-            <button
-              onClick={() => {
-                zkLogout();
-                setShowDropdown(false);
-              }}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-              Disconnect
-            </button>
-          </div>
-
-          {/* Network Selector */}
-          <div className="border-t border-gray-200 dark:border-zinc-700">
-            <NetworkSelector />
-          </div>
         </div>
       );
     }
@@ -2152,31 +2122,6 @@ export function WalletConnect({
                 <AdvancedToggle compact showDescription={false} />
               </div>
 
-              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
-
-              {/* Session */}
-              <button
-                onClick={() => {
-                  lockWallet();
-                  setShowDropdown(false);
-                }}
-                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3"
-              >
-                <svg className="w-4 h-4 text-gray-500 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Lock Wallet
-              </button>
-
-              <button
-                onClick={handleDelete}
-                className="w-full px-3 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete Wallet
-              </button>
             </div>
           )}
 
@@ -2197,6 +2142,33 @@ export function WalletConnect({
               />
             </div>
           )}
+
+          {/* Session Actions - Always visible */}
+          <div className="border-t border-gray-200 dark:border-zinc-700 px-3 py-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  lockWallet();
+                  setShowDropdown(false);
+                }}
+                className="flex-1 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Lock
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Remove
+              </button>
+            </div>
+          </div>
 
           {/* NFT Detail Modal */}
           {selectedNFT && (
