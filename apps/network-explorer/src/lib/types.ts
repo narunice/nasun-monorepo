@@ -1,4 +1,4 @@
-import type { SuiObjectResponse, SuiTransactionBlockResponse } from '@mysten/sui/client';
+import type { SuiObjectResponse } from '@mysten/sui/client';
 
 export interface AddressInfo {
   balance: {

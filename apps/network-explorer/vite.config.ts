@@ -21,4 +21,12 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ['@scure/bip39', '@scure/bip39/wordlists/english.js'],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+  },
 })

@@ -1,8 +1,9 @@
 import { TPSChart, EpochProgress } from '../charts';
 import type { EpochInfo } from '../../lib/types';
+import type { TPSDataPoint } from '../../hooks/types';
 
 interface NetworkActivityChartsProps {
-  tpsHistory: { timestamp: number; tps: number }[];
+  tpsHistory: TPSDataPoint[];
   epochInfo: EpochInfo | undefined;
 }
 

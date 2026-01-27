@@ -4,7 +4,7 @@ import { formatObjectType } from '../../lib/format';
 import type { SuiObjectChange } from '@mysten/sui/client';
 
 interface TransactionObjectChangesProps {
-  objectChanges: SuiObjectChange[] | undefined;
+  objectChanges: SuiObjectChange[] | null | undefined;
 }
 
 export default function TransactionObjectChanges({ objectChanges }: TransactionObjectChangesProps) {
