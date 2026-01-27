@@ -65,6 +65,7 @@ export default defineConfig(({ mode }) => {
         "@assets": path.resolve(__dirname, "./src/assets"),
         "./aws-exports": path.resolve(__dirname, "src/config/aws-exports.ts"),
       },
+      preserveSymlinks: true,
     },
 
     optimizeDeps: {
