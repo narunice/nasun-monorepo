@@ -398,15 +398,21 @@ BARAM_SPOT_PRICE=0.10
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                     │
 │  ┌───────────────────────────────────────────────────────────────────────────────┐  │
-│  │  baram.move (includes pado_tokens)                                            │  │
-│  │  Package: 0x85dcb01f178587080052e9e78fa2a1c73cddaf175f48b2f99730d5c5b7fd08e3  │  │
-│  │  BaramRegistry: 0xd263b1eb7d7e06ed0dc1d257c5f387555f9b8d1a0c2d6d5b010078082... │  │
+│  │  baram.move                                                                   │  │
+│  │  Package: 0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f  │  │
+│  │  BaramRegistry: 0x52427e24315a444e9aa07ecb93df5a3392e1cb5d5bec8aba90c4c9e...  │  │
 │  └───────────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                     │
 │  ┌───────────────────────────────────────────────────────────────────────────────┐  │
 │  │  baram_executor.move                                                          │  │
 │  │  Package: 0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5  │  │
 │  │  ExecutorRegistry: 0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12...  │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  devnet_tokens (unified NUSDC/NBTC)                                           │  │
+│  │  Package: 0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017  │  │
+│  │  TokenFaucet: 0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79...  │  │
 │  └───────────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                     │
 └─────────────────────────────────────────────────────────────────────────────────────┘
@@ -421,10 +427,18 @@ BARAM_SPOT_PRICE=0.10
 ### Baram Contract (V6)
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0x85dcb01f178587080052e9e78fa2a1c73cddaf175f48b2f99730d5c5b7fd08e3` |
-| BaramRegistry (shared) | `0xd263b1eb7d7e06ed0dc1d257c5f387555f9b8d1a0c2d6d5b0100780821d520b1` |
-| UpgradeCap | `0x10b73ef592e65d46e346aa0498b51c4e942b6f2582ab94d1700007e2e08d2c3d` |
-| NUSDC Type | `0x85dcb01f178587080052e9e78fa2a1c73cddaf175f48b2f99730d5c5b7fd08e3::nusdc::NUSDC` |
+| Package ID | `0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f` |
+| BaramRegistry (shared) | `0x52427e24315a444e9aa07ecb93df5a3392e1cb5d5bec8aba90c4c9eecaf77d3f` |
+| UpgradeCap | `0xa9a6ee0412639af01e630ce23d38b246a88bdfd3ee8db5e3634ce45fa1eefe62` |
+
+### Unified Tokens (devnet_tokens)
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017` |
+| TokenFaucet (shared) | `0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14` |
+| ClaimRecord (shared) | `0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8` |
+| NUSDC Type | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017::nusdc::NUSDC` |
+| NBTC Type | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017::nbtc::NBTC` |
 
 ### Baram Executor Registry (V6)
 | 항목 | 주소 |
