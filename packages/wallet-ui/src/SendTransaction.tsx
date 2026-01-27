@@ -4,19 +4,25 @@
  * Enhanced with Clear Signing UI elements for transaction clarity
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useTokenTransaction,
+  useEVMTransaction,
   useMultiBalance,
   useWallet,
   useZkLogin,
   useLedger,
+  useChain,
+  useEVMBalance,
+  useEVMGasEstimate,
+  getStoredEVMAddress,
   isValidAddress,
   getAllTokens,
   getTokenByType,
   NATIVE_TOKEN,
   useAddressStatus,
   useAddressBook,
+  type TokenConfig,
 } from '@nasun/wallet';
 import { TokenSelector } from './TokenSelector';
 import { CopyableAddress } from './CopyableAddress';
@@ -36,48 +42,143 @@ interface SendTransactionProps {
 // Minimum gas balance required for non-native token transfers
 const MIN_GAS_BALANCE = 0.01;
 
-export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', initialRecipient }: SendTransactionProps) {
+export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecipient }: SendTransactionProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
+  const { chain, isEVM } = useChain();
   const { data: balances } = useMultiBalance();
-  const { sendTokenTransaction, isPending, error, lastResult, clearError, clearResult } =
-    useTokenTransaction();
+
+  // Move chain transaction hook
+  const {
+    sendTokenTransaction,
+    isPending: isMovesPending,
+    error: moveError,
+    lastResult: moveLastResult,
+    clearError: clearMoveError,
+    clearResult: clearMoveResult,
+  } = useTokenTransaction();
+
+  // EVM chain transaction hook
+  const {
+    sendTransfer: sendEVMTransfer,
+    isPending: isEVMPending,
+    error: evmError,
+    lastResult: evmLastResult,
+    clearError: clearEVMError,
+    clearResult: clearEVMResult,
+  } = useEVMTransaction();
+
+  // Unified state based on chain type
+  const isPending = isEVM ? isEVMPending : isMovesPending;
+  const error = isEVM ? evmError : moveError;
+  const clearError = isEVM ? clearEVMError : clearMoveError;
+  const clearResult = isEVM ? clearEVMResult : clearMoveResult;
+
+  // Unified last result - compute after amount is available
+  const getLastResult = () => {
+    if (isEVM && evmLastResult) {
+      return {
+        status: evmLastResult.status,
+        digest: evmLastResult.hash,
+      };
+    }
+    return moveLastResult;
+  };
+  const lastResult = getLastResult();
+
   const { recordTransaction } = useAddressBook();
+
+  // Get connected address (Move chain) and EVM address
+  const connectedAddress = account?.address || zkState?.address;
+  const storedEVMAddress = isEVM ? getStoredEVMAddress() : null;
+  const evmAddressForBalance = storedEVMAddress ?? undefined;
+
+  // EVM balance (only fetched when on EVM chain with EVM address)
+  const { balance: evmBalance } = useEVMBalance(evmAddressForBalance);
+
+  // EVM gas estimate (real-time gas price)
+  const { data: gasEstimate, isLoading: isGasLoading } = useEVMGasEstimate();
+
+  // Get chain-specific tokens
+  const getChainTokens = (): TokenConfig[] => {
+    if (isEVM) {
+      // EVM chain: show native currency (ETH, MATIC, etc.)
+      return [{
+        symbol: chain.nativeCurrency.symbol,
+        name: chain.nativeCurrency.name,
+        decimals: chain.nativeCurrency.decimals,
+        type: 'native', // EVM native token marker
+      }];
+    }
+    // Move chain (Nasun): show registered tokens
+    return getAllTokens();
+  };
+
+  // Chain-aware address validation
+  const isValidChainAddress = (address: string): boolean => {
+    if (!address) return false;
+    if (isEVM) {
+      // EVM address: 0x + 40 hex chars
+      return /^0x[a-fA-F0-9]{40}$/.test(address);
+    }
+    // Sui/Nasun address: 0x + 64 hex chars
+    return isValidAddress(address);
+  };
+
+  const tokens = getChainTokens();
+  const chainDefaultToken = isEVM ? chain.nativeCurrency.symbol : 'NSN';
 
   const [recipient, setRecipient] = useState(initialRecipient || '');
   const [amount, setAmount] = useState('');
-  const [selectedToken, setSelectedToken] = useState(defaultToken);
+  const [selectedToken, setSelectedToken] = useState(defaultToken || chainDefaultToken);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLedgerSigning, setIsLedgerSigning] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
+  // Update selected token when chain changes
+  useEffect(() => {
+    // If current token is not available on the new chain, switch to default
+    const tokenExists = tokens.some((t) => t.symbol === selectedToken);
+    if (!tokenExists) {
+      setSelectedToken(chainDefaultToken);
+    }
+  }, [chain.id, tokens, selectedToken, chainDefaultToken]);
 
   // Address book status (must be after recipient state declaration)
   const addressStatus = useAddressStatus(recipient);
 
   // Get selected token config
-  const tokens = getAllTokens();
-  const tokenConfig = tokens.find((t) => t.symbol === selectedToken) || NATIVE_TOKEN;
+  const tokenConfig = tokens.find((t) => t.symbol === selectedToken) || tokens[0] || NATIVE_TOKEN;
 
-  // Get balance for selected token
+  // Get balance for selected token (chain-aware)
   const getSelectedBalance = (): string => {
+    if (isEVM) {
+      // EVM chain: use EVM balance
+      return evmBalance?.formatted || '0';
+    }
+    // Move chain: use multi-balance
     if (!balances) return '0';
     if (selectedToken === 'NSN') return balances.native.formatted;
     return balances.tokens[selectedToken]?.formatted || '0';
   };
 
-  // Get native balance for gas check
+  // Get native balance for gas check (chain-aware)
   const getNativeBalance = (): number => {
+    if (isEVM) {
+      return evmBalance ? parseFloat(evmBalance.formatted) : 0;
+    }
     if (!balances) return 0;
     return parseFloat(balances.native.formatted);
   };
 
   // Check if we have enough gas for non-native token transfers
-  const hasEnoughGas = selectedToken === 'NSN' || getNativeBalance() >= MIN_GAS_BALANCE;
+  // EVM: native token is always used for gas, so check is always true for native transfers
+  const nativeSymbol = isEVM ? chain.nativeCurrency.symbol : 'NSN';
+  const hasEnoughGas = selectedToken === nativeSymbol || getNativeBalance() >= MIN_GAS_BALANCE;
 
   // Check if connected via traditional wallet OR zkLogin
   const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn;
-  const connectedAddress = account?.address || zkState?.address;
 
   // Wallet not connected
   if (!isWalletConnected || !connectedAddress) {
@@ -90,10 +191,15 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
 
   // Success result display
   if (lastResult?.status === 'success') {
-    // Get token info from result if available
-    const successToken = lastResult.tokenType
-      ? getTokenByType(lastResult.tokenType)?.symbol || selectedToken
-      : selectedToken;
+    // Get token info from result if available (Move chain has tokenType, EVM doesn't)
+    const successToken = isEVM
+      ? selectedToken
+      : 'tokenType' in lastResult && lastResult.tokenType
+        ? getTokenByType(lastResult.tokenType)?.symbol || selectedToken
+        : selectedToken;
+
+    // Get amount from result (Move) or state (EVM)
+    const successAmount = 'amount' in lastResult ? lastResult.amount : amount;
 
     return (
       <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
@@ -107,7 +213,10 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
             <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
-              {lastResult.amount} {successToken} sent successfully
+              {successAmount} {successToken} sent successfully
+            </p>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+              on {chain.name}
             </p>
           </div>
 
@@ -152,7 +261,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
   }
 
   // Check if this is a new address (never sent to before)
-  const isNewAddress = isValidAddress(recipient) && !addressStatus.isKnown;
+  const isNewAddress = isValidChainAddress(recipient) && !addressStatus.isKnown;
 
   // Determine risk level for Clear Signing status badge
   const getRiskLevel = () => {
@@ -223,11 +332,25 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
               Estimated Gas Fee
             </p>
             <p className="text-sm text-gray-900 dark:text-white mt-1">
-              ≈ 0.003 <span className="text-blue-400">NSN</span>
+              {isEVM ? (
+                isGasLoading ? (
+                  <span className="text-gray-500 dark:text-zinc-400">Loading...</span>
+                ) : gasEstimate ? (
+                  <>≈ {gasEstimate.estimatedTransferFee} <span className="text-blue-400">{gasEstimate.symbol}</span>
+                    <span className="text-xs text-gray-400 dark:text-zinc-500 ml-2">
+                      ({gasEstimate.gasPriceGwei} gwei)
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-500 dark:text-zinc-400">Unable to estimate</span>
+                )
+              ) : (
+                <>≈ 0.003 <span className="text-blue-400">{nativeSymbol}</span></>
+              )}
             </p>
-            {selectedToken !== 'NSN' && (
+            {selectedToken !== nativeSymbol && (
               <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
-                Available for gas: {getNativeBalance().toFixed(4)} NSN
+                Available for gas: {getNativeBalance().toFixed(4)} {nativeSymbol}
               </p>
             )}
           </div>
@@ -260,9 +383,9 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-zinc-400">Network</span>
-                  <span className="text-gray-900 dark:text-white">Nasun Devnet</span>
+                  <span className="text-gray-900 dark:text-white">{chain.name}</span>
                 </div>
-                {selectedToken !== 'NSN' && (
+                {selectedToken !== 'NSN' && !isEVM && (
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-zinc-400">Token Type</span>
                     <span className="text-gray-900 dark:text-white font-mono text-[10px] truncate max-w-[180px]">
@@ -273,7 +396,10 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-zinc-400">Sender</span>
                   <span className="text-gray-900 dark:text-white font-mono">
-                    {connectedAddress?.slice(0, 8)}...{connectedAddress?.slice(-6)}
+                    {(() => {
+                      const senderAddr = isEVM ? storedEVMAddress : connectedAddress;
+                      return senderAddr ? `${senderAddr.slice(0, 8)}...${senderAddr.slice(-6)}` : '-';
+                    })()}
                   </span>
                 </div>
                 {addressStatus.entry?.isTrusted && (
@@ -311,15 +437,28 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
                 if (isLedgerConnected) {
                   setIsLedgerSigning(true);
                 }
-                const result = await sendTokenTransaction({
-                  to: recipient,
-                  amount,
-                  tokenType: tokenConfig.type,
-                });
-                if (result.status === 'success') {
-                  // Record transaction in address book
-                  recordTransaction(recipient);
-                  onSuccess?.(result.digest);
+
+                if (isEVM) {
+                  // EVM chain: use EVM transaction
+                  const result = await sendEVMTransfer({
+                    to: recipient,
+                    amount,
+                  });
+                  if (result.status === 'success') {
+                    recordTransaction(recipient);
+                    onSuccess?.(result.hash);
+                  }
+                } else {
+                  // Move chain: use token transaction
+                  const result = await sendTokenTransaction({
+                    to: recipient,
+                    amount,
+                    tokenType: tokenConfig.type,
+                  });
+                  if (result.status === 'success') {
+                    recordTransaction(recipient);
+                    onSuccess?.(result.digest);
+                  }
                 }
               } catch {
                 // Error is stored in state
@@ -346,12 +485,12 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
   }
 
   // Input form
-  const isValidRecipient = recipient.length === 0 || isValidAddress(recipient);
+  const isValidRecipient = recipient.length === 0 || isValidChainAddress(recipient);
   const isValidAmount = amount.length === 0 || (parseFloat(amount) > 0 && !isNaN(parseFloat(amount)));
   const availableBalance = parseFloat(getSelectedBalance() || '0');
   const enteredAmount = parseFloat(amount) || 0;
   const hasEnoughBalance = enteredAmount <= availableBalance;
-  const canSubmit = isValidAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas && hasEnoughBalance;
+  const canSubmit = isValidChainAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas && hasEnoughBalance;
 
   return (
     <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
@@ -376,6 +515,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
           <TokenSelector
             value={selectedToken}
             onChange={setSelectedToken}
+            tokens={tokens}
             showBalance={true}
           />
         </div>
@@ -393,7 +533,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
         {!hasEnoughGas && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
             <p className="text-sm text-yellow-600 dark:text-yellow-400">
-              Insufficient NSN for gas fees. You need at least {MIN_GAS_BALANCE} NSN.
+              Insufficient {nativeSymbol} for gas fees. You need at least {MIN_GAS_BALANCE} {nativeSymbol}.
             </p>
           </div>
         )}
@@ -415,7 +555,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken = 'NSN', init
           {!isValidRecipient && (
             <p className="text-xs text-red-400 mt-1">Invalid address format</p>
           )}
-          {isValidAddress(recipient) && addressStatus.isKnown && addressStatus.entry && (
+          {isValidChainAddress(recipient) && addressStatus.isKnown && addressStatus.entry && (
             <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />

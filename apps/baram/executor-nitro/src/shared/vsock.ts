@@ -130,21 +130,21 @@ export class VsockClientSocket extends EventEmitter {
    * Uses node-vsock native binding for AF_VSOCK support.
    * Requires Linux kernel with vsock module loaded.
    */
-  private connectVsock(
+  private async connectVsock(
     resolve: () => void,
     reject: (err: Error) => void
-  ): void {
+  ): Promise<void> {
     const cid = this.options.cid || getEnclaveCid();
     const port = this.options.port;
 
     console.log(`[Vsock] Connecting via vsock to CID ${cid}:${port}...`);
 
     try {
-      // Dynamically load node-vsock (only available on Linux)
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { VsockSocket } = require('node-vsock') as typeof import('node-vsock');
+      // Dynamically import node-vsock (only available on Linux)
+      const nodeVsock = await import('node-vsock');
+      const VsockSocketClass = nodeVsock.VsockSocket;
 
-      this.vsockSocket = new VsockSocket();
+      this.vsockSocket = new VsockSocketClass();
 
       this.vsockSocket.on('connect', () => {
         console.log('[Vsock] Vsock connection established');
@@ -289,16 +289,16 @@ export class VsockServer extends EventEmitter {
    *
    * Note: node-vsock's VsockServer binds to VMADDR_CID_ANY automatically.
    */
-  private listenVsock(
+  private async listenVsock(
     resolve: () => void,
     reject: (err: Error) => void
-  ): void {
+  ): Promise<void> {
     console.log(`[Vsock] Starting vsock server on port ${this.port}...`);
 
     try {
-      // Dynamically load node-vsock (only available on Linux)
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { VsockServer: NodeVsockServerClass } = require('node-vsock') as typeof import('node-vsock');
+      // Dynamically import node-vsock (only available on Linux)
+      const nodeVsock = await import('node-vsock');
+      const NodeVsockServerClass = nodeVsock.VsockServer;
 
       this.vsockServer = new NodeVsockServerClass();
 

@@ -8,8 +8,7 @@ pado_tokens = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts" 
 
 [addresses]
 baram = "0x0"
-pado = "0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4"
 
 [environments]
-devnet = "56c8b101"
-nasun-devnet = "56c8b101"
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"

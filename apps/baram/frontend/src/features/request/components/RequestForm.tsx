@@ -86,7 +86,8 @@ export function RequestForm() {
 
   const isProcessing = status === 'creating' || status === 'executing';
   const selectedModelConfig = MODEL_PRICING[selectedModel];
-  const priceDisplay = (selectedModelConfig.price / 1e6).toFixed(2);
+  const isFreeModel = selectedModelConfig.price === 0;
+  const priceDisplay = isFreeModel ? 'Free' : `${(selectedModelConfig.price / 1e6).toFixed(2)} NUSDC`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,8 +155,8 @@ export function RequestForm() {
                     <span className="font-medium text-[var(--color-text-primary)]">
                       {model.name}
                     </span>
-                    <span className="text-sm text-baram-1">
-                      {(model.price / 1e6).toFixed(2)} NUSDC
+                    <span className={`text-sm ${model.price === 0 ? 'text-green-500' : 'text-baram-1'}`}>
+                      {model.price === 0 ? 'Free' : `${(model.price / 1e6).toFixed(2)} NUSDC`}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)]">
@@ -239,7 +240,7 @@ export function RequestForm() {
                   'Processing...'
                 ) : (
                   <>
-                    <span>Pay {priceDisplay} NUSDC</span>
+                    <span>{isFreeModel ? 'Submit (Free)' : `Pay ${priceDisplay}`}</span>
                     <svg
                       className="w-4 h-4"
                       fill="none"

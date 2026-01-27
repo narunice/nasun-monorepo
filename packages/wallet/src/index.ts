@@ -513,6 +513,14 @@ export type {
   UseEVMTransactionResult,
 } from './hooks/useEVMTransaction';
 
+// EVM Gas Estimate Hook
+export { useEVMGasEstimate } from './hooks/useEVMGasEstimate';
+export type {
+  EVMGasEstimate,
+  UseEVMGasEstimateOptions,
+  UseEVMGasEstimateResult,
+} from './hooks/useEVMGasEstimate';
+
 // EVM Utilities
 export {
   // Client

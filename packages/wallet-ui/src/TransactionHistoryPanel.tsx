@@ -7,7 +7,9 @@ import { useState } from 'react';
 import {
   useTransactionHistory,
   useAddressBook,
+  useChain,
   shortenAddress,
+  getStoredEVMAddress,
   type TransactionHistoryItem,
   type TokenTransfer,
 } from '@nasun/wallet';
@@ -302,16 +304,73 @@ export function TransactionHistoryPanel({
   onSend,
   onAddressBook,
 }: TransactionHistoryPanelProps) {
+  const { chain, isEVM } = useChain();
   const { data: transactions, isLoading, error, hasNextPage, refetch } = useTransactionHistory({
     limit,
     refetchInterval,
+    // Disable for EVM chains since we don't have history API
+    enabled: !isEVM,
   });
   const [expanded, setExpanded] = useState(false);
 
+  // For EVM chains, show block explorer link instead of on-chain history
+  if (isEVM) {
+    const evmAddress = getStoredEVMAddress();
+    const explorerUrl = chain.blockExplorer;
+    const addressExplorerUrl = evmAddress && explorerUrl
+      ? `${explorerUrl}/address/${evmAddress}`
+      : explorerUrl;
+
+    return (
+      <div className={`bg-white dark:bg-zinc-800 rounded-lg ${className}`}>
+        {!hideHeader && (
+          <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-zinc-700">
+            <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
+              Transaction History
+            </h3>
+            <span className="text-xs text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
+              {chain.name}
+            </span>
+          </div>
+        )}
+        <div className="p-6 text-center">
+          <svg
+            className="w-12 h-12 text-gray-400 dark:text-zinc-600 mx-auto mb-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            />
+          </svg>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm mb-3">
+            View transaction history on {chain.name} block explorer
+          </p>
+          {addressExplorerUrl && (
+            <a
+              href={addressExplorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <span>Open in Explorer</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Handle transaction click - open in explorer
   const handleTxClick = (digest: string) => {
-    // Get explorer URL from wallet config
-    const explorerUrl = 'https://explorer.devnet.nasun.io';
+    const explorerUrl = chain.blockExplorer || 'https://explorer.devnet.nasun.io';
     window.open(`${explorerUrl}/tx/${digest}`, '_blank');
   };
 

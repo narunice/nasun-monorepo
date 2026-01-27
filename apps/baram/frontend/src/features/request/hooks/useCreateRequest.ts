@@ -8,6 +8,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
 import { BARAM_CONFIG, TOKEN_CONFIG, NETWORK_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
 import type { ExecutorInfo } from './useExecutors';
+import { importPublicKey, encryptWithRSA } from '@/utils/crypto';
 
 export type RequestStatus = 'idle' | 'creating' | 'executing' | 'completed' | 'error';
 
@@ -50,10 +51,41 @@ function hexToBytes(hex: string): number[] {
 }
 
 /**
- * Encode prompt as Base64 (MVP "encryption")
+ * Encode prompt as Base64 (for non-TEE executors)
  */
 function encodePrompt(prompt: string): string {
   return btoa(unescape(encodeURIComponent(prompt)));
+}
+
+/**
+ * Cached public key for TEE executor
+ */
+let cachedPublicKey: { url: string; key: CryptoKey } | null = null;
+
+/**
+ * Encrypt prompt with RSA-OAEP for TEE executor
+ */
+async function encryptPromptForTEE(
+  prompt: string,
+  executorUrl: string
+): Promise<string> {
+  // Fetch and cache public key
+  if (!cachedPublicKey || cachedPublicKey.url !== executorUrl) {
+    console.log('[TEE] Fetching public key from', executorUrl);
+    const response = await fetch(`${executorUrl}/public-key`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch TEE public key');
+    }
+    const data = await response.json();
+    if (!data.publicKey) {
+      throw new Error('TEE public key not found in response');
+    }
+    const key = await importPublicKey(data.publicKey);
+    cachedPublicKey = { url: executorUrl, key };
+    console.log('[TEE] Public key cached');
+  }
+
+  return encryptWithRSA(cachedPublicKey.key, prompt);
 }
 
 /**
@@ -217,10 +249,15 @@ export function useCreateRequest(): UseCreateRequestReturn {
       // 6. Call executor's backend to execute
       setStatus('executing');
 
-      const encryptedPrompt = encodePrompt(prompt);
       const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
 
-      console.log('Calling executor:', executorUrl);
+      // Use RSA-OAEP encryption for TEE executors, Base64 for others
+      const isTeeExecutor = executor.teeType > 0;
+      const encryptedPrompt = isTeeExecutor
+        ? await encryptPromptForTEE(prompt, executorUrl)
+        : encodePrompt(prompt);
+
+      console.log('Calling executor:', executorUrl, isTeeExecutor ? '(TEE)' : '(non-TEE)');
 
       const executeResponse = await fetch(executorUrl + '/execute', {
         method: 'POST',

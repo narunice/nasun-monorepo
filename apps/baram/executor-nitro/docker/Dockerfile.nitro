@@ -17,6 +17,8 @@
 # - Communication only via vsock
 
 # Use Alpine for smaller image size (important for EIF)
+# Node.js 20 required for node-llama-cpp v3
+# node-vsock compatibility achieved via dynamic import (await import)
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -42,7 +44,7 @@ RUN npm run build
 # Remove dev dependencies after build
 RUN npm prune --omit=dev
 
-# Production image
+# Production image (Node.js 20 for node-llama-cpp v3)
 FROM node:20-alpine
 
 WORKDIR /app
@@ -72,10 +74,8 @@ RUN chown -R enclave:enclave /app
 USER enclave
 
 # Environment variables for Nitro mode
-# USE_VSOCK=false for now because @aspect-build/vsock doesn't exist
-# TCP mode will work for now (enclave has no network, but useful for testing init)
 ENV NODE_ENV=production
-ENV USE_VSOCK=false
+ENV USE_VSOCK=true
 ENV NITRO_MODE=true
 
 # Inference mode configuration:

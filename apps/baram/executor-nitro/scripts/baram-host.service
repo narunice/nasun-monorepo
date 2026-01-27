@@ -1,0 +1,27 @@
+# Baram TEE Host Service
+# Install: sudo cp baram-host.service /etc/systemd/system/
+# Enable:  sudo systemctl daemon-reload && sudo systemctl enable baram-host
+# Start:   sudo systemctl start baram-host
+# Logs:    journalctl -u baram-host -f
+
+[Unit]
+Description=Baram TEE Host Server
+After=network.target nitro-enclaves-allocator.service
+Requires=nitro-enclaves-allocator.service
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/baram-host
+Environment=NODE_ENV=production
+Environment=USE_VSOCK=true
+Environment=ENCLAVE_CID=16
+Environment=HOST_PORT=3000
+ExecStart=/usr/bin/node dist/host/main.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
