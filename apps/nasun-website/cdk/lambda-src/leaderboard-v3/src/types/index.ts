@@ -557,11 +557,13 @@ export interface MyRankData {
   profileImageUrl?: string;
   rankChange?: RankChange;
   totalUsers?: number;
+  message?: string; // e.g., "Your rank will be updated at 9:00 AM KST"
 }
 
 export interface MyRankResponse {
   success: boolean;
   data: MyRankData;
   seasonId?: string;
+  snapshotDate?: string; // Date of snapshot being displayed (YYYY-MM-DD)
   calculatedAt: string;
 }
