@@ -24,10 +24,10 @@ build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x770677ca76e9adb8830271db7bed30ff9cb400abbe4130e6c61af58ec954a3c8"
 
 [[published]]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts-prediction" }
-published-at = "0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd"
-original-id = "0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd"
+source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts-perp" }
+published-at = "0xcd10a92287ed8cc47ff8f951a179efb1abaaf55aab9fe5c58b104a848f8a6e5c"
+original-id = "0xcd10a92287ed8cc47ff8f951a179efb1abaaf55aab9fe5c58b104a848f8a6e5c"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xbbe9166264c238781faf9aca375ccfedda4ad1bbd2295395c1c26be43de0d70e"
+upgrade-capability = "0x6298f06c4d1549b32dd2e7a89b4b16a7015851a800d6eaecb523e051592b5cc7"

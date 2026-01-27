@@ -14,7 +14,7 @@
 module pado_perp::liquidation {
     use sui::event;
     use sui::coin::Coin;
-    use pado::nusdc::NUSDC;
+    use devnet_tokens::nusdc::NUSDC;
     use pado_perp::perpetual::{
         Self,
         PerpMarket,

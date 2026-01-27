@@ -8,7 +8,7 @@ module lottery::lottery {
     use sui::clock::{Self, Clock};
     use sui::event;
     use sui::random::{Self, Random};
-    use pado::nusdc::NUSDC;
+    use devnet_tokens::nusdc::NUSDC;
 
     // ===== Constants =====
     const NUMBERS_COUNT: u64 = 5;           // Numbers to select

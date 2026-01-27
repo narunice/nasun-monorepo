@@ -11,8 +11,8 @@ module unified_margin::unified_margin {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::event;
-    use pado::nusdc::NUSDC;
-    use pado::nbtc::NBTC;
+    use devnet_tokens::nusdc::NUSDC;
+    use devnet_tokens::nbtc::NBTC;
 
     // ===== Error Codes =====
     const EInsufficientBalance: u64 = 0;

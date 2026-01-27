@@ -13,7 +13,7 @@ module baram::baram {
     use sui::event;
     use sui::table::{Self, Table};
     use std::string::String;
-    use pado::nusdc::NUSDC;
+    use devnet_tokens::nusdc::NUSDC;
 
     // ========== Error Codes ==========
     const E_INVALID_AMOUNT: u64 = 0;
