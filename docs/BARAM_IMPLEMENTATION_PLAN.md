@@ -32,7 +32,7 @@
 | Phase C-5: vsock 버그 수정 | ✅ 완료 | Node.js 18, ES Module 호환 |
 | Phase C-6: E2E Integration | ✅ 완료 | TEE Executor 등록, E2E 테스트 성공 |
 | Phase C-7: Frontend RSA-OAEP | ✅ 완료 | 브라우저 RSA-OAEP 암호화, E2E 완료 |
-| Phase C-8: UI 개선 | 🔄 진행중 | Dark/Light 테마 토글, MODEL_PRICING 정리 |
+| Phase C-8: UI 개선 | ✅ 완료 | Dark/Light 테마 토글, MODEL_PRICING 정리 (GPT 제거) |
 | Phase C-9: Custom AMI | ✅ 완료 | Spot 인스턴스 자동화, 2-3분 내 개발 환경 구축 |
 
 ---
