@@ -51,9 +51,9 @@ export const ROUND_STATUS = {
   SETTLED: 3,
 } as const;
 
-// NUSDC type
+// NUSDC type (V6 pado_tokens package)
 export const NUSDC_TYPE =
-  '0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8::nusdc::NUSDC';
+  '0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772::nusdc::NUSDC';
 
 // Lottery module types
 export const LOTTERY_ROUND_TYPE = `${LOTTERY_PACKAGE_ID}::lottery::LotteryRound`;
