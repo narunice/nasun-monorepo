@@ -4,7 +4,7 @@ import { formatObjectType } from '../../lib/format';
 import type { SuiEvent } from '@mysten/sui/client';
 
 interface TransactionEventsProps {
-  events: SuiEvent[] | undefined;
+  events: SuiEvent[] | null | undefined;
 }
 
 export default function TransactionEvents({ events }: TransactionEventsProps) {

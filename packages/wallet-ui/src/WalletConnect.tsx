@@ -30,7 +30,6 @@ import {
   type ZkLoginProvider,
   type LedgerErrorCode,
 } from "@nasun/wallet";
-import { NetworkSelector } from "./NetworkSelector";
 import { NetworkSelectorModal } from "./NetworkSelectorModal";
 import { CopyableAddress } from "./CopyableAddress";
 import { MnemonicBackup } from "./MnemonicBackup";

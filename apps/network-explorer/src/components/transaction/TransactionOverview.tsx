@@ -6,7 +6,7 @@ interface TransactionOverviewProps {
   digest: string;
   status: string | undefined;
   timestampMs: string | number | null | undefined;
-  checkpoint: string | undefined;
+  checkpoint: string | null | undefined;
   sender: string | undefined;
 }
 

@@ -29,15 +29,12 @@ export default function Home() {
     isFetching: boolean;
   };
 
-  const {
-    data: epochInfo,
-    isFetching: epochFetching,
-  } = useEpochInfo() as {
+  const { data: epochInfo } = useEpochInfo() as {
     data: EpochInfo | undefined;
     isFetching: boolean;
   };
 
-  const { data: tps, isFetching: tpsFetching } = useTPS();
+  const { data: tps } = useTPS();
 
   const {
     data: recentTxs,
