@@ -1,0 +1,57 @@
+{
+  "version": "V6",
+  "lastUpdated": "2026-01-27",
+  "admin": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
+  "network": {
+    "chainId": "12bf3808",
+    "rpcUrl": "https://rpc.devnet.nasun.io",
+    "faucetUrl": "https://faucet.devnet.nasun.io",
+    "explorerUrl": "https://explorer.devnet.nasun.io"
+  },
+  "tokens": {
+    "packageId": "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017",
+    "tokenFaucet": "0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14",
+    "claimRecord": "0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8",
+    "upgradeCap": "0x2017d606c566ff13cbaf23bf18b5e413b95bb9bcd333c2f413878e7ddddf2a87"
+  },
+  "deepbook": {
+    "tokenPackageId": "0xce8405a3c3c07325379f3977b3425c92ffd80bdef3ca83205fb88700541987fd",
+    "packageId": "0xaad9b8cfa778a3d4f2e28c6e07073d9627a85a2e7d6dfc33136f527450606253",
+    "registry": "0x2c386b2a2b8b5756ec316a309208d937b6907d97fbacfaa87fd514894aded384",
+    "adminCap": "0x413ace0602b7f0ec502d53c84aadd41763e1d79b35bfd382ef3ae9c0e7689262"
+  },
+  "prediction": {
+    "packageId": "0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd",
+    "globalState": "0xcbff8cda5d8bd9b81358b159b09ff57fb2b159d57ddeb46b9e714e7290825553",
+    "adminCap": "0x34881d8e68f9d90da2865877b782ea27f25195a25ed73655ced2188aa1d3938a",
+    "upgradeCap": "0xbbe9166264c238781faf9aca375ccfedda4ad1bbd2295395c1c26be43de0d70e"
+  },
+  "lottery": {
+    "packageId": "0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80",
+    "registry": "0x0a64e225326746ff7c1ff7bb0b130cd0df922cc00101aedbfa442550e7995794",
+    "adminCap": "0x8329a17bed9e4b98aeb502b1ecca5ee9d73b7ca1dd8a60a85e09dfd7f61f0cec",
+    "upgradeCap": "0x770677ca76e9adb8830271db7bed30ff9cb400abbe4130e6c61af58ec954a3c8"
+  },
+  "governance": {
+    "packageId": "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516",
+    "dashboard": "0x3398b1931bc8c418b0e0e1d9c1e04537bfc82c3f85d4dc22e11c97469baee7ae",
+    "adminCap": "0xd96d14baf4422909e6721c5533d981f0a481b947989c95502d3a45f89f607a04"
+  },
+  "baram": {
+    "packageId": "0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f",
+    "registry": "0x52427e24315a444e9aa07ecb93df5a3392e1cb5d5bec8aba90c4c9eecaf77d3f",
+    "upgradeCap": "0xa9a6ee0412639af01e630ce23d38b246a88bdfd3ee8db5e3634ce45fa1eefe62",
+    "executorPackageId": "0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5",
+    "executorRegistry": "0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b",
+    "executorAdminCap": "0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7"
+  },
+  "pools": {
+    "nbtcNusdc": "",
+    "nsnNusdc": ""
+  },
+  "oracle": {
+    "packageId": "",
+    "registry": "",
+    "adminCap": ""
+  }
+}
