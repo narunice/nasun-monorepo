@@ -610,15 +610,25 @@ docker run -it --rm -e USE_LOCAL_LLM=false -e USE_OPENAI_PROXY=true -p 5050:5050
 
 ```bash
 # Build EIF (Enclave Image Format)
-nitro-cli build-enclave --docker-uri baram-enclave:local-llm --output-file baram-enclave.eif
+# Proxy mode (no model, smaller EIF ~1GB)
+nitro-cli build-enclave --docker-uri baram-enclave:proxy --output-file baram-enclave.eif
 
-# Run Enclave (14GB memory for 3B model)
+# Local LLM mode (with model, larger EIF ~2.5GB)
+# nitro-cli build-enclave --docker-uri baram-enclave:local-llm --output-file baram-enclave.eif
+
+# Run Enclave - Proxy mode (6GB memory minimum)
 nitro-cli run-enclave \
   --eif-path baram-enclave.eif \
   --cpu-count 2 \
-  --memory 14336 \
-  --enclave-cid 19 \
+  --memory 6144 \
   --debug-mode
+
+# Run Enclave - Local LLM mode (14GB memory minimum)
+# nitro-cli run-enclave \
+#   --eif-path baram-enclave.eif \
+#   --cpu-count 2 \
+#   --memory 14336 \
+#   --debug-mode
 
 # Check console output
 nitro-cli console --enclave-id <enclave-id>
@@ -644,13 +654,21 @@ Parent EC2 (CID 3)                    Enclave (CID 19)
 | Item | Minimum | Recommended |
 |------|---------|-------------|
 | Instance Type | r6i.large (2 vCPU, 16GB) | r6i.xlarge (4 vCPU, 32GB) |
-| Enclave Memory | 6GB | 14GB |
+| Enclave Memory | 6GB (Proxy mode) | 14GB (Local LLM) |
 | Enclave vCPU | 2 | 2 |
-| EIF Size | ~2.5GB (with model) | - |
+| EIF Size | ~1GB (Proxy only) | ~2.5GB (with model) |
+
+> **중요: Enclave 메모리 요구사항**
+> - Nitro Enclave는 EIF 크기의 약 1.5배 이상의 메모리가 필요합니다
+> - Proxy 모드 EIF (~1GB) → 최소 **4364MB** 이상 필요
+> - Local LLM 모드 EIF (~2.5GB) → 최소 **12GB** 이상 필요
+> - 메모리 부족 시 `E26 Insufficient memory requested` 에러 발생
+> - 안전하게 **6GB** (Proxy) 또는 **14GB** (Local LLM) 권장
 
 **Cost Estimate (Spot):**
-- r6i.xlarge Spot: ~$0.05/hr
-- Monthly (demo): ~$50-100
+- r6i.xlarge Spot: ~$0.05-0.13/hr (시간대/AZ에 따라 변동)
+- 4시간 테스트: ~$0.50
+- 월 20일 (하루 4시간): ~$8-10
 
 ---
 
@@ -658,6 +676,7 @@ Parent EC2 (CID 3)                    Enclave (CID 19)
 
 | Commit | Description | Date |
 |--------|-------------|------|
+| `d225847` | feat(baram): V6 devnet deployment and wallet-ui improvements | 2026-01-27 |
 | TBD | feat(baram): Phase C-5 - Vsock bug fix (Node.js 18, ES Module) | 2026-01-26 |
 | TBD | feat(baram): Phase C-4 - Native vsock support for Nitro | 2026-01-26 |
 | `eae29d3` | feat(baram): Phase C-3 - Local LLM integration for privacy | 2026-01-26 |
@@ -684,38 +703,45 @@ Parent EC2 (CID 3)                    Enclave (CID 19)
 - [x] E2E 테스트 성공 (암호화 → 복호화 → LLM 추론 → 응답)
 - [x] systemd 서비스 파일 생성 (`scripts/baram-host.service`)
 
-**등록된 TEE Executor (V6):**
+**현재 인프라 (V6 - 2026-01-27):**
 
-> V6 리셋 후 TEE Executor 미등록 상태. EC2 Spot 인스턴스 생성 후 등록 필요.
+| 항목 | 값 |
+|------|-----|
+| EC2 Spot Instance | `i-02365fa1ac2813567` (r6i.xlarge) |
+| Public IP | `3.35.69.95` |
+| Enclave CID | 16 |
+| Enclave Memory | 6GB (Proxy mode) |
+| Host Port | 3000 |
+| Mode | Proxy (OpenAI API) |
 
-| 항목 | 예시 값 |
-|------|---------|
-| Operator | `0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90` |
-| Name | Nasun TEE Executor |
-| Endpoint | `http://<SPOT_INSTANCE_IP>:3000` |
-| TEE Type | 1 (AWS Nitro) |
-| Supported Models | `["llama-3.2-3b-local"]` |
+> **Note:** Spot 인스턴스는 세션 종료 시 반드시 terminate 해야 함
 
-**E2E 테스트 결과 (V5 기준 - V6에서 재테스트 필요):**
+**TEE Executor 등록 상태:**
+- ExecutorRegistry: `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b`
+- AdminCap: `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7`
+- On-chain 등록: 미완료 (OpenAI quota 문제로 대기)
+
+**E2E 테스트 결과 (V6 - 2026-01-27):**
 ```bash
 # Health Check
-curl http://<SPOT_IP>:3000/health
-→ {"host":"healthy","enclave":"healthy","uptime":2097101,"version":"1.3.0"}
+curl http://3.35.69.95:3000/health
+→ {"host":"healthy","enclave":"healthy","uptime":110580,"version":"1.3.0","protocolVersion":"1.3.0"}
 
-# Public Key
-curl http://<SPOT_IP>:3000/public-key
-→ {"success":true,"publicKey":"MIIBIj...","attestation":{...}}
+# Public Key (RSA 2048-bit)
+curl http://3.35.69.95:3000/public-key
+→ {"success":true,"publicKey":"MIIBIjAN...","attestation":{"pcrs":{...},"moduleId":"baram-enclave-v1"}}
 
-# Execute (RSA-OAEP encrypted prompt)
-POST /execute { encryptedPrompt, model: "llama-3.2-3b-local", requestId: 12345 }
-→ {
-    "success": true,
-    "result": "2 + 2 = 4.",
-    "resultHash": "4eeeaa2b74ff4fd8be484d19f321ea7289550af2ec3887782543f6d8edc579cd",
-    "executionTimeMs": 5835,
-    "attestation": {...}
-  }
+# Execute (RSA-OAEP encrypted prompt) - Proxy Mode
+# ✅ Encryption/Decryption: Working
+# ✅ Host ↔ Enclave vsock: Working
+# ❌ OpenAI API: Quota exceeded (insufficient_quota)
+
+POST /execute { encryptedPrompt, model: "gpt-4o-mini", requestId: 12345 }
+→ Error: 429 You exceeded your current quota
 ```
+
+> **참고:** OpenAI API 할당량 문제로 실제 LLM 응답 테스트 미완료.
+> Local LLM 모드로 전환하면 외부 API 없이 테스트 가능 (모델 다운로드 필요 ~2GB)
 
 **남은 작업 (Optional):**
 - [x] systemd 서비스 설치 완료 (baram-enclave.service, baram-host.service)
