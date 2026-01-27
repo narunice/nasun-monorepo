@@ -1,0 +1,9 @@
+{
+  "extends": "@nasun/tsconfig/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*", "scripts/**/*", "devnet-ids.json"]
+}

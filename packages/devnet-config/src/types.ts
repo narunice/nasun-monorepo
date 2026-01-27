@@ -1,0 +1,90 @@
+/**
+ * Nasun Devnet Configuration Types
+ *
+ * Type definitions for centralized devnet ID management.
+ * All IDs should be managed in devnet-ids.json and accessed via typed constants.
+ */
+
+// Object ID format: 0x followed by 64 hex characters
+export type ObjectId = `0x${string}`;
+
+// Coin type format: package::module::TYPE
+export type CoinType = `${ObjectId}::${string}::${string}`;
+
+export interface NetworkConfig {
+  chainId: string;
+  rpcUrl: string;
+  faucetUrl: string;
+  explorerUrl: string;
+}
+
+export interface TokensConfig {
+  packageId: ObjectId;
+  tokenFaucet: ObjectId;
+  claimRecord: ObjectId;
+  upgradeCap?: ObjectId;
+  nbtcType: CoinType;
+  nusdcType: CoinType;
+}
+
+export interface DeepBookConfig {
+  tokenPackageId: ObjectId;
+  packageId: ObjectId;
+  registry: ObjectId;
+  adminCap: ObjectId;
+}
+
+export interface PredictionConfig {
+  packageId: ObjectId;
+  globalState: ObjectId;
+  adminCap: ObjectId;
+}
+
+export interface LotteryConfig {
+  packageId: ObjectId;
+  registry: ObjectId;
+  adminCap: ObjectId;
+  upgradeCap: ObjectId;
+}
+
+export interface GovernanceConfig {
+  packageId: ObjectId;
+  dashboard: ObjectId;
+  adminCap: ObjectId;
+}
+
+export interface BaramConfig {
+  packageId: ObjectId;
+  registry: ObjectId;
+  upgradeCap: ObjectId;
+  executorPackageId: ObjectId;
+  executorRegistry: ObjectId;
+  executorAdminCap: ObjectId;
+  nusdcType: CoinType;
+}
+
+export interface PoolsConfig {
+  nbtcNusdc: ObjectId | '';
+  nsnNusdc: ObjectId | '';
+}
+
+export interface OracleConfig {
+  packageId: ObjectId | '';
+  registry: ObjectId | '';
+  adminCap: ObjectId | '';
+}
+
+export interface DevnetConfig {
+  version: string;
+  lastUpdated: string;
+  admin: ObjectId;
+  network: NetworkConfig;
+  tokens: Omit<TokensConfig, 'nbtcType' | 'nusdcType'>;
+  deepbook: DeepBookConfig;
+  prediction: PredictionConfig;
+  lottery: LotteryConfig;
+  governance: GovernanceConfig;
+  baram: Omit<BaramConfig, 'nusdcType'>;
+  pools: PoolsConfig;
+  oracle: OracleConfig;
+}
