@@ -1,11 +1,14 @@
 /**
  * Perpetual Futures DEX Constants
  * @module features/perp/constants
+ *
+ * TODO: Perp and Oracle contracts need to be redeployed for V6
+ * Current IDs are from V5 and will not work on V6 network
  */
 
 // ===== Package & Object IDs =====
 
-/** Deployed pado_perp package ID (v2 with liquidation) */
+/** Deployed pado_perp package ID (TODO: Redeploy for V6) */
 export const PERP_PACKAGE_ID =
   '0x4e2a36299ce4b17ecbd3c4049fa99aae77afeb193a0724c4ad738765072be2e5';
 
