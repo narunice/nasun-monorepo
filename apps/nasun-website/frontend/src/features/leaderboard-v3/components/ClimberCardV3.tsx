@@ -14,15 +14,6 @@ interface ClimberCardV3Props {
   position: number; // 1-5
 }
 
-// Medal/position indicator
-const positionDisplay: Record<number, { emoji: string; label: string }> = {
-  1: { emoji: '🥇', label: '#1' },
-  2: { emoji: '🥈', label: '#2' },
-  3: { emoji: '🥉', label: '#3' },
-  4: { emoji: '', label: '#4' },
-  5: { emoji: '', label: '#5' },
-};
-
 // Default avatar (V2 style: rounded-2xl)
 function DefaultAvatar({ username, originalUsername }: { username: string; originalUsername?: string }) {
   // Use originalUsername for initial if available (preserves intended casing)
@@ -36,7 +27,6 @@ function DefaultAvatar({ username, originalUsername }: { username: string; origi
 }
 
 const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
-  const { emoji, label } = positionDisplay[position] || { emoji: '', label: `#${position}` };
   const rankImprovement = climber.rankChange.direction === 'up' ? climber.rankChange.amount : 0;
 
   return (
@@ -50,13 +40,6 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
 
       {/* Header: Avatar + Name + External link */}
       <div className="flex items-start gap-3 mb-4 mt-2">
-        {/* Position label for 4th, 5th */}
-        {position > 3 && (
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-nasun-white/40 text-sm font-medium">{label}</span>
-          </div>
-        )}
-
         {/* Avatar */}
         <div className="relative">
           {climber.profileImageUrl ? (
