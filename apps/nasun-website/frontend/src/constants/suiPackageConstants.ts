@@ -1,18 +1,16 @@
 //optimistic account
 
-// Nasun Devnet - Governance Package V6 (deployed 2026-01-27, Chain ID: 12bf3808)
-export const NASUN_DEVNET_PACKAGE_ID =
-  "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516";
-export const NASUN_DEVNET_DASHBOARD_ID =
-  "0x3398b1931bc8c418b0e0e1d9c1e04537bfc82c3f85d4dc22e11c97469baee7ae";
-export const NASUN_DEVNET_ADMIN_CAP =
-  "0xd96d14baf4422909e6721c5533d981f0a481b947989c95502d3a45f89f607a04";
-// TODO: Update UpgradeCap after V6 deployment info is available
-export const NASUN_DEVNET_UPGRADE_CAP =
-  "";
+import { GOVERNANCE } from '@nasun/devnet-config';
+
+// Nasun Devnet - Governance Package
+// IDs imported from @nasun/devnet-config for centralized management
+export const NASUN_DEVNET_PACKAGE_ID = GOVERNANCE.packageId;
+export const NASUN_DEVNET_DASHBOARD_ID = GOVERNANCE.dashboard;
+export const NASUN_DEVNET_ADMIN_CAP = GOVERNANCE.adminCap;
+// TODO: Update UpgradeCap after deployment info is available
+export const NASUN_DEVNET_UPGRADE_CAP = "";
 // Delegation Registry ID (TODO: Redeploy if needed)
-export const NASUN_DEVNET_DELEGATION_REGISTRY_ID =
-  "";
+export const NASUN_DEVNET_DELEGATION_REGISTRY_ID = "";
 
 export const SUI_LOCALNET_PACKAGE_ID = "0x123";
 export const SUI_DEVNET_PACKAGE_ID = "0x123";

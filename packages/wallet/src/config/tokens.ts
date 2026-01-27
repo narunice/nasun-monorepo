@@ -3,6 +3,7 @@
  * Centralized token configuration management for multi-token support
  */
 
+import { NBTC_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
 import type { TokenConfig, TokenFaucetHandler } from '../types';
 
 // Token registry storage
@@ -25,6 +26,7 @@ export const NATIVE_TOKEN: TokenConfig = {
  * These tokens are auto-registered for Nasun Devnet to ensure consistent
  * wallet UI across all apps using @nasun/wallet.
  *
+ * Token types are imported from @nasun/devnet-config for centralized management.
  * Apps can override these by calling registerTokens() with custom types.
  */
 export const DEVNET_TOKENS: TokenConfig[] = [
@@ -32,13 +34,13 @@ export const DEVNET_TOKENS: TokenConfig[] = [
     symbol: 'NBTC',
     name: 'Nasun BTC',
     decimals: 8,
-    type: '0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4::nbtc::NBTC',
+    type: NBTC_TYPE,
   },
   {
     symbol: 'NUSDC',
     name: 'Nasun USDC',
     decimals: 6,
-    type: '0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4::nusdc::NUSDC',
+    type: NUSDC_TYPE,
   },
 ];
 

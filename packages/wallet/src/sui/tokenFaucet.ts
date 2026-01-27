@@ -5,14 +5,15 @@
  * These tokens use a Move smart contract faucet that requires wallet signing.
  */
 
+import { TOKENS_PACKAGE_ID, TOKEN_FAUCET } from '@nasun/devnet-config';
 import { Transaction } from '@mysten/sui/transactions';
 import type { TokenFaucetHandler } from '../types';
 
 // Devnet Token Faucet Configuration
-// These are the deployed contract addresses on Nasun Devnet
+// IDs are imported from @nasun/devnet-config for centralized management
 export const DEVNET_TOKEN_FAUCET = {
-  package: '0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4',
-  faucet: '0x802d91521fc5ba0e590330cb500eb1c0399c6209b6b1db1cffe41e101a82521f',
+  package: TOKENS_PACKAGE_ID,
+  faucet: TOKEN_FAUCET,
 };
 
 /**
