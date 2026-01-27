@@ -9,7 +9,14 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-    dedupe: ['react', 'react-dom'],
+    // Dedupe all packages that use React to prevent multiple instances
+    dedupe: [
+      'react',
+      'react-dom',
+      'zustand',
+      '@tanstack/react-query',
+      'react-router-dom',
+    ],
   },
   server: {
     port: 5175,
@@ -22,11 +29,32 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['@scure/bip39', '@scure/bip39/wordlists/english.js'],
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      '@scure/bip39',
+      '@scure/bip39/wordlists/english.js',
+      'zustand',
+      '@tanstack/react-query',
+    ],
+    esbuildOptions: {
+      // Keep function names for SES compatibility
+      keepNames: true,
+    },
   },
   build: {
     commonjsOptions: {
       include: [/node_modules/],
+    },
+    rollupOptions: {
+      output: {
+        // Ensure React is loaded first in the bundle
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react/jsx-runtime'],
+        },
+      },
     },
   },
 })
