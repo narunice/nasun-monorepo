@@ -2,7 +2,38 @@
 # This file should be checked in.
 
 [move]
-version = 4
+version = 3
+manifest_digest = "3F0CC2BEBEE79CCD4CBFFB54B4E213D7C10D9FFEE2722544E7E61FC1C5511A8F"
+deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "pado_tokens", name = "pado_tokens" },
+]
+
+[[move.package]]
+id = "MoveStdlib"
+source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/move-stdlib" }
+
+[[move.package]]
+id = "Sui"
+source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
+
+dependencies = [
+  { id = "MoveStdlib", name = "MoveStdlib" },
+]
+
+[[move.package]]
+id = "pado_tokens"
+source = { local = "../contracts" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[move.toolchain-version]
+compiler-version = "1.62.1"
+edition = "2024.beta"
+flavor = "sui"
 
 [pinned.devnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "22f9fc9781732d651e18384c9a8eb1dabddf73a6" }
@@ -75,3 +106,11 @@ source = { local = "../contracts" }
 use_environment = "testnet"
 manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
 deps = { Sui = "Sui_1" }
+
+[env]
+
+[env.devnet]
+chain-id = "12bf3808"
+original-published-id = "0x8c9423b4e64ee673171e46a21f0d41b9d58f67afecda23caf010bca78be05f0b"
+latest-published-id = "0x8c9423b4e64ee673171e46a21f0d41b9d58f67afecda23caf010bca78be05f0b"
+published-version = "1"
