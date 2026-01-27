@@ -1,23 +1,34 @@
+import { NETWORK, BARAM } from '@nasun/devnet-config';
+
 // Baram Network Configuration
+// Fallbacks from @nasun/devnet-config for centralized management
 export const NETWORK_CONFIG = {
-  rpcUrl: import.meta.env.VITE_SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
-  faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
-  chainId: import.meta.env.VITE_CHAIN_ID || '6681cdfd',
+  rpcUrl: import.meta.env.VITE_SUI_RPC_URL || NETWORK.rpcUrl,
+  faucetUrl: import.meta.env.VITE_FAUCET_URL || NETWORK.faucetUrl,
+  chainId: import.meta.env.VITE_CHAIN_ID || NETWORK.chainId,
   networkName: import.meta.env.VITE_NETWORK_NAME || 'Nasun Devnet',
 } as const;
 
+// zkLogin Configuration
+export const ZKLOGIN_CONFIG = {
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+  saltApiUrl: import.meta.env.VITE_ZKLOGIN_SALT_API_URL || '',
+  proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL || 'https://prover-dev.mystenlabs.com/v1',
+} as const;
+
 // Baram Contract Configuration
+// IDs from @nasun/devnet-config
 export const BARAM_CONFIG = {
-  packageId: import.meta.env.VITE_BARAM_PACKAGE_ID || '',
-  registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || '',
+  packageId: import.meta.env.VITE_BARAM_PACKAGE_ID || BARAM.packageId,
+  registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || BARAM.registry,
   executorAddress: import.meta.env.VITE_EXECUTOR_ADDRESS || '',
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
 } as const;
 
-// Executor Registry Configuration (2026-01-27 deployment)
+// Executor Registry Configuration
 export const EXECUTOR_CONFIG = {
-  packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || '0xcf72bce1d38d71d8dab61f68f279919f626e240008418ca1e33c4059f9369983',
-  registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || '0x3bfe54558fb69e806f9fd3f25392c5deb89b95152b8503c4f97393d27c588fb0',
+  packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || BARAM.executorPackageId,
+  registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || BARAM.executorRegistry,
 } as const;
 
 // TEE Types
@@ -31,8 +42,17 @@ export const TEE_TYPES = {
 export type TeeType = keyof typeof TEE_TYPES;
 
 // Token Configuration
+// Baram uses its own bundled NUSDC from the Baram package
 export const TOKEN_CONFIG = {
-  nusdcType: import.meta.env.VITE_NUSDC_TYPE || '',
+  nusdcType: import.meta.env.VITE_NUSDC_TYPE || BARAM.nusdcType,
+  nbtcType: import.meta.env.VITE_NBTC_TYPE || `${BARAM_CONFIG.packageId}::nbtc::NBTC`,
+} as const;
+
+// Token Faucet Configuration
+// Shared objects for requesting test tokens
+export const FAUCET_CONFIG = {
+  tokenFaucetId: import.meta.env.VITE_TOKEN_FAUCET_ID || '',
+  claimRecordId: import.meta.env.VITE_CLAIM_RECORD_ID || '',
 } as const;
 
 // Token Metadata
