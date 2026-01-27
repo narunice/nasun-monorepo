@@ -5,19 +5,19 @@
  * Based on V2 TopClimbersSpotlight pattern.
  */
 
-import React, { useState } from 'react';
-import { Trophy } from 'lucide-react';
-import { SectionTitle } from '@/components/ui/SectionTitle';
-import { useTopClimbersV3 } from '../hooks/useTopClimbersV3';
-import type { TimeRangeV3 } from '../types';
-import { TIME_RANGE_LABELS } from '../types';
-import ClimberCardV3 from './ClimberCardV3';
+import React, { useState } from "react";
+import { Trophy } from "lucide-react";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import { useTopClimbersV3 } from "../hooks/useTopClimbersV3";
+import type { TimeRangeV3 } from "../types";
+import { TIME_RANGE_LABELS } from "../types";
+import ClimberCardV3 from "./ClimberCardV3";
 
 interface TopClimbersV3Props {
   seasonId?: string;
 }
 
-const TIME_RANGES: TimeRangeV3[] = ['today', '7d', '4w'];
+const TIME_RANGES: TimeRangeV3[] = ["today", "7d", "4w"];
 
 /**
  * Get responsive visibility class for each card based on index
@@ -26,16 +26,16 @@ const TIME_RANGES: TimeRangeV3[] = ['today', '7d', '4w'];
 const getVisibilityClass = (index: number): string => {
   switch (index) {
     case 3:
-      return 'hidden lg:block'; // 4th: lg+ only
+      return "hidden lg:block"; // 4th: lg+ only
     case 4:
-      return 'hidden xl:block'; // 5th: xl only
+      return "hidden xl:block"; // 5th: xl only
     default:
-      return ''; // 1st, 2nd, 3rd: always visible
+      return ""; // 1st, 2nd, 3rd: always visible
   }
 };
 
 const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
-  const [timeRange, setTimeRange] = useState<TimeRangeV3>('today');
+  const [timeRange, setTimeRange] = useState<TimeRangeV3>("today");
 
   const { data, isLoading, error } = useTopClimbersV3({
     seasonId,
@@ -63,7 +63,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className={getVisibilityClass(i)}>
-              <div className="h-52 bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl animate-pulse"></div>
+              <div className="h-64 bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl animate-pulse"></div>
             </div>
           ))}
         </div>
@@ -140,11 +140,7 @@ interface TimeRangeSelectorInlineProps {
   ranges: TimeRangeV3[];
 }
 
-function TimeRangeSelectorInline({
-  selected,
-  onSelect,
-  ranges,
-}: TimeRangeSelectorInlineProps) {
+function TimeRangeSelectorInline({ selected, onSelect, ranges }: TimeRangeSelectorInlineProps) {
   return (
     <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-sm">
       {ranges.map((range) => (
@@ -153,8 +149,8 @@ function TimeRangeSelectorInline({
           onClick={() => onSelect(range)}
           className={`px-3 py-1 rounded-sm text-sm font-light transition-all ${
             selected === range
-              ? 'bg-nasun-c4/80 text-nasun-white'
-              : 'text-nasun-white hover:bg-gray-700'
+              ? "bg-nasun-c4/80 text-nasun-white"
+              : "text-nasun-white hover:bg-gray-700"
           }`}
         >
           {TIME_RANGE_LABELS[range]}
