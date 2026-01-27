@@ -101,8 +101,7 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
                   Total: {leaderboardData.totalCount} contributors
                 </span>
                 <span className="text-gray-500">
-                  {snapshotDate ? `Snapshot: ${snapshotDate}` : "Live"} |{" "}
-                  {new Date(leaderboardData.calculatedAt).toLocaleString("en-US")}
+                  Last updated: {new Date(leaderboardData.calculatedAt).toLocaleString("en-US")}
                 </span>
               </div>
             </div>
