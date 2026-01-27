@@ -73,6 +73,16 @@ function getTodayDateString(): string {
 }
 
 /**
+ * Get yesterday's date string (KST)
+ */
+function getYesterdayDateString(): string {
+  const date = new Date();
+  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
+}
+
+/**
  * Get active season
  */
 async function getActiveSeason(): Promise<Season | null> {
@@ -213,17 +223,15 @@ async function calculateRank(
 }
 
 /**
- * Get rank change by comparing current rank with today's snapshot (KST)
+ * Get user's snapshot for a specific date
  */
-async function getRankChange(
+async function getUserSnapshot(
   seasonId: string,
   accountId: string,
-  currentRank: number
-): Promise<RankChange> {
-  const todayStr = getTodayDateString(); // KST
-  const pk = `${seasonId}#${todayStr}`;
+  dateStr: string
+): Promise<DailySnapshot | null> {
+  const pk = `${seasonId}#${dateStr}`;
 
-  // Query for the user's rank in today's snapshot
   const result = await docClient.send(
     new QueryCommand({
       TableName: SNAPSHOTS_TABLE,
@@ -237,15 +245,43 @@ async function getRankChange(
   );
 
   if (!result.Items || result.Items.length === 0) {
-    // No snapshot for today - user is new or snapshot not generated yet
-    return { direction: 'new', amount: 0 };
+    return null;
   }
 
-  const snapshot = result.Items[0] as DailySnapshot;
-  const previousRank = snapshot.rank;
+  return result.Items[0] as DailySnapshot;
+}
 
-  // Real-time calculation (same logic as get-leaderboard.ts)
-  const change = previousRank - currentRank;
+/**
+ * Get total users count from snapshot
+ */
+async function getSnapshotTotalUsers(seasonId: string, dateStr: string): Promise<number> {
+  const pk = `${seasonId}#${dateStr}`;
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: SNAPSHOTS_TABLE,
+      KeyConditionExpression: 'pk = :pk',
+      Select: 'COUNT',
+      ExpressionAttributeValues: {
+        ':pk': pk,
+      },
+    })
+  );
+
+  return result.Count || 0;
+}
+
+/**
+ * Get rank change by comparing today's snapshot with yesterday's snapshot
+ */
+function calculateRankChangeFromSnapshots(
+  todayRank: number,
+  yesterdayRank?: number
+): RankChange {
+  if (yesterdayRank === undefined) {
+    return { direction: 'new', amount: 0 };
+  }
+  const change = yesterdayRank - todayRank;
   if (change > 0) return { direction: 'up', amount: change };
   if (change < 0) return { direction: 'down', amount: Math.abs(change) };
   return { direction: 'same', amount: 0 };
@@ -404,10 +440,23 @@ export const handler = async (
     // Sync profile data from UserProfiles (lazy refresh to both accounts + season-accounts)
     const freshProfile = await syncProfileFromUserProfiles(account, seasonId);
 
-    // Get season account score
-    const seasonScore = await getSeasonAccountScore(seasonId, account.accountId);
-    if (!seasonScore) {
-      // User exists but has no posts in this season
+    // Get user's snapshot (today or yesterday if today's not available)
+    const todayDate = getTodayDateString();
+    const yesterdayDate = getYesterdayDateString();
+
+    let userSnapshot = await getUserSnapshot(seasonId, account.accountId, todayDate);
+    let usedSnapshotDate = todayDate;
+
+    if (!userSnapshot) {
+      // Today's snapshot not available, try yesterday
+      userSnapshot = await getUserSnapshot(seasonId, account.accountId, yesterdayDate);
+      usedSnapshotDate = yesterdayDate;
+    }
+
+    if (!userSnapshot) {
+      // User not in any snapshot - check if they have posts but aren't ranked yet
+      const seasonScore = await getSeasonAccountScore(seasonId, account.accountId);
+
       const notRankedResponse: MyRankResponse = {
         success: true,
         data: {
@@ -416,6 +465,8 @@ export const handler = async (
           originalUsername: account.originalUsername,
           displayName: freshProfile.displayName || account.displayName,
           profileImageUrl: freshProfile.profileImageUrl || account.profileImageUrl,
+          // If they have posts, let them know they'll be ranked tomorrow
+          message: seasonScore ? 'Your rank will be updated at 9:00 AM KST' : undefined,
         },
         seasonId,
         calculatedAt: new Date().toISOString(),
@@ -423,26 +474,29 @@ export const handler = async (
       return createResponse(200, notRankedResponse);
     }
 
-    // Calculate rank
-    const { rank, totalUsers } = await calculateRank(
-      seasonId,
-      account.accountId,
-      seasonScore.userScore || 0
-    );
+    // Get yesterday's snapshot for rank change comparison (if using today's snapshot)
+    let rankChange: RankChange;
+    if (usedSnapshotDate === todayDate) {
+      const yesterdaySnapshot = await getUserSnapshot(seasonId, account.accountId, yesterdayDate);
+      rankChange = calculateRankChangeFromSnapshots(userSnapshot.rank, yesterdaySnapshot?.rank);
+    } else {
+      // Using yesterday's snapshot, use stored rank change
+      rankChange = userSnapshot.rankChange || { direction: 'same', amount: 0 };
+    }
 
-    // Get rank change from today's snapshot (real-time calculation)
-    const rankChange = await getRankChange(seasonId, account.accountId, rank);
+    // Get total users from snapshot
+    const totalUsers = await getSnapshotTotalUsers(seasonId, usedSnapshotDate);
 
     // Build response (prefer fresh profile data from UserProfiles)
     const data: MyRankData = {
       status: 'ranked',
-      rank,
-      userScore: seasonScore.userScore,
-      postCount: seasonScore.postCount,
-      username: seasonScore.username,
-      originalUsername: seasonScore.originalUsername || account.originalUsername,
-      displayName: freshProfile.displayName || seasonScore.displayName || account.displayName,
-      profileImageUrl: freshProfile.profileImageUrl || seasonScore.profileImageUrl || account.profileImageUrl,
+      rank: userSnapshot.rank,
+      userScore: userSnapshot.userScore,
+      postCount: userSnapshot.postCount,
+      username: userSnapshot.username,
+      originalUsername: userSnapshot.originalUsername || account.originalUsername,
+      displayName: freshProfile.displayName || userSnapshot.displayName || account.displayName,
+      profileImageUrl: freshProfile.profileImageUrl || userSnapshot.profileImageUrl || account.profileImageUrl,
       rankChange,
       totalUsers,
     };
@@ -451,7 +505,8 @@ export const handler = async (
       success: true,
       data,
       seasonId,
-      calculatedAt: new Date().toISOString(),
+      snapshotDate: usedSnapshotDate,
+      calculatedAt: userSnapshot.snapshotTime || new Date().toISOString(),
     };
 
     return createResponse(200, response);

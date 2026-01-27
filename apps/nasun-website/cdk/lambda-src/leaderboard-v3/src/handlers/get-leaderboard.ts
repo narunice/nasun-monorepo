@@ -90,6 +90,16 @@ function getTodayDateString(): string {
 }
 
 /**
+ * Get yesterday's date string (KST)
+ */
+function getYesterdayDateString(): string {
+  const date = new Date();
+  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
+}
+
+/**
  * Check admin authentication for cumulative view
  */
 function isAdminAuthenticated(event: APIGatewayProxyEvent): boolean {
@@ -466,10 +476,28 @@ export const handler = async (
       return createResponse(200, response);
     }
 
-    // Current leaderboard (real-time calculation)
-    const seasonScores = await getSeasonAccountScores(seasonId);
+    // Current leaderboard (snapshot-based for consistent rankings throughout the day)
+    const todayDate = getTodayDateString();
+    const yesterdayDate = getYesterdayDateString();
 
-    if (seasonScores.length === 0) {
+    // Try today's snapshot first, fall back to yesterday's if not available
+    let { entries: todaySnapshots, totalCount } = await getSnapshotData(
+      seasonId,
+      todayDate,
+      500, // Get all for filtering, will paginate later
+      0
+    );
+    let usedSnapshotDate = todayDate;
+
+    if (todaySnapshots.length === 0) {
+      // Today's snapshot not available (before 9AM KST), use yesterday's
+      const yesterdayData = await getSnapshotData(seasonId, yesterdayDate, 500, 0);
+      todaySnapshots = yesterdayData.entries;
+      totalCount = yesterdayData.totalCount;
+      usedSnapshotDate = yesterdayDate;
+    }
+
+    if (todaySnapshots.length === 0) {
       const response: SeasonLeaderboardResponse = {
         season: {
           seasonId: season.seasonId,
@@ -485,27 +513,50 @@ export const handler = async (
       return createResponse(200, response);
     }
 
-    // Filter banned accounts and recalculate scores
+    // Filter banned accounts
     const bannedIds = await getBannedAccountIds();
-    const recalculatedScores = seasonScores
-      .filter((score) => !bannedIds.has(score.accountId))
-      .map((score) => ({
-        ...score,
-        ...recalculateSeasonScore(score),
-      }))
-      .sort((a, b) => b.userScore - a.userScore);
+    const filteredSnapshots = todaySnapshots.filter(
+      (snapshot) => !bannedIds.has(snapshot.accountId)
+    );
 
-    // Get today's snapshot ranks for rank change comparison
-    const snapshotRanks = await getTodaySnapshotRanks(seasonId);
+    // Get yesterday's snapshot for rank change comparison (if using today's snapshot)
+    let yesterdayRankMap = new Map<string, number>();
+    if (usedSnapshotDate === todayDate) {
+      const { entries: yesterdaySnapshots } = await getSnapshotData(
+        seasonId,
+        yesterdayDate,
+        500,
+        0
+      );
+      for (const snapshot of yesterdaySnapshots) {
+        yesterdayRankMap.set(snapshot.accountId, snapshot.rank);
+      }
+    }
 
-    const totalCount = recalculatedScores.length;
-    const paginatedScores = recalculatedScores.slice(offset, offset + limit);
+    // Re-rank after filtering banned accounts
+    const rerankedSnapshots = filteredSnapshots.map((snapshot, index) => ({
+      ...snapshot,
+      rank: index + 1, // Re-assign rank after filtering
+    }));
 
-    const entries: SeasonLeaderboardEntry[] = paginatedScores.map((score, index) => {
-      const rank = offset + index + 1;
-      const previousRank = snapshotRanks.get(score.accountId);
-      const rankChange = calculateRankChange(rank, previousRank);
-      return toSeasonLeaderboardEntry(score, rank, rankChange, includeBreakdown);
+    totalCount = rerankedSnapshots.length;
+    const paginatedSnapshots = rerankedSnapshots.slice(offset, offset + limit);
+
+    const entries: SeasonLeaderboardEntry[] = paginatedSnapshots.map((snapshot) => {
+      // Calculate rank change: compare with yesterday's snapshot
+      let rankChange: RankChange;
+      if (usedSnapshotDate === todayDate) {
+        const yesterdayRank = yesterdayRankMap.get(snapshot.accountId);
+        rankChange = calculateRankChange(snapshot.rank, yesterdayRank);
+      } else {
+        // Using yesterday's snapshot, use stored rank change
+        rankChange = snapshot.rankChange || { direction: 'same', amount: 0 };
+      }
+
+      return snapshotToLeaderboardEntry(
+        { ...snapshot, rankChange },
+        includeBreakdown
+      );
     });
 
     const response: SeasonLeaderboardResponse = {
@@ -518,7 +569,8 @@ export const handler = async (
       },
       entries,
       totalCount,
-      calculatedAt: new Date().toISOString(),
+      snapshotDate: usedSnapshotDate,
+      calculatedAt: todaySnapshots[0]?.snapshotTime || new Date().toISOString(),
     };
 
     return createResponse(200, response);
