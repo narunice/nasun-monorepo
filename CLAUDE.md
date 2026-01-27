@@ -119,7 +119,7 @@ Security expectations:
 - Assume deep familiarity with:
   - Sui / Move (object model, ownership, capabilities)
   - Sponsored transactions, gas abstraction, zkLogin
-  - Nasun Network (Sui fork with custom devnet — Chain ID: 6681cdfd)
+  - Nasun Network (Sui fork with custom devnet — Chain ID: 12bf3808)
   - Smart contract patterns: shared objects, AdminCap, UpgradeCap
 
 - On-chain code is security-critical by default
@@ -202,7 +202,7 @@ Nasun Devnet 블록 탐색기. AWS Amplify에 자동 배포됩니다.
 ```env
 VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
-VITE_CHAIN_ID=6681cdfd
+VITE_CHAIN_ID=12bf3808
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 VITE_GOOGLE_CLIENT_ID=<optional>
 ```
@@ -420,7 +420,7 @@ pnpm deploy:gensol-website:staging
 | RPC Endpoint   | https://rpc.devnet.nasun.io      |
 | Faucet         | https://faucet.devnet.nasun.io   |
 | Explorer       | https://explorer.devnet.nasun.io |
-| Chain ID       | `6681cdfd`                       |
+| Chain ID       | `12bf3808`                       |
 | Native Token   | NASUN (최소단위: SOE)            |
 
 ## 보안
@@ -502,24 +502,32 @@ cd apps/pado/contracts
 
 **심볼 ID**: BTCUSD=1, ETHUSD=2, NASUSD=3 (8 decimals)
 
-#### Pado Tokens (NBTC, NUSDC, Faucet) - 2026-01-23 V5 Recovery
+#### Unified Tokens (devnet_tokens) - V6 (2026-01-27)
 
-| 컨트랙트             | ID              | 비고                |
-| -------------------- | --------------- | ------------------- |
-| pado_tokens          | `0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4` | NBTC/NUSDC + Faucet |
-| TokenFaucet (shared) | `0x802d91521fc5ba0e590330cb500eb1c0399c6209b6b1db1cffe41e101a82521f` | 토큰 민팅           |
-| ClaimRecord (shared) | `0x036059bef5d600657b70300efd3ae4e885504ed52555f5684f2c5e33edd67757` | 24시간 쿨다운       |
-| UpgradeCap           | `0x412c1b140f14e993ff27a2253bb73e00bc066868337b1f1106ce9f5d13bc2ee4` | 업그레이드 권한     |
+| 컨트랙트             | ID                                                                   | 비고                |
+| -------------------- | -------------------------------------------------------------------- | ------------------- |
+| devnet_tokens        | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017` | NBTC/NUSDC + Faucet |
+| TokenFaucet (shared) | `0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14` | 토큰 민팅           |
+| ClaimRecord (shared) | `0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8` | 24시간 쿨다운       |
+| UpgradeCap           | `0x2017d606c566ff13cbaf23bf18b5e413b95bb9bcd333c2f413878e7ddddf2a87` | 업그레이드 권한     |
 
-#### Prediction Market
+#### Prediction Market - V6 (2026-01-27)
 
-| 컨트랙트             | ID              | 비고             |
-| -------------------- | --------------- | ---------------- |
-| prediction           | `0x8928903e...` | 예측 시장 패키지 |
-| GlobalState (shared) | `0x29d79342...` | 예측 시장 상태   |
-| AdminCap             | `0x38a29029...` | 관리자 권한      |
+| 컨트랙트             | ID                                                                   | 비고             |
+| -------------------- | -------------------------------------------------------------------- | ---------------- |
+| prediction           | `0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd` | 예측 시장 패키지 |
+| GlobalState (shared) | `0xcbff8cda5d8bd9b81358b159b09ff57fb2b159d57ddeb46b9e714e7290825553` | 예측 시장 상태   |
+| AdminCap             | `0x34881d8e68f9d90da2865877b782ea27f25195a25ed73655ced2188aa1d3938a` | 관리자 권한      |
 
-#### Unified Margin v1 (2026-01-10 완료)
+#### Lottery - V6 (2026-01-27)
+
+| 컨트랙트               | ID                                                                   | 비고           |
+| ---------------------- | -------------------------------------------------------------------- | -------------- |
+| lottery                | `0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80` | 복권 패키지    |
+| LotteryRegistry (shared)| `0x0a64e225326746ff7c1ff7bb0b130cd0df922cc00101aedbfa442550e7995794` | 복권 레지스트리|
+| AdminCap               | `0x8329a17bed9e4b98aeb502b1ecca5ee9d73b7ca1dd8a60a85e09dfd7f61f0cec` | 관리자 권한    |
+
+#### Unified Margin v1 (V6 재배포 필요)
 
 | 컨트랙트                | ID              | 비고                         |
 | ----------------------- | --------------- | ---------------------------- |
@@ -547,18 +555,15 @@ cd apps/pado/contracts
 - `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
 - `liquidation.move` - 청산 엔진 (5% 보너스)
 
-#### Governance (Nasun Website) - 2026-01-23 V5 Recovery
+#### Governance (Nasun Website) - V6 (2026-01-27 리셋)
 
-| 컨트랙트                      | ID                                                                   | 비고                                |
-| ----------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
-| governance (v1-v7)            | deprecated                                                           | 이전 버전들 (더 이상 사용 안함)     |
-| governance (v8)               | `0x07b91522177a221f11008eb4c5fa1a476b8d49ab52ef7946404b34fd00afacb0` | **현재 패키지** (2026-01-23 배포)   |
-| VotingPowerOracle (shared)    | `0xd45fc4189ff0922a1db9373f761bad1ddd273275703c8f8a38263229b3c5e08a` | Ed25519 서명 검증                   |
-| CertificateRegistry (shared)  | `0x1be93058998168aafeabc9838306b46fc69da21e7f009cbbc71a7150a900698d` | 중복 발급 방지                      |
-| ProposalTypeRegistry (shared) | `0x6810af6219c455996615d56307ef923b970e6b0e1dca6cf1a7c396aab6c08f0f` | 프로포절 유형 관리                  |
-| Dashboard (shared)            | `0x821f7dfd794e23a26d454624aeeeed0b05633c2a689ab360b1b800d95efde17c` | 프로포절 대시보드                   |
-| AdminCap                      | `0x59b017a3cb4c1805d4c6ba2b542516197a2be9e91d77b036201456579e39576f` | 관리자 권한                         |
-| UpgradeCap                    | `0xec1e44046cc468b68a26695542c025a09c21103d3e877e50b751d337ae6ac6a2` | 업그레이드 권한                     |
+| 컨트랙트              | ID                                                                   | 비고                     |
+| --------------------- | -------------------------------------------------------------------- | ------------------------ |
+| governance            | `0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516` | V6 패키지                |
+| Dashboard (shared)    | `0x3398b1931bc8c418b0e0e1d9c1e04537bfc82c3f85d4dc22e11c97469baee7ae` | 프로포절 대시보드        |
+| AdminCap              | `0xd96d14baf4422909e6721c5533d981f0a481b947989c95502d3a45f89f607a04` | 관리자 권한              |
+
+> 전체 컨트랙트 주소는 `packages/devnet-config/devnet-ids.json` 참조
 
 **v5 Features:**
 

@@ -245,25 +245,33 @@ Executor 등록 및 관리 시스템.
 
 ---
 
-## 배포된 컨트랙트 (Deployed Contracts - Devnet V5)
+## 배포된 컨트랙트 (Deployed Contracts - Devnet V6)
 
-> **Chain ID**: `6681cdfd`
+> **Chain ID**: `12bf3808` (V6 리셋, 2026-01-27)
 
 ### Baram Contract
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0x4ad59600a98ca11f9e07b76fce24a7eb98c7201a8700f3930fb7890ca1e3ff0c` |
-| BaramRegistry | `0x9657baf64ea5072f27a337b8040d270d0ceffa33896255d612962876d70840fa` |
-| UpgradeCap | `0xcb489149beadc254b874034175cdf0a9d767ca444ef471d39089b7693fa1b208` |
+| Package ID | `0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f` |
+| BaramRegistry | `0x52427e24315a444e9aa07ecb93df5a3392e1cb5d5bec8aba90c4c9eecaf77d3f` |
+| UpgradeCap | `0xa9a6ee0412639af01e630ce23d38b246a88bdfd3ee8db5e3634ce45fa1eefe62` |
 
 ### Executor Registry
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0x64558f38eaadf38e43c102d16911f62b7123bc2ec952df2ac0efa0ebcf50a1d6` |
-| ExecutorRegistry | `0x4586f7f1355458d27c660b014b8c549df55384e4534821dd876dcb0490894016` |
-| 등록된 Executor | `0xa952b023c471e51457eb71b5c9e7424f0799103fc2336d79c0ffc2164c5ca854` |
+| Package ID | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
+| ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
+| AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
+
+### Unified Tokens (devnet_tokens)
+
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017` |
+| TokenFaucet | `0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14` |
+| ClaimRecord | `0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8` |
 
 ### Lambda Backend
 
@@ -279,23 +287,24 @@ Executor 등록 및 관리 시스템.
 ### Frontend (.env)
 
 ```env
-# Network
+# Network (V6)
 VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
-VITE_CHAIN_ID=6681cdfd
+VITE_CHAIN_ID=12bf3808
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 
-# Tokens
-VITE_NUSDC_TYPE=0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772::nusdc::NUSDC
+# Tokens (devnet_tokens - unified)
+VITE_NUSDC_TYPE=0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017::nusdc::NUSDC
+VITE_TOKENS_PACKAGE_ID=0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017
+VITE_TOKEN_FAUCET_ID=0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14
 
 # Baram Contract
-VITE_BARAM_PACKAGE_ID=0x4ad59600...
-VITE_BARAM_REGISTRY_ID=0x9657baf6...
+VITE_BARAM_PACKAGE_ID=0xfbe120e1...
+VITE_BARAM_REGISTRY_ID=0x52427e24...
 
 # Executor
-VITE_EXECUTOR_ADDRESS=0xa952b023...
-VITE_EXECUTOR_PACKAGE_ID=0x64558f38...
-VITE_EXECUTOR_REGISTRY_ID=0x4586f7f1...
+VITE_EXECUTOR_PACKAGE_ID=0xbc29ac03...
+VITE_EXECUTOR_REGISTRY_ID=0xeaac7390...
 
 # Backend
 VITE_BACKEND_URL=https://ncn10xkbfh.execute-api.../prod
