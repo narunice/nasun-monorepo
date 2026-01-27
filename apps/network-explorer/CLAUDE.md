@@ -61,7 +61,7 @@ src/components/ui/
 | Faucet (HTTPS) | https://faucet.devnet.nasun.io |
 | Faucet (HTTP) | http://3.38.127.23:5003 |
 | Explorer URL | https://explorer.devnet.nasun.io |
-| Chain ID | `6681cdfd` (2025-12-25 V3 리셋) |
+| Chain ID | `12bf3808` (2026-01-27 V6 리셋) |
 | Fork Source | Sui mainnet v1.63.0 |
 | Native Token | NASUN (최소단위: SOE) |
 | Epoch Duration | 60초 |
@@ -125,10 +125,10 @@ pnpm build
 ## 환경변수
 
 ```env
-VITE_SUI_RPC_URL=http://3.38.127.23:9000
+VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
-VITE_CHAIN_ID=6681cdfd
-VITE_FAUCET_URL=http://3.38.127.23:5003
+VITE_CHAIN_ID=12bf3808
+VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 ```
 
 ## 주요 기능
