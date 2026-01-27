@@ -70,7 +70,7 @@ if [[ "$NITRO_CLI_AVAILABLE" == true ]]; then
     EIF_FILE="$OUTPUT_DIR/baram-enclave.eif"
 
     nitro-cli build-enclave \
-        --docker-image baram-enclave:nitro \
+        --docker-uri baram-enclave:nitro \
         --output-file "$EIF_FILE"
 
     echo ""
