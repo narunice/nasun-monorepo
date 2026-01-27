@@ -1,16 +1,16 @@
 [package]
 name = "pado_perp"
 edition = "2024"
-version = "0.0.2"
-published-at = "0x4e2a36299ce4b17ecbd3c4049fa99aae77afeb193a0724c4ad738765072be2e5"
+version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
-pado_tokens = { local = "../contracts" }
+Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
 
 [addresses]
 pado_perp = "0x0"
-pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+devnet_tokens = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
 
 [environments]
-nasun-devnet = "6681cdfd"
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"

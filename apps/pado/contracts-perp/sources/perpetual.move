@@ -14,7 +14,7 @@ module pado_perp::perpetual {
     use sui::event;
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
-    use pado::nusdc::NUSDC;
+    use devnet_tokens::nusdc::NUSDC;
 
     // ===== Error Codes =====
 

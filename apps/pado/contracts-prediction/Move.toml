@@ -1,16 +1,14 @@
 [package]
 name = "pado_prediction"
-edition = "2024.beta"
+edition = "2024"
 version = "0.0.1"
-published-at = "0x8c9423b4e64ee673171e46a21f0d41b9d58f67afecda23caf010bca78be05f0b"
 
 [dependencies]
-pado_tokens = { local = "../contracts" }
-Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
 
 [addresses]
-prediction = "0x8c9423b4e64ee673171e46a21f0d41b9d58f67afecda23caf010bca78be05f0b"
-pado = "0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772"
+prediction = "0x0"
+devnet_tokens = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
 
 [environments]
 devnet = "12bf3808"

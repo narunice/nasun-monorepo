@@ -8,7 +8,7 @@ module prediction::prediction_market {
     use sui::clock::{Self, Clock};
     use sui::event;
     use std::string::String;
-    use pado::nusdc::NUSDC;
+    use devnet_tokens::nusdc::NUSDC;
 
     // ===== Error Codes =====
     const EMarketNotOpen: u64 = 0;

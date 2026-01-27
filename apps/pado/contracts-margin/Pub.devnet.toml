@@ -24,10 +24,10 @@ build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x770677ca76e9adb8830271db7bed30ff9cb400abbe4130e6c61af58ec954a3c8"
 
 [[published]]
-source = { local = "<MONOREPO>/apps/pado/contracts-prediction" }
-published-at = "0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd"
-original-id = "0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd"
+source = { local = "<MONOREPO>/apps/pado/contracts-margin" }
+published-at = "0x94f8cea3dadbb06fe8794271429702ddad0cee2eaad378217f84990bcc6f9b17"
+original-id = "0x94f8cea3dadbb06fe8794271429702ddad0cee2eaad378217f84990bcc6f9b17"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xbbe9166264c238781faf9aca375ccfedda4ad1bbd2295395c1c26be43de0d70e"
+upgrade-capability = "0x4d5ee834330704631843d2010ea6539055bca385e0c3cf8700561c42890c0436"
