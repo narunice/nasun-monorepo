@@ -2,15 +2,16 @@
 name = "pado_prediction"
 edition = "2024.beta"
 version = "0.0.1"
-# published-at will be set after deployment
+published-at = "0x8c9423b4e64ee673171e46a21f0d41b9d58f67afecda23caf010bca78be05f0b"
 
 [dependencies]
 pado_tokens = { local = "../contracts" }
+Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-prediction = "0x0"
-pado = "0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4"
+prediction = "0x8c9423b4e64ee673171e46a21f0d41b9d58f67afecda23caf010bca78be05f0b"
+pado = "0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772"
 
 [environments]
-devnet = "56c8b101"
-nasun-devnet = "56c8b101"
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"
