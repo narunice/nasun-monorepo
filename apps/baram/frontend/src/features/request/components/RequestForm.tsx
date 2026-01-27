@@ -5,9 +5,11 @@
 import { useState, useEffect } from 'react';
 import { useCreateRequest, RequestStatus } from '../hooks/useCreateRequest';
 import { useExecutors, ExecutorInfo } from '../hooks/useExecutors';
+import { useAttestation } from '../hooks/useAttestation';
 import { MODEL_PRICING, ModelId, DEFAULT_MODEL, BARAM_CONFIG } from '@/config/network';
 import { ResultDisplay } from './ResultDisplay';
 import { ExecutorSelector } from './ExecutorSelector';
+import { AttestationDisplay } from './AttestationDisplay';
 
 const models = Object.entries(MODEL_PRICING).map(([id, config]) => ({
   id: id as ModelId,
@@ -74,6 +76,12 @@ export function RequestForm() {
 
   const { executors } = useExecutors();
   const { status, error, result, createRequest, reset } = useCreateRequest();
+
+  // Fetch attestation when executor is selected
+  const attestation = useAttestation(
+    selectedExecutor?.endpointUrl || null,
+    selectedExecutor?.teeType || 0
+  );
 
   // Auto-select first executor if none selected
   useEffect(() => {
@@ -215,6 +223,14 @@ export function RequestForm() {
               </button>
             )}
           </div>
+
+          {/* Attestation Info */}
+          {selectedExecutor && (
+            <AttestationDisplay
+              teeType={selectedExecutor.teeType}
+              attestation={attestation}
+            />
+          )}
 
           {/* Submit Button */}
           <div className="flex items-center justify-between pt-2">

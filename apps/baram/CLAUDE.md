@@ -483,7 +483,7 @@ CRITICAL:
 | C-1~C-7 | TEE Integration (vsock, Local LLM) | 완료 |
 | C-8 | UI 개선 (테마 토글) | 완료 |
 | C-9 | Custom AMI + Spot 자동화 | 완료 |
-| C-10 | Attestation 검증 | 계획 |
+| C-10 | Attestation 검증 | 완료 |
 | D | Stake/Slashing 메커니즘 | 계획 |
 | E | Model Marketplace | 계획 |
 

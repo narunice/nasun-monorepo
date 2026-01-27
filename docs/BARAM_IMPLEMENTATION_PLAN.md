@@ -34,6 +34,7 @@
 | Phase C-7: Frontend RSA-OAEP | ✅ 완료 | 브라우저 RSA-OAEP 암호화, E2E 완료 |
 | Phase C-8: UI 개선 | ✅ 완료 | Dark/Light 테마 토글, MODEL_PRICING 정리 (GPT 제거) |
 | Phase C-9: Custom AMI | ✅ 완료 | Spot 인스턴스 자동화, 2-3분 내 개발 환경 구축 |
+| Phase C-10: Attestation | ✅ 완료 | TEE 증명 표시 (PCR0, Module ID, 검증 상태) |
 
 ---
 
