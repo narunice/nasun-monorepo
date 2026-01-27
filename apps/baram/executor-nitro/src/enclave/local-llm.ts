@@ -71,6 +71,9 @@ export async function initializeLocalLLM(config: LocalLLMConfig = {}): Promise<v
 /**
  * Generate a completion using the local LLM
  *
+ * Creates a fresh context for each request to avoid sequence exhaustion issues.
+ * This is slightly less efficient but ensures reliable operation.
+ *
  * @param prompt - User prompt (already decrypted)
  * @param options - Generation options
  * @returns Generated text and token usage
@@ -83,7 +86,7 @@ export async function generateCompletion(
     systemPrompt?: string;
   } = {}
 ): Promise<LocalLLMResult> {
-  if (!context || !model) {
+  if (!model) {
     throw new Error('Local LLM not initialized. Call initializeLocalLLM() first.');
   }
 
@@ -95,9 +98,20 @@ export async function generateCompletion(
   console.log(`[LocalLLM] Generating completion (maxTokens=${maxTokens}, temp=${temperature})...`);
   const startTime = Date.now();
 
+  // Create a fresh context for each request to avoid "No sequences left" error
+  // This is more reliable than trying to reuse sequences
+  let requestContext: LlamaContext | null = null;
+  let session: LlamaChatSession | null = null;
+
   try {
-    const session = new LlamaChatSession({
-      contextSequence: context.getSequence(),
+    requestContext = await model.createContext({
+      contextSize: 2048,
+    });
+
+    const sequence = requestContext.getSequence();
+
+    session = new LlamaChatSession({
+      contextSequence: sequence,
       systemPrompt,
     });
 
@@ -119,6 +133,14 @@ export async function generateCompletion(
   } catch (error) {
     console.error('[LocalLLM] Generation failed:', error);
     throw new Error(`Local LLM generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    // Clean up resources
+    if (session) {
+      session.dispose();
+    }
+    if (requestContext) {
+      await requestContext.dispose();
+    }
   }
 }
 
