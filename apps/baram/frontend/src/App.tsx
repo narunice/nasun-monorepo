@@ -6,8 +6,10 @@ import { WalletConnect, BalanceDisplay } from '@nasun/wallet-ui';
 import { useWallet } from '@nasun/wallet';
 import { RequestForm } from './features/request/components/RequestForm';
 import { NETWORK_CONFIG, BARAM_CONFIG } from './config/network';
+import { ThemeProvider } from './components/theme/ThemeProvider';
+import { ThemeToggle } from './components/theme/ThemeToggle';
 
-export default function App() {
+function AppContent() {
   const { status } = useWallet();
   const isConnected = status === 'unlocked';
 
@@ -30,6 +32,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <span className="text-xs text-[var(--color-text-muted)] px-2 py-1 rounded bg-[var(--color-bg-secondary)]">
               {NETWORK_CONFIG.networkName}
             </span>
@@ -93,5 +96,13 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

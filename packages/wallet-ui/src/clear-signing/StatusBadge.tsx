@@ -120,7 +120,7 @@ export function StatusBadge({
   return (
     <span className="inline-flex items-center gap-1">
       {badge}
-      <Tooltip content={config.tooltip} size="xs" />
+      <Tooltip content={config.tooltip} size="xs" position="left" />
     </span>
   );
 }

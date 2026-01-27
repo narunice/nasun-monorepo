@@ -4,7 +4,14 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { getAllTokens, useMultiBalance, type TokenConfig } from '@nasun/wallet';
+import {
+  getAllTokens,
+  useMultiBalance,
+  useChain,
+  useEVMBalance,
+  getStoredEVMAddress,
+  type TokenConfig,
+} from '@nasun/wallet';
 
 interface TokenSelectorProps {
   // Currently selected token symbol
@@ -31,7 +38,13 @@ export function TokenSelector({
 }: TokenSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Chain and balance hooks
+  const { isEVM } = useChain();
   const { data: balances } = useMultiBalance();
+  const storedEVMAddress = isEVM ? getStoredEVMAddress() : null;
+  const evmAddressForBalance = storedEVMAddress ?? undefined;
+  const { balance: evmBalance } = useEVMBalance(evmAddressForBalance);
 
   // Get tokens to display
   const availableTokens = tokens || getAllTokens();
@@ -51,8 +64,13 @@ export function TokenSelector({
     };
   }, []);
 
-  // Get balance for a token
+  // Get balance for a token (chain-aware)
   const getBalance = (symbol: string): string | undefined => {
+    if (isEVM) {
+      // EVM chain: return EVM native balance
+      return evmBalance?.formatted;
+    }
+    // Move chain: use multi-balance
     if (!balances) return undefined;
     if (symbol === 'NSN') return balances.native.formatted;
     return balances.tokens[symbol]?.formatted;

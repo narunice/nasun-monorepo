@@ -3,22 +3,13 @@
 # this file should not be committed to source control
 
 build-env = "devnet"
-chain-id = "56c8b101"
-
-[[published]]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/blind/contracts-executor" }
-published-at = "0xb4fb2a0d5cdee06f455d450a7bb0c3150e9e614b15e5635ada5a9499f90f79e0"
-original-id = "0xb4fb2a0d5cdee06f455d450a7bb0c3150e9e614b15e5635ada5a9499f90f79e0"
-version = 1
-toolchain-version = "1.63.3"
-build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xbddcd973cb0d9e7c59a2a179bd5b6b5260cad781787924439fe527b0ada6fa01"
+chain-id = "12bf3808"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts-executor" }
-published-at = "0x64558f38eaadf38e43c102d16911f62b7123bc2ec952df2ac0efa0ebcf50a1d6"
-original-id = "0x64558f38eaadf38e43c102d16911f62b7123bc2ec952df2ac0efa0ebcf50a1d6"
+published-at = "0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5"
+original-id = "0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x0842e3f2cfbefc0f134645fa9a9e2da304d4f2385d247d6128995c860dcfb24e"
+upgrade-capability = "0x4575e869a94391d4d2cfc888533b6d8fdabc9c70e45232a9236ceadd782cb739"

@@ -10,5 +10,5 @@ Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packag
 baram_executor = "0x0"
 
 [environments]
-devnet = "56c8b101"
-nasun-devnet = "56c8b101"
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"

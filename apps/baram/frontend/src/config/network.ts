@@ -14,10 +14,10 @@ export const BARAM_CONFIG = {
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
 } as const;
 
-// Executor Registry Configuration
+// Executor Registry Configuration (2026-01-27 deployment)
 export const EXECUTOR_CONFIG = {
-  packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || '',
-  registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || '',
+  packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || '0xcf72bce1d38d71d8dab61f68f279919f626e240008418ca1e33c4059f9369983',
+  registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || '0x3bfe54558fb69e806f9fd3f25392c5deb89b95152b8503c4f97393d27c588fb0',
 } as const;
 
 // TEE Types
@@ -52,18 +52,14 @@ export const TOKENS = {
 } as const;
 
 // AI Model Pricing (in NUSDC, 6 decimals)
+// Privacy-preserving TEE models only
 export const MODEL_PRICING = {
-  'gpt-4o-mini': {
-    name: 'GPT-4o Mini',
-    price: 100_000, // 0.1 NUSDC
-    description: 'Fast and efficient for most tasks',
-  },
-  'gpt-4o': {
-    name: 'GPT-4o',
-    price: 500_000, // 0.5 NUSDC
-    description: 'Most capable model',
+  'llama-3.2-3b-local': {
+    name: 'Llama 3.2 3B (TEE)',
+    price: 10_000, // 0.01 NUSDC (test price)
+    description: 'Private inference in TEE enclave',
   },
 } as const;
 
 export type ModelId = keyof typeof MODEL_PRICING;
-export const DEFAULT_MODEL: ModelId = 'gpt-4o-mini';
+export const DEFAULT_MODEL: ModelId = 'llama-3.2-3b-local';
