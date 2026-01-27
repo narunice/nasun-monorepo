@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@mysten/sui": "^1.45.2",
+    "@nasun/devnet-config": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@tanstack/react-query": "^5.90.12",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

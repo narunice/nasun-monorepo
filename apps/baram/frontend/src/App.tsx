@@ -2,16 +2,25 @@
  * Baram - Main App Component
  */
 
-import { WalletConnect, BalanceDisplay } from '@nasun/wallet-ui';
-import { useWallet } from '@nasun/wallet';
+import { Routes, Route } from 'react-router-dom';
+import { WalletConnect, BalanceDisplay, TokenFaucetButton } from '@nasun/wallet-ui';
+import { useWallet, useZkLogin, useLedger, useMultiBalance } from '@nasun/wallet';
 import { RequestForm } from './features/request/components/RequestForm';
 import { NETWORK_CONFIG, BARAM_CONFIG } from './config/network';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import { ThemeToggle } from './components/theme/ThemeToggle';
+import AuthCallback from './pages/AuthCallback';
 
 function AppContent() {
-  const { status } = useWallet();
-  const isConnected = status === 'unlocked';
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isConnected: isLedgerConnected } = useLedger();
+  const { data: balances } = useMultiBalance({});
+  const isConnected = (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
+
+  // NUSDC balance (6 decimals)
+  const nusdcBalance = balances?.tokens?.['NUSDC'];
+  const nusdcAmount = nusdcBalance ? Number(nusdcBalance.balance) / 1e6 : 0;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
@@ -65,6 +74,16 @@ function AppContent() {
             {/* Balance Display */}
             <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
               <BalanceDisplay />
+              {/* NUSDC Balance for Baram */}
+              <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-[var(--color-text-secondary)]">NUSDC Balance: </span>
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                    {nusdcAmount.toLocaleString()} NUSDC
+                  </span>
+                </div>
+                <TokenFaucetButton symbol="NUSDC" compact />
+              </div>
             </div>
 
             {/* Request Form */}
@@ -102,7 +121,10 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <Routes>
+        <Route path="/callback" element={<AuthCallback />} />
+        <Route path="*" element={<AppContent />} />
+      </Routes>
     </ThemeProvider>
   );
 }
