@@ -6,7 +6,7 @@ module lending::lending_pool {
     use sui::balance::{Self, Balance};
     use sui::clock::{Self, Clock};
     use sui::event;
-    use pado::nusdc::NUSDC;
+    use devnet_tokens::nusdc::NUSDC;
 
     // ============================================================================
     // Constants

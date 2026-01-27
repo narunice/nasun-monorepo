@@ -1,14 +1,15 @@
 [package]
 name = "pado_lending"
-edition = "2024.beta"
+edition = "2024"
 version = "0.0.1"
 
 [dependencies]
-pado_tokens = { local = "../contracts" }
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
 
 [addresses]
 lending = "0x0"
-pado = "0x508ba1bda666f93e72543ebcce14075d08ac089c455fca51592bc1ef1c826489"
+devnet_tokens = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
 
 [environments]
-nasun-devnet = "6681cdfd"
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"

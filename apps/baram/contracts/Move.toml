@@ -1,10 +1,10 @@
 [package]
 name = "baram"
 edition = "2024"
-version = "0.0.1"
+version = "0.0.2"
 
 [dependencies]
-pado_tokens = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts" }
+devnet_tokens = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tokens" }
 
 [addresses]
 baram = "0x0"
