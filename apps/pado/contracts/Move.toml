@@ -2,14 +2,14 @@
 name = "pado_tokens"
 edition = "2024"
 version = "0.0.1"
-## published-at set after deployment
+published-at = "0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772"
 
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-pado = "0x9984aab5fe518cf658532bf04e45b1eea075fe86ae62ad124bc3c8694f61dbb4"
+pado = "0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772"
 
 [environments]
-devnet = "56c8b101"
-nasun-devnet = "56c8b101"
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"
