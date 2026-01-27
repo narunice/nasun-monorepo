@@ -25,13 +25,13 @@ registerTokens([
   },
 ]);
 
-// Register NUSDC faucet handler for baram package
-if (FAUCET_CONFIG.tokenFaucetId) {
+// Register NUSDC faucet handler for unified devnet_tokens package
+if (FAUCET_CONFIG.tokenFaucetId && FAUCET_CONFIG.packageId) {
   registerTokenFaucet('NUSDC', {
     buildTransaction: () => {
       const tx = new Transaction();
       tx.moveCall({
-        target: `${BARAM_CONFIG.packageId}::faucet::request_nusdc`,
+        target: `${FAUCET_CONFIG.packageId}::faucet::request_nusdc`,
         arguments: [
           tx.object(FAUCET_CONFIG.tokenFaucetId),
         ],
@@ -68,6 +68,8 @@ console.log('Baram Config:', {
   network: NETWORK_CONFIG.networkName,
   rpcUrl: NETWORK_CONFIG.rpcUrl,
 });
+
+console.log('Faucet Config:', FAUCET_CONFIG);
 
 // React Query client
 const queryClient = new QueryClient({

@@ -20,7 +20,8 @@
     "deploy:gensol-website:staging": "./scripts/deploy-gensol-website-staging.sh",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean && rm -rf node_modules"
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "devnet:sync": "pnpm --filter @nasun/devnet-config sync"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

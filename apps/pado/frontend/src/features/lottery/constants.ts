@@ -1,15 +1,11 @@
+import { LOTTERY, NUSDC_TYPE as DEVNET_NUSDC_TYPE } from '@nasun/devnet-config';
+
 // Lottery Package deployed on Nasun Devnet (v2 - Multi-Tier)
-export const LOTTERY_PACKAGE_ID =
-  '0x8dce08316436ed3fa8c4a183895101ee4a4c4eb8e1dcd19e121b46ee5e256538';
-
-export const LOTTERY_REGISTRY_ID =
-  '0x56e1875df39be66f3c591678ff75866b6c44637c4b84e4c2767926f738ea7f16';
-
-export const LOTTERY_ADMIN_CAP_ID =
-  '0xf60cb648dc721bc14b794914518732e809efc7ac471ad1e1213706d209447d68';
-
-export const LOTTERY_UPGRADE_CAP_ID =
-  '0xacd8378d0c184155abf3f782c83de51830a5f8b964b60ea3406cb2213854d1d0';
+// IDs imported from @nasun/devnet-config for centralized management
+export const LOTTERY_PACKAGE_ID = LOTTERY.packageId;
+export const LOTTERY_REGISTRY_ID = LOTTERY.registry;
+export const LOTTERY_ADMIN_CAP_ID = LOTTERY.adminCap;
+export const LOTTERY_UPGRADE_CAP_ID = LOTTERY.upgradeCap;
 
 // Sui Random object (singleton, same across all Sui networks)
 export const SUI_RANDOM_ID = '0x8';
@@ -51,9 +47,8 @@ export const ROUND_STATUS = {
   SETTLED: 3,
 } as const;
 
-// NUSDC type (V6 pado_tokens package)
-export const NUSDC_TYPE =
-  '0xd0e01761b2f822df9cd412af99d75d35c477d805b1636981acd15c4a5c0ab772::nusdc::NUSDC';
+// NUSDC type (from @nasun/devnet-config)
+export const NUSDC_TYPE = DEVNET_NUSDC_TYPE;
 
 // Lottery module types
 export const LOTTERY_ROUND_TYPE = `${LOTTERY_PACKAGE_ID}::lottery::LotteryRound`;

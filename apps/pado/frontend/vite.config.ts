@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    preserveSymlinks: true,
   },
   optimizeDeps: {
     include: ['@scure/bip39', '@scure/bip39/wordlists/english.js'],

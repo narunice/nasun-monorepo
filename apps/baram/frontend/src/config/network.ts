@@ -1,4 +1,4 @@
-import { NETWORK, BARAM } from '@nasun/devnet-config';
+import { NETWORK, BARAM, TOKENS as DEVNET_TOKENS } from '@nasun/devnet-config';
 
 // Baram Network Configuration
 // Fallbacks from @nasun/devnet-config for centralized management
@@ -49,10 +49,11 @@ export const TOKEN_CONFIG = {
 } as const;
 
 // Token Faucet Configuration
-// Shared objects for requesting test tokens
+// Shared objects from unified devnet_tokens package
 export const FAUCET_CONFIG = {
-  tokenFaucetId: import.meta.env.VITE_TOKEN_FAUCET_ID || '',
-  claimRecordId: import.meta.env.VITE_CLAIM_RECORD_ID || '',
+  packageId: import.meta.env.VITE_TOKENS_PACKAGE_ID || DEVNET_TOKENS.packageId,
+  tokenFaucetId: import.meta.env.VITE_TOKEN_FAUCET_ID || DEVNET_TOKENS.tokenFaucet,
+  claimRecordId: import.meta.env.VITE_CLAIM_RECORD_ID || DEVNET_TOKENS.claimRecord,
 } as const;
 
 // Token Metadata
@@ -73,10 +74,11 @@ export const TOKENS = {
 
 // AI Model Pricing (in NUSDC, 6 decimals)
 // Privacy-preserving TEE models only
+// Note: Contract MIN_PRICE is 100,000 (0.1 NUSDC)
 export const MODEL_PRICING = {
   'llama-3.2-3b-local': {
     name: 'Llama 3.2 3B (TEE)',
-    price: 10_000, // 0.01 NUSDC (test price)
+    price: 100_000, // 0.1 NUSDC (contract minimum)
     description: 'Private inference in TEE enclave',
   },
 } as const;
