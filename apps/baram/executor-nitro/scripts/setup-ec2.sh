@@ -72,13 +72,14 @@ sudo usermod -aG ne $USER
 echo ""
 echo -e "${GREEN}Step 5: Configuring Nitro Enclave allocator...${NC}"
 
-# Create allocator config
+# Create allocator config (YAML document marker required for nitro-cli 1.4+)
 sudo mkdir -p /etc/nitro_enclaves
 sudo tee /etc/nitro_enclaves/allocator.yaml > /dev/null <<EOF
+---
 # Enclave resource allocation
 # CPU: 2 vCPUs reserved for Enclave
-# Memory: 4GB reserved for Enclave
-memory_mib: 4096
+# Memory: 14GB reserved for Enclave (for Local LLM)
+memory_mib: 14336
 cpu_count: 2
 EOF
 
