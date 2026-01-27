@@ -33,6 +33,7 @@
 | Phase C-6: E2E Integration | ✅ 완료 | TEE Executor 등록, E2E 테스트 성공 |
 | Phase C-7: Frontend RSA-OAEP | ✅ 완료 | 브라우저 RSA-OAEP 암호화, E2E 완료 |
 | Phase C-8: UI 개선 | 🔄 진행중 | Dark/Light 테마 토글, MODEL_PRICING 정리 |
+| Phase C-9: Custom AMI | ✅ 완료 | Spot 인스턴스 자동화, 2-3분 내 개발 환경 구축 |
 
 ---
 
@@ -40,44 +41,90 @@
 
 > **중요**: Baram 개발 시 비용 최소화를 최우선으로 고려합니다.
 
+### ⚠️ 세션 종료 시 반드시 인스턴스 종료
+
+```bash
+# 개발 종료 후 반드시 실행 - 잊으면 불필요한 비용 발생!
+cd apps/baram/executor-nitro
+./scripts/terminate-spot.sh
+```
+
+> **경고**: 인스턴스를 terminate하지 않으면 Spot 가격으로도 시간당 $0.05 씩 계속 과금됩니다.
+> 하루 방치 시 ~$1.20, 한 주 방치 시 ~$8.40 비용 발생.
+
 ### EC2 인스턴스 관리 원칙
 
-1. **Spot 인스턴스만 사용**
+1. **Custom AMI 사용** (Phase C-9 완료)
+   - 사전 구성된 AMI로 2-3분 내 개발 환경 구축
+   - AMI ID: `ami-0488cb25dd63317af`
+   - Nitro CLI, Docker, Node.js 18, LLM 모델 (2GB) 포함
+
+2. **Spot 인스턴스만 사용**
    - TEE 테스트용 EC2는 반드시 Spot 인스턴스로 생성
    - On-Demand 대비 70-90% 비용 절감
    - Spot 중단 시 재생성하면 됨 (stateless 설계)
 
-2. **세션 종료 시 반드시 Terminate**
+3. **세션 종료 시 반드시 Terminate**
    - 개발/테스트 세션이 끝나면 EC2 인스턴스를 **반드시 terminate**
    - Stop이 아닌 **Terminate** (EBS 비용도 절감)
    - 다음 세션 시 새로 생성
 
-3. **인스턴스 생성 명령어**
-   ```bash
-   # Spot 인스턴스 생성 (r6i.xlarge, 32GB RAM)
-   aws ec2 run-instances \
-     --image-id ami-0c55b159cbfafe1f0 \
-     --instance-type r6i.xlarge \
-     --key-name naru_seoul \
-     --security-group-ids sg-0123456789abcdef0 \
-     --instance-market-options '{"MarketType":"spot","SpotOptions":{"SpotInstanceType":"one-time"}}' \
-     --enclave-options 'Enabled=true' \
-     --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":30,"VolumeType":"gp3"}}]' \
-     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=baram-tee-spot}]'
-   ```
+### 자동화 스크립트 (Phase C-9)
 
-4. **인스턴스 종료 명령어**
-   ```bash
-   # 세션 종료 시 반드시 실행
-   aws ec2 terminate-instances --instance-ids <INSTANCE_ID>
-   ```
+```bash
+cd apps/baram/executor-nitro
+
+# 1. Spot 인스턴스 생성 (Custom AMI 사용, 2-3분 소요)
+./scripts/launch-spot.sh
+# → Instance ID, Public IP 출력
+
+# 2. On-chain Executor endpoint 업데이트 (필요 시)
+./scripts/update-executor.sh <PUBLIC_IP>
+
+# 3. 개발 진행...
+ssh -i ~/.ssh/baram-nitro.pem ec2-user@<PUBLIC_IP>
+curl http://<PUBLIC_IP>:3000/health
+
+# 4. 개발 완료 후 반드시 종료
+./scripts/terminate-spot.sh
+```
+
+**스크립트 목록:**
+
+| 스크립트 | 설명 |
+|----------|------|
+| `launch-spot.sh` | Custom AMI로 Spot 인스턴스 생성 |
+| `terminate-spot.sh` | 인스턴스 종료 (반드시 실행!) |
+| `update-executor.sh` | On-chain Executor endpoint 업데이트 |
+| `create-ami.sh` | 새 AMI 생성 (환경 변경 시) |
+
+### 환경 설정
+
+`.env.ami` 파일 (gitignore됨):
+
+```bash
+# AMI ID (2026-01-27 생성)
+BARAM_AMI_ID=ami-0488cb25dd63317af
+
+# AWS Resources
+BARAM_KEY_NAME=baram-nitro
+BARAM_SECURITY_GROUP=sg-0c0b595fb9b4f83ec
+BARAM_SUBNET_ID=
+
+# Instance Configuration
+BARAM_INSTANCE_TYPE=r6i.xlarge
+BARAM_SPOT_PRICE=0.10
+```
 
 ### 예상 비용
+
 | 항목 | On-Demand | Spot | 절감율 |
 |------|-----------|------|--------|
 | r6i.xlarge (시간당) | ~$0.25 | ~$0.05 | 80% |
-| 하루 8시간 사용 | $2.00 | $0.40 | 80% |
-| 월 20일 사용 | $40.00 | $8.00 | 80% |
+| 하루 4시간 사용 | $1.00 | $0.20 | 80% |
+| 월 20일 사용 | $20.00 | $4.00 | 80% |
+| AMI 스토리지 | - | ~$2.50/월 | - |
+| **월 총 예상** | - | **~$6.50** | - |
 
 ---
 
@@ -803,7 +850,87 @@ Execution Time: 5540ms
 | `frontend/src/components/theme/ThemeToggle.tsx` | 테마 토글 버튼 |
 | `frontend/src/config/network.ts` | MODEL_PRICING 설정 |
 
-### Phase C-9: Attestation 검증
+### Phase C-9: Spot Instance + Custom AMI Strategy ✅ 완료 (2026-01-27)
+
+**목표:** 매번 20-30분 걸리던 환경 설정을 2-3분으로 단축
+
+**문제점 (이전):**
+```
+매번 새 Spot 인스턴스 생성 시:
+1. yum update + 패키지 설치: 5-7분
+2. Nitro CLI + Docker 설치: 3-5분
+3. LLM 모델 다운로드 (2GB): 5-10분
+4. EIF 빌드: 5-10분
+5. 저장소 클론 + npm install: 2-3분
+────────────────────────────────
+총합: 20-35분 (개발 시작 전 대기)
+```
+
+**해결책 (현재):**
+```
+Custom AMI로 Spot 인스턴스 생성 시:
+1. 인스턴스 부팅: 30초
+2. git pull + npm ci: 1-2분
+3. Enclave 시작: 30초
+────────────────────────────────
+총합: 2-3분 (즉시 개발 가능)
+```
+
+**Custom AMI 포함 항목:**
+- Amazon Linux 2023
+- AWS Nitro Enclaves CLI
+- Docker + docker-compose
+- Node.js 18 (via nvm)
+- git, jq, curl, cmake, make, gcc-c++
+- LLM 모델 파일 (`/home/ec2-user/models/llama-3.2-3b-instruct-q4_k_m.gguf`, ~2GB)
+- Nitro allocator 설정 (`/etc/nitro_enclaves/allocator.yaml`, 14GB)
+- GitHub SSH 키 설정
+
+**생성된 스크립트:**
+
+| 스크립트 | 설명 |
+|----------|------|
+| `scripts/create-ami.sh` | 현재 EC2에서 AMI 생성 |
+| `scripts/launch-spot.sh` | Custom AMI로 Spot 인스턴스 실행 |
+| `scripts/update-executor.sh` | On-chain Executor endpoint 업데이트 |
+| `scripts/terminate-spot.sh` | 인스턴스 종료 (반드시 실행!) |
+| `scripts/baram-host.service` | systemd 서비스 파일 |
+
+**현재 AMI (2026-01-27):**
+- AMI ID: `ami-0488cb25dd63317af`
+- Region: ap-northeast-2 (Seoul)
+- Size: ~10GB (모델 포함)
+- Base: Amazon Linux 2023
+
+**환경 설정 파일:**
+- `.env.ami.example` - 템플릿
+- `.env.ami` - 실제 설정 (gitignore)
+
+**수정된 기존 스크립트:**
+
+| 스크립트 | 변경 내용 |
+|----------|----------|
+| `scripts/setup-ec2.sh` | allocator.yaml에 YAML document marker `---` 추가 |
+| `scripts/build-eif.sh` | `--docker-image` → `--docker-uri` (nitro-cli 1.4.4 호환) |
+
+**사용 순서:**
+```bash
+cd apps/baram/executor-nitro
+
+# 개발 시작
+./scripts/launch-spot.sh         # 2-3분 소요
+./scripts/update-executor.sh <IP>  # On-chain 등록
+
+# 개발 진행...
+
+# 개발 종료 (반드시!)
+./scripts/terminate-spot.sh
+```
+
+> **⚠️ 중요**: 개발 종료 후 `terminate-spot.sh`를 반드시 실행하세요!
+> 인스턴스 방치 시 불필요한 비용이 계속 발생합니다.
+
+### Phase C-10: Attestation 검증
 
 **목표:** 실제 Nitro Attestation 문서 생성 및 검증
 
@@ -812,7 +939,7 @@ Execution Time: 5540ms
 - [ ] PCR 값 검증 로직
 - [ ] Frontend에서 attestation 표시
 
-### Phase C-10: 더 큰 모델 지원
+### Phase C-11: 더 큰 모델 지원
 
 **목표:** 더 높은 품질의 LLM 사용
 
@@ -868,5 +995,10 @@ Execution Time: 5540ms
 | [executor-nitro/src/shared/protocol.ts](../apps/baram/executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 |
 | [executor-nitro/src/shared/vsock.ts](../apps/baram/executor-nitro/src/shared/vsock.ts) | vsock/TCP 추상화 레이어 |
 | [executor-nitro/docker/Dockerfile.nitro](../apps/baram/executor-nitro/docker/Dockerfile.nitro) | Enclave 이미지 |
+| [executor-nitro/scripts/launch-spot.sh](../apps/baram/executor-nitro/scripts/launch-spot.sh) | Spot 인스턴스 실행 |
+| [executor-nitro/scripts/terminate-spot.sh](../apps/baram/executor-nitro/scripts/terminate-spot.sh) | 인스턴스 종료 (필수!) |
+| [executor-nitro/scripts/create-ami.sh](../apps/baram/executor-nitro/scripts/create-ami.sh) | AMI 생성 |
+| [executor-nitro/scripts/update-executor.sh](../apps/baram/executor-nitro/scripts/update-executor.sh) | On-chain endpoint 업데이트 |
+| [executor-nitro/.env.ami](../apps/baram/executor-nitro/.env.ami.example) | AMI/Spot 설정 템플릿 |
 | [frontend/src/utils/crypto.ts](../apps/baram/frontend/src/utils/crypto.ts) | RSA-OAEP 암호화 유틸리티 |
 | [frontend/src/features/request/hooks/useCreateRequest.ts](../apps/baram/frontend/src/features/request/hooks/useCreateRequest.ts) | 요청 생성 + TEE 암호화 |

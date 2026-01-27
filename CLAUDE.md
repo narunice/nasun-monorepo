@@ -49,6 +49,29 @@ Security expectations:
 - Assume both careless users and adversarial actors
 - Prefer explicit checks over implicit guarantees
 
+**Cost Management (CRITICAL):**
+
+> **Nasun is a bootstrapped startup with limited funding. Every dollar matters.**
+
+- **NEVER** create new AWS instances, services, or resources without explicit user approval
+- **NEVER** assume budget is available — always ask before proposing paid solutions
+- **ALWAYS** consider cost implications before suggesting any cloud service
+- When proposing infrastructure changes:
+  1. Present the cheapest viable option first
+  2. Clearly state estimated monthly/yearly costs
+  3. Suggest alternatives (self-hosted, serverless, free tier, etc.)
+  4. Ask: "Is this cost acceptable?" before proceeding
+- Prefer:
+  - Free tier services over paid ones
+  - Serverless (pay-per-use) over always-on instances
+  - Existing infrastructure over new resources
+  - Open-source solutions over proprietary SaaS
+- Before any AWS/cloud action, explicitly confirm:
+  - What resource will be created/modified
+  - Estimated cost impact
+  - Whether there's a cheaper alternative
+- **If in doubt, ask first. Do not create billable resources autonomously.**
+
 ---
 
 ### Tooling Rules (Claude Code)
