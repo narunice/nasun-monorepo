@@ -50,18 +50,18 @@ export function ChatLayout({ children, header, inputArea }: ChatLayoutProps) {
         </main>
 
         {/* Input Area (fixed at bottom) */}
-        <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]">
+        <div className="bg-[var(--color-bg-primary)]">
           <div className="max-w-3xl mx-auto px-4 py-4">
             {inputArea}
           </div>
         </div>
       </div>
 
-      {/* Mobile sidebar toggle button */}
+      {/* Sidebar toggle button (visible when sidebar is closed) */}
       {!isSidebarOpen && (
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] md:hidden"
+          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
           aria-label="Open sidebar"
         >
           <svg className="w-5 h-5 text-[var(--color-text-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">

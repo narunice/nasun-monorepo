@@ -60,14 +60,14 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          rows={1}
-          className="w-full px-4 py-3 pr-12 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-baram-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[48px] max-h-[200px]"
+          rows={3}
+          className="w-full px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-baram-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[72px] max-h-[200px]"
         />
       </div>
       <button
         onClick={handleSubmit}
         disabled={!value.trim() || disabled}
-        className="flex-shrink-0 w-12 h-12 rounded-xl bg-baram-1 hover:bg-baram-2 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-shrink-0 w-10 h-10 self-end rounded-xl bg-baram-1 hover:bg-baram-2 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Send message"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -24,7 +24,7 @@ export function ChatContainer({ header, children, inputArea }: ChatContainerProp
       </main>
 
       {/* Input Area - fixed at bottom */}
-      <div className="sticky bottom-0 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]">
+      <div className="sticky bottom-0 bg-[var(--color-bg-primary)]">
         <div className="max-w-3xl mx-auto px-4 py-4">
           {inputArea}
         </div>
