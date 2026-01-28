@@ -69,6 +69,8 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
   const client = getClient();
 
   try {
+    console.log(`[Sui] Getting request ${requestId} from registry ${BARAM_REGISTRY_ID}`);
+
     // Get the BaramRegistry shared object
     const registry = await client.getObject({
       id: BARAM_REGISTRY_ID,
@@ -81,21 +83,47 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
     }
 
     const fields = registry.data.content.fields as Record<string, unknown>;
-    const requestsTable = fields.requests as { fields: { id: { id: string } } } | undefined;
+    console.log('[Sui] Registry fields keys:', Object.keys(fields));
+
+    const requestsTable = fields.requests as { fields?: { id?: { id: string } } } | undefined;
+    console.log('[Sui] Requests table structure:', JSON.stringify(requestsTable, null, 2));
 
     if (!requestsTable?.fields?.id?.id) {
       console.error('[Sui] Requests table not found in registry');
       return null;
     }
 
-    // Query dynamic field for specific request
-    const dynamicField = await client.getDynamicFieldObject({
-      parentId: requestsTable.fields.id.id,
-      name: { type: 'u64', value: requestId.toString() },
-    });
+    const tableId = requestsTable.fields.id.id;
+    console.log(`[Sui] Querying dynamic field: parentId=${tableId}, name.value=${requestId}`);
 
-    if (!dynamicField.data?.content || dynamicField.data.content.dataType !== 'moveObject') {
-      console.log(`[Sui] Request ${requestId} not found`);
+    // Retry logic: wait for on-chain state to propagate
+    let dynamicField = null;
+    const maxRetries = 5;
+    const retryDelay = 1000; // 1 second
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        dynamicField = await client.getDynamicFieldObject({
+          parentId: tableId,
+          name: { type: 'u64', value: requestId.toString() },
+        });
+
+        if (dynamicField.data?.content && dynamicField.data.content.dataType === 'moveObject') {
+          console.log(`[Sui] Request ${requestId} found on attempt ${attempt}`);
+          break;
+        }
+      } catch (err) {
+        console.log(`[Sui] Attempt ${attempt}/${maxRetries} failed:`, err);
+      }
+
+      if (attempt < maxRetries) {
+        console.log(`[Sui] Request ${requestId} not found, retrying in ${retryDelay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    if (!dynamicField?.data?.content || dynamicField.data.content.dataType !== 'moveObject') {
+      console.log(`[Sui] Request ${requestId} not found after ${maxRetries} attempts`);
       return null;
     }
 
