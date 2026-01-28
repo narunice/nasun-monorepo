@@ -74,15 +74,43 @@ export const TOKENS = {
 } as const;
 
 // AI Model Pricing (in NUSDC, 6 decimals)
-// Privacy-preserving TEE models only
 // Note: Contract MIN_PRICE is 100,000 (0.1 NUSDC)
 export const MODEL_PRICING = {
+  // Groq models (fast inference, free tier available)
+  'llama-3.1-8b-instant': {
+    name: 'Llama 3.1 8B (Groq)',
+    price: 100_000, // 0.1 NUSDC
+    description: 'Fast inference via Groq Cloud',
+    provider: 'groq',
+  },
+  'llama-3.3-70b-versatile': {
+    name: 'Llama 3.3 70B (Groq)',
+    price: 100_000, // 0.1 NUSDC
+    description: 'Large model via Groq Cloud',
+    provider: 'groq',
+  },
+  'mixtral-8x7b-32768': {
+    name: 'Mixtral 8x7B (Groq)',
+    price: 100_000, // 0.1 NUSDC
+    description: 'Mixtral MoE model via Groq',
+    provider: 'groq',
+  },
+  // OpenAI models (paid)
+  'gpt-4o-mini': {
+    name: 'GPT-4o Mini (OpenAI)',
+    price: 100_000, // 0.1 NUSDC
+    description: 'OpenAI GPT-4o Mini',
+    provider: 'openai',
+  },
+  // TEE Local (when TEE is running)
   'llama-3.2-3b-local': {
     name: 'Llama 3.2 3B (TEE)',
-    price: 100_000, // 0.1 NUSDC (contract minimum)
+    price: 100_000, // 0.1 NUSDC
     description: 'Private inference in TEE enclave',
+    provider: 'tee',
   },
 } as const;
 
 export type ModelId = keyof typeof MODEL_PRICING;
-export const DEFAULT_MODEL: ModelId = 'llama-3.2-3b-local';
+// Default to Groq for development/testing
+export const DEFAULT_MODEL: ModelId = 'llama-3.1-8b-instant';

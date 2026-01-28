@@ -2,19 +2,19 @@
  * ThemeToggle - Sun/Moon toggle switch for dark/light theme switching
  */
 
-import { useTheme } from "./ThemeProvider";
+import { useTheme } from "../../providers/theme";
 import { FaSun, FaMoon } from "react-icons/fa6";
 
 export function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
     <button
       type="button"
       role="switch"
       aria-checked={isDark}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={toggleTheme}
       className={`
         relative w-11 h-6 rounded-full transition-colors duration-300
         ${isDark ? "bg-slate-700" : "bg-gray-100 ring-1 ring-inset ring-slate-400"}

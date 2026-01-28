@@ -123,7 +123,7 @@ export interface WalletConfig {
   rpcUrl: string;
   faucetUrl?: string;
   networkName?: string;
-  /** Explorer base URL for transaction links (e.g., 'https://explorer.devnet.nasun.io') */
+  /** Explorer base URL for transaction links (e.g., 'https://explorer.nasun.io/devnet') */
   explorerUrl?: string;
   /** Persist session across page refreshes (stores password in sessionStorage) */
   sessionPersist?: boolean;

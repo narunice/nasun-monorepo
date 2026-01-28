@@ -14,7 +14,7 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { createHash } from 'crypto';
-import { initOpenAI, generateCompletion, isValidModel } from './services/openai';
+import { initOpenAI, initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProof, markExecuting, getExecutorAddress } from './services/sui';
 import { ExecuteRequest, ExecuteResponse, DEFAULT_MODEL } from './types';
 
@@ -23,6 +23,7 @@ const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION 
 
 // Cached secrets
 let openaiApiKey: string | null = null;
+let groqApiKey: string | null = null;
 let executorPrivateKey: string | null = null;
 let initialized = false;
 
@@ -71,6 +72,18 @@ async function loadSecrets(): Promise<void> {
   const openaiData = JSON.parse(openaiSecret.SecretString!);
   openaiApiKey = openaiData.apiKey;
 
+  // Load Groq API key (optional - for fallback)
+  try {
+    const groqSecret = await secretsClient.send(
+      new GetSecretValueCommand({ SecretId: process.env.GROQ_SECRET_NAME || 'baram/groq' })
+    );
+    const groqData = JSON.parse(groqSecret.SecretString!);
+    groqApiKey = groqData.apiKey;
+    console.log('[Secrets] Groq API key loaded');
+  } catch (error) {
+    console.warn('[Secrets] Groq API key not found (optional fallback)');
+  }
+
   // Load executor private key
   const executorSecret = await secretsClient.send(
     new GetSecretValueCommand({ SecretId: process.env.EXECUTOR_SECRET_NAME || 'baram/executor' })
@@ -91,6 +104,11 @@ async function initialize(): Promise<void> {
 
   // Initialize OpenAI
   initOpenAI(openaiApiKey!);
+
+  // Initialize Groq (if available)
+  if (groqApiKey) {
+    initGroq(groqApiKey);
+  }
 
   // Initialize Sui client
   initSui({
@@ -230,7 +248,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           executor: getExecutorAddress(),
           packageId: process.env.BARAM_PACKAGE_ID,
           registryId: process.env.BARAM_REGISTRY_ID,
-          supportedModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
+          supportedModels: getSupportedModels(),
+          groqEnabled: !!groqApiKey,
           network: 'Nasun Devnet',
         }),
       };

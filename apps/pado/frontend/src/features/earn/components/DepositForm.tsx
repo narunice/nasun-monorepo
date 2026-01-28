@@ -9,6 +9,7 @@ import { useLendingActions } from '../hooks/useLendingActions';
 import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingPositions } from '../hooks/useLendingPositions';
 import { parseNUSDC, MIN_DEPOSIT, formatPercentage } from '../types/lending';
+import { NETWORK_CONFIG } from '../../../config/network';
 
 interface DepositFormProps {
   onSuccess?: (digest: string) => void;
@@ -148,7 +149,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
                 Deposit successful!
               </p>
               <a
-                href={`https://explorer.devnet.nasun.io/tx/${success}`}
+                href={`${NETWORK_CONFIG.explorerUrl}/tx/${success}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-500 hover:underline"
