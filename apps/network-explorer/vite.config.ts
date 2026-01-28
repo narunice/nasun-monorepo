@@ -50,9 +50,26 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        // Ensure React is loaded first in the bundle
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react/jsx-runtime'],
+        // Use function-based manualChunks for fine-grained control
+        // This ensures React loads before wallet/sui packages that might trigger SES lockdown
+        manualChunks: (id) => {
+          // React must be in its own chunk, loaded first
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('react/jsx-runtime') ||
+            id.includes('react/jsx-dev-runtime')
+          ) {
+            return 'react-vendor'
+          }
+          // Wallet and Sui packages in separate chunk to prevent SES conflicts
+          if (
+            id.includes('@nasun/wallet') ||
+            id.includes('@mysten/sui') ||
+            id.includes('node_modules/zustand')
+          ) {
+            return 'wallet-vendor'
+          }
         },
       },
     },
