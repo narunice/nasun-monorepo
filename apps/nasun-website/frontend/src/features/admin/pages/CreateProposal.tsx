@@ -137,8 +137,8 @@ export function CreateProposal() {
         </div>
 
         <div className="flex flex-col gap-6">
-          {/* Wallet Connection */}
-          <OuterBox color="w5" padding="md">
+          {/* Wallet Connection - z-50 ensures dropdown appears above other sections */}
+          <OuterBox color="w5" padding="md" className="relative z-50">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-medium text-nasun-white mb-1">Wallet Connection</h2>
