@@ -28,6 +28,7 @@ import {
   type EnclaveRequest,
   type EnclaveResponse,
   type GetPublicKeyRequest,
+  type AttestationDocument,
   type GetPublicKeyResponse,
   type ExecuteInferenceRequest,
   type ExecuteInferenceResponse,
@@ -49,6 +50,7 @@ import {
   unloadModel,
   type OpenAIProxyFunction,
 } from './inference.js';
+import { getAttestationWithPublicKey, isNsmAvailable } from './attestation.js';
 
 const MODULE_ID = 'baram-enclave-v1';
 const startTime = Date.now();
@@ -126,17 +128,18 @@ function handleProxyResponse(response: OpenAIProxyResponse): void {
 /**
  * Get attestation document
  *
- * In Nitro: reads from /dev/attestation/attestation_doc
+ * In Nitro: uses NSM (Nitro Security Module) to get real attestation
  * In simulation: returns simulated attestation
  */
-async function getAttestation(moduleId: string): Promise<ReturnType<typeof createSimulatedAttestation>> {
+async function getAttestation(publicKeyBase64: string): Promise<AttestationDocument> {
   if (isNitroMode()) {
-    // TODO: Implement real attestation reading
-    // const attestationDoc = await readAttestationDocument();
-    // return parseAttestationDocument(attestationDoc);
-    console.log('[Enclave] Real attestation not implemented yet, using simulated');
+    // Use real NSM attestation in Nitro mode
+    // getAttestationWithPublicKey internally falls back to simulated if NSM is not available
+    console.log('[Enclave] Requesting attestation (NSM available:', isNsmAvailable(), ')');
+    return getAttestationWithPublicKey(publicKeyBase64);
   }
-  return createSimulatedAttestation(moduleId);
+  console.log('[Enclave] Not in Nitro mode, using simulated attestation');
+  return createSimulatedAttestation(MODULE_ID);
 }
 
 /**
@@ -165,7 +168,7 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse |
           success: true,
           payload: {
             publicKey,
-            attestation: await getAttestation(MODULE_ID),
+            attestation: await getAttestation(publicKey),
           },
         };
         return response;
@@ -183,6 +186,7 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse |
         // Execute inference (direct or proxy mode)
         const result = await executeInference(prompt, model);
 
+        const currentPublicKey = getPublicKey();
         const response: ExecuteInferenceResponse = {
           type: 'INFERENCE_RESULT',
           requestId: request.requestId,
@@ -191,7 +195,7 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse |
             result: result.result,
             resultHash: result.resultHash,
             executionTimeMs: result.executionTimeMs,
-            attestation: await getAttestation(MODULE_ID),
+            attestation: currentPublicKey ? await getAttestation(currentPublicKey) : createSimulatedAttestation(MODULE_ID),
           },
         };
         return response;

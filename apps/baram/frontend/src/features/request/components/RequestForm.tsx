@@ -3,70 +3,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useCreateRequest, RequestStatus } from '../hooks/useCreateRequest';
+import { useCreateRequest } from '../hooks/useCreateRequest';
 import { useExecutors, ExecutorInfo } from '../hooks/useExecutors';
 import { useAttestation } from '../hooks/useAttestation';
 import { MODEL_PRICING, ModelId, DEFAULT_MODEL, BARAM_CONFIG } from '@/config/network';
 import { ResultDisplay } from './ResultDisplay';
 import { ExecutorSelector } from './ExecutorSelector';
 import { AttestationDisplay } from './AttestationDisplay';
-
-const models = Object.entries(MODEL_PRICING).map(([id, config]) => ({
-  id: id as ModelId,
-  ...config,
-}));
-
-function StatusIndicator({ status }: { status: RequestStatus }) {
-  if (status === 'idle') return null;
-
-  const statusConfig = {
-    creating: {
-      text: 'Creating request...',
-      color: 'text-baram-1',
-      animate: true,
-    },
-    executing: {
-      text: 'AI processing...',
-      color: 'text-baram-2',
-      animate: true,
-    },
-    completed: {
-      text: 'Completed',
-      color: 'text-[var(--color-success)]',
-      animate: false,
-    },
-    error: {
-      text: 'Failed',
-      color: 'text-[var(--color-error)]',
-      animate: false,
-    },
-  };
-
-  const config = statusConfig[status];
-
-  return (
-    <div className={`flex items-center gap-2 ${config.color}`}>
-      {config.animate && (
-        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          />
-        </svg>
-      )}
-      <span className="text-sm font-medium">{config.text}</span>
-    </div>
-  );
-}
+import { StatusIndicator } from './StatusIndicator';
+import { ModelSelector } from './ModelSelector';
 
 export function RequestForm() {
   const [prompt, setPrompt] = useState('');
@@ -142,38 +87,11 @@ export function RequestForm() {
           </div>
 
           {/* Model Selection */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-              Model
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {models.map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => setSelectedModel(model.id)}
-                  disabled={isProcessing}
-                  className={`p-3 rounded-md border text-left transition-all ${
-                    selectedModel === model.id
-                      ? 'border-baram-1 bg-baram-1/10'
-                      : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] hover:border-[var(--color-text-muted)]'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-[var(--color-text-primary)]">
-                      {model.name}
-                    </span>
-                    <span className={`text-sm ${model.price === 0 ? 'text-green-500' : 'text-baram-1'}`}>
-                      {model.price === 0 ? 'Free' : `${(model.price / 1e6).toFixed(2)} NUSDC`}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    {model.description}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
+          <ModelSelector
+            selectedModel={selectedModel}
+            onSelect={setSelectedModel}
+            disabled={isProcessing}
+          />
 
           {/* Executor Selection */}
           <div>

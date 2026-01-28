@@ -1,105 +1,155 @@
 /**
  * AWS Nitro Enclave Attestation Module
  *
- * In AWS Nitro Enclaves, attestation documents are obtained from the
- * Nitro Security Module (NSM) via the /dev/nsm device.
- *
- * The attestation document is a COSE_Sign1 structure containing:
- * - PCR values (hash of enclave image, kernel, application)
- * - User data (optional, can include public key hash)
- * - Nonce (optional, for freshness)
- * - AWS certificate chain for verification
- *
- * Verification:
- * 1. Verify COSE_Sign1 signature
- * 2. Verify certificate chain against AWS root CA
- * 3. Verify PCR values match expected image measurements
+ * Uses aws-nitro-enclaves-nsm-node for native NSM access.
+ * Parses COSE_Sign1 attestation documents using cbor-x.
  */
 
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { decode as cborDecode } from 'cbor-x';
 import { isNitroMode, type AttestationDocument } from '../shared/protocol.js';
 
 // NSM device path in Nitro Enclave
 const NSM_DEVICE_PATH = '/dev/nsm';
 
-// Attestation document request command
-const NSM_CMD_ATTESTATION = 0x01;
+// NSM library interface
+interface NsmLib {
+  open: () => number;
+  close: (fd: number) => void;
+  getAttestationDoc: (
+    fd: number,
+    userData: Buffer | null,
+    nonce: Buffer | null,
+    publicKey: Buffer | null
+  ) => Buffer;
+}
+
+// Cached NSM library
+let nsmLib: NsmLib | null = null;
 
 /**
- * Raw NSM attestation document
+ * Dynamically load NSM library (only available in Nitro Enclave)
  */
-interface NsmAttestationDocument {
-  moduleId: string;
+async function loadNsmLibrary(): Promise<NsmLib> {
+  if (nsmLib) return nsmLib;
+
+  try {
+    const nsm = await import('aws-nitro-enclaves-nsm-node');
+    nsmLib = {
+      open: nsm.open,
+      close: nsm.close,
+      getAttestationDoc: nsm.getAttestationDoc,
+    };
+    console.log('[Attestation] NSM library loaded successfully');
+    return nsmLib;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to load NSM library: ${msg}`);
+  }
+}
+
+/**
+ * Raw NSM attestation payload (parsed from COSE_Sign1)
+ */
+interface NsmAttestationPayload {
+  module_id: string;
   digest: string;
   timestamp: number;
-  pcrs: Map<number, Uint8Array>;
-  certificate: Uint8Array;
-  cabundle: Uint8Array[];
-  publicKey?: Uint8Array;
-  userData?: Uint8Array;
-  nonce?: Uint8Array;
+  pcrs: Map<number, Buffer>;
+  certificate: Buffer;
+  cabundle: Buffer[];
+  public_key?: Buffer;
+  user_data?: Buffer;
+  nonce?: Buffer;
 }
 
 /**
  * Request attestation document from NSM
- *
- * @param userData - Optional user data to include in attestation (e.g., public key hash)
- * @param nonce - Optional nonce for freshness
- * @returns Raw attestation document bytes (COSE_Sign1 encoded)
  */
 export async function requestNsmAttestation(
   userData?: Buffer,
-  nonce?: Buffer
+  nonce?: Buffer,
+  publicKey?: Buffer
 ): Promise<Buffer> {
   if (!isNitroMode()) {
     throw new Error('NSM attestation only available in Nitro Enclave');
   }
 
-  // Check if NSM device exists
-  if (!fs.existsSync(NSM_DEVICE_PATH)) {
-    throw new Error('NSM device not found. Are you running in a Nitro Enclave?');
-  }
-
-  // In a real implementation, we would use the NSM library (aws-nitro-enclaves-nsm-api)
-  // For now, we'll provide a placeholder that can be implemented when testing on EC2
-
   console.log('[Attestation] Requesting attestation from NSM...');
   console.log('[Attestation] userData:', userData?.toString('hex').substring(0, 32) || 'none');
   console.log('[Attestation] nonce:', nonce?.toString('hex').substring(0, 32) || 'none');
 
-  // TODO: Implement actual NSM call
-  // This requires either:
-  // 1. Native binding to NSM library (aws-nitro-enclaves-nsm-api)
-  // 2. Using aws-nitro-enclaves-sdk-rs via wasm
-  // 3. Calling nitro-cli get-attestation-document
+  // Load NSM library
+  const nsm = await loadNsmLibrary();
 
-  throw new Error('NSM attestation not yet implemented. Use simulation mode or implement NSM binding.');
+  // Open NSM device
+  const fd = nsm.open();
+  console.log('[Attestation] NSM device opened, fd:', fd);
+
+  try {
+    // Request attestation document
+    const attestationDoc = nsm.getAttestationDoc(
+      fd,
+      userData || null,
+      nonce || null,
+      publicKey || null
+    );
+    console.log('[Attestation] Received attestation document, size:', attestationDoc.length);
+    return attestationDoc;
+  } finally {
+    // Always close the file descriptor
+    nsm.close(fd);
+    console.log('[Attestation] NSM device closed');
+  }
 }
 
 /**
  * Parse COSE_Sign1 attestation document
- *
- * The document structure:
- * - Protected header: algorithm info
- * - Unprotected header: (usually empty)
- * - Payload: CBOR-encoded attestation claims
- * - Signature: ECDSA signature from AWS
  */
-export function parseAttestationDocument(rawDoc: Buffer): NsmAttestationDocument {
-  // COSE_Sign1 is CBOR-encoded
-  // Structure: [protected, unprotected, payload, signature]
+export function parseAttestationDocument(rawDoc: Buffer): NsmAttestationPayload {
+  // COSE_Sign1 structure: [protected, unprotected, payload, signature]
+  const coseSign1 = cborDecode(rawDoc);
 
-  // TODO: Implement CBOR parsing
-  // This requires a CBOR library (cbor, cbor-x, etc.)
+  if (!Array.isArray(coseSign1) || coseSign1.length !== 4) {
+    throw new Error('Invalid COSE_Sign1 structure');
+  }
 
-  throw new Error('Attestation document parsing not yet implemented');
+  const [_protectedHeader, _unprotectedHeader, payload, _signature] = coseSign1;
+
+  // Decode the payload (CBOR-encoded attestation claims)
+  const attestation = cborDecode(payload);
+
+  // Extract PCRs
+  const pcrs = new Map<number, Buffer>();
+  if (attestation.pcrs) {
+    for (const [key, value] of Object.entries(attestation.pcrs)) {
+      pcrs.set(parseInt(key), Buffer.from(value as Uint8Array));
+    }
+  }
+
+  // Convert BigInt timestamp to number (CBOR may return BigInt)
+  const timestamp = attestation.timestamp
+    ? Number(attestation.timestamp)
+    : Date.now();
+
+  return {
+    module_id: attestation.module_id || 'unknown',
+    digest: attestation.digest || 'SHA384',
+    timestamp,
+    pcrs,
+    certificate: Buffer.from(attestation.certificate || []),
+    cabundle: (attestation.cabundle || []).map((c: Uint8Array) => Buffer.from(c)),
+    public_key: attestation.public_key ? Buffer.from(attestation.public_key) : undefined,
+    user_data: attestation.user_data ? Buffer.from(attestation.user_data) : undefined,
+    nonce: attestation.nonce ? Buffer.from(attestation.nonce) : undefined,
+  };
 }
 
 /**
  * Convert NSM attestation to protocol format
  */
-export function convertToProtocolFormat(nsm: NsmAttestationDocument): AttestationDocument {
+export function convertToProtocolFormat(nsm: NsmAttestationPayload): AttestationDocument {
   // Convert PCR map to hex strings
   const pcr0 = nsm.pcrs.get(0);
   const pcr1 = nsm.pcrs.get(1);
@@ -107,14 +157,14 @@ export function convertToProtocolFormat(nsm: NsmAttestationDocument): Attestatio
 
   return {
     pcrs: {
-      pcr0: pcr0 ? Buffer.from(pcr0).toString('hex') : '',
-      pcr1: pcr1 ? Buffer.from(pcr1).toString('hex') : '',
-      pcr2: pcr2 ? Buffer.from(pcr2).toString('hex') : '',
+      pcr0: pcr0 ? pcr0.toString('hex') : '',
+      pcr1: pcr1 ? pcr1.toString('hex') : '',
+      pcr2: pcr2 ? pcr2.toString('hex') : '',
     },
-    moduleId: nsm.moduleId,
+    moduleId: nsm.module_id,
     timestamp: nsm.timestamp,
     signature: 'COSE_Sign1', // Actual signature is in the raw document
-    certificate: Buffer.from(nsm.certificate).toString('base64'),
+    certificate: nsm.certificate.toString('base64'),
   };
 }
 
@@ -197,6 +247,14 @@ export function createSimulatedNitroAttestation(publicKey: string): AttestationD
  * 5. Verify timestamp is recent
  * 6. Optionally verify user data (public key hash)
  */
+/**
+ * Check if real NSM attestation is available
+ * Returns true if in Nitro mode (actual NSM access is determined at runtime)
+ */
+export function isNsmAvailable(): boolean {
+  return isNitroMode();
+}
+
 export function verifyAttestationDocument(
   rawDoc: Buffer,
   expectedPcrs?: { pcr0?: string; pcr1?: string; pcr2?: string },
