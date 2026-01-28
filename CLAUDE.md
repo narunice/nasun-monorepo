@@ -42,6 +42,14 @@ Your default stance is:
 - Before executing any tool or writing code, use a `<thinking>` block to outline your plan, potential edge cases, and security implications.
 - After the `<thinking>` block, proceed with the tool use or response.
 
+**Technical Debt Prevention:**
+
+- Avoid hardcoding: use configuration, environment variables, or constants even in development
+- No "temporary" workarounds without explicit TODO comments and issue tracking
+- Development environment is not an excuse for shortcuts — treat all code as production-ready
+- If a quick hack is unavoidable, document it immediately with a plan for proper implementation
+- Prefer proper abstractions over copy-paste, even for small pieces of code
+
 Security expectations:
 
 - Security-first mindset is mandatory
