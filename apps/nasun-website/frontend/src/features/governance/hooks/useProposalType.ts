@@ -22,16 +22,18 @@ interface UseProposalTypeResult {
  * Defaults to "Governance" if not found or registry not configured
  */
 export function useProposalType(proposalId: string): UseProposalTypeResult {
+  const isRegistryConfigured = !!PROPOSAL_TYPE_REGISTRY_ID;
+
   // Get the registry to find the types table ID
   const {
     data: registryData,
     isPending: isRegistryPending,
     error: registryError,
   } = useSuiClientQuery("getObject", {
-    id: PROPOSAL_TYPE_REGISTRY_ID || "",
+    id: PROPOSAL_TYPE_REGISTRY_ID || "0x0", // Dummy ID when not configured
     options: { showContent: true },
   }, {
-    enabled: !!PROPOSAL_TYPE_REGISTRY_ID,
+    enabled: isRegistryConfigured,
   });
 
   // Extract types table ID from registry
@@ -64,7 +66,8 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
     }
   }
 
-  const isLoading = isRegistryPending || isFieldPending;
+  // Only consider loading if registry is configured and queries are actually pending
+  const isLoading = isRegistryConfigured && (isRegistryPending || isFieldPending);
   const error = registryError || fieldError;
 
   return {
