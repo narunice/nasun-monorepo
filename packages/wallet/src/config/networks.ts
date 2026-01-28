@@ -15,7 +15,7 @@ export const NETWORKS: Record<NetworkType, NetworkInfo> = {
     name: 'Nasun Devnet',
     rpcUrl: 'https://rpc.devnet.nasun.io',
     faucetUrl: 'https://faucet.devnet.nasun.io',
-    explorerUrl: 'https://explorer.devnet.nasun.io',
+    explorerUrl: 'https://explorer.nasun.io/devnet',
     enabled: true,
   },
   testnet: {
