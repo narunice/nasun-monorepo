@@ -19,6 +19,7 @@
     "@tanstack/react-query": "^5.90.12",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-icons": "^5.5.0",
     "react-router-dom": "^7.10.1",
     "recharts": "^3.0.0",
     "zustand": "^5.0.9"
@@ -46,5 +47,4 @@
     "vite": "^7.3.0",
     "vitest": "^4.0.18"
   }
-
 }

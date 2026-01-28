@@ -150,11 +150,12 @@ Security expectations:
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2026-01-11)
+### 현재 상태 (2026-01-28)
 
 | 앱                      | 패키지명                | 상태    | 배포 방식    | 설명                         |
 | ----------------------- | ----------------------- | ------- | ------------ | ---------------------------- |
-| `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | AWS Amplify  | Nasun Explorer (블록 탐색기) |
+| `apps/baram`            | @nasun/baram            | ✅ 완료 | AWS CDK      | AI Settlement Layer (TEE + Escrow) |
+| `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | EC2 스크립트 | Nasun Explorer (블록 탐색기) |
 | `apps/nasun-website`    | @nasun/nasun-website    | ✅ 완료 | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`   | @nasun/gensol-website   | ✅ 완료 | EC2 스크립트 | GenSol 웹사이트              |
 | `apps/pado`             | @nasun/pado             | ✅ 완료 | -            | Pado 앱                      |
@@ -166,9 +167,9 @@ Security expectations:
 
 ### 개요
 
-Nasun Devnet 블록 탐색기. AWS Amplify에 자동 배포됩니다.
+Nasun Devnet 블록 탐색기. EC2 + nginx로 배포됩니다.
 
-- **URL**: https://explorer.devnet.nasun.io
+- **URL**: https://explorer.nasun.io/devnet
 - **버전**: v0.7.x
 - **개발 포트**: 5175
 
@@ -217,6 +218,12 @@ VITE_GOOGLE_CLIENT_ID=<optional>
 ```
 nasun-monorepo/
 ├── apps/
+│   ├── baram/                     # @nasun/baram - AI Settlement Layer
+│   │   ├── frontend/              # Vite React 앱
+│   │   ├── contracts/             # baram.move (에스크로)
+│   │   ├── contracts-executor/    # executor.move (Executor 등록)
+│   │   ├── executor-nitro/        # TEE Executor (AWS Nitro)
+│   │   └── cdk/                   # AWS CDK 인프라
 │   ├── network-explorer/          # @nasun/network-explorer - 블록 탐색기
 │   ├── nasun-website/             # @nasun/nasun-website - 공식 웹사이트
 │   │   └── frontend/              # Vite React 앱
@@ -229,6 +236,8 @@ nasun-monorepo/
 ├── packages/
 │   ├── wallet/                    # @nasun/wallet - 지갑 핵심 로직 + hooks
 │   ├── wallet-ui/                 # @nasun/wallet-ui - React UI 컴포넌트
+│   ├── devnet-config/             # @nasun/devnet-config - 컨트랙트 주소 관리
+│   ├── devnet-tokens/             # Move 스마트계약 (NBTC, NUSDC)
 │   ├── tsconfig/                  # @nasun/tsconfig - 공유 TypeScript 설정
 │   └── tailwind-config/           # @nasun/tailwind-config - Nasun 브랜드 색상
 ├── scripts/                       # 배포 스크립트
@@ -237,12 +246,11 @@ nasun-monorepo/
 └── CLAUDE.md
 ```
 
-**참고**: `packages/sui-utils/`, `packages/ui/`는 예약된 빈 폴더입니다.
-
 ## 앱별 구조 차이
 
 | 앱               | 구조              | package.json 위치                           |
 | ---------------- | ----------------- | ------------------------------------------- |
+| baram            | frontend 서브폴더 | `apps/baram/frontend/package.json`          |
 | network-explorer | 단일 레벨         | `apps/network-explorer/package.json`        |
 | nasun-website    | frontend 서브폴더 | `apps/nasun-website/frontend/package.json`  |
 | gensol-website   | frontend 서브폴더 | `apps/gensol-website/frontend/package.json` |
@@ -319,6 +327,25 @@ import { WalletProvider, WalletConnect, BalanceDisplay } from '@nasun/wallet-ui'
 
 Note: Ledger 관련 코드(`ledger/` 폴더, ViewMode, hooks)는 보존되어 있음. UI 버튼만 비활성화.
 
+### @nasun/devnet-config
+
+Devnet 스마트컨트랙트 주소를 중앙 관리합니다.
+
+**구조:**
+
+- `devnet-ids.json` - 배포된 컨트랙트 주소 데이터
+- `src/ids/` - 카테고리별 ID (baram, deepbook, governance, lottery, tokens 등)
+- `scripts/` - 검증 및 동기화 스크립트
+
+**사용법:**
+
+```typescript
+import { DEVNET_IDS } from "@nasun/devnet-config";
+
+const tokenFaucet = DEVNET_IDS.tokens.tokenFaucet;
+const baramRegistry = DEVNET_IDS.baram.baramRegistry;
+```
+
 ### @nasun/tsconfig
 
 공유 TypeScript 설정:
@@ -343,6 +370,7 @@ Nasun 브랜드 색상 팔레트:
 pnpm install
 
 # 개발 서버 (개별)
+pnpm dev:baram               # 포트 5177
 pnpm dev:network-explorer    # 포트 5175
 pnpm dev:nasun-website       # 포트 5174
 pnpm dev:gensol-website      # 포트 5173
@@ -374,7 +402,8 @@ pnpm deploy:gensol-website:staging
 
 | 앱               | 배포 방식    | 트리거        | 대상 URL                         |
 | ---------------- | ------------ | ------------- | -------------------------------- |
-| network-explorer | AWS Amplify  | git push main | https://explorer.devnet.nasun.io |
+| baram            | AWS CDK      | 수동 실행     | Lambda API                       |
+| network-explorer | EC2 스크립트 | 수동 실행     | https://explorer.nasun.io/devnet |
 | nasun-website    | EC2 스크립트 | 수동 실행     | https://nasun.io                 |
 | gensol-website   | EC2 스크립트 | 수동 실행     | https://gensol.nasun.io          |
 | pado             | -            | -             | -                                |
@@ -419,7 +448,7 @@ pnpm deploy:gensol-website:staging
 | Target Network | Nasun Devnet                     |
 | RPC Endpoint   | https://rpc.devnet.nasun.io      |
 | Faucet         | https://faucet.devnet.nasun.io   |
-| Explorer       | https://explorer.devnet.nasun.io |
+| Explorer       | https://explorer.nasun.io/devnet |
 | Chain ID       | `12bf3808`                       |
 | Native Token   | NASUN (최소단위: SOE)            |
 
@@ -463,13 +492,16 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 | 디렉토리                          | 설명                                 |
 | --------------------------------- | ------------------------------------ |
+| `apps/baram/contracts/`           | Baram 에스크로 + 정산                |
+| `apps/baram/contracts-executor/`  | Executor 등록 시스템                 |
 | `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet            |
 | `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                   |
 | `apps/pado/contracts-oracle/`     | DevOracle 가격 피드                  |
 | `apps/pado/contracts-lending/`    | 렌딩 컨트랙트                        |
 | `apps/pado/contracts-lottery/`    | Lottery 컨트랙트 (Sui Random)        |
 | `apps/pado/contracts-margin/`     | Unified Margin v1 (Multi-collateral) |
-| `apps/pado/contracts-perp/`       | Perpetuals DEX (Phase 11.4 완료)     |
+| `apps/pado/contracts-perp/`       | Perpetuals DEX                       |
+| `packages/devnet-tokens/`         | 공유 토큰 컨트랙트 (NBTC, NUSDC)     |
 
 ### Move 빌드/배포 명령어
 
@@ -490,104 +522,26 @@ cd apps/pado/contracts
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
 ```
 
-### 배포된 컨트랙트 (Devnet) - 2026-01-10 업데이트
+### 배포된 컨트랙트 (Devnet V6)
 
-#### DevOracle (가격 피드)
-
-| 컨트랙트                | ID              | 비고                |
-| ----------------------- | --------------- | ------------------- |
-| pado_oracle             | `0x10ffe5c6...` | Admin Oracle 패키지 |
-| OracleRegistry (shared) | `0x02394487...` | 가격 데이터 저장    |
-| AdminCap                | `0x35552a09...` | 가격 업데이트 권한  |
-
-**심볼 ID**: BTCUSD=1, ETHUSD=2, NASUSD=3 (8 decimals)
-
-#### Unified Tokens (devnet_tokens) - V6 (2026-01-27)
-
-| 컨트랙트             | ID                                                                   | 비고                |
-| -------------------- | -------------------------------------------------------------------- | ------------------- |
-| devnet_tokens        | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017` | NBTC/NUSDC + Faucet |
-| TokenFaucet (shared) | `0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14` | 토큰 민팅           |
-| ClaimRecord (shared) | `0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8` | 24시간 쿨다운       |
-| UpgradeCap           | `0x2017d606c566ff13cbaf23bf18b5e413b95bb9bcd333c2f413878e7ddddf2a87` | 업그레이드 권한     |
-
-#### Prediction Market - V6 (2026-01-27)
-
-| 컨트랙트             | ID                                                                   | 비고             |
-| -------------------- | -------------------------------------------------------------------- | ---------------- |
-| prediction           | `0xbc4bcead337817d14dcfeef48474866f6b5fb3f655bb7f2822539ae6982696dd` | 예측 시장 패키지 |
-| GlobalState (shared) | `0xcbff8cda5d8bd9b81358b159b09ff57fb2b159d57ddeb46b9e714e7290825553` | 예측 시장 상태   |
-| AdminCap             | `0x34881d8e68f9d90da2865877b782ea27f25195a25ed73655ced2188aa1d3938a` | 관리자 권한      |
-
-#### Lottery - V6 (2026-01-27)
-
-| 컨트랙트               | ID                                                                   | 비고           |
-| ---------------------- | -------------------------------------------------------------------- | -------------- |
-| lottery                | `0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80` | 복권 패키지    |
-| LotteryRegistry (shared)| `0x0a64e225326746ff7c1ff7bb0b130cd0df922cc00101aedbfa442550e7995794` | 복권 레지스트리|
-| AdminCap               | `0x8329a17bed9e4b98aeb502b1ecca5ee9d73b7ca1dd8a60a85e09dfd7f61f0cec` | 관리자 권한    |
-
-#### Unified Margin v1 (V6 재배포 필요)
-
-| 컨트랙트                | ID              | 비고                         |
-| ----------------------- | --------------- | ---------------------------- |
-| unified_margin          | `0x2886424f...` | Multi-collateral 마진 (v0.6) |
-| MarginRegistry (shared) | `0x57979cb0...` | 전역 레지스트리              |
-| UpgradeCap              | `0x4781e6fd...` | 업그레이드 권한              |
-
-**모듈:**
-
-- `unified_margin.move` - Multi-collateral (NUSDC + NBTC), public(package) functions
-- `risk_engine.move` - 4-Tier Threshold (IM 10%, Warning 8%, MM 5%, FC 3%)
-- `account_positions.move` - 포지션 추적 + PnL 계산
-- `liquidation.move` - 5% 보너스, 50% 최대 청산 비율
-
-#### Perpetuals DEX (2026-01-10 Phase 11.4 완료)
-
-| 컨트랙트  | ID                  | 비고              |
-| --------- | ------------------- | ----------------- |
-| pado_perp | `0x4e2a36299ce4...` | Perpetual futures |
-| BTC-PERP  | `0x0a3ba00cce5a...` | BTC 무기한 마켓   |
-
-**모듈 (11.1-11.4 완료):**
-
-- `perpetual.move` - PerpMarket, PerpPosition (20x 레버리지, Isolated margin)
-- `funding.move` - 8시간 펀딩 레이트, Oracle staleness protection
-- `liquidation.move` - 청산 엔진 (5% 보너스)
-
-#### Governance (Nasun Website) - V6 (2026-01-27 리셋)
-
-| 컨트랙트              | ID                                                                   | 비고                     |
-| --------------------- | -------------------------------------------------------------------- | ------------------------ |
-| governance            | `0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516` | V6 패키지                |
-| Dashboard (shared)    | `0x3398b1931bc8c418b0e0e1d9c1e04537bfc82c3f85d4dc22e11c97469baee7ae` | 프로포절 대시보드        |
-| AdminCap              | `0xd96d14baf4422909e6721c5533d981f0a481b947989c95502d3a45f89f607a04` | 관리자 권한              |
-
+> **Chain ID**: `12bf3808` (V6 리셋, 2026-01-27)
+>
 > 전체 컨트랙트 주소는 `packages/devnet-config/devnet-ids.json` 참조
 
-**v5 Features:**
+**배포 완료된 컨트랙트:**
 
-- **ProposalType**: Governance (사용자 가스비) vs Poll (Sponsored/Zero Gas)
-- **ProposalTypeRegistry**: 프로포절 유형 On-chain 저장
-- **조건부 Sponsoring**: Poll 프로포절만 가스비 지원
-- **VotingPowerOracle**: Ed25519 공개키로 Certificate 서명 검증
-- **CertificateRegistry**: 투표자별 Certificate 발급 추적 (중복 방지)
-
-**v3 Security Features (유지):**
-
-- **Domain Separation**: `NASUN_GOVERNANCE_DEVNET_V1` (cross-chain replay 방지)
-- **BCS Serialization**: Move와 Lambda 간 직렬화 일치 (106 bytes message)
-- **TTL Policy**: Devnet 15분, Mainnet 최대 30분 (proposal 만료 고려)
-
-**API Endpoint:**
-
-- Production: `https://3n52syk380.execute-api.ap-northeast-2.amazonaws.com/prod`
-- Endpoints: `/certificate`, `/sponsor`, `/voting-power`
-
-**Secrets (AWS Secrets Manager):**
-
-- `nasun/governance/oracle` - Oracle Ed25519 keypair (서명 발급)
-- `nasun/governance/sponsor` - Sponsor Ed25519 keypair (가스비 지불)
+| 카테고리 | 컨트랙트 | 상태 |
+|----------|----------|------|
+| Tokens | devnet_tokens (NBTC, NUSDC, Faucet) | ✅ V6 |
+| Prediction | prediction (GlobalState) | ✅ V6 |
+| Lottery | lottery (LotteryRegistry) | ✅ V6 |
+| Governance | governance (Dashboard) | ✅ V6 |
+| DeepBook | DeepBook V3 (CLOB) | ✅ V6 |
+| Baram | baram (BaramRegistry) | ✅ V6 |
+| Baram | executor (ExecutorRegistry) | ✅ V6 |
+| Oracle | pado_oracle | V6 재배포 대기 |
+| Margin | unified_margin | V6 재배포 대기 |
+| Perpetuals | pado_perp | V6 재배포 대기 |
 
 ## 향후 계획
 

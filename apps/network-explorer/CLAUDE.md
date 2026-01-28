@@ -60,7 +60,7 @@ src/components/ui/
 | RPC Endpoint (HTTP) | http://3.38.127.23:9000 |
 | Faucet (HTTPS) | https://faucet.devnet.nasun.io |
 | Faucet (HTTP) | http://3.38.127.23:5003 |
-| Explorer URL | https://explorer.devnet.nasun.io |
+| Explorer URL | https://explorer.nasun.io/devnet |
 | Chain ID | `12bf3808` (2026-01-27 V6 리셋) |
 | Fork Source | Sui mainnet v1.63.0 |
 | Native Token | NASUN (최소단위: SOE) |
@@ -168,12 +168,8 @@ VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 
 ## 배포된 스마트 컨트랙트
 
-> **참고**: 2025-12-25 V3 리셋으로 이전 컨트랙트는 무효화되었습니다.
-> 새로운 컨트랙트 배포 시 이 섹션을 업데이트하세요.
-
-| 컨트랙트 | Package ID | 설명 |
-|---------|------------|------|
-| (없음) | - | V3 리셋 후 재배포 필요 |
+> **참고**: 2026-01-27 V6 리셋으로 이전 컨트랙트는 무효화되었습니다.
+> 컨트랙트 주소는 `packages/devnet-config/devnet-ids.json` 참조
 
 ## RPC 테스트 명령어
 
@@ -198,18 +194,19 @@ curl -X POST http://3.38.127.23:5003/gas \
 
 | 항목 | 값 |
 |------|-----|
-| 호스팅 | AWS Amplify |
-| AWS 계정 | Nasun Devnet (150674276464) |
-| App ID | `dhfb0bozwjtqj` |
-| GitHub | https://github.com/narunice/nasun-monorepo |
-| 자동 배포 | main 브랜치 push 시 자동 빌드/배포 |
+| 호스팅 | EC2 + nginx |
+| Staging | https://staging.explorer.nasun.io/devnet |
+| Production | https://explorer.nasun.io/devnet |
 
 ### 배포 명령어
 
 ```bash
-# main 브랜치에 push하면 자동 배포
-git push origin main
+# 모노레포 루트에서
+pnpm deploy:network-explorer:staging   # 스테이징 배포
+pnpm deploy:network-explorer:prod      # 프로덕션 배포
 
-# 수동 배포 (AWS CLI)
-aws amplify start-job --app-id dhfb0bozwjtqj --branch-name main --job-type RELEASE --profile nasun-dlt
+# 옵션
+pnpm deploy:network-explorer:prod -- --dry-run   # 빌드만, 배포 안함
+pnpm deploy:network-explorer:prod -- --force     # 확인 프롬프트 건너뛰기
+pnpm deploy:network-explorer:prod -- --rollback  # 이전 버전으로 롤백
 ```
