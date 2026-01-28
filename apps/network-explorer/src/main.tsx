@@ -1,10 +1,46 @@
-import { StrictMode, Suspense } from 'react'
+/**
+ * Network Explorer - Main Entry Point
+ * Uses the same static import pattern as other apps (pado, baram, nasun-website)
+ */
+
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { configureWallet, initZkLogin } from '@nasun/wallet'
+import { WalletProvider } from '@nasun/wallet-ui'
 import { ThemeProvider } from './components/theme/ThemeProvider'
 import './index.css'
 
+// Configure wallet with Nasun network (static, before React renders)
+configureWallet({
+  rpcUrl: import.meta.env.VITE_SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
+  faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
+  sessionPersist: true,
+})
+
+// Initialize zkLogin (Google OAuth)
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const saltApiUrl = import.meta.env.VITE_ZKLOGIN_SALT_API_URL
+
+if (googleClientId && saltApiUrl) {
+  initZkLogin({
+    saltApiUrl,
+    proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL,
+    providers: {
+      google: {
+        provider: 'google',
+        clientId: googleClientId,
+        redirectUri: `${window.location.origin}/callback`,
+      },
+    },
+  })
+}
+
+// Lazy load App for code splitting (not for SES workaround)
+const App = lazy(() => import('./App.tsx'))
+
+// React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -14,7 +50,7 @@ const queryClient = new QueryClient({
   },
 })
 
-// Loading screen component (no hooks, safe to render immediately)
+// Loading fallback
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-nasun-c6 flex items-center justify-center">
@@ -23,71 +59,18 @@ function LoadingScreen() {
   )
 }
 
-// Initialize wallet and render app asynchronously
-// This ensures wallet is configured BEFORE any React components using hooks are rendered
-async function initializeApp() {
-  // Show loading screen immediately
-  const root = createRoot(document.getElementById('root')!)
-  root.render(<LoadingScreen />)
-
-  try {
-    // 1. Import and configure wallet module FIRST (before any React hooks are used)
-    const walletModule = await import('@nasun/wallet')
-    walletModule.configureWallet({
-      rpcUrl: import.meta.env.VITE_SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
-      faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
-      sessionPersist: true,
-    })
-
-    // Initialize zkLogin (Google OAuth) if configured
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    const saltApiUrl = import.meta.env.VITE_ZKLOGIN_SALT_API_URL
-
-    if (googleClientId && saltApiUrl) {
-      walletModule.initZkLogin({
-        saltApiUrl,
-        proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL,
-        providers: {
-          google: {
-            provider: 'google',
-            clientId: googleClientId,
-            redirectUri: `${window.location.origin}/callback`,
-          },
-        },
-      })
-    }
-
-    // 2. Import UI components AFTER wallet is configured
-    const [{ WalletProvider }, { default: App }] = await Promise.all([
-      import('@nasun/wallet-ui'),
-      import('./App.tsx'),
-    ])
-
-    // 3. Render the full app with all providers
-    root.render(
-      <StrictMode>
-        <QueryClientProvider client={queryClient}>
-          <WalletProvider>
-            <ThemeProvider defaultTheme="dark" storageKey="nasun-explorer-theme">
-              <BrowserRouter>
-                <Suspense fallback={<LoadingScreen />}>
-                  <App />
-                </Suspense>
-              </BrowserRouter>
-            </ThemeProvider>
-          </WalletProvider>
-        </QueryClientProvider>
-      </StrictMode>,
-    )
-  } catch (error) {
-    console.error('Failed to initialize app:', error)
-    root.render(
-      <div className="min-h-screen bg-nasun-c6 flex items-center justify-center">
-        <div className="text-red-500">Failed to load application. Please refresh the page.</div>
-      </div>,
-    )
-  }
-}
-
-// Start the app
-initializeApp()
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <WalletProvider>
+        <ThemeProvider defaultTheme="dark" storageKey="nasun-explorer-theme">
+          <BrowserRouter>
+            <Suspense fallback={<LoadingScreen />}>
+              <App />
+            </Suspense>
+          </BrowserRouter>
+        </ThemeProvider>
+      </WalletProvider>
+    </QueryClientProvider>
+  </StrictMode>,
+)
