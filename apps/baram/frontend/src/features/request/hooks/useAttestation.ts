@@ -40,7 +40,7 @@ async function fetchAttestation(executorUrl: string): Promise<AttestationInfo> {
 
   return {
     moduleId: data.attestation.moduleId || 'unknown',
-    pcr0: data.attestation.pcr0 || '',
+    pcr0: data.attestation.pcrs?.pcr0 || '',
     timestamp: data.attestation.timestamp || Date.now(),
     publicKey: data.publicKey,
   };
