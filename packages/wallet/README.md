@@ -166,7 +166,7 @@ import { configureWallet, getWalletConfig, getSuiClient } from '@nasun/wallet';
 configureWallet({
   rpcUrl: 'https://rpc.devnet.nasun.io',
   faucetUrl: 'https://faucet.devnet.nasun.io',
-  explorerUrl: 'https://explorer.devnet.nasun.io',
+  explorerUrl: 'https://explorer.nasun.io/devnet',
 });
 
 // Get current config
@@ -244,7 +244,7 @@ Default: Nasun Devnet
 |----------|-------|
 | RPC Endpoint | https://rpc.devnet.nasun.io |
 | Faucet | https://faucet.devnet.nasun.io |
-| Explorer | https://explorer.devnet.nasun.io |
+| Explorer | https://explorer.nasun.io/devnet |
 | Chain ID | `6681cdfd` |
 | Native Token | NASUN (decimals: 9) |
 

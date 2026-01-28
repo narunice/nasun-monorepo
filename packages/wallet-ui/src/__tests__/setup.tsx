@@ -153,9 +153,9 @@ vi.mock('@nasun/wallet', () => ({
   ]),
   NATIVE_TOKEN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   // Explorer URL helpers
-  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.devnet.nasun.io/tx/${digest}`),
-  getExplorerAddressUrl: vi.fn((addr: string) => `https://explorer.devnet.nasun.io/address/${addr}`),
-  getExplorerObjectUrl: vi.fn((id: string) => `https://explorer.devnet.nasun.io/object/${id}`),
+  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`),
+  getExplorerAddressUrl: vi.fn((addr: string) => `https://explorer.nasun.io/devnet/address/${addr}`),
+  getExplorerObjectUrl: vi.fn((id: string) => `https://explorer.nasun.io/devnet/object/${id}`),
   // Security settings
   useSecuritySettings: vi.fn(() => ({
     security: {

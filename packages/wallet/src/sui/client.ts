@@ -35,7 +35,7 @@ let walletConfig: WalletConfig = {
   rpcUrl: 'https://rpc.devnet.nasun.io',
   faucetUrl: 'https://faucet.devnet.nasun.io',
   networkName: 'Nasun Devnet',
-  explorerUrl: 'https://explorer.devnet.nasun.io',
+  explorerUrl: 'https://explorer.nasun.io/devnet',
 };
 
 // Cached SUI client
@@ -451,7 +451,7 @@ export function clearSessionPassword(): void {
  * @param digest Transaction digest
  */
 export function getExplorerTxUrl(digest: string): string {
-  const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
+  const baseUrl = walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
   return `${baseUrl}/tx/${digest}`;
 }
 
@@ -460,7 +460,7 @@ export function getExplorerTxUrl(digest: string): string {
  * @param address Wallet address
  */
 export function getExplorerAddressUrl(address: string): string {
-  const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
+  const baseUrl = walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
   return `${baseUrl}/address/${address}`;
 }
 
@@ -469,7 +469,7 @@ export function getExplorerAddressUrl(address: string): string {
  * @param objectId Object ID
  */
 export function getExplorerObjectUrl(objectId: string): string {
-  const baseUrl = walletConfig.explorerUrl || 'https://explorer.devnet.nasun.io';
+  const baseUrl = walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
   return `${baseUrl}/object/${objectId}`;
 }
 

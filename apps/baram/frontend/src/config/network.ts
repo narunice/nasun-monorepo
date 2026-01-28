@@ -7,6 +7,7 @@ export const NETWORK_CONFIG = {
   faucetUrl: import.meta.env.VITE_FAUCET_URL || NETWORK.faucetUrl,
   chainId: import.meta.env.VITE_CHAIN_ID || NETWORK.chainId,
   networkName: import.meta.env.VITE_NETWORK_NAME || 'Nasun Devnet',
+  explorerUrl: import.meta.env.VITE_EXPLORER_URL || NETWORK.explorerUrl,
 } as const;
 
 // zkLogin Configuration

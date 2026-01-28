@@ -370,7 +370,7 @@ export function TransactionHistoryPanel({
 
   // Handle transaction click - open in explorer
   const handleTxClick = (digest: string) => {
-    const explorerUrl = chain.blockExplorer || 'https://explorer.devnet.nasun.io';
+    const explorerUrl = chain.blockExplorer || 'https://explorer.nasun.io/devnet';
     window.open(`${explorerUrl}/tx/${digest}`, '_blank');
   };
 
