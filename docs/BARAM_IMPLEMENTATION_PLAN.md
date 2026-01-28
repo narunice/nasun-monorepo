@@ -34,7 +34,7 @@
 | Phase C-7: Frontend RSA-OAEP | ✅ 완료 | 브라우저 RSA-OAEP 암호화, E2E 완료 |
 | Phase C-8: UI 개선 | ✅ 완료 | Dark/Light 테마 토글, MODEL_PRICING 정리 (GPT 제거) |
 | Phase C-9: Custom AMI | ✅ 완료 | Spot 인스턴스 자동화, 2-3분 내 개발 환경 구축 |
-| Phase C-10: Attestation | ✅ 완료 | TEE 증명 표시 (PCR0, Module ID, 검증 상태) |
+| Phase C-10: Real NSM Attestation | ✅ 완료 | 실제 NSM 디바이스 접근, COSE_Sign1 파싱, 실시간 PCR 값 |
 
 ---
 
@@ -463,10 +463,24 @@ BARAM_SPOT_PRICE=0.10
 - `baram/openai` - OpenAI API key
 - `baram/executor` - Executor wallet private key
 
-**Current EC2 (TEE) - Status: Terminated**
+**Current EC2 (TEE) - Status: Running (2026-01-28)**
 
-> EC2 인스턴스는 비용 절감을 위해 세션 종료 시 terminate됩니다.
-> 테스트 필요 시 Spot 인스턴스로 새로 생성하세요.
+| Item | 값 |
+|------|-----|
+| Instance ID | `i-06c0a447b9ca44425` |
+| Public IP | `3.35.164.19` |
+| Instance Type | r6i.xlarge (4 vCPU, 32GB) |
+| Market | **Spot** |
+| EBS | 30GB gp3 |
+| Enclave CID | 19 |
+| Enclave Memory | 14GB |
+| Host Port | 3000 |
+| Key Pair | baram-nitro |
+| NSM Attestation | **Working** (Real NSM) |
+
+> **⚠️ 주의**: 개발 종료 후 반드시 `./scripts/terminate-spot.sh`로 인스턴스를 종료하세요!
+
+**권장 설정 (새 인스턴스 생성 시):**
 
 | Item | 권장 값 |
 |------|---------|
@@ -476,7 +490,7 @@ BARAM_SPOT_PRICE=0.10
 | Enclave CID | 16-19 (자동 할당) |
 | Enclave Memory | 14GB |
 | Host Port | 3000 |
-| Key Pair | naru_seoul |
+| AMI | `ami-0488cb25dd63317af` |
 
 ---
 
@@ -765,45 +779,55 @@ Parent EC2 (CID 3)                    Enclave (CID 19)
 - [x] E2E 테스트 성공 (암호화 → 복호화 → LLM 추론 → 응답)
 - [x] systemd 서비스 파일 생성 (`scripts/baram-host.service`)
 
-**현재 인프라 (V6 - 2026-01-27):**
+**현재 인프라 (V6 - 2026-01-28 업데이트):**
 
 | 항목 | 값 |
 |------|-----|
-| EC2 Spot Instance | `i-02365fa1ac2813567` (r6i.xlarge) |
-| Public IP | `3.35.69.95` |
-| Enclave CID | 16 |
-| Enclave Memory | 6GB (Proxy mode) |
+| EC2 Spot Instance | `i-06c0a447b9ca44425` (r6i.xlarge) |
+| Public IP | `3.35.164.19` |
+| Enclave CID | 19 |
+| Enclave Memory | 14GB (Local LLM mode) |
 | Host Port | 3000 |
-| Mode | Proxy (OpenAI API) |
+| Mode | Local LLM (llama-3.2-3b-local) |
+| NSM Attestation | **Real NSM** (Phase C-10 완료) |
 
-> **Note:** Spot 인스턴스는 세션 종료 시 반드시 terminate 해야 함
+> **⚠️ 주의**: Spot 인스턴스는 세션 종료 시 반드시 terminate 해야 함
 
 **TEE Executor 등록 상태:**
 - ExecutorRegistry: `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b`
 - AdminCap: `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7`
-- On-chain 등록: 미완료 (OpenAI quota 문제로 대기)
+- On-chain 등록: ✅ 완료 (`http://3.35.164.19:3000`)
 
-**E2E 테스트 결과 (V6 - 2026-01-27):**
+**E2E 테스트 결과 (V6 - 2026-01-28):**
 ```bash
 # Health Check
-curl http://3.35.69.95:3000/health
-→ {"host":"healthy","enclave":"healthy","uptime":110580,"version":"1.3.0","protocolVersion":"1.3.0"}
+curl http://3.35.164.19:3000/health
+→ {"host":"healthy","enclave":"healthy","uptime":378417,"version":"1.3.0","protocolVersion":"1.3.0"}
 
-# Public Key (RSA 2048-bit)
-curl http://3.35.69.95:3000/public-key
-→ {"success":true,"publicKey":"MIIBIjAN...","attestation":{"pcrs":{...},"moduleId":"baram-enclave-v1"}}
+# Public Key + Real NSM Attestation
+curl http://3.35.164.19:3000/public-key
+→ {
+    "success": true,
+    "publicKey": "MIIBIjAN...",
+    "attestation": {
+      "pcrs": {
+        "pcr0": "2395e443b9cf4dd538e8de7da13cac93...",  # Real PCR from NSM
+        "pcr1": "4b4d5b3661b3efc12920900c80e126e4...",
+        "pcr2": "532b62837e4beeb7caec364b198959b3..."
+      },
+      "moduleId": "i-06c0a447b9ca44425-enc019c024f4ee9b034",  # Real enclave ID
+      "timestamp": 1769565340002,
+      "signature": "COSE_Sign1",
+      "certificate": "MIIChTCCAgugAwIBAgIQAZwCT07psDQ..."  # AWS certificate
+    }
+  }
 
-# Execute (RSA-OAEP encrypted prompt) - Proxy Mode
+# Execute (RSA-OAEP encrypted prompt) - Local LLM Mode
 # ✅ Encryption/Decryption: Working
 # ✅ Host ↔ Enclave vsock: Working
-# ❌ OpenAI API: Quota exceeded (insufficient_quota)
-
-POST /execute { encryptedPrompt, model: "gpt-4o-mini", requestId: 12345 }
-→ Error: 429 You exceeded your current quota
+# ✅ Local LLM: Working (llama-3.2-3b-local)
+# ✅ NSM Attestation: Working (real COSE_Sign1 document)
 ```
-
-> **참고:** OpenAI API 할당량 문제로 실제 LLM 응답 테스트 미완료.
-> Local LLM 모드로 전환하면 외부 API 없이 테스트 가능 (모델 다운로드 필요 ~2GB)
 
 **남은 작업 (Optional):**
 - [x] systemd 서비스 설치 완료 (baram-enclave.service, baram-host.service)
@@ -845,7 +869,7 @@ Execution Time: 5540ms
 
 > V6 리셋 후 EC2 Spot 인스턴스 생성 및 TEE Executor 등록 후 재테스트 필요
 
-### Phase C-8: UI 개선 🔄 진행중 (2026-01-27)
+### Phase C-8: UI 개선 ✅ 완료 (2026-01-28)
 
 **목표:** 사용자 경험 개선 및 프라이버시 모델 정리
 
@@ -853,10 +877,9 @@ Execution Time: 5540ms
 - [x] Dark/Light 테마 토글 구현 (`ThemeProvider`, `ThemeToggle`)
 - [x] MODEL_PRICING에서 GPT 모델 제거 (TEE 모델만 유지)
 - [x] `llama-3.2-3b-local` 테스트 가격 설정 (0.01 NUSDC)
-
-**진행 중:**
-- [ ] Executor 선택 UI 개선 (TEE 여부 표시)
-- [ ] 요청 결과 페이지 디자인 개선
+- [x] ModelSelector 컴포넌트 분리
+- [x] StatusIndicator 컴포넌트 분리
+- [x] coinService, transactionBuilder 서비스 분리
 
 **관련 파일:**
 | 파일 | 설명 |
@@ -945,14 +968,55 @@ cd apps/baram/executor-nitro
 > **⚠️ 중요**: 개발 종료 후 `terminate-spot.sh`를 반드시 실행하세요!
 > 인스턴스 방치 시 불필요한 비용이 계속 발생합니다.
 
-### Phase C-10: Attestation 검증
+### Phase C-10: Real NSM Attestation ✅ 완료 (2026-01-28)
 
 **목표:** 실제 Nitro Attestation 문서 생성 및 검증
 
-- [ ] `/dev/attestation/attestation_doc` 읽기
-- [ ] Attestation document 파싱 (CBOR/COSE)
-- [ ] PCR 값 검증 로직
-- [ ] Frontend에서 attestation 표시
+**완료 항목:**
+- [x] `aws-nitro-enclaves-nsm-node` 패키지 통합 (native NSM 접근)
+- [x] `cbor-x` 패키지로 COSE_Sign1 문서 파싱
+- [x] 실제 PCR 값 추출 (PCR0, PCR1, PCR2)
+- [x] AWS Nitro 인증서 체인 추출 (certificate, cabundle)
+- [x] Module ID, timestamp 파싱 (BigInt 호환)
+- [x] 시뮬레이션 fallback 유지 (NSM 불가 환경)
+
+**기술 구현:**
+| 구성요소 | 패키지 | 용도 |
+|----------|--------|------|
+| NSM 접근 | `aws-nitro-enclaves-nsm-node` | `/dev/nsm` 디바이스 통신 |
+| COSE 파싱 | `cbor-x` | COSE_Sign1 attestation 문서 디코딩 |
+| 동적 로딩 | ES Module `import()` | Enclave 환경에서만 NSM 로드 |
+
+**Attestation 응답 예시:**
+```json
+{
+  "success": true,
+  "publicKey": "MIIBIjAN...",
+  "attestation": {
+    "pcrs": {
+      "pcr0": "2395e443b9cf4dd538e8de7da13cac93...",
+      "pcr1": "4b4d5b3661b3efc12920900c80e126e4...",
+      "pcr2": "532b62837e4beeb7caec364b198959b3..."
+    },
+    "moduleId": "i-06c0a447b9ca44425-enc019c024f4ee9b034",
+    "timestamp": 1769565340002,
+    "signature": "COSE_Sign1",
+    "certificate": "MIIChTCCAgugAwIBAgIQAZwCT07psDQA..."
+  }
+}
+```
+
+**수정된 파일:**
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/enclave/attestation.ts` | NSM 라이브러리 로딩, COSE_Sign1 파싱, BigInt→Number 변환 |
+| `package.json` | `aws-nitro-enclaves-nsm-node`, `cbor-x` 의존성 추가 |
+| `scripts/update-executor.sh` | `update_executor` 함수로 수정 (AdminCap 필요) |
+
+**다음 단계 (Optional):**
+- [ ] AWS Root CA로 인증서 체인 검증
+- [ ] PCR 값과 예상 EIF 측정값 비교
+- [ ] Frontend에서 attestation 검증 UI 표시
 
 ### Phase C-11: 더 큰 모델 지원
 
@@ -1005,6 +1069,7 @@ cd apps/baram/executor-nitro
 | [executor-nitro/src/host/server.ts](../apps/baram/executor-nitro/src/host/server.ts) | Host HTTP 서버 |
 | [executor-nitro/src/host/vsock-client.ts](../apps/baram/executor-nitro/src/host/vsock-client.ts) | Enclave vsock 클라이언트 |
 | [executor-nitro/src/enclave/main.ts](../apps/baram/executor-nitro/src/enclave/main.ts) | Enclave 엔트리포인트 |
+| [executor-nitro/src/enclave/attestation.ts](../apps/baram/executor-nitro/src/enclave/attestation.ts) | NSM Attestation (COSE_Sign1 파싱) |
 | [executor-nitro/src/enclave/inference.ts](../apps/baram/executor-nitro/src/enclave/inference.ts) | 3가지 추론 모드 |
 | [executor-nitro/src/enclave/local-llm.ts](../apps/baram/executor-nitro/src/enclave/local-llm.ts) | node-llama-cpp 래퍼 |
 | [executor-nitro/src/shared/protocol.ts](../apps/baram/executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 |

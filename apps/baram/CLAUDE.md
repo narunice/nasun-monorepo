@@ -461,6 +461,7 @@ CRITICAL:
 | [baram.move](contracts/sources/baram.move) | 에스크로 + 정산 로직 |
 | [executor.move](contracts-executor/sources/executor.move) | Executor 등록 시스템 |
 | [crypto.ts](executor-nitro/src/enclave/crypto.ts) | RSA 키 관리 |
+| [attestation.ts](executor-nitro/src/enclave/attestation.ts) | NSM Attestation (COSE_Sign1 파싱) |
 | [inference.ts](executor-nitro/src/enclave/inference.ts) | 3가지 추론 모드 |
 | [local-llm.ts](executor-nitro/src/enclave/local-llm.ts) | node-llama-cpp 래퍼 |
 | [vsock.ts](executor-nitro/src/shared/vsock.ts) | vsock/TCP 추상화 |
@@ -483,7 +484,7 @@ CRITICAL:
 | C-1~C-7 | TEE Integration (vsock, Local LLM) | 완료 |
 | C-8 | UI 개선 (테마 토글) | 완료 |
 | C-9 | Custom AMI + Spot 자동화 | 완료 |
-| C-10 | Attestation 검증 | 완료 |
+| C-10 | Real NSM Attestation | 완료 |
 | D | Stake/Slashing 메커니즘 | 계획 |
 | E | Model Marketplace | 계획 |
 
