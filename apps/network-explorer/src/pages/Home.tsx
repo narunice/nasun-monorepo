@@ -5,6 +5,7 @@ import {
   useTPS,
   useRecentTransactions,
   useTPSHistory,
+  useMinDuration,
 } from '../hooks';
 
 // Sub-components
@@ -46,6 +47,10 @@ export default function Home() {
   // TPS history for chart
   const tpsHistory = useTPSHistory(tps ?? null);
 
+  // Extend fetching indicators to stay visible for minimum 600ms
+  const statusFetchingExtended = useMinDuration(statusFetching);
+  const txFetchingExtended = useMinDuration(txFetching);
+
   return (
     <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
       {/* Search Bar - positioned at top for easy discovery */}
@@ -59,7 +64,7 @@ export default function Home() {
         epochInfo={epochInfo}
         tps={tps}
         isLoading={statusLoading}
-        isFetching={statusFetching}
+        isFetching={statusFetchingExtended}
         updatedAt={statusUpdatedAt}
       />
 
@@ -70,7 +75,7 @@ export default function Home() {
       <RecentTransactionsTable
         transactions={recentTxs}
         isLoading={txLoading}
-        isFetching={txFetching}
+        isFetching={txFetchingExtended}
         updatedAt={txUpdatedAt}
       />
     </div>

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCheckpoints } from '../lib/sui-client';
 import { formatSoe } from '../lib/format';
 import { Card } from '../components/ui/Card';
+import { useMinDuration } from '../hooks';
 
 function formatTimestamp(timestampMs: string | number | null | undefined) {
   if (!timestampMs) return '-';
@@ -26,6 +27,8 @@ export default function Checkpoints() {
     refetchInterval: 10000,
     staleTime: 8000,
   });
+
+  const isFetchingExtended = useMinDuration(isFetching);
 
   const handleNextPage = () => {
     if (data?.hasNextPage && data?.nextCursor) {
@@ -61,7 +64,7 @@ export default function Checkpoints() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">Checkpoints</h1>
-          {isFetching && (
+          {isFetchingExtended && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
               updating...
