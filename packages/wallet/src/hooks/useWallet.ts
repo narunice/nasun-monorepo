@@ -73,14 +73,16 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Initialize (called at app start)
   _initialize: async () => {
-    if (hasKeystore()) {
-      const address = getStoredAddress();
+    const hasKS = hasKeystore();
+    const address = getStoredAddress();
+    const sessionPwd = getSessionPassword();
+
+    if (hasKS) {
       if (address) {
         // Try auto-unlock from session
-        const sessionPassword = getSessionPassword();
-        if (sessionPassword) {
+        if (sessionPwd) {
           try {
-            const keypair = await unlockKeystore(sessionPassword);
+            const keypair = await unlockKeystore(sessionPwd);
             currentKeypair = keypair;
             const account: WalletAccount = {
               address: getAddressFromKeypair(keypair),
