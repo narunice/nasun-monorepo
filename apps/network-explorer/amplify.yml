@@ -6,15 +6,17 @@ frontend:
         - npm install -g pnpm
         # Clear Vite cache and old build artifacts to ensure fresh build
         - rm -rf node_modules/.vite dist
-        - pnpm install --frozen-lockfile
+        # Install only network-explorer and its workspace dependencies to reduce memory usage
+        - pnpm install --filter @nasun/network-explorer...
     build:
       commands:
-        - pnpm build
+        # Build from monorepo root with filter
+        - pnpm --filter @nasun/network-explorer build
   artifacts:
-    baseDirectory: dist
+    baseDirectory: apps/network-explorer/dist
     files:
       - '**/*'
   cache:
     paths:
-      # Only cache pnpm store, not Vite cache
+      # Only cache pnpm store for faster installs
       - node_modules/.pnpm/**/*
