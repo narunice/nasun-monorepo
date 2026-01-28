@@ -40,8 +40,8 @@ export function useAdminProposals() {
 
   return {
     data: proposalsQuery.data ?? [],
-    isLoading: isDashboardPending || proposalsQuery.isLoading,
-    isPending: isDashboardPending || proposalsQuery.isPending,
+    isLoading: isDashboardPending || (proposalIds.length > 0 && proposalsQuery.isLoading),
+    isPending: isDashboardPending || (proposalIds.length > 0 && proposalsQuery.isPending),
     error: proposalsQuery.error,
     refetch: proposalsQuery.refetch,
   };

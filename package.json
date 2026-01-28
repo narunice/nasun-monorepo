@@ -18,6 +18,8 @@
     "deploy:nasun-website:staging": "./scripts/deploy-nasun-website-staging.sh",
     "deploy:nasun-website:prod": "./scripts/deploy-nasun-website-production.sh",
     "deploy:gensol-website:staging": "./scripts/deploy-gensol-website-staging.sh",
+    "deploy:network-explorer:staging": "./scripts/deploy-network-explorer-staging.sh",
+    "deploy:network-explorer:prod": "./scripts/deploy-network-explorer-production.sh",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",

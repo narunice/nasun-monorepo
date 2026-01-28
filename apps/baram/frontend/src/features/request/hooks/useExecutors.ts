@@ -7,6 +7,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { NETWORK_CONFIG, EXECUTOR_CONFIG, TEE_TYPES, TeeType } from '@/config/network';
 
 export interface ExecutorInfo {
+  id: string;
   operator: string;
   name: string;
   endpointUrl: string;
@@ -31,12 +32,13 @@ export interface UseExecutorsReturn {
 /**
  * Parse ExecutorInfo from on-chain data
  */
-function parseExecutorInfo(data: Record<string, unknown>): ExecutorInfo {
+function parseExecutorInfo(data: Record<string, unknown>, operator: string): ExecutorInfo {
   const fields = (data.fields || data) as Record<string, unknown>;
   const teeType = Number(fields.tee_type || 0) as TeeType;
 
   return {
-    operator: String(fields.operator || ''),
+    id: operator, // Use operator address as unique ID
+    operator: String(fields.operator || operator),
     name: String(fields.name || ''),
     endpointUrl: String(fields.endpoint_url || ''),
     teeType,
@@ -114,7 +116,9 @@ export function useExecutors(): UseExecutorsReturn {
             // Handle both nested (value.fields) and flat (value) structures
             const value = valueWrapper.fields ?? (valueWrapper as unknown as Record<string, unknown>);
 
-            const info = parseExecutorInfo(value);
+            // Extract operator from the field name (dynamic field key)
+            const operator = String((field.name as { value?: string })?.value || value.operator || '');
+            const info = parseExecutorInfo(value, operator);
             if (info.isActive) {
               executorList.push(info);
             }

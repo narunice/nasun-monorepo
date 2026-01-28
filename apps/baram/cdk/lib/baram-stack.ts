@@ -43,6 +43,13 @@ export class BaramStack extends cdk.Stack {
       'baram/executor'
     );
 
+    // Groq secret (optional - for fallback models)
+    const groqSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'GroqSecret',
+      'baram/groq'
+    );
+
     // Create Lambda function for executor
     this.executorLambda = new lambda.Function(this, 'ExecutorLambda', {
       functionName: 'baram-executor',
@@ -59,6 +66,7 @@ export class BaramStack extends cdk.Stack {
         BARAM_REGISTRY_ID: baramRegistryId,
         OPENAI_SECRET_NAME: 'baram/openai',
         EXECUTOR_SECRET_NAME: 'baram/executor',
+        GROQ_SECRET_NAME: 'baram/groq',
       },
       description: 'Baram AI Executor - Processes AI requests and submits proofs on-chain',
     });
@@ -66,6 +74,7 @@ export class BaramStack extends cdk.Stack {
     // Grant Lambda access to secrets
     openaiSecret.grantRead(this.executorLambda);
     executorSecret.grantRead(this.executorLambda);
+    groqSecret.grantRead(this.executorLambda);
 
     // Create API Gateway
     this.apiGateway = new apigateway.RestApi(this, 'BaramApi', {

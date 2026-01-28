@@ -1,120 +1,266 @@
 /**
- * Baram - Main App Component
+ * Baram - Main App Component (Chat UI)
+ *
+ * Uses ChatLayout with left sidebar for session management
+ * and executor/model selection.
  */
 
+import { useEffect, useCallback, useRef } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { WalletConnect, BalanceDisplay, TokenFaucetButton } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin, useLedger, useMultiBalance } from '@nasun/wallet';
-import { RequestForm } from './features/request/components/RequestForm';
-import { NETWORK_CONFIG, BARAM_CONFIG } from './config/network';
+import { WalletConnect } from '@nasun/wallet-ui';
+import { useWallet, useZkLogin, useLedger, useSigner } from '@nasun/wallet';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import { ThemeToggle } from './components/theme/ThemeToggle';
+import { ChatLayout } from './layouts/ChatLayout';
+import { ChatInput } from './components/input/ChatInput';
+import { InputFooter } from './components/input/InputFooter';
+import { WelcomeScreen } from './components/empty/WelcomeScreen';
+import { MessageList, Message as UIMessage } from './components/chat/MessageList';
+import { useCreateRequest } from './features/request/hooks/useCreateRequest';
+import { useExecutors } from './features/request/hooks/useExecutors';
+import { useAttestation } from './features/request/hooks/useAttestation';
+import { AttestationDisplay } from './features/request/components/AttestationDisplay';
+import { NETWORK_CONFIG, ModelId, BARAM_CONFIG, DEFAULT_MODEL } from './config/network';
+import { useChatStore } from './stores/chatStore';
+import type { Message } from './types/chat';
 import AuthCallback from './pages/AuthCallback';
+
+// Convert store Message to UI Message (timestamp number -> Date)
+function toUIMessage(msg: Message): UIMessage {
+  return {
+    ...msg,
+    role: msg.role as 'user' | 'assistant',
+    timestamp: new Date(msg.timestamp),
+  };
+}
 
 function AppContent() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
-  const { data: balances } = useMultiBalance({});
+  const { address: signerAddress } = useSigner();
   const isConnected = (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
 
-  // NUSDC balance (6 decimals)
-  const nusdcBalance = balances?.tokens?.['NUSDC'];
-  const nusdcAmount = nusdcBalance ? Number(nusdcBalance.balance) / 1e6 : 0;
+  // Get wallet address from useSigner (works for all connection types)
+  const walletAddress = signerAddress || null;
+
+  // Chat store
+  const messages = useChatStore((state) => state.messages);
+  const addMessage = useChatStore((state) => state.addMessage);
+  const createSession = useChatStore((state) => state.createSession);
+  const activeSessionId = useChatStore((state) => state.activeSessionId);
+  const selectedExecutorId = useChatStore((state) => state.selectedExecutorId);
+  const selectedModel = useChatStore((state) => state.selectedModel);
+  const setSelectedExecutor = useChatStore((state) => state.setSelectedExecutor);
+  const setSelectedModel = useChatStore((state) => state.setSelectedModel);
+  const loadFromStorage = useChatStore((state) => state.loadFromStorage);
+  const clearOnLogout = useChatStore((state) => state.clearOnLogout);
+
+  // Track previous wallet address for disconnect detection
+  const prevAddressRef = useRef<string | null>(null);
+
+  // External hooks
+  const { executors } = useExecutors();
+  const { status: requestStatus, error, result, createRequest, reset } = useCreateRequest();
+
+  // Get selected executor from list
+  const selectedExecutor = executors.find((e) => e.id === selectedExecutorId) || null;
+
+  // Attestation for selected executor
+  const attestation = useAttestation(
+    selectedExecutor?.endpointUrl || null,
+    selectedExecutor?.teeType || 0
+  );
+
+  // Handle wallet connect/disconnect
+  useEffect(() => {
+    const currentAddress = walletAddress;
+    const prevAddress = prevAddressRef.current;
+
+    console.log('[App] Wallet address changed:', { currentAddress: currentAddress?.slice(0, 8), prevAddress: prevAddress?.slice(0, 8) });
+
+    if (currentAddress && currentAddress !== prevAddress) {
+      // Wallet connected or changed - load data for this wallet
+      loadFromStorage(currentAddress);
+    } else if (!currentAddress && prevAddress) {
+      // Wallet disconnected - clear memory (keep encrypted data in IndexedDB)
+      clearOnLogout();
+    }
+
+    prevAddressRef.current = currentAddress;
+  }, [walletAddress, loadFromStorage, clearOnLogout]);
+
+  // Auto-select first executor
+  useEffect(() => {
+    if (!selectedExecutorId && executors.length > 0) {
+      const defaultExecutor = executors.find((e) => e.operator === BARAM_CONFIG.executorAddress);
+      setSelectedExecutor(defaultExecutor?.id || executors[0]?.id || null);
+    }
+  }, [executors, selectedExecutorId, setSelectedExecutor]);
+
+  // Auto-select default model
+  useEffect(() => {
+    if (!selectedModel) {
+      setSelectedModel(DEFAULT_MODEL);
+    }
+  }, [selectedModel, setSelectedModel]);
+
+  // Create session if none exists
+  useEffect(() => {
+    if (isConnected && !activeSessionId) {
+      createSession();
+    }
+  }, [isConnected, activeSessionId, createSession]);
+
+  // Handle result when completed
+  useEffect(() => {
+    if (requestStatus === 'completed' && result) {
+      addMessage({
+        role: 'assistant',
+        content: result.result,
+        metadata: {
+          requestId: result.requestId,
+          executionTimeMs: result.executionTimeMs,
+          teeVerified: (selectedExecutor?.teeType ?? 0) > 0,
+          txDigest: result.txDigest,
+        },
+      });
+      reset();
+    }
+  }, [requestStatus, result, addMessage, reset]);
+
+  const isProcessing = requestStatus === 'creating' || requestStatus === 'executing';
+
+  const handleSubmit = useCallback(async (prompt: string) => {
+    if (!prompt.trim() || isProcessing || !selectedExecutor) return;
+
+    // Capture previous messages before adding new one
+    const previousMessages = [...messages];
+
+    // Add user message
+    addMessage({
+      role: 'user',
+      content: prompt,
+    });
+
+    // Create request with context
+    await createRequest(prompt.trim(), selectedModel as ModelId, selectedExecutor, {
+      previousMessages,
+    });
+  }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, messages]);
+
+  const handleSuggestionClick = (prompt: string) => {
+    // Just submit directly
+    handleSubmit(prompt);
+  };
+
+  const hasMessages = messages.length > 0 || isProcessing;
+
+  // Convert messages for UI
+  const uiMessages = messages.map(toUIMessage);
+
+  // Header
+  const header = (
+    <header className="border-b border-[var(--color-border)] px-4 py-3">
+      <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {/* Title moved to sidebar, keep minimal header on mobile */}
+          <span className="text-sm font-medium text-[var(--color-text-primary)] md:hidden">
+            Baram
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <span className="text-xs text-[var(--color-text-muted)] px-2 py-1 rounded bg-[var(--color-bg-secondary)]">
+            {NETWORK_CONFIG.networkName}
+          </span>
+          <WalletConnect />
+        </div>
+      </div>
+    </header>
+  );
+
+  // Input Area (simplified - executor/model selection moved to sidebar)
+  const inputArea = (
+    <div className="space-y-2">
+      <ChatInput
+        onSubmit={handleSubmit}
+        disabled={isProcessing || !isConnected || !selectedExecutor}
+        placeholder={!isConnected ? 'Connect wallet to start...' : 'Ask anything...'}
+      />
+
+      {/* Footer Info */}
+      <InputFooter
+        selectedModel={selectedModel as ModelId}
+        selectedExecutor={selectedExecutor}
+        requestId={result?.requestId}
+        executionTime={result?.executionTimeMs}
+      />
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-2 bg-[var(--color-error)]/10 border border-[var(--color-error)]/30 rounded-lg">
+          <p className="text-xs text-[var(--color-error)]">{error}</p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      {/* Header */}
-      <header className="border-b border-[var(--color-border)] px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-baram-1 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">B</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                Baram
-              </h1>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                Private AI Computation
-              </p>
-            </div>
+    <ChatLayout header={header} inputArea={inputArea}>
+      {!isConnected ? (
+        // Not Connected State
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-baram-1 to-baram-2 flex items-center justify-center mb-6">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
           </div>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <span className="text-xs text-[var(--color-text-muted)] px-2 py-1 rounded bg-[var(--color-bg-secondary)]">
-              {NETWORK_CONFIG.networkName}
-            </span>
-            <WalletConnect />
-          </div>
+          <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2 text-center">
+            Private AI with TEE Protection
+          </h2>
+          <p className="text-[var(--color-text-secondary)] text-center max-w-md">
+            Your prompts are encrypted and processed inside a Trusted Execution Environment.
+            Connect your wallet in the header to get started.
+          </p>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {!isConnected ? (
-          // Not Connected State
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-2xl bg-baram-1/10 flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-baram-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+      ) : !hasMessages ? (
+        // Empty State - Show Welcome Screen
+        <>
+          <WelcomeScreen onSuggestionClick={handleSuggestionClick} />
+          {/* Attestation Info */}
+          {selectedExecutor && (
+            <div className="max-w-lg mx-auto mt-6">
+              <AttestationDisplay
+                teeType={selectedExecutor.teeType}
+                attestation={attestation}
+              />
             </div>
-            <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">
-              Private AI Computation
-            </h2>
-            <p className="text-[var(--color-text-secondary)] max-w-md mx-auto">
-              Your prompts stay private. Payments are guaranteed through on-chain escrow.
-              Connect your wallet in the header to get started.
-            </p>
-          </div>
-        ) : (
-          // Connected State
-          <div className="space-y-6">
-            {/* Balance Display */}
-            <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
-              <BalanceDisplay />
-              {/* NUSDC Balance for Baram */}
-              <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-[var(--color-text-secondary)]">NUSDC Balance: </span>
-                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                    {nusdcAmount.toLocaleString()} NUSDC
-                  </span>
-                </div>
-                <TokenFaucetButton symbol="NUSDC" compact />
-              </div>
+          )}
+        </>
+      ) : (
+        // Chat Messages
+        <>
+          <MessageList
+            messages={uiMessages}
+            isProcessing={isProcessing}
+            processingStatus={requestStatus}
+            isTeeExecutor={(selectedExecutor?.teeType ?? 0) > 0}
+          />
+          {/* Attestation Info (collapsed) */}
+          {selectedExecutor && attestation.isVerified && (
+            <div className="mt-4 text-center">
+              <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                TEE Attestation Verified
+              </span>
             </div>
-
-            {/* Request Form */}
-            <RequestForm />
-
-            {/* Info Section */}
-            <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 text-sm">
-              <h3 className="font-medium text-[var(--color-text-primary)] mb-2">
-                How it works
-              </h3>
-              <ol className="list-decimal list-inside space-y-1 text-[var(--color-text-secondary)]">
-                <li>Enter your prompt and select an AI model</li>
-                <li>Pay with NUSDC (funds held in escrow)</li>
-                <li>AI processes your request privately</li>
-                <li>Result delivered, payment released automatically</li>
-              </ol>
-              <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-                Executor: {BARAM_CONFIG.executorAddress.slice(0, 10)}...
-              </p>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-[var(--color-border)] px-6 py-4 mt-auto">
-        <div className="max-w-4xl mx-auto text-center text-xs text-[var(--color-text-muted)]">
-          Powered by Nasun Network
-        </div>
-      </footer>
-    </div>
+          )}
+        </>
+      )}
+    </ChatLayout>
   );
 }
 

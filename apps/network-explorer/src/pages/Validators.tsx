@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getValidators } from '../lib/sui-client';
 import { formatBalance } from '../lib/format';
 import { Card } from '../components/ui/Card';
+import { useMinDuration } from '../hooks';
 
 function truncateAddress(address: string) {
   return `${address.slice(0, 8)}...${address.slice(-6)}`;
@@ -20,6 +21,8 @@ export default function Validators() {
     staleTime: 25000,
   });
 
+  const isFetchingExtended = useMinDuration(isFetching);
+
   const formatLastUpdated = (date: Date) => {
     return date.toLocaleTimeString('en-US', { hour12: true });
   };
@@ -35,7 +38,7 @@ export default function Validators() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">Validators</h1>
-          {isFetching && (
+          {isFetchingExtended && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
               updating...

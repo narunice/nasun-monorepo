@@ -68,7 +68,7 @@ export const LiveNowSection = () => {
             {liveNow.subtitle}
           </motion.p>
           <Button variant="c4" size="xs" asChild>
-            <a href="https://explorer.devnet.nasun.io/" target="_blank" rel="noopener noreferrer">
+            <a href={import.meta.env.VITE_DEVNET_EXPLORER_URL || 'https://explorer.nasun.io/devnet'} target="_blank" rel="noopener noreferrer">
               {liveNow.explorerButton}
               <ExternalLink className="w-3 h-3 ml-1.5" />
             </a>
