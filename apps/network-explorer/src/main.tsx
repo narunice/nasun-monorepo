@@ -31,7 +31,7 @@ if (googleClientId && saltApiUrl) {
       google: {
         provider: 'google',
         clientId: googleClientId,
-        redirectUri: `${window.location.origin}/callback`,
+        redirectUri: `${window.location.origin}${import.meta.env.BASE_URL}callback`,
       },
     },
   })
@@ -64,7 +64,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <WalletProvider>
         <ThemeProvider defaultTheme="dark" storageKey="nasun-explorer-theme">
-          <BrowserRouter>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Suspense fallback={<LoadingScreen />}>
               <App />
             </Suspense>

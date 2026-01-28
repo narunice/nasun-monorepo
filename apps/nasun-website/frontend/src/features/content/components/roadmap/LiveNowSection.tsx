@@ -79,7 +79,7 @@ export const LiveNowSection = () => {
             rightAction={
               <Button variant="c4" size="xs" asChild>
                 <a
-                  href="https://explorer.devnet.nasun.io/"
+                  href={import.meta.env.VITE_DEVNET_EXPLORER_URL || 'https://explorer.nasun.io/devnet'}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

@@ -438,16 +438,25 @@ export function WalletConnect({
   const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(evmAddressForHook);
 
   // Close dropdown when clicking outside
+  // IMPORTANT: Only register listener when dropdown is open to prevent
+  // multiple WalletConnect instances from interfering with each other
   useEffect(() => {
+    if (!showDropdown) return;
+
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
+      if (!target) return;
+
+      // Fix: Check if target is still connected to the DOM
+      // If target was unmounted by React, ignore the click
+      if (target instanceof Element && !target.isConnected) {
+        return;
+      }
+
       const isInsideDesktopDropdown = dropdownRef.current?.contains(target);
       const isInsideMobileDropdown = mobileDropdownRef.current?.contains(target);
-
-      // Check if click is inside the network selector modal (rendered via portal)
       const isInsideModal = (target as Element).closest?.('[data-network-modal="true"]');
 
-      // Only close if click is outside desktop dropdown, mobile dropdown, AND modal
       if (
         dropdownRef.current &&
         !isInsideDesktopDropdown &&
@@ -455,7 +464,6 @@ export function WalletConnect({
         !isInsideModal
       ) {
         setShowDropdown(false);
-        // Reset view when closing dropdown
         if (viewMode !== "create-backup") {
           setViewMode("main");
           setPassword("");
@@ -467,7 +475,7 @@ export function WalletConnect({
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [viewMode, clearError]);
+  }, [showDropdown, viewMode, clearError]);
 
   // Create wallet with mnemonic backup
   const handleCreate = useCallback(async () => {

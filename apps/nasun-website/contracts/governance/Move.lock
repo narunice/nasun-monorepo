@@ -2,29 +2,7 @@
 # This file should be checked in.
 
 [move]
-version = 3
-manifest_digest = "117CFC3CBCA3C835F35BB6714E1D329A1C025A9AF10C46A5316179DB9606284A"
-deps_digest = "F8BBB0CCB2491CA29A3DF03D6F92277A4F3574266507ACD77214D37ECA3F3082"
-dependencies = [
-  { id = "Sui", name = "Sui" },
-]
-
-[[move.package]]
-id = "MoveStdlib"
-source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/move-stdlib" }
-
-[[move.package]]
-id = "Sui"
-source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
-
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-]
-
-[move.toolchain-version]
-compiler-version = "1.62.1"
-edition = "2024.beta"
-flavor = "sui"
+version = 4
 
 [pinned.devnet.MoveStdlib]
 source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/move-stdlib" }
@@ -61,11 +39,3 @@ source = { root = true }
 use_environment = "testnet"
 manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
 deps = { Sui = "Sui" }
-
-[env]
-
-[env.devnet]
-chain-id = "12bf3808"
-original-published-id = "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516"
-latest-published-id = "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516"
-published-version = "1"

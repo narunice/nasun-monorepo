@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../components/AdminLayout";
-import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useWallet, useZkLogin, useWalletStatus, useWalletAccount } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
@@ -29,7 +29,10 @@ interface ProposalFormData {
 export function CreateProposal() {
   const navigate = useNavigate();
   const suiClient = useSuiClient();
-  const { status, account, getKeypair } = useWallet();
+  const { getKeypair } = useWallet();
+  // Use selector-based hooks for better reactivity
+  const status = useWalletStatus();
+  const account = useWalletAccount();
   const packageId = useNetworkVariable("packageId") || NASUN_DEVNET_PACKAGE_ID;
   const dashboardId = NASUN_DEVNET_DASHBOARD_ID;
   const adminCapId = NASUN_DEVNET_ADMIN_CAP;
@@ -137,8 +140,8 @@ export function CreateProposal() {
         </div>
 
         <div className="flex flex-col gap-6">
-          {/* Wallet Connection */}
-          <OuterBox color="w5" padding="md">
+          {/* Wallet Connection - z-50 ensures dropdown appears above other sections */}
+          <OuterBox color="w5" padding="md" className="relative z-50">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-medium text-nasun-white mb-1">Wallet Connection</h2>

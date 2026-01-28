@@ -6,7 +6,7 @@
     "chainId": "12bf3808",
     "rpcUrl": "https://rpc.devnet.nasun.io",
     "faucetUrl": "https://faucet.devnet.nasun.io",
-    "explorerUrl": "https://explorer.devnet.nasun.io"
+    "explorerUrl": "https://explorer.nasun.io/devnet"
   },
   "tokens": {
     "packageId": "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017",
@@ -35,7 +35,10 @@
   "governance": {
     "packageId": "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516",
     "dashboard": "0x3398b1931bc8c418b0e0e1d9c1e04537bfc82c3f85d4dc22e11c97469baee7ae",
-    "adminCap": "0xd96d14baf4422909e6721c5533d981f0a481b947989c95502d3a45f89f607a04"
+    "adminCap": "0xd96d14baf4422909e6721c5533d981f0a481b947989c95502d3a45f89f607a04",
+    "votingPowerOracle": "0x40f5f1a8fc7aa789d510acb2ceebf0248ba1af3ac432ca8c73b52d67a0e1d070",
+    "certificateRegistry": "0xbbbfcfb37097771849d1b3ea0d4e2700d30c8d82cd61d7b1d25a44154b3edd01",
+    "proposalTypeRegistry": "0x9df462224ec969f7f0234663865c5070c4ccf3dd739423ef9ef698dab3291c76"
   },
   "baram": {
     "packageId": "0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f",
