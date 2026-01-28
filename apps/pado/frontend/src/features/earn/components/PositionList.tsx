@@ -9,6 +9,7 @@ import { useLendingPositions } from '../hooks/useLendingPositions';
 import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingActions } from '../hooks/useLendingActions';
 import { formatNUSDC, type PositionValue } from '../types/lending';
+import { NETWORK_CONFIG } from '../../../config/network';
 
 export function PositionList() {
   const { status, account } = useWallet();
@@ -129,7 +130,7 @@ export function PositionList() {
                 Withdrawal successful!
               </p>
               <a
-                href={`https://explorer.devnet.nasun.io/tx/${success}`}
+                href={`${NETWORK_CONFIG.explorerUrl}/tx/${success}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-500 hover:underline"

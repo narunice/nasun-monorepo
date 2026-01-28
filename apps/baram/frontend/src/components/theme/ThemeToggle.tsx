@@ -3,6 +3,7 @@
  */
 
 import { useTheme } from "./ThemeProvider";
+import { FaSun, FaMoon } from "react-icons/fa6";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -15,17 +16,29 @@ export function ThemeToggle() {
       aria-checked={isDark}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={`
-        relative w-10 h-6 rounded-full transition-all duration-[400ms]
-        ${isDark ? "bg-indigo-900" : "bg-sky-200"}
+        relative w-11 h-6 rounded-full transition-colors duration-300
+        ${isDark ? "bg-slate-700" : "bg-gray-100 ring-1 ring-inset ring-slate-400"}
       `}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
-      {/* Animated knob - Sun/Moon */}
+      {/* Sun icon - left */}
+      <FaSun
+        size={12}
+        className={`absolute left-1.5 top-1/2 -translate-y-1/2 text-yellow-500 ${isDark ? "opacity-50" : ""}`}
+      />
+
+      {/* Moon icon - right */}
+      <FaMoon
+        size={11}
+        className={`absolute right-1 top-1/2 -translate-y-1/2 text-yellow-400 ${isDark ? "" : "opacity-50"}`}
+      />
+
+      {/* Sliding knob */}
       <span
         className={`
-          absolute top-0.5 w-5 h-5 rounded-full
-          transition-all duration-[400ms] ease-out
-          ${isDark ? "left-4 bg-gray-100" : "left-0.5 bg-amber-200 shadow-md shadow-amber-100/60"}
+          absolute top-1 w-4 h-4 rounded-full shadow-sm
+          transition-all duration-300 ease-out z-10
+          ${isDark ? "left-1 bg-white" : "right-[5px] bg-slate-700"}
         `}
       />
     </button>

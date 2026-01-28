@@ -66,10 +66,12 @@ export default defineConfig(({ mode }) => {
         "./aws-exports": path.resolve(__dirname, "src/config/aws-exports.ts"),
       },
       preserveSymlinks: true,
+      // Prevent duplicate module instances in pnpm workspace
+      dedupe: ["zustand", "react", "react-dom", "@nasun/wallet", "@nasun/wallet-ui"],
     },
 
     optimizeDeps: {
-      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core"],
+      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet", "@nasun/wallet-ui"],
     },
 
     // 4) 명시적으로 VITE_* 변수만 process.env에 주입

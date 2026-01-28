@@ -77,7 +77,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         },
         {
           name: "navigation.devnetWallet",
-          path: "https://explorer.devnet.nasun.io/",
+          path: import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet",
           external: true,
         },
         {

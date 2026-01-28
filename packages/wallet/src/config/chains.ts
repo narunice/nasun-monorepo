@@ -99,7 +99,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       symbol: 'NSN',
       decimals: 9,
     },
-    blockExplorer: 'https://explorer.devnet.nasun.io',
+    blockExplorer: 'https://explorer.nasun.io/devnet',
     testnet: true,
     devnet: true,
   },

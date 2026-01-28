@@ -127,12 +127,12 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
       onClick={onClose}
     >
       <div
-        className="bg-nasun-c6/90 border border-nasun-c5/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg"
+        className="bg-nasun-c6/90 border border-nasun-c5/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <h4 className="text-nasun-white">{proposal.title}</h4>
+        <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+          <h6 className="text-nasun-white font-semibold">{proposal.title}</h6>
           {hasVoted || isSuccess ? (
             <span className="flex-shrink-0 text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
               {t("vote.already_voted")}
@@ -144,12 +144,14 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           )}
         </div>
 
-        {/* Description */}
+        {/* Description - Scrollable */}
         {!confirmStep.show && (
-          <p className="mb-5 text-nasun-white/85">{proposal.description}</p>
+          <div className="mb-5 overflow-y-auto max-h-[30vh] pr-2 flex-shrink custom-scrollbar">
+            <p className="text-nasun-white/85">{proposal.description}</p>
+          </div>
         )}
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 flex-shrink-0">
           {/* Current Vote Counts */}
           <div className="flex justify-between text-sm text-nasun-white/60">
             <span>👍 {t("proposal.yes_votes")}: {proposal.yesVotes}</span>

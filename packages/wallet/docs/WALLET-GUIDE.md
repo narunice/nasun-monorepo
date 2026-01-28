@@ -446,7 +446,7 @@ await approveSession(proposal.id);
 | Network | Nasun Devnet |
 | RPC | `https://rpc.devnet.nasun.io` |
 | Faucet | `https://faucet.devnet.nasun.io` |
-| Explorer | `https://explorer.devnet.nasun.io` |
+| Explorer | `https://explorer.nasun.io/devnet` |
 | Chain ID | `6681cdfd` |
 | Native Token | NASUN (unit: SOE) |
 

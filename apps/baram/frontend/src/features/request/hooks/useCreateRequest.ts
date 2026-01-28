@@ -1,5 +1,8 @@
 /**
  * useCreateRequest - Hook for creating AI computation requests
+ *
+ * Supports conversation context for multi-turn conversations.
+ * Previous messages are included in the encrypted payload sent to TEE.
  */
 
 import { useState, useCallback } from 'react';
@@ -11,6 +14,8 @@ import { sha256, hexToBytes, encodePrompt } from '@/utils/encoding';
 import { encryptPromptForTEE } from '@/utils/tee';
 import { getNusdcCoins } from '../services/coinService';
 import { buildCreateRequestTransaction } from '../services/transactionBuilder';
+import { buildContextWithPrompt, formatContextForTee } from '@/services/contextBuilder';
+import type { Message } from '@/types/chat';
 
 export type RequestStatus = 'idle' | 'creating' | 'executing' | 'completed' | 'error';
 
@@ -22,11 +27,15 @@ export interface RequestResult {
   executionTimeMs: number;
 }
 
+export interface CreateRequestOptions {
+  previousMessages?: Message[];
+}
+
 export interface UseCreateRequestReturn {
   status: RequestStatus;
   error: string | null;
   result: RequestResult | null;
-  createRequest: (prompt: string, model: ModelId, executor: ExecutorInfo) => Promise<void>;
+  createRequest: (prompt: string, model: ModelId, executor: ExecutorInfo, options?: CreateRequestOptions) => Promise<void>;
   reset: () => void;
 }
 
@@ -43,7 +52,12 @@ export function useCreateRequest(): UseCreateRequestReturn {
     setResult(null);
   }, []);
 
-  const createRequest = useCallback(async (prompt: string, model: ModelId, executor: ExecutorInfo) => {
+  const createRequest = useCallback(async (
+    prompt: string,
+    model: ModelId,
+    executor: ExecutorInfo,
+    options: CreateRequestOptions = {}
+  ) => {
     if (!address || !signer) {
       setError('Wallet not connected');
       return;
@@ -65,8 +79,21 @@ export function useCreateRequest(): UseCreateRequestReturn {
     setResult(null);
 
     try {
-      // 1. Prepare request data
-      const promptHash = await sha256(prompt);
+      // 1. Build context first to calculate hash correctly
+      const { previousMessages } = options;
+      let textToSend: string;
+
+      if (previousMessages && previousMessages.length > 0) {
+        // Build context with previous messages
+        const context = buildContextWithPrompt(previousMessages, prompt);
+        textToSend = formatContextForTee(context);
+        console.log('Built context with', context.messages.length, 'messages');
+      } else {
+        textToSend = prompt;
+      }
+
+      // 2. Prepare request data (hash is based on full context)
+      const promptHash = await sha256(textToSend);
       const promptHashBytes = hexToBytes(promptHash);
       const price = modelConfig.price;
 
@@ -78,7 +105,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
         executorAddress: executor.operator,
       });
 
-      // 2. Get NUSDC coins for payment
+      // 3. Get NUSDC coins for payment
       const client = new SuiClient({ url: NETWORK_CONFIG.rpcUrl });
       const coins = await getNusdcCoins(client, address, price);
 
@@ -135,8 +162,8 @@ export function useCreateRequest(): UseCreateRequestReturn {
       // Use RSA-OAEP encryption for TEE executors, Base64 for others
       const isTeeExecutor = executor.teeType > 0;
       const encryptedPrompt = isTeeExecutor
-        ? await encryptPromptForTEE(prompt, executorUrl)
-        : encodePrompt(prompt);
+        ? await encryptPromptForTEE(textToSend, executorUrl)
+        : encodePrompt(textToSend);
 
       console.log('Calling executor:', executorUrl, isTeeExecutor ? '(TEE)' : '(non-TEE)');
 

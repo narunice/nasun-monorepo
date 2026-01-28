@@ -144,7 +144,7 @@ Security expectations:
 
 Nasun Devnet 블록 탐색기. AWS Amplify에 자동 배포됩니다.
 
-- **URL**: https://explorer.devnet.nasun.io
+- **URL**: https://explorer.nasun.io/devnet
 - **버전**: v0.7.x
 - **개발 포트**: 5175
 
@@ -320,7 +320,7 @@ pnpm deploy:gensol-website:staging
 
 | 앱               | 배포 방식    | 트리거        | 대상 URL                         |
 | ---------------- | ------------ | ------------- | -------------------------------- |
-| network-explorer | AWS Amplify  | git push main | https://explorer.devnet.nasun.io |
+| network-explorer | AWS Amplify  | git push main | https://explorer.nasun.io/devnet |
 | nasun-website    | EC2 스크립트 | 수동 실행     | https://nasun.io                 |
 | gensol-website   | EC2 스크립트 | 수동 실행     | https://gensol.nasun.io          |
 | pado             | -            | -             | -                                |
@@ -359,7 +359,7 @@ pnpm deploy:gensol-website:staging
 | Target Network | Nasun Devnet                     |
 | RPC Endpoint   | https://rpc.devnet.nasun.io      |
 | Faucet         | https://faucet.devnet.nasun.io   |
-| Explorer       | https://explorer.devnet.nasun.io |
+| Explorer       | https://explorer.nasun.io/devnet |
 | Chain ID       | `6681cdfd`                       |
 | Native Token   | NASUN (최소단위: SOE)            |
 
