@@ -5,10 +5,10 @@
  * and executor/model selection.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin, useLedger } from '@nasun/wallet';
+import { useWallet, useZkLogin, useLedger, useSigner } from '@nasun/wallet';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import { ThemeToggle } from './components/theme/ThemeToggle';
 import { ChatLayout } from './layouts/ChatLayout';
@@ -20,7 +20,7 @@ import { useCreateRequest } from './features/request/hooks/useCreateRequest';
 import { useExecutors } from './features/request/hooks/useExecutors';
 import { useAttestation } from './features/request/hooks/useAttestation';
 import { AttestationDisplay } from './features/request/components/AttestationDisplay';
-import { NETWORK_CONFIG, ModelId, BARAM_CONFIG } from './config/network';
+import { NETWORK_CONFIG, ModelId, BARAM_CONFIG, DEFAULT_MODEL } from './config/network';
 import { useChatStore } from './stores/chatStore';
 import type { Message } from './types/chat';
 import AuthCallback from './pages/AuthCallback';
@@ -38,7 +38,11 @@ function AppContent() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
+  const { address: signerAddress } = useSigner();
   const isConnected = (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
+
+  // Get wallet address from useSigner (works for all connection types)
+  const walletAddress = signerAddress || null;
 
   // Chat store
   const messages = useChatStore((state) => state.messages);
@@ -48,7 +52,12 @@ function AppContent() {
   const selectedExecutorId = useChatStore((state) => state.selectedExecutorId);
   const selectedModel = useChatStore((state) => state.selectedModel);
   const setSelectedExecutor = useChatStore((state) => state.setSelectedExecutor);
+  const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const loadFromStorage = useChatStore((state) => state.loadFromStorage);
+  const clearOnLogout = useChatStore((state) => state.clearOnLogout);
+
+  // Track previous wallet address for disconnect detection
+  const prevAddressRef = useRef<string | null>(null);
 
   // External hooks
   const { executors } = useExecutors();
@@ -63,12 +72,23 @@ function AppContent() {
     selectedExecutor?.teeType || 0
   );
 
-  // Load stored data on mount
+  // Handle wallet connect/disconnect
   useEffect(() => {
-    if (account?.address) {
-      loadFromStorage(account.address);
+    const currentAddress = walletAddress;
+    const prevAddress = prevAddressRef.current;
+
+    console.log('[App] Wallet address changed:', { currentAddress: currentAddress?.slice(0, 8), prevAddress: prevAddress?.slice(0, 8) });
+
+    if (currentAddress && currentAddress !== prevAddress) {
+      // Wallet connected or changed - load data for this wallet
+      loadFromStorage(currentAddress);
+    } else if (!currentAddress && prevAddress) {
+      // Wallet disconnected - clear memory (keep encrypted data in IndexedDB)
+      clearOnLogout();
     }
-  }, [account?.address, loadFromStorage]);
+
+    prevAddressRef.current = currentAddress;
+  }, [walletAddress, loadFromStorage, clearOnLogout]);
 
   // Auto-select first executor
   useEffect(() => {
@@ -77,6 +97,13 @@ function AppContent() {
       setSelectedExecutor(defaultExecutor?.id || executors[0]?.id || null);
     }
   }, [executors, selectedExecutorId, setSelectedExecutor]);
+
+  // Auto-select default model
+  useEffect(() => {
+    if (!selectedModel) {
+      setSelectedModel(DEFAULT_MODEL);
+    }
+  }, [selectedModel, setSelectedModel]);
 
   // Create session if none exists
   useEffect(() => {
@@ -94,7 +121,7 @@ function AppContent() {
         metadata: {
           requestId: result.requestId,
           executionTimeMs: result.executionTimeMs,
-          teeVerified: true,
+          teeVerified: (selectedExecutor?.teeType ?? 0) > 0,
           txDigest: result.txDigest,
         },
       });
@@ -218,6 +245,7 @@ function AppContent() {
             messages={uiMessages}
             isProcessing={isProcessing}
             processingStatus={requestStatus}
+            isTeeExecutor={(selectedExecutor?.teeType ?? 0) > 0}
           />
           {/* Attestation Info (collapsed) */}
           {selectedExecutor && attestation.isVerified && (

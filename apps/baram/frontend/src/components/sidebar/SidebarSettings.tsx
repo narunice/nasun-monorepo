@@ -1,9 +1,10 @@
 /**
- * SidebarSettings - Executor and Model selection in sidebar
+ * SidebarSettings - Model and Executor selection in sidebar
+ * Model selection comes first (more important for users)
  */
 
 import { useChatStore } from '../../stores/chatStore';
-import { useExecutors, ExecutorInfo } from '../../features/request/hooks/useExecutors';
+import { useExecutors } from '../../features/request/hooks/useExecutors';
 import { MODEL_PRICING, ModelId } from '../../config/network';
 
 export function SidebarSettings() {
@@ -15,20 +16,8 @@ export function SidebarSettings() {
   const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const clearAllSessions = useChatStore((state) => state.clearAllSessions);
 
-  const selectedExecutor = executors.find((e) => e.id === selectedExecutorId) || null;
-
-  // Get models available for selected executor
-  const availableModels = selectedExecutor
-    ? selectedExecutor.supportedModels.filter((m) => m in MODEL_PRICING)
-    : Object.keys(MODEL_PRICING);
-
   const handleExecutorChange = (executorId: string) => {
     setSelectedExecutor(executorId || null);
-    // Reset model if not supported by new executor
-    const executor = executors.find((e) => e.id === executorId);
-    if (executor && selectedModel && !executor.supportedModels.includes(selectedModel)) {
-      setSelectedModel(executor.supportedModels[0] || null);
-    }
   };
 
   const handleClearAll = async () => {
@@ -37,9 +26,37 @@ export function SidebarSettings() {
     }
   };
 
+  // All models available (no filtering by executor)
+  const allModels = Object.keys(MODEL_PRICING) as ModelId[];
+
   return (
     <div className="p-3 space-y-3">
-      {/* Executor Selection */}
+      {/* Model Selection (First - more important) */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
+          Model
+        </label>
+        <select
+          value={selectedModel || ''}
+          onChange={(e) => setSelectedModel(e.target.value || null)}
+          className="w-full px-2 py-1.5 text-sm rounded-md
+                     bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]
+                     text-[var(--color-text-primary)]
+                     focus:outline-none focus:ring-1 focus:ring-baram-1"
+        >
+          <option key="_model_placeholder" value="">Select model...</option>
+          {allModels.map((modelId) => {
+            const config = MODEL_PRICING[modelId];
+            return (
+              <option key={modelId} value={modelId}>
+                {config.name}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
+      {/* Executor Selection (Second) */}
       <div>
         <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
           Executor
@@ -52,35 +69,11 @@ export function SidebarSettings() {
                      text-[var(--color-text-primary)]
                      focus:outline-none focus:ring-1 focus:ring-baram-1"
         >
-          <option key="_placeholder" value="">Select executor...</option>
-          {executors.map((executor) => (
-            <option key={executor.id} value={executor.id}>
+          <option key="_executor_placeholder" value="">Select executor...</option>
+          {executors.map((executor, index) => (
+            <option key={executor.id || `executor-${index}`} value={executor.id}>
               {executor.name}
               {executor.teeType > 0 ? ' (TEE)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Model Selection */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-          Model
-        </label>
-        <select
-          value={selectedModel || ''}
-          onChange={(e) => setSelectedModel(e.target.value || null)}
-          disabled={!selectedExecutorId}
-          className="w-full px-2 py-1.5 text-sm rounded-md
-                     bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]
-                     text-[var(--color-text-primary)]
-                     focus:outline-none focus:ring-1 focus:ring-baram-1
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <option key="_placeholder" value="">Select model...</option>
-          {availableModels.map((modelId) => (
-            <option key={modelId} value={modelId}>
-              {MODEL_PRICING[modelId as ModelId]?.name || modelId}
             </option>
           ))}
         </select>

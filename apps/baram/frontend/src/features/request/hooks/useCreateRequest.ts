@@ -79,8 +79,21 @@ export function useCreateRequest(): UseCreateRequestReturn {
     setResult(null);
 
     try {
-      // 1. Prepare request data (hash is based on current prompt only)
-      const promptHash = await sha256(prompt);
+      // 1. Build context first to calculate hash correctly
+      const { previousMessages } = options;
+      let textToSend: string;
+
+      if (previousMessages && previousMessages.length > 0) {
+        // Build context with previous messages
+        const context = buildContextWithPrompt(previousMessages, prompt);
+        textToSend = formatContextForTee(context);
+        console.log('Built context with', context.messages.length, 'messages');
+      } else {
+        textToSend = prompt;
+      }
+
+      // 2. Prepare request data (hash is based on full context)
+      const promptHash = await sha256(textToSend);
       const promptHashBytes = hexToBytes(promptHash);
       const price = modelConfig.price;
 
@@ -92,7 +105,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
         executorAddress: executor.operator,
       });
 
-      // 2. Get NUSDC coins for payment
+      // 3. Get NUSDC coins for payment
       const client = new SuiClient({ url: NETWORK_CONFIG.rpcUrl });
       const coins = await getNusdcCoins(client, address, price);
 
@@ -145,19 +158,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
       setStatus('executing');
 
       const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
-
-      // Build context if previous messages provided
-      const { previousMessages } = options;
-      let textToSend: string;
-
-      if (previousMessages && previousMessages.length > 0) {
-        // Build context with previous messages
-        const context = buildContextWithPrompt(previousMessages, prompt);
-        textToSend = formatContextForTee(context);
-        console.log('Built context with', context.messages.length, 'messages');
-      } else {
-        textToSend = prompt;
-      }
 
       // Use RSA-OAEP encryption for TEE executors, Base64 for others
       const isTeeExecutor = executor.teeType > 0;
