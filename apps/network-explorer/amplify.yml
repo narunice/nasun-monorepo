@@ -4,7 +4,9 @@ frontend:
     preBuild:
       commands:
         - npm install -g pnpm
-        - pnpm install
+        # Clear Vite cache and old build artifacts to ensure fresh build
+        - rm -rf node_modules/.vite dist
+        - pnpm install --frozen-lockfile
     build:
       commands:
         - pnpm build
@@ -14,4 +16,5 @@ frontend:
       - '**/*'
   cache:
     paths:
-      - node_modules/**/*
+      # Only cache pnpm store, not Vite cache
+      - node_modules/.pnpm/**/*
