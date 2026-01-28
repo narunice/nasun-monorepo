@@ -24,6 +24,7 @@ import {
   findProposalsForPendingSigner,
 } from '../core/nsa/client';
 import { validateGuardianConfig } from '../core/nsa/recovery';
+import { NsaError } from '../types/nsa';
 import type { NsaSignerType, NsaAccountState, NsaSignerProposal } from '../types/nsa';
 import type { SignerAdapter } from '../core/signer/types';
 import { getSuiClient } from '../sui/client';
@@ -89,6 +90,13 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     try {
       const state = await fetchAccountState(objectId);
       useNsaStore.getState().setAccountState(state);
+    } catch (error) {
+      console.error('Failed to fetch SmartAccount state:', error);
+      // If account is not found (e.g. network reset), clear the stale ID
+      if (error instanceof NsaError && error.type === 'ACCOUNT_NOT_FOUND') {
+        console.warn('SmartAccount not found (likely network reset). Resetting local NSA state.');
+        useNsaStore.getState().clearState();
+      }
     } finally {
       useNsaStore.getState().setLoading(false);
     }
