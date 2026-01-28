@@ -24,9 +24,10 @@ interface MessageListProps {
   messages: Message[];
   isProcessing?: boolean;
   processingStatus?: RequestStatus;
+  isTeeExecutor?: boolean;
 }
 
-export function MessageList({ messages, isProcessing, processingStatus }: MessageListProps) {
+export function MessageList({ messages, isProcessing, processingStatus, isTeeExecutor }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -63,6 +64,7 @@ export function MessageList({ messages, isProcessing, processingStatus }: Messag
           content=""
           timestamp={new Date()}
           isProcessing={true}
+          isTeeExecutor={isTeeExecutor}
         />
       )}
 
