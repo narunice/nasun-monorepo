@@ -80,9 +80,9 @@ vi.mock('@nasun/wallet', () => ({
   }),
   NATIVE_TOKEN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   // Explorer URL functions
-  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.devnet.nasun.io/tx/${digest}`),
-  getExplorerAddressUrl: vi.fn((address: string) => `https://explorer.devnet.nasun.io/address/${address}`),
-  getExplorerObjectUrl: vi.fn((objectId: string) => `https://explorer.devnet.nasun.io/object/${objectId}`),
+  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`),
+  getExplorerAddressUrl: vi.fn((address: string) => `https://explorer.nasun.io/devnet/address/${address}`),
+  getExplorerObjectUrl: vi.fn((objectId: string) => `https://explorer.nasun.io/devnet/object/${objectId}`),
 }));
 
 describe('SendTransaction', () => {

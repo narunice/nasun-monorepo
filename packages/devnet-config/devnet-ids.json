@@ -6,7 +6,7 @@
     "chainId": "12bf3808",
     "rpcUrl": "https://rpc.devnet.nasun.io",
     "faucetUrl": "https://faucet.devnet.nasun.io",
-    "explorerUrl": "https://explorer.devnet.nasun.io"
+    "explorerUrl": "https://explorer.nasun.io/devnet"
   },
   "tokens": {
     "packageId": "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017",

@@ -3,13 +3,14 @@
  */
 
 import { RequestResult } from '../hooks/useCreateRequest';
+import { NETWORK_CONFIG } from '../../../config/network';
 
 interface ResultDisplayProps {
   result: RequestResult;
 }
 
 export function ResultDisplay({ result }: ResultDisplayProps) {
-  const explorerUrl = `https://explorer.devnet.nasun.io/tx/${result.txDigest}`;
+  const explorerUrl = `${NETWORK_CONFIG.explorerUrl}/tx/${result.txDigest}`;
 
   return (
     <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
