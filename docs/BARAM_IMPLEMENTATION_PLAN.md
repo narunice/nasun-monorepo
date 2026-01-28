@@ -1018,6 +1018,35 @@ cd apps/baram/executor-nitro
 - [ ] PCR 값과 예상 EIF 측정값 비교
 - [ ] Frontend에서 attestation 검증 UI 표시
 
+**PCR0 검증 워크플로우:**
+
+| 환경 | VITE_EXPECTED_PCR0 | 동작 |
+|------|-------------------|------|
+| **개발** | 비어있음 | "Verification skipped" 경고, 정상 작동 |
+| **스테이징** | EIF 빌드 후 기록 | PCR0 검증 활성화 |
+| **프로덕션** | CI/CD에서 자동 주입 | 필수 검증 |
+
+**개발 시:**
+- `VITE_EXPECTED_PCR0`를 비워두고 개발
+- "PCR0 verification skipped" 경고는 정상 동작
+- Enclave 코드가 안정화되면 PCR0 기록
+
+**프로덕션 배포 시:**
+```bash
+# 1. EIF 빌드 시 PCR0 기록
+nitro-cli build-enclave --docker-uri baram-enclave:latest --output-file baram.eif
+# → "PCR0": "0870c4e918..." 값 복사
+
+# 2. Frontend 환경변수 설정
+# apps/baram/frontend/.env.production
+VITE_EXPECTED_PCR0=0870c4e918...
+
+# 3. Frontend 빌드 및 배포
+```
+
+> **참고**: EIF를 다시 빌드하면 PCR0가 변경됩니다 (코드/의존성 변경 시).
+> 프로덕션에서는 CI/CD 파이프라인에서 자동으로 PCR0를 추출하여 환경변수에 주입하는 것이 권장됩니다.
+
 ### Phase C-11: 더 큰 모델 지원
 
 **목표:** 더 높은 품질의 LLM 사용
