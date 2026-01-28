@@ -472,6 +472,21 @@ CRITICAL:
 | [create-ami.sh](executor-nitro/scripts/create-ami.sh) | AMI 생성 |
 | [update-executor.sh](executor-nitro/scripts/update-executor.sh) | On-chain endpoint 업데이트 |
 | [.env.ami.example](executor-nitro/.env.ami.example) | Spot 설정 템플릿 |
+| [attestation.ts](frontend/src/config/attestation.ts) | PCR0 검증 설정 |
+
+---
+
+## PCR0 검증 (Attestation Verification)
+
+| 환경 | VITE_EXPECTED_PCR0 | 동작 |
+|------|-------------------|------|
+| 개발 | 비어있음 | "Verification skipped" 경고, 정상 작동 |
+| 프로덕션 | EIF PCR0 값 | PCR0 검증 활성화 |
+
+**개발 중**: `VITE_EXPECTED_PCR0`를 비워두고 개발 (검증 skip)
+**프로덕션**: EIF 빌드 시 출력되는 PCR0 값을 `.env.production`에 설정
+
+자세한 워크플로우는 [BARAM_IMPLEMENTATION_PLAN.md](../../docs/BARAM_IMPLEMENTATION_PLAN.md) Phase C-10 참조.
 
 ---
 
