@@ -19,6 +19,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { VsockClient, getVsockClient } from './vsock-client.js';
 import { HOST_HTTP_PORT, PROTOCOL_VERSION } from '../shared/protocol.js';
+import { verifyAttestationDocument, type VerificationResult } from '../enclave/attestation.js';
 
 /**
  * HTTP Server configuration
@@ -93,10 +94,38 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   app.get('/public-key', async (req: Request, res: Response) => {
     try {
       const response = await vsockClient.getPublicKey();
+      const attestation = response.payload.attestation;
+
+      // Verify attestation if raw document is present (production Nitro mode)
+      let attestationVerification: VerificationResult | undefined;
+
+      if (attestation.rawDocument) {
+        try {
+          const rawDocBuffer = Buffer.from(attestation.rawDocument, 'base64');
+          attestationVerification = verifyAttestationDocument(
+            rawDocBuffer,
+            undefined, // expectedPcrs
+            5 * 60 * 1000 // 5 minutes max age
+          );
+          console.log('[Host/Server] Public key attestation verification:', attestationVerification.valid ? 'PASSED' : 'FAILED');
+        } catch (verifyError) {
+          console.error('[Host/Server] Public key attestation verification error:', verifyError);
+          attestationVerification = {
+            valid: false,
+            error: verifyError instanceof Error ? verifyError.message : 'Verification error',
+          };
+        }
+      }
+
       res.json({
         success: true,
         publicKey: response.payload.publicKey,
         attestation: response.payload.attestation,
+        attestationVerification: attestationVerification ? {
+          valid: attestationVerification.valid,
+          error: attestationVerification.error,
+          details: attestationVerification.details,
+        } : undefined,
       });
     } catch (error) {
       console.error('[Host/Server] Failed to get public key:', error);
@@ -156,12 +185,47 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         requestId
       );
 
+      // Verify attestation if raw document is present (production Nitro mode)
+      let attestationVerification: VerificationResult | undefined;
+      const attestation = response.payload.attestation;
+
+      if (attestation.rawDocument) {
+        try {
+          const rawDocBuffer = Buffer.from(attestation.rawDocument, 'base64');
+          // TODO: Load expected PCRs from on-chain registry
+          // For now, just verify signature and certificate chain
+          attestationVerification = verifyAttestationDocument(
+            rawDocBuffer,
+            undefined, // expectedPcrs - will be loaded from on-chain in production
+            5 * 60 * 1000 // 5 minutes max age
+          );
+          console.log('[Host/Server] Attestation verification:', attestationVerification.valid ? 'PASSED' : 'FAILED');
+          if (!attestationVerification.valid) {
+            console.warn('[Host/Server] Attestation verification failed:', attestationVerification.error);
+          }
+        } catch (verifyError) {
+          console.error('[Host/Server] Attestation verification error:', verifyError);
+          attestationVerification = {
+            valid: false,
+            error: verifyError instanceof Error ? verifyError.message : 'Verification error',
+          };
+        }
+      } else {
+        // Simulation mode - no raw document
+        console.log('[Host/Server] No raw attestation document (simulation mode)');
+      }
+
       res.json({
         success: true,
         result: response.payload.result,
         resultHash: response.payload.resultHash,
         executionTimeMs: response.payload.executionTimeMs,
         attestation: response.payload.attestation,
+        attestationVerification: attestationVerification ? {
+          valid: attestationVerification.valid,
+          error: attestationVerification.error,
+          details: attestationVerification.details,
+        } : undefined,
       });
     } catch (error) {
       console.error('[Host/Server] Execution failed:', error);

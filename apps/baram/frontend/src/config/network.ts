@@ -30,7 +30,42 @@ export const BARAM_CONFIG = {
 export const EXECUTOR_CONFIG = {
   packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || BARAM.executorPackageId,
   registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || BARAM.executorRegistry,
+  tierRegistryId: import.meta.env.VITE_TIER_REGISTRY_ID || BARAM.tierRegistry,
 } as const;
+
+// Tier definitions — Compliance Eligibility Signal
+export const TIER_NAMES = ['Open', 'Bronze', 'Silver', 'Gold'] as const;
+export type TierLevel = 0 | 1 | 2 | 3;
+export type TierName = (typeof TIER_NAMES)[TierLevel];
+
+// Stake thresholds in SOE (9 decimals) — mirrors executor_tier.move
+const BRONZE_STAKE = 1_000_000_000_000;  // 1,000 NASUN
+const SILVER_STAKE = 5_000_000_000_000;  // 5,000 NASUN
+const GOLD_STAKE = 10_000_000_000_000;   // 10,000 NASUN
+
+// Reputation thresholds — mirrors executor_tier.move
+const BRONZE_REP = 300;
+const SILVER_REP = 500;
+const GOLD_REP = 700;
+
+// Dormant threshold: 7 days in milliseconds
+export const DORMANT_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Client-side tier calculation — fallback when TierRegistry is unavailable.
+ * tier = min(stake_tier, rep_tier)
+ */
+export function calculateTierClient(stakeAmount: number, reputation: number): TierLevel {
+  const stakeTier =
+    stakeAmount >= GOLD_STAKE ? 3 :
+    stakeAmount >= SILVER_STAKE ? 2 :
+    stakeAmount >= BRONZE_STAKE ? 1 : 0;
+  const repTier =
+    reputation >= GOLD_REP ? 3 :
+    reputation >= SILVER_REP ? 2 :
+    reputation >= BRONZE_REP ? 1 : 0;
+  return Math.min(stakeTier, repTier) as TierLevel;
+}
 
 // TEE Types
 export const TEE_TYPES = {

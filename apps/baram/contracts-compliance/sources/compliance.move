@@ -107,6 +107,8 @@ module baram_compliance::compliance {
         executor_stake_amount: u64,
         /// Executor's cumulative slash count at execution time
         executor_slash_count: u64,
+        /// Executor's compliance eligibility tier at execution time (0=Open, 1=Bronze, 2=Silver, 3=Gold)
+        executor_tier: u8,
 
         // === Economic Finality ===
         /// NUSDC payment amount (6 decimals)
@@ -138,6 +140,7 @@ module baram_compliance::compliance {
         tee_type: u8,
         pcr_verified: bool,
         executor_reputation: u64,
+        executor_tier: u8,
         payment_amount: u64,
         settled_at: u64,
     }
@@ -195,10 +198,11 @@ module baram_compliance::compliance {
         attestation_hash: vector<u8>,
         pcr_baseline_version: u64,
         pcr_verified: bool,
-        // Credibility snapshot (from ExecutorInfo + ExecutorStake)
+        // Credibility snapshot (from ExecutorInfo + ExecutorStake + TierRegistry)
         executor_reputation: u64,
         executor_stake_amount: u64,
         executor_slash_count: u64,
+        executor_tier: u8,
         // Economic finality
         payment_amount: u64,
         // Temporal
@@ -240,6 +244,7 @@ module baram_compliance::compliance {
             executor_reputation,
             executor_stake_amount,
             executor_slash_count,
+            executor_tier,
             // Economic finality
             payment_amount,
             // Temporal proof
@@ -268,6 +273,7 @@ module baram_compliance::compliance {
             tee_type,
             pcr_verified,
             executor_reputation,
+            executor_tier,
             payment_amount,
             settled_at: now,
         });
@@ -333,6 +339,7 @@ module baram_compliance::compliance {
     /// Get ECR fields — Credibility
     public fun get_executor_reputation(record: &ExecutionComplianceRecord): u64 { record.executor_reputation }
     public fun get_executor_stake_amount(record: &ExecutionComplianceRecord): u64 { record.executor_stake_amount }
+    public fun get_executor_tier(record: &ExecutionComplianceRecord): u8 { record.executor_tier }
 
     /// Get ECR fields — Economic
     public fun get_payment_amount(record: &ExecutionComplianceRecord): u64 { record.payment_amount }

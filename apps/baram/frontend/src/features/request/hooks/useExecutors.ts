@@ -1,10 +1,22 @@
 /**
  * useExecutors - Hook for fetching registered executors from ExecutorRegistry
+ *
+ * Includes tier data from TierRegistry (on-chain) with client-side fallback.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { SuiClient } from '@mysten/sui/client';
-import { NETWORK_CONFIG, EXECUTOR_CONFIG, TEE_TYPES, TeeType } from '@/config/network';
+import {
+  NETWORK_CONFIG,
+  EXECUTOR_CONFIG,
+  TEE_TYPES,
+  TeeType,
+  TIER_NAMES,
+  TierLevel,
+  TierName,
+  DORMANT_THRESHOLD_MS,
+  calculateTierClient,
+} from '@/config/network';
 
 export interface ExecutorInfo {
   id: string;
@@ -20,6 +32,13 @@ export interface ExecutorInfo {
   registeredAt: number;
   lastActiveAt: number;
   isActive: boolean;
+  // Tier (Phase E)
+  tier: TierLevel;
+  tierName: TierName;
+  // effectiveScore is a non-deterministic UI-only ranking signal.
+  // It has no on-chain authority and does not affect settlement or compliance.
+  effectiveScore: number;
+  isDormant: boolean;
 }
 
 export interface UseExecutorsReturn {
@@ -30,27 +49,106 @@ export interface UseExecutorsReturn {
 }
 
 /**
+ * Calculate effectiveScore for UI sorting (non-deterministic, off-chain only).
+ * effectiveScore = sqrt(staked_amount / 1e9) * (reputation / 1000)
+ */
+function calculateEffectiveScore(stakeAmount: number, reputation: number): number {
+  return Math.sqrt(stakeAmount / 1e9) * (reputation / 1000);
+}
+
+/**
  * Parse ExecutorInfo from on-chain data
  */
-function parseExecutorInfo(data: Record<string, unknown>, operator: string): ExecutorInfo {
+function parseExecutorInfo(
+  data: Record<string, unknown>,
+  operator: string,
+  tierMap: Map<string, number>,
+): ExecutorInfo {
   const fields = (data.fields || data) as Record<string, unknown>;
   const teeType = Number(fields.tee_type || 0) as TeeType;
+  const reputation = Number(fields.reputation || 0);
+  const lastActiveAt = Number(fields.last_active_at || 0);
+
+  // Tier: prefer on-chain TierRegistry, fallback to client calculation
+  // Client fallback uses staked status (binary) mapped to MIN_STAKE for tier calc
+  const onChainTier = tierMap.get(operator);
+  const tier: TierLevel = onChainTier !== undefined
+    ? (onChainTier as TierLevel)
+    : calculateTierClient(0, reputation); // Without stake data, defaults to rep-only
+
+  const isDormant = lastActiveAt > 0 && (Date.now() - lastActiveAt) > DORMANT_THRESHOLD_MS;
 
   return {
-    id: operator, // Use operator address as unique ID
+    id: operator,
     operator: String(fields.operator || operator),
     name: String(fields.name || ''),
     endpointUrl: String(fields.endpoint_url || ''),
     teeType,
     teeTypeName: TEE_TYPES[teeType] || 'Unknown',
     supportedModels: (fields.supported_models as string[]) || [],
-    reputation: Number(fields.reputation || 0),
+    reputation,
     completedJobs: Number(fields.completed_jobs || 0),
     failedJobs: Number(fields.failed_jobs || 0),
     registeredAt: Number(fields.registered_at || 0),
-    lastActiveAt: Number(fields.last_active_at || 0),
+    lastActiveAt,
     isActive: Boolean(fields.is_active),
+    tier,
+    tierName: TIER_NAMES[tier],
+    effectiveScore: calculateEffectiveScore(0, reputation), // Stake data not in ExecutorInfo
+    isDormant,
   };
+}
+
+/**
+ * Fetch tier data from TierRegistry shared object
+ */
+async function fetchTierMap(client: SuiClient): Promise<Map<string, number>> {
+  const tierMap = new Map<string, number>();
+
+  if (!EXECUTOR_CONFIG.tierRegistryId) return tierMap;
+
+  try {
+    const registry = await client.getObject({
+      id: EXECUTOR_CONFIG.tierRegistryId,
+      options: { showContent: true },
+    });
+
+    if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+      return tierMap;
+    }
+
+    const fields = registry.data.content.fields as Record<string, unknown>;
+    const tiersTable = fields.tiers as { fields?: { id?: { id: string } } };
+    const tableId = tiersTable?.fields?.id?.id;
+
+    if (!tableId) return tierMap;
+
+    const dynamicFields = await client.getDynamicFields({ parentId: tableId });
+
+    for (const field of dynamicFields.data) {
+      try {
+        const fieldData = await client.getDynamicFieldObject({
+          parentId: tableId,
+          name: field.name,
+        });
+
+        if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
+          const content = fieldData.data.content.fields as Record<string, unknown>;
+          const executorAddr = String((field.name as { value?: string })?.value || '');
+          const tierValue = Number(content.value ?? 0);
+          if (executorAddr) {
+            tierMap.set(executorAddr, tierValue);
+          }
+        }
+      } catch {
+        // Skip individual tier fetch failures
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch TierRegistry, using client fallback:', err);
+  }
+
+  return tierMap;
 }
 
 export function useExecutors(): UseExecutorsReturn {
@@ -71,13 +169,14 @@ export function useExecutors(): UseExecutorsReturn {
     try {
       const client = new SuiClient({ url: NETWORK_CONFIG.rpcUrl });
 
-      // Fetch ExecutorRegistry object
-      const registry = await client.getObject({
-        id: EXECUTOR_CONFIG.registryId,
-        options: {
-          showContent: true,
-        },
-      });
+      // Fetch TierRegistry and ExecutorRegistry in parallel
+      const [tierMap, registry] = await Promise.all([
+        fetchTierMap(client),
+        client.getObject({
+          id: EXECUTOR_CONFIG.registryId,
+          options: { showContent: true },
+        }),
+      ]);
 
       if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
         throw new Error('Invalid ExecutorRegistry object');
@@ -90,7 +189,6 @@ export function useExecutors(): UseExecutorsReturn {
       const tableId = executorsTable?.fields?.id?.id;
 
       if (!tableId) {
-        // No executors registered yet
         setExecutors([]);
         setIsLoading(false);
         return;
@@ -113,12 +211,10 @@ export function useExecutors(): UseExecutorsReturn {
           if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
             const content = fieldData.data.content.fields as Record<string, unknown>;
             const valueWrapper = content.value as { fields?: Record<string, unknown> };
-            // Handle both nested (value.fields) and flat (value) structures
             const value = valueWrapper.fields ?? (valueWrapper as unknown as Record<string, unknown>);
 
-            // Extract operator from the field name (dynamic field key)
             const operator = String((field.name as { value?: string })?.value || value.operator || '');
-            const info = parseExecutorInfo(value, operator);
+            const info = parseExecutorInfo(value, operator, tierMap);
             if (info.isActive) {
               executorList.push(info);
             }
@@ -128,8 +224,15 @@ export function useExecutors(): UseExecutorsReturn {
         }
       }
 
-      // Sort by reputation (highest first)
-      executorList.sort((a, b) => b.reputation - a.reputation);
+      // Sort: tier desc → effectiveScore desc (non-dormant first)
+      executorList.sort((a, b) => {
+        // Non-dormant before dormant
+        if (a.isDormant !== b.isDormant) return a.isDormant ? 1 : -1;
+        // Higher tier first
+        if (a.tier !== b.tier) return b.tier - a.tier;
+        // Higher effectiveScore first
+        return b.effectiveScore - a.effectiveScore;
+      });
 
       setExecutors(executorList);
     } catch (err) {

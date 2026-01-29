@@ -5,9 +5,12 @@
 /// - TEE info stored but not verified (Phase C)
 /// - Stake optional (mandatory in Phase D)
 ///
+/// Phase D (Current):
+/// - Staking integration via executor_staking module
+/// - stake_object_id links to ExecutorStake
+/// - is_staked indicates minimum stake requirement met
+///
 /// Future phases:
-/// - Phase C: TEE attestation verification
-/// - Phase D: Stake requirements, slashing mechanism
 /// - Phase E: Tiered system (Validator/Staked/Open)
 module baram_executor::executor {
     use sui::table::{Self, Table};
@@ -16,12 +19,21 @@ module baram_executor::executor {
     use std::string::String;
 
     // ========== Error Codes ==========
+    #[allow(unused_const)]
     const E_NOT_ADMIN: u64 = 100;
     const E_EXECUTOR_EXISTS: u64 = 101;
     const E_EXECUTOR_NOT_FOUND: u64 = 102;
+    #[allow(unused_const)]
     const E_EXECUTOR_NOT_ACTIVE: u64 = 103;
+    const E_NOT_INACTIVE_LONG_ENOUGH: u64 = 104;
+    const E_REPUTATION_AT_MINIMUM: u64 = 105;
 
     // ========== Constants ==========
+    // Reputation decay: fixed amount per call, protocol-determined (not admin-discretionary)
+    const DECAY_AMOUNT: u64 = 50;
+    const DECAY_THRESHOLD_MS: u64 = 2_592_000_000; // 30 days in milliseconds
+    const DECAY_MIN_REPUTATION: u64 = 100;
+
     const TEE_NONE: u8 = 0;
     #[allow(unused_const)]
     const TEE_NITRO: u8 = 1;
@@ -59,6 +71,9 @@ module baram_executor::executor {
         registered_at: u64,
         last_active_at: u64,
         is_active: bool,
+        // Phase D: Staking integration
+        stake_object_id: Option<ID>,  // Reference to ExecutorStake object
+        is_staked: bool,              // True if minimum stake requirement met
     }
 
     // ========== Events ==========
@@ -140,6 +155,9 @@ module baram_executor::executor {
             registered_at: now,
             last_active_at: now,
             is_active: true,
+            // Phase D: Initially no stake
+            stake_object_id: option::none(),
+            is_staked: false,
         };
 
         table::add(&mut registry.executors, operator, info);
@@ -270,6 +288,90 @@ module baram_executor::executor {
         });
     }
 
+    /// Link executor to their stake object (admin only)
+    /// Called after executor creates a stake in executor_staking module
+    public entry fun link_stake(
+        _admin: &AdminCap,
+        registry: &mut ExecutorRegistry,
+        operator: address,
+        stake_id: ID,
+        _ctx: &mut TxContext
+    ) {
+        assert!(table::contains(&registry.executors, operator), E_EXECUTOR_NOT_FOUND);
+
+        let info = table::borrow_mut(&mut registry.executors, operator);
+        info.stake_object_id = option::some(stake_id);
+    }
+
+    /// Update executor's staking status (admin only)
+    /// Called when stake amount changes (stake added, slashed, withdrawn)
+    public entry fun update_stake_status(
+        _admin: &AdminCap,
+        registry: &mut ExecutorRegistry,
+        operator: address,
+        is_staked: bool,
+        _ctx: &mut TxContext
+    ) {
+        assert!(table::contains(&registry.executors, operator), E_EXECUTOR_NOT_FOUND);
+
+        let info = table::borrow_mut(&mut registry.executors, operator);
+        info.is_staked = is_staked;
+    }
+
+    /// Unlink stake from executor (admin only)
+    /// Called when executor withdraws all stake
+    public entry fun unlink_stake(
+        _admin: &AdminCap,
+        registry: &mut ExecutorRegistry,
+        operator: address,
+        _ctx: &mut TxContext
+    ) {
+        assert!(table::contains(&registry.executors, operator), E_EXECUTOR_NOT_FOUND);
+
+        let info = table::borrow_mut(&mut registry.executors, operator);
+        info.stake_object_id = option::none();
+        info.is_staked = false;
+    }
+
+    // ========== Reputation Decay ==========
+
+    /// Decay reputation for inactive executor (admin only).
+    /// Decay amount is fixed at DECAY_AMOUNT (50) per call — protocol-determined, not admin-discretionary.
+    /// Only callable when last_active_at + DECAY_THRESHOLD_MS (30 days) has been exceeded.
+    /// Reputation cannot drop below DECAY_MIN_REPUTATION (100).
+    public entry fun decay_reputation(
+        _admin: &AdminCap,
+        registry: &mut ExecutorRegistry,
+        operator: address,
+        clock: &Clock,
+        _ctx: &mut TxContext
+    ) {
+        assert!(table::contains(&registry.executors, operator), E_EXECUTOR_NOT_FOUND);
+
+        let info = table::borrow_mut(&mut registry.executors, operator);
+        let now = clock.timestamp_ms();
+
+        // Must be inactive for at least 30 days
+        assert!(now >= info.last_active_at + DECAY_THRESHOLD_MS, E_NOT_INACTIVE_LONG_ENOUGH);
+
+        // Must have reputation above minimum
+        assert!(info.reputation > DECAY_MIN_REPUTATION, E_REPUTATION_AT_MINIMUM);
+
+        // Apply fixed decay, floor at DECAY_MIN_REPUTATION
+        if (info.reputation > DECAY_MIN_REPUTATION + DECAY_AMOUNT) {
+            info.reputation = info.reputation - DECAY_AMOUNT;
+        } else {
+            info.reputation = DECAY_MIN_REPUTATION;
+        };
+
+        event::emit(ExecutorStatsUpdated {
+            operator,
+            completed_jobs: info.completed_jobs,
+            failed_jobs: info.failed_jobs,
+            reputation: info.reputation,
+        });
+    }
+
     // ========== View Functions ==========
 
     /// Check if an executor is registered and active
@@ -316,6 +418,31 @@ module baram_executor::executor {
     /// Get registry statistics
     public fun get_registry_stats(registry: &ExecutorRegistry): (u64, u64) {
         (registry.total_executors, registry.active_executors)
+    }
+
+    /// Check if executor has staked minimum amount
+    public fun is_executor_staked(registry: &ExecutorRegistry, operator: address): bool {
+        if (!table::contains(&registry.executors, operator)) {
+            return false
+        };
+        let info = table::borrow(&registry.executors, operator);
+        info.is_staked
+    }
+
+    /// Get executor's stake object ID (if linked)
+    public fun get_executor_stake_id(registry: &ExecutorRegistry, operator: address): Option<ID> {
+        assert!(table::contains(&registry.executors, operator), E_EXECUTOR_NOT_FOUND);
+        let info = table::borrow(&registry.executors, operator);
+        info.stake_object_id
+    }
+
+    /// Check if executor is valid AND staked (for job assignment)
+    public fun is_valid_staked_executor(registry: &ExecutorRegistry, operator: address): bool {
+        if (!table::contains(&registry.executors, operator)) {
+            return false
+        };
+        let info = table::borrow(&registry.executors, operator);
+        info.is_active && info.is_staked
     }
 
     /// Check if executor supports a specific model
