@@ -1,23 +1,22 @@
 /**
- * RequestForm - AI computation request form with executor selection
+ * RequestForm - AI computation request form with automatic executor assignment
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCreateRequest } from '../hooks/useCreateRequest';
-import { useExecutors, ExecutorInfo } from '../hooks/useExecutors';
+import { useExecutors, ExecutorInfo, selectExecutorWeightedRandom } from '../hooks/useExecutors';
 import { useAttestation } from '../hooks/useAttestation';
-import { MODEL_PRICING, ModelId, DEFAULT_MODEL, BARAM_CONFIG } from '@/config/network';
+import { MODEL_PRICING, ModelId, DEFAULT_MODEL } from '@/config/network';
 import { ResultDisplay } from './ResultDisplay';
-import { ExecutorSelector } from './ExecutorSelector';
 import { AttestationDisplay } from './AttestationDisplay';
 import { StatusIndicator } from './StatusIndicator';
 import { ModelSelector } from './ModelSelector';
+import { TierBadge } from '@/components/badges/TierBadge';
 
 export function RequestForm() {
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState<ModelId>(DEFAULT_MODEL);
   const [selectedExecutor, setSelectedExecutor] = useState<ExecutorInfo | null>(null);
-  const [showExecutorSelector, setShowExecutorSelector] = useState(false);
 
   const { executors } = useExecutors();
   const { status, error, result, createRequest, reset } = useCreateRequest();
@@ -28,14 +27,17 @@ export function RequestForm() {
     selectedExecutor?.teeType || 0
   );
 
-  // Auto-select first executor if none selected
+  // Auto-assign executor via weighted random when executors are available
+  const assignedExecutor = useMemo(() => {
+    if (executors.length === 0) return null;
+    return selectExecutorWeightedRandom(executors);
+  }, [executors]);
+
   useEffect(() => {
-    if (!selectedExecutor && executors.length > 0) {
-      // Try to find the default executor from config, otherwise use first
-      const defaultExecutor = executors.find(e => e.operator === BARAM_CONFIG.executorAddress);
-      setSelectedExecutor(defaultExecutor || executors[0]);
+    if (assignedExecutor && !selectedExecutor) {
+      setSelectedExecutor(assignedExecutor);
     }
-  }, [executors, selectedExecutor]);
+  }, [assignedExecutor, selectedExecutor]);
 
   const isProcessing = status === 'creating' || status === 'executing';
   const selectedModelConfig = MODEL_PRICING[selectedModel];
@@ -51,11 +53,9 @@ export function RequestForm() {
   const handleReset = () => {
     reset();
     setPrompt('');
-  };
-
-  const handleExecutorSelect = (executor: ExecutorInfo) => {
-    setSelectedExecutor(executor);
-    setShowExecutorSelector(false);
+    // Re-roll executor for the next request
+    const newExecutor = selectExecutorWeightedRandom(executors);
+    if (newExecutor) setSelectedExecutor(newExecutor);
   };
 
   return (
@@ -93,54 +93,20 @@ export function RequestForm() {
             disabled={isProcessing}
           />
 
-          {/* Executor Selection */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-              Executor
-            </label>
-
-            {showExecutorSelector ? (
-              <div className="space-y-2">
-                <ExecutorSelector
-                  selectedExecutor={selectedExecutor?.operator || null}
-                  onSelect={handleExecutorSelect}
-                  disabled={isProcessing}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowExecutorSelector(false)}
-                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
-                >
-                  Cancel
-                </button>
+          {/* Assigned Executor (read-only) */}
+          {selectedExecutor && (
+            <div className="p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {selectedExecutor.name}
+                </span>
+                <TierBadge tier={selectedExecutor.tier} tierName={selectedExecutor.tierName} />
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowExecutorSelector(true)}
-                disabled={isProcessing}
-                className="w-full p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] text-left hover:border-[var(--color-text-muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {selectedExecutor ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-[var(--color-text-primary)]">
-                        {selectedExecutor.name}
-                      </div>
-                      <div className="text-xs text-[var(--color-text-muted)]">
-                        {selectedExecutor.teeTypeName} | Reputation: {selectedExecutor.reputation}/1000
-                      </div>
-                    </div>
-                    <span className="text-sm text-baram-1">Change</span>
-                  </div>
-                ) : (
-                  <div className="text-[var(--color-text-muted)]">
-                    Select an executor...
-                  </div>
-                )}
-              </button>
-            )}
-          </div>
+              <div className="text-xs text-[var(--color-text-muted)] mt-1">
+                {selectedExecutor.teeTypeName}
+              </div>
+            </div>
+          )}
 
           {/* Attestation Info */}
           {selectedExecutor && (
@@ -204,7 +170,7 @@ export function RequestForm() {
       </div>
 
       {/* Result Display */}
-      {result && <ResultDisplay result={result} />}
+      {result && <ResultDisplay result={result} executor={selectedExecutor} />}
     </div>
   );
 }

@@ -16,7 +16,6 @@ import { create } from 'zustand';
 import type {
   ChatState,
   ChatActions,
-  ChatStore,
   Message,
   ChatSession,
 } from '../types/chat';
@@ -279,7 +278,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
 
   setSelectedExecutor: (executorId: string | null) => {
     set({ selectedExecutorId: executorId });
-    saveSettingsToLocalStorage(get());
   },
 
   setSelectedModel: (model: string | null) => {
@@ -318,7 +316,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
         sessions,
         activeSessionId,
         messages,
-        selectedExecutorId: settings.selectedExecutorId,
         selectedModel: settings.selectedModel,
         isLoading: false,
       });
@@ -394,14 +391,12 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
 // ============================================
 
 interface StoredSettings {
-  selectedExecutorId: string | null;
   selectedModel: string | null;
 }
 
 function saveSettingsToLocalStorage(state: ExtendedChatState): void {
   try {
     const settings: StoredSettings = {
-      selectedExecutorId: state.selectedExecutorId,
       selectedModel: state.selectedModel,
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -414,12 +409,13 @@ function loadSettingsFromLocalStorage(): StoredSettings {
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      return { selectedModel: parsed.selectedModel ?? null };
     }
   } catch (error) {
     console.warn('[ChatStore] Failed to load settings:', error);
   }
-  return { selectedExecutorId: null, selectedModel: null };
+  return { selectedModel: null };
 }
 
 // ============================================

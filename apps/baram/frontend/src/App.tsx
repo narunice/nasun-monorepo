@@ -2,10 +2,10 @@
  * Baram - Main App Component (Chat UI)
  *
  * Uses ChatLayout with left sidebar for session management
- * and executor/model selection.
+ * and model selection. Executor is auto-assigned via weighted random.
  */
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin, useLedger, useSigner } from '@nasun/wallet';
@@ -17,10 +17,10 @@ import { InputFooter } from './components/input/InputFooter';
 import { WelcomeScreen } from './components/empty/WelcomeScreen';
 import { MessageList, Message as UIMessage } from './components/chat/MessageList';
 import { useCreateRequest } from './features/request/hooks/useCreateRequest';
-import { useExecutors } from './features/request/hooks/useExecutors';
+import { useExecutors, selectExecutorWeightedRandom, ExecutorInfo } from './features/request/hooks/useExecutors';
 import { useAttestation } from './features/request/hooks/useAttestation';
 import { AttestationDisplay } from './features/request/components/AttestationDisplay';
-import { NETWORK_CONFIG, ModelId, BARAM_CONFIG, DEFAULT_MODEL } from './config/network';
+import { NETWORK_CONFIG, ModelId, DEFAULT_MODEL, EXECUTOR_SELECTION } from './config/network';
 import { useChatStore } from './stores/chatStore';
 import type { Message } from './types/chat';
 import AuthCallback from './pages/AuthCallback';
@@ -49,9 +49,7 @@ function AppContent() {
   const addMessage = useChatStore((state) => state.addMessage);
   const createSession = useChatStore((state) => state.createSession);
   const activeSessionId = useChatStore((state) => state.activeSessionId);
-  const selectedExecutorId = useChatStore((state) => state.selectedExecutorId);
   const selectedModel = useChatStore((state) => state.selectedModel);
-  const setSelectedExecutor = useChatStore((state) => state.setSelectedExecutor);
   const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const loadFromStorage = useChatStore((state) => state.loadFromStorage);
   const clearOnLogout = useChatStore((state) => state.clearOnLogout);
@@ -63,8 +61,20 @@ function AppContent() {
   const { executors } = useExecutors();
   const { status: requestStatus, error, result, createRequest, reset } = useCreateRequest();
 
-  // Get selected executor from list
-  const selectedExecutor = executors.find((e) => e.id === selectedExecutorId) || null;
+  // Auto-assign executor via weighted random
+  const [selectedExecutor, setSelectedExecutor] = useState<ExecutorInfo | null>(null);
+  const [failedExecutorIds, setFailedExecutorIds] = useState<Set<string>>(new Set());
+
+  const assignedExecutor = useMemo(() => {
+    if (executors.length === 0) return null;
+    return selectExecutorWeightedRandom(executors, failedExecutorIds);
+  }, [executors, failedExecutorIds]);
+
+  useEffect(() => {
+    if (assignedExecutor && !selectedExecutor) {
+      setSelectedExecutor(assignedExecutor);
+    }
+  }, [assignedExecutor, selectedExecutor]);
 
   // Attestation for selected executor
   const attestation = useAttestation(
@@ -89,14 +99,6 @@ function AppContent() {
 
     prevAddressRef.current = currentAddress;
   }, [walletAddress, loadFromStorage, clearOnLogout]);
-
-  // Auto-select first executor
-  useEffect(() => {
-    if (!selectedExecutorId && executors.length > 0) {
-      const defaultExecutor = executors.find((e) => e.operator === BARAM_CONFIG.executorAddress);
-      setSelectedExecutor(defaultExecutor?.id || executors[0]?.id || null);
-    }
-  }, [executors, selectedExecutorId, setSelectedExecutor]);
 
   // Auto-select default model
   useEffect(() => {
@@ -126,6 +128,9 @@ function AppContent() {
         },
       });
       reset();
+      // Re-roll executor for next request
+      setFailedExecutorIds(new Set());
+      setSelectedExecutor(null);
     }
   }, [requestStatus, result, addMessage, reset]);
 
@@ -143,14 +148,34 @@ function AppContent() {
       content: prompt,
     });
 
-    // Create request with context
-    await createRequest(prompt.trim(), selectedModel as ModelId, selectedExecutor, {
-      previousMessages,
-    });
-  }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, messages]);
+    // Create request with re-roll on failure
+    const { MAX_RETRIES } = EXECUTOR_SELECTION;
+    let currentExecutor: ExecutorInfo | null = selectedExecutor;
+    const excluded = new Set<string>();
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (!currentExecutor) break;
+
+      try {
+        await createRequest(prompt.trim(), selectedModel as ModelId, currentExecutor, {
+          previousMessages,
+        });
+        return; // Success
+      } catch {
+        console.warn(`[App] Executor ${currentExecutor.name} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
+        excluded.add(currentExecutor.id);
+        currentExecutor = selectExecutorWeightedRandom(executors, excluded);
+        if (currentExecutor) {
+          setSelectedExecutor(currentExecutor);
+        }
+      }
+    }
+
+    // All retries exhausted — error is already set by createRequest
+    setFailedExecutorIds(excluded);
+  }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, messages, executors]);
 
   const handleSuggestionClick = (prompt: string) => {
-    // Just submit directly
     handleSubmit(prompt);
   };
 
@@ -180,7 +205,7 @@ function AppContent() {
     </header>
   );
 
-  // Input Area (simplified - executor/model selection moved to sidebar)
+  // Input Area
   const inputArea = (
     <div className="space-y-2">
       <ChatInput

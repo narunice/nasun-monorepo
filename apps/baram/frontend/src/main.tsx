@@ -11,7 +11,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { configureWallet, registerTokens, registerTokenFaucet, initZkLogin } from '@nasun/wallet';
 import { WalletProvider } from '@nasun/wallet-ui';
 
-import { NETWORK_CONFIG, TOKENS, BARAM_CONFIG, FAUCET_CONFIG, ZKLOGIN_CONFIG } from './config/network';
+import { NETWORK_CONFIG, TOKENS, FAUCET_CONFIG, ZKLOGIN_CONFIG } from './config/network';
 import App from './App';
 import './index.css';
 

@@ -15,7 +15,7 @@
 **설계 원칙:**
 - "Executor는 Validator가 아니다" — Tier는 Compliance Eligibility Signal이지, 보상/할당 메커니즘이 아님
 - Tier별 수수료/보상/job quota 차등 금지
-- 사용자가 직접 Executor를 선택하는 구조 (algorithmic routing 아님)
+- Executor 자동 배정 (Weighted Random) — 사용자 결정 부담 제거
 
 ---
 
@@ -31,6 +31,7 @@
 | **Phase E-1: Executor Tier** | ✅ | TierRegistry (4-level), decay_reputation, Frontend tier 배지 |
 | **Phase E-2: Attestation Registry** | ✅ | PCR baseline 온체인 등록 (별도 패키지) |
 | **Phase E-3: Compliance (ECR)** | ✅ | ExecutionComplianceRecord + executor_tier 스냅샷 |
+| **Phase F-1: Executor 자동 배정** | ✅ | Weighted Random 배정, UX에서 수동 선택 제거 |
 
 ---
 
@@ -223,7 +224,7 @@ apps/baram/
 │   └── src/
 │       ├── features/request/    # 요청 생성 UI + hooks
 │       ├── components/
-│       │   ├── input/           # ExecutorDropdown (tier 인라인)
+│       │   ├── input/           # ChatInput, InputFooter
 │       │   ├── badges/          # TierBadge, DormantBadge
 │       │   ├── sidebar/         # Settings
 │       │   └── theme/           # Dark/Light 테마
@@ -288,7 +289,7 @@ cd apps/baram/executor-nitro
 
 ## 다음 단계 (2026-01-30~)
 
-> **현재 상태**: TEE 인스턴스 OFF, Phase E 완료
+> **현재 상태**: TEE 인스턴스 OFF, Phase E + F-1 완료
 
 ### 우선순위 1: TEE E2E 재검증
 
@@ -317,12 +318,13 @@ nasun client call \
 
 ### Near-term (Phase F)
 
-| 목표 | 설명 |
-|------|------|
-| Admin 의존도 제거 | `update_executor_stats()` 내에서 cross-module tier 자동 업데이트 |
-| Automated ECR | 정산 시 ComplianceRecord 자동 생성 (현재 admin 수동) |
-| Frontend Attestation UI | 검증 결과, PCR 비교 표시 |
-| HTTPS/도메인 설정 | Production TEE endpoint |
+| 목표 | 상태 | 설명 |
+|------|------|------|
+| **F-1: Executor 자동 배정** | ✅ | Weighted Random, eligible set filter (Bronze+), re-roll on failure |
+| F-2: Admin 의존도 제거 | 계획 | `update_executor_stats()` 내에서 cross-module tier 자동 업데이트 |
+| F-3: Automated ECR | 계획 | 정산 시 ComplianceRecord 자동 생성 (현재 admin 수동) |
+| F-4: Frontend Attestation UI | 계획 | 검증 결과, PCR 비교 표시 |
+| F-5: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
 
 ### Mid-term (Phase G: Model Marketplace)
 

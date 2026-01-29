@@ -33,12 +33,10 @@ export function InputFooter({
         <span className={modelConfig?.price === 0 ? 'text-[var(--color-success)]' : ''}>
           {priceDisplay}
         </span>
-        {selectedExecutor && (
+        {selectedExecutor && selectedExecutor.teeType > 0 && (
           <>
             <span className="text-[var(--color-border)]">|</span>
             <span>{selectedExecutor.teeTypeName}</span>
-            <span className="text-[var(--color-border)]">|</span>
-            <span>{selectedExecutor.reputation} rep</span>
           </>
         )}
       </div>
