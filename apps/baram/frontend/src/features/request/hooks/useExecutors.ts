@@ -15,6 +15,7 @@ import {
   TierLevel,
   TierName,
   DORMANT_THRESHOLD_MS,
+  EXECUTOR_SELECTION,
   calculateTierClient,
 } from '@/config/network';
 
@@ -149,6 +150,51 @@ async function fetchTierMap(client: SuiClient): Promise<Map<string, number>> {
   }
 
   return tierMap;
+}
+
+/**
+ * Select an executor via weighted random from the eligible set.
+ * Eligible = active, non-excluded, tier >= MIN_TIER (Bronze+).
+ * Weight = min(BASE_WEIGHT + (reputation / 1000) * REPUTATION_BONUS, MAX_WEIGHT)
+ * Dormant executors receive DORMANT_PENALTY multiplier.
+ *
+ * @param executors - Full executor list from useExecutors()
+ * @param excludeIds - Executor IDs to exclude (e.g., previously failed)
+ * @returns Selected executor, or null if no eligible executors
+ */
+export function selectExecutorWeightedRandom(
+  executors: ExecutorInfo[],
+  excludeIds: Set<string> = new Set(),
+): ExecutorInfo | null {
+  const { BASE_WEIGHT, REPUTATION_BONUS, MAX_WEIGHT, DORMANT_PENALTY, MIN_TIER } = EXECUTOR_SELECTION;
+
+  // Filter eligible set: active, tier >= MIN_TIER, not excluded
+  const eligible = executors.filter(
+    e => e.isActive && e.tier >= MIN_TIER && !excludeIds.has(e.id),
+  );
+
+  if (eligible.length === 0) return null;
+  if (eligible.length === 1) return eligible[0];
+
+  // Calculate weights
+  const weights = eligible.map(e => {
+    const raw = BASE_WEIGHT + (e.reputation / 1000) * REPUTATION_BONUS;
+    let effective = Math.min(raw, MAX_WEIGHT);
+    if (e.isDormant) effective *= DORMANT_PENALTY;
+    return effective;
+  });
+
+  // Weighted random selection
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (let i = 0; i < eligible.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return eligible[i];
+  }
+
+  // Fallback (floating point edge case)
+  return eligible[eligible.length - 1];
 }
 
 export function useExecutors(): UseExecutorsReturn {

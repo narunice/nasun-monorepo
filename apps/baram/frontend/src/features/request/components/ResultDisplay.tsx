@@ -1,15 +1,18 @@
 /**
- * ResultDisplay - Shows AI computation result
+ * ResultDisplay - Shows AI computation result with post-execution executor info
  */
 
 import { RequestResult } from '../hooks/useCreateRequest';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { TierBadge } from '@/components/badges/TierBadge';
+import type { ExecutorInfo } from '../hooks/useExecutors';
 
 interface ResultDisplayProps {
   result: RequestResult;
+  executor?: ExecutorInfo | null;
 }
 
-export function ResultDisplay({ result }: ResultDisplayProps) {
+export function ResultDisplay({ result, executor }: ResultDisplayProps) {
   const explorerUrl = `${NETWORK_CONFIG.explorerUrl}/tx/${result.txDigest}`;
 
   return (
@@ -50,6 +53,21 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           </p>
         </div>
       </div>
+
+      {/* Executor Info (post-execution transparency) */}
+      {executor && (
+        <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            <span>Processed by a Nasun-qualified Executor</span>
+            <TierBadge tier={executor.tier} tierName={executor.tierName} />
+            {executor.teeType > 0 && (
+              <span className="text-xs text-baram-1">
+                {executor.teeTypeName}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Transaction Link */}
       <div className="mt-4 pt-4 border-t border-[var(--color-border)]">

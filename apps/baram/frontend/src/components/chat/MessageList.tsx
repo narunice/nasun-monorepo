@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'react';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
-import type { RequestResult, RequestStatus } from '@/features/request/hooks/useCreateRequest';
+import type { RequestStatus } from '@/features/request/hooks/useCreateRequest';
 
 export interface Message {
   id: string;
@@ -27,7 +27,7 @@ interface MessageListProps {
   isTeeExecutor?: boolean;
 }
 
-export function MessageList({ messages, isProcessing, processingStatus, isTeeExecutor }: MessageListProps) {
+export function MessageList({ messages, isProcessing, processingStatus: _processingStatus, isTeeExecutor }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change

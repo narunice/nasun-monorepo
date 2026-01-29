@@ -51,6 +51,17 @@ const GOLD_REP = 700;
 // Dormant threshold: 7 days in milliseconds
 export const DORMANT_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Executor Auto-Assignment (Weighted Random)
+// Reputation-only weighting — no tier in weight ("No job allocation by tier")
+export const EXECUTOR_SELECTION = {
+  BASE_WEIGHT: 0.3,        // Minimum probability for all eligible executors
+  REPUTATION_BONUS: 1.0,   // Max additional weight from reputation
+  MAX_WEIGHT: 1.0,         // Weight cap — prevents long-term centralization
+  DORMANT_PENALTY: 0.3,    // Multiplier for dormant executors
+  MIN_TIER: 1 as TierLevel, // Bronze+ only — eligible set filter
+  MAX_RETRIES: 3,          // Re-roll attempts on failure
+} as const;
+
 /**
  * Client-side tier calculation — fallback when TierRegistry is unavailable.
  * tier = min(stake_tier, rep_tier)
@@ -144,7 +155,7 @@ export const MODEL_PRICING = {
     description: 'Private inference in TEE enclave',
     provider: 'tee',
   },
-} as const;
+} satisfies Record<string, { name: string; price: number; description: string; provider: string }>;
 
 export type ModelId = keyof typeof MODEL_PRICING;
 // Default to Groq for development/testing

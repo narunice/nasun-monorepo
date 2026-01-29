@@ -18,8 +18,9 @@
 
 **설계 원칙:**
 - "Executor는 Validator가 아니다" — Tier는 Compliance Eligibility Signal
-- Tier별 수수료/보상/job quota 차등 금지
-- 사용자가 직접 Executor를 선택하는 구조
+- "No job allocation by tier" — Tier를 weight에 포함하지 않음
+- Executor 자동 배정 (Weighted Random) — 사용자 결정 부담 제거
+- Tier는 eligible set 필터 (Bronze+ 자격) + 사후 투명성 정보
 
 ---
 
@@ -29,13 +30,13 @@
 apps/baram/
 ├── frontend/                    # React 19 + Vite 7 (포트 5177)
 │   └── src/
-│       ├── features/request/    # 요청 생성 UI + hooks (useExecutors, useCreateRequest)
+│       ├── features/request/    # 요청 생성 UI + hooks (useExecutors, useCreateRequest, selectExecutorWeightedRandom)
 │       ├── components/
-│       │   ├── input/           # ExecutorDropdown (tier 인라인 배지)
+│       │   ├── input/           # ChatInput, InputFooter
 │       │   ├── badges/          # TierBadge, DormantBadge
 │       │   ├── sidebar/         # SidebarSettings
 │       │   └── theme/           # ThemeProvider, ThemeToggle
-│       ├── config/network.ts    # Tier 상수, MODEL_PRICING, TEE_TYPES
+│       ├── config/network.ts    # Tier 상수, MODEL_PRICING, TEE_TYPES, EXECUTOR_SELECTION
 │       └── utils/crypto.ts      # RSA-OAEP 암호화
 │
 ├── contracts/                   # baram.move (에스크로 + 정산)
@@ -295,9 +296,8 @@ ENCLAVE_PORT=5050
 | [attestation_registry.move](contracts-attestation/sources/attestation_registry.move) | PCR baseline |
 | [compliance.move](contracts-compliance/sources/compliance.move) | ECR |
 | [network.ts](frontend/src/config/network.ts) | Tier 상수, MODEL_PRICING, TEE_TYPES |
-| [useExecutors.ts](frontend/src/features/request/hooks/useExecutors.ts) | Executor 목록 + tier 데이터 |
+| [useExecutors.ts](frontend/src/features/request/hooks/useExecutors.ts) | Executor 목록 + tier 데이터 + selectExecutorWeightedRandom |
 | [TierBadge.tsx](frontend/src/components/badges/TierBadge.tsx) | Tier/Dormant 배지 컴포넌트 |
-| [ExecutorDropdown.tsx](frontend/src/components/input/ExecutorDropdown.tsx) | Executor 선택 (tier 인라인) |
 | [attestation.ts](executor-nitro/src/enclave/attestation.ts) | NSM Attestation (COSE_Sign1) |
 | [server.ts](executor-nitro/src/host/server.ts) | Host HTTP + Attestation 검증 |
 | [protocol.ts](executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 (v1.3.0) |
@@ -314,7 +314,8 @@ ENCLAVE_PORT=5050
 | E-1 | Executor Tier (TierRegistry) | ✅ 완료 |
 | E-2 | Attestation Registry (PCR baseline) | ✅ 완료 |
 | E-3 | Compliance (ECR) | ✅ 완료 |
-| F | Admin 의존도 제거 + Automated ECR | 계획 |
+| **F-1** | **Executor 자동 배정 (Weighted Random)** | **✅ 완료** |
+| F-2~5 | Admin 의존도 제거, Automated ECR, Attestation UI | 계획 |
 | G | Model Marketplace | 계획 |
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 

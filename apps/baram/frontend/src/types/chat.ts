@@ -152,7 +152,7 @@ export function groupSessionsByDate(sessions: ChatSession[]): GroupedSessions {
 
   // Sort each group by updatedAt (most recent first)
   for (const group of Object.values(grouped)) {
-    group.sort((a, b) => b.updatedAt - a.updatedAt);
+    group.sort((a: ChatSession, b: ChatSession) => b.updatedAt - a.updatedAt);
   }
 
   return grouped;
