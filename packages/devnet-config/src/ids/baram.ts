@@ -19,6 +19,9 @@ export const STAKING_CONFIG = config.baram.stakingConfig as ObjectId;
 export const STAKING_REGISTRY = config.baram.stakingRegistry as ObjectId;
 export const STAKING_ADMIN_CAP = config.baram.stakingAdminCap as ObjectId;
 
+// Tier (Phase E)
+export const TIER_REGISTRY = config.baram.tierRegistry as ObjectId;
+
 export const ATTESTATION_PACKAGE_ID = config.baram.attestationPackageId as ObjectId;
 export const ATTESTATION_REGISTRY = config.baram.attestationRegistry as ObjectId;
 export const ATTESTATION_ADMIN_CAP = config.baram.attestationAdminCap as ObjectId;
@@ -43,6 +46,7 @@ export const BARAM: BaramConfig = {
   stakingConfig: STAKING_CONFIG,
   stakingRegistry: STAKING_REGISTRY,
   stakingAdminCap: STAKING_ADMIN_CAP,
+  tierRegistry: TIER_REGISTRY,
   attestationPackageId: ATTESTATION_PACKAGE_ID,
   attestationRegistry: ATTESTATION_REGISTRY,
   attestationAdminCap: ATTESTATION_ADMIN_CAP,

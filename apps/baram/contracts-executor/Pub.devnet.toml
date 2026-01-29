@@ -7,9 +7,9 @@ chain-id = "12bf3808"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts-executor" }
-published-at = "0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5"
-original-id = "0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5"
+published-at = "0xcafc65ef3189e92e99dc28c627c90242ea863fb0508222fb10478c72ad2b1dd4"
+original-id = "0xcafc65ef3189e92e99dc28c627c90242ea863fb0508222fb10478c72ad2b1dd4"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x4575e869a94391d4d2cfc888533b6d8fdabc9c70e45232a9236ceadd782cb739"
+upgrade-capability = "0x969730a18a3220e1be83f711d9f85a72555634a28d4430393d582f5965fffbc4"

@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MODEL_PRICING, ModelId, TEE_TYPES } from '@/config/network';
 import type { ExecutorInfo } from '@/features/request/hooks/useExecutors';
+import { TierBadge, DormantBadge } from '@/components/badges/TierBadge';
 
 interface ExecutorDropdownProps {
   executors: ExecutorInfo[];
@@ -70,6 +71,9 @@ export function ExecutorDropdown({
         <span className="text-[var(--color-text-primary)]">
           {selectedExecutor?.teeTypeName || 'Select'}
         </span>
+        {selectedExecutor && (
+          <TierBadge tier={selectedExecutor.tier} tierName={selectedExecutor.tierName} />
+        )}
         <svg className="w-4 h-4 text-[var(--color-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -108,6 +112,8 @@ export function ExecutorDropdown({
                       <span className="text-sm font-medium text-[var(--color-text-primary)]">
                         {executor.name}
                       </span>
+                      <TierBadge tier={executor.tier} tierName={executor.tierName} />
+                      {executor.isDormant && <DormantBadge />}
                     </div>
                     {selectedExecutor?.operator === executor.operator && (
                       <svg className="w-4 h-4 text-baram-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">

@@ -3,6 +3,7 @@
  */
 
 import { useExecutors, ExecutorInfo } from '../hooks/useExecutors';
+import { TierBadge, DormantBadge } from '@/components/badges/TierBadge';
 
 interface ExecutorSelectorProps {
   selectedExecutor: string | null;
@@ -37,13 +38,12 @@ function ExecutorCard({
       } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       <div className="flex items-start justify-between mb-2">
-        <div>
+        <div className="flex items-center gap-2">
           <div className="font-medium text-[var(--color-text-primary)]">
             {executor.name}
           </div>
-          <div className="text-xs text-[var(--color-text-muted)] font-mono">
-            {executor.operator.slice(0, 10)}...{executor.operator.slice(-8)}
-          </div>
+          <TierBadge tier={executor.tier} tierName={executor.tierName} />
+          {executor.isDormant && <DormantBadge />}
         </div>
         <div className="flex items-center gap-2">
           {executor.teeType > 0 && (
@@ -64,6 +64,9 @@ function ExecutorCard({
       </div>
 
       <div className="flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
+        <span className="font-mono text-[var(--color-text-muted)]">
+          {executor.operator.slice(0, 10)}...{executor.operator.slice(-8)}
+        </span>
         <span>
           {executor.completedJobs} jobs ({successRate}% success)
         </span>
@@ -131,6 +134,9 @@ export function ExecutorSelector({
 
   return (
     <div className="space-y-2">
+      <div className="text-xs text-[var(--color-text-muted)] px-1">
+        Tier reflects staking commitment and track record, not a guarantee of output quality.
+      </div>
       {executors.map((executor) => (
         <ExecutorCard
           key={executor.operator}

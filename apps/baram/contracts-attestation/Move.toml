@@ -1,14 +1,13 @@
 [package]
-name = "baram_executor"
+name = "baram_attestation"
 edition = "2024"
-version = "0.0.2"
-published-at = "0xcafc65ef3189e92e99dc28c627c90242ea863fb0508222fb10478c72ad2b1dd4"
+version = "0.0.1"
 
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-baram_executor = "0xcafc65ef3189e92e99dc28c627c90242ea863fb0508222fb10478c72ad2b1dd4"
+baram_attestation = "0x0"
 
 [environments]
 devnet = "12bf3808"

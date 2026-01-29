@@ -180,6 +180,9 @@ export interface AttestationDocument {
   signature: string;
   // Certificate chain (empty in simulation)
   certificate: string;
+  // Raw COSE_Sign1 document for off-chain verification (Base64)
+  // Only present in production Nitro mode
+  rawDocument?: string;
 }
 
 /**
