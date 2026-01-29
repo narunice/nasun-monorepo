@@ -240,6 +240,25 @@ export function PostRegistrationTab() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                {/* Follower Count */}
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+                    X Follower Count
+                  </label>
+                  <input
+                    type="number"
+                    value={form.followerCount ?? ""}
+                    onChange={(e) =>
+                      form.setFollowerCount(
+                        e.target.value ? parseInt(e.target.value, 10) : undefined,
+                      )
+                    }
+                    placeholder="e.g., 5000"
+                    min="0"
+                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
+                  />
+                </div>
+
                 {/* Language Selection */}
                 <div>
                   <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
@@ -261,25 +280,6 @@ export function PostRegistrationTab() {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Follower Count */}
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
-                    X Follower Count
-                  </label>
-                  <input
-                    type="number"
-                    value={form.followerCount ?? ""}
-                    onChange={(e) =>
-                      form.setFollowerCount(
-                        e.target.value ? parseInt(e.target.value, 10) : undefined,
-                      )
-                    }
-                    placeholder="e.g., 5000"
-                    min="0"
-                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
-                  />
                 </div>
               </div>
 
