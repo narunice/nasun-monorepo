@@ -148,6 +148,9 @@ function AppContent() {
           teeVerified: (selectedExecutor?.teeType ?? 0) > 0 && MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee',
           txDigest: result.txDigest,
           resultHash: result.resultHash,
+          teeType: result.teeType,
+          pcr0: result.pcr0,
+          attestationVerified: result.attestationVerified,
         },
       });
       reset();
