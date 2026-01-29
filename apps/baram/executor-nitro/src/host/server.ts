@@ -368,6 +368,8 @@ function buildSuiConfigFromEnv(): SuiConfig | undefined {
     complianceRegistryId: process.env.COMPLIANCE_REGISTRY_ID || '',
     executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
     attestationRegistryId: process.env.ATTESTATION_REGISTRY_ID || '',
+    stakingRegistryId: process.env.STAKING_REGISTRY_ID || '',
+    tierRegistryId: process.env.TIER_REGISTRY_ID || '',
   };
 }
 
