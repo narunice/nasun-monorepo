@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { decode as cborDecode } from 'cbor-x';
+import { decode as cborDecode, encode as cborEncode } from 'cbor-x';
 import { isNitroMode, type AttestationDocument } from '../shared/protocol.js';
 
 // NSM device path in Nitro Enclave
@@ -292,14 +292,13 @@ function buildSigStructure(
   payload: Buffer,
   externalAad: Buffer = Buffer.alloc(0)
 ): Buffer {
-  const { encode } = require('cbor-x');
   const sigStructure = [
     'Signature1',
     protectedHeader,
     externalAad,
     payload,
   ];
-  return Buffer.from(encode(sigStructure));
+  return Buffer.from(cborEncode(sigStructure));
 }
 
 /**
@@ -523,15 +522,15 @@ export function verifyAttestationDocument(
 
     let pcrMatch = true;
     if (expectedPcrs) {
-      if (expectedPcrs.pcr0 && expectedPcrs.pcr0 !== pcr0) {
+      if (expectedPcrs.pcr0 && expectedPcrs.pcr0.toLowerCase() !== pcr0.toLowerCase()) {
         pcrMatch = false;
         console.log(`[Attestation] PCR0 mismatch: expected ${expectedPcrs.pcr0}, got ${pcr0}`);
       }
-      if (expectedPcrs.pcr1 && expectedPcrs.pcr1 !== pcr1) {
+      if (expectedPcrs.pcr1 && expectedPcrs.pcr1.toLowerCase() !== pcr1.toLowerCase()) {
         pcrMatch = false;
         console.log(`[Attestation] PCR1 mismatch: expected ${expectedPcrs.pcr1}, got ${pcr1}`);
       }
-      if (expectedPcrs.pcr2 && expectedPcrs.pcr2 !== pcr2) {
+      if (expectedPcrs.pcr2 && expectedPcrs.pcr2.toLowerCase() !== pcr2.toLowerCase()) {
         pcrMatch = false;
         console.log(`[Attestation] PCR2 mismatch: expected ${expectedPcrs.pcr2}, got ${pcr2}`);
       }

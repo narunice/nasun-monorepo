@@ -44,6 +44,8 @@ export interface SuiConfig {
   complianceRegistryId: string;
   executorRegistryId: string;
   attestationRegistryId: string;
+  stakingRegistryId: string;
+  tierRegistryId: string;
 }
 
 let client: SuiClient | null = null;
@@ -142,7 +144,7 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
 }
 
 /**
- * Fetch executor stats from ExecutorRegistry for compliance snapshots
+ * Fetch executor stats from ExecutorRegistry, StakingRegistry, and TierRegistry
  */
 export async function getExecutorStats(executorAddress: string): Promise<{
   reputation: number;
@@ -156,46 +158,172 @@ export async function getExecutorStats(executorAddress: string): Promise<{
 
   if (!cfg.executorRegistryId) return defaults;
 
-  try {
-    const registry = await sui.getObject({
-      id: cfg.executorRegistryId,
-      options: { showContent: true },
-    });
+  // Run all three registry lookups in parallel
+  const [executorResult, stakeResult, tierResult] = await Promise.allSettled([
+    fetchExecutorRegistryStats(sui, cfg, executorAddress),
+    fetchStakeAmount(sui, cfg, executorAddress),
+    fetchTier(sui, cfg, executorAddress),
+  ]);
 
-    if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-      return defaults;
-    }
+  const executor = executorResult.status === 'fulfilled' ? executorResult.value : null;
+  const stakeAmount = stakeResult.status === 'fulfilled' ? stakeResult.value : 0;
+  const tier = tierResult.status === 'fulfilled' ? tierResult.value : 0;
 
-    const fields = registry.data.content.fields as Record<string, unknown>;
-    const executorsTable = fields['executors'] as { fields?: { id?: { id: string } } };
-    const tableId = executorsTable?.fields?.id?.id;
-    if (!tableId) return defaults;
-
-    const fieldData = await sui.getDynamicFieldObject({
-      parentId: tableId,
-      name: { type: 'address', value: executorAddress },
-    });
-
-    if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
-      return defaults;
-    }
-
-    const content = fieldData.data.content.fields as Record<string, unknown>;
-    const valueWrapper = content['value'] as { fields?: Record<string, unknown> } | Record<string, unknown>;
-    const v = ('fields' in valueWrapper && valueWrapper.fields)
-      ? valueWrapper.fields as Record<string, unknown>
-      : valueWrapper as Record<string, unknown>;
-
-    return {
-      reputation: Number(v['reputation'] || 0),
-      slashCount: Number(v['failed_jobs'] || 0),
-      stakeAmount: 0, // StakingRegistry lookup deferred
-      tier: 0,        // TierRegistry lookup deferred
-    };
-  } catch (error) {
-    console.warn('[Sui] Failed to fetch executor stats:', error);
-    return defaults;
+  if (executorResult.status === 'rejected') {
+    console.warn('[Sui] ExecutorRegistry lookup failed:', executorResult.reason);
   }
+  if (stakeResult.status === 'rejected') {
+    console.warn('[Sui] StakingRegistry lookup failed:', stakeResult.reason);
+  }
+  if (tierResult.status === 'rejected') {
+    console.warn('[Sui] TierRegistry lookup failed:', tierResult.reason);
+  }
+
+  return {
+    reputation: executor?.reputation ?? 0,
+    slashCount: executor?.slashCount ?? 0,
+    stakeAmount,
+    tier,
+  };
+}
+
+/**
+ * Fetch reputation + failed_jobs from ExecutorRegistry
+ */
+async function fetchExecutorRegistryStats(
+  sui: SuiClient,
+  cfg: SuiConfig,
+  executorAddress: string,
+): Promise<{ reputation: number; slashCount: number } | null> {
+  const registry = await sui.getObject({
+    id: cfg.executorRegistryId,
+    options: { showContent: true },
+  });
+
+  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+    return null;
+  }
+
+  const fields = registry.data.content.fields as Record<string, unknown>;
+  const executorsTable = fields['executors'] as { fields?: { id?: { id: string } } };
+  const tableId = executorsTable?.fields?.id?.id;
+  if (!tableId) return null;
+
+  const fieldData = await sui.getDynamicFieldObject({
+    parentId: tableId,
+    name: { type: 'address', value: executorAddress },
+  });
+
+  if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
+    return null;
+  }
+
+  const content = fieldData.data.content.fields as Record<string, unknown>;
+  const valueWrapper = content['value'] as { fields?: Record<string, unknown> } | Record<string, unknown>;
+  const v = ('fields' in valueWrapper && valueWrapper.fields)
+    ? valueWrapper.fields as Record<string, unknown>
+    : valueWrapper as Record<string, unknown>;
+
+  return {
+    reputation: Number(v['reputation'] || 0),
+    slashCount: Number(v['failed_jobs'] || 0),
+  };
+}
+
+/**
+ * Fetch staked amount from StakingRegistry.
+ * StakingRegistry.stakes: Table<address, ID> → ExecutorStake object → staked_amount
+ */
+async function fetchStakeAmount(
+  sui: SuiClient,
+  cfg: SuiConfig,
+  executorAddress: string,
+): Promise<number> {
+  if (!cfg.stakingRegistryId) return 0;
+
+  const registry = await sui.getObject({
+    id: cfg.stakingRegistryId,
+    options: { showContent: true },
+  });
+
+  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+    return 0;
+  }
+
+  const fields = registry.data.content.fields as Record<string, unknown>;
+  const stakesTable = fields['stakes'] as { fields?: { id?: { id: string } } };
+  const tableId = stakesTable?.fields?.id?.id;
+  if (!tableId) return 0;
+
+  // Table<address, ID> — value is the object ID of ExecutorStake
+  const fieldData = await sui.getDynamicFieldObject({
+    parentId: tableId,
+    name: { type: 'address', value: executorAddress },
+  });
+
+  if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
+    return 0;
+  }
+
+  const dfFields = fieldData.data.content.fields as Record<string, unknown>;
+  const stakeObjectId = dfFields['value'] as string;
+  if (!stakeObjectId) return 0;
+
+  // Fetch the ExecutorStake object to read staked_amount (Balance<SUI>)
+  const stakeObj = await sui.getObject({
+    id: stakeObjectId,
+    options: { showContent: true },
+  });
+
+  if (!stakeObj.data?.content || stakeObj.data.content.dataType !== 'moveObject') {
+    return 0;
+  }
+
+  const stakeFields = stakeObj.data.content.fields as Record<string, unknown>;
+  // Balance<SUI> is represented as { value: u64 } on-chain
+  const stakedAmount = stakeFields['staked_amount'] as { fields?: { value?: string } } | string | number;
+  if (typeof stakedAmount === 'object' && stakedAmount !== null) {
+    return Number(stakedAmount.fields?.value || 0);
+  }
+  return Number(stakedAmount || 0);
+}
+
+/**
+ * Fetch tier from TierRegistry.
+ * TierRegistry.tiers: Table<address, u8>
+ */
+async function fetchTier(
+  sui: SuiClient,
+  cfg: SuiConfig,
+  executorAddress: string,
+): Promise<number> {
+  if (!cfg.tierRegistryId) return 0;
+
+  const registry = await sui.getObject({
+    id: cfg.tierRegistryId,
+    options: { showContent: true },
+  });
+
+  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+    return 0;
+  }
+
+  const fields = registry.data.content.fields as Record<string, unknown>;
+  const tiersTable = fields['tiers'] as { fields?: { id?: { id: string } } };
+  const tableId = tiersTable?.fields?.id?.id;
+  if (!tableId) return 0;
+
+  const fieldData = await sui.getDynamicFieldObject({
+    parentId: tableId,
+    name: { type: 'address', value: executorAddress },
+  });
+
+  if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
+    return 0;
+  }
+
+  const dfFields = fieldData.data.content.fields as Record<string, unknown>;
+  return Number(dfFields['value'] || 0);
 }
 
 /**
