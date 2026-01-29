@@ -1,6 +1,6 @@
 import { useSuiClientQueries, useSuiClientQuery } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { VoteHistory, ProposalFields, ProposalStatus } from "../types/voting";
 import { SuiObjectData } from "@mysten/sui/client";
 
@@ -28,6 +28,8 @@ function isVoteYesFromUrl(url: string | undefined): boolean {
  */
 export function useVoteHistory(limit = 5) {
   const { account } = useWallet();
+  const { state: zkLoginState } = useZkLogin();
+  const ownerAddress = account?.address || zkLoginState?.address;
   const packageId = useNetworkVariable("packageId");
   const dashboardId = useNetworkVariable("dashboardId");
 
@@ -39,7 +41,7 @@ export function useVoteHistory(limit = 5) {
   } = useSuiClientQuery(
     "getOwnedObjects",
     {
-      owner: account?.address as string,
+      owner: ownerAddress as string,
       options: {
         showContent: true,
       },
@@ -48,7 +50,7 @@ export function useVoteHistory(limit = 5) {
       },
     },
     {
-      enabled: !!account?.address && !!packageId,
+      enabled: !!ownerAddress && !!packageId,
     }
   );
 

@@ -1,31 +1,28 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useRef, useState } from "react";
 import { Transaction } from "@mysten/sui/transactions";
-import {
-  useSignAndExecuteTransaction,
-  useCurrentAccount,
-  useCurrentWallet,
-  useSuiClient,
-} from "@mysten/dapp-kit";
+import { useWallet, useZkLogin, getSuiClient } from "@nasun/wallet";
 import { toast } from "react-toastify";
 import { useNetworkVariable } from "../../config/suiNetworkConfig";
 import { useCoinPrice } from "./useCoinPrice";
 import { NFTTiers, NFTTierDisplayNames } from "../../types/genesisNFTs.d";
-import logger from "../../lib/logger"; // Import logger
+import logger from "../../lib/logger";
 import axios from "axios";
 
 const SUI_DECIMALS = 9;
 
 export const usePayAndMintSuiNFT = () => {
   const { t } = useTranslation("sale");
-  const client = useSuiClient();
-  const { connectionStatus } = useCurrentWallet();
-  const { mutateAsync: signAndExecute, isPending } = useSignAndExecuteTransaction();
-  const account = useCurrentAccount();
+  const { status, account, getKeypair } = useWallet();
+  const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const packageId = useNetworkVariable("packageId");
   const supplyLimitId = useNetworkVariable("supplyLimitId");
   const { currentPrice } = useCoinPrice();
   const [error, setError] = useState<Error | null>(null);
+  const [isPending, setIsPending] = useState(false);
+
+  const isConnected = (status === "unlocked" && !!account) || isZkConnected;
+  const walletAddress = account?.address || zkState?.address;
 
   const toastId = useRef<string | number>();
 
@@ -74,12 +71,13 @@ export const usePayAndMintSuiNFT = () => {
         return error;
       };
 
-      if (connectionStatus !== "connected" || !account) {
+      if (!isConnected || !walletAddress) {
         toast.error(t("payAndMintNFT.errors.walletRequired"));
         throw new Error(t("payAndMintNFT.errors.walletNotConnected"));
       }
 
       const tierDisplayName = NFTTierDisplayNames[tier];
+      setIsPending(true);
 
       try {
         const fetchingId = toast.loading(t("payAndMintNFT.messages.fetchingImage"), {
@@ -131,9 +129,33 @@ export const usePayAndMintSuiNFT = () => {
           }
         );
 
-        const result = await signAndExecute({ transaction: tx });
+        const suiClient = getSuiClient();
+        let result;
 
-        const txResult = await client.waitForTransaction({
+        // zkLogin signing path
+        if (isZkConnected && zkState) {
+          tx.setSender(zkState.address);
+          const bytes = await tx.build({ client: suiClient });
+          const signature = await zkSignTransaction(bytes);
+          result = await suiClient.executeTransactionBlock({
+            transactionBlock: bytes,
+            signature,
+            options: { showEffects: true, showEvents: true },
+          });
+        } else {
+          // Mnemonic wallet signing path
+          const keypair = getKeypair();
+          if (!keypair) {
+            throw new Error("Failed to get keypair");
+          }
+          result = await suiClient.signAndExecuteTransaction({
+            signer: keypair,
+            transaction: tx,
+            options: { showEffects: true, showEvents: true },
+          });
+        }
+
+        const txResult = await suiClient.waitForTransaction({
           digest: result.digest,
           options: { showEvents: true, showEffects: true },
         });
@@ -201,18 +223,22 @@ export const usePayAndMintSuiNFT = () => {
         const errObj = e instanceof Error ? e : new Error(errorMessage);
         setError(errObj);
         throw errObj;
+      } finally {
+        setIsPending(false);
       }
     },
     [
-      connectionStatus,
-      account,
+      isConnected,
+      walletAddress,
+      isZkConnected,
+      zkState,
+      zkSignTransaction,
+      getKeypair,
       t,
       fetchRandomImage,
       currentPrice,
       packageId,
       supplyLimitId,
-      signAndExecute,
-      client,
     ]
   );
 

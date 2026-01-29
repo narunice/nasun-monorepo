@@ -84,8 +84,7 @@
     "myAssets": "내 자산",
     "noObject": "보유한 NASUN 오브젝트가 없습니다.",
     "ethereumNFTs": "이더리움 NFT",
-    "suiObjects": "Sui 오브젝트",
-    "iotaObjects": "IOTA 오브젝트"
+    "suiObjects": "Nasun NFT"
   },
   "nft": {
     "tier": "등급",
@@ -176,8 +175,7 @@
     "error": "오류가 발생하여 회원 탈퇴에 실패했습니다: {{error}}"
   },
   "loading": "로딩 중...",
-  "loadingSui": "SUI 객체를 불러오는 중 오류가 발생했습니다:",
-  "loadingIota": "IOTA 객체를 불러오는 중 오류가 발생했습니다:",
+  "loadingSui": "Nasun NFT를 불러오는 중 오류가 발생했습니다:",
   "loadingEthereum": "이더리움 NFT를 불러오는 중 오류가 발생했습니다:",
   "walletNotConnected": "지갑이 연결되지 않았습니다."
 }

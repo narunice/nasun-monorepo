@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import { NFT_COLLECTION } from "../../../constants/pageContent/genesisNFTTiers";
 import { NFTTiers, TierData } from "../../../types/genesisNFTs.d";
 import { usePayAndMintSuiNFT } from "../../../hooks/PayAndMintNFT/usePayAndMintSuiNFT";
-import { useCurrentWallet as useCurrentSuiWallet } from "@mysten/dapp-kit";
+import { useWallet, useZkLogin } from "@nasun/wallet";
+import { WalletConnect } from "@nasun/wallet-ui";
 import { PriceConverter } from "./PriceConverter";
-import { ConnectSuiWallet } from "@/features/wallet";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 
@@ -23,20 +23,22 @@ function PayAndMintNftCardComponent({ tierData, tier, currentSupply, isSupplyLoa
   const isSupplyUnknown = !isSupplyLoading && currentSupply === undefined;
 
   const [showConnectAlert, setShowConnectAlert] = useState(false);
-  const suiWallet = useCurrentSuiWallet();
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isWalletConnected = (status === "unlocked" && !!account) || isZkConnected;
   const { payAndMintNFT, isPending } = usePayAndMintSuiNFT();
 
   useEffect(() => {
-    if (showConnectAlert && suiWallet.isConnected) {
+    if (showConnectAlert && isWalletConnected) {
       setShowConnectAlert(false);
       toast.success(t("toast.connected_well"), { autoClose: 3000 });
     }
-  }, [suiWallet.isConnected, showConnectAlert, t]);
+  }, [isWalletConnected, showConnectAlert, t]);
 
   const validateTierData = () => !!tierData;
 
   const validateWalletConnection = () => {
-    if (!suiWallet.isConnected) {
+    if (!isWalletConnected) {
       toast.info(t("toast.wallet_required"), { autoClose: 3000 });
       return false;
     }
@@ -82,9 +84,9 @@ function PayAndMintNftCardComponent({ tierData, tier, currentSupply, isSupplyLoa
       <div className="flex flex-col border-gray-600 border p-3">
         <div className="flex flex-wrap md:flex-nowrap w-full pb-3 justify-between">
           <span className="self-center mr-4 text-nowrap">
-            {suiWallet.isConnected ? t("switch") : t("status")}
+            {isWalletConnected ? t("switch") : t("status")}
           </span>
-          <ConnectSuiWallet />
+          <WalletConnect />
         </div>
 
         <PriceConverter usdPrice={tierData.USD_PRICE} />

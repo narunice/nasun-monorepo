@@ -51,13 +51,13 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
       <div className="space-y-1">
         <p className="text-gray-300">
           <span className="font-medium">{t('rankHistory.chart.rank')}:</span>{' '}
-          <span className="font-bold text-nasun-c1">
+          <span className="font-bold text-nasun-c7">
             {isKorean ? `${data.rank}` : `#${data.rank}`}
           </span>
         </p>
         <p className="text-gray-300">
           <span className="font-medium">{t('rankHistory.chart.score')}:</span>{' '}
-          <span className="font-bold text-nasun-c1">{(data.score ?? 0).toFixed(2)}</span>
+          <span className="font-bold text-nasun-c7">{(data.score ?? 0).toFixed(2)}</span>
         </p>
       </div>
     </div>
