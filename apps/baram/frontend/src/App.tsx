@@ -73,11 +73,13 @@ function AppContent() {
 
   const assignedExecutor = useMemo(() => {
     if (executors.length === 0) return null;
-    return selectExecutorWeightedRandom(executors, failedExecutorIds, requiredMinTier);
-  }, [executors, failedExecutorIds, requiredMinTier]);
+    return selectExecutorWeightedRandom(executors, failedExecutorIds, requiredMinTier, selectedModel);
+  }, [executors, failedExecutorIds, requiredMinTier, selectedModel]);
 
   useEffect(() => {
-    if (assignedExecutor && !selectedExecutor) {
+    if (!assignedExecutor) return;
+    // Re-assign when assignedExecutor changes (e.g., model switch triggers different executor)
+    if (!selectedExecutor || selectedExecutor.id !== assignedExecutor.id) {
       console.log('[App] Auto-assigned executor:', assignedExecutor.name, `(tier=${assignedExecutor.tier})`);
       setSelectedExecutor(assignedExecutor);
     }
@@ -185,7 +187,7 @@ function AppContent() {
       } catch {
         console.warn(`[App] Executor ${currentExecutor.name} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
         excluded.add(currentExecutor.id);
-        currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier);
+        currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier, selectedModel);
         if (currentExecutor) {
           setSelectedExecutor(currentExecutor);
         }

@@ -30,8 +30,8 @@ export function RequestForm() {
   // Auto-assign executor via weighted random when executors are available
   const assignedExecutor = useMemo(() => {
     if (executors.length === 0) return null;
-    return selectExecutorWeightedRandom(executors);
-  }, [executors]);
+    return selectExecutorWeightedRandom(executors, new Set(), undefined, selectedModel);
+  }, [executors, selectedModel]);
 
   useEffect(() => {
     if (assignedExecutor && !selectedExecutor) {
@@ -54,7 +54,7 @@ export function RequestForm() {
     reset();
     setPrompt('');
     // Re-roll executor for the next request
-    const newExecutor = selectExecutorWeightedRandom(executors);
+    const newExecutor = selectExecutorWeightedRandom(executors, new Set(), undefined, selectedModel);
     if (newExecutor) setSelectedExecutor(newExecutor);
   };
 

@@ -159,10 +159,8 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
 
-      // Use RSA-OAEP encryption only for TEE-local models on TEE executors
-      // Cloud models (Groq, OpenAI) don't need TEE encryption — they bypass the enclave
-      const isTeeModel = modelConfig.provider === 'tee';
-      const needsTeeEncryption = isTeeModel && executor.teeType > 0;
+      // Encrypt all prompts sent to TEE executors (Enclave always decrypts)
+      const needsTeeEncryption = executor.teeType > 0;
       const encryptedPrompt = needsTeeEncryption
         ? await encryptPromptForTEE(textToSend, executorUrl)
         : encodePrompt(textToSend);
