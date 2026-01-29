@@ -74,9 +74,14 @@ export function getPublicKey(): string | null {
 }
 
 /**
- * Decrypt data encrypted with our public key
+ * Decrypt hybrid-encrypted data (RSA-OAEP + AES-256-GCM).
  *
- * @param encryptedBase64 - Base64-encoded RSA-OAEP encrypted data
+ * Format: Base64( RSA_ciphertext(256B) || AES_GCM_ciphertext )
+ *
+ * 1. RSA-OAEP decrypts the first 256 bytes → AES key (32B) + IV (12B)
+ * 2. AES-256-GCM decrypts the remaining bytes (includes 16B auth tag)
+ *
+ * @param encryptedBase64 - Base64-encoded hybrid-encrypted data
  * @returns Decrypted plaintext string
  */
 export function decrypt(encryptedBase64: string): string {
@@ -85,16 +90,48 @@ export function decrypt(encryptedBase64: string): string {
   }
 
   try {
-    const encryptedBuffer = Buffer.from(encryptedBase64, 'base64');
+    const combined = Buffer.from(encryptedBase64, 'base64');
 
-    const decrypted = crypto.privateDecrypt(
+    // RSA-2048 produces 256-byte ciphertext
+    const RSA_CIPHERTEXT_LEN = 256;
+
+    if (combined.length <= RSA_CIPHERTEXT_LEN) {
+      throw new Error(`Encrypted data too short: ${combined.length} bytes`);
+    }
+
+    // 1. Split: RSA envelope (256B) || AES ciphertext (rest)
+    const rsaCiphertext = combined.subarray(0, RSA_CIPHERTEXT_LEN);
+    const aesCiphertextWithTag = combined.subarray(RSA_CIPHERTEXT_LEN);
+
+    // 2. RSA-OAEP decrypt the envelope → aesKey (32B) + iv (12B)
+    const envelope = crypto.privateDecrypt(
       {
         key: keyPair.privateKey,
         padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: 'sha256',
       },
-      encryptedBuffer
+      rsaCiphertext
     );
+
+    if (envelope.length !== 44) {
+      throw new Error(`Unexpected envelope size: ${envelope.length} (expected 44)`);
+    }
+
+    const aesKey = envelope.subarray(0, 32);
+    const iv = envelope.subarray(32, 44);
+
+    // 3. AES-256-GCM decrypt (last 16 bytes of ciphertext are the auth tag)
+    const AUTH_TAG_LEN = 16;
+    const ciphertextOnly = aesCiphertextWithTag.subarray(0, aesCiphertextWithTag.length - AUTH_TAG_LEN);
+    const authTag = aesCiphertextWithTag.subarray(aesCiphertextWithTag.length - AUTH_TAG_LEN);
+
+    const decipher = crypto.createDecipheriv('aes-256-gcm', aesKey, iv);
+    decipher.setAuthTag(authTag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(ciphertextOnly),
+      decipher.final(),
+    ]);
 
     return decrypted.toString('utf-8');
   } catch (error) {

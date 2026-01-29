@@ -83,10 +83,10 @@ if [[ "$NITRO_CLI_AVAILABLE" == true ]]; then
     echo "These values should be recorded for attestation verification:"
     echo ""
 
-    nitro-cli describe-eif --eif-file "$EIF_FILE"
+    nitro-cli describe-eif --eif-path "$EIF_FILE"
 
     # Save measurements to file
-    nitro-cli describe-eif --eif-file "$EIF_FILE" > "$OUTPUT_DIR/measurements.json"
+    nitro-cli describe-eif --eif-path "$EIF_FILE" > "$OUTPUT_DIR/measurements.json"
     echo ""
     echo "Measurements saved to: $OUTPUT_DIR/measurements.json"
 else
