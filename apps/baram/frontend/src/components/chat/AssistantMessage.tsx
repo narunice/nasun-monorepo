@@ -12,6 +12,9 @@ interface MessageMetadata {
   teeVerified?: boolean;
   txDigest?: string;
   resultHash?: string;
+  teeType?: number;
+  pcr0?: string;
+  attestationVerified?: boolean;
 }
 
 interface AssistantMessageProps {
@@ -169,6 +172,7 @@ export function AssistantMessage({
       {showReceipt && metadata?.requestId !== undefined && (
         <ECRReceipt
           requestId={metadata.requestId}
+          metadata={metadata}
           onClose={() => setShowReceipt(false)}
         />
       )}

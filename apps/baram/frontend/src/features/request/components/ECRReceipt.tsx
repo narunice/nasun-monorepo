@@ -6,8 +6,21 @@ import { useECR } from '../hooks/useECR';
 import { TierBadge } from '@/components/badges/TierBadge';
 import { NETWORK_CONFIG, TEE_TYPES, type TeeType } from '@/config/network';
 
+// Local metadata fallback when on-chain ECR is unavailable
+interface LocalMetadata {
+  requestId?: number;
+  executionTimeMs?: number;
+  teeVerified?: boolean;
+  txDigest?: string;
+  resultHash?: string;
+  teeType?: number;
+  pcr0?: string;
+  attestationVerified?: boolean;
+}
+
 interface ECRReceiptProps {
   requestId: number;
+  metadata?: LocalMetadata;
   onClose: () => void;
 }
 
@@ -76,12 +89,15 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export function ECRReceipt({ requestId, onClose }: ECRReceiptProps) {
+export function ECRReceipt({ requestId, metadata, onClose }: ECRReceiptProps) {
   const { ecr, isLoading, error } = useECR(requestId);
 
   const explorerUrl = ecr
     ? `${NETWORK_CONFIG.explorerUrl}/object/${ecr.objectId}`
     : null;
+
+  // Show local data when on-chain ECR is not available
+  const hasLocalData = !ecr && metadata && (metadata.resultHash || metadata.teeType);
 
   return (
     // Backdrop
@@ -138,7 +154,7 @@ export function ECRReceipt({ requestId, onClose }: ECRReceiptProps) {
             </div>
           )}
 
-          {!isLoading && !error && !ecr && (
+          {!isLoading && !error && !ecr && !hasLocalData && (
             <div className="py-8 text-center">
               <svg className="w-8 h-8 mx-auto text-[var(--color-text-muted)] mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -148,6 +164,95 @@ export function ECRReceipt({ requestId, onClose }: ECRReceiptProps) {
                 The compliance record is created after settlement.
               </p>
             </div>
+          )}
+
+          {!isLoading && !error && hasLocalData && metadata && (
+            <>
+              {/* Local Data Notice */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] mb-1">
+                <svg className="w-4 h-4 text-[var(--color-text-muted)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  On-chain record pending. Showing local execution data.
+                </p>
+              </div>
+
+              {/* Execution */}
+              <Section title="Execution">
+                {metadata.executionTimeMs !== undefined && (
+                  <Row label="Time">{(metadata.executionTimeMs / 1000).toFixed(2)}s</Row>
+                )}
+                {metadata.resultHash && (
+                  <CopyableHash hash={metadata.resultHash} label="Result Hash" />
+                )}
+              </Section>
+
+              {/* Environment */}
+              {metadata.teeType !== undefined && metadata.teeType > 0 && (
+                <Section title="Environment">
+                  <Row label="TEE">
+                    <span className="flex items-center gap-1.5">
+                      {TEE_TYPES[metadata.teeType as TeeType] || `Type ${metadata.teeType}`}
+                      {metadata.attestationVerified !== undefined && (
+                        metadata.attestationVerified ? (
+                          <svg className="w-3.5 h-3.5 text-[var(--color-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 text-[var(--color-error)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )
+                      )}
+                    </span>
+                  </Row>
+                  {metadata.attestationVerified !== undefined && (
+                    <Row label="Attestation">{metadata.attestationVerified ? 'Verified' : 'Unverified'}</Row>
+                  )}
+                  {metadata.pcr0 && (
+                    <CopyableHash hash={metadata.pcr0} label="PCR0" />
+                  )}
+                </Section>
+              )}
+
+              {/* Settlement Status */}
+              <Section title="Settlement">
+                <Row label="Status">
+                  {metadata.txDigest ? (
+                    <span className="text-[var(--color-success)]">Settled</span>
+                  ) : (
+                    <span className="text-[var(--color-text-muted)]">Pending</span>
+                  )}
+                </Row>
+                {metadata.txDigest && (
+                  <CopyableHash hash={metadata.txDigest} label="TX Digest" />
+                )}
+              </Section>
+
+              {/* Footer */}
+              <div className="border-t border-[var(--color-border)] pt-4 mt-4 flex items-center justify-between">
+                {metadata.txDigest && (
+                  <a
+                    href={`${NETWORK_CONFIG.explorerUrl}/tx/${metadata.txDigest}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-baram-1 hover:text-baram-2 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    View on Explorer
+                  </a>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors px-3 py-1 rounded border border-[var(--color-border)]"
+                >
+                  Close
+                </button>
+              </div>
+            </>
           )}
 
           {ecr && (

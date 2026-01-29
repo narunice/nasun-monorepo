@@ -14,6 +14,10 @@ export interface MessageMetadata {
   teeVerified?: boolean;
   txDigest?: string;
   resultHash?: string;
+  // TEE attestation data (for local compliance record display)
+  teeType?: number;
+  pcr0?: string;
+  attestationVerified?: boolean;
 }
 
 // Single chat message

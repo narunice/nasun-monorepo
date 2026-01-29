@@ -25,6 +25,10 @@ export interface RequestResult {
   resultHash: string;
   txDigest: string;
   executionTimeMs: number;
+  // TEE attestation data (from executor response)
+  teeType?: number;
+  pcr0?: string;
+  attestationVerified?: boolean;
 }
 
 export interface CreateRequestOptions {
@@ -188,13 +192,16 @@ export function useCreateRequest(): UseCreateRequestReturn {
         throw new Error(executeResult.error || 'Execution failed');
       }
 
-      // 7. Set result
+      // 7. Set result (include TEE attestation data if available)
       setResult({
         requestId,
         result: executeResult.result,
         resultHash: executeResult.resultHash,
         txDigest: executeResult.txDigest,
         executionTimeMs: executeResult.executionTimeMs,
+        teeType: executor.teeType > 0 ? executor.teeType : undefined,
+        pcr0: executeResult.attestation?.pcrs?.pcr0,
+        attestationVerified: executeResult.attestationVerification?.valid,
       });
       setStatus('completed');
 
