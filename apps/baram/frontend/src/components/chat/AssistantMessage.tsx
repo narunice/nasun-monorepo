@@ -2,13 +2,16 @@
  * AssistantMessage - AI response with Gemini-style layout (no bubble)
  */
 
+import { useState } from 'react';
 import { NETWORK_CONFIG } from '@/config/network';
+import { ECRReceipt } from '@/features/request/components/ECRReceipt';
 
 interface MessageMetadata {
   requestId?: number;
   executionTimeMs?: number;
   teeVerified?: boolean;
   txDigest?: string;
+  resultHash?: string;
 }
 
 interface AssistantMessageProps {
@@ -26,6 +29,8 @@ export function AssistantMessage({
   isProcessing = false,
   isTeeExecutor = false,
 }: AssistantMessageProps) {
+  const [showReceipt, setShowReceipt] = useState(false);
+
   const timeString = timestamp?.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -129,10 +134,43 @@ export function AssistantMessage({
                     View on Explorer
                   </a>
                 )}
+                {metadata.requestId !== undefined && (
+                  metadata.teeVerified ? (
+                    <button
+                      onClick={() => setShowReceipt(true)}
+                      className="flex items-center gap-1 text-xs transition-colors text-[var(--color-text-muted)] hover:text-baram-1"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Compliance Record
+                    </button>
+                  ) : (
+                    <span className="relative group inline-flex">
+                      <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] opacity-40 cursor-not-allowed">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Compliance Record
+                      </span>
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 text-xs rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
+                        Only created for TEE-protected executions
+                      </span>
+                    </span>
+                  )
+                )}
               </div>
             </div>
           )}
         </>
+      )}
+
+      {/* ECR Receipt Modal */}
+      {showReceipt && metadata?.requestId !== undefined && (
+        <ECRReceipt
+          requestId={metadata.requestId}
+          onClose={() => setShowReceipt(false)}
+        />
       )}
     </div>
   );

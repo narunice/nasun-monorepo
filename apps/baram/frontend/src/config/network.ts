@@ -33,6 +33,11 @@ export const EXECUTOR_CONFIG = {
   tierRegistryId: import.meta.env.VITE_TIER_REGISTRY_ID || BARAM.tierRegistry,
 } as const;
 
+// Compliance (ECR) Configuration
+export const COMPLIANCE_CONFIG = {
+  packageId: import.meta.env.VITE_COMPLIANCE_PACKAGE_ID || BARAM.compliancePackageId,
+} as const;
+
 // Tier definitions — Compliance Eligibility Signal
 export const TIER_NAMES = ['Open', 'Bronze', 'Silver', 'Gold'] as const;
 export type TierLevel = 0 | 1 | 2 | 3;

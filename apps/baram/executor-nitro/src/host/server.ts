@@ -20,6 +20,15 @@ import express, { Request, Response, NextFunction } from 'express';
 import { VsockClient, getVsockClient } from './vsock-client.js';
 import { HOST_HTTP_PORT, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { verifyAttestationDocument, type VerificationResult } from '../enclave/attestation.js';
+import {
+  initSuiClient,
+  getRequest,
+  getExecutorAddress,
+  getExecutorStats,
+  submitProofWithCompliance,
+  sha256Bytes,
+  type SuiConfig,
+} from './sui-client.js';
 
 /**
  * HTTP Server configuration
@@ -28,9 +37,10 @@ interface ServerConfig {
   port: number;
   enclaveHost: string;
   enclavePort: number;
+  sui?: SuiConfig;
 }
 
-const DEFAULT_CONFIG: ServerConfig = {
+const DEFAULT_CONFIG: Omit<ServerConfig, 'sui'> = {
   port: HOST_HTTP_PORT,
   enclaveHost: 'localhost', // In production, would be vsock CID
   enclavePort: 5050,
@@ -48,6 +58,20 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
     host: serverConfig.enclaveHost,
     port: serverConfig.enclavePort,
   });
+
+  // Initialize Sui client for on-chain settlement + compliance
+  let suiEnabled = false;
+  if (serverConfig.sui) {
+    try {
+      initSuiClient(serverConfig.sui);
+      suiEnabled = true;
+      console.log('[Host/Server] Sui settlement enabled');
+    } catch (err) {
+      console.warn('[Host/Server] Sui settlement disabled:', err instanceof Error ? err.message : err);
+    }
+  } else {
+    console.warn('[Host/Server] Sui config not provided, settlement disabled');
+  }
 
   // Middleware
   app.use(express.json());
@@ -215,11 +239,57 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         console.log('[Host/Server] No raw attestation document (simulation mode)');
       }
 
+      // On-chain settlement + compliance record (atomic PTB)
+      let txDigest: string | undefined;
+
+      if (suiEnabled) {
+        try {
+          const onChainRequest = await getRequest(requestId);
+          if (!onChainRequest) {
+            console.warn(`[Host/Server] On-chain request ${requestId} not found, skipping settlement`);
+          } else {
+            const executorAddress = getExecutorAddress();
+            const executorStats = await getExecutorStats(executorAddress);
+
+            // Build compliance data from attestation + executor stats
+            const pcr0Bytes: number[] = attestation.pcrs?.pcr0
+              ? Array.from(Buffer.from(attestation.pcrs.pcr0, 'hex'))
+              : [];
+            const attestationHashBytes = sha256Bytes(attestation.rawDocument || '');
+
+            txDigest = await submitProofWithCompliance(
+              requestId,
+              response.payload.resultHash,
+              response.payload.executionTimeMs,
+              onChainRequest,
+              {
+                teeType: 1, // AWS Nitro
+                pcr0: pcr0Bytes,
+                attestationHash: attestationHashBytes,
+                pcrBaselineVersion: 0,
+                pcrVerified: attestationVerification?.valid ?? false,
+                executorReputation: executorStats.reputation,
+                executorStakeAmount: executorStats.stakeAmount,
+                executorSlashCount: executorStats.slashCount,
+                executorTier: executorStats.tier,
+              },
+            );
+
+            console.log(`[Host/Server] Settlement completed: ${txDigest}`);
+          }
+        } catch (settlementError) {
+          // Settlement failure should not block returning the result to the user.
+          // The result is already computed; settlement can be retried separately.
+          console.error('[Host/Server] Settlement failed (result still returned):', settlementError);
+        }
+      }
+
       res.json({
         success: true,
         result: response.payload.result,
         resultHash: response.payload.resultHash,
         executionTimeMs: response.payload.executionTimeMs,
+        txDigest,
         attestation: response.payload.attestation,
         attestationVerification: attestationVerification ? {
           valid: attestationVerification.valid,
@@ -261,11 +331,42 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
 }
 
 /**
+ * Build SuiConfig from environment variables.
+ * Returns undefined if required vars are missing.
+ */
+function buildSuiConfigFromEnv(): SuiConfig | undefined {
+  const rpcUrl = process.env.SUI_RPC_URL;
+  const packageId = process.env.BARAM_PACKAGE_ID;
+  const registryId = process.env.BARAM_REGISTRY_ID;
+  const executorPrivateKey = process.env.EXECUTOR_PRIVATE_KEY;
+
+  if (!rpcUrl || !packageId || !registryId || !executorPrivateKey) {
+    return undefined;
+  }
+
+  return {
+    rpcUrl,
+    packageId,
+    registryId,
+    executorPrivateKey,
+    compliancePackageId: process.env.COMPLIANCE_PACKAGE_ID || '',
+    complianceRegistryId: process.env.COMPLIANCE_REGISTRY_ID || '',
+    executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
+  };
+}
+
+/**
  * Start the HTTP server
  */
 export function startServer(config: Partial<ServerConfig> = {}): void {
   const serverConfig = { ...DEFAULT_CONFIG, ...config };
-  const app = createServer(config);
+
+  // Auto-detect Sui config from env if not provided
+  if (!serverConfig.sui) {
+    serverConfig.sui = buildSuiConfigFromEnv();
+  }
+
+  const app = createServer(serverConfig);
 
   app.listen(serverConfig.port, () => {
     console.log(`[Host/Server] HTTP server listening on port ${serverConfig.port}`);

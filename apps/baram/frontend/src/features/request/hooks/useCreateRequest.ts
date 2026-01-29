@@ -159,13 +159,15 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
 
-      // Use RSA-OAEP encryption for TEE executors, Base64 for others
-      const isTeeExecutor = executor.teeType > 0;
-      const encryptedPrompt = isTeeExecutor
+      // Use RSA-OAEP encryption only for TEE-local models on TEE executors
+      // Cloud models (Groq, OpenAI) don't need TEE encryption — they bypass the enclave
+      const isTeeModel = modelConfig.provider === 'tee';
+      const needsTeeEncryption = isTeeModel && executor.teeType > 0;
+      const encryptedPrompt = needsTeeEncryption
         ? await encryptPromptForTEE(textToSend, executorUrl)
         : encodePrompt(textToSend);
 
-      console.log('Calling executor:', executorUrl, isTeeExecutor ? '(TEE)' : '(non-TEE)');
+      console.log('Calling executor:', executorUrl, needsTeeEncryption ? '(TEE encrypted)' : '(plaintext)');
 
       const executeResponse = await fetch(executorUrl + '/execute', {
         method: 'POST',
@@ -203,6 +205,8 @@ export function useCreateRequest(): UseCreateRequestReturn {
       console.error('Request failed:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       setStatus('error');
+      // Re-throw so callers (e.g., App.tsx retry loop) can catch and re-roll
+      throw err;
     }
   }, [signer, address]);
 

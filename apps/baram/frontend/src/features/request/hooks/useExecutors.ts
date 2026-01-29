@@ -160,17 +160,20 @@ async function fetchTierMap(client: SuiClient): Promise<Map<string, number>> {
  *
  * @param executors - Full executor list from useExecutors()
  * @param excludeIds - Executor IDs to exclude (e.g., previously failed)
+ * @param minTier - Override MIN_TIER (e.g., 0 for cloud models that don't need TEE)
  * @returns Selected executor, or null if no eligible executors
  */
 export function selectExecutorWeightedRandom(
   executors: ExecutorInfo[],
   excludeIds: Set<string> = new Set(),
+  minTier?: TierLevel,
 ): ExecutorInfo | null {
   const { BASE_WEIGHT, REPUTATION_BONUS, MAX_WEIGHT, DORMANT_PENALTY, MIN_TIER } = EXECUTOR_SELECTION;
+  const effectiveMinTier = minTier ?? MIN_TIER;
 
-  // Filter eligible set: active, tier >= MIN_TIER, not excluded
+  // Filter eligible set: active, tier >= effectiveMinTier, not excluded
   const eligible = executors.filter(
-    e => e.isActive && e.tier >= MIN_TIER && !excludeIds.has(e.id),
+    e => e.isActive && e.tier >= effectiveMinTier && !excludeIds.has(e.id),
   );
 
   if (eligible.length === 0) return null;
