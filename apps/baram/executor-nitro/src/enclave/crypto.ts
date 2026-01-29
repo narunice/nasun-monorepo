@@ -135,6 +135,17 @@ export function decrypt(encryptedBase64: string): string {
 
     return decrypted.toString('utf-8');
   } catch (error) {
+    // Fallback: treat as base64-encoded plaintext (non-encrypted prompt)
+    try {
+      const plaintext = Buffer.from(encryptedBase64, 'base64').toString('utf-8');
+      // Sanity check: valid UTF-8 text should not contain null bytes
+      if (plaintext.length > 0 && !plaintext.includes('\0')) {
+        console.warn('[Enclave/Crypto] Hybrid decryption failed, using plaintext fallback');
+        return plaintext;
+      }
+    } catch {
+      // Fallback also failed
+    }
     console.error('[Enclave/Crypto] Decryption failed:', error);
     throw new Error('Decryption failed - invalid encrypted data or wrong key');
   }
