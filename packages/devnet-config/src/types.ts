@@ -60,6 +60,21 @@ export interface BaramConfig {
   executorPackageId: ObjectId;
   executorRegistry: ObjectId;
   executorAdminCap: ObjectId;
+  executorUpgradeCap: ObjectId;
+  // Staking (Phase D-4)
+  stakingConfig: ObjectId;
+  stakingRegistry: ObjectId;
+  stakingAdminCap: ObjectId;
+  // Attestation
+  attestationPackageId: ObjectId;
+  attestationRegistry: ObjectId;
+  attestationAdminCap: ObjectId;
+  attestationUpgradeCap: ObjectId;
+  // Compliance (ECR)
+  compliancePackageId: ObjectId;
+  complianceRegistry: ObjectId;
+  complianceAdminCap: ObjectId;
+  complianceUpgradeCap: ObjectId;
   nusdcType: CoinType;
 }
 
