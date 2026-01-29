@@ -17,6 +17,7 @@ export interface Message {
     executionTimeMs?: number;
     teeVerified?: boolean;
     txDigest?: string;
+    resultHash?: string;
   };
 }
 

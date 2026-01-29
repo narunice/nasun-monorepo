@@ -13,6 +13,9 @@ let executorKeypair: Ed25519Keypair | null = null;
 // Contract configuration
 let BARAM_PACKAGE_ID = '';
 let BARAM_REGISTRY_ID = '';
+let COMPLIANCE_PACKAGE_ID = '';
+let COMPLIANCE_REGISTRY_ID = '';
+let EXECUTOR_REGISTRY_ID = '';
 
 /**
  * Initialize Sui client and executor keypair
@@ -22,10 +25,16 @@ export function initSui(config: {
   packageId: string;
   registryId: string;
   executorPrivateKey: string;
+  compliancePackageId?: string;
+  complianceRegistryId?: string;
+  executorRegistryId?: string;
 }): void {
   suiClient = new SuiClient({ url: config.rpcUrl });
   BARAM_PACKAGE_ID = config.packageId;
   BARAM_REGISTRY_ID = config.registryId;
+  COMPLIANCE_PACKAGE_ID = config.compliancePackageId || '';
+  COMPLIANCE_REGISTRY_ID = config.complianceRegistryId || '';
+  EXECUTOR_REGISTRY_ID = config.executorRegistryId || '';
 
   // Private key is hex-encoded 32-byte seed
   executorKeypair = Ed25519Keypair.fromSecretKey(
@@ -256,6 +265,169 @@ export async function submitProof(
 
   console.log(`[Sui] Proof submitted successfully: ${result.digest}`);
   return result.digest;
+}
+
+/**
+ * Compliance data for create_record call
+ */
+export interface ComplianceData {
+  teeType: number;
+  pcr0: number[];
+  attestationHash: number[];
+  pcrBaselineVersion: number;
+  pcrVerified: boolean;
+  executorReputation: number;
+  executorStakeAmount: number;
+  executorSlashCount: number;
+  executorTier: number;
+}
+
+/**
+ * Submit proof + create compliance record in the same PTB (atomic).
+ * Used for TEE executions that require compliance recording.
+ */
+export async function submitProofWithCompliance(
+  requestId: number,
+  resultHash: string,
+  executionTimeMs: number,
+  request: ComputeRequestOnChain,
+  compliance: ComplianceData,
+): Promise<string> {
+  if (!COMPLIANCE_PACKAGE_ID || !COMPLIANCE_REGISTRY_ID) {
+    console.warn('[Sui] Compliance not configured, falling back to submitProof');
+    return submitProof(requestId, resultHash, executionTimeMs);
+  }
+
+  const client = getClient();
+  const keypair = getKeypair();
+
+  console.log(`[Sui] Submitting proof + compliance record for request ${requestId}`);
+
+  const tx = new Transaction();
+
+  const resultHashBytes = Array.from(Buffer.from(resultHash, 'hex'));
+  const promptHashBytes = Array.isArray(request.promptHash)
+    ? request.promptHash
+    : Array.from(Buffer.from(request.promptHash, 'hex'));
+
+  // Call 1: submit_proof (settlement + payment)
+  tx.moveCall({
+    target: `${BARAM_PACKAGE_ID}::baram::submit_proof`,
+    arguments: [
+      tx.object(BARAM_REGISTRY_ID),
+      tx.pure.u64(requestId),
+      tx.pure.vector('u8', resultHashBytes),
+      tx.pure.u64(executionTimeMs),
+      tx.object('0x6'), // Clock
+    ],
+  });
+
+  // Call 2: create_record (compliance — same PTB for atomicity)
+  tx.moveCall({
+    target: `${COMPLIANCE_PACKAGE_ID}::compliance::create_record`,
+    arguments: [
+      tx.object(COMPLIANCE_REGISTRY_ID),       // registry
+      tx.pure.u64(requestId),                  // request_id
+      tx.pure.address(request.requester),      // requester
+      tx.pure.address(request.executor),       // executor
+      tx.pure.string(request.model),           // model
+      tx.pure.vector('u8', promptHashBytes),   // prompt_hash
+      tx.pure.vector('u8', resultHashBytes),   // result_hash
+      tx.pure.u64(executionTimeMs),            // execution_time_ms
+      tx.pure.u8(compliance.teeType),          // tee_type
+      tx.pure.vector('u8', compliance.pcr0),   // pcr0
+      tx.pure.vector('u8', compliance.attestationHash), // attestation_hash
+      tx.pure.u64(compliance.pcrBaselineVersion),       // pcr_baseline_version
+      tx.pure.bool(compliance.pcrVerified),    // pcr_verified
+      tx.pure.u64(compliance.executorReputation),       // executor_reputation
+      tx.pure.u64(compliance.executorStakeAmount),      // executor_stake_amount
+      tx.pure.u64(compliance.executorSlashCount),       // executor_slash_count
+      tx.pure.u8(compliance.executorTier),     // executor_tier
+      tx.pure.u64(request.price),              // payment_amount
+      tx.pure.u64(request.createdAt),          // request_created_at
+      tx.object('0x6'),                        // Clock
+    ],
+  });
+
+  const result = await client.signAndExecuteTransaction({
+    signer: keypair,
+    transaction: tx,
+    options: {
+      showEffects: true,
+      showEvents: true,
+    },
+  });
+
+  if (result.effects?.status?.status !== 'success') {
+    const error = result.effects?.status?.error || 'Unknown error';
+    throw new Error(`Transaction failed: ${error}`);
+  }
+
+  console.log(`[Sui] Proof + compliance record submitted: ${result.digest}`);
+  return result.digest;
+}
+
+/**
+ * Fetch executor stats from ExecutorRegistry for compliance snapshots.
+ * Returns defaults if registry is not configured or fetch fails.
+ */
+export async function getExecutorStats(executorAddress: string): Promise<{
+  reputation: number;
+  slashCount: number;
+  stakeAmount: number;
+  tier: number;
+}> {
+  const defaults = { reputation: 0, slashCount: 0, stakeAmount: 0, tier: 0 };
+
+  if (!EXECUTOR_REGISTRY_ID) {
+    console.warn('[Sui] ExecutorRegistry not configured, using defaults');
+    return defaults;
+  }
+
+  const client = getClient();
+
+  try {
+    const registry = await client.getObject({
+      id: EXECUTOR_REGISTRY_ID,
+      options: { showContent: true },
+    });
+
+    if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+      return defaults;
+    }
+
+    const fields = registry.data.content.fields as Record<string, unknown>;
+    const executorsTable = fields.executors as { fields?: { id?: { id: string } } };
+    const tableId = executorsTable?.fields?.id?.id;
+
+    if (!tableId) return defaults;
+
+    const fieldData = await client.getDynamicFieldObject({
+      parentId: tableId,
+      name: { type: 'address', value: executorAddress },
+    });
+
+    if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
+      return defaults;
+    }
+
+    const content = fieldData.data.content.fields as Record<string, unknown>;
+    const valueWrapper = content.value as { fields?: Record<string, unknown> } | Record<string, unknown>;
+    const value = ('fields' in valueWrapper && valueWrapper.fields)
+      ? valueWrapper.fields
+      : valueWrapper as Record<string, unknown>;
+
+    const v = value as Record<string, unknown>;
+    return {
+      reputation: Number(v['reputation'] || 0),
+      slashCount: Number(v['failed_jobs'] || 0),
+      stakeAmount: 0, // StakingRegistry lookup deferred — requires separate query
+      tier: 0,        // TierRegistry lookup deferred — requires separate query
+    };
+  } catch (error) {
+    console.warn('[Sui] Failed to fetch executor stats:', error);
+    return defaults;
+  }
 }
 
 /**

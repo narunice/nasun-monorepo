@@ -116,6 +116,9 @@ async function initialize(): Promise<void> {
     packageId: process.env.BARAM_PACKAGE_ID || '',
     registryId: process.env.BARAM_REGISTRY_ID || '',
     executorPrivateKey: executorPrivateKey!,
+    compliancePackageId: process.env.COMPLIANCE_PACKAGE_ID || '',
+    complianceRegistryId: process.env.COMPLIANCE_REGISTRY_ID || '',
+    executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
   });
 
   initialized = true;

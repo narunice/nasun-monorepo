@@ -20,7 +20,7 @@ import { useCreateRequest } from './features/request/hooks/useCreateRequest';
 import { useExecutors, selectExecutorWeightedRandom, ExecutorInfo } from './features/request/hooks/useExecutors';
 import { useAttestation } from './features/request/hooks/useAttestation';
 import { AttestationDisplay } from './features/request/components/AttestationDisplay';
-import { NETWORK_CONFIG, ModelId, DEFAULT_MODEL, EXECUTOR_SELECTION } from './config/network';
+import { NETWORK_CONFIG, ModelId, DEFAULT_MODEL, EXECUTOR_SELECTION, MODEL_PRICING, type TierLevel } from './config/network';
 import { useChatStore } from './stores/chatStore';
 import type { Message } from './types/chat';
 import AuthCallback from './pages/AuthCallback';
@@ -58,8 +58,14 @@ function AppContent() {
   const prevAddressRef = useRef<string | null>(null);
 
   // External hooks
-  const { executors } = useExecutors();
+  const { executors, isLoading: executorsLoading, error: executorsError } = useExecutors();
   const { status: requestStatus, error, result, createRequest, reset } = useCreateRequest();
+
+  // Model provider determines executor tier requirement
+  // Cloud models (groq, openai) can use any active executor (tier >= 0)
+  // TEE local models require Bronze+ (tier >= 1)
+  const modelProvider = MODEL_PRICING[selectedModel as ModelId]?.provider;
+  const requiredMinTier: TierLevel = modelProvider === 'tee' ? 1 : 0;
 
   // Auto-assign executor via weighted random
   const [selectedExecutor, setSelectedExecutor] = useState<ExecutorInfo | null>(null);
@@ -67,19 +73,33 @@ function AppContent() {
 
   const assignedExecutor = useMemo(() => {
     if (executors.length === 0) return null;
-    return selectExecutorWeightedRandom(executors, failedExecutorIds);
-  }, [executors, failedExecutorIds]);
+    return selectExecutorWeightedRandom(executors, failedExecutorIds, requiredMinTier);
+  }, [executors, failedExecutorIds, requiredMinTier]);
 
   useEffect(() => {
     if (assignedExecutor && !selectedExecutor) {
+      console.log('[App] Auto-assigned executor:', assignedExecutor.name, `(tier=${assignedExecutor.tier})`);
       setSelectedExecutor(assignedExecutor);
     }
   }, [assignedExecutor, selectedExecutor]);
 
-  // Attestation for selected executor
+  // Debug: log executor fetch results
+  useEffect(() => {
+    if (!executorsLoading) {
+      console.log('[App] Executors loaded:', {
+        total: executors.length,
+        active: executors.filter(e => e.isActive).length,
+        eligible: executors.filter(e => e.isActive && e.tier >= 1).length,
+        error: executorsError,
+      });
+    }
+  }, [executors, executorsLoading, executorsError]);
+
+  // Attestation: only fetch for TEE local models (cloud models skip TEE endpoint)
+  const needsAttestation = modelProvider === 'tee';
   const attestation = useAttestation(
-    selectedExecutor?.endpointUrl || null,
-    selectedExecutor?.teeType || 0
+    needsAttestation ? (selectedExecutor?.endpointUrl || null) : null,
+    needsAttestation ? (selectedExecutor?.teeType || 0) : 0
   );
 
   // Handle wallet connect/disconnect
@@ -123,8 +143,9 @@ function AppContent() {
         metadata: {
           requestId: result.requestId,
           executionTimeMs: result.executionTimeMs,
-          teeVerified: (selectedExecutor?.teeType ?? 0) > 0,
+          teeVerified: (selectedExecutor?.teeType ?? 0) > 0 && MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee',
           txDigest: result.txDigest,
+          resultHash: result.resultHash,
         },
       });
       reset();
@@ -164,7 +185,7 @@ function AppContent() {
       } catch {
         console.warn(`[App] Executor ${currentExecutor.name} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
         excluded.add(currentExecutor.id);
-        currentExecutor = selectExecutorWeightedRandom(executors, excluded);
+        currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier);
         if (currentExecutor) {
           setSelectedExecutor(currentExecutor);
         }
@@ -211,7 +232,13 @@ function AppContent() {
       <ChatInput
         onSubmit={handleSubmit}
         disabled={isProcessing || !isConnected || !selectedExecutor}
-        placeholder={!isConnected ? 'Connect wallet to start...' : 'Ask anything...'}
+        placeholder={
+          !isConnected ? 'Connect wallet to start...'
+          : executorsLoading ? 'Loading executors...'
+          : executorsError ? 'Failed to load executors'
+          : !selectedExecutor ? 'No eligible executors available'
+          : 'Ask anything...'
+        }
       />
 
       {/* Footer Info */}
@@ -270,7 +297,7 @@ function AppContent() {
             messages={uiMessages}
             isProcessing={isProcessing}
             processingStatus={requestStatus}
-            isTeeExecutor={(selectedExecutor?.teeType ?? 0) > 0}
+            isTeeExecutor={(selectedExecutor?.teeType ?? 0) > 0 && MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee'}
           />
           {/* Attestation Info (collapsed) */}
           {selectedExecutor && attestation.isVerified && (
