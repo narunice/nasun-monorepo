@@ -43,6 +43,7 @@ export interface SuiConfig {
   compliancePackageId: string;
   complianceRegistryId: string;
   executorRegistryId: string;
+  attestationRegistryId: string;
 }
 
 let client: SuiClient | null = null;
@@ -194,6 +195,79 @@ export async function getExecutorStats(executorAddress: string): Promise<{
   } catch (error) {
     console.warn('[Sui] Failed to fetch executor stats:', error);
     return defaults;
+  }
+}
+
+/**
+ * Fetch active PCR baseline from AttestationRegistry.
+ * Returns null if registry not configured or no active baseline.
+ */
+export async function getAttestationBaseline(): Promise<{
+  version: number;
+  pcr0: string; // hex
+  pcr1: string; // hex
+  pcr2: string; // hex
+} | null> {
+  const sui = getClient();
+  const cfg = getConfig();
+
+  if (!cfg.attestationRegistryId) return null;
+
+  try {
+    const registry = await sui.getObject({
+      id: cfg.attestationRegistryId,
+      options: { showContent: true },
+    });
+
+    if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+      return null;
+    }
+
+    const fields = registry.data.content.fields as Record<string, unknown>;
+    const currentVersion = Number(fields['current_version'] || 0);
+    if (currentVersion === 0) {
+      console.log('[Sui] No active attestation baseline (version=0)');
+      return null;
+    }
+
+    // Fetch baseline from Table<u64, PCRBaseline>
+    const baselinesTable = fields['baselines'] as { fields?: { id?: { id: string } } };
+    const tableId = baselinesTable?.fields?.id?.id;
+    if (!tableId) return null;
+
+    const baselineField = await sui.getDynamicFieldObject({
+      parentId: tableId,
+      name: { type: 'u64', value: currentVersion.toString() },
+    });
+
+    if (!baselineField.data?.content || baselineField.data.content.dataType !== 'moveObject') {
+      return null;
+    }
+
+    const bfFields = baselineField.data.content.fields as Record<string, unknown>;
+    const valueWrapper = bfFields['value'] as { fields?: Record<string, unknown> } | Record<string, unknown>;
+    const v = ('fields' in valueWrapper && valueWrapper.fields)
+      ? valueWrapper.fields as Record<string, unknown>
+      : valueWrapper as Record<string, unknown>;
+
+    const bytesToHex = (bytes: unknown): string => {
+      if (Array.isArray(bytes)) return Buffer.from(bytes).toString('hex');
+      if (typeof bytes === 'string') return bytes;
+      return '';
+    };
+
+    const baseline = {
+      version: currentVersion,
+      pcr0: bytesToHex(v['pcr0']),
+      pcr1: bytesToHex(v['pcr1']),
+      pcr2: bytesToHex(v['pcr2']),
+    };
+
+    console.log(`[Sui] Loaded attestation baseline v${baseline.version} (pcr0: ${baseline.pcr0.slice(0, 16)}...)`);
+    return baseline;
+  } catch (error) {
+    console.warn('[Sui] Failed to fetch attestation baseline:', error);
+    return null;
   }
 }
 

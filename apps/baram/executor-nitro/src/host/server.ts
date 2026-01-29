@@ -25,6 +25,7 @@ import {
   getRequest,
   getExecutorAddress,
   getExecutorStats,
+  getAttestationBaseline,
   submitProofWithCompliance,
   sha256Bytes,
   type SuiConfig,
@@ -209,6 +210,22 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         requestId
       );
 
+      // Load expected PCRs from on-chain AttestationRegistry (if Sui enabled)
+      let expectedPcrs: { pcr0?: string; pcr1?: string; pcr2?: string } | undefined;
+      let baselineVersion = 0;
+
+      if (suiEnabled) {
+        try {
+          const baseline = await getAttestationBaseline();
+          if (baseline) {
+            expectedPcrs = { pcr0: baseline.pcr0, pcr1: baseline.pcr1, pcr2: baseline.pcr2 };
+            baselineVersion = baseline.version;
+          }
+        } catch (baselineError) {
+          console.warn('[Host/Server] Failed to load PCR baseline:', baselineError);
+        }
+      }
+
       // Verify attestation if raw document is present (production Nitro mode)
       let attestationVerification: VerificationResult | undefined;
       const attestation = response.payload.attestation;
@@ -216,11 +233,9 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       if (attestation.rawDocument) {
         try {
           const rawDocBuffer = Buffer.from(attestation.rawDocument, 'base64');
-          // TODO: Load expected PCRs from on-chain registry
-          // For now, just verify signature and certificate chain
           attestationVerification = verifyAttestationDocument(
             rawDocBuffer,
-            undefined, // expectedPcrs - will be loaded from on-chain in production
+            expectedPcrs,
             5 * 60 * 1000 // 5 minutes max age
           );
           console.log('[Host/Server] Attestation verification:', attestationVerification.valid ? 'PASSED' : 'FAILED');
@@ -266,7 +281,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
                 teeType: 1, // AWS Nitro
                 pcr0: pcr0Bytes,
                 attestationHash: attestationHashBytes,
-                pcrBaselineVersion: 0,
+                pcrBaselineVersion: baselineVersion,
                 pcrVerified: attestationVerification?.valid ?? false,
                 executorReputation: executorStats.reputation,
                 executorStakeAmount: executorStats.stakeAmount,
@@ -352,6 +367,7 @@ function buildSuiConfigFromEnv(): SuiConfig | undefined {
     compliancePackageId: process.env.COMPLIANCE_PACKAGE_ID || '',
     complianceRegistryId: process.env.COMPLIANCE_REGISTRY_ID || '',
     executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
+    attestationRegistryId: process.env.ATTESTATION_REGISTRY_ID || '',
   };
 }
 
