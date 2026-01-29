@@ -90,12 +90,7 @@
   },
   "myAccount": "My Account",
   "wallet": {
-    "connect_sui_wallet": "Connect SUI Wallet",
-    "connect_iota_wallet": "Connect IOTA Wallet",
     "connect_metamask_wallet": "Connect MetaMask",
-    "search_accounts": "Search accounts...",
-    "no_account_found": "No account found.",
-    "disconnect": "Disconnect",
     "connecting": "Connecting...",
     "metamask_not_installed": "MetaMask is not installed. Please install MetaMask extension.",
     "cannot_disconnect_only_method": "Cannot disconnect. This is your only login method. Use the Logout button in the navigation bar to sign out.",

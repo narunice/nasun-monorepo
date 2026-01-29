@@ -264,7 +264,7 @@ export function BlacklistManagement() {
                   variant="destructive"
                   onClick={handleBanConfirm}
                   disabled={isBanning}
-                  className="bg-red-600 hover:bg-red-700"
+                  className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   {isBanning ? "Banning..." : "Confirm Ban"}
                 </Button>

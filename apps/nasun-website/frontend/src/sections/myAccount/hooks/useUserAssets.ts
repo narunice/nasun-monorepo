@@ -1,4 +1,5 @@
-import { useCurrentAccount as useCurrentSuiAccount, useSuiClientQuery } from "@mysten/dapp-kit";
+import { useWalletAccount } from "@nasun/wallet";
+import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useEthereumNFTs } from "@/features/wallet";
 
 interface UseUserAssetsProps {
@@ -6,7 +7,7 @@ interface UseUserAssetsProps {
 }
 
 export const useUserAssets = ({ walletAddress }: UseUserAssetsProps) => {
-  const suiAccount = useCurrentSuiAccount();
+  const suiAccount = useWalletAccount();
 
   // Sui 오브젝트 쿼리
   const {

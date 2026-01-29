@@ -84,8 +84,7 @@
     "myAssets": "MY ASSETS",
     "noObject": "No NASUN objects were found.",
     "ethereumNFTs": "Ethereum NFTs",
-    "suiObjects": "Sui Objects",
-    "iotaObjects": "IOTA Objects"
+    "suiObjects": "Nasun NFTs"
   },
   "nft": {
     "tier": "TIER",
@@ -176,8 +175,7 @@
     "error": "An error occurred while deleting the account: {{error}}"
   },
   "loading": "Loading...",
-  "loadingSui": "Error loading SUI objects:",
-  "loadingIota": "Error loading IOTA objects:",
+  "loadingSui": "Error loading Nasun NFTs:",
   "loadingEthereum": "Error loading Ethereum NFTs:",
   "walletNotConnected": "Wallet not connected."
 }
