@@ -8,6 +8,8 @@ import { SolutionFlowDiagram } from "./diagrams/SolutionFlowDiagram";
 import { SolutionFlowDetailDiagram } from "./diagrams/SolutionFlowDetailDiagram";
 import { TrustModelDiagram } from "./diagrams/TrustModelDiagram";
 import { TrustModelDetailDiagram } from "./diagrams/TrustModelDetailDiagram";
+import { ExecutorDiagram } from "./diagrams/ExecutorDiagram";
+import { ExecutorDetailDiagram } from "./diagrams/ExecutorDetailDiagram";
 
 interface DiagramSectionProps {
   title: string;
@@ -123,6 +125,18 @@ export default function BaramContent() {
           headline={t("trust.headline")}
           overview={<TrustModelDiagram />}
           detail={<TrustModelDetailDiagram />}
+          viewLabel={t("common.viewDetails")}
+          hideLabel={t("common.hideDetails")}
+        />
+      </SectionLayout>
+
+      {/* Section 4: Executor Infrastructure */}
+      <SectionLayout>
+        <DiagramSection
+          title={t("executor.sectionTitle")}
+          headline={t("executor.headline")}
+          overview={<ExecutorDiagram />}
+          detail={<ExecutorDetailDiagram />}
           viewLabel={t("common.viewDetails")}
           hideLabel={t("common.hideDetails")}
         />

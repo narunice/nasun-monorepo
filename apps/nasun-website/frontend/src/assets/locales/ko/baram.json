@@ -154,6 +154,75 @@
       }
     }
   },
+  "executor": {
+    "sectionTitle": "Executor 인프라",
+    "headline": "소프트웨어가 아닙니다. 인프라입니다.",
+    "cards": {
+      "teeWorkers": {
+        "title": "TEE Workers",
+        "description": "AI는 Nitro Enclave 내부에서 실행됩니다. 호스트조차 프롬프트를 볼 수 없습니다."
+      },
+      "stakeEarn": {
+        "title": "Stake & Earn",
+        "description": "NASUN을 스테이킹하여 자격을 얻고, 정산된 요청마다 NUSDC를 받습니다. 스테이킹은 자격 기준이지, 선택 빈도가 아닙니다."
+      },
+      "tierSystem": {
+        "title": "티어 시스템",
+        "description": "Bronze / Silver / Gold — 스테이킹과 평판 모두 충족해야 합니다. 티어는 자격 필터이지 우선순위가 아닙니다."
+      },
+      "autoSelection": {
+        "title": "공정한 선택",
+        "description": "가중치 상한이 있는 가중 랜덤 배정. 신규 Executor도 평판 500에서 시작하여 첫날부터 경쟁력이 있습니다."
+      }
+    },
+    "detail": {
+      "lifecycle": {
+        "title": "Executor 라이프사이클"
+      },
+      "tiers": {
+        "title": "티어 기준",
+        "formula": "tier = min(stake_tier, reputation_tier)",
+        "headers": {
+          "tier": "티어",
+          "stake": "최소 스테이킹",
+          "reputation": "최소 평판",
+          "eligible": "자격"
+        },
+        "rows": {
+          "open": { "tier": "Open (0)", "stake": "—", "reputation": "—", "eligible": "불가" },
+          "bronze": { "tier": "Bronze (1)", "stake": "1,000 NASUN", "reputation": "300", "eligible": "가능" },
+          "silver": { "tier": "Silver (2)", "stake": "5,000 NASUN", "reputation": "500", "eligible": "가능" },
+          "gold": { "tier": "Gold (3)", "stake": "10,000 NASUN", "reputation": "700", "eligible": "가능" }
+        },
+        "note": "티어는 자격 필터이지 선택 우선순위가 아닙니다. 같은 평판의 Gold Executor와 Bronze Executor는 동일한 선택 가중치를 가집니다."
+      },
+      "selection": {
+        "title": "선택 알고리즘",
+        "formula": "weight = min(0.3 + (reputation / 1000), 1.0)",
+        "items": [
+          "Bronze 이상만 자격 풀에 진입 — 스테이킹은 자격 기준이지 가중치가 아닙니다",
+          "가중치 상한 1.0 — 어떤 Executor도 평판만으로 독점할 수 없습니다",
+          "신규 Executor는 평판 500에서 시작 (가중치 0.8) — 첫날부터 경쟁력 있음",
+          "기본 가중치 0.3이 모든 자격 있는 Executor에게 공정한 기회를 보장합니다",
+          "사용자는 Executor를 선택할 수 없습니다 — 시스템이 가중 랜덤으로 배정합니다"
+        ]
+      },
+      "slashing": {
+        "title": "슬래싱 규칙",
+        "headers": {
+          "violation": "위반 유형",
+          "penalty": "스테이킹 패널티",
+          "reputation": "평판"
+        },
+        "rows": {
+          "timeout": { "violation": "실행 타임아웃", "penalty": "5%", "reputation": "-20" },
+          "attestation": { "violation": "증명 실패", "penalty": "10%", "reputation": "-20" },
+          "fraud": { "violation": "사기 / 조작", "penalty": "100%", "reputation": "-20" }
+        },
+        "dormancy": "30일간 완료된 작업이 없는 Executor는 하루에 평판 1씩 감소합니다."
+      }
+    }
+  },
   "common": {
     "viewDetails": "기술 상세 보기",
     "hideDetails": "상세 닫기"
