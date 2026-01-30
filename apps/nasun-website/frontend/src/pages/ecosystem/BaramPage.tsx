@@ -11,10 +11,7 @@ export default function BaramPage() {
   return (
     <ErrorBoundary>
       <PageLayout className="!bg-nasun-white">
-        <div
-          className="baram-light-theme"
-          style={{ backgroundColor: "#faf7f4", color: "#191615" }}
-        >
+        <div className="baram-light-theme bg-gradient-to-b from-nasun-white via-[#fdf9f3] to-[#f5f0ea] text-nasun-black">
           <Suspense fallback={<SectionLoading fullScreen />}>
             <BaramContent />
           </Suspense>
