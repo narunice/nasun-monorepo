@@ -310,7 +310,7 @@
 
 @layer components {
   /* Baram page light theme overrides */
-  .baram-light-theme h1,
+  .baram-light-theme h1:not(.text-transparent),
   .baram-light-theme h2,
   .baram-light-theme h3,
   .baram-light-theme h4,
