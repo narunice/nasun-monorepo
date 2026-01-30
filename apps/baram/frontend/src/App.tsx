@@ -66,6 +66,7 @@ function AppContent() {
   // TEE local models require Bronze+ (tier >= 1)
   const modelProvider = MODEL_PRICING[selectedModel as ModelId]?.provider;
   const requiredMinTier: TierLevel = modelProvider === 'tee' ? 1 : 0;
+  const needsAttestation = modelProvider === 'tee';
 
   // Auto-assign executor via weighted random
   const [selectedExecutor, setSelectedExecutor] = useState<ExecutorInfo | null>(null);
@@ -73,8 +74,10 @@ function AppContent() {
 
   const assignedExecutor = useMemo(() => {
     if (executors.length === 0) return null;
-    return selectExecutorWeightedRandom(executors, failedExecutorIds, requiredMinTier, selectedModel);
-  }, [executors, failedExecutorIds, requiredMinTier, selectedModel]);
+    // TEE models must only use TEE executors (teeType > 0)
+    const pool = needsAttestation ? executors.filter(e => e.teeType > 0) : executors;
+    return selectExecutorWeightedRandom(pool, failedExecutorIds, requiredMinTier, selectedModel);
+  }, [executors, failedExecutorIds, requiredMinTier, selectedModel, needsAttestation]);
 
   useEffect(() => {
     if (!assignedExecutor) return;
@@ -98,7 +101,6 @@ function AppContent() {
   }, [executors, executorsLoading, executorsError]);
 
   // Attestation: only fetch for TEE local models (cloud models skip TEE endpoint)
-  const needsAttestation = modelProvider === 'tee';
   const attestation = useAttestation(
     needsAttestation ? (selectedExecutor?.endpointUrl || null) : null,
     needsAttestation ? (selectedExecutor?.teeType || 0) : 0
