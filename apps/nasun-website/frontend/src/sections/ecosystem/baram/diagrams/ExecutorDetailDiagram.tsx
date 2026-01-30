@@ -31,7 +31,7 @@ export function ExecutorDetailDiagram() {
         <h4 className="text-nasun-black font-semibold mb-4">
           {t("executor.detail.lifecycle.title")}
         </h4>
-        <MermaidDiagram svg={executorLifecycleSvg} alt="Executor Lifecycle Diagram" />
+        <MermaidDiagram svg={executorLifecycleSvg} alt="Executor Lifecycle Diagram" className="max-h-[600px] overflow-y-auto" />
       </div>
 
       {/* Tier Thresholds */}

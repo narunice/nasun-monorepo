@@ -10,21 +10,10 @@ export function TrustModelDetailDiagram() {
     returnObjects: true,
   }) as string[];
 
-  const stateKeys = [
-    "pending",
-    "executing",
-    "completed",
-    "cancelled",
-    "timedOut",
-  ] as const;
+  const stateKeys = ["pending", "executing", "completed", "cancelled", "timedOut"] as const;
 
   const tierKeys = ["open", "bronze", "silver", "gold"] as const;
-  const tierColors = [
-    "text-nasun-black/40",
-    "text-yellow-600",
-    "text-gray-500",
-    "text-orange-600",
-  ];
+  const tierColors = ["text-nasun-black/40", "text-yellow-600", "text-gray-500", "text-orange-600"];
 
   const slashKeys = ["timeout", "attestation", "fraud"] as const;
   const slashColors = ["text-yellow-600", "text-orange-600", "text-red-600"];
@@ -37,10 +26,12 @@ export function TrustModelDetailDiagram() {
     <div className="space-y-8">
       {/* Hardware Isolation */}
       <div className="bg-green-50/50 border border-green-400/20 rounded-xl p-5 shadow-sm">
-        <h4 className="text-nasun-black font-semibold mb-4">
-          {t("trust.detail.hardware.title")}
-        </h4>
-        <MermaidDiagram svg={teeSecuritySvg} alt="TEE Security Boundary Diagram" />
+        <h4 className="text-nasun-black font-semibold mb-4">{t("trust.detail.hardware.title")}</h4>
+        <MermaidDiagram
+          svg={teeSecuritySvg}
+          alt="TEE Security Boundary Diagram"
+          className="overflow-x-auto [&>svg]:!w-[2520px] [&>svg]:max-w-none [&>svg]:h-auto"
+        />
         <div className="space-y-2 mt-4">
           {zones.map((zone, i) => {
             const zoneColors = [
@@ -50,26 +41,23 @@ export function TrustModelDetailDiagram() {
               "border-green-400/20 bg-green-50",
             ];
             return (
-              <div
-                key={i}
-                className={`border ${zoneColors[i]} rounded-lg px-4 py-3`}
-              >
+              <div key={i} className={`border ${zoneColors[i]} rounded-lg px-4 py-3`}>
                 <span className="text-nasun-black/60 text-xs font-mono">{zone}</span>
               </div>
             );
           })}
         </div>
-        <p className="text-nasun-black/40 text-xs mt-3 italic">
-          {t("trust.detail.hardware.note")}
-        </p>
+        <p className="text-nasun-black/40 text-xs mt-3 italic">{t("trust.detail.hardware.note")}</p>
       </div>
 
       {/* Escrow State Machine */}
       <div className="bg-orange-50/50 border border-orange-400/20 rounded-xl p-5 shadow-sm">
-        <h4 className="text-nasun-black font-semibold mb-4">
-          {t("trust.detail.escrow.title")}
-        </h4>
-        <MermaidDiagram svg={escrowStateSvg} alt="Escrow State Machine Diagram" />
+        <h4 className="text-nasun-black font-semibold mb-4">{t("trust.detail.escrow.title")}</h4>
+        <MermaidDiagram
+          svg={escrowStateSvg}
+          alt="Escrow State Machine Diagram"
+          className="[&>svg]:max-w-[68%] [&>svg]:mx-auto"
+        />
         <div className="space-y-2 mt-4">
           {stateKeys.map((key) => {
             const stateColors: Record<string, string> = {
@@ -97,12 +85,8 @@ export function TrustModelDetailDiagram() {
 
       {/* Staking & Tier */}
       <div className="bg-purple-50/50 border border-purple-400/20 rounded-xl p-5 shadow-sm">
-        <h4 className="text-nasun-black font-semibold mb-2">
-          {t("trust.detail.stake.title")}
-        </h4>
-        <p className="text-nasun-c4 text-sm font-mono mb-4">
-          {t("trust.detail.stake.formula")}
-        </p>
+        <h4 className="text-nasun-black font-semibold mb-2">{t("trust.detail.stake.title")}</h4>
+        <p className="text-nasun-c4 text-sm font-mono mb-4">{t("trust.detail.stake.formula")}</p>
 
         <div className="space-y-2 mb-4">
           {tierKeys.map((key, i) => (

@@ -1,45 +1,53 @@
-flowchart TB
+flowchart LR
     subgraph Browser["Browser (User Device)"]
+        direction TB
         Prompt[Plaintext Prompt]
         GenAES[Generate AES-256-GCM Key]
         PubKey[Executor RSA Public Key]
-        EncPrompt[E2E Encrypted Ciphertext — AES + RSA]
+        EncPrompt[E2E Encrypted Ciphertext]
         DecryptResp[AES-GCM Decrypt Response]
         PlainResp[Plaintext Response]
+
+        Prompt --> GenAES
+        GenAES --> EncPrompt
+        DecryptResp --> PlainResp
     end
 
     subgraph Network["Network (Untrusted)"]
+        direction TB
         HTTPS_Up[HTTPS Transport — Ciphertext Only]
         HTTPS_Down[HTTPS Transport — Ciphertext Only]
     end
 
     subgraph Host["EC2 Host (Untrusted)"]
+        direction TB
         API[HTTP Server — Cannot decrypt]
         VsockProxy[vsock Proxy — CID 16 Port 5000]
+
+        API --> VsockProxy
     end
 
     subgraph Enclave["Nitro Enclave (Trusted)"]
+        direction TB
         PrivKey[RSA-2048 Private Key — Never leaves enclave]
-        DecryptEngine[RSA Unwrap AES Key + AES Decrypt Prompt]
+        DecryptEngine[RSA Unwrap AES Key + AES Decrypt]
         LLM[Inference — llama.cpp local]
         AttestNSM[NSM Attestation — PCR0 PCR1 PCR2]
-        EncResult[AES-GCM Encrypt Response — Same Key]
+        EncResult[AES-GCM Encrypt Response]
+
+        DecryptEngine --> LLM
+        LLM --> EncResult
     end
 
-    Prompt --> GenAES
-    GenAES --> EncPrompt
     EncPrompt --> HTTPS_Up
     HTTPS_Up --> API
-    API --> VsockProxy
     VsockProxy --> DecryptEngine
-    DecryptEngine --> LLM
-    LLM --> EncResult
     EncResult --> VsockProxy
     VsockProxy --> API
     API --> HTTPS_Down
     HTTPS_Down --> DecryptResp
-    DecryptResp --> PlainResp
 
     style Enclave fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
     style Host fill:#fff9c4,stroke:#f57f17
     style Browser fill:#e3f2fd,stroke:#1565c0
+    style Network fill:#f3e5f5,stroke:#7b1fa2
