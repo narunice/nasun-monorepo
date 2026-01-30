@@ -1,8 +1,9 @@
 flowchart TD
     Start(( )) --> Pending
     Pending --> Executing
-    Pending --> Cancelled
+    Pending -->|"User Cancel"| Cancelled
     Executing --> Completed
+    Executing -->|"Auto-Cancel on Failure"| Cancelled
     Executing --> TimedOut
     Completed --> End(( ))
     Cancelled --> End
@@ -11,7 +12,7 @@ flowchart TD
     Pending(["STATUS 0<br/>NUSDC locked in escrow"])
     Executing(["STATUS 1<br/>TEE processing (5min timeout)"])
     Completed(["STATUS 2<br/>Settlement complete (+10 rep)"])
-    Cancelled(["STATUS 3<br/>User cancelled (full refund)"])
+    Cancelled(["STATUS 3<br/>Cancelled (full refund)"])
     TimedOut(["STATUS 4<br/>Executor failed (-20 rep)"])
 
     style Pending fill:#e3f2fd,stroke:#1565c0

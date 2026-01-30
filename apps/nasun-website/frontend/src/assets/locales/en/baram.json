@@ -127,7 +127,7 @@
           "pending": "NUSDC locked, awaiting executor assignment",
           "executing": "TEE processing, 5-minute timeout",
           "completed": "Proof verified, NUSDC released to executor",
-          "cancelled": "User-initiated refund before execution",
+          "cancelled": "Refund — user cancel or auto-cancel on failure",
           "timedOut": "Executor failed, full refund + slashing"
         }
       },
