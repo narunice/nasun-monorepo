@@ -140,19 +140,6 @@ export const MODEL_PRICING = {
     description: 'Large model via Groq Cloud',
     provider: 'groq',
   },
-  'mistral-saba-24b': {
-    name: 'Mistral Saba 24B (Groq)',
-    price: 100_000, // 0.1 NUSDC
-    description: 'Mistral Saba model via Groq',
-    provider: 'groq',
-  },
-  // OpenAI models (paid)
-  'gpt-4o-mini': {
-    name: 'GPT-4o Mini (OpenAI)',
-    price: 100_000, // 0.1 NUSDC
-    description: 'OpenAI GPT-4o Mini',
-    provider: 'openai',
-  },
   // TEE Local (when TEE is running)
   'llama-3.2-3b-local': {
     name: 'Llama 3.2 3B (TEE)',
