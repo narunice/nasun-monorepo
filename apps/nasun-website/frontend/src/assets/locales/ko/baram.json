@@ -3,7 +3,7 @@
     "title": "Baram",
     "subtitle": "AI Compliance Settlement Layer",
     "tagline": "감사 가능한 AI.",
-    "description": "모든 프롬프트는 암호화됩니다. 모든 실행은 기록됩니다. 모든 결제는 보장됩니다.",
+    "description": "모든 프롬프트는 암호화됩니다. 모든 응답도 암호화됩니다. 모든 실행은 기록됩니다. 모든 결제는 보장됩니다.",
     "target": "감사 가능한 AI가 필요한 개발자, 기업, 규제 환경을 위해."
   },
   "problem": {
@@ -12,7 +12,7 @@
     "cards": {
       "privacy": {
         "title": "프라이버시 없음",
-        "description": "프롬프트가 평문으로 통제할 수 없는 서버에 전송됩니다."
+        "description": "프롬프트와 응답이 평문으로 통제할 수 없는 서버를 통해 전송됩니다."
       },
       "payment": {
         "title": "결제 보장 없음",
@@ -32,9 +32,9 @@
       },
       "rows": {
         "privacy": {
-          "aspect": "프롬프트 프라이버시",
+          "aspect": "E2E 프라이버시",
           "traditional": "서버에 평문 전송",
-          "baram": "RSA-OAEP 암호화, TEE 내부에서만 복호화"
+          "baram": "E2E 암호화 — 프롬프트와 응답 모두 사용자와 TEE만 복호화"
         },
         "payment": {
           "aspect": "결제",
@@ -64,7 +64,7 @@
     "headline": "암호화. 실행. 정산. 기록.",
     "steps": {
       "prompt": { "title": "프롬프트 입력", "subtitle": "사용자" },
-      "encrypt": { "title": "암호화", "subtitle": "RSA-OAEP" },
+      "encrypt": { "title": "암호화", "subtitle": "E2E AES+RSA" },
       "select": { "title": "자동 선택", "subtitle": "가중 랜덤" },
       "tee": { "title": "TEE 추론", "subtitle": "Nitro Enclave" },
       "settle": { "title": "정산", "subtitle": "NUSDC 지급" },
@@ -81,7 +81,7 @@
       "layers": {
         "frontend": {
           "title": "프론트엔드 레이어",
-          "items": ["React + Zustand UI", "RSA-OAEP 암호화", "트랜잭션 빌더", "자동 Executor 선택"]
+          "items": ["React + Zustand UI", "E2E 암호화 (AES-256-GCM + RSA-OAEP)", "트랜잭션 빌더", "자동 Executor 선택"]
         },
         "blockchain": {
           "title": "블록체인 레이어 (Nasun L1)",
@@ -89,7 +89,7 @@
         },
         "tee": {
           "title": "TEE Executor 레이어",
-          "items": ["EC2 Host — HTTP 서버 + vsock 프록시", "Nitro Enclave — RSA 복호화 + LLM 추론", "NSM Attestation — COSE_Sign1 + PCR 해시", "로컬 LLaMA 3.2 3B — 완전 프라이버시 모드"]
+          "items": ["EC2 Host — HTTP 서버 + vsock 프록시", "Nitro Enclave — E2E 복호화, LLM 추론, E2E 응답 암호화", "NSM Attestation — COSE_Sign1 + PCR 해시", "로컬 LLaMA 3.2 3B — 완전 프라이버시 모드"]
         }
       }
     }
@@ -100,7 +100,7 @@
     "pillars": {
       "hardware": {
         "title": "하드웨어 격리",
-        "description": "프롬프트는 AWS Nitro Enclave 내부에서만 복호화됩니다. 개인키는 TEE를 떠나지 않습니다."
+        "description": "프롬프트와 응답 모두 E2E 암호화됩니다. TEE와 브라우저에서만 복호화됩니다. 호스트는 평문을 볼 수 없습니다."
       },
       "escrow": {
         "title": "에스크로 정산",
@@ -118,8 +118,8 @@
     "detail": {
       "hardware": {
         "title": "신뢰 경계",
-        "zones": ["브라우저 (신뢰) — 평문 프롬프트 + RSA 암호화", "네트워크 (비신뢰) — HTTPS를 통한 암호문만 전송", "호스트 (비신뢰) — HTTP 서버 + vsock 프록시, 복호화 불가", "Enclave (신뢰) — RSA 개인키 + LLM + NSM 증명"],
-        "note": "NSM 증명은 Enclave 신원을 PCR 해시에 바인딩하고, 온체인 베이스라인과 대조 검증합니다."
+        "zones": ["브라우저 (신뢰) — AES 키 생성, 프롬프트 암호화, 응답 복호화", "네트워크 (비신뢰) — HTTPS를 통한 암호문만 전송", "호스트 (비신뢰) — HTTP 서버 + vsock 프록시, 암호문만 통과", "Enclave (신뢰) — 프롬프트 복호화, LLM 추론, 동일 AES 키로 응답 암호화"],
+        "note": "E2E 암호화로 사용자의 브라우저와 TEE만 평문을 볼 수 있습니다. 호스트, 네트워크, 블록체인은 프롬프트와 응답 내용에 접근할 수 없습니다."
       },
       "escrow": {
         "title": "에스크로 상태 머신",
@@ -160,7 +160,7 @@
     "cards": {
       "teeWorkers": {
         "title": "TEE Workers",
-        "description": "AI는 Nitro Enclave 내부에서 실행됩니다. 호스트조차 프롬프트를 볼 수 없습니다."
+        "description": "AI는 Nitro Enclave 내부에서 실행됩니다. 호스트조차 프롬프트와 응답을 볼 수 없습니다."
       },
       "stakeEarn": {
         "title": "Stake & Earn",
