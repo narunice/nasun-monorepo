@@ -27,6 +27,7 @@ export interface Message {
   content: string;
   timestamp: number; // Unix timestamp for easier serialization
   metadata?: MessageMetadata;
+  failed?: boolean; // true if request processing failed (user messages only)
 }
 
 // Chat session (conversation thread)
@@ -99,7 +100,7 @@ export interface ChatActions {
   clearAllSessions: () => Promise<void>;
 
   // Message management
-  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
+  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => string;
   updateMessage: (id: string, updates: Partial<Message>) => void;
 
   // Settings

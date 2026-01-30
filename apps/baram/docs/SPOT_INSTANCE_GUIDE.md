@@ -370,7 +370,9 @@ curl -X POST http://<NEW_IP>:3000/execute \
 | `Cannot find module 'dist/host/main.js'` | TypeScript not built | `npm run build` or `npx tsc` |
 | `Connecting to Enclave via TCP` | Missing `USE_VSOCK=true` | `export USE_VSOCK=true` |
 | `Connection refused` on vsock | Enclave not running | `./scripts/run-enclave.sh --force --background` |
+| `Connection refused` after EIF rebuild | CID changed (16→17...) | Update `ENCLAVE_CID` in systemd service (see Known Issues) |
 | `Settlement disabled` | .env not sourced | `set -a && source .env && set +a` |
+| `Sui config not provided, settlement disabled` | .env file missing after `git pull` | Recreate .env from AWS Secrets Manager + devnet-ids.json (see Known Issues) |
 | Wrong entry point | Using `server.js` | Use `main.js` instead |
 
 ### Attestation fails
@@ -442,17 +444,95 @@ Any change to source code, npm dependencies, Docker base image, or model weights
 produces a different EIF hash and PCR0. Always check PCR0 after building a new EIF
 and register a new on-chain baseline if it changed.
 
+### Enclave CID Changes After Restart
+
+When you terminate and re-create an Enclave (e.g., after rebuilding EIF), the CID increments
+(16 → 17 → 18...). The systemd service has `ENCLAVE_CID=16` hardcoded.
+
+**Fix:** Update the service file after each Enclave restart:
+
+```bash
+# Check new CID
+nitro-cli describe-enclaves | jq '.[].EnclaveCID'
+
+# Update systemd
+sudo sed -i "s/ENCLAVE_CID=[0-9]*/ENCLAVE_CID=<NEW_CID>/" /etc/systemd/system/baram-host.service
+sudo systemctl daemon-reload
+sudo systemctl restart baram-host
+```
+
+**TODO**: Auto-detect CID in `main.ts` or `run-enclave.sh` output to avoid manual updates.
+
 ### Spot Instance Termination
 
 AWS can reclaim spot instances with 2 minutes notice. The instance ID and IP will change.
 Save logs and note the PCR values before they are lost.
 
-### .env is Gitignored
+### .env is Gitignored — Lost After `git pull`
 
 The `.env` file (containing private key and contract IDs) is not tracked in git.
-It must be present on the instance for settlement to work. The current AMI
-(`ami-0488cb25dd63317af`) has `.env` baked in. If the repo is freshly cloned
-(not just `git pull`), you must copy `.env` from a backup or fill in `.env.example`.
+It must be present on the instance for settlement to work.
+
+**Problem:** When deploying new code with `git pull`, the `.env` file is preserved.
+However, if the working directory is reset (`git checkout .`, `git clean`, or fresh clone),
+`.env` is deleted and settlement silently stops working. The Host logs will show:
+`[Host/Server] Sui config not provided, settlement disabled`.
+
+**Recovery procedure:**
+
+```bash
+# 1. Get executor private key from AWS Secrets Manager
+aws secretsmanager get-secret-value \
+  --secret-id baram/executor \
+  --query 'SecretString' --output text | python3 -c "
+import sys, json
+print(json.load(sys.stdin)['privateKey'])
+"
+
+# 2. Get contract IDs from devnet-ids.json
+cat packages/devnet-config/devnet-ids.json | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+b = d['baram']
+print(f'BARAM_PACKAGE_ID={b[\"packageId\"]}')
+print(f'BARAM_REGISTRY_ID={b[\"registry\"]}')
+print(f'COMPLIANCE_PACKAGE_ID={b[\"compliancePackageId\"]}')
+print(f'COMPLIANCE_REGISTRY_ID={b[\"complianceRegistry\"]}')
+print(f'EXECUTOR_REGISTRY_ID={b[\"executorRegistry\"]}')
+print(f'ATTESTATION_PACKAGE_ID={b[\"attestationPackageId\"]}')
+print(f'ATTESTATION_REGISTRY_ID={b[\"attestationRegistry\"]}')
+print(f'STAKING_REGISTRY_ID={b[\"stakingRegistry\"]}')
+print(f'TIER_REGISTRY_ID={b[\"tierRegistry\"]}')
+"
+
+# 3. Create .env file (combine the above outputs)
+cat > apps/baram/executor-nitro/.env << 'EOF'
+SUI_RPC_URL=https://rpc.devnet.nasun.io
+BARAM_PACKAGE_ID=<from step 2>
+BARAM_REGISTRY_ID=<from step 2>
+EXECUTOR_PRIVATE_KEY=<from step 1>
+COMPLIANCE_PACKAGE_ID=<from step 2>
+COMPLIANCE_REGISTRY_ID=<from step 2>
+EXECUTOR_REGISTRY_ID=<from step 2>
+ATTESTATION_PACKAGE_ID=<from step 2>
+ATTESTATION_REGISTRY_ID=<from step 2>
+STAKING_REGISTRY_ID=<from step 2>
+TIER_REGISTRY_ID=<from step 2>
+EOF
+
+# 4. Restart Host service
+sudo systemctl restart baram-host
+
+# 5. Verify settlement is enabled
+sudo journalctl -u baram-host -n 5 --no-pager | grep -E "settlement|Sui"
+# Expected: "[Host/Server] Sui settlement enabled"
+```
+
+**Prevention:** Always verify `.env` exists after any git operation that resets files:
+
+```bash
+ls -la apps/baram/executor-nitro/.env || echo "WARNING: .env missing!"
+```
 
 ---
 

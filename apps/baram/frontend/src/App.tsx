@@ -47,6 +47,7 @@ function AppContent() {
   // Chat store
   const messages = useChatStore((state) => state.messages);
   const addMessage = useChatStore((state) => state.addMessage);
+  const updateMessage = useChatStore((state) => state.updateMessage);
   const createSession = useChatStore((state) => state.createSession);
   const activeSessionId = useChatStore((state) => state.activeSessionId);
   const selectedModel = useChatStore((state) => state.selectedModel);
@@ -171,7 +172,7 @@ function AppContent() {
     const previousMessages = [...messages];
 
     // Add user message
-    addMessage({
+    const userMessageId = addMessage({
       role: 'user',
       content: prompt,
     });
@@ -199,7 +200,8 @@ function AppContent() {
       }
     }
 
-    // All retries exhausted — error is already set by createRequest
+    // All retries exhausted — mark user message as failed
+    updateMessage(userMessageId, { failed: true });
     setFailedExecutorIds(excluded);
   }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, messages, executors]);
 

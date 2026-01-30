@@ -45,9 +45,9 @@ export function buildTeeContext(
     ...config,
   };
 
-  // Get recent messages (user and assistant only)
+  // Get recent messages (user and assistant only, exclude failed)
   const relevantMessages = messages
-    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.failed)
     .slice(-maxRecentMessages);
 
   // Build context messages with token budget

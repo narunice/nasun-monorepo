@@ -253,6 +253,8 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
     } else {
       console.warn('[ChatStore] addMessage: cannot save to IndexedDB, missing wallet or session', { currentWalletAddress: !!currentWalletAddress, activeSessionId });
     }
+
+    return newMessage.id;
   },
 
   updateMessage: (id: string, updates: Partial<Message>) => {
