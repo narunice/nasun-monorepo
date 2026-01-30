@@ -54,3 +54,22 @@ export function buildCreateRequestTransaction(params: BuildRequestParams): Trans
 
   return tx;
 }
+
+/**
+ * Build a cancel_request transaction to release escrow funds
+ *
+ * Used for auto-cancel when executor fails to respond.
+ * Only works when request status is PENDING and before timeout.
+ */
+export function buildCancelRequestTransaction(requestId: number): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::baram::cancel_request`,
+    arguments: [
+      tx.object(BARAM_CONFIG.registryId),
+      tx.pure.u64(requestId),
+      tx.object('0x6'), // Clock
+    ],
+  });
+  return tx;
+}

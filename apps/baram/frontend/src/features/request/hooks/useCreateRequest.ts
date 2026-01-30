@@ -13,11 +13,11 @@ import type { ExecutorInfo } from './useExecutors';
 import { sha256, hexToBytes, encodePrompt } from '@/utils/encoding';
 import { encryptPromptForTEE, decryptResponseFromTEE } from '@/utils/tee';
 import { getNusdcCoins } from '../services/coinService';
-import { buildCreateRequestTransaction } from '../services/transactionBuilder';
+import { buildCreateRequestTransaction, buildCancelRequestTransaction } from '../services/transactionBuilder';
 import { buildContextWithPrompt, formatContextForTee } from '@/services/contextBuilder';
 import type { Message } from '@/types/chat';
 
-export type RequestStatus = 'idle' | 'creating' | 'executing' | 'completed' | 'error';
+export type RequestStatus = 'idle' | 'creating' | 'executing' | 'cancelling' | 'completed' | 'error';
 
 export interface RequestResult {
   requestId: number;
@@ -171,25 +171,47 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       console.log('Calling executor:', executorUrl, needsTeeEncryption ? '(TEE encrypted)' : '(plaintext)');
 
-      const executeResponse = await fetch(executorUrl + '/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestId,
-          encryptedPrompt,
-          model,
-        }),
-      });
+      let executeResult;
+      try {
+        const executeResponse = await fetch(executorUrl + '/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId,
+            encryptedPrompt,
+            model,
+          }),
+        });
 
-      if (!executeResponse.ok) {
-        const errorData = await executeResponse.json();
-        throw new Error(errorData.error || 'Execution failed');
-      }
+        if (!executeResponse.ok) {
+          const errorData = await executeResponse.json();
+          throw new Error(errorData.error || 'Execution failed');
+        }
 
-      const executeResult = await executeResponse.json();
+        executeResult = await executeResponse.json();
 
-      if (!executeResult.success) {
-        throw new Error(executeResult.error || 'Execution failed');
+        if (!executeResult.success) {
+          throw new Error(executeResult.error || 'Execution failed');
+        }
+      } catch (executeError) {
+        // Execution failed — auto-cancel to release escrow immediately
+        console.warn(`[useCreateRequest] Execution failed, auto-cancelling request #${requestId}`);
+        setStatus('cancelling');
+        try {
+          const cancelTx = buildCancelRequestTransaction(requestId);
+          cancelTx.setSender(address);
+          const cancelTxBytes = await cancelTx.build({ client });
+          const { signature: cancelSig } = await signer.sign(cancelTxBytes);
+          await client.executeTransactionBlock({
+            transactionBlock: cancelTxBytes,
+            signature: cancelSig,
+          });
+          console.log(`[useCreateRequest] Auto-cancelled request #${requestId}, escrow released`);
+        } catch (cancelError) {
+          // Cancel failed — escrow still recoverable via claim_timeout_refund after 5 min
+          console.error('[useCreateRequest] Auto-cancel failed (timeout refund available):', cancelError);
+        }
+        throw executeError;
       }
 
       // 7. Decrypt E2E-encrypted response if applicable
