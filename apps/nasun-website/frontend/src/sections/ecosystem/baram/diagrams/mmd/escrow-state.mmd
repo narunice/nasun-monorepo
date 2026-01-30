@@ -10,9 +10,9 @@ flowchart TD
 
     Pending(["STATUS 0<br/>NUSDC locked in escrow"])
     Executing(["STATUS 1<br/>TEE processing (5min timeout)"])
-    Completed(["STATUS 2<br/>Settlement complete (+20 rep)"])
+    Completed(["STATUS 2<br/>Settlement complete (+10 rep)"])
     Cancelled(["STATUS 3<br/>User cancelled (full refund)"])
-    TimedOut(["STATUS 4<br/>Executor failed (-30 rep)"])
+    TimedOut(["STATUS 4<br/>Executor failed (-20 rep)"])
 
     style Pending fill:#e3f2fd,stroke:#1565c0
     style Executing fill:#fff3e0,stroke:#e65100
