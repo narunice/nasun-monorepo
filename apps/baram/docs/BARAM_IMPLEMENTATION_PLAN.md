@@ -34,6 +34,9 @@
 | **Phase F-1: Executor 자동 배정** | ✅ | Weighted Random 배정, TEE 모델 teeType 필터링 |
 | **Phase F-3: Automated ECR** | ✅ | 정산 시 ComplianceRecord 자동 생성 (submitProofWithCompliance PTB) |
 | **Phase F-4: Frontend Attestation UI** | ✅ | AttestationDisplay, PCR Verified 표시, Audit Trail |
+| **Phase F-5: Executor Registration Check** | ✅ | Host 시작 시 EXECUTOR_PRIVATE_KEY ↔ on-chain 주소 검증 (불일치 시 fatal exit) |
+| **Phase F-6: Auto-cancel on Failure** | ✅ | /execute 실패 시 cancel_request TX로 에스크로 즉시 해제 |
+| **Phase F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, 디스크 레벨 공격 방어 |
 
 ---
 
@@ -324,6 +327,11 @@ V6 체인 리셋 시 프론트엔드 `.env`가 `devnet-ids.json`과 다른 Execu
 
 `mixtral-8x7b-32768`이 Groq에서 서비스 종료됨. `mistral-saba-24b`로 교체 완료 (2026-01-30).
 
+### Chat History Migration (DB v2)
+
+Chat encryption key derivation이 `PBKDF2(address)` → `PBKDF2(address+password)`로 변경됨 (2026-01-30).
+IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동 삭제됨 (이전 키로 복호화 불가).
+
 ---
 
 ## 다음 단계
@@ -348,8 +356,11 @@ V6 체인 리셋 시 프론트엔드 `.env`가 `devnet-ids.json`과 다른 Execu
 | **F-1: Executor 자동 배정** | ✅ | Weighted Random, eligible set filter (Bronze+), re-roll on failure |
 | **F-3: Automated ECR** | ✅ | 정산 시 ComplianceRecord 자동 생성 (submitProofWithCompliance) |
 | **F-4: Frontend Attestation UI** | ✅ | AttestationDisplay, PCR Verified, Audit Trail (ECRReceipt) |
+| **F-5: Executor Registration Check** | ✅ | Host 시작 시 키 검증, 불일치 시 fatal exit |
+| **F-6: Auto-cancel on Failure** | ✅ | /execute 실패 시 에스크로 즉시 해제 (cancel_request TX) |
+| **F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, DB v2 마이그레이션 |
 | F-2: Admin 의존도 제거 | 계획 | cross-module tier 자동 업데이트 |
-| F-5: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
+| F-8: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
 
 #### Mid-term (Phase G: Model Marketplace)
 

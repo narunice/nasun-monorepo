@@ -37,6 +37,7 @@ apps/baram/
 │       │   ├── sidebar/         # SidebarSettings
 │       │   └── theme/           # ThemeProvider, ThemeToggle
 │       ├── config/network.ts    # Tier 상수, MODEL_PRICING, TEE_TYPES, EXECUTOR_SELECTION
+│       ├── services/            # chatCrypto.ts (AES-256-GCM), chatStorage.ts (IndexedDB)
 │       └── utils/crypto.ts      # RSA-OAEP 암호화
 │
 ├── contracts/                   # baram.move (에스크로 + 정산)
@@ -116,7 +117,7 @@ cd apps/baram/executor-nitro
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
 | `create_request` | User | NUSDC 에스크로 + 요청 생성 |
-| `cancel_request` | User | 타임아웃 전 취소 + 환불 |
+| `cancel_request` | User | 타임아웃 전 취소 + 환불 (Frontend auto-cancel on execution failure) |
 | `submit_proof` | Executor | 결과 해시 제출 + 지급 |
 
 ### executor.move (Registry)
@@ -296,6 +297,8 @@ TIER_REGISTRY_ID=...
 2. **vsock Only** — Host-Enclave 간 vsock만 허용, Enclave 네트워크 접근 불가
 3. **No Secret Logging** — 개인키, 복호화된 프롬프트 로깅 금지
 4. **Attestation** — NSM COSE_Sign1 서명 + X.509 인증서 체인 검증 (Host에서 수행)
+5. **Chat Encryption** — IndexedDB에 저장된 채팅 히스토리는 AES-256-GCM으로 암호화, 키는 PBKDF2(walletAddress + password)로 파생
+6. **Executor Registration Check** — Host 시작 시 EXECUTOR_PRIVATE_KEY가 온체인 ExecutorRegistry에 등록된 주소와 일치하는지 검증 (불일치 시 즉시 종료)
 
 ---
 
@@ -322,6 +325,9 @@ TIER_REGISTRY_ID=...
 | [executor_tier.move](contracts-executor/sources/executor_tier.move) | TierRegistry (Phase E-1) |
 | [attestation_registry.move](contracts-attestation/sources/attestation_registry.move) | PCR baseline |
 | [compliance.move](contracts-compliance/sources/compliance.move) | ECR |
+| [chatCrypto.ts](frontend/src/services/chatCrypto.ts) | AES-256-GCM 암호화 (PBKDF2 키 파생: address + password) |
+| [chatStorage.ts](frontend/src/services/chatStorage.ts) | IndexedDB 암호화 저장 (per-wallet database) |
+| [transactionBuilder.ts](frontend/src/features/request/services/transactionBuilder.ts) | create_request + cancel_request TX 빌더 |
 | [network.ts](frontend/src/config/network.ts) | Tier 상수, MODEL_PRICING, TEE_TYPES |
 | [useExecutors.ts](frontend/src/features/request/hooks/useExecutors.ts) | Executor 목록 + tier 데이터 + selectExecutorWeightedRandom |
 | [TierBadge.tsx](frontend/src/components/badges/TierBadge.tsx) | Tier/Dormant 배지 컴포넌트 |
@@ -347,6 +353,9 @@ TIER_REGISTRY_ID=...
 | **F-1** | **Executor 자동 배정 (Weighted Random)** | **✅ 완료** |
 | **F-3** | **Automated ECR (submitProofWithCompliance PTB)** | **✅ 완료** |
 | **F-4** | **Frontend Attestation UI (PCR Verified, Audit Trail)** | **✅ 완료** |
+| **F-5** | **Executor Registration Check (Host 시작 시 키 검증)** | **✅ 완료** |
+| **F-6** | **Auto-cancel on Execution Failure (에스크로 즉시 해제)** | **✅ 완료** |
+| **F-7** | **Chat Encryption with Password (디스크 공격 방어)** | **✅ 완료** |
 | F-2 | Admin 의존도 제거 | 계획 |
 | F-5 | StakingRegistry/TierRegistry 실데이터 조회 | 계획 |
 | G | Model Marketplace | 계획 |
