@@ -22,6 +22,7 @@ import { HOST_HTTP_PORT, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { verifyAttestationDocument, type VerificationResult } from '../enclave/attestation.js';
 import {
   initSuiClient,
+  verifyExecutorRegistration,
   getRequest,
   getExecutorAddress,
   getExecutorStats,
@@ -67,6 +68,13 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       initSuiClient(serverConfig.sui);
       suiEnabled = true;
       console.log('[Host/Server] Sui settlement enabled');
+
+      // Verify executor key matches on-chain registration (fatal on mismatch)
+      verifyExecutorRegistration().catch((err) => {
+        console.error(`[FATAL] Executor registration check failed: ${err instanceof Error ? err.message : err}`);
+        console.error('[FATAL] Settlement would fail for every request. Shutting down.');
+        process.exit(1);
+      });
     } catch (err) {
       console.warn('[Host/Server] Sui settlement disabled:', err instanceof Error ? err.message : err);
     }

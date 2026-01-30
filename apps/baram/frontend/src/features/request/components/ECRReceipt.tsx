@@ -107,9 +107,10 @@ export function ECRReceipt({ requestId, metadata, onClose }: ECRReceiptProps) {
     >
       {/* Modal */}
       <div
-        className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto"
+        className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+      <div className="max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
@@ -340,6 +341,7 @@ export function ECRReceipt({ requestId, metadata, onClose }: ECRReceiptProps) {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
