@@ -95,6 +95,9 @@ export {
   resetUnlockAttempts,
 } from './core/rate-limit';
 
+// Wallet Label (display alias)
+export { useWalletLabel, useWalletLabelStore, isValidWalletLabel, MAX_LABEL_LENGTH } from './hooks/useWalletLabel';
+
 // Address Book (Security Phase 2)
 export { useAddressBook, useAddressStatus } from './hooks/useAddressBook';
 
