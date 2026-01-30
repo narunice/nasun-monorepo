@@ -1,0 +1,161 @@
+{
+  "hero": {
+    "title": "Baram",
+    "subtitle": "AI Compliance Settlement Layer",
+    "tagline": "AI You Can Audit.",
+    "description": "Every prompt encrypted. Every execution recorded. Every payment guaranteed.",
+    "target": "For developers, enterprises, and regulators who need AI they can prove."
+  },
+  "problem": {
+    "sectionTitle": "The Problem",
+    "headline": "Today's AI is a black box.",
+    "cards": {
+      "privacy": {
+        "title": "No Privacy",
+        "description": "Your prompts are sent in plaintext to servers you don't control."
+      },
+      "payment": {
+        "title": "No Payment Guarantee",
+        "description": "If the AI fails or never responds, your payment is gone."
+      },
+      "audit": {
+        "title": "No Audit Trail",
+        "description": "You can't prove who processed your request, with what model, or when."
+      }
+    },
+    "detail": {
+      "title": "Traditional AI vs Baram",
+      "headers": {
+        "aspect": "Aspect",
+        "traditional": "Traditional AI",
+        "baram": "Baram"
+      },
+      "rows": {
+        "privacy": {
+          "aspect": "Prompt Privacy",
+          "traditional": "Plaintext to server",
+          "baram": "RSA-OAEP encrypted, decrypted only in TEE"
+        },
+        "payment": {
+          "aspect": "Payment",
+          "traditional": "Pay upfront, no recourse on failure",
+          "baram": "NUSDC escrowed, auto-refund on timeout"
+        },
+        "audit": {
+          "aspect": "Audit Trail",
+          "traditional": "Server logs (mutable, proprietary)",
+          "baram": "On-chain compliance records (immutable)"
+        },
+        "executor": {
+          "aspect": "Executor Identity",
+          "traditional": "Unknown / opaque",
+          "baram": "Registered, staked, tiered on-chain"
+        },
+        "compliance": {
+          "aspect": "Compliance Risk",
+          "traditional": "Unprovable",
+          "baram": "Cryptographically auditable"
+        }
+      }
+    }
+  },
+  "solution": {
+    "sectionTitle": "The Solution",
+    "headline": "Encrypt. Execute. Settle. Record.",
+    "steps": {
+      "prompt": { "title": "Type Prompt", "subtitle": "User" },
+      "encrypt": { "title": "Encrypt", "subtitle": "RSA-OAEP" },
+      "select": { "title": "Auto-Select", "subtitle": "Weighted Random" },
+      "tee": { "title": "TEE Inference", "subtitle": "Nitro Enclave" },
+      "settle": { "title": "Settlement", "subtitle": "NUSDC Release" },
+      "record": { "title": "Compliance Record", "subtitle": "ECR Created" }
+    },
+    "onChainBar": "On-Chain Layer",
+    "contracts": {
+      "baram": "baram.move — Escrow & Settlement",
+      "executor": "executor.move — Registry & Reputation",
+      "compliance": "compliance.move — Audit Records"
+    },
+    "detail": {
+      "title": "System Architecture",
+      "layers": {
+        "frontend": {
+          "title": "Frontend Layer",
+          "items": ["React + Zustand UI", "RSA-OAEP Encryption", "Transaction Builder", "Auto Executor Selection"]
+        },
+        "blockchain": {
+          "title": "Blockchain Layer (Nasun L1)",
+          "items": ["baram.move — Escrow & Settlement", "executor.move — Registry & Reputation", "executor_staking.move — Staking & Slashing", "executor_tier.move — Tier System", "attestation_registry.move — PCR Baseline", "compliance.move — Execution Records"]
+        },
+        "tee": {
+          "title": "TEE Executor Layer",
+          "items": ["EC2 Host — HTTP Server + vsock Proxy", "Nitro Enclave — RSA Decrypt + LLM Inference", "NSM Attestation — COSE_Sign1 + PCR Hashes", "Local LLaMA 3.2 3B — Full Privacy Mode"]
+        }
+      }
+    }
+  },
+  "trust": {
+    "sectionTitle": "The Trust Model",
+    "headline": "Don't trust. Verify.",
+    "pillars": {
+      "hardware": {
+        "title": "Hardware Isolation",
+        "description": "Prompts decrypted only inside AWS Nitro Enclaves. Private key never leaves TEE."
+      },
+      "escrow": {
+        "title": "Escrow Settlement",
+        "description": "NUSDC locked before execution. Auto-refund on timeout. No admin override."
+      },
+      "stake": {
+        "title": "Skin in the Game",
+        "description": "Executors stake NASUN tokens. Fraud = 100% slashed. Timeout = 5% slashed."
+      },
+      "compliance": {
+        "title": "Compliance Records",
+        "description": "Every execution creates an immutable on-chain record: executor tier, model, TEE type, timestamp."
+      }
+    },
+    "detail": {
+      "hardware": {
+        "title": "Trust Boundary",
+        "zones": ["Browser (Trusted) — Plaintext prompt + RSA encryption", "Network (Untrusted) — Ciphertext only via HTTPS", "Host (Untrusted) — HTTP server + vsock proxy, cannot decrypt", "Enclave (Trusted) — RSA private key + LLM + NSM attestation"],
+        "note": "NSM attestation binds the enclave identity to PCR hashes, verified against on-chain baseline."
+      },
+      "escrow": {
+        "title": "Escrow State Machine",
+        "states": {
+          "pending": "NUSDC locked, awaiting executor assignment",
+          "executing": "TEE processing, 5-minute timeout",
+          "completed": "Proof verified, NUSDC released to executor",
+          "cancelled": "User-initiated refund before execution",
+          "timedOut": "Executor failed, full refund + slashing"
+        }
+      },
+      "stake": {
+        "title": "Executor Tier & Staking",
+        "formula": "tier = min(stake_tier, reputation_tier)",
+        "tiers": {
+          "open": "Tier 0 — No stake, no reputation required",
+          "bronze": "Tier 1 — 1,000+ NASUN staked, 300+ reputation",
+          "silver": "Tier 2 — 5,000+ NASUN staked, 500+ reputation",
+          "gold": "Tier 3 — 10,000+ NASUN staked, 700+ reputation"
+        },
+        "slashing": {
+          "timeout": "5% of stake",
+          "attestation": "10% of stake",
+          "fraud": "100% of stake"
+        },
+        "philosophy": "Tier is not a quality promise. It is a liability signal."
+      },
+      "compliance": {
+        "title": "Execution Compliance Record (ECR)",
+        "fields": ["request_id", "executor_address", "executor_tier (snapshot at execution time)", "model_name", "tee_type", "timestamp", "status"],
+        "note": "Compliance records are created by default, not by request."
+      }
+    }
+  },
+  "common": {
+    "viewDetails": "View Technical Details",
+    "hideDetails": "Hide Details"
+  }
+}
