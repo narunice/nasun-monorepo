@@ -309,6 +309,21 @@
 }
 
 @layer components {
+  /* Baram page light theme overrides */
+  .baram-light-theme h1,
+  .baram-light-theme h2,
+  .baram-light-theme h3,
+  .baram-light-theme h4,
+  .baram-light-theme h5,
+  .baram-light-theme h6 {
+    color: #191615;
+  }
+  .baram-light-theme p,
+  .baram-light-theme li {
+    font-weight: 400;
+    color: rgba(25, 22, 21, 0.7);
+  }
+
   /* Award/Grants 섹션 슬라이더 점 스타일 (다크 모드 기본) */
   .slick-dots li button:before {
     @apply text-gray-400 !important;

@@ -41,6 +41,8 @@ export const Pages = {
   // About Pages
   About: lazyWithRetry(() => import("../pages/AboutPage")),
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
+  // Ecosystem Pages
+  Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -484,6 +486,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Post Detail - NASUN",
       description: "Award or Grant detail",
+    },
+  },
+
+  baram: {
+    path: "/baram",
+    component: Pages.Baram,
+    navItem: {
+      name: "navigation.baram",
+      path: "/baram",
+      hidden: true,
+    },
+    meta: {
+      title: "Baram - NASUN",
+      description: "Baram: AI Compliance Settlement Layer on Nasun Network",
     },
   },
 

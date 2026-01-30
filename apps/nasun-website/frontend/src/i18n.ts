@@ -49,6 +49,8 @@ import enNews from "./assets/locales/en/news.json";
 import koNews from "./assets/locales/ko/news.json";
 import enProposals from "./assets/locales/en/proposals.json";
 import koProposals from "./assets/locales/ko/proposals.json";
+import enBaram from "./assets/locales/en/baram.json";
+import koBaram from "./assets/locales/ko/baram.json";
 
 i18n
   .use(Backend) // JSON 파일 동적 로딩
@@ -80,6 +82,7 @@ i18n
         pado: enPado,
         news: enNews,
         proposals: enProposals,
+        baram: enBaram,
       },
       ko: {
         common: koCommon,
@@ -105,6 +108,7 @@ i18n
         pado: koPado,
         news: koNews,
         proposals: koProposals,
+        baram: koBaram,
       },
     },
     fallbackLng: "en",
@@ -139,6 +143,7 @@ i18n
       "proposals",
       "pado",
       "news",
+      "baram",
     ], // 모든 네임스페이스 등록
     defaultNS: "home",
     backend: {

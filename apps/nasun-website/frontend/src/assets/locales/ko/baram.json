@@ -1,0 +1,161 @@
+{
+  "hero": {
+    "title": "Baram",
+    "subtitle": "AI Compliance Settlement Layer",
+    "tagline": "감사 가능한 AI.",
+    "description": "모든 프롬프트는 암호화됩니다. 모든 실행은 기록됩니다. 모든 결제는 보장됩니다.",
+    "target": "감사 가능한 AI가 필요한 개발자, 기업, 규제 환경을 위해."
+  },
+  "problem": {
+    "sectionTitle": "문제",
+    "headline": "오늘날의 AI는 블랙박스입니다.",
+    "cards": {
+      "privacy": {
+        "title": "프라이버시 없음",
+        "description": "프롬프트가 평문으로 통제할 수 없는 서버에 전송됩니다."
+      },
+      "payment": {
+        "title": "결제 보장 없음",
+        "description": "AI가 실패하거나 응답하지 않아도 결제는 돌아오지 않습니다."
+      },
+      "audit": {
+        "title": "감사 추적 없음",
+        "description": "누가, 어떤 모델로, 언제 처리했는지 증명할 수 없습니다."
+      }
+    },
+    "detail": {
+      "title": "기존 AI vs Baram",
+      "headers": {
+        "aspect": "항목",
+        "traditional": "기존 AI",
+        "baram": "Baram"
+      },
+      "rows": {
+        "privacy": {
+          "aspect": "프롬프트 프라이버시",
+          "traditional": "서버에 평문 전송",
+          "baram": "RSA-OAEP 암호화, TEE 내부에서만 복호화"
+        },
+        "payment": {
+          "aspect": "결제",
+          "traditional": "선결제, 실패 시 환불 불가",
+          "baram": "NUSDC 에스크로, 타임아웃 시 자동 환불"
+        },
+        "audit": {
+          "aspect": "감사 추적",
+          "traditional": "서버 로그 (변경 가능, 비공개)",
+          "baram": "온체인 컴플라이언스 레코드 (불변)"
+        },
+        "executor": {
+          "aspect": "실행자 신원",
+          "traditional": "불명 / 불투명",
+          "baram": "등록, 스테이킹, 온체인 티어"
+        },
+        "compliance": {
+          "aspect": "컴플라이언스 리스크",
+          "traditional": "증명 불가",
+          "baram": "암호학적으로 감사 가능"
+        }
+      }
+    }
+  },
+  "solution": {
+    "sectionTitle": "솔루션",
+    "headline": "암호화. 실행. 정산. 기록.",
+    "steps": {
+      "prompt": { "title": "프롬프트 입력", "subtitle": "사용자" },
+      "encrypt": { "title": "암호화", "subtitle": "RSA-OAEP" },
+      "select": { "title": "자동 선택", "subtitle": "가중 랜덤" },
+      "tee": { "title": "TEE 추론", "subtitle": "Nitro Enclave" },
+      "settle": { "title": "정산", "subtitle": "NUSDC 지급" },
+      "record": { "title": "컴플라이언스 기록", "subtitle": "ECR 생성" }
+    },
+    "onChainBar": "온체인 레이어",
+    "contracts": {
+      "baram": "baram.move — 에스크로 & 정산",
+      "executor": "executor.move — 레지스트리 & 평판",
+      "compliance": "compliance.move — 감사 기록"
+    },
+    "detail": {
+      "title": "시스템 아키텍처",
+      "layers": {
+        "frontend": {
+          "title": "프론트엔드 레이어",
+          "items": ["React + Zustand UI", "RSA-OAEP 암호화", "트랜잭션 빌더", "자동 Executor 선택"]
+        },
+        "blockchain": {
+          "title": "블록체인 레이어 (Nasun L1)",
+          "items": ["baram.move — 에스크로 & 정산", "executor.move — 레지스트리 & 평판", "executor_staking.move — 스테이킹 & 슬래싱", "executor_tier.move — 티어 시스템", "attestation_registry.move — PCR 베이스라인", "compliance.move — 실행 기록"]
+        },
+        "tee": {
+          "title": "TEE Executor 레이어",
+          "items": ["EC2 Host — HTTP 서버 + vsock 프록시", "Nitro Enclave — RSA 복호화 + LLM 추론", "NSM Attestation — COSE_Sign1 + PCR 해시", "로컬 LLaMA 3.2 3B — 완전 프라이버시 모드"]
+        }
+      }
+    }
+  },
+  "trust": {
+    "sectionTitle": "신뢰 모델",
+    "headline": "신뢰하지 마세요. 검증하세요.",
+    "pillars": {
+      "hardware": {
+        "title": "하드웨어 격리",
+        "description": "프롬프트는 AWS Nitro Enclave 내부에서만 복호화됩니다. 개인키는 TEE를 떠나지 않습니다."
+      },
+      "escrow": {
+        "title": "에스크로 정산",
+        "description": "실행 전 NUSDC가 잠깁니다. 타임아웃 시 자동 환불. 관리자 개입 없음."
+      },
+      "stake": {
+        "title": "Skin in the Game",
+        "description": "Executor는 NASUN 토큰을 스테이킹합니다. 사기 = 100% 슬래싱. 타임아웃 = 5% 슬래싱."
+      },
+      "compliance": {
+        "title": "컴플라이언스 레코드",
+        "description": "모든 실행은 불변의 온체인 기록을 생성합니다: executor 티어, 모델, TEE 유형, 타임스탬프."
+      }
+    },
+    "detail": {
+      "hardware": {
+        "title": "신뢰 경계",
+        "zones": ["브라우저 (신뢰) — 평문 프롬프트 + RSA 암호화", "네트워크 (비신뢰) — HTTPS를 통한 암호문만 전송", "호스트 (비신뢰) — HTTP 서버 + vsock 프록시, 복호화 불가", "Enclave (신뢰) — RSA 개인키 + LLM + NSM 증명"],
+        "note": "NSM 증명은 Enclave 신원을 PCR 해시에 바인딩하고, 온체인 베이스라인과 대조 검증합니다."
+      },
+      "escrow": {
+        "title": "에스크로 상태 머신",
+        "states": {
+          "pending": "NUSDC 잠김, Executor 할당 대기",
+          "executing": "TEE 처리 중, 5분 타임아웃",
+          "completed": "증명 검증 완료, NUSDC를 Executor에게 지급",
+          "cancelled": "실행 전 사용자 환불 요청",
+          "timedOut": "Executor 실패, 전액 환불 + 슬래싱"
+        }
+      },
+      "stake": {
+        "title": "Executor 티어 & 스테이킹",
+        "formula": "tier = min(stake_tier, reputation_tier)",
+        "tiers": {
+          "open": "Tier 0 — 스테이킹/평판 불필요",
+          "bronze": "Tier 1 — 1,000+ NASUN 스테이킹, 300+ 평판",
+          "silver": "Tier 2 — 5,000+ NASUN 스테이킹, 500+ 평판",
+          "gold": "Tier 3 — 10,000+ NASUN 스테이킹, 700+ 평판"
+        },
+        "slashing": {
+          "timeout": "스테이킹의 5%",
+          "attestation": "스테이킹의 10%",
+          "fraud": "스테이킹의 100%"
+        },
+        "philosophy": "티어는 품질 보증이 아닙니다. 책임 신호입니다."
+      },
+      "compliance": {
+        "title": "실행 컴플라이언스 레코드 (ECR)",
+        "fields": ["request_id", "executor_address", "executor_tier (실행 시점 스냅샷)", "model_name", "tee_type", "timestamp", "status"],
+        "note": "컴플라이언스 레코드는 요청에 의해서가 아니라, 기본으로 생성됩니다."
+      }
+    }
+  },
+  "common": {
+    "viewDetails": "기술 상세 보기",
+    "hideDetails": "상세 닫기"
+  }
+}
