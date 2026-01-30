@@ -143,11 +143,11 @@ cat ~/nasun-monorepo/apps/baram/executor-nitro/.env
 | `STAKING_REGISTRY_ID` | StakingRegistry shared object | `0x...` |
 | `TIER_REGISTRY_ID` | TierRegistry shared object | `0x...` |
 
-> **IMPORTANT**: The .env file is NOT auto-loaded. There is no `dotenv` in the Host process.
-> For manual startup, you must source it yourself (see Step 4).
-> The systemd service (`baram-host.service`) does NOT source .env either
-> -- it only sets `USE_VSOCK` and `ENCLAVE_CID` via `Environment=` directives.
-> Settlement features require the .env vars to be available in the process environment.
+> **IMPORTANT**: The .env file is NOT auto-loaded by `dotenv`. The systemd service loads it
+> via `EnvironmentFile=`. For manual startup, you must source it yourself (see Step 4).
+> The .env is gitignored, so it must already exist on the instance (baked into the AMI
+> or manually copied). If the repo is freshly cloned, copy .env from a backup or
+> fill in `.env.example`.
 
 ### Step 3: Verify Enclave is Running
 
@@ -169,24 +169,21 @@ If enclave is not running:
 **Option A: systemd (recommended for production)**
 
 ```bash
-# The systemd service sets USE_VSOCK=true and ENCLAVE_CID=16 automatically
-# BUT it does NOT source .env, so settlement will be disabled
+# systemd loads .env via EnvironmentFile + sets USE_VSOCK/ENCLAVE_CID
+# Settlement is enabled as long as .env exists with all required vars
+sudo cp scripts/baram-host.service /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl start baram-host
 journalctl -u baram-host -f
 ```
 
-> Note: To enable settlement with systemd, add `EnvironmentFile` to the service file
-> or export all .env vars in the service's `ExecStart` command.
-
-**Option B: Manual with .env (recommended for dev/debug)**
+**Option B: Manual (for dev/debug)**
 
 ```bash
 cd ~/nasun-monorepo/apps/baram/executor-nitro
 
-# Source .env into current shell AND set vsock mode
+# Source .env into current shell (includes USE_VSOCK, ENCLAVE_CID)
 set -a && source .env && set +a
-export USE_VSOCK=true
-export ENCLAVE_CID=16
 
 # Start Host
 node dist/host/main.js
@@ -450,11 +447,12 @@ and register a new on-chain baseline if it changed.
 AWS can reclaim spot instances with 2 minutes notice. The instance ID and IP will change.
 Save logs and note the PCR values before they are lost.
 
-### systemd Service Does Not Source .env
+### .env is Gitignored
 
-The `baram-host.service` only sets `USE_VSOCK`, `ENCLAVE_CID`, and `HOST_PORT`.
-Settlement-related environment variables (private key, contract IDs) are not loaded
-unless you modify the service file to include `EnvironmentFile=/path/to/.env`.
+The `.env` file (containing private key and contract IDs) is not tracked in git.
+It must be present on the instance for settlement to work. The current AMI
+(`ami-0488cb25dd63317af`) has `.env` baked in. If the repo is freshly cloned
+(not just `git pull`), you must copy `.env` from a backup or fill in `.env.example`.
 
 ---
 
@@ -468,7 +466,7 @@ unless you modify the service file to include `EnvironmentFile=/path/to/.env`.
 | `scripts/terminate-spot.sh` | Terminate running spot instance |
 | `scripts/build-eif.sh` | Build EIF from Docker image |
 | `scripts/run-enclave.sh` | Start Nitro Enclave |
-| `scripts/update-executor.sh` | Update executor endpoint on-chain (frontend registry) |
+| `scripts/update-executor.sh` | Update executor endpoint on-chain (both registries) |
 | `scripts/create-ami.sh` | Create AMI from running instance |
 | `scripts/setup-ec2.sh` | Initial EC2 environment setup |
 | `scripts/download-model.sh` | Download LLM model weights |
