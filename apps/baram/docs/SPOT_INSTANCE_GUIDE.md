@@ -224,10 +224,12 @@ sudo journalctl -u baram-host -n 15 --no-pager
 
 - [ ] `Vsock connection established` — Enclave 연결 성공
 - [ ] `Sui settlement enabled` — .env 로드 + 정산 활성화
+- [ ] `Executor registration verified` — 온체인 등록 확인 (키 불일치 시 FATAL exit)
 - [ ] `HTTP server listening on port 3000` — 서버 시작
 
 > **WARNING**: `Sui config not provided, settlement disabled`가 보이면 .env가 없거나 불완전한 것.
 > `Connection refused`가 보이면 CID mismatch 또는 Enclave 미실행.
+> `[FATAL] Executor registration check failed`가 보이면 EXECUTOR_PRIVATE_KEY가 온체인 ExecutorRegistry에 등록된 주소와 불일치.
 
 ### Step 7: Health Check
 
@@ -364,6 +366,7 @@ sudo journalctl -u baram-host -n 15 --no-pager
 
 - [ ] `Vsock connection established`
 - [ ] `Sui settlement enabled`
+- [ ] `Executor registration verified` (키 불일치 시 프로세스 자동 종료됨)
 - [ ] `HTTP server listening on port 3000`
 
 ### Step 7: Check PCR0 Baseline (if EIF rebuilt)
@@ -430,6 +433,7 @@ ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "sudo systemctl restart baram-host"
 | PCR0 변경 미등록 | Attestation Unverified + Settlement MoveAbort | Host 로그에서 `mismatch` 검색 |
 | Executor endpoint 미업데이트 | Frontend 연결 타임아웃 (old IP) | `update-executor.sh <IP>` |
 | 두 Registry 중 하나만 업데이트 | Frontend 또는 Settlement 한쪽만 동작 | 양쪽 모두 확인 |
+| Executor 키 불일치 | Host 시작 즉시 종료 (FATAL) | `EXECUTOR_PRIVATE_KEY`가 온체인 등록 주소와 일치하는지 확인 |
 
 ---
 
@@ -595,6 +599,7 @@ curl -X POST http://<NEW_IP>:3000/execute \
 | `Connection refused` after EIF rebuild | CID changed (16→17...) | Update `ENCLAVE_CID` in systemd service (see Known Issues) |
 | `Settlement disabled` | .env not sourced | `set -a && source .env && set +a` |
 | `Sui config not provided, settlement disabled` | .env file missing after `git pull` | Recreate .env from AWS Secrets Manager + devnet-ids.json (see Known Issues) |
+| `[FATAL] Executor registration check failed` | EXECUTOR_PRIVATE_KEY mismatch | Verify private key matches registered executor address on-chain |
 | Wrong entry point | Using `server.js` | Use `main.js` instead |
 
 ### Attestation fails
