@@ -154,6 +154,75 @@
       }
     }
   },
+  "executor": {
+    "sectionTitle": "Executor Infrastructure",
+    "headline": "Not software. Infrastructure.",
+    "cards": {
+      "teeWorkers": {
+        "title": "TEE Workers",
+        "description": "AI runs inside Nitro Enclaves. Even the host cannot see your prompt."
+      },
+      "stakeEarn": {
+        "title": "Stake & Earn",
+        "description": "Stake NASUN to qualify. Earn NUSDC per settled request. Staking determines eligibility, not selection frequency."
+      },
+      "tierSystem": {
+        "title": "Tier System",
+        "description": "Bronze / Silver / Gold — both stake and reputation must qualify. Tier is an eligibility filter, not a priority rank."
+      },
+      "autoSelection": {
+        "title": "Fair Selection",
+        "description": "Weighted random with a hard cap. New executors start at reputation 500, already competitive from day one."
+      }
+    },
+    "detail": {
+      "lifecycle": {
+        "title": "Executor Lifecycle"
+      },
+      "tiers": {
+        "title": "Tier Thresholds",
+        "formula": "tier = min(stake_tier, reputation_tier)",
+        "headers": {
+          "tier": "Tier",
+          "stake": "Min Stake",
+          "reputation": "Min Reputation",
+          "eligible": "Eligible"
+        },
+        "rows": {
+          "open": { "tier": "Open (0)", "stake": "—", "reputation": "—", "eligible": "No" },
+          "bronze": { "tier": "Bronze (1)", "stake": "1,000 NASUN", "reputation": "300", "eligible": "Yes" },
+          "silver": { "tier": "Silver (2)", "stake": "5,000 NASUN", "reputation": "500", "eligible": "Yes" },
+          "gold": { "tier": "Gold (3)", "stake": "10,000 NASUN", "reputation": "700", "eligible": "Yes" }
+        },
+        "note": "Tier is an eligibility filter, not a selection advantage. A Gold executor and a Bronze executor with the same reputation have the same selection weight."
+      },
+      "selection": {
+        "title": "Selection Algorithm",
+        "formula": "weight = min(0.3 + (reputation / 1000), 1.0)",
+        "items": [
+          "Only Bronze+ executors enter the eligible pool — staking determines eligibility, not weight",
+          "Weight is capped at 1.0 — no executor can dominate through reputation alone",
+          "New executors start at reputation 500 (weight 0.8) — competitive from day one",
+          "Base weight 0.3 guarantees every eligible executor a fair chance",
+          "Users cannot choose executors — the system assigns via weighted random"
+        ]
+      },
+      "slashing": {
+        "title": "Slashing Rules",
+        "headers": {
+          "violation": "Violation",
+          "penalty": "Stake Penalty",
+          "reputation": "Reputation"
+        },
+        "rows": {
+          "timeout": { "violation": "Execution Timeout", "penalty": "5%", "reputation": "-20" },
+          "attestation": { "violation": "Bad Attestation", "penalty": "10%", "reputation": "-20" },
+          "fraud": { "violation": "Fraud / Manipulation", "penalty": "100%", "reputation": "-20" }
+        },
+        "dormancy": "Executors with 0 completed jobs in 30 days lose 1 reputation per day."
+      }
+    }
+  },
   "common": {
     "viewDetails": "View Technical Details",
     "hideDetails": "Hide Details"

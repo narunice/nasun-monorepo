@@ -1,0 +1,44 @@
+flowchart TD
+    Register(["register_executor<br/>name + endpoint + tee_type"]) --> Stake["create_stake<br/>Min 1,000 NASUN"]
+    Stake --> TierCalc["update_tier<br/>tier = min(stake, rep)"]
+    TierCalc --> TierResult{Calculated Tier}
+    TierResult -->|Open| Open["Open Tier 0<br/>Not eligible"]
+    TierResult -->|Bronze+| Eligible["Eligible for Jobs"]
+    Eligible --> WaitJob["Wait for<br/>Auto-Assignment"]
+    WaitJob --> Receive["Receive Request<br/>mark_executing"]
+    Receive --> TEEExec["TEE Execution<br/>Decrypt + Infer + Hash"]
+    TEEExec --> SubmitProof["submit_proof<br/>on-chain"]
+    SubmitProof --> Settlement["NUSDC Released<br/>to Executor"]
+    Settlement --> UpdateStats["reputation +10<br/>completed_jobs +1"]
+    UpdateStats --> ECR["Compliance Record<br/>Created"]
+    ECR --> TierCalc
+
+    TEEExec -->|Timeout| TimeoutSlash["5% slash"]
+    TEEExec -->|Bad attestation| AttestSlash["10% slash"]
+    TEEExec -->|Fraud| FraudSlash["100% slash"]
+    TimeoutSlash --> RepPenalty["reputation -20"]
+    AttestSlash --> RepPenalty
+    FraudSlash --> RepPenalty
+    RepPenalty --> TierCalc
+
+    WaitJob -->|Exit| Unbond["7-day<br/>unbonding"]
+    Unbond --> Withdraw["withdraw_stake"]
+
+    style Register fill:#e3f2fd,stroke:#1565c0
+    style Stake fill:#e3f2fd,stroke:#1565c0
+    style TierCalc fill:#e8f5e9,stroke:#2e7d32
+    style Open fill:#fff9c4,stroke:#f57f17
+    style Eligible fill:#e8f5e9,stroke:#2e7d32
+    style WaitJob fill:#e3f2fd,stroke:#1565c0
+    style Receive fill:#e3f2fd,stroke:#1565c0
+    style TEEExec fill:#e0f7fa,stroke:#00838f,stroke-width:2px
+    style SubmitProof fill:#e8f5e9,stroke:#2e7d32
+    style Settlement fill:#e8f5e9,stroke:#2e7d32
+    style UpdateStats fill:#e8f5e9,stroke:#2e7d32
+    style ECR fill:#e8f5e9,stroke:#2e7d32
+    style TimeoutSlash fill:#fff3e0,stroke:#e65100
+    style AttestSlash fill:#fff3e0,stroke:#e65100
+    style FraudSlash fill:#ffebee,stroke:#c62828
+    style RepPenalty fill:#fce4ec,stroke:#c62828
+    style Unbond fill:#f3f4f6,stroke:#6b7280
+    style Withdraw fill:#f3f4f6,stroke:#6b7280
