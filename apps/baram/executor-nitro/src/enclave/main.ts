@@ -38,7 +38,7 @@ import {
   type OpenAIProxyResponse,
 } from '../shared/protocol.js';
 import { createVsockServer, isVsockMode } from '../shared/vsock.js';
-import { initializeCrypto, getPublicKey, decrypt, destroyKeyPair } from './crypto.js';
+import { initializeCrypto, getPublicKey, decrypt, encryptResponse, destroyKeyPair } from './crypto.js';
 import {
   initializeInference,
   initializeInferenceProxy,
@@ -178,13 +178,26 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse |
         const inferenceReq = request as ExecuteInferenceRequest;
         const { encryptedPrompt, model, requestId: onChainRequestId } = inferenceReq.payload;
 
-        // Decrypt the prompt
+        // Decrypt the prompt (also extracts AES key for response encryption)
         console.log(`[Enclave] Decrypting prompt for request ${onChainRequestId}...`);
-        const prompt = decrypt(encryptedPrompt);
+        const { plaintext: prompt, aesKey } = decrypt(encryptedPrompt);
         console.log(`[Enclave] Prompt decrypted successfully (${prompt.length} chars)`);
 
         // Execute inference (direct or proxy mode)
         const result = await executeInference(prompt, model);
+
+        // E2E response encryption: encrypt result with the same AES key
+        // aesKey.length === 0 means plaintext fallback was used (no encryption)
+        const hasAesKey = aesKey.length === 32;
+        const responseResult = hasAesKey
+          ? encryptResponse(result.result, aesKey)
+          : result.result;
+
+        // Clear AES key from memory immediately
+        if (hasAesKey) {
+          aesKey.fill(0);
+          console.log('[Enclave] Response encrypted with client AES key (E2E)');
+        }
 
         const currentPublicKey = getPublicKey();
         const response: ExecuteInferenceResponse = {
@@ -192,10 +205,11 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse |
           requestId: request.requestId,
           success: true,
           payload: {
-            result: result.result,
+            result: responseResult,
             resultHash: result.resultHash,
             executionTimeMs: result.executionTimeMs,
             attestation: currentPublicKey ? await getAttestation(currentPublicKey) : createSimulatedAttestation(MODULE_ID),
+            encrypted: hasAesKey,
           },
         };
         return response;
