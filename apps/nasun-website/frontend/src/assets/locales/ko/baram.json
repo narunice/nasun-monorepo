@@ -127,7 +127,7 @@
           "pending": "NUSDC 잠김, Executor 할당 대기",
           "executing": "TEE 처리 중, 5분 타임아웃",
           "completed": "증명 검증 완료, NUSDC를 Executor에게 지급",
-          "cancelled": "실행 전 사용자 환불 요청",
+          "cancelled": "환불 — 사용자 취소 또는 실행 실패 시 자동 취소",
           "timedOut": "Executor 실패, 전액 환불 + 슬래싱"
         }
       },
