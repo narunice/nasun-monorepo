@@ -262,7 +262,7 @@ export default function BaramContent() {
       <SectionDivider />
 
       {/* Section 4: Executor Infrastructure */}
-      <div className="bg-gradient-to-br from-nasun-c3/[0.04] to-nasun-c2/[0.06]">
+      <div className="bg-gradient-to-br from-nasun-c3/[0.04] to-nasun-c2/[0.06] pb-16 md:pb-24">
         <ScrollReveal>
           <SectionLayout className="!max-w-7xl mx-auto">
             <DiagramSection
