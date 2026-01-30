@@ -15,9 +15,9 @@ export function TrustModelDiagram() {
   return (
     <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {pillars.map(({ key, icon: Icon, color, iconBg }) => (
-        <StaggerItem key={key}>
+        <StaggerItem key={key} className="h-full">
           <div
-            className={`bg-white/60 border ${color} rounded-xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200`}
+            className={`h-full bg-white/60 border ${color} rounded-xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200`}
           >
             <div className={`w-12 h-12 rounded-lg ${iconBg} flex items-center justify-center mb-4`}>
               <Icon className="w-6 h-6" />

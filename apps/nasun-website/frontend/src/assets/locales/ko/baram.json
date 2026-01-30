@@ -85,7 +85,7 @@
         },
         "blockchain": {
           "title": "블록체인 레이어 (Nasun L1)",
-          "items": ["baram.move — 에스크로 & 정산", "executor.move — 레지스트리 & 평판", "executor_staking.move — 스테이킹 & 슬래싱", "executor_tier.move — 티어 시스템", "attestation_registry.move — PCR 베이스라인", "compliance.move — 실행 기록"]
+          "items": ["에스크로 & 정산 — 결제 잠금 및 지급", "Executor 레지스트리 — 신원 및 평판 관리", "스테이킹 & 슬래싱 — 경제적 보안 강제", "티어 시스템 — 자격 관리", "증명 레지스트리 — TEE 검증 베이스라인", "컴플라이언스 레코드 — 불변 감사 추적"]
         },
         "tee": {
           "title": "TEE Executor 레이어",
@@ -222,6 +222,11 @@
         "dormancy": "30일간 완료된 작업이 없는 Executor는 하루에 평판 1씩 감소합니다."
       }
     }
+  },
+  "architecture": {
+    "sectionTitle": "아키텍쳐",
+    "headline": "온체인 기반 구조",
+    "onChainLabel": "온체인 레이어 (Nasun L1)"
   },
   "common": {
     "viewDetails": "기술 상세 보기",
