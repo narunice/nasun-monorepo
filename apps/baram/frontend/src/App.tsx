@@ -9,6 +9,7 @@ import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin, useLedger, useSigner, getSessionPassword } from '@nasun/wallet';
+import { useIdleTimeout } from './hooks/useIdleTimeout';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import { ThemeToggle } from './components/theme/ThemeToggle';
 import { ChatLayout } from './layouts/ChatLayout';
@@ -34,9 +35,11 @@ function toUIMessage(msg: Message): UIMessage {
   };
 }
 
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+
 function AppContent() {
-  const { status, account } = useWallet();
-  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { status, account, lockWallet } = useWallet();
+  const { isConnected: isZkLoggedIn, logout: zkLogout } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
   const { address: signerAddress } = useSigner();
   const isConnected = (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
@@ -57,6 +60,19 @@ function AppContent() {
 
   // Track previous wallet address for disconnect detection
   const prevAddressRef = useRef<string | null>(null);
+
+  // Idle timeout: lock password wallet or disconnect zkLogin after inactivity
+  const handleIdleTimeout = useCallback(() => {
+    if (status === 'unlocked') {
+      console.log('[App] Idle timeout: locking password wallet');
+      lockWallet();
+    } else if (isZkLoggedIn) {
+      console.log('[App] Idle timeout: disconnecting zkLogin session');
+      zkLogout();
+    }
+  }, [status, isZkLoggedIn, lockWallet, zkLogout]);
+
+  useIdleTimeout(handleIdleTimeout, IDLE_TIMEOUT_MS);
 
   // External hooks
   const { executors, isLoading: executorsLoading, error: executorsError } = useExecutors();
@@ -116,12 +132,9 @@ function AppContent() {
 
     if (currentAddress && currentAddress !== prevAddress) {
       // Wallet connected or changed - load data for this wallet
+      // Dual-mode: password wallet gets address+password key, zkLogin gets address-only key
       const password = getSessionPassword();
-      if (password) {
-        loadFromStorage(currentAddress, password);
-      } else {
-        console.warn('[App] No session password available, chat history unavailable');
-      }
+      loadFromStorage(currentAddress, password ?? undefined);
     } else if (!currentAddress && prevAddress) {
       // Wallet disconnected - clear memory (keep encrypted data in IndexedDB)
       clearOnLogout();

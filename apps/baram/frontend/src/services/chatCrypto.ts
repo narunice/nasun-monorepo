@@ -5,9 +5,12 @@
  * - PBKDF2 key derivation (100,000 iterations)
  * - AES-256-GCM for encryption
  *
- * Key derivation uses wallet address + wallet password.
- * Password is required — prevents disk-level attacks where
- * an attacker knows the wallet address (public info).
+ * Dual-mode key derivation:
+ * - Password wallet: PBKDF2(walletAddress + password) — disk-level attack defense
+ * - zkLogin: PBKDF2(walletAddress) — basic obfuscation (no local secret available)
+ *
+ * zkLogin users delegate auth to OAuth and do not manage local secrets,
+ * so address-only derivation aligns with their security model.
  */
 
 // PBKDF2 settings (matching monorepo pattern)
@@ -15,20 +18,21 @@ const PBKDF2_ITERATIONS = 100000;
 const SALT_PREFIX = 'baram:chat:';
 const IV_LENGTH = 12;
 
-// Cached encryption key (fingerprint = hash of address+password)
+// Cached encryption key (fingerprint = hash of key material)
 let cachedKey: { fingerprint: string; key: CryptoKey } | null = null;
 
 /**
- * Derive encryption key from wallet address + password
- * Uses PBKDF2 with combined material for key derivation
+ * Derive encryption key from wallet address + optional password
+ *
+ * - With password (password wallet): PBKDF2(address + ":" + password) — strong
+ * - Without password (zkLogin): PBKDF2(address) — basic obfuscation
  */
-export async function deriveStorageKey(walletAddress: string, password: string): Promise<CryptoKey> {
-  if (!password) {
-    throw new Error('Password required for chat encryption key derivation');
-  }
+export async function deriveStorageKey(walletAddress: string, password?: string): Promise<CryptoKey> {
+  // Build key material: address-only for zkLogin, address+password for password wallets
+  const material = password ? `${walletAddress}:${password}` : walletAddress;
 
   // Use hash as cache fingerprint (avoid storing password in memory for comparison)
-  const fingerprint = await sha256Text(`${walletAddress}:${password}`);
+  const fingerprint = await sha256Text(material);
   if (cachedKey && cachedKey.fingerprint === fingerprint) {
     return cachedKey.key;
   }
@@ -36,10 +40,10 @@ export async function deriveStorageKey(walletAddress: string, password: string):
   const encoder = new TextEncoder();
   const salt = encoder.encode(`${SALT_PREFIX}${walletAddress}`);
 
-  // Import wallet address + password as key material
+  // Import key material (dual-mode: with or without password)
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(`${walletAddress}:${password}`),
+    encoder.encode(material),
     'PBKDF2',
     false,
     ['deriveKey']

@@ -7,7 +7,9 @@
  *   - sessions: Encrypted session metadata
  *   - messages: Encrypted messages (indexed by sessionId)
  *
- * V2: Key derivation uses wallet address + password (not address alone)
+ * V2: Key derivation uses wallet address + optional password (dual-mode)
+ *     - Password wallet: PBKDF2(address + password) — strong
+ *     - zkLogin: PBKDF2(address) — basic obfuscation (no password available)
  */
 
 import type { Message, ChatSession, EncryptedMessage, EncryptedSession } from '../types/chat';
@@ -99,7 +101,7 @@ export function closeDatabase(): void {
  */
 export async function saveSession(
   walletAddress: string,
-  password: string,
+  password: string | undefined,
   session: ChatSession
 ): Promise<void> {
   const database = await openDatabase(walletAddress);
@@ -128,7 +130,7 @@ export async function saveSession(
 /**
  * Load all sessions (decrypted)
  */
-export async function loadSessions(walletAddress: string, password: string): Promise<ChatSession[]> {
+export async function loadSessions(walletAddress: string, password?: string): Promise<ChatSession[]> {
   const database = await openDatabase(walletAddress);
   const key = await deriveStorageKey(walletAddress, password);
 
@@ -212,7 +214,7 @@ export async function clearAllData(walletAddress: string): Promise<void> {
  */
 export async function saveMessage(
   walletAddress: string,
-  password: string,
+  password: string | undefined,
   sessionId: string,
   message: Message
 ): Promise<void> {
@@ -245,7 +247,7 @@ export async function saveMessage(
  */
 export async function loadMessages(
   walletAddress: string,
-  password: string,
+  password: string | undefined,
   sessionId: string
 ): Promise<Message[]> {
   const database = await openDatabase(walletAddress);
@@ -281,7 +283,7 @@ export async function loadMessages(
  */
 export async function saveMessages(
   walletAddress: string,
-  password: string,
+  password: string | undefined,
   sessionId: string,
   messages: Message[]
 ): Promise<void> {
