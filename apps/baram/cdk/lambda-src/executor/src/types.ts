@@ -48,7 +48,7 @@ export const MODEL_PRICING: Record<string, number> = {
   // Groq models (fallback - fast inference)
   'llama-3.1-8b-instant': 100_000, // 0.1 NUSDC
   'llama-3.3-70b-versatile': 100_000, // 0.1 NUSDC
-  'mixtral-8x7b-32768': 100_000, // 0.1 NUSDC
+  'mistral-saba-24b': 100_000, // 0.1 NUSDC
 } as const;
 
 // Default to Groq for free tier usage

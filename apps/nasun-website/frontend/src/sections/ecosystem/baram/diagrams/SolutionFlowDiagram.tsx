@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ArrowDown,
 } from "lucide-react";
+import { StaggerContainer, StaggerItem } from "../animations";
 
 const steps = [
   { key: "prompt" as const, icon: MessageSquare, color: "bg-blue-50 text-blue-600" },
@@ -25,10 +26,10 @@ export function SolutionFlowDiagram() {
   return (
     <div className="space-y-8">
       {/* Flow */}
-      <div className="flex flex-col lg:flex-row items-center gap-3 lg:gap-1">
+      <StaggerContainer className="flex flex-col lg:flex-row items-center gap-3 lg:gap-1">
         {steps.map(({ key, icon: Icon, color }, i) => (
-          <div key={key} className="flex items-center gap-1 lg:gap-1 w-full lg:w-auto">
-            <div className="flex-1 lg:flex-initial bg-nasun-c4/[0.03] border border-nasun-c4/15 rounded-xl p-4 lg:p-5 text-center min-w-0 lg:min-w-[130px] shadow-sm">
+          <StaggerItem key={key} className="flex items-center gap-1 lg:gap-1 w-full lg:w-auto">
+            <div className="flex-1 lg:flex-initial bg-white/60 border border-nasun-c4/15 hover:border-nasun-c4/30 rounded-xl p-4 lg:p-5 text-center min-w-0 lg:min-w-[130px] shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200">
               <div
                 className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center mx-auto mb-2`}
               >
@@ -43,16 +44,16 @@ export function SolutionFlowDiagram() {
             </div>
             {i < steps.length - 1 && (
               <>
-                <ArrowRight className="hidden lg:block w-4 h-4 text-nasun-black/20 flex-shrink-0" />
-                <ArrowDown className="lg:hidden w-4 h-4 text-nasun-black/20 flex-shrink-0" />
+                <ArrowRight className="hidden lg:block w-4 h-4 text-nasun-c4/30 flex-shrink-0" />
+                <ArrowDown className="lg:hidden w-4 h-4 text-nasun-c4/30 flex-shrink-0" />
               </>
             )}
-          </div>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerContainer>
 
       {/* On-Chain Bar */}
-      <div className="bg-nasun-c4/[0.06] border border-nasun-c4/20 rounded-xl p-4">
+      <div className="bg-gradient-to-r from-nasun-c4/[0.04] to-nasun-c5/[0.06] border border-nasun-c4/20 rounded-xl p-4">
         <p className="text-nasun-c4 text-xs font-medium uppercase tracking-wider mb-3">
           {t("solution.onChainBar")}
         </p>
@@ -60,7 +61,7 @@ export function SolutionFlowDiagram() {
           {(["baram", "executor", "compliance"] as const).map((key) => (
             <div
               key={key}
-              className="bg-white border border-nasun-c4/10 rounded-lg px-3 py-2 text-center"
+              className="bg-white/70 border border-nasun-c4/10 rounded-lg px-3 py-2 text-center"
             >
               <span className="text-emerald-600 text-xs font-mono">
                 {t(`solution.contracts.${key}`)}

@@ -140,10 +140,10 @@ export const MODEL_PRICING = {
     description: 'Large model via Groq Cloud',
     provider: 'groq',
   },
-  'mixtral-8x7b-32768': {
-    name: 'Mixtral 8x7B (Groq)',
+  'mistral-saba-24b': {
+    name: 'Mistral Saba 24B (Groq)',
     price: 100_000, // 0.1 NUSDC
-    description: 'Mixtral MoE model via Groq',
+    description: 'Mistral Saba model via Groq',
     provider: 'groq',
   },
   // OpenAI models (paid)
