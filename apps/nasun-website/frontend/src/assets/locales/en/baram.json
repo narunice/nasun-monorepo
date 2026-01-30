@@ -85,7 +85,7 @@
         },
         "blockchain": {
           "title": "Blockchain Layer (Nasun L1)",
-          "items": ["baram.move — Escrow & Settlement", "executor.move — Registry & Reputation", "executor_staking.move — Staking & Slashing", "executor_tier.move — Tier System", "attestation_registry.move — PCR Baseline", "compliance.move — Execution Records"]
+          "items": ["Escrow & Settlement — Payment locking and release", "Executor Registry — Identity and reputation tracking", "Staking & Slashing — Economic security enforcement", "Tier System — Eligibility management", "Attestation Registry — TEE verification baseline", "Compliance Records — Immutable audit trail"]
         },
         "tee": {
           "title": "TEE Executor Layer",
@@ -222,6 +222,11 @@
         "dormancy": "Executors with 0 completed jobs in 30 days lose 1 reputation per day."
       }
     }
+  },
+  "architecture": {
+    "sectionTitle": "Architecture",
+    "headline": "On-Chain Foundation",
+    "onChainLabel": "On-Chain Layer (Nasun L1)"
   },
   "common": {
     "viewDetails": "View Technical Details",
