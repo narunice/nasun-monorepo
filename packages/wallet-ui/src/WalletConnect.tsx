@@ -25,6 +25,7 @@ import {
   LOCKOUT_TIERS,
   useNsaStore,
   useNasunSmartAccount,
+  useWalletLabel,
   type NFTInfo,
   type NFTSortBy,
   type ZkLoginProvider,
@@ -60,6 +61,76 @@ import {
   NsaRecoveryPanel,
 } from "./nsa";
 import { useAdvancedMode, useUISettingsStore } from "./stores";
+
+/** Truncate email for mobile display: "user@gmail.com" → "user@..." */
+function truncateEmail(email: string, isMobile: boolean): string {
+  if (!isMobile) return email;
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1) return email;
+  return `${email.slice(0, atIndex)}@...`;
+}
+
+/** Truncate text to max length with ellipsis */
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}...`;
+}
+
+/** Inline editable wallet label */
+function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallbackLabel: string }) {
+  const { label, setLabel } = useWalletLabel(address);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEditing = () => {
+    setDraft(label || "");
+    setIsEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const save = () => {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed.length <= 20) {
+      setLabel(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const cancel = () => setIsEditing(false);
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.slice(0, 20))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") cancel();
+        }}
+        onBlur={save}
+        className="text-xs text-gray-900 dark:text-white bg-transparent border-b border-gray-400 dark:border-zinc-500 outline-none w-full py-0.5"
+        placeholder="Wallet name..."
+        maxLength={20}
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={startEditing}
+      className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors group"
+      title="Click to set wallet name"
+    >
+      <span>{label || fallbackLabel}</span>
+      <svg className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+    </button>
+  );
+}
 
 type ViewMode =
   | "main"
@@ -285,6 +356,9 @@ export function WalletConnect({
     logout: zkLogout,
     state: zkState,
   } = useZkLogin();
+
+  // Wallet label (alias for self-custody)
+  const { label: walletLabel } = useWalletLabel(account?.address);
 
   // Ledger state
   const {
@@ -574,10 +648,12 @@ export function WalletConnect({
   }, [deleteWallet, resetSettings]);
 
   // Get button text based on status
-  // Uses responsive address display: full format on desktop, short on mobile
+  // zkLogin: show email, self-custody: show label, fallback: truncated address
   const getButtonText = () => {
     // zkLogin takes priority if connected
     if (isZkLoggedIn && zkState?.address) {
+      if (zkUserInfo?.email) return truncateEmail(zkUserInfo.email, isMobile);
+      if (zkUserInfo?.name) return isMobile ? truncateText(zkUserInfo.name, 12) : zkUserInfo.name;
       return shortenAddressResponsive(zkState.address, isMobile);
     }
     // Ledger connected
@@ -586,8 +662,10 @@ export function WalletConnect({
     }
     if (status === "disconnected") return "Get Started";
     if (status === "locked") return "Locked";
-    if (status === "unlocked" && account)
+    if (status === "unlocked" && account) {
+      if (walletLabel) return isMobile ? truncateText(walletLabel, 10) : walletLabel;
       return shortenAddressResponsive(account.address, isMobile);
+    }
     return "Wallet";
   };
 
@@ -1641,11 +1719,9 @@ export function WalletConnect({
           {/* Address header with network selector */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
             <div className="flex items-center justify-between gap-2">
-              {/* Left: Address info */}
+              {/* Left: Address info with editable label */}
               <div className="flex-1 min-w-0">
-                <span className="text-xs text-gray-500 dark:text-zinc-400 block">
-                  {addressLabel}
-                </span>
+                <WalletLabelEditor address={account.address} fallbackLabel={addressLabel} />
                 {isEVM && !storedEVMAddress ? (
                   <p className="text-xs text-amber-600 dark:text-amber-400">
                     Re-import with your mnemonic to enable EVM support
