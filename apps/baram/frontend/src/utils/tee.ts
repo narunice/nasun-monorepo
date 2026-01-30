@@ -1,8 +1,12 @@
 /**
  * TEE (Trusted Execution Environment) encryption utilities
+ *
+ * Handles E2E encryption for both prompts (outbound) and responses (inbound).
+ * The AES key generated during prompt encryption is retained in memory
+ * for decrypting the Enclave's encrypted response.
  */
 
-import { importPublicKey, encryptWithRSA } from './crypto';
+import { importPublicKey, encryptWithRSA, decryptResponse } from './crypto';
 
 interface CachedPublicKey {
   url: string;
@@ -10,6 +14,9 @@ interface CachedPublicKey {
 }
 
 let cachedPublicKey: CachedPublicKey | null = null;
+
+// AES key retained for response decryption (one pending request at a time)
+let pendingAesKey: Uint8Array | null = null;
 
 /**
  * Clear the cached public key (useful for testing or when executor changes)
@@ -19,8 +26,8 @@ export function clearPublicKeyCache(): void {
 }
 
 /**
- * Encrypt prompt with RSA-OAEP for TEE executor
- * Fetches and caches the executor's public key
+ * Encrypt prompt with RSA-OAEP for TEE executor.
+ * Retains the AES key in memory for decrypting the response.
  *
  * @param prompt - The plaintext prompt to encrypt
  * @param executorUrl - The executor's base URL
@@ -46,5 +53,31 @@ export async function encryptPromptForTEE(
     console.log('[TEE] Public key cached');
   }
 
-  return encryptWithRSA(cachedPublicKey.key, prompt);
+  const { encrypted, aesKeyBytes } = await encryptWithRSA(cachedPublicKey.key, prompt);
+
+  // Retain AES key for response decryption
+  pendingAesKey = aesKeyBytes;
+
+  return encrypted;
+}
+
+/**
+ * Decrypt E2E-encrypted response from TEE executor.
+ * Uses the AES key retained during prompt encryption, then clears it.
+ *
+ * @param encryptedResult - Base64-encoded encrypted response
+ * @returns Decrypted plaintext response
+ */
+export async function decryptResponseFromTEE(encryptedResult: string): Promise<string> {
+  if (!pendingAesKey) {
+    throw new Error('No AES key available for response decryption');
+  }
+
+  const result = await decryptResponse(encryptedResult, pendingAesKey);
+
+  // Clear key from memory immediately after use
+  pendingAesKey.fill(0);
+  pendingAesKey = null;
+
+  return result;
 }

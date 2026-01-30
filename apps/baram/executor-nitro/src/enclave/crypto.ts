@@ -74,6 +74,14 @@ export function getPublicKey(): string | null {
 }
 
 /**
+ * Result of hybrid decryption, including the AES key for response encryption.
+ */
+export interface DecryptResult {
+  plaintext: string;
+  aesKey: Buffer; // AES-256 key extracted from envelope, for response encryption
+}
+
+/**
  * Decrypt hybrid-encrypted data (RSA-OAEP + AES-256-GCM).
  *
  * Format: Base64( RSA_ciphertext(256B) || AES_GCM_ciphertext )
@@ -81,10 +89,12 @@ export function getPublicKey(): string | null {
  * 1. RSA-OAEP decrypts the first 256 bytes → AES key (32B) + IV (12B)
  * 2. AES-256-GCM decrypts the remaining bytes (includes 16B auth tag)
  *
+ * Returns both the plaintext and the AES key (for E2E response encryption).
+ *
  * @param encryptedBase64 - Base64-encoded hybrid-encrypted data
- * @returns Decrypted plaintext string
+ * @returns DecryptResult with plaintext and AES key
  */
-export function decrypt(encryptedBase64: string): string {
+export function decrypt(encryptedBase64: string): DecryptResult {
   if (!keyPair) {
     throw new Error('Crypto not initialized');
   }
@@ -133,7 +143,7 @@ export function decrypt(encryptedBase64: string): string {
       decipher.final(),
     ]);
 
-    return decrypted.toString('utf-8');
+    return { plaintext: decrypted.toString('utf-8'), aesKey };
   } catch (error) {
     // Fallback: treat as base64-encoded plaintext (non-encrypted prompt)
     try {
@@ -141,7 +151,8 @@ export function decrypt(encryptedBase64: string): string {
       // Sanity check: valid UTF-8 text should not contain null bytes
       if (plaintext.length > 0 && !plaintext.includes('\0')) {
         console.warn('[Enclave/Crypto] Hybrid decryption failed, using plaintext fallback');
-        return plaintext;
+        // No AES key in fallback path — response will not be encrypted
+        return { plaintext, aesKey: Buffer.alloc(0) };
       }
     } catch {
       // Fallback also failed
@@ -149,6 +160,32 @@ export function decrypt(encryptedBase64: string): string {
     console.error('[Enclave/Crypto] Decryption failed:', error);
     throw new Error('Decryption failed - invalid encrypted data or wrong key');
   }
+}
+
+/**
+ * Encrypt response using AES-256-GCM with the key extracted from prompt decryption.
+ *
+ * Format: Base64( IV(12B) || AES_GCM_ciphertext || AuthTag(16B) )
+ *
+ * No RSA envelope needed — both Frontend and Enclave already share the AES key.
+ *
+ * @param plaintext - Response text to encrypt
+ * @param aesKey - AES-256 key from prompt decryption (32 bytes)
+ * @returns Base64-encoded encrypted response
+ */
+export function encryptResponse(plaintext: string, aesKey: Buffer): string {
+  const iv = crypto.randomBytes(12); // Fresh IV (never reuse)
+  const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
+
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, 'utf-8'),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag(); // 16B
+
+  // IV || ciphertext || authTag
+  const combined = Buffer.concat([iv, encrypted, authTag]);
+  return combined.toString('base64');
 }
 
 /**

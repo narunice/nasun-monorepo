@@ -88,10 +88,11 @@ export interface ExecuteInferenceRequest extends EnclaveRequest {
 export interface ExecuteInferenceResponse extends EnclaveResponse {
   type: 'INFERENCE_RESULT';
   payload: {
-    result: string; // AI response (plaintext - will be encrypted for client later)
-    resultHash: string; // SHA-256 hash of result
+    result: string; // AI response — if encrypted: Base64(IV || ciphertext || authTag)
+    resultHash: string; // SHA-256 hash of plaintext result (computed by Enclave)
     executionTimeMs: number;
     attestation: AttestationDocument;
+    encrypted?: boolean; // true = result is AES-256-GCM encrypted (E2E)
   };
 }
 

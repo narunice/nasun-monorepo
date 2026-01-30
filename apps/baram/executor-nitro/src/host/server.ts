@@ -303,6 +303,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         success: true,
         result: response.payload.result,
         resultHash: response.payload.resultHash,
+        encrypted: response.payload.encrypted ?? false,
         executionTimeMs: response.payload.executionTimeMs,
         txDigest,
         attestation: response.payload.attestation,

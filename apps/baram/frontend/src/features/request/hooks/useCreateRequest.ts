@@ -11,7 +11,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { BARAM_CONFIG, NETWORK_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
 import type { ExecutorInfo } from './useExecutors';
 import { sha256, hexToBytes, encodePrompt } from '@/utils/encoding';
-import { encryptPromptForTEE } from '@/utils/tee';
+import { encryptPromptForTEE, decryptResponseFromTEE } from '@/utils/tee';
 import { getNusdcCoins } from '../services/coinService';
 import { buildCreateRequestTransaction } from '../services/transactionBuilder';
 import { buildContextWithPrompt, formatContextForTee } from '@/services/contextBuilder';
@@ -192,10 +192,17 @@ export function useCreateRequest(): UseCreateRequestReturn {
         throw new Error(executeResult.error || 'Execution failed');
       }
 
-      // 7. Set result (include TEE attestation data if available)
+      // 7. Decrypt E2E-encrypted response if applicable
+      let resultText = executeResult.result;
+      if (executeResult.encrypted) {
+        resultText = await decryptResponseFromTEE(executeResult.result);
+        console.log('[E2E] Response decrypted successfully');
+      }
+
+      // 8. Set result (include TEE attestation data if available)
       setResult({
         requestId,
-        result: executeResult.result,
+        result: resultText,
         resultHash: executeResult.resultHash,
         txDigest: executeResult.txDigest,
         executionTimeMs: executeResult.executionTimeMs,
