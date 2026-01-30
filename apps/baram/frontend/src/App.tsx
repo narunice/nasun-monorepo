@@ -8,7 +8,7 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin, useLedger, useSigner } from '@nasun/wallet';
+import { useWallet, useZkLogin, useLedger, useSigner, getSessionPassword } from '@nasun/wallet';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import { ThemeToggle } from './components/theme/ThemeToggle';
 import { ChatLayout } from './layouts/ChatLayout';
@@ -116,7 +116,12 @@ function AppContent() {
 
     if (currentAddress && currentAddress !== prevAddress) {
       // Wallet connected or changed - load data for this wallet
-      loadFromStorage(currentAddress);
+      const password = getSessionPassword();
+      if (password) {
+        loadFromStorage(currentAddress, password);
+      } else {
+        console.warn('[App] No session password available, chat history unavailable');
+      }
     } else if (!currentAddress && prevAddress) {
       // Wallet disconnected - clear memory (keep encrypted data in IndexedDB)
       clearOnLogout();

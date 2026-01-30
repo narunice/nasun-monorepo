@@ -108,7 +108,7 @@ export interface ChatActions {
   setSelectedModel: (model: string | null) => void;
 
   // Persistence
-  loadFromStorage: (walletAddress: string) => Promise<void>;
+  loadFromStorage: (walletAddress: string, password: string) => Promise<void>;
   saveToStorage: () => Promise<void>;
 
   // Reset

@@ -6,13 +6,15 @@
  * - Object Stores:
  *   - sessions: Encrypted session metadata
  *   - messages: Encrypted messages (indexed by sessionId)
+ *
+ * V2: Key derivation uses wallet address + password (not address alone)
  */
 
 import type { Message, ChatSession, EncryptedMessage, EncryptedSession } from '../types/chat';
 import { deriveStorageKey, encryptObject, decryptObject, clearCachedKey } from './chatCrypto';
 
 const DB_PREFIX = 'baram-chat-';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Store names
 const SESSIONS_STORE = 'sessions';
@@ -52,6 +54,16 @@ export async function openDatabase(walletAddress: string): Promise<IDBDatabase> 
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result;
 
+      // V2: Clear data encrypted with old key (address-only derivation)
+      if (event.oldVersion < 2) {
+        if (database.objectStoreNames.contains(SESSIONS_STORE)) {
+          database.deleteObjectStore(SESSIONS_STORE);
+        }
+        if (database.objectStoreNames.contains(MESSAGES_STORE)) {
+          database.deleteObjectStore(MESSAGES_STORE);
+        }
+      }
+
       // Create sessions store
       if (!database.objectStoreNames.contains(SESSIONS_STORE)) {
         database.createObjectStore(SESSIONS_STORE, { keyPath: 'id' });
@@ -87,10 +99,11 @@ export function closeDatabase(): void {
  */
 export async function saveSession(
   walletAddress: string,
+  password: string,
   session: ChatSession
 ): Promise<void> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress);
+  const key = await deriveStorageKey(walletAddress, password);
 
   // Encrypt session data
   const { encrypted, iv } = await encryptObject(key, session);
@@ -115,9 +128,9 @@ export async function saveSession(
 /**
  * Load all sessions (decrypted)
  */
-export async function loadSessions(walletAddress: string): Promise<ChatSession[]> {
+export async function loadSessions(walletAddress: string, password: string): Promise<ChatSession[]> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress);
+  const key = await deriveStorageKey(walletAddress, password);
 
   const encryptedSessions = await new Promise<EncryptedSession[]>((resolve, reject) => {
     const tx = database.transaction(SESSIONS_STORE, 'readonly');
@@ -199,11 +212,12 @@ export async function clearAllData(walletAddress: string): Promise<void> {
  */
 export async function saveMessage(
   walletAddress: string,
+  password: string,
   sessionId: string,
   message: Message
 ): Promise<void> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress);
+  const key = await deriveStorageKey(walletAddress, password);
 
   // Encrypt message data
   const { encrypted, iv } = await encryptObject(key, message);
@@ -231,10 +245,11 @@ export async function saveMessage(
  */
 export async function loadMessages(
   walletAddress: string,
+  password: string,
   sessionId: string
 ): Promise<Message[]> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress);
+  const key = await deriveStorageKey(walletAddress, password);
 
   const encryptedMessages = await new Promise<EncryptedMessage[]>((resolve, reject) => {
     const tx = database.transaction(MESSAGES_STORE, 'readonly');
@@ -266,10 +281,11 @@ export async function loadMessages(
  */
 export async function saveMessages(
   walletAddress: string,
+  password: string,
   sessionId: string,
   messages: Message[]
 ): Promise<void> {
   for (const message of messages) {
-    await saveMessage(walletAddress, sessionId, message);
+    await saveMessage(walletAddress, password, sessionId, message);
   }
 }
