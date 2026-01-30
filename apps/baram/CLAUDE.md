@@ -243,8 +243,9 @@ cd apps/baram/executor-nitro
 |------|-----|
 | API Endpoint | `https://ncn10xkbfh.execute-api.ap-northeast-2.amazonaws.com/prod` |
 | Region | ap-northeast-2 |
-| Active Models | llama-3.1-8b-instant, llama-3.3-70b-versatile, mistral-saba-24b (Groq) |
-| Inactive Models | gpt-4o-mini, gpt-4o, gpt-4-turbo (OpenAI quota 초과) |
+| Active Models | llama-3.1-8b-instant, llama-3.3-70b-versatile (Groq) |
+| Inactive Models | gpt-4o, gpt-4-turbo (OpenAI quota 초과) |
+| Removed Models | mistral-saba-24b (unstable), gpt-4o-mini (removed) |
 
 ---
 
@@ -297,8 +298,13 @@ TIER_REGISTRY_ID=...
 2. **vsock Only** — Host-Enclave 간 vsock만 허용, Enclave 네트워크 접근 불가
 3. **No Secret Logging** — 개인키, 복호화된 프롬프트 로깅 금지
 4. **Attestation** — NSM COSE_Sign1 서명 + X.509 인증서 체인 검증 (Host에서 수행)
-5. **Chat Encryption** — IndexedDB에 저장된 채팅 히스토리는 AES-256-GCM으로 암호화, 키는 PBKDF2(walletAddress + password)로 파생
+5. **Chat Encryption (Dual-Mode)** — IndexedDB 채팅 히스토리는 AES-256-GCM으로 암호화
+   - **비밀번호 지갑**: `PBKDF2(walletAddress + password)` → 디스크 접근 공격 방어 (password 없이 복호화 불가)
+   - **zkLogin**: `PBKDF2(walletAddress)` → 기본 난독화 수준 (address는 공개 정보)
+   - zkLogin 사용자는 Google OAuth에 인증을 위임하며 로컬 비밀을 관리하지 않는 보안 모델을 선택한 것이므로, address-only 키 파생이 해당 모델에 부합
+   - 비밀번호 지갑 사용자는 password를 모르면 채팅 복호화 불가
 6. **Executor Registration Check** — Host 시작 시 EXECUTOR_PRIVATE_KEY가 온체인 ExecutorRegistry에 등록된 주소와 일치하는지 검증 (불일치 시 즉시 종료)
+7. **Idle Timeout** — 15분 비활동 시 자동 잠금 (비밀번호 지갑: lock, zkLogin: disconnect). Baram 앱 레벨에서 DOM 이벤트 기반 idle detection (mousemove, keydown, click, touchstart, scroll)
 
 ---
 
@@ -328,6 +334,7 @@ TIER_REGISTRY_ID=...
 | [chatCrypto.ts](frontend/src/services/chatCrypto.ts) | AES-256-GCM 암호화 (PBKDF2 키 파생: address + password) |
 | [chatStorage.ts](frontend/src/services/chatStorage.ts) | IndexedDB 암호화 저장 (per-wallet database) |
 | [transactionBuilder.ts](frontend/src/features/request/services/transactionBuilder.ts) | create_request + cancel_request TX 빌더 |
+| [useIdleTimeout.ts](frontend/src/hooks/useIdleTimeout.ts) | 15분 idle timeout hook (DOM 이벤트 기반) |
 | [network.ts](frontend/src/config/network.ts) | Tier 상수, MODEL_PRICING, TEE_TYPES |
 | [useExecutors.ts](frontend/src/features/request/hooks/useExecutors.ts) | Executor 목록 + tier 데이터 + selectExecutorWeightedRandom |
 | [TierBadge.tsx](frontend/src/components/badges/TierBadge.tsx) | Tier/Dormant 배지 컴포넌트 |
@@ -356,6 +363,7 @@ TIER_REGISTRY_ID=...
 | **F-5** | **Executor Registration Check (Host 시작 시 키 검증)** | **✅ 완료** |
 | **F-6** | **Auto-cancel on Execution Failure (에스크로 즉시 해제)** | **✅ 완료** |
 | **F-7** | **Chat Encryption with Password (디스크 공격 방어)** | **✅ 완료** |
+| **F-7.1** | **zkLogin 호환 Dual-Mode 암호화 + Idle Timeout** | **✅ 완료** |
 | F-2 | Admin 의존도 제거 | 계획 |
 | F-5 | StakingRegistry/TierRegistry 실데이터 조회 | 계획 |
 | G | Model Marketplace | 계획 |
