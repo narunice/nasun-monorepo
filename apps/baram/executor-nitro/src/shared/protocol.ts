@@ -80,7 +80,7 @@ export interface ExecuteInferenceRequest extends EnclaveRequest {
   type: 'EXECUTE_INFERENCE';
   payload: {
     encryptedPrompt: string; // Base64-encoded RSA-OAEP encrypted prompt
-    model: string; // Model ID (e.g., "gpt-4o-mini")
+    model: string; // Model ID (e.g., "llama-3.1-8b-instant")
     requestId: number; // On-chain request ID
   };
 }

@@ -31,10 +31,6 @@ import {
  * Supported models and their configurations
  */
 const MODEL_CONFIG: Record<string, { maxTokens: number; systemPrompt: string }> = {
-  'gpt-4o-mini': {
-    maxTokens: 1024,
-    systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',
-  },
   'gpt-4o': {
     maxTokens: 2048,
     systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',

@@ -177,7 +177,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
    * {
    *   requestId: number,        // On-chain request ID
    *   encryptedPrompt: string,  // RSA-OAEP encrypted prompt (Base64)
-   *   model: string             // Model ID (e.g., "gpt-4o-mini")
+   *   model: string             // Model ID (e.g., "llama-3.1-8b-instant")
    * }
    */
   app.post('/execute', async (req: Request, res: Response) => {
