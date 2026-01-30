@@ -1,12 +1,16 @@
 flowchart TB
     subgraph Browser["Browser (User Device)"]
         Prompt[Plaintext Prompt]
+        GenAES[Generate AES-256-GCM Key]
         PubKey[Executor RSA Public Key]
-        EncPrompt[RSA-OAEP Encrypted Ciphertext]
+        EncPrompt[E2E Encrypted Ciphertext — AES + RSA]
+        DecryptResp[AES-GCM Decrypt Response]
+        PlainResp[Plaintext Response]
     end
 
     subgraph Network["Network (Untrusted)"]
-        HTTPS[HTTPS Transport — Ciphertext Only]
+        HTTPS_Up[HTTPS Transport — Ciphertext Only]
+        HTTPS_Down[HTTPS Transport — Ciphertext Only]
     end
 
     subgraph Host["EC2 Host (Untrusted)"]
@@ -16,22 +20,25 @@ flowchart TB
 
     subgraph Enclave["Nitro Enclave (Trusted)"]
         PrivKey[RSA-2048 Private Key — Never leaves enclave]
-        DecryptEngine[RSA-OAEP Decrypt]
+        DecryptEngine[RSA Unwrap AES Key + AES Decrypt Prompt]
         LLM[Inference — llama.cpp local]
         AttestNSM[NSM Attestation — PCR0 PCR1 PCR2]
-        Result[Plaintext Result]
+        EncResult[AES-GCM Encrypt Response — Same Key]
     end
 
-    Prompt --> EncPrompt
-    EncPrompt --> HTTPS
-    HTTPS --> API
+    Prompt --> GenAES
+    GenAES --> EncPrompt
+    EncPrompt --> HTTPS_Up
+    HTTPS_Up --> API
     API --> VsockProxy
     VsockProxy --> DecryptEngine
     DecryptEngine --> LLM
-    LLM --> Result
-    Result --> VsockProxy
+    LLM --> EncResult
+    EncResult --> VsockProxy
     VsockProxy --> API
-    API --> Browser
+    API --> HTTPS_Down
+    HTTPS_Down --> DecryptResp
+    DecryptResp --> PlainResp
 
     style Enclave fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
     style Host fill:#fff9c4,stroke:#f57f17
