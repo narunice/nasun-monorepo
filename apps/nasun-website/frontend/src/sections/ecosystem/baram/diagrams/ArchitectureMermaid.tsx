@@ -10,7 +10,7 @@ export function ArchitectureMermaid() {
       <h4 className="text-nasun-black font-semibold text-lg">
         {t("solution.detail.title")}
       </h4>
-      <MermaidDiagram svg={userFlowSvg} alt="Baram User Flow Diagram" className="max-h-[600px]" />
+      <MermaidDiagram svg={userFlowSvg} alt="Baram User Flow Diagram" className="max-h-[600px] overflow-y-auto [&>svg]:max-w-[624px] [&>svg]:mx-auto" />
     </div>
   );
 }

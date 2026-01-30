@@ -103,7 +103,10 @@ npm ci && npm run build
 
 ---
 
-## Post-launch Checklist
+## Post-launch Checklist (New Instance)
+
+> Use this when launching a **new** spot instance (new IP).
+> For deploying code to an **existing** instance, see [Code Deployment Checklist](#code-deployment-checklist).
 
 ### Step 1: Note the Instance Details
 
@@ -124,8 +127,10 @@ SSH into the instance and ensure `.env` has all required settlement variables:
 
 ```bash
 ssh -i ~/.ssh/baram-nitro.pem ec2-user@<NEW_IP>
-cat ~/nasun-monorepo/apps/baram/executor-nitro/.env
+ls -la ~/nasun-monorepo/apps/baram/executor-nitro/.env || echo "WARNING: .env missing!"
 ```
+
+If `.env` is missing, recreate it (see [Known Issues: .env is Gitignored](#env-is-gitignored--lost-after-git-pull)).
 
 **Required variables:**
 
@@ -134,7 +139,7 @@ cat ~/nasun-monorepo/apps/baram/executor-nitro/.env
 | `SUI_RPC_URL` | Nasun devnet RPC | `https://rpc.devnet.nasun.io` |
 | `BARAM_PACKAGE_ID` | Baram escrow contract | `0x...` |
 | `BARAM_REGISTRY_ID` | BaramRegistry shared object | `0x...` |
-| `EXECUTOR_PRIVATE_KEY` | Executor wallet private key (suiprivkey) | `suiprivkey1q...` |
+| `EXECUTOR_PRIVATE_KEY` | Executor wallet private key (hex) | `edbc170c...` |
 | `COMPLIANCE_PACKAGE_ID` | ECR compliance contract | `0x...` |
 | `COMPLIANCE_REGISTRY_ID` | ComplianceRegistry shared object | `0x...` |
 | `EXECUTOR_REGISTRY_ID` | ExecutorRegistry shared object | `0x...` |
@@ -146,8 +151,7 @@ cat ~/nasun-monorepo/apps/baram/executor-nitro/.env
 > **IMPORTANT**: The .env file is NOT auto-loaded by `dotenv`. The systemd service loads it
 > via `EnvironmentFile=`. For manual startup, you must source it yourself (see Step 4).
 > The .env is gitignored, so it must already exist on the instance (baked into the AMI
-> or manually copied). If the repo is freshly cloned, copy .env from a backup or
-> fill in `.env.example`.
+> or manually copied). If missing, see Known Issues for recovery procedure.
 
 ### Step 3: Verify Enclave is Running
 
@@ -155,7 +159,8 @@ cat ~/nasun-monorepo/apps/baram/executor-nitro/.env
 # Check enclave status
 sudo nitro-cli describe-enclaves
 
-# Should show State: RUNNING, EnclaveCID: 16 (typically)
+# Should show State: RUNNING
+# Note the EnclaveCID (default: 16, increments on re-create)
 ```
 
 If enclave is not running:
@@ -164,7 +169,22 @@ If enclave is not running:
 ./scripts/run-enclave.sh --force --background
 ```
 
-### Step 4: Start Host Process
+### Step 4: Check Enclave CID Matches systemd Service
+
+```bash
+# Get current CID
+CID=$(sudo nitro-cli describe-enclaves | jq -r '.[].EnclaveCID')
+echo "Enclave CID: $CID"
+
+# Check systemd service CID
+grep ENCLAVE_CID /etc/systemd/system/baram-host.service
+
+# If they don't match, update:
+sudo sed -i "s/ENCLAVE_CID=[0-9]*/ENCLAVE_CID=$CID/" /etc/systemd/system/baram-host.service
+sudo systemctl daemon-reload
+```
+
+### Step 5: Start Host Process
 
 **Option A: systemd (recommended for production)**
 
@@ -194,9 +214,22 @@ node dist/host/main.js
   - `server.js` only exports `startServer()` — it does not call it
   - `main.js` connects to the Enclave, then calls `startServer()`
 - `USE_VSOCK=true` is REQUIRED on Nitro instances (without it, Host tries TCP which fails)
-- `ENCLAVE_CID=16` is the default CID assigned by Nitro
+- `ENCLAVE_CID` must match the running Enclave's CID (check with `nitro-cli describe-enclaves`)
 
-### Step 5: Health Check
+### Step 6: Verify Host Logs
+
+```bash
+sudo journalctl -u baram-host -n 15 --no-pager
+```
+
+- [ ] `Vsock connection established` — Enclave 연결 성공
+- [ ] `Sui settlement enabled` — .env 로드 + 정산 활성화
+- [ ] `HTTP server listening on port 3000` — 서버 시작
+
+> **WARNING**: `Sui config not provided, settlement disabled`가 보이면 .env가 없거나 불완전한 것.
+> `Connection refused`가 보이면 CID mismatch 또는 Enclave 미실행.
+
+### Step 7: Health Check
 
 ```bash
 curl http://localhost:3000/health
@@ -208,6 +241,195 @@ curl http://<NEW_IP>:3000/health
 
 - [ ] Host healthy
 - [ ] Enclave healthy
+
+### Step 8: Update On-chain Executor Endpoint
+
+New IP이므로 반드시 양쪽 registry를 업데이트 (Section A 참조):
+
+```bash
+# From local machine
+cd apps/baram/executor-nitro
+bash scripts/update-executor.sh <NEW_IP>
+```
+
+- [ ] Frontend registry (`0xeaac739...`) 업데이트됨
+- [ ] devnet-ids registry (`0xcb694425...`) 업데이트됨
+
+### Step 9: Check PCR0 Baseline
+
+EIF가 다시 빌드되었다면 PCR0가 변경되었을 수 있음:
+
+```bash
+# On the instance:
+PCR0=$(sudo nitro-cli describe-enclaves | jq -r '.[].Measurements.PCR0')
+echo "Current PCR0: $PCR0"
+```
+
+Host 로그에서 baseline 매칭 확인:
+
+```bash
+sudo journalctl -u baram-host --no-pager | grep -E "PCR0|baseline|mismatch"
+```
+
+- [ ] PCR0가 온체인 baseline과 일치 (mismatch 없음)
+
+**PCR0가 다르면** 새 baseline 등록 필요 (Section B 참조). 등록하지 않으면:
+- Audit Trail에 Attestation: **Unverified** 표시
+- Settlement TX가 MoveAbort(error 3)으로 실패 → **Pending** 상태 유지
+
+### Step 10: Frontend E2E Verification
+
+- [ ] Frontend에서 TEE 모델 선택
+- [ ] 프롬프트 전송 → 응답 수신
+- [ ] Audit Trail 확인:
+  - Attestation: **Verified** (not Unverified)
+  - PCR Verified: **Yes**
+  - Settlement: **TX Digest 표시** (not Pending)
+  - `[E2E] Response decrypted successfully` 콘솔 로그
+
+---
+
+## Code Deployment Checklist (Existing Instance)
+
+> Use this when deploying new code to an **already running** spot instance.
+> IP is unchanged, but code/EIF rebuild may affect CID, PCR0, and .env.
+
+```bash
+# SSH into instance
+ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP>
+cd ~/nasun-monorepo/apps/baram/executor-nitro
+```
+
+### Step 1: Backup .env Before git pull
+
+```bash
+# .env is gitignored but verify it won't be lost
+cp .env .env.backup 2>/dev/null
+```
+
+### Step 2: Pull Code and Rebuild
+
+```bash
+git pull origin main
+npm ci && npm run build
+```
+
+### Step 3: Verify .env Still Exists
+
+```bash
+ls -la .env || echo "WARNING: .env missing! Restore from .env.backup"
+# Restore if needed:
+# cp .env.backup .env
+```
+
+- [ ] `.env` 파일 존재 확인
+
+### Step 4: Rebuild EIF (if Enclave code changed)
+
+```bash
+# Stop old Enclave
+sudo systemctl stop nitro-enclaves-allocator
+sleep 2
+sudo systemctl start nitro-enclaves-allocator
+
+# Build new EIF
+bash scripts/build-eif.sh
+
+# Start new Enclave
+bash scripts/run-enclave.sh --force --background
+```
+
+### Step 5: Check New Enclave CID
+
+EIF를 다시 빌드하면 CID가 증가함 (16→17→18...):
+
+```bash
+CID=$(sudo nitro-cli describe-enclaves | jq -r '.[].EnclaveCID')
+echo "New CID: $CID"
+
+# Update systemd service if CID changed
+sudo sed -i "s/ENCLAVE_CID=[0-9]*/ENCLAVE_CID=$CID/" /etc/systemd/system/baram-host.service
+sudo systemctl daemon-reload
+```
+
+- [ ] systemd의 `ENCLAVE_CID`가 실제 CID와 일치
+
+### Step 6: Restart Host and Verify Logs
+
+```bash
+sudo systemctl restart baram-host
+sleep 3
+sudo journalctl -u baram-host -n 15 --no-pager
+```
+
+- [ ] `Vsock connection established`
+- [ ] `Sui settlement enabled`
+- [ ] `HTTP server listening on port 3000`
+
+### Step 7: Check PCR0 Baseline (if EIF rebuilt)
+
+```bash
+PCR0=$(sudo nitro-cli describe-enclaves | jq -r '.[].Measurements.PCR0')
+echo "Current PCR0: $PCR0"
+
+# Check Host logs for PCR mismatch
+sudo journalctl -u baram-host --no-pager | grep -i "mismatch"
+```
+
+PCR0가 변경되었으면 **로컬 머신에서** 새 baseline 등록 + 활성화:
+
+```bash
+# From local machine (not instance)
+# 1. Convert PCR hex to vector<u8> format
+python3 -c "
+pcr0 = '<NEW_PCR0_HEX>'
+print('[' + ','.join(str(int(pcr0[i:i+2], 16)) for i in range(0, len(pcr0), 2)) + ']')
+"
+
+# 2. Register baseline (bump version: current+1)
+nasun client call \
+  --package 0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3 \
+  --module attestation_registry \
+  --function register_baseline \
+  --args \
+    0x3bedf33f6c351573dd3f654f31b0efb449aac31bebe766106160d18b9ba3b238 \
+    0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b \
+    <NEW_VERSION> 1 '<PCR0_VECTOR>' '<PCR1_VECTOR>' '<PCR2_VECTOR>' '<DESC_VECTOR>' 0x6 \
+  --gas-budget 100000000
+
+# 3. Activate baseline
+nasun client call \
+  --package 0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3 \
+  --module attestation_registry \
+  --function activate_baseline \
+  --args \
+    0x3bedf33f6c351573dd3f654f31b0efb449aac31bebe766106160d18b9ba3b238 \
+    0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b \
+    <NEW_VERSION> \
+  --gas-budget 100000000
+
+# 4. Restart Host to load new baseline
+ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "sudo systemctl restart baram-host"
+```
+
+- [ ] PCR0가 온체인 baseline과 일치 (또는 새 baseline 등록 완료)
+
+### Step 8: Frontend E2E Verification
+
+- [ ] TEE 모델 선택 → 프롬프트 전송 → 응답 수신
+- [ ] Audit Trail:
+  - Attestation: **Verified**
+  - Settlement: **TX Digest 표시** (not Pending)
+
+### Quick Summary: 놓치기 쉬운 항목
+
+| 항목 | 놓치면 발생하는 문제 | 확인 방법 |
+|------|---------------------|-----------|
+| `.env` 누락 | Settlement disabled (Pending) | `ls .env` |
+| CID mismatch | Host가 Enclave에 연결 불가 | `nitro-cli describe-enclaves` vs systemd |
+| PCR0 변경 미등록 | Attestation Unverified + Settlement MoveAbort | Host 로그에서 `mismatch` 검색 |
+| Executor endpoint 미업데이트 | Frontend 연결 타임아웃 (old IP) | `update-executor.sh <IP>` |
+| 두 Registry 중 하나만 업데이트 | Frontend 또는 Settlement 한쪽만 동작 | 양쪽 모두 확인 |
 
 ---
 
