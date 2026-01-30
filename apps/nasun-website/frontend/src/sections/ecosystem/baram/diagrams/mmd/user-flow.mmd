@@ -1,0 +1,42 @@
+flowchart TD
+    Start([User Opens Baram]) --> ConnectWallet{Wallet Connected?}
+
+    ConnectWallet -->|No| ShowLock[Show Lock Screen]
+    ShowLock --> ConnectMethod{Connection Method}
+    ConnectMethod -->|Google| ZkLogin[zkLogin]
+    ConnectMethod -->|Password| SelfCustody[Self-Custody Wallet]
+    ZkLogin --> WalletReady
+    SelfCustody --> WalletReady
+
+    ConnectWallet -->|Yes| WalletReady[Wallet Ready]
+    WalletReady --> LoadHistory[Load Encrypted Chat History]
+    LoadHistory --> ChatUI[Chat Interface]
+
+    ChatUI --> SelectModel[Select AI Model]
+    SelectModel --> TypePrompt[Type Prompt]
+    TypePrompt --> Submit[Submit]
+
+    Submit --> AutoAssign[Auto-Assign Executor]
+    AutoAssign --> FetchPubKey[Fetch Executor RSA Public Key]
+    FetchPubKey --> Encrypt[RSA-OAEP Encrypt Prompt]
+    Encrypt --> BuildTx[Build On-Chain Transaction]
+    BuildTx --> SignTx[Sign Transaction]
+    SignTx --> SubmitTx[Submit to Nasun Blockchain]
+
+    SubmitTx --> EscrowCreated[NUSDC Locked in Escrow]
+    EscrowCreated --> CallExecutor[Send Encrypted Prompt to TEE]
+    CallExecutor --> WaitResult[Waiting for TEE Execution]
+
+    WaitResult --> ResultOk{Success?}
+    ResultOk -->|Yes| ShowResult[Display AI Response]
+    ResultOk -->|No| ReRoll{Re-Roll Available?}
+    ReRoll -->|Yes| AutoAssign
+    ReRoll -->|No| ShowError[Display Error]
+
+    ShowResult --> SaveChat[Save to Encrypted IndexedDB]
+    SaveChat --> ChatUI
+
+    style AutoAssign fill:#e8f5e9,stroke:#2e7d32
+    style Encrypt fill:#e3f2fd,stroke:#1565c0
+    style EscrowCreated fill:#fff3e0,stroke:#e65100
+    style ShowResult fill:#e8f5e9,stroke:#2e7d32

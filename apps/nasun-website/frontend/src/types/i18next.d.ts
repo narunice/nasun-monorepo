@@ -32,6 +32,7 @@ import padoEN from "../assets/locales/en/pado.json";
 import newsEN from "../assets/locales/en/news.json";
 import notFoundEN from "../assets/locales/en/notFound.json";
 import proposalsEN from "../assets/locales/en/proposals.json";
+import baramEN from "../assets/locales/en/baram.json";
 
 declare module "i18next" {
   interface CustomTypeOptions {
@@ -223,6 +224,7 @@ declare module "i18next" {
       news: typeof newsEN;
       notFound: typeof notFoundEN;
       proposals: typeof proposalsEN;
+      baram: typeof baramEN;
     };
   }
 }
