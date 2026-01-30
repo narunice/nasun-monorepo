@@ -505,6 +505,9 @@ export interface TopClimberEntry {
   previousRank: number;
   rankChange: RankChange;
   currentScore: number;
+  previousScore?: number;
+  scoreIncrease?: number;
+  percentageIncrease?: number;
 }
 
 // ============================================

@@ -131,6 +131,12 @@ function calculateTopClimbers(
 
     // Only include users who improved their rank (positive change)
     if (direction === 'up' || direction === 'new') {
+      const previousScore = previous?.userScore || 0;
+      const scoreIncrease = current.userScore - previousScore;
+      const percentageIncrease = previousScore > 0
+        ? (scoreIncrease / previousScore) * 100
+        : 0;
+
       climbers.push({
         accountId,
         username: current.username,
@@ -145,6 +151,9 @@ function calculateTopClimbers(
           amount: Math.abs(rankChange),
         },
         currentScore: current.userScore,
+        previousScore,
+        scoreIncrease,
+        percentageIncrease,
       });
     }
   }
