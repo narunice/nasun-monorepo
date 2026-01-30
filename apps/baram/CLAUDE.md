@@ -63,8 +63,9 @@ apps/baram/
 │   ├── docker/                  # Nitro EIF Dockerfile
 │   └── models/                  # LLaMA 모델 (.gitignore)
 │
-├── cdk/                         # AWS CDK (Lambda, Legacy Direct Mode)
-└── docs/                        # BARAM_IMPLEMENTATION_PLAN.md
+├── cdk/                         # AWS CDK 인프라
+│   └── lambda-src/executor/     # Lambda executor (Groq/OpenAI cloud models)
+└── docs/                        # BARAM_IMPLEMENTATION_PLAN.md, SPOT_INSTANCE_GUIDE.md
 ```
 
 ---
@@ -96,11 +97,12 @@ cd apps/baram/contracts-executor
 ### TEE Spot Instance
 
 > **⚠️ 개발 종료 후 반드시 `terminate-spot.sh` 실행!**
+> 상세 운영 가이드: [SPOT_INSTANCE_GUIDE.md](docs/SPOT_INSTANCE_GUIDE.md)
 
 ```bash
 cd apps/baram/executor-nitro
 ./scripts/launch-spot.sh           # Custom AMI, 2-3분 소요
-./scripts/update-executor.sh <IP>  # On-chain endpoint 업데이트
+./scripts/update-executor.sh <IP>  # On-chain endpoint 업데이트 (두 Registry 모두)
 # ... 개발 ...
 ./scripts/terminate-spot.sh        # 반드시 종료!
 ```
@@ -164,6 +166,7 @@ cd apps/baram/executor-nitro
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
 | `register_baseline` | Admin | PCR baseline 등록 |
+| `activate_baseline` | Admin | baseline 활성화 |
 | `revoke_baseline` | Admin | baseline 폐기 |
 | `verify_pcrs` | View | PCR 검증 |
 
@@ -183,6 +186,10 @@ cd apps/baram/executor-nitro
 
 ### Executor Registry + Staking + Tier
 
+> **Note**: 두 개의 ExecutorRegistry가 존재함. `update-executor.sh`는 양쪽 모두 업데이트.
+
+**devnet-ids Registry** (Host settlement용):
+
 | 항목 | 주소 |
 |------|------|
 | Package ID | `0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff` |
@@ -194,14 +201,23 @@ cd apps/baram/executor-nitro
 | StakingAdminCap | `0x9ce33344d01578a8e121016af13caa11e773073d4e37e739b0c494a8ad9e5a35` |
 | TierRegistry | `0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c` |
 
+**Frontend Registry** (UI에서 Executor 조회용):
+
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
+| ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
+| AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
+
 ### Attestation Registry
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3` |
-| AttestationRegistry | `0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b` |
-| AdminCap | `0x3bedf33f6c351573dd3f654f31b0efb449aac31bebe766106160d18b9ba3b238` |
+| Package ID | `0xc7ede9327e5179ed17f16eb2aa4efeee2e8b8c3dba7d34f3c1dcf3a5daad7ed0` |
+| AttestationRegistry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
+| AdminCap | `0x3bedf33f6c35bd2f4e32822e94f8b2f14ab5b5b4c117e6beed02a74f2e1a1e27` |
 | UpgradeCap | `0x84602bc64e766da6637e765984e51fedbd0672f772a4f71ed893832f0ec56e23` |
+| Active PCR0 (v3) | `3ee63e5c4001f182...daad7ed0` |
 
 ### Compliance Registry
 
@@ -220,12 +236,14 @@ cd apps/baram/executor-nitro
 | TokenFaucet | `0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14` |
 | ClaimRecord | `0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8` |
 
-### Lambda Backend (Legacy)
+### Lambda Backend (Cloud Models)
 
 | 항목 | 값 |
 |------|-----|
 | API Endpoint | `https://ncn10xkbfh.execute-api.ap-northeast-2.amazonaws.com/prod` |
 | Region | ap-northeast-2 |
+| Active Models | llama-3.1-8b-instant, llama-3.3-70b-versatile, mistral-saba-24b (Groq) |
+| Inactive Models | gpt-4o-mini, gpt-4o, gpt-4-turbo (OpenAI quota 초과) |
 
 ---
 
@@ -252,13 +270,22 @@ VITE_TIER_REGISTRY_ID=...
 
 ### executor-nitro (.env)
 
+> systemd service는 `EnvironmentFile`로 `.env`를 자동 로드함.
+> 전체 변수 목록: [.env.example](executor-nitro/.env.example)
+
 ```env
-USE_LOCAL_LLM=true          # Local LLaMA (complete privacy)
-USE_OPENAI_PROXY=false      # OpenAI Proxy (partial privacy)
 USE_VSOCK=true              # vsock (Nitro only)
 ENCLAVE_CID=16
 HOST_PORT=3000
-ENCLAVE_PORT=5050
+
+# Settlement (Sui)
+SUI_RPC_URL=https://rpc.devnet.nasun.io
+BARAM_PACKAGE_ID=...
+EXECUTOR_PRIVATE_KEY=suiprivkey1q...
+COMPLIANCE_PACKAGE_ID=...
+ATTESTATION_PACKAGE_ID=...
+STAKING_REGISTRY_ID=...
+TIER_REGISTRY_ID=...
 ```
 
 ---
@@ -300,7 +327,10 @@ ENCLAVE_PORT=5050
 | [TierBadge.tsx](frontend/src/components/badges/TierBadge.tsx) | Tier/Dormant 배지 컴포넌트 |
 | [attestation.ts](executor-nitro/src/enclave/attestation.ts) | NSM Attestation (COSE_Sign1) |
 | [server.ts](executor-nitro/src/host/server.ts) | Host HTTP + Attestation 검증 |
+| [sui-client.ts](executor-nitro/src/host/sui-client.ts) | On-chain settlement + ECR 생성 |
 | [protocol.ts](executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 (v1.3.0) |
+| [ECRReceipt.tsx](frontend/src/features/request/components/ECRReceipt.tsx) | Compliance Record 모달 |
+| [SPOT_INSTANCE_GUIDE.md](docs/SPOT_INSTANCE_GUIDE.md) | Spot 인스턴스 운영 가이드 |
 
 ---
 
@@ -315,7 +345,10 @@ ENCLAVE_PORT=5050
 | E-2 | Attestation Registry (PCR baseline) | ✅ 완료 |
 | E-3 | Compliance (ECR) | ✅ 완료 |
 | **F-1** | **Executor 자동 배정 (Weighted Random)** | **✅ 완료** |
-| F-2~5 | Admin 의존도 제거, Automated ECR, Attestation UI | 계획 |
+| **F-3** | **Automated ECR (submitProofWithCompliance PTB)** | **✅ 완료** |
+| **F-4** | **Frontend Attestation UI (PCR Verified, Audit Trail)** | **✅ 완료** |
+| F-2 | Admin 의존도 제거 | 계획 |
+| F-5 | StakingRegistry/TierRegistry 실데이터 조회 | 계획 |
 | G | Model Marketplace | 계획 |
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 

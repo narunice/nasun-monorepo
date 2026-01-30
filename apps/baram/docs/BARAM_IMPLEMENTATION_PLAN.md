@@ -19,7 +19,7 @@
 
 ---
 
-## 구현 상태 (2026-01-29)
+## 구현 상태 (2026-01-30)
 
 | Phase | Status | 설명 |
 |-------|--------|------|
@@ -29,9 +29,11 @@
 | Phase D-4: Staking | ✅ | Staking/Slashing 메커니즘 (MIN_STAKE 1,000 NASUN) |
 | Phase D-5: Attestation Verification | ✅ | COSE_Sign1 서명 + X.509 인증서 체인 검증 |
 | **Phase E-1: Executor Tier** | ✅ | TierRegistry (4-level), decay_reputation, Frontend tier 배지 |
-| **Phase E-2: Attestation Registry** | ✅ | PCR baseline 온체인 등록 (별도 패키지) |
-| **Phase E-3: Compliance (ECR)** | ✅ | ExecutionComplianceRecord + executor_tier 스냅샷 |
-| **Phase F-1: Executor 자동 배정** | ✅ | Weighted Random 배정, UX에서 수동 선택 제거 |
+| **Phase E-2: Attestation Registry** | ✅ | PCR baseline 온체인 등록 + Host 검증 연동 |
+| **Phase E-3: Compliance (ECR)** | ✅ | ExecutionComplianceRecord + executor_tier 스냅샷 + 자동 생성 |
+| **Phase F-1: Executor 자동 배정** | ✅ | Weighted Random 배정, TEE 모델 teeType 필터링 |
+| **Phase F-3: Automated ECR** | ✅ | 정산 시 ComplianceRecord 자동 생성 (submitProofWithCompliance PTB) |
+| **Phase F-4: Frontend Attestation UI** | ✅ | AttestationDisplay, PCR Verified 표시, Audit Trail |
 
 ---
 
@@ -68,11 +70,11 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 
 ### Inference Modes
 
-| Mode | Privacy | Use Case |
-|------|---------|----------|
-| **Local LLM** | Complete | Production (TEE 내 LLaMA 3.2 3B) |
-| **Proxy** | Partial | Development (TEE 복호화 → Host → API) |
-| **Direct** | None | Legacy MVP (Lambda + OpenAI) |
+| Mode | Provider | Privacy | 상태 |
+|------|----------|---------|------|
+| **Local LLM** | TEE (Llama 3.2 3B) | Complete | ✅ Production |
+| **Groq Cloud** | Groq API | None | ✅ Active (llama-3.1-8b, llama-3.3-70b, mistral-saba-24b) |
+| **OpenAI** | OpenAI API | None | ⚠️ Quota 초과 (gpt-4o-mini) |
 
 ---
 
@@ -149,7 +151,7 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
-| `create_record` | Admin | ECR 생성 (request_id, executor, model, tier, tee_type 등) |
+| `create_record` | Admin/Executor | ECR 생성 (request_id, executor, model, tier, tee_type 등) |
 | `update_status` | Admin | ECR 상태 업데이트 |
 | `get_record` / `get_executor_records` | View | ECR 조회 |
 
@@ -158,6 +160,7 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
 | `register_baseline` | Admin | PCR baseline 등록 |
+| `activate_baseline` | Admin | baseline 활성화 |
 | `revoke_baseline` | Admin | baseline 폐기 |
 | `verify_pcrs` | View | PCR 값 검증 |
 
@@ -177,6 +180,10 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 
 ### Executor Registry + Staking + Tier (Phase E-1)
 
+> **Note**: 두 개의 ExecutorRegistry가 존재함 (아래 Known Issues 참조)
+
+**devnet-ids Registry** (Host settlement용):
+
 | 항목 | 주소 |
 |------|------|
 | Package ID | `0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff` |
@@ -188,14 +195,23 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | StakingAdminCap | `0x9ce33344d01578a8e121016af13caa11e773073d4e37e739b0c494a8ad9e5a35` |
 | TierRegistry | `0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c` |
 
+**Frontend Registry** (UI에서 Executor 조회용):
+
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
+| ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
+| AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
+
 ### Attestation Registry (Phase E-2)
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3` |
-| AttestationRegistry | `0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b` |
-| AdminCap | `0x3bedf33f6c351573dd3f654f31b0efb449aac31bebe766106160d18b9ba3b238` |
+| Package ID | `0xc7ede9327e5179ed17f16eb2aa4efeee2e8b8c3dba7d34f3c1dcf3a5daad7ed0` |
+| AttestationRegistry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
+| AdminCap | `0x3bedf33f6c35bd2f4e32822e94f8b2f14ab5b5b4c117e6beed02a74f2e1a1e27` |
 | UpgradeCap | `0x84602bc64e766da6637e765984e51fedbd0672f772a4f71ed893832f0ec56e23` |
+| Active PCR0 (v3) | `3ee63e5c4001f182db6f5a1f0ebdd07154880a9e58c25697e65d085c7ce9e522891595d3de69abada655ebe09fd18285` |
 
 ### Compliance Registry (Phase E-3)
 
@@ -224,6 +240,7 @@ apps/baram/
 │   └── src/
 │       ├── features/request/    # 요청 생성 UI + hooks
 │       ├── components/
+│       │   ├── chat/            # MessageList, AssistantMessage (Audit Trail)
 │       │   ├── input/           # ChatInput, InputFooter
 │       │   ├── badges/          # TierBadge, DormantBadge
 │       │   ├── sidebar/         # Settings
@@ -249,15 +266,19 @@ apps/baram/
 │
 ├── executor-nitro/              # TEE Executor (AWS Nitro)
 │   ├── src/
-│   │   ├── host/                # Host HTTP 서버 + Attestation 검증
+│   │   ├── host/                # Host HTTP 서버 + Attestation 검증 + Settlement
 │   │   ├── enclave/             # Enclave (crypto, inference, local-llm, attestation)
 │   │   └── shared/              # protocol.ts, vsock.ts
 │   ├── scripts/                 # Spot 인스턴스 관리 스크립트
 │   ├── docker/                  # Nitro EIF Dockerfile
 │   └── models/                  # LLaMA 모델 (.gitignore)
 │
-├── cdk/                         # AWS CDK (Lambda, Legacy Direct Mode)
-└── docs/                        # 이 문서
+├── cdk/                         # AWS CDK (Lambda Executor)
+│   └── lambda-src/executor/     # Lambda handler (Groq/OpenAI cloud models)
+│
+└── docs/                        # 문서
+    ├── BARAM_IMPLEMENTATION_PLAN.md  # 이 문서
+    └── SPOT_INSTANCE_GUIDE.md       # Spot instance 운영 가이드
 ```
 
 ---
@@ -266,13 +287,14 @@ apps/baram/
 
 ### Spot Instance 관리
 
-> **⚠️ 개발 종료 후 반드시 `terminate-spot.sh` 실행!**
+> **개발 종료 후 반드시 `terminate-spot.sh` 실행!**
+> 상세 운영 가이드: [SPOT_INSTANCE_GUIDE.md](SPOT_INSTANCE_GUIDE.md)
 
 ```bash
 cd apps/baram/executor-nitro
 
-./scripts/launch-spot.sh           # Custom AMI, 2-3분 소요
-./scripts/update-executor.sh <IP>  # On-chain endpoint 업데이트
+./scripts/launch-spot.sh           # Custom AMI, 3-5분 소요
+./scripts/update-executor.sh <IP>  # 두 ExecutorRegistry 모두 업데이트
 # ... 개발 ...
 ./scripts/terminate-spot.sh        # 반드시 종료!
 ```
@@ -287,46 +309,49 @@ cd apps/baram/executor-nitro
 
 ---
 
-## 다음 단계 (2026-01-30~)
+## Known Issues (2026-01-30)
 
-> **현재 상태**: TEE 인스턴스 OFF, Phase E + F-1 완료
+### Dual ExecutorRegistry
 
-### 우선순위 1: TEE E2E 재검증
+V6 체인 리셋 시 프론트엔드 `.env`가 `devnet-ids.json`과 다른 ExecutorRegistry를 가리키게 됨.
+`update-executor.sh`가 두 레지스트리 모두 업데이트하도록 수정되었으나, 근본적으로 단일 레지스트리로 통합 필요.
 
-Spot 인스턴스 재생성 후 Phase D-5/E 변경사항 통합 테스트.
+### OpenAI API Quota
 
-### 우선순위 2: PCR Baseline 온체인 등록
+`gpt-4o-mini` 모델이 OpenAI API quota 초과 (429)로 사용 불가. 크레딧 충전 필요.
 
-```bash
-# TEE 인스턴스에서 실제 PCR 수집 후 AttestationRegistry에 등록
-nasun client call \
-  --package 0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3 \
-  --module attestation_registry \
-  --function register_baseline \
-  --args 0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b 1 1 <PCR0> <PCR1> <PCR2> "Baram TEE v1" 0x6 \
-  --gas-budget 10000000
-```
+### Groq Model Deprecation
 
-### 우선순위 3: Frontend Attestation UI
-
-- `AttestationDisplay` 컴포넌트에 검증 결과 표시
-- PCR 값 비교 UI
+`mixtral-8x7b-32768`이 Groq에서 서비스 종료됨. `mistral-saba-24b`로 교체 완료 (2026-01-30).
 
 ---
 
-## Roadmap
+## 다음 단계
 
-### Near-term (Phase F)
+> **현재 상태**: Phase F까지 핵심 기능 완료, TEE 인스턴스 OFF
+
+### 잔여 과제
+
+| 항목 | 설명 | 우선순위 |
+|------|------|----------|
+| Dual Registry 통합 | Frontend/devnet-ids 레지스트리 단일화 | 높음 |
+| OpenAI 크레딧 충전 | gpt-4o-mini 사용 재개 | 중간 |
+| HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
+| Admin 의존도 제거 (F-2) | `update_executor_stats()` 내 cross-module tier 자동 업데이트 | 낮음 |
+
+### Roadmap
+
+#### Near-term (Phase F 완료)
 
 | 목표 | 상태 | 설명 |
 |------|------|------|
 | **F-1: Executor 자동 배정** | ✅ | Weighted Random, eligible set filter (Bronze+), re-roll on failure |
-| F-2: Admin 의존도 제거 | 계획 | `update_executor_stats()` 내에서 cross-module tier 자동 업데이트 |
-| F-3: Automated ECR | 계획 | 정산 시 ComplianceRecord 자동 생성 (현재 admin 수동) |
-| F-4: Frontend Attestation UI | 계획 | 검증 결과, PCR 비교 표시 |
+| **F-3: Automated ECR** | ✅ | 정산 시 ComplianceRecord 자동 생성 (submitProofWithCompliance) |
+| **F-4: Frontend Attestation UI** | ✅ | AttestationDisplay, PCR Verified, Audit Trail (ECRReceipt) |
+| F-2: Admin 의존도 제거 | 계획 | cross-module tier 자동 업데이트 |
 | F-5: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
 
-### Mid-term (Phase G: Model Marketplace)
+#### Mid-term (Phase G: Model Marketplace)
 
 | 목표 | 설명 |
 |------|------|
@@ -335,7 +360,7 @@ nasun client call \
 | 수익 분배 | Model Creator + Executor + Protocol |
 | 더 큰 모델 지원 | 7B, 13B (r6i.2xlarge+) |
 
-### Long-term (Phase H: Production)
+#### Long-term (Phase H: Production)
 
 | 목표 | 설명 |
 |------|------|
@@ -346,7 +371,16 @@ nasun client call \
 
 ---
 
-## E2E Test Results (2026-01-29)
+## E2E Test Results (2026-01-30)
+
+### TEE Attestation Verification
+
+| 테스트 | 결과 |
+|--------|------|
+| COSE_Sign1 서명 검증 | ✅ Signature verified successfully |
+| X.509 인증서 체인 검증 | ✅ Certificate chain verified successfully |
+| PCR baseline 온체인 검증 | ✅ PCR Verified: Yes (baseline v3) |
+| 프론트엔드 Audit Trail 표시 | ✅ PCR Verified: Yes, Tier: Bronze |
 
 ### On-chain Tier Verification
 
@@ -360,8 +394,19 @@ nasun client call \
 
 ### Compliance Record
 
-- ECR 생성 + `executor_tier=1` 스냅샷: ✅ 성공
-- `ComplianceRecordCreated` 이벤트 발생: ✅ 확인
+- ECR 자동 생성 (submitProofWithCompliance PTB): ✅ 성공
+- `executor_tier=1` 스냅샷: ✅ 확인
+- `ComplianceRecordCreated` 이벤트: ✅ 확인
+
+### Cloud Models (Lambda)
+
+| 모델 | Provider | 상태 |
+|------|----------|------|
+| llama-3.1-8b-instant | Groq | ✅ 정상 |
+| llama-3.3-70b-versatile | Groq | ✅ 정상 |
+| mistral-saba-24b | Groq | ✅ 정상 (mixtral-8x7b 대체) |
+| gpt-4o-mini | OpenAI | ❌ 429 Quota 초과 |
+| llama-3.2-3b-local | TEE | ✅ 정상 |
 
 ### Frontend Build
 
