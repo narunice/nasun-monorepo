@@ -12,6 +12,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  failed?: boolean;
   metadata?: {
     requestId?: number;
     executionTimeMs?: number;
@@ -48,6 +49,7 @@ export function MessageList({ messages, isProcessing, processingStatus: _process
             key={message.id}
             content={message.content}
             timestamp={message.timestamp}
+            failed={message.failed}
           />
         ) : (
           <AssistantMessage
