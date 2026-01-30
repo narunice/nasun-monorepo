@@ -79,6 +79,62 @@ export function getExecutorAddress(): string {
 }
 
 /**
+ * Verify that EXECUTOR_PRIVATE_KEY derives to an address registered
+ * in the on-chain ExecutorRegistry. Prevents silent settlement failures
+ * caused by key mismatch (E_NOT_EXECUTOR).
+ */
+export async function verifyExecutorRegistration(): Promise<void> {
+  const sui = getClient();
+  const cfg = getConfig();
+  const executorAddress = getExecutorAddress();
+
+  if (!cfg.executorRegistryId) {
+    console.warn('[Sui] EXECUTOR_REGISTRY_ID not set, skipping registration check');
+    return;
+  }
+
+  const registry = await sui.getObject({
+    id: cfg.executorRegistryId,
+    options: { showContent: true },
+  });
+
+  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+    console.warn('[Sui] Could not read ExecutorRegistry, skipping registration check');
+    return;
+  }
+
+  const fields = registry.data.content.fields as Record<string, unknown>;
+  const executorsTable = fields['executors'] as { fields?: { id?: { id: string } } };
+  const tableId = executorsTable?.fields?.id?.id;
+  if (!tableId) {
+    console.warn('[Sui] ExecutorRegistry has no executors table');
+    return;
+  }
+
+  try {
+    const fieldData = await sui.getDynamicFieldObject({
+      parentId: tableId,
+      name: { type: 'address', value: executorAddress },
+    });
+
+    if (!fieldData.data?.content) {
+      throw new Error(
+        `Executor address ${executorAddress} is NOT registered in ExecutorRegistry ${cfg.executorRegistryId}. ` +
+        `Settlement will fail with E_NOT_EXECUTOR. ` +
+        `Check EXECUTOR_PRIVATE_KEY in .env — it must derive to the on-chain executor operator address.`
+      );
+    }
+
+    console.log(`[Sui] Executor registration verified: ${executorAddress}`);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes('NOT registered')) {
+      throw err;
+    }
+    console.warn('[Sui] Could not verify executor registration:', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
  * Fetch request from BaramRegistry by request_id
  */
 export async function getRequest(requestId: number): Promise<ComputeRequestOnChain | null> {
