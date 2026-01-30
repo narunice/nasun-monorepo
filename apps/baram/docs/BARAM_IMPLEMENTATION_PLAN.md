@@ -37,6 +37,7 @@
 | **Phase F-5: Executor Registration Check** | ✅ | Host 시작 시 EXECUTOR_PRIVATE_KEY ↔ on-chain 주소 검증 (불일치 시 fatal exit) |
 | **Phase F-6: Auto-cancel on Failure** | ✅ | /execute 실패 시 cancel_request TX로 에스크로 즉시 해제 |
 | **Phase F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, 디스크 레벨 공격 방어 |
+| **Phase F-7.1: zkLogin 호환 + Idle Timeout** | ✅ | Dual-mode 암호화 (zkLogin: address-only fallback) + 15분 idle timeout |
 
 ---
 
@@ -76,8 +77,8 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | Mode | Provider | Privacy | 상태 |
 |------|----------|---------|------|
 | **Local LLM** | TEE (Llama 3.2 3B) | Complete | ✅ Production |
-| **Groq Cloud** | Groq API | None | ✅ Active (llama-3.1-8b, llama-3.3-70b, mistral-saba-24b) |
-| **OpenAI** | OpenAI API | None | ⚠️ Quota 초과 (gpt-4o-mini) |
+| **Groq Cloud** | Groq API | None | ✅ Active (llama-3.1-8b, llama-3.3-70b) |
+| **OpenAI** | OpenAI API | None | ⚠️ Quota 초과 (gpt-4o, gpt-4-turbo) |
 
 ---
 
@@ -319,13 +320,10 @@ cd apps/baram/executor-nitro
 V6 체인 리셋 시 프론트엔드 `.env`가 `devnet-ids.json`과 다른 ExecutorRegistry를 가리키게 됨.
 `update-executor.sh`가 두 레지스트리 모두 업데이트하도록 수정되었으나, 근본적으로 단일 레지스트리로 통합 필요.
 
-### OpenAI API Quota
+### Removed Models (2026-01-30)
 
-`gpt-4o-mini` 모델이 OpenAI API quota 초과 (429)로 사용 불가. 크레딧 충전 필요.
-
-### Groq Model Deprecation
-
-`mixtral-8x7b-32768`이 Groq에서 서비스 종료됨. `mistral-saba-24b`로 교체 완료 (2026-01-30).
+`mistral-saba-24b` (Lambda 500 에러, 불안정)와 `gpt-4o-mini` (OpenAI quota 초과)를 코드에서 제거.
+`gpt-4o`, `gpt-4-turbo`는 Lambda에 남아있으나 OpenAI 크레딧 충전 전까지 비활성.
 
 ### Chat History Migration (DB v2)
 
@@ -343,7 +341,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | 항목 | 설명 | 우선순위 |
 |------|------|----------|
 | Dual Registry 통합 | Frontend/devnet-ids 레지스트리 단일화 | 높음 |
-| OpenAI 크레딧 충전 | gpt-4o-mini 사용 재개 | 중간 |
+| OpenAI 크레딧 충전 | gpt-4o 사용 재개 | 중간 |
 | HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
 | Admin 의존도 제거 (F-2) | `update_executor_stats()` 내 cross-module tier 자동 업데이트 | 낮음 |
 
@@ -359,6 +357,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | **F-5: Executor Registration Check** | ✅ | Host 시작 시 키 검증, 불일치 시 fatal exit |
 | **F-6: Auto-cancel on Failure** | ✅ | /execute 실패 시 에스크로 즉시 해제 (cancel_request TX) |
 | **F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, DB v2 마이그레이션 |
+| **F-7.1: zkLogin Dual-Mode + Idle Timeout** | ✅ | zkLogin address-only fallback, 15분 idle timeout (DOM 이벤트 기반) |
 | F-2: Admin 의존도 제거 | 계획 | cross-module tier 자동 업데이트 |
 | F-8: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
 
@@ -415,8 +414,8 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 |------|----------|------|
 | llama-3.1-8b-instant | Groq | ✅ 정상 |
 | llama-3.3-70b-versatile | Groq | ✅ 정상 |
-| mistral-saba-24b | Groq | ✅ 정상 (mixtral-8x7b 대체) |
-| gpt-4o-mini | OpenAI | ❌ 429 Quota 초과 |
+| ~~mistral-saba-24b~~ | ~~Groq~~ | ❌ 제거 (Lambda 500 에러) |
+| ~~gpt-4o-mini~~ | ~~OpenAI~~ | ❌ 제거 (Quota 초과) |
 | llama-3.2-3b-local | TEE | ✅ 정상 |
 
 ### Frontend Build
