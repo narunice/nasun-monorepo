@@ -378,62 +378,74 @@ function convertRawToDerSignature(r: Buffer, s: Buffer): Buffer {
  * Parse X.509 certificate and extract public key
  */
 function extractPublicKeyFromCertificate(certDer: Buffer): crypto.KeyObject {
-  const certPem = `-----BEGIN CERTIFICATE-----\n${certDer.toString('base64').match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----`;
-  const cert = new crypto.X509Certificate(certPem);
+  const cert = new crypto.X509Certificate(derToPem(certDer));
   return cert.publicKey;
 }
 
 /**
+ * Convert DER certificate to PEM format
+ */
+function derToPem(certDer: Buffer): string {
+  return `-----BEGIN CERTIFICATE-----\n${certDer.toString('base64').match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----`;
+}
+
+/**
  * Verify certificate chain against AWS Nitro Root CA
+ *
+ * Walks from end-entity cert up through intermediates to the root CA.
+ * At each level, searches ALL available certs for the issuer (not sequential).
  */
 function verifyCertificateChain(
   certificate: Buffer,
   caBundle: Buffer[]
 ): { valid: boolean; error?: string } {
   try {
-    // Build the full chain: [end-entity, ...intermediates, root]
-    const endEntityPem = `-----BEGIN CERTIFICATE-----\n${certificate.toString('base64').match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----`;
-    const endEntityCert = new crypto.X509Certificate(endEntityPem);
-
-    // Convert CA bundle to X509Certificates
-    const caCerts = caBundle.map((cert) => {
-      const pem = `-----BEGIN CERTIFICATE-----\n${cert.toString('base64').match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----`;
-      return new crypto.X509Certificate(pem);
-    });
-
-    // Parse the trusted root CA
+    const endEntityCert = new crypto.X509Certificate(derToPem(certificate));
     const rootCaCert = new crypto.X509Certificate(AWS_NITRO_ROOT_CA);
 
-    // Verify chain: end-entity -> intermediates -> root
+    // Convert CA bundle to X509Certificates
+    const caCerts = caBundle.map((cert) => new crypto.X509Certificate(derToPem(cert)));
+
+    // Walk the chain from end-entity up to root CA
     let currentCert = endEntityCert;
+    const maxDepth = caCerts.length + 1;
 
-    // Check intermediates
-    for (const caCert of caCerts) {
-      if (!currentCert.checkIssued(caCert)) {
-        continue; // Try next CA cert
+    for (let depth = 0; depth < maxDepth; depth++) {
+      // Check if current cert is signed by the trusted root CA
+      try {
+        if (currentCert.verify(rootCaCert.publicKey)) {
+          // Successfully reached root — chain is valid
+          // Check end-entity certificate validity dates
+          const now = new Date();
+          if (now < new Date(endEntityCert.validFrom) || now > new Date(endEntityCert.validTo)) {
+            return { valid: false, error: 'End-entity certificate expired or not yet valid' };
+          }
+          return { valid: true };
+        }
+      } catch {
+        // verify() can throw if key types are incompatible — continue searching
       }
-      // Verify signature
-      if (!currentCert.verify(caCert.publicKey)) {
-        return { valid: false, error: `Certificate signature verification failed` };
-      }
-      currentCert = caCert;
-    }
 
-    // Finally verify against root CA
-    if (!currentCert.verify(rootCaCert.publicKey)) {
-      // Try if current cert IS the root
-      if (currentCert.fingerprint !== rootCaCert.fingerprint) {
+      // Find the issuer of currentCert among the CA bundle
+      let issuerFound = false;
+      for (const caCert of caCerts) {
+        try {
+          if (currentCert.checkIssued(caCert) && currentCert.verify(caCert.publicKey)) {
+            currentCert = caCert;
+            issuerFound = true;
+            break;
+          }
+        } catch {
+          // Skip certs that cause verification errors
+        }
+      }
+
+      if (!issuerFound) {
         return { valid: false, error: 'Root CA verification failed' };
       }
     }
 
-    // Check certificate validity dates
-    const now = new Date();
-    if (now < new Date(endEntityCert.validFrom) || now > new Date(endEntityCert.validTo)) {
-      return { valid: false, error: 'End-entity certificate expired or not yet valid' };
-    }
-
-    return { valid: true };
+    return { valid: false, error: 'Certificate chain too deep' };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return { valid: false, error: `Certificate chain verification error: ${msg}` };
