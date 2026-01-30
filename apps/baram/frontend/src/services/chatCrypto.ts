@@ -5,7 +5,9 @@
  * - PBKDF2 key derivation (100,000 iterations)
  * - AES-256-GCM for encryption
  *
- * Key derivation is based on wallet address (no password in Phase 1)
+ * Key derivation uses wallet address + wallet password.
+ * Password is required — prevents disk-level attacks where
+ * an attacker knows the wallet address (public info).
  */
 
 // PBKDF2 settings (matching monorepo pattern)
@@ -13,26 +15,31 @@ const PBKDF2_ITERATIONS = 100000;
 const SALT_PREFIX = 'baram:chat:';
 const IV_LENGTH = 12;
 
-// Cached encryption key per wallet address
-let cachedKey: { address: string; key: CryptoKey } | null = null;
+// Cached encryption key (fingerprint = hash of address+password)
+let cachedKey: { fingerprint: string; key: CryptoKey } | null = null;
 
 /**
- * Derive encryption key from wallet address
- * Uses PBKDF2 with wallet address as both password and salt prefix
+ * Derive encryption key from wallet address + password
+ * Uses PBKDF2 with combined material for key derivation
  */
-export async function deriveStorageKey(walletAddress: string): Promise<CryptoKey> {
-  // Return cached key if available
-  if (cachedKey && cachedKey.address === walletAddress) {
+export async function deriveStorageKey(walletAddress: string, password: string): Promise<CryptoKey> {
+  if (!password) {
+    throw new Error('Password required for chat encryption key derivation');
+  }
+
+  // Use hash as cache fingerprint (avoid storing password in memory for comparison)
+  const fingerprint = await sha256Text(`${walletAddress}:${password}`);
+  if (cachedKey && cachedKey.fingerprint === fingerprint) {
     return cachedKey.key;
   }
 
   const encoder = new TextEncoder();
   const salt = encoder.encode(`${SALT_PREFIX}${walletAddress}`);
 
-  // Import wallet address as key material
+  // Import wallet address + password as key material
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(walletAddress),
+    encoder.encode(`${walletAddress}:${password}`),
     'PBKDF2',
     false,
     ['deriveKey']
@@ -53,7 +60,7 @@ export async function deriveStorageKey(walletAddress: string): Promise<CryptoKey
   );
 
   // Cache the key
-  cachedKey = { address: walletAddress, key };
+  cachedKey = { fingerprint, key };
 
   return key;
 }
@@ -136,6 +143,17 @@ export function clearCachedKey(): void {
 // ============================================
 // Utility Functions
 // ============================================
+
+/**
+ * SHA-256 hash of a string (hex output) — used for cache fingerprinting
+ */
+async function sha256Text(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
