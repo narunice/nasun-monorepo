@@ -74,8 +74,9 @@ export async function verifyEligibilityApi(
     console.log('[battalionNftApi] Verifying eligibility:', request);
 
     // Battalion NFT Access Token 가져오기 (Like 조회용)
-    const xAccessToken = localStorage.getItem('battalion_nft_x_access_token');
-    console.log('[battalionNftApi] xAccessToken from localStorage:', xAccessToken ? `${xAccessToken.substring(0, 20)}...` : 'null');
+    // Note: Step2XAuthCard stores this in sessionStorage (not localStorage)
+    const xAccessToken = sessionStorage.getItem('battalion_nft_x_access_token');
+    console.log('[battalionNftApi] xAccessToken from sessionStorage:', xAccessToken ? `${xAccessToken.substring(0, 20)}...` : 'null');
 
     const requestBody = {
       ...request,

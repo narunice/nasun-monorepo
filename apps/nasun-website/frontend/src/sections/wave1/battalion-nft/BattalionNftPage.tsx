@@ -176,7 +176,7 @@ export const BattalionNftPage: React.FC = () => {
 
     // ✅ Task Verification 완료 시 토큰 삭제 (더 이상 필요 없음)
     console.log("[BattalionNftPage] Task verification completed - deleting xAccessToken");
-    localStorage.removeItem("battalion_nft_x_access_token");
+    sessionStorage.removeItem("battalion_nft_x_access_token");
 
     setError(null);
   };
@@ -214,8 +214,8 @@ export const BattalionNftPage: React.FC = () => {
 
   const handleReconnectX = () => {
     console.log("[BattalionNftPage] X token expired - clearing tokens and returning to Step 2");
-    localStorage.removeItem("battalion_nft_x_access_token");
-    localStorage.removeItem("battalion_nft_twitter_session");
+    sessionStorage.removeItem("battalion_nft_x_access_token");
+    sessionStorage.removeItem("battalion_nft_twitter_session");
     setStep(2);
   };
 

@@ -24,21 +24,20 @@ export default function Callback() {
       return;
     }
 
-    // Case 0: Battalion NFT OAuth callback - redirect to /wave1/battalion-nft
-    const isBattalionNftSession = localStorage.getItem('battalion_nft_twitter_session');
+    // Battalion NFT OAuth callback — must be checked FIRST before any auth logic
+    // The user may already be authenticated (e.g. MetaMask), so we must intercept
+    // the battalion NFT flow before the "already authenticated" redirect fires
+    // Note: Step2XAuthCard stores this in sessionStorage (not localStorage)
+    const isBattalionNftSession = sessionStorage.getItem('battalion_nft_twitter_session');
     if (isBattalionNftSession) {
-      logger.log("Battalion NFT OAuth callback detected, redirecting to /wave1/battalion-nft");
       hasHandledRef.current = true;
-
-      // Preserve URL parameters (code, state) for XAuthCard to handle
       const code = searchParams.get('code');
       const state = searchParams.get('state');
-      if (code && state) {
-        navigate(`/wave1/battalion-nft?code=${code}&state=${state}`, { replace: true });
-      } else {
-        // If missing parameters, just redirect without params
-        navigate('/wave1/battalion-nft', { replace: true });
-      }
+      const target = code && state
+        ? `/wave1/battalion-nft?code=${code}&state=${state}`
+        : '/wave1/battalion-nft';
+      logger.log("Battalion NFT OAuth callback detected, redirecting to", target);
+      navigate(target, { replace: true });
       return;
     }
 
