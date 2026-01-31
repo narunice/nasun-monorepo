@@ -219,7 +219,7 @@
           "attestation": { "violation": "Bad Attestation", "penalty": "10%", "reputation": "-20" },
           "fraud": { "violation": "Fraud / Manipulation", "penalty": "100%", "reputation": "-20" }
         },
-        "dormancy": "Executors with 0 completed jobs in 30 days lose 1 reputation per day."
+        "dormancy": "Executors inactive for 30 days lose 50 reputation per period. Anyone can trigger this decay permissionlessly."
       }
     }
   },

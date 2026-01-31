@@ -190,9 +190,7 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 
 ### Executor Registry + Staking + Tier (Phase E-1)
 
-> **Note**: 두 개의 ExecutorRegistry가 존재함 (아래 Known Issues 참조)
-
-**devnet-ids Registry** (Host settlement용):
+> Frontend와 Settlement 모두 단일 registry를 사용합니다 (Dual Registry 통합 완료, 2026-01-31).
 
 | 항목 | 주소 |
 |------|------|
@@ -207,14 +205,6 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | TierRegistry | `0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c` |
 | ProcessedRequests | `0xc68e22ca8cc7851695c2a5466cc148221f31a94e02f4a65b1676c33ab8855404` |
 
-**Frontend Registry** (UI에서 Executor 조회용):
-
-| 항목 | 주소 |
-|------|------|
-| Package ID | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
-| ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
-| AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
-
 ### Attestation Registry (Phase E-2)
 
 | 항목 | 주소 |
@@ -223,7 +213,7 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | AttestationRegistry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
 | AdminCap | `0x3bedf33f6c35bd2f4e32822e94f8b2f14ab5b5b4c117e6beed02a74f2e1a1e27` |
 | UpgradeCap | `0x84602bc64e766da6637e765984e51fedbd0672f772a4f71ed893832f0ec56e23` |
-| Active PCR0 (v3) | `3ee63e5c4001f182db6f5a1f0ebdd07154880a9e58c25697e65d085c7ce9e522891595d3de69abada655ebe09fd18285` |
+| Active PCR0 (v5) | `35f21cd4697bfa48d8cca30e1cc15c19fa8ba68217a3529d155c42104f80e4e0b869ef422567c600a99118b1d4d1b7bb` |
 
 ### Compliance Registry (Phase E-3)
 
@@ -323,10 +313,12 @@ cd apps/baram/executor-nitro
 
 ## Known Issues (2026-01-31)
 
-### Dual ExecutorRegistry
+### ~~Dual ExecutorRegistry~~ (Resolved 2026-01-31)
 
-V6 체인 리셋 시 프론트엔드 `.env`가 `devnet-ids.json`과 다른 ExecutorRegistry를 가리키게 됨.
-`update-executor.sh`가 두 레지스트리 모두 업데이트하도록 수정되었으나, 근본적으로 단일 레지스트리로 통합 필요.
+~~V6 체인 리셋 시 프론트엔드 `.env`가 `devnet-ids.json`과 다른 ExecutorRegistry를 가리키게 됨.~~
+**해결됨**: Frontend와 Settlement 모두 단일 devnet-ids registry (`0xcb6944...`)를 사용.
+`network.ts`의 `EXECUTOR_CONFIG`에서 env fallback 제거, `update-executor.sh`에서 frontend registry 제거.
+Legacy frontend registry (`0xeaac739...`)는 on-chain에 잔존하나 더 이상 참조되지 않음.
 
 ### Removed Models (2026-01-30)
 
@@ -348,7 +340,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 | 항목 | 설명 | 우선순위 |
 |------|------|----------|
-| Dual Registry 통합 | Frontend/devnet-ids 레지스트리 단일화 | 높음 |
+| ~~Dual Registry 통합~~ | ~~Frontend/devnet-ids 레지스트리 단일화~~ | ✅ 완료 |
 | OpenAI 크레딧 충전 | gpt-4o 사용 재개 | 중간 |
 | HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
 | ~~Admin 의존도 제거 (F-2)~~ | ~~Self-service 함수 5개 + permissionless decay/tier~~ | ✅ 완료 |
@@ -449,12 +441,12 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 | 기능 | 부합도 | 핵심 격차 |
 |------|--------|-----------|
-| 1. Shared, Verifiable State | 80% | Dual Registry 잔존; F-2로 상태 업데이트 자율화 |
+| 1. Shared, Verifiable State | **85%** | ~~Dual Registry~~ 해결; F-2로 상태 업데이트 자율화 |
 | 2. Rules & Permissions with Data | **65%** | F-2로 Executor 자율성 대폭 향상; 등록은 여전히 Admin |
 | 3. Atomic Execution | 70% | F-2로 정산+stats+tier PTB 아토믹화; 배정은 오프체인 |
 | 4. Proof of What Happened | **75%** | 가장 우수. 입출력 증명/Cloud 모델 격차 |
 
-### 1. Shared, Verifiable State (70%)
+### 1. Shared, Verifiable State (85%)
 
 **강점:**
 - `BaramRegistry`에 에스크로 요청 상태 온체인 기록 (created → completed/cancelled)
@@ -462,7 +454,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 - `TierRegistry`에 tier 온체인 계산/저장, `AttestationRegistry`에 PCR baseline 등록
 
 **격차:**
-- **Dual ExecutorRegistry** — Frontend용과 Settlement용 레지스트리가 분리. "single source of truth" 부재
+- ~~**Dual ExecutorRegistry**~~ — ✅ 해결: Frontend/Settlement 단일 registry 사용 (`network.ts` env fallback 제거, `update-executor.sh` 단일화)
 - **StakingRegistry/TierRegistry 실데이터 미연동** — Frontend가 스냅샷에 의존하는 부분 존재
 - ~~**상태 업데이트 Admin 의존**~~ — ✅ F-2로 해결: `record_job_completion/failure`, `decay_reputation_permissionless`, `refresh_tier_from_state` 추가
 
@@ -506,13 +498,13 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 ### 개선 우선순위
 
-> 아래 순서대로 개발 시 참고. 1순위와 2순위만 해결해도 4가지 기능 전반의 부합도가 크게 상승.
+> 아래 순서대로 개발 시 참고. 1~2순위 해결 완료. 다음은 3순위(Enclave 출력 서명)부터.
 > [Marlin Oyster](https://www.marlin.org/oyster) 및 [Sui Nautilus](https://blog.marlin.org/scaling-confidential-compute-on-sui-nautilus-and-marlin-oyster-integration) 아키텍처를 참고하여 개선 방향 수립.
 
 | 순위 | 항목 | 대상 기능 | 설명 |
 |------|------|-----------|------|
 | ~~**1**~~ | ~~**Admin 의존도 제거 (F-2)**~~ | ~~기능 2 + 3~~ | ✅ **완료** — `record_job_completion/failure` + `update_own_endpoint` + `decay_reputation_permissionless` + `refresh_tier_from_state`. PTB에 Call 3/4 추가로 정산 시 자동 stats+tier 업데이트 |
-| **2** | **Dual ExecutorRegistry 통합** | 기능 1 | Frontend `.env`를 `devnet-ids.json` Registry로 통일. 불필요한 두 번째 Registry 폐기. 적은 노력으로 큰 신뢰성 개선 |
+| ~~**2**~~ | ~~**Dual ExecutorRegistry 통합**~~ | ~~기능 1~~ | ✅ **완료** — `network.ts`에서 env fallback 제거, `update-executor.sh`에서 frontend registry 제거. Frontend/Settlement 단일 registry (`0xcb6944...`) 사용 |
 | **3** | **Enclave 출력 서명 → 온체인 직접 검증** | 기능 4 | Oyster 패턴 차용: Enclave가 secp256k1로 출력에 직접 서명 → Move 컨트랙트에서 서명 검증. 현재 Host 오프체인 검증 → 온체인 기록 구조를 탈피하여 trustless 증명 달성 |
 | **4** | **Executor 배정 온체인화** | 기능 3 + 4 | `create_request` 시 온체인 eligible set 필터링 + Executor 배정 (Sui Random/VRF). 배정 결과를 Request에 바인딩. 구현 복잡도 높음 |
 | **5** | **Reproducible Build (Nix)** | 기능 4 | Oyster 패턴 차용: Nix 기반 결정론적 Docker/EIF 빌드 도입. 현재 빌드마다 PCR0 변경 가능성 → 해시 비교로 재현성 보장. baseline 등록 빈도 감소 |
