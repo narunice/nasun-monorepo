@@ -99,22 +99,6 @@ export function WhitelistManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               <DashboardCard variant="default">
                 <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">
-                  Genesis NFT Whitelist
-                </h5>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-nasun-c1">
-                    {stats.genesis.active.toLocaleString()}
-                  </span>
-                  <span className="text-nasun-white/40 text-sm font-light">Active Users</span>
-                </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
-                  Total: {stats.genesis.total.toLocaleString()} registered /{" "}
-                  {stats.genesis.withdrawn.toLocaleString()} withdrawn
-                </div>
-              </DashboardCard>
-
-              <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">
                   Battalion NFT Allowlist
                 </h5>
                 <div className="flex items-baseline gap-2">
@@ -126,6 +110,22 @@ export function WhitelistManagement() {
                 <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
                   Total: {stats.battalion.total.toLocaleString()} registered /{" "}
                   {stats.battalion.withdrawn.toLocaleString()} withdrawn
+                </div>
+              </DashboardCard>
+
+              <DashboardCard variant="default">
+                <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">
+                  Genesis NFT Whitelist
+                </h5>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-nasun-c1">
+                    {stats.genesis.active.toLocaleString()}
+                  </span>
+                  <span className="text-nasun-white/40 text-sm font-light">Active Users</span>
+                </div>
+                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
+                  Total: {stats.genesis.total.toLocaleString()} registered /{" "}
+                  {stats.genesis.withdrawn.toLocaleString()} withdrawn
                 </div>
               </DashboardCard>
             </div>
