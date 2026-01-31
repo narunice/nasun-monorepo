@@ -32,8 +32,14 @@ This means several on-chain records and environment variables must be updated ea
 ```
 [Frontend] --> HTTP :3000 --> [Host (EC2)] -- vsock CID 16:5050 --> [Enclave (Nitro)]
                                   |
-                              [Sui RPC] <-- settlement TX
+                              [Sui RPC] <-- settlement TX (retry up to 3x)
 ```
+
+**Settlement behavior (2026-01-31):**
+- Settlement-gated response: Host returns inference result **only after** settlement PTB succeeds
+- Settlement retry: Up to 3 attempts with exponential backoff (1s → 2s → 4s)
+- On-chain status check between retries: Detects TX that succeeded but timed out on RPC response
+- If settlement fails after all retries: Host returns HTTP 502, Frontend auto-cancels escrow
 
 **Key facts:**
 
@@ -234,6 +240,25 @@ sudo journalctl -u baram-host -n 15 --no-pager
 > `Connection refused`가 보이면 CID mismatch 또는 Enclave 미실행.
 > `[FATAL] Executor registration check failed`가 보이면 EXECUTOR_PRIVATE_KEY가 온체인 ExecutorRegistry에 등록된 주소와 불일치.
 
+**Settlement 로그 확인 (요청 처리 후):**
+
+정상 정산 시:
+```
+[Host/Server] Settlement completed: <TX_DIGEST>
+```
+
+정산 재시도 발생 시:
+```
+[Sui] Settlement attempt 1/3 failed, retrying in 1000ms...
+[Sui] Request <ID> already settled on-chain (detected on retry 2)
+```
+
+정산 실패 시 (HTTP 502 반환):
+```
+[Host/Server] Settlement failed after retries: <error>
+```
+> 정산 실패 시 Host는 결과를 반환하지 않습니다. Frontend가 auto-cancel로 에스크로를 해제합니다.
+
 ### Step 7: Health Check
 
 ```bash
@@ -294,6 +319,10 @@ sudo journalctl -u baram-host --no-pager | grep -E "PCR0|baseline|mismatch"
   - Host 로그에서 `record_job_completion` 호출 확인
   - On-chain ExecutorRegistry에서 reputation 변경 확인 (성공 시 +10)
   - `refresh_tier_from_state` 호출 확인 (ExecutorStake가 있는 경우)
+- [ ] Settlement-gated response 검증:
+  - Host 로그에서 `Settlement completed: <TX_DIGEST>` 확인
+  - 정산 재시도 경고(`Settlement attempt N failed`)가 **없는지** 확인 (정상이면 1회 성공)
+  - Frontend 콘솔에서 auto-cancel 로그가 **없는지** 확인
 
 ---
 
@@ -429,6 +458,7 @@ ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "sudo systemctl restart baram-host"
 - [ ] Audit Trail:
   - Attestation: **Verified**
   - Settlement: **TX Digest 표시** (not Pending)
+- [ ] Host 로그: `Settlement completed: <TX_DIGEST>` (재시도 경고 없이 1회 성공)
 
 ### Quick Summary: 놓치기 쉬운 항목
 
@@ -439,6 +469,7 @@ ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "sudo systemctl restart baram-host"
 | PCR0 변경 미등록 | Attestation Unverified + Settlement MoveAbort | Host 로그에서 `mismatch` 검색 |
 | Executor endpoint 미업데이트 | Frontend 연결 타임아웃 (old IP) | `update-executor.sh <IP>` |
 | Executor 키 불일치 | Host 시작 즉시 종료 (FATAL) | `EXECUTOR_PRIVATE_KEY`가 온체인 등록 주소와 일치하는지 확인 |
+| Settlement 502 | 정산 실패 → 결과 미반환 → Frontend auto-cancel | Host 로그에서 `Settlement failed after retries` 확인 |
 
 > **NOTE: Frontend `.env` 위치**
 >
@@ -696,6 +727,14 @@ curl -X POST http://<NEW_IP>:3000/execute \
 | Certificate chain failed | Outdated `attestation.ts` | `git pull && npm run build` on instance |
 | `require is not defined` | Old ESM bug in attestation.ts | Pull latest code (fixed in commit `5a03dfb`) |
 
+### Settlement fails (502 returned to Frontend)
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Settlement failed after retries` in Host logs | Sui RPC timeout or contract error | Check RPC health: `curl https://rpc.devnet.nasun.io` |
+| `Request already cancelled/refunded (status=3/4)` | User cancelled or timeout claim before settlement | Expected behavior — no action needed |
+| Frontend shows "Settlement failed" then auto-cancels | Settlement 3x retry exhausted → 502 → Frontend cancel | Check Host `.env` for correct contract IDs, check Sui RPC |
+
 ### Frontend shows "No TEE Protection"
 
 1. Check model selection: must be `llama-3.2-3b-local` (provider: `tee`)
@@ -736,6 +775,26 @@ EBS volume is auto-deleted (`DeleteOnTermination=true`).
 
 ## Known Issues
 
+### Settlement-Gated Response (2026-01-31)
+
+**동작**: Host가 정산 PTB 성공 후에만 추론 결과를 반환합니다 (`submitProofWithComplianceRetry`, 최대 3회).
+
+**설계 의도**: 이전에는 정산 실패 시에도 결과가 반환되어, 사용자가 결과 + timeout refund을 모두 받고 executor는 무보수로 남는 문제가 있었습니다.
+
+**트레이드오프**: 정산 실패 시 양측 모두 손실 (executor: 컴퓨팅 비용, 사용자: 시간). 그러나 어느 한 쪽만 부당 이득을 취하는 상황은 발생하지 않습니다.
+
+**관련 파일:**
+- `executor-nitro/src/host/sui-client.ts` — `submitProofWithComplianceRetry`, `getRequestStatus`
+- `executor-nitro/src/host/server.ts` — 정산 실패 시 502 반환 + early return
+- `frontend/src/features/request/hooks/useCreateRequest.ts` — auto-cancel 재시도 (2회) + 명시적 에러
+- `frontend/src/utils/tee.ts` — AES 키 sessionStorage 백업/복구
+
+### AES Key sessionStorage Backup (2026-01-31)
+
+TEE E2E 암호화의 AES 키가 module-level 변수에만 저장되어, HMR/탭 전환 시 소실될 수 있었습니다.
+이제 `sessionStorage`에 `baram_aes_{requestId}` 키로 백업됩니다.
+복호화 성공 후 양쪽 모두에서 삭제됩니다.
+
 ### ~~Dual ExecutorRegistry~~ (Resolved 2026-01-31)
 
 ~~Two ExecutorRegistry objects exist on-chain.~~ **해결됨**: Frontend와 Settlement 모두 devnet-ids registry (`0xcb6944...`)를 사용합니다.
@@ -770,7 +829,15 @@ sudo systemctl restart baram-host
 
 **TODO**: Auto-detect CID in `main.ts` or `run-enclave.sh` output to avoid manual updates.
 
-### Spot Instance Termination
+### One-time Spot Instance Cannot Be Stopped
+
+`SpotInstanceType: one-time`으로 시작된 인스턴스는 **stop 불가, terminate만 가능**합니다.
+`aws ec2 stop-instances`를 실행하면 `UnsupportedOperation` 에러가 발생합니다.
+
+인스턴스 재사용이 필요하면 `SpotInstanceType: persistent`를 사용하되,
+persistent spot은 auto-terminate가 안 되므로 비용 관리에 주의가 필요합니다.
+
+### Spot Instance Termination (AWS Reclaim)
 
 AWS can reclaim spot instances with 2 minutes notice. The instance ID and IP will change.
 Save logs and note the PCR values before they are lost.
