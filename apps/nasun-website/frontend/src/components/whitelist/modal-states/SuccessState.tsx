@@ -26,7 +26,7 @@ export function SuccessState({ walletAddress, joinedAt, onClose, onWithdraw }: S
       <DialogHeader>
         <DialogTitle className="flex items-center gap-3 text-nasun-white">
           <CheckCircle2 className="h-6 w-6" />
-          <h6>{t("whitelist.modal.success.title")}</h6>
+          <span>{t("whitelist.modal.success.title")}</span>
         </DialogTitle>
         <DialogDescription className="text-xs/snug md:text-sm/snug xl:text-base/snug">
           {t("whitelist.modal.success.description")}
