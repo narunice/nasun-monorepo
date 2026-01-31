@@ -15,6 +15,8 @@ export interface NftWhitelist {
   verifiedAt: string; // ISO 8601 timestamp
   engagementScore: number; // 참여도 점수
   allowlistBatchId?: string; // Allowlist Batch ID ("1", "2", "3", ...)
+  status?: 'ACTIVE' | 'WITHDRAWN'; // Soft delete: WITHDRAWN = withdrawn
+  withdrawnAt?: string; // ISO 8601 timestamp (withdrawal time)
 }
 
 /**

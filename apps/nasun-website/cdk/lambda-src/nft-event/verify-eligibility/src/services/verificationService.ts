@@ -49,15 +49,58 @@ export class VerificationService {
     try {
       console.log(`[VerificationService] Starting verification for user ${xUserId}`);
 
-      // 1. X API로 Like/Retweet만 병렬 검증 (Follow는 Basic Plan 미지원)
-      const verificationResult = await this.xApiClient.verifyAll(xUserId);
+      // 0. DynamoDB cache check - skip X API for already-completed tasks
+      const existingTasks = await this.taskTracker.getAllTasks(walletAddress);
+      const cachedLike = existingTasks.find((t) => t.taskType === 'LIKE' && t.completed);
+      const cachedRetweet = existingTasks.find((t) => t.taskType === 'RETWEET' && t.completed);
 
-      const { hasLiked, hasRetweeted } = verificationResult;
+      if (cachedLike && cachedRetweet) {
+        console.log(`[VerificationService] All tasks already completed in cache, skipping X API`);
+      } else {
+        console.log(`[VerificationService] Cache status - Like: ${cachedLike ? 'cached' : 'needs API'}, Retweet: ${cachedRetweet ? 'cached' : 'needs API'}`);
+      }
 
-      // 2. DynamoDB에 태스크 상태 저장 (성공한 태스크만)
+      // 1. Only call X API for incomplete tasks
+      let hasLiked: boolean | undefined = cachedLike ? true : undefined;
+      let hasRetweeted: boolean | undefined = cachedRetweet ? true : undefined;
+      let apiError: string | undefined;
+
+      if (!cachedLike || !cachedRetweet) {
+        // Build selective verification
+        const apiPromises: Promise<boolean>[] = [];
+        const apiLabels: string[] = [];
+
+        if (!cachedLike) {
+          apiPromises.push(this.xApiClient.checkLiked(xUserId));
+          apiLabels.push('LIKE');
+        }
+        if (!cachedRetweet) {
+          apiPromises.push(this.xApiClient.checkRetweeted(xUserId));
+          apiLabels.push('RETWEET');
+        }
+
+        const results = await Promise.allSettled(apiPromises);
+        const errors: string[] = [];
+
+        results.forEach((result, i) => {
+          const label = apiLabels[i];
+          if (result.status === 'fulfilled') {
+            if (label === 'LIKE') hasLiked = result.value;
+            if (label === 'RETWEET') hasRetweeted = result.value;
+          } else {
+            errors.push(`${label} check failed: ${result.reason?.message || 'Unknown error'}`);
+          }
+        });
+
+        if (errors.length > 0) {
+          apiError = errors.join('; ');
+        }
+      }
+
+      // 2. Save task results to DynamoDB (only newly verified tasks)
       const savePromises: Promise<any>[] = [];
 
-      if (hasLiked !== undefined) {
+      if (!cachedLike && hasLiked !== undefined) {
         savePromises.push(
           this.taskTracker.saveTaskStatus(walletAddress, xUserId, 'LIKE', hasLiked, {
             xUsername,
@@ -66,7 +109,7 @@ export class VerificationService {
         );
       }
 
-      if (hasRetweeted !== undefined) {
+      if (!cachedRetweet && hasRetweeted !== undefined) {
         savePromises.push(
           this.taskTracker.saveTaskStatus(walletAddress, xUserId, 'RETWEET', hasRetweeted, {
             xUsername,
@@ -77,7 +120,7 @@ export class VerificationService {
 
       await Promise.allSettled(savePromises);
 
-      // 3. 태스크 상태 목록 생성 (Follow 제외, undefined는 검증 실패로 처리)
+      // 3. Build task status list
       const tasks: TaskStatus[] = [
         {
           taskType: 'LIKE',
@@ -99,17 +142,15 @@ export class VerificationService {
         },
       ];
 
-      // 4. 모든 조건 충족 여부 확인 (Follow 제외)
+      // 4. Check eligibility
       const eligible = hasLiked === true && hasRetweeted === true;
-
-      // 일부라도 검증에 실패했는지 확인
       const hasVerificationErrors = hasLiked === undefined || hasRetweeted === undefined;
 
       let message: string;
       if (eligible) {
         message = '모든 참여 조건을 충족했습니다!';
       } else if (hasVerificationErrors) {
-        message = `일부 태스크 검증에 실패했습니다. 위 목록을 확인해주세요. ${verificationResult.error || ''}`.trim();
+        message = `일부 태스크 검증에 실패했습니다. 위 목록을 확인해주세요. ${apiError || ''}`.trim();
       } else {
         message = '일부 조건을 충족하지 못했습니다. 위 목록을 확인해주세요.';
       }
@@ -117,7 +158,7 @@ export class VerificationService {
       console.log(`[VerificationService] Verification complete. Eligible: ${eligible}, HasErrors: ${hasVerificationErrors}`);
 
       return {
-        success: verificationResult.success,
+        success: !hasVerificationErrors,
         eligible,
         tasks,
         message,

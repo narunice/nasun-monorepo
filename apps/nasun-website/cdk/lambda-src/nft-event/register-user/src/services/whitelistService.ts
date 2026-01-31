@@ -54,14 +54,17 @@ export class WhitelistService {
         xUsername: request.xUsername,
         verifiedAt: now,
         engagementScore: 0,
+        status: 'ACTIVE',
       };
 
       await this.docClient.send(
         new PutCommand({
           TableName: this.tableName,
           Item: whitelist,
-          // 중복 방지: walletAddress가 이미 존재하면 실패
-          ConditionExpression: 'attribute_not_exists(walletAddress)',
+          // Allow registration if: new record OR previously withdrawn
+          ConditionExpression: 'attribute_not_exists(walletAddress) OR #status = :withdrawn',
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: { ':withdrawn': 'WITHDRAWN' },
         })
       );
 
@@ -163,7 +166,10 @@ export class WhitelistService {
         this.findByXUserId(xUserId),
       ]);
 
-      const isDuplicate = byWallet !== null || byXUserId !== null;
+      // WITHDRAWN records are not considered duplicates (allow re-registration)
+      const isActiveWallet = byWallet !== null && byWallet.status !== 'WITHDRAWN';
+      const isActiveXUser = byXUserId !== null && byXUserId.status !== 'WITHDRAWN';
+      const isDuplicate = isActiveWallet || isActiveXUser;
       console.log(`[WhitelistService] Duplicate check result: ${isDuplicate}`);
 
       return isDuplicate;

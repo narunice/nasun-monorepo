@@ -11,7 +11,7 @@
  * @updated 2025-10-25 - Follow 검증 제거, Intent URL 팔로우 버튼 추가
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useBattalionNftVerification } from "../../../../hooks/useBattalionNftVerification";
 import type { TaskType, VerificationResult } from "../../../../types/battalion-nft";
@@ -55,24 +55,72 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
   const { verify, isLoading, error, data } = useBattalionNftVerification();
   const [hasVerified, setHasVerified] = useState(false);
 
+  // Rate limit cooldown timer
+  const COOLDOWN_KEY = "battalion_nft_verify_cooldown";
+  const COOLDOWN_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  const getCooldownEnd = useCallback(() => {
+    const stored = sessionStorage.getItem(COOLDOWN_KEY);
+    return stored ? parseInt(stored, 10) : 0;
+  }, []);
+
+  // Initialize and tick cooldown timer
+  useEffect(() => {
+    const updateRemaining = () => {
+      const end = getCooldownEnd();
+      const remaining = Math.max(0, end - Date.now());
+      setCooldownRemaining(remaining);
+      if (remaining <= 0) {
+        sessionStorage.removeItem(COOLDOWN_KEY);
+      }
+    };
+
+    updateRemaining();
+    const interval = setInterval(updateRemaining, 1000);
+    return () => clearInterval(interval);
+  }, [getCooldownEnd]);
+
+  const startCooldown = useCallback(() => {
+    const end = Date.now() + COOLDOWN_DURATION_MS;
+    sessionStorage.setItem(COOLDOWN_KEY, end.toString());
+    setCooldownRemaining(COOLDOWN_DURATION_MS);
+  }, [COOLDOWN_DURATION_MS]);
+
+  // Also start cooldown if error state indicates rate limit
+  useEffect(() => {
+    if (error && (error.code?.includes("429") || error.message?.includes("RATE_LIMIT"))) {
+      const end = getCooldownEnd();
+      if (end <= Date.now()) {
+        startCooldown();
+      }
+    }
+  }, [error, getCooldownEnd, startCooldown]);
+
+  const isCooldownActive = cooldownRemaining > 0;
+  const cooldownMinutes = Math.floor(cooldownRemaining / 60000);
+  const cooldownSeconds = Math.floor((cooldownRemaining % 60000) / 1000);
+
   const eventTweetId = import.meta.env.VITE_EVENT_TWEET_ID || "";
   const targetTweetUrl = `https://x.com/Nasun_io/status/${eventTweetId}`;
 
   const handleVerify = async () => {
+    if (isCooldownActive) return;
+
     try {
-      // walletAddress가 있으면 사용 (Step 4 이후), 없으면 xUserId를 임시로 사용 (Step 3)
-      // register-user Lambda에서 실제 walletAddress로 업데이트됨
       await verify({
-        walletAddress: walletAddress || xUserId, // 지갑 연결 시 실제 주소 사용
+        walletAddress: walletAddress || xUserId,
         xUserId,
         xUsername,
       });
 
       setHasVerified(true);
-
-      // 검증 완료 후 결과만 표시하고, 사용자가 "Next Step" 버튼을 클릭할 때까지 대기
-      // onVerificationSuccess는 "Next Step" 버튼 클릭 시에만 호출됨 (line 264-270)
-    } catch (err) {
+    } catch (err: unknown) {
+      const apiError = err as { code?: string; message?: string };
+      // Start cooldown on rate limit error
+      if (apiError.code?.includes("429") || apiError.message?.includes("RATE_LIMIT")) {
+        startCooldown();
+      }
       console.error("Verification failed:", err);
     }
   };
@@ -212,8 +260,17 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
         </a>
       </p>
 
+      {/* Rate Limit Cooldown Notice */}
+      {isCooldownActive && (
+        <div className="mb-6 p-4 bg-yellow-900/20 rounded-lg border border-yellow-700">
+          <p className="text-yellow-200">
+            X API rate limit reached. Please wait {cooldownMinutes}:{cooldownSeconds.toString().padStart(2, "0")} before retrying.
+          </p>
+        </div>
+      )}
+
       {/* Error Message */}
-      {error && (
+      {error && !isCooldownActive && (
         <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
           {error.message?.includes("401") || error.code?.includes("401") ? (
             <>
@@ -289,13 +346,17 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
         // 검증 버튼 (초기 또는 재시도)
         <Button
           onClick={handleVerify}
-          disabled={isLoading}
+          disabled={isLoading || isCooldownActive}
           variant="c5"
           className="flex mx-auto"
           size="lg"
         >
           {isLoading ? (
             <InlineLoading message={t("step3.verifying")} size="md" />
+          ) : isCooldownActive ? (
+            <span>
+              Retry in {cooldownMinutes}:{cooldownSeconds.toString().padStart(2, "0")}
+            </span>
           ) : (
             <span>{hasVerified ? t("step3.retry") : t("step3.button")}</span>
           )}
