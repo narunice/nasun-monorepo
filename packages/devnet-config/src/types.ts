@@ -67,6 +67,8 @@ export interface BaramConfig {
   stakingAdminCap: ObjectId;
   // Tier (Phase E)
   tierRegistry: ObjectId;
+  // Phase F-2: Self-service
+  processedRequests: ObjectId;
   // Attestation
   attestationPackageId: ObjectId;
   attestationRegistry: ObjectId;
