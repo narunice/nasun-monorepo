@@ -62,10 +62,15 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
 
         const data = await response.json();
         console.log("[XAuthCard] Twitter callback success:", data);
+        console.log("[XAuthCard] Handle fields:", {
+          originalTwitterHandle: data.originalTwitterHandle,
+          twitterHandle: data.twitterHandle,
+          username: data.username,
+        });
 
-        // Extract userId and username
+        // Extract userId and username (prefer original casing for display)
         const userId = data.twitterId;
-        const username = data.twitterHandle || data.username;
+        const username = data.originalTwitterHandle || data.twitterHandle || data.username;
 
         if (!userId || !username) {
           throw new Error("Failed to get user information from Twitter");

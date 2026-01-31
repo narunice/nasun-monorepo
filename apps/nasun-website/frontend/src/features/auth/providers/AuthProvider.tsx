@@ -53,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isLinkingFlow = !!twitterLinkSession || !!googleLinkSession;
 
     // Skip Twitter OAuth if this is Battalion NFT flow
+    // Note: Step2XAuthCard stores this in sessionStorage (not localStorage)
     const isBattalionNftTwitterSession = sessionStorage.getItem("battalion_nft_twitter_session");
     if (isBattalionNftTwitterSession && url.searchParams.has("code")) {
       logger.debug("Skipping AuthContext Twitter OAuth - Battalion NFT flow detected");
