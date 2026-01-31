@@ -14,7 +14,8 @@
 ///   tier = min(stake_tier(staked_amount), reputation_tier(reputation))
 ///   Both conditions must be met simultaneously.
 module baram_executor::executor_tier {
-    use baram_executor::executor::AdminCap;
+    use baram_executor::executor::{Self, AdminCap, ExecutorRegistry};
+    use baram_executor::executor_staking::{Self, ExecutorStake};
     use sui::table::{Self, Table};
     use sui::event;
     use std::string::String;
@@ -194,6 +195,47 @@ module baram_executor::executor_tier {
             executor: operator,
             old_tier,
         });
+    }
+
+    // ========== Self-Service Functions (Phase F-2) ==========
+
+    /// Permissionless tier refresh using on-chain state.
+    /// Reads reputation from ExecutorRegistry and stake from ExecutorStake.
+    /// Anyone can call — result is always the correct tier based on current on-chain data.
+    public entry fun refresh_tier_from_state(
+        tier_registry: &mut TierRegistry,
+        executor_registry: &ExecutorRegistry,
+        stake: &ExecutorStake,
+        _ctx: &mut TxContext,
+    ) {
+        let operator = executor_staking::get_executor(stake);
+        let reputation = executor::get_executor_reputation(executor_registry, operator);
+        let stake_amount = executor_staking::get_stake_amount(stake);
+        let new_tier = calculate_tier(stake_amount, reputation);
+
+        if (table::contains(&tier_registry.tiers, operator)) {
+            let old_tier = *table::borrow(&tier_registry.tiers, operator);
+            if (old_tier != new_tier) {
+                *table::borrow_mut(&mut tier_registry.tiers, operator) = new_tier;
+                event::emit(TierChanged {
+                    executor: operator,
+                    old_tier,
+                    new_tier,
+                    stake_amount,
+                    reputation,
+                });
+            };
+        } else {
+            table::add(&mut tier_registry.tiers, operator, new_tier);
+            tier_registry.total_registered = tier_registry.total_registered + 1;
+            event::emit(TierChanged {
+                executor: operator,
+                old_tier: TIER_OPEN,
+                new_tier,
+                stake_amount,
+                reputation,
+            });
+        };
     }
 
     // ========== View Functions ==========

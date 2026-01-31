@@ -27,6 +27,7 @@ module baram_executor::executor {
     const E_EXECUTOR_NOT_ACTIVE: u64 = 103;
     const E_NOT_INACTIVE_LONG_ENOUGH: u64 = 104;
     const E_REPUTATION_AT_MINIMUM: u64 = 105;
+    const E_REQUEST_ALREADY_PROCESSED: u64 = 106;
 
     // ========== Constants ==========
     // Reputation decay: fixed amount per call, protocol-determined (not admin-discretionary)
@@ -104,6 +105,24 @@ module baram_executor::executor {
         reputation: u64,
     }
 
+    public struct ExecutorEndpointUpdated has copy, drop {
+        operator: address,
+        endpoint_url: String,
+    }
+
+    public struct ReputationDecayed has copy, drop {
+        operator: address,
+        old_reputation: u64,
+        new_reputation: u64,
+    }
+
+    /// Separate shared object for request_id dedup guard.
+    /// Stored independently from ExecutorRegistry to allow upgrade-compatible addition.
+    public struct ProcessedRequests has key {
+        id: UID,
+        requests: Table<u64, bool>,
+    }
+
     // ========== Init ==========
 
     fun init(ctx: &mut TxContext) {
@@ -121,6 +140,26 @@ module baram_executor::executor {
             active_executors: 0,
         };
         transfer::share_object(registry);
+
+        // Create shared ProcessedRequests (dedup guard for self-service stats)
+        let processed = ProcessedRequests {
+            id: object::new(ctx),
+            requests: table::new(ctx),
+        };
+        transfer::share_object(processed);
+    }
+
+    /// Create ProcessedRequests shared object (for package upgrade migration).
+    /// Call once after upgrading from a version that did not have ProcessedRequests.
+    public entry fun create_processed_requests(
+        _admin: &AdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let processed = ProcessedRequests {
+            id: object::new(ctx),
+            requests: table::new(ctx),
+        };
+        transfer::share_object(processed);
     }
 
     // ========== Admin Functions ==========
@@ -372,6 +411,133 @@ module baram_executor::executor {
         });
     }
 
+    // ========== Self-Service Functions (Phase F-2) ==========
+
+    /// Record successful job completion — callable by the executor itself.
+    /// Must be called in the same PTB as submit_proof for correctness.
+    /// request_id dedup prevents double-claiming reputation for the same job.
+    public entry fun record_job_completion(
+        registry: &mut ExecutorRegistry,
+        processed: &mut ProcessedRequests,
+        request_id: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(table::contains(&registry.executors, sender), E_EXECUTOR_NOT_FOUND);
+        assert!(!table::contains(&processed.requests, request_id), E_REQUEST_ALREADY_PROCESSED);
+
+        table::add(&mut processed.requests, request_id, true);
+
+        let info = table::borrow_mut(&mut registry.executors, sender);
+        info.completed_jobs = info.completed_jobs + 1;
+        if (info.reputation < 990) {
+            info.reputation = info.reputation + 10;
+        } else {
+            info.reputation = 1000;
+        };
+        info.last_active_at = clock.timestamp_ms();
+
+        event::emit(ExecutorStatsUpdated {
+            operator: sender,
+            completed_jobs: info.completed_jobs,
+            failed_jobs: info.failed_jobs,
+            reputation: info.reputation,
+        });
+    }
+
+    /// Record failed job — callable by the executor itself.
+    /// Used in auto-cancel flow when execution fails.
+    /// request_id dedup prevents double-penalizing for the same job.
+    public entry fun record_job_failure(
+        registry: &mut ExecutorRegistry,
+        processed: &mut ProcessedRequests,
+        request_id: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(table::contains(&registry.executors, sender), E_EXECUTOR_NOT_FOUND);
+        assert!(!table::contains(&processed.requests, request_id), E_REQUEST_ALREADY_PROCESSED);
+
+        table::add(&mut processed.requests, request_id, true);
+
+        let info = table::borrow_mut(&mut registry.executors, sender);
+        info.failed_jobs = info.failed_jobs + 1;
+        if (info.reputation > 20) {
+            info.reputation = info.reputation - 20;
+        } else {
+            info.reputation = 0;
+        };
+        info.last_active_at = clock.timestamp_ms();
+
+        event::emit(ExecutorStatsUpdated {
+            operator: sender,
+            completed_jobs: info.completed_jobs,
+            failed_jobs: info.failed_jobs,
+            reputation: info.reputation,
+        });
+    }
+
+    /// Executor updates its own endpoint URL and supported models.
+    /// Only the registered executor (tx.sender) can modify its own operational metadata.
+    /// Cannot change name, is_active, or TEE attestation (admin-only fields).
+    public entry fun update_own_endpoint(
+        registry: &mut ExecutorRegistry,
+        endpoint_url: String,
+        supported_models: vector<String>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(table::contains(&registry.executors, sender), E_EXECUTOR_NOT_FOUND);
+
+        let info = table::borrow_mut(&mut registry.executors, sender);
+        info.endpoint_url = endpoint_url;
+        info.supported_models = supported_models;
+        info.last_active_at = clock.timestamp_ms();
+
+        event::emit(ExecutorEndpointUpdated {
+            operator: sender,
+            endpoint_url,
+        });
+    }
+
+    /// Permissionless reputation decay for inactive executors.
+    /// Anyone can call this as a protocol maintenance action.
+    /// Fixed decay amount (50), 30-day inactivity threshold enforced by Clock.
+    /// last_active_at is advanced by 30 days to prevent re-decay within that window.
+    public entry fun decay_reputation_permissionless(
+        registry: &mut ExecutorRegistry,
+        operator: address,
+        clock: &Clock,
+        _ctx: &mut TxContext,
+    ) {
+        assert!(table::contains(&registry.executors, operator), E_EXECUTOR_NOT_FOUND);
+
+        let info = table::borrow_mut(&mut registry.executors, operator);
+        let now = clock.timestamp_ms();
+
+        assert!(now >= info.last_active_at + DECAY_THRESHOLD_MS, E_NOT_INACTIVE_LONG_ENOUGH);
+        assert!(info.reputation > DECAY_MIN_REPUTATION, E_REPUTATION_AT_MINIMUM);
+
+        let old_reputation = info.reputation;
+        if (info.reputation > DECAY_MIN_REPUTATION + DECAY_AMOUNT) {
+            info.reputation = info.reputation - DECAY_AMOUNT;
+        } else {
+            info.reputation = DECAY_MIN_REPUTATION;
+        };
+
+        // Advance last_active_at by DECAY_THRESHOLD_MS to prevent re-decay within 30 days
+        info.last_active_at = info.last_active_at + DECAY_THRESHOLD_MS;
+
+        event::emit(ReputationDecayed {
+            operator,
+            old_reputation,
+            new_reputation: info.reputation,
+        });
+    }
+
     // ========== View Functions ==========
 
     /// Check if an executor is registered and active
@@ -485,5 +651,372 @@ module baram_executor::executor {
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx);
+    }
+
+    #[test_only]
+    public fun create_processed_requests_for_testing(ctx: &mut TxContext) {
+        let processed = ProcessedRequests {
+            id: object::new(ctx),
+            requests: table::new(ctx),
+        };
+        transfer::share_object(processed);
+    }
+
+    // ========== Tests ==========
+
+    #[test_only]
+    use sui::test_scenario;
+    #[test_only]
+    use sui::clock;
+
+    #[test_only]
+    fun setup_executor(scenario: &mut test_scenario::Scenario, operator: address) {
+        test_scenario::next_tx(scenario, @0xA1);
+        {
+            init_for_testing(test_scenario::ctx(scenario));
+        };
+        test_scenario::next_tx(scenario, @0xA1);
+        {
+            let admin = test_scenario::take_from_sender<AdminCap>(scenario);
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(scenario));
+
+            register_executor(
+                &admin,
+                &mut registry,
+                operator,
+                std::string::utf8(b"Test Executor"),
+                std::string::utf8(b"http://localhost:3000"),
+                TEE_NONE,
+                vector[],
+                vector[std::string::utf8(b"llama-3.2-3b")],
+                &clk,
+                test_scenario::ctx(scenario),
+            );
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_to_sender(scenario, admin);
+            test_scenario::return_shared(registry);
+        };
+    }
+
+    #[test]
+    fun test_record_job_completion() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        // Record job completion as the executor
+        test_scenario::next_tx(&mut scenario, operator);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut processed = test_scenario::take_shared<ProcessedRequests>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            record_job_completion(&mut registry, &mut processed, 1001, &clk, test_scenario::ctx(&mut scenario));
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.completed_jobs == 1);
+            assert!(info.reputation == 510); // 500 + 10
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(processed);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_REQUEST_ALREADY_PROCESSED)]
+    fun test_record_job_completion_dedup() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        test_scenario::next_tx(&mut scenario, operator);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut processed = test_scenario::take_shared<ProcessedRequests>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            record_job_completion(&mut registry, &mut processed, 1001, &clk, test_scenario::ctx(&mut scenario));
+            // Second call with same request_id should abort
+            record_job_completion(&mut registry, &mut processed, 1001, &clk, test_scenario::ctx(&mut scenario));
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(processed);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_record_job_failure() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        test_scenario::next_tx(&mut scenario, operator);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut processed = test_scenario::take_shared<ProcessedRequests>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            record_job_failure(&mut registry, &mut processed, 2001, &clk, test_scenario::ctx(&mut scenario));
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.failed_jobs == 1);
+            assert!(info.reputation == 480); // 500 - 20
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(processed);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_update_own_endpoint() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        test_scenario::next_tx(&mut scenario, operator);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            update_own_endpoint(
+                &mut registry,
+                std::string::utf8(b"http://new-endpoint:3000"),
+                vector[std::string::utf8(b"gpt-4o"), std::string::utf8(b"llama-3.2-3b")],
+                &clk,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.endpoint_url == std::string::utf8(b"http://new-endpoint:3000"));
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_EXECUTOR_NOT_FOUND)]
+    fun test_update_own_endpoint_not_registered() {
+        let mut scenario = test_scenario::begin(@0xA1);
+        // Init but don't register any executor
+        test_scenario::next_tx(&mut scenario, @0xA1);
+        {
+            init_for_testing(test_scenario::ctx(&mut scenario));
+        };
+
+        // Try to update endpoint as unregistered address
+        test_scenario::next_tx(&mut scenario, @0xC1);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            update_own_endpoint(
+                &mut registry,
+                std::string::utf8(b"http://malicious:3000"),
+                vector[],
+                &clk,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_decay_reputation_permissionless() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        // Anyone can call decay after 30 days
+        test_scenario::next_tx(&mut scenario, @0xB1);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            // Advance clock past 30 days
+            clock::set_for_testing(&mut clk, DECAY_THRESHOLD_MS + 1);
+
+            decay_reputation_permissionless(&mut registry, operator, &clk, test_scenario::ctx(&mut scenario));
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 450); // 500 - 50
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = E_NOT_INACTIVE_LONG_ENOUGH)]
+    fun test_decay_reputation_too_early() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        test_scenario::next_tx(&mut scenario, @0xB1);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            // Clock at 0 — should fail because 30 days haven't passed
+            decay_reputation_permissionless(&mut registry, operator, &clk, test_scenario::ctx(&mut scenario));
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_decay_prevents_re_decay() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        // First decay at day 31
+        test_scenario::next_tx(&mut scenario, @0xB1);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::set_for_testing(&mut clk, DECAY_THRESHOLD_MS + 1);
+
+            decay_reputation_permissionless(&mut registry, operator, &clk, test_scenario::ctx(&mut scenario));
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 450);
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        // Second decay at day 61 (last_active_at was advanced to day 30, so day 61 > day 30 + 30)
+        test_scenario::next_tx(&mut scenario, @0xB1);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::set_for_testing(&mut clk, 2 * DECAY_THRESHOLD_MS + 2);
+
+            decay_reputation_permissionless(&mut registry, operator, &clk, test_scenario::ctx(&mut scenario));
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 400); // 450 - 50
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_reputation_cap_at_1000() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        // Set reputation to 995 via admin, then record completion to test cap
+        test_scenario::next_tx(&mut scenario, @0xA1);
+        {
+            let admin = test_scenario::take_from_sender<AdminCap>(&scenario);
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            // Bring reputation to near-max via repeated completions (admin version)
+            let mut i = 0;
+            while (i < 50) {
+                update_executor_stats(&admin, &mut registry, operator, true, &clk, test_scenario::ctx(&mut scenario));
+                i = i + 1;
+            };
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 1000); // capped at 1000
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(registry);
+        };
+
+        // Now record one more completion via self-service — should stay at 1000
+        test_scenario::next_tx(&mut scenario, operator);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut processed = test_scenario::take_shared<ProcessedRequests>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            record_job_completion(&mut registry, &mut processed, 9999, &clk, test_scenario::ctx(&mut scenario));
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 1000);
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(processed);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_reputation_floor_at_zero() {
+        let operator = @0xE1;
+        let mut scenario = test_scenario::begin(@0xA1);
+        setup_executor(&mut scenario, operator);
+
+        // Set reputation to near-zero via admin failures
+        test_scenario::next_tx(&mut scenario, @0xA1);
+        {
+            let admin = test_scenario::take_from_sender<AdminCap>(&scenario);
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            let mut i = 0;
+            while (i < 25) {
+                update_executor_stats(&admin, &mut registry, operator, false, &clk, test_scenario::ctx(&mut scenario));
+                i = i + 1;
+            };
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 0); // 500 - 25*20 = 0
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_to_sender(&scenario, admin);
+            test_scenario::return_shared(registry);
+        };
+
+        // Record failure via self-service — should stay at 0
+        test_scenario::next_tx(&mut scenario, operator);
+        {
+            let mut registry = test_scenario::take_shared<ExecutorRegistry>(&scenario);
+            let mut processed = test_scenario::take_shared<ProcessedRequests>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            record_job_failure(&mut registry, &mut processed, 8888, &clk, test_scenario::ctx(&mut scenario));
+
+            let info = get_executor_info(&registry, operator);
+            assert!(info.reputation == 0);
+
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(processed);
+        };
+
+        test_scenario::end(scenario);
     }
 }
