@@ -166,7 +166,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
       // Encrypt all prompts sent to TEE executors (Enclave always decrypts)
       const needsTeeEncryption = executor.teeType > 0;
       const encryptedPrompt = needsTeeEncryption
-        ? await encryptPromptForTEE(textToSend, executorUrl)
+        ? await encryptPromptForTEE(textToSend, executorUrl, requestId)
         : encodePrompt(textToSend);
 
       console.log('Calling executor:', executorUrl, needsTeeEncryption ? '(TEE encrypted)' : '(plaintext)');
@@ -197,27 +197,41 @@ export function useCreateRequest(): UseCreateRequestReturn {
         // Execution failed — auto-cancel to release escrow immediately
         console.warn(`[useCreateRequest] Execution failed, auto-cancelling request #${requestId}`);
         setStatus('cancelling');
-        try {
-          const cancelTx = buildCancelRequestTransaction(requestId);
-          cancelTx.setSender(address);
-          const cancelTxBytes = await cancelTx.build({ client });
-          const { signature: cancelSig } = await signer.sign(cancelTxBytes);
-          await client.executeTransactionBlock({
-            transactionBlock: cancelTxBytes,
-            signature: cancelSig,
-          });
-          console.log(`[useCreateRequest] Auto-cancelled request #${requestId}, escrow released`);
-        } catch (cancelError) {
-          // Cancel failed — escrow still recoverable via claim_timeout_refund after 5 min
-          console.error('[useCreateRequest] Auto-cancel failed (timeout refund available):', cancelError);
+
+        let cancelSucceeded = false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const cancelTx = buildCancelRequestTransaction(requestId);
+            cancelTx.setSender(address);
+            const cancelTxBytes = await cancelTx.build({ client });
+            const { signature: cancelSig } = await signer.sign(cancelTxBytes);
+            await client.executeTransactionBlock({
+              transactionBlock: cancelTxBytes,
+              signature: cancelSig,
+            });
+            cancelSucceeded = true;
+            console.log(`[useCreateRequest] Auto-cancelled request #${requestId}, escrow released`);
+            break;
+          } catch (cancelError) {
+            console.warn(`[useCreateRequest] Cancel attempt ${attempt}/2 failed:`, cancelError);
+            if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+          }
         }
+
+        if (!cancelSucceeded) {
+          throw new Error(
+            `Execution failed and auto-refund failed. Your NUSDC is locked in request #${requestId}. ` +
+            `Timeout refund available in ~5 minutes.`
+          );
+        }
+
         throw executeError;
       }
 
       // 7. Decrypt E2E-encrypted response if applicable
       let resultText = executeResult.result;
       if (executeResult.encrypted) {
-        resultText = await decryptResponseFromTEE(executeResult.result);
+        resultText = await decryptResponseFromTEE(executeResult.result, requestId);
         console.log('[E2E] Response decrypted successfully');
       }
 
