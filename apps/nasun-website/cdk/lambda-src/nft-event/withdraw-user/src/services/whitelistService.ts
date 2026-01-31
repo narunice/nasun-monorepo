@@ -13,7 +13,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  DeleteCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { NftWhitelist, ErrorCode, NftEventError } from '../types';
 import { ethers } from 'ethers';
@@ -57,17 +57,26 @@ export class WhitelistService {
         );
       }
 
-      // 2. DynamoDB에서 레코드 완전 삭제 (Hard Delete)
+      // 2. Soft Delete: status를 WITHDRAWN으로 업데이트
+      const now = new Date().toISOString();
       await this.docClient.send(
-        new DeleteCommand({
+        new UpdateCommand({
           TableName: this.tableName,
           Key: {
             walletAddress: normalizedAddress,
           },
+          UpdateExpression: 'SET #status = :withdrawn, withdrawnAt = :now',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+          },
+          ExpressionAttributeValues: {
+            ':withdrawn': 'WITHDRAWN',
+            ':now': now,
+          },
         })
       );
 
-      console.log(`[WhitelistService] User deleted successfully: ${normalizedAddress}`);
+      console.log(`[WhitelistService] User withdrawn successfully: ${normalizedAddress}`);
     } catch (error: any) {
       // NftEventError는 그대로 throw
       if (error instanceof NftEventError) {

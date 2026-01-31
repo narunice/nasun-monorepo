@@ -22,7 +22,8 @@ export interface NftWhitelist {
   engagementScore: number; // 초기값: 0
   allowlistBatchId?: string; // Allowlist Batch ID ("1", "2", "3", ...) - 등록 시점의 배치
   merkleProof?: string[]; // 머클 증명 (나중에 추가)
-  // status 필드 제거 (Hard Delete 방식으로 변경, 등록/미등록 2-state만 존재)
+  status?: 'ACTIVE' | 'WITHDRAWN'; // Soft delete: WITHDRAWN으로 업데이트
+  withdrawnAt?: string; // 철회 시간 (ISO 8601)
   mintedAt?: string; // 민팅 완료 시간 (옵션)
   referralCode?: string; // 추천인 코드 (향후 확장)
 }
