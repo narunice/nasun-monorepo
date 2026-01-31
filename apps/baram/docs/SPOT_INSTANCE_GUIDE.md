@@ -2,7 +2,7 @@
 
 Spot instance launch, configuration, and on-chain update procedures for the Baram TEE Executor.
 
-Last updated: 2026-01-30
+Last updated: 2026-01-31
 
 ---
 
@@ -147,6 +147,9 @@ If `.env` is missing, recreate it (see [Known Issues: .env is Gitignored](#env-i
 | `ATTESTATION_PACKAGE_ID` | Attestation contract | `0x...` |
 | `STAKING_REGISTRY_ID` | StakingRegistry shared object | `0x...` |
 | `TIER_REGISTRY_ID` | TierRegistry shared object | `0x...` |
+| `EXECUTOR_PACKAGE_ID` | baram_executor package ID (v2) | `0x4b0e89...` |
+| `PROCESSED_REQUESTS_ID` | ProcessedRequests shared object | `0xc68e22...` |
+| `EXECUTOR_STAKE_ID` | ExecutorStake owned object (for tier refresh) | `0x...` |
 
 > **IMPORTANT**: The .env file is NOT auto-loaded by `dotenv`. The systemd service loads it
 > via `EnvironmentFile=`. For manual startup, you must source it yourself (see Step 4).
@@ -288,6 +291,10 @@ sudo journalctl -u baram-host --no-pager | grep -E "PCR0|baseline|mismatch"
   - PCR Verified: **Yes**
   - Settlement: **TX Digest 표시** (not Pending)
   - `[E2E] Response decrypted successfully` 콘솔 로그
+- [ ] Phase F-2 검증 (PTB Call 3/4):
+  - Host 로그에서 `record_job_completion` 호출 확인
+  - On-chain ExecutorRegistry에서 reputation 변경 확인 (성공 시 +10)
+  - `refresh_tier_from_state` 호출 확인 (ExecutorStake가 있는 경우)
 
 ---
 
@@ -475,8 +482,9 @@ nasun client call \
   --gas-budget 100000000
 
 # 2. devnet-ids registry (used by Host for settlement)
+# NOTE: Package upgraded to v2 (2026-01-31)
 nasun client call \
-  --package 0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff \
+  --package 0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc \
   --module executor \
   --function update_executor \
   --args \
@@ -487,6 +495,19 @@ nasun client call \
     '"http://<NEW_IP>:3000"' \
     '["llama-3.2-3b","llama-3.2-3b-local"]' \
     true \
+  --gas-budget 100000000
+
+# 2b. Alternative: Self-service endpoint update (Phase F-2)
+# Executor can update own endpoint without AdminCap using EXECUTOR_PRIVATE_KEY:
+nasun client call \
+  --package 0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc \
+  --module executor \
+  --function update_own_endpoint \
+  --args \
+    0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
+    '"http://<NEW_IP>:3000"' \
+    '["llama-3.2-3b","llama-3.2-3b-local"]' \
+    0x6 \
   --gas-budget 100000000
 ```
 
@@ -659,7 +680,7 @@ frontend `.env` was not updated to match `devnet-ids.json`.
 | Registry | Package ID | Registry ID | Used by |
 |----------|-----------|-------------|---------|
 | Frontend | `0xbc29ac03...` | `0xeaac739...` | Frontend UI (useExecutors hook) |
-| devnet-ids | `0xac09c1d6...` | `0xcb694425...` | devnet-ids.json, Host settlement |
+| devnet-ids | `0x4b0e89fa...` (v2) | `0xcb694425...` | devnet-ids.json, Host settlement |
 
 **Impact**: If you only update one registry, either the frontend or settlement will use the old IP.
 
@@ -730,6 +751,9 @@ print(f'ATTESTATION_PACKAGE_ID={b[\"attestationPackageId\"]}')
 print(f'ATTESTATION_REGISTRY_ID={b[\"attestationRegistry\"]}')
 print(f'STAKING_REGISTRY_ID={b[\"stakingRegistry\"]}')
 print(f'TIER_REGISTRY_ID={b[\"tierRegistry\"]}')
+# Phase F-2
+print(f'EXECUTOR_PACKAGE_ID={b[\"executorPackageId\"]}')
+print(f'PROCESSED_REQUESTS_ID={b[\"processedRequests\"]}')
 "
 
 # 3. Create .env file (combine the above outputs)
@@ -745,6 +769,9 @@ ATTESTATION_PACKAGE_ID=<from step 2>
 ATTESTATION_REGISTRY_ID=<from step 2>
 STAKING_REGISTRY_ID=<from step 2>
 TIER_REGISTRY_ID=<from step 2>
+EXECUTOR_PACKAGE_ID=<from step 2>
+PROCESSED_REQUESTS_ID=<from step 2>
+EXECUTOR_STAKE_ID=<executor's stake object ID>
 EOF
 
 # 4. Restart Host service
@@ -774,6 +801,7 @@ ls -la apps/baram/executor-nitro/.env || echo "WARNING: .env missing!"
 | `scripts/build-eif.sh` | Build EIF from Docker image |
 | `scripts/run-enclave.sh` | Start Nitro Enclave |
 | `scripts/update-executor.sh` | Update executor endpoint on-chain (both registries) |
+| `scripts/decay-reputation.ts` | Permissionless reputation decay cron script (Phase F-2) |
 | `scripts/create-ami.sh` | Create AMI from running instance |
 | `scripts/setup-ec2.sh` | Initial EC2 environment setup |
 | `scripts/download-model.sh` | Download LLM model weights |
@@ -794,6 +822,9 @@ Key IDs for executor operations:
 
 | Contract | ID Source |
 |----------|-----------|
+| Executor Package (v2) | `0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc` |
+| ExecutorRegistry (devnet-ids) | `0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c` |
+| ProcessedRequests | `0xc68e22ca8cc7851695c2a5466cc148221f31a94e02f4a65b1676c33ab8855404` |
 | Frontend ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
 | Frontend Executor Package | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
 | Frontend AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |

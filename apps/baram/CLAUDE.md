@@ -44,9 +44,9 @@ apps/baram/
 │
 ├── contracts-executor/          # Executor 패키지
 │   └── sources/
-│       ├── executor.move        # Registry + reputation + decay_reputation
-│       ├── executor_staking.move # Staking/Slashing
-│       └── executor_tier.move   # TierRegistry (4-level tier)
+│       ├── executor.move        # Registry + reputation + self-service (F-2) + ProcessedRequests
+│       ├── executor_staking.move # Staking/Slashing + get_executor view
+│       └── executor_tier.move   # TierRegistry (4-level) + refresh_tier_from_state (F-2)
 │
 ├── contracts-attestation/       # Attestation 패키지
 │   └── sources/
@@ -57,10 +57,10 @@ apps/baram/
 │       └── compliance.move      # ExecutionComplianceRecord
 │
 ├── executor-nitro/              # TEE Executor (AWS Nitro)
-│   ├── src/host/                # Host HTTP 서버 + Attestation 검증
+│   ├── src/host/                # Host HTTP 서버 + Attestation 검증 + Settlement (PTB 4-call)
 │   ├── src/enclave/             # Enclave (crypto, inference, local-llm, attestation)
 │   ├── src/shared/              # protocol.ts, vsock.ts
-│   ├── scripts/                 # Spot 인스턴스 관리
+│   ├── scripts/                 # Spot 인스턴스 관리 + decay-reputation.ts (cron)
 │   ├── docker/                  # Nitro EIF Dockerfile
 │   └── models/                  # LLaMA 모델 (.gitignore)
 │
@@ -120,7 +120,9 @@ cd apps/baram/executor-nitro
 | `cancel_request` | User | 타임아웃 전 취소 + 환불 (Frontend auto-cancel on execution failure) |
 | `submit_proof` | Executor | 결과 해시 제출 + 지급 |
 
-### executor.move (Registry)
+### executor.move (Registry + Self-Service)
+
+**Admin 함수:**
 
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
@@ -128,6 +130,15 @@ cd apps/baram/executor-nitro
 | `update_executor_stats` | Admin | 통계 + reputation 업데이트 (+10 성공, -20 실패) |
 | `decay_reputation` | Admin | 30일 비활성 reputation 감소 (고정 -50, 최소 100) |
 | `link_stake` / `update_stake_status` | Admin | 스테이킹 연동 |
+
+**Self-service 함수 (Phase F-2):**
+
+| 함수 | 호출자 | 설명 |
+|------|--------|------|
+| `record_job_completion` | Executor (self) | 작업 완료 기록 + reputation +10 (request_id dedup via ProcessedRequests) |
+| `record_job_failure` | Executor (self) | 작업 실패 기록 + reputation -20 (request_id dedup) |
+| `update_own_endpoint` | Executor (self) | endpoint_url + supported_models 자율 변경 |
+| `decay_reputation_permissionless` | Anyone | 30일 비활성 reputation 감소 (AdminCap 불필요, Clock 기반) |
 
 ### executor_staking.move (Staking/Slashing)
 
@@ -152,6 +163,7 @@ cd apps/baram/executor-nitro
 |------|--------|------|
 | `update_tier` | Admin | Executor tier 재계산 |
 | `batch_update_tiers` | Admin | 일괄 업데이트 |
+| `refresh_tier_from_state` | Anyone | on-chain state에서 tier 재계산 (F-2, AdminCap 불필요) |
 | `get_tier` / `calculate_tier` | View/Pure | tier 조회/계산 |
 
 ### compliance.move (ECR)
@@ -175,7 +187,7 @@ cd apps/baram/executor-nitro
 
 ## Deployed Contracts (Devnet V6)
 
-> **Chain ID**: `12bf3808` (V6, 2026-01-27)
+> **Chain ID**: `12bf3808` (V6, 2026-01-27 리셋, executor v2 업그레이드 2026-01-31)
 
 ### Baram Contract
 
@@ -193,10 +205,12 @@ cd apps/baram/executor-nitro
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff` |
+| Package ID (v2) | `0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc` |
+| Original Package ID | `0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff` |
 | ExecutorRegistry | `0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c` |
 | AdminCap | `0xd4e4576a072f7aba56100b40cb4663539532fcc8cfd2b2802ff1f52490b89089` |
 | UpgradeCap | `0x43b301a9056440281da42c41340ed0e0ae47bdf885e92dbbd315df55bb7a53ce` |
+| ProcessedRequests | `0xc68e22ca8cc7851695c2a5466cc148221f31a94e02f4a65b1676c33ab8855404` |
 | StakingConfig | `0x6256077ab777e10061960e5d9243d8d4c71bf76531d3fff52c4257697f48830c` |
 | StakingRegistry | `0xf3a62a7f26f0deecbec14ae26b8c620df9e07bcc3a4a11e1632b27b37332f228` |
 | StakingAdminCap | `0x9ce33344d01578a8e121016af13caa11e773073d4e37e739b0c494a8ad9e5a35` |
@@ -288,6 +302,11 @@ COMPLIANCE_PACKAGE_ID=...
 ATTESTATION_PACKAGE_ID=...
 STAKING_REGISTRY_ID=...
 TIER_REGISTRY_ID=...
+
+# Phase F-2: Self-service
+EXECUTOR_PACKAGE_ID=...        # baram_executor package ID (v2)
+PROCESSED_REQUESTS_ID=...      # ProcessedRequests shared object
+EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 ```
 
 ---
@@ -340,7 +359,8 @@ TIER_REGISTRY_ID=...
 | [TierBadge.tsx](frontend/src/components/badges/TierBadge.tsx) | Tier/Dormant 배지 컴포넌트 |
 | [attestation.ts](executor-nitro/src/enclave/attestation.ts) | NSM Attestation (COSE_Sign1) |
 | [server.ts](executor-nitro/src/host/server.ts) | Host HTTP + Attestation 검증 |
-| [sui-client.ts](executor-nitro/src/host/sui-client.ts) | On-chain settlement + ECR 생성 |
+| [sui-client.ts](executor-nitro/src/host/sui-client.ts) | On-chain settlement + ECR 생성 + F-2 PTB Call 3/4 |
+| [decay-reputation.ts](executor-nitro/scripts/decay-reputation.ts) | Permissionless decay cron 스크립트 |
 | [protocol.ts](executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 (v1.3.0) |
 | [ECRReceipt.tsx](frontend/src/features/request/components/ECRReceipt.tsx) | Compliance Record 모달 |
 | [SPOT_INSTANCE_GUIDE.md](docs/SPOT_INSTANCE_GUIDE.md) | Spot 인스턴스 운영 가이드 |
@@ -364,8 +384,7 @@ TIER_REGISTRY_ID=...
 | **F-6** | **Auto-cancel on Execution Failure (에스크로 즉시 해제)** | **✅ 완료** |
 | **F-7** | **Chat Encryption with Password (디스크 공격 방어)** | **✅ 완료** |
 | **F-7.1** | **zkLogin 호환 Dual-Mode 암호화 + Idle Timeout** | **✅ 완료** |
-| F-2 | Admin 의존도 제거 | 계획 |
-| F-5 | StakingRegistry/TierRegistry 실데이터 조회 | 계획 |
+| **F-2** | **Admin 의존도 제거 (Self-service 5함수 + ProcessedRequests dedup)** | **✅ 완료** |
 | G | Model Marketplace | 계획 |
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 
