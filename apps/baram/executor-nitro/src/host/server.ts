@@ -27,7 +27,7 @@ import {
   getExecutorAddress,
   getExecutorStats,
   getAttestationBaseline,
-  submitProofWithCompliance,
+  submitProofWithComplianceRetry,
   sha256Bytes,
   type SuiConfig,
 } from './sui-client.js';
@@ -280,7 +280,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
               : [];
             const attestationHashBytes = sha256Bytes(attestation.rawDocument || '');
 
-            txDigest = await submitProofWithCompliance(
+            txDigest = await submitProofWithComplianceRetry(
               requestId,
               response.payload.resultHash,
               response.payload.executionTimeMs,
@@ -301,9 +301,15 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
             console.log(`[Host/Server] Settlement completed: ${txDigest}`);
           }
         } catch (settlementError) {
-          // Settlement failure should not block returning the result to the user.
-          // The result is already computed; settlement can be retried separately.
-          console.error('[Host/Server] Settlement failed (result still returned):', settlementError);
+          // Settlement failed after retries — do NOT return the result.
+          // User's escrow is safe (PENDING state, auto-refund after 5min timeout).
+          console.error('[Host/Server] Settlement failed after retries:', settlementError);
+          res.status(502).json({
+            success: false,
+            error: 'Settlement failed. Your escrow is safe and will auto-refund after timeout.',
+            settlementFailed: true,
+          });
+          return;
         }
       }
 

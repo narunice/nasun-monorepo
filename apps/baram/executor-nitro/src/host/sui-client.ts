@@ -566,6 +566,58 @@ export async function submitProofWithCompliance(
 }
 
 /**
+ * Get on-chain request status (for settlement retry logic).
+ * Returns: 0=PENDING, 1=EXECUTING, 2=COMPLETED, 3=CANCELLED, 4=REFUNDED, null=not found
+ */
+export async function getRequestStatus(requestId: number): Promise<number | null> {
+  const req = await getRequest(requestId);
+  return req?.status ?? null;
+}
+
+/**
+ * Submit proof with compliance + retry logic.
+ * Retries on transient failures, checks on-chain status to detect
+ * successful-but-timed-out submissions.
+ */
+export async function submitProofWithComplianceRetry(
+  requestId: number,
+  resultHash: string,
+  executionTimeMs: number,
+  request: ComputeRequestOnChain,
+  compliance: ComplianceData,
+  maxRetries: number = 3,
+): Promise<string> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await submitProofWithCompliance(requestId, resultHash, executionTimeMs, request, compliance);
+    } catch (err) {
+      // Check if TX actually landed on-chain despite network error
+      try {
+        const status = await getRequestStatus(requestId);
+        if (status === 2) { // STATUS_COMPLETED — TX went through
+          console.log(`[Sui] Request ${requestId} already settled on-chain (detected on retry ${attempt})`);
+          return 'settlement-confirmed-via-status-check';
+        }
+        if (status === 3 || status === 4) { // CANCELLED or REFUNDED
+          throw new Error(`Request ${requestId} already cancelled/refunded (status=${status})`);
+        }
+      } catch (statusErr) {
+        // Status check also failed (RPC down) — continue retry
+        if (statusErr instanceof Error && statusErr.message.includes('already cancelled/refunded')) {
+          throw statusErr;
+        }
+      }
+
+      if (attempt === maxRetries) throw err;
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      console.warn(`[Sui] Settlement attempt ${attempt}/${maxRetries} failed, retrying in ${delay}ms...`, err);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('Settlement retry exhausted');
+}
+
+/**
  * SHA-256 hash as byte array
  */
 export function sha256Bytes(content: string): number[] {
