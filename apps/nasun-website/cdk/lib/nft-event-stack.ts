@@ -18,6 +18,8 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 
 // Security: CORS 허용 도메인 목록
@@ -281,6 +283,43 @@ export class NftEventStack extends cdk.Stack {
     });
 
     this.whitelistTable.grantReadData(checkStatusLambda);
+
+    // Lambda 6: poll-engagement (EventBridge triggered, 5-min interval)
+    const pollEngagementLogGroup = new logs.LogGroup(this, 'PollEngagementLogGroup', {
+      logGroupName: '/aws/lambda/nasun-nft-poll-engagement',
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const pollEngagementLambda = new lambda.Function(this, 'PollEngagementLambda', {
+      functionName: 'nasun-nft-poll-engagement',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'dist/index.handler',
+      code: lambda.Code.fromAsset('lambda-src/nft-event/poll-engagement'),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      logGroup: pollEngagementLogGroup,
+      environment: {
+        TASKS_TABLE_NAME: this.tasksTable.tableName,
+        // OAuth 1.0a User Context (required by X API Basic Plan for liking_users/retweeted_by)
+        TWITTER_API_KEY: process.env.TWITTER_API_KEY || '',
+        TWITTER_API_SECRET: process.env.TWITTER_API_SECRET || '',
+        TWITTER_ACCESS_TOKEN: process.env.TWITTER_ACCESS_TOKEN || '',
+        TWITTER_ACCESS_TOKEN_SECRET: process.env.TWITTER_ACCESS_TOKEN_SECRET || '',
+        X_TARGET_TWEET_ID,
+      },
+    });
+
+    this.tasksTable.grantReadWriteData(pollEngagementLambda);
+
+    // EventBridge Rule: trigger every 5 minutes
+    const pollRule = new events.Rule(this, 'PollEngagementRule', {
+      ruleName: 'nasun-nft-poll-engagement-rule',
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      description: 'Poll X API liking_users/retweeted_by every 5 min for engagement cache',
+    });
+
+    pollRule.addTarget(new targets.LambdaFunction(pollEngagementLambda));
 
     // ========== 5. API Gateway ==========
 

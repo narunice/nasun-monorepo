@@ -218,6 +218,75 @@ export class XApiClient {
   }
 
   /**
+   * [Tier 3] User Context OAuth로 좋아요 확인
+   * Uses the user's own rate limit (75 req/15min per user), not the app's.
+   *
+   * @param userId - X User ID
+   * @param xAccessToken - User's OAuth 2.0 access token
+   */
+  async checkLikedUserContext(userId: string, xAccessToken: string): Promise<boolean> {
+    try {
+      console.log(`[XApiClient] Checking like via User Context for user ${userId}`);
+
+      const userClient = new TwitterApi(xAccessToken);
+      const likedTweets = await userClient.v2.userLikedTweets(userId, {
+        max_results: 10, // Recent 10 — target tweet should be near the top
+      });
+
+      const tweets = likedTweets.tweets || [];
+      const hasLiked = tweets.some(
+        (tweet: any) => tweet.id === this.config.targetTweetId
+      );
+
+      console.log(`[XApiClient] User Context Like result: ${hasLiked}`);
+      return hasLiked;
+    } catch (error: any) {
+      console.error('[XApiClient] Error checking liked (User Context):', error);
+      if (error.code === 429 || error.rateLimit?.remaining === 0) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+      throw new Error(`X_API_ERROR: ${error.message}`);
+    }
+  }
+
+  /**
+   * [Tier 3] User Context OAuth로 리트윗 확인
+   * Checks user's timeline for retweets of the target tweet.
+   * Rate limit: 1500 req/15min per user (userTimeline).
+   *
+   * @param userId - X User ID
+   * @param xAccessToken - User's OAuth 2.0 access token
+   */
+  async checkRetweetedUserContext(userId: string, xAccessToken: string): Promise<boolean> {
+    try {
+      console.log(`[XApiClient] Checking retweet via User Context for user ${userId}`);
+
+      const userClient = new TwitterApi(xAccessToken);
+      const timeline = await userClient.v2.userTimeline(userId, {
+        max_results: 20,
+        'tweet.fields': ['referenced_tweets'],
+      });
+
+      const tweets = timeline.data?.data || [];
+      const hasRetweeted = tweets.some((tweet: any) => {
+        const refs = tweet.referenced_tweets || [];
+        return refs.some(
+          (ref: any) => ref.type === 'retweeted' && ref.id === this.config.targetTweetId
+        );
+      });
+
+      console.log(`[XApiClient] User Context Retweet result: ${hasRetweeted}`);
+      return hasRetweeted;
+    } catch (error: any) {
+      console.error('[XApiClient] Error checking retweeted (User Context):', error);
+      if (error.code === 429 || error.rateLimit?.remaining === 0) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+      throw new Error(`X_API_ERROR: ${error.message}`);
+    }
+  }
+
+  /**
    * Rate Limit 정보 조회
    *
    * @returns Rate Limit 상태

@@ -58,38 +58,37 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     // 2. 입력 검증
     validateRequest(request);
 
-    // 3. Access Token 우선순위 결정: User Access Token > App Bearer Token
-    const accessToken = (request as any).xAccessToken || env.X_API_BEARER_TOKEN;
-    const isUserContextAuth = Boolean((request as any).xAccessToken);
+    // 3. Extract User Access Token for Tier 3 User Context fallback
+    const xAccessToken: string | undefined = (request as any).xAccessToken || undefined;
 
-    console.log('[verify-eligibility] Using OAuth:', {
-      isUserContextAuth,
-      hasUserToken: Boolean((request as any).xAccessToken),
+    console.log('[verify-eligibility] OAuth context:', {
+      hasUserToken: Boolean(xAccessToken),
     });
 
-    // 4. VerificationService 초기화
+    // 4. VerificationService — always uses App Bearer Token for base client
+    //    User Context (xAccessToken) is passed to verifyAllTasks for Tier 3
     const verificationService = new VerificationService({
       xApiConfig: {
-        bearerToken: accessToken, // User Access Token 또는 App Bearer Token
-        targetUserId: env.X_TARGET_USER_ID, // @Nasun_io User ID (1725466995565752320)
+        bearerToken: env.X_API_BEARER_TOKEN,
+        targetUserId: env.X_TARGET_USER_ID,
         targetTweetId: env.X_TARGET_TWEET_ID,
-        isUserContext: isUserContextAuth, // User Context OAuth 여부
       },
       tasksTableName: env.TASKS_TABLE_NAME,
     });
 
-    console.log('[verify-eligibility] Starting verification for:', {
+    console.log('[verify-eligibility] Starting 3-tier verification for:', {
       walletAddress: request.walletAddress,
       xUserId: request.xUserId,
       xUsername: request.xUsername,
-      isUserContextAuth,
+      hasUserToken: Boolean(xAccessToken),
     });
 
-    // 5. X API 검증 및 태스크 상태 저장
+    // 5. 3-Tier verification: Task Cache → Engagement Cache → User Context API
     const response = await verificationService.verifyAllTasks(
       request.xUserId,
       request.walletAddress,
-      request.xUsername
+      request.xUsername,
+      xAccessToken
     );
 
     return {

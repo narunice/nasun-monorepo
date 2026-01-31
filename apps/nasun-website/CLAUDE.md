@@ -2,8 +2,8 @@
 
 > 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
-**Last Updated**: 2026-01-28
-**Version**: 2.20.0 (documentation cleanup)
+**Last Updated**: 2026-01-31
+**Version**: 2.21.0 (3-tier X API verification for 100+ participants)
 
 ## 기본 규칙
 
@@ -96,7 +96,14 @@ nasun-website/
 │   │   ├── auth-metamask/        # MetaMask 인증
 │   │   ├── auth-twitter/         # Twitter OAuth
 │   │   ├── link-account/         # 계정 연결
-│   │   └── x-leaderboard/        # 리더보드
+│   │   ├── x-leaderboard/        # 리더보드
+│   │   └── nft-event/            # Battalion NFT Event
+│   │       ├── verify-eligibility/   # 3-Tier 검증
+│   │       ├── poll-engagement/      # Engagement 폴링
+│   │       ├── register-user/        # Allowlist 등록
+│   │       ├── admin-users/          # 관리자 대시보드
+│   │       ├── withdraw-user/        # 등록 철회
+│   │       └── check-registration-status/  # 등록 상태 확인
 │   └── .env
 │
 └── doc/                          # 프로젝트 문서
@@ -126,6 +133,101 @@ nasun-website/
 - Proposal 생성 및 투표
 - VotingPower Certificate (Ed25519 서명)
 - Sponsored Transaction (Poll 유형)
+
+### 5. Battalion NFT Event
+- Wave 1 Battalion NFT Free Mint Allowlist 등록 이벤트
+- 라우트: `/wave1/battalion-nft`
+- X (Twitter) 연동 태스크 검증 (Follow, Like, Retweet)
+- Allowlist 등록/철회 + 관리자 대시보드
+
+---
+
+## Battalion NFT: 3-Tier X API Verification Architecture
+
+### 배경
+
+X API Basic Plan ($200/month) 에서 100명 이상의 참여자를 처리하기 위한 최적화 아키텍처.
+
+**X API Rate Limit 제약:**
+
+| Endpoint | Rate Limit | 특성 |
+|----------|-----------|------|
+| `GET /2/tweets/:id/liking_users` | 75 req/15min (App) | 100명 cap |
+| `GET /2/tweets/:id/retweeted_by` | 75 req/15min (App) | 100명 cap |
+| `GET /2/users/:id/liked_tweets` | 75 req/15min (User) | Per-user limit |
+| `GET /2/users/:id/timelines` | 1500 req/15min (User) | Per-user limit |
+
+**핵심 문제**: tweet-centric 엔드포인트는 최대 100명만 반환 → 101번째 사용자부터 검증 불가.
+
+### 아키텍처 개요
+
+```
+사용자 Verify 클릭
+    ↓
+┌─ Tier 1: DynamoDB Task Cache (walletAddress 기준) ──────────────┐
+│  taskTracker.getAllTasks(walletAddress)                          │
+│  → completed=true이면 X API 호출 스킵 (0 API calls)            │
+└──────────────────────────────────────────────────────────────────┘
+    ↓ cache miss
+┌─ Tier 2: Engagement Polling Cache (xUserId 기준) ───────────────┐
+│  engagementCache.checkBoth(xUserId)                             │
+│  → PK: __LIKE_CACHE__ / __RETWEET_CACHE__                      │
+│  → Background Lambda가 5분마다 폴링한 결과 (0 API calls)       │
+└──────────────────────────────────────────────────────────────────┘
+    ↓ cache miss (100명 초과 시)
+┌─ Tier 3: User Context OAuth Fallback ───────────────────────────┐
+│  xApiClient.checkLikedUserContext(userId, xAccessToken)         │
+│  xApiClient.checkRetweetedUserContext(userId, xAccessToken)     │
+│  → 사용자별 rate limit 사용 (앱 rate limit 소비 0)             │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Lambda 구성
+
+| Lambda | 트리거 | 역할 |
+|--------|--------|------|
+| `nasun-nft-verify-eligibility` | API Gateway | 3-tier 검증 실행 |
+| `nasun-nft-poll-engagement` | EventBridge (5분) | liking_users + retweeted_by 폴링 → DynamoDB 캐시 |
+
+### DynamoDB 캐시 설계 (nasun-nft-event-tasks 테이블 재활용)
+
+| walletAddress (PK) | taskType (SK) | 용도 |
+|---|---|---|
+| `__LIKE_CACHE__` | `{xUserId}` | Engagement polling: Like 캐시 |
+| `__RETWEET_CACHE__` | `{xUserId}` | Engagement polling: Retweet 캐시 |
+| `0x1234...` / `{xUserId}` | `LIKE` | Tier 1: 사용자별 검증 결과 |
+| `0x1234...` / `{xUserId}` | `RETWEET` | Tier 1: 사용자별 검증 결과 |
+
+### X API 인증 방식
+
+| Lambda | 인증 방식 | 이유 |
+|--------|----------|------|
+| `poll-engagement` | OAuth 1.0a (API Key + Access Token) | X API Basic Plan에서 tweet-centric 엔드포인트는 User Context 필수 |
+| `verify-eligibility` Tier 3 | OAuth 2.0 User Context (xAccessToken) | 사용자별 rate limit 활용, 앱 rate limit 소비 안 함 |
+
+### MetaMask 미연결 시 동작
+
+- **Step 3 (검증)**: `walletAddress || xUserId` 폴백 → MetaMask 없이도 검증 가능
+- **Step 5 (등록)**: MetaMask 지갑 주소 필수
+- **Tier 1 캐시 키 불일치**: xUserId로 저장 후 MetaMask 주소로 조회 시 miss → Tier 2에서 커버
+
+### 관련 파일
+
+```
+cdk/lambda-src/nft-event/
+├── poll-engagement/                    # Tier 2 Background Polling Lambda
+│   ├── src/index.ts                   # EventBridge handler (OAuth 1.0a)
+│   └── src/services/engagementPoller.ts  # X API polling + DynamoDB cache
+│
+└── verify-eligibility/                 # 3-Tier Verification Lambda
+    └── src/services/
+        ├── verificationService.ts      # 3-tier orchestration logic
+        ├── engagementCache.ts          # Tier 2 cache lookup
+        ├── xApiClient.ts              # X API calls (App-Only + User Context)
+        └── taskTracker.ts             # Tier 1 DynamoDB task cache
+
+cdk/lib/nft-event-stack.ts             # CDK: Lambda 6 + EventBridge Rule
+```
 
 ---
 
@@ -296,5 +398,5 @@ cd ../../ && pnpm cdk deploy AuthStack
 
 ---
 
-**문서 버전**: 2.20.0
-**마지막 업데이트**: 2026-01-28
+**문서 버전**: 2.21.0
+**마지막 업데이트**: 2026-01-31
