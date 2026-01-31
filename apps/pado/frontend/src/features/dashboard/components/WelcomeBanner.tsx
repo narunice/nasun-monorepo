@@ -20,10 +20,10 @@ export function WelcomeBanner() {
           Welcome to <span className="font-brand tracking-wider">PADO</span>
         </h2>
         <p className="text-gray-700 dark:text-white/80 mb-1 text-base font-medium">
-          The Everything Exchange
+          Trade. Socialize. On-Chain.
         </p>
         <p className="text-gray-600 dark:text-white/60 mb-4 text-sm">
-          Trade, predict, and grow your assets — all in one place
+          Get free tokens from the faucet, place your first order on a real orderbook, and explore what's possible — all on Nasun, our own L1 blockchain.
         </p>
         {/* z-50 to ensure dropdown appears above banner */}
         <div className="inline-block relative z-50">

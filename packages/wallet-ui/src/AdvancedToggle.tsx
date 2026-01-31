@@ -52,24 +52,24 @@ export function AdvancedToggle({
           role="switch"
           aria-checked={isAdvancedMode}
           onClick={toggleAdvancedMode}
-          className={`relative inline-flex flex-shrink-0 ${
+          className={`relative inline-flex items-center ${
             compact ? 'h-5 w-9' : 'h-6 w-11'
-          } border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+          } rounded-full transition-colors ${
             isAdvancedMode
-              ? 'bg-blue-500'
-              : 'bg-gray-200 dark:bg-zinc-600'
+              ? 'bg-blue-600'
+              : 'bg-gray-300 dark:bg-zinc-600'
           }`}
         >
           <span className="sr-only">Toggle pro mode</span>
           <span
-            className={`pointer-events-none inline-block ${
-              compact ? 'h-4 w-4' : 'h-5 w-5'
-            } rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${
+            className={`inline-block ${
+              compact ? 'h-4 w-4' : 'h-4 w-4'
+            } transform rounded-full bg-white transition-transform ${
               isAdvancedMode
                 ? compact
-                  ? 'translate-x-4'
-                  : 'translate-x-5'
-                : 'translate-x-0'
+                  ? 'translate-x-[18px]'
+                  : 'translate-x-6'
+                : 'translate-x-1'
             }`}
           />
         </button>
