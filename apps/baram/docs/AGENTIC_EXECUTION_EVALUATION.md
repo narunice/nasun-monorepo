@@ -61,7 +61,7 @@ Sui identifies four fundamental capabilities that autonomous AI systems require 
 
 ### 3. Atomic Execution Across Workflows
 
-**Alignment: 70%**
+**Alignment: 80%**
 
 #### Strengths
 
@@ -69,11 +69,17 @@ Sui identifies four fundamental capabilities that autonomous AI systems require 
 - **(F-2)** PTB extended to 4 calls: `submit_proof` + `create_record` + `record_job_completion` + `refresh_tier_from_state` — settlement, compliance, reputation, and tier update all atomic.
 - **`create_request`** — NUSDC escrow lock + request creation is atomic in a single transaction.
 - **Auto-cancel on failure** (Phase F-6) — Execution failure triggers immediate escrow release via `cancel_request`.
+- **Settlement-gated response** (Phase F-9) — Host returns inference result **only after** settlement PTB succeeds. If settlement fails after 3 retries, HTTP 502 is returned and the result is withheld. This prevents the critical atomicity break where users received free inference (result + timeout refund).
+- **Settlement retry with on-chain status check** (Phase F-9) — Up to 3 attempts with exponential backoff. Between retries, queries on-chain request status to detect transactions that succeeded but timed out on RPC response.
+- **Auto-cancel retry with explicit error** (Phase F-9) — Frontend auto-cancel retries up to 2 times on execution failure. If cancel also fails, error message includes request ID and timeout guidance.
+- **AES key sessionStorage backup** (Phase F-9) — E2E encryption AES key backed up to sessionStorage to survive HMR/tab switches, preventing decryption failure after successful settlement.
 
 #### Gaps
 
-- **The assignment → execution → settlement pipeline is not atomic** — Frontend selects an executor via Weighted Random (off-chain), calls `/execute` over HTTP, and the Host submits a separate settlement transaction. These are independent steps with failure points between them.
+- **The assignment → execution → settlement pipeline is not atomic** — Frontend selects an executor via Weighted Random (off-chain), calls `/execute` over HTTP, and the Host submits a separate settlement transaction. These are independent steps with failure points between them. However, F-9's settlement-gated response ensures the critical invariant: **users never receive results without paying, and executors never lose results without compensation**.
 - **Executor selection is off-chain** — `selectExecutorWeightedRandom` runs in the frontend. It is not enforced on-chain, leaving it susceptible to front-running or manipulation.
+- ~~**Settlement failure leaks inference results**~~ — **Resolved (F-9)**: Settlement-gated response ensures results are withheld on settlement failure.
+- ~~**Auto-cancel silent failure**~~ — **Resolved (F-9)**: 2x retry with explicit error message including request ID.
 
 ---
 
@@ -103,7 +109,7 @@ Sui identifies four fundamental capabilities that autonomous AI systems require 
 |---|---|---|
 | 1. Shared, Verifiable State | **85%** | ~~Dual Registry~~ resolved; snapshot vs live-query gap remains |
 | 2. Rules & Permissions with Data | **65%** | F-2 improved executor autonomy; registration still Admin |
-| 3. Atomic Execution | **70%** | F-2 expanded PTB atomicity; end-to-end pipeline still non-atomic |
+| 3. Atomic Execution | **80%** | F-9 settlement-gated response; executor selection still off-chain |
 | 4. Proof of What Happened | **75%** | Most mature; input/output proof and cloud model gaps |
 
 ---
@@ -121,6 +127,26 @@ Self-service functions added: `record_job_completion/failure`, `update_own_endpo
 **Addressed**: Capability 1 (Shared, Verifiable State)
 
 `network.ts` EXECUTOR_CONFIG reads directly from `@nasun/devnet-config` (env fallback removed). `update-executor.sh` uses single registry with self-service `update_own_endpoint`. Legacy frontend registry (`0xeaac739...`) deprecated.
+
+### ~~Priority 2.5: Pipeline Atomicity (Phase F-9)~~ ✅ Completed 2026-01-31
+
+**Addressed**: Capability 3 (Atomic Execution)
+
+Three atomicity breaks in the execution pipeline were identified and fixed:
+
+1. **Settlement-gated response** (Break A — CRITICAL): Host now returns inference result only after settlement PTB succeeds. `submitProofWithComplianceRetry` retries up to 3 times with exponential backoff and on-chain status check between retries. Settlement failure returns HTTP 502.
+
+2. **Auto-cancel retry with explicit error** (Break C — MEDIUM): Frontend auto-cancel retries 2 times. On failure, error message includes request ID and timeout refund guidance.
+
+3. **AES key sessionStorage backup** (Break B — HIGH): E2E encryption AES key backed up to `sessionStorage` keyed by `baram_aes_{requestId}`. Survives HMR and tab switches. Cleared after successful decryption.
+
+**Files modified:**
+- `executor-nitro/src/host/sui-client.ts` — `getRequestStatus()`, `submitProofWithComplianceRetry()`
+- `executor-nitro/src/host/server.ts` — Settlement gate + 502 on failure
+- `frontend/src/features/request/hooks/useCreateRequest.ts` — Cancel retry + requestId passing
+- `frontend/src/utils/tee.ts` — sessionStorage backup/recovery
+
+**No contract changes required.**
 
 ### Priority 3: On-chain Executor Assignment
 

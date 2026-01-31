@@ -39,6 +39,7 @@
 | **Phase F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, 디스크 레벨 공격 방어 |
 | **Phase F-7.1: zkLogin 호환 + Idle Timeout** | ✅ | Dual-mode 암호화 (zkLogin: address-only fallback) + 15분 idle timeout |
 | **Phase F-2: Admin 의존도 제거** | ✅ | Self-service 함수 5개 + ProcessedRequests dedup + permissionless decay/tier refresh |
+| **Phase F-9: Pipeline Atomicity** | ✅ | Settlement-gated response + retry, auto-cancel retry, AES key resilience |
 
 ---
 
@@ -51,8 +52,16 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
                                                             ↓
                                                     [RSA 복호화 + LLM 추론]
                                                             ↓
-                                              결과 반환 + Attestation + 온체인 정산
+                                              Attestation + 온체인 정산 (3x retry)
+                                                            ↓
+                                              정산 성공 시에만 결과 반환 (settlement-gated)
 ```
+
+**Atomicity guarantees (Phase F-9):**
+- Settlement-gated response: 정산 성공 없이 결과가 사용자에게 전달되지 않음
+- Settlement retry with status check: Sui RPC 타임아웃 시 온체인 상태 확인 후 재시도
+- Auto-cancel retry: 실행 실패 시 2회 취소 시도 + 실패 시 명시적 에러 메시지
+- AES key resilience: sessionStorage 백업으로 HMR/탭 전환 시 복호화 키 보존
 
 ### On-Chain Layer
 
@@ -341,6 +350,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | 항목 | 설명 | 우선순위 |
 |------|------|----------|
 | ~~Dual Registry 통합~~ | ~~Frontend/devnet-ids 레지스트리 단일화~~ | ✅ 완료 |
+| ~~Pipeline Atomicity (F-9)~~ | ~~Settlement-gated response + cancel retry + AES resilience~~ | ✅ 완료 |
 | OpenAI 크레딧 충전 | gpt-4o 사용 재개 | 중간 |
 | HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
 | ~~Admin 의존도 제거 (F-2)~~ | ~~Self-service 함수 5개 + permissionless decay/tier~~ | ✅ 완료 |
@@ -359,6 +369,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | **F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, DB v2 마이그레이션 |
 | **F-7.1: zkLogin Dual-Mode + Idle Timeout** | ✅ | zkLogin address-only fallback, 15분 idle timeout (DOM 이벤트 기반) |
 | **F-2: Admin 의존도 제거** | ✅ | Self-service 함수 5개 + ProcessedRequests dedup + permissionless decay/tier refresh |
+| **F-9: Pipeline Atomicity** | ✅ | Settlement-gated response (3x retry), auto-cancel retry (2x), AES key sessionStorage backup |
 | F-8: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
 
 #### Mid-term (Phase G: Model Marketplace)
@@ -408,6 +419,16 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 - `executor_tier=1` 스냅샷: ✅ 확인
 - `ComplianceRecordCreated` 이벤트: ✅ 확인
 
+### Pipeline Atomicity (Phase F-9, 2026-01-31)
+
+| 테스트 | 결과 |
+|--------|------|
+| Settlement-gated response (정산 후 결과 반환) | ✅ Request #106, #107 정상 정산 |
+| Settlement retry (3x with status check) | ✅ 재시도 없이 1회 성공 확인 |
+| Auto-cancel retry (2x on exec failure) | ✅ TypeScript 컴파일 통과 |
+| AES key sessionStorage backup/recovery | ✅ E2E 복호화 성공 확인 |
+| Frontend → TEE → Settlement → Decrypt 전 과정 | ✅ Host 로그에서 `Settlement completed` 확인 |
+
 ### Cloud Models (Lambda)
 
 | 모델 | Provider | 상태 |
@@ -443,7 +464,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 |------|--------|-----------|
 | 1. Shared, Verifiable State | **85%** | ~~Dual Registry~~ 해결; F-2로 상태 업데이트 자율화 |
 | 2. Rules & Permissions with Data | **65%** | F-2로 Executor 자율성 대폭 향상; 등록은 여전히 Admin |
-| 3. Atomic Execution | 70% | F-2로 정산+stats+tier PTB 아토믹화; 배정은 오프체인 |
+| 3. Atomic Execution | **80%** | F-9로 settlement-gated response; 배정은 오프체인 |
 | 4. Proof of What Happened | **75%** | 가장 우수. 입출력 증명/Cloud 모델 격차 |
 
 ### 1. Shared, Verifiable State (85%)
@@ -472,17 +493,22 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 **F-2 이전에는 Baram의 가장 큰 구조적 격차였으나**, F-2 구현으로 Executor의 자율적 상태 관리가 가능해짐. 등록(`register_executor`)만 Admin 화이트리스트로 유지.
 
-### 3. Atomic Execution Across Workflows (60%)
+### 3. Atomic Execution Across Workflows (80%)
 
 **강점:**
 - **submitProofWithCompliance PTB** (F-3) — 정산 + ECR 생성을 단일 PTB로 실행. Sui PTB의 장점을 잘 활용
 - **create_request** — NUSDC 에스크로 + 요청 생성이 아토믹
 - **Auto-cancel on failure** (F-6) — 실행 실패 시 에스크로 즉시 해제
+- **Settlement-gated response** (F-9) — 정산 PTB 성공 후에만 결과 반환. 정산 실패 시 HTTP 502 + Frontend auto-cancel
+- **Settlement retry with on-chain status check** (F-9) — 최대 3회 재시도, Sui RPC 타임아웃이지만 온체인 반영된 경우 감지
+- **Auto-cancel retry** (F-9) — 2회 재시도 + 실패 시 request ID와 timeout 안내 포함 명시적 에러
 
 **격차:**
-- **배정 → 실행 → 정산 파이프라인 비아토믹** — Frontend에서 Executor 선택 → HTTP /execute → Host 별도 TX 정산. 여러 독립 트랜잭션으로 구성
+- **배정 → 실행 → 정산 파이프라인 비아토믹** — Frontend에서 Executor 선택 → HTTP /execute → Host 별도 TX 정산. 여러 독립 트랜잭션으로 구성. 다만 F-9로 "정산 실패 시 결과 미반환" 보장이 추가되어, 이전의 핵심 위험(결과+환불 동시 획득)은 제거됨
 - **Executor 선택이 오프체인** — `selectExecutorWeightedRandom`이 Frontend 로직. 온체인 비보장, 조작 가능
 - ~~**Reputation/Tier 업데이트가 정산과 분리**~~ — ✅ F-2로 PTB Call 3/4 추가: 정산 시 `record_job_completion` + `refresh_tier_from_state` 아토믹 실행
+- ~~**정산 실패 시 결과 반환 (Break A)**~~ — ✅ F-9로 해결: Settlement-gated response
+- ~~**Auto-cancel 무음 실패 (Break C)**~~ — ✅ F-9로 해결: 재시도 + 명시적 에러
 
 ### 4. Proof of What Happened (75%)
 
@@ -498,7 +524,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 ### 개선 우선순위
 
-> 아래 순서대로 개발 시 참고. 1~2순위 해결 완료. 다음은 3순위(Enclave 출력 서명)부터.
+> 아래 순서대로 개발 시 참고. 1~2순위 해결 완료, Pipeline Atomicity도 완료. 다음은 3순위(Enclave 출력 서명)부터.
 > [Marlin Oyster](https://www.marlin.org/oyster) 및 [Sui Nautilus](https://blog.marlin.org/scaling-confidential-compute-on-sui-nautilus-and-marlin-oyster-integration) 아키텍처를 참고하여 개선 방향 수립.
 
 | 순위 | 항목 | 대상 기능 | 설명 |
