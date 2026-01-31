@@ -67,13 +67,13 @@
         {
           "id": "gov-staking-logic",
           "title": "Governance Staking Logic",
-          "status": "in-progress",
+          "status": "completed",
           "description": "Building the foundation for decentralized governance"
         },
         {
           "id": "dao-voting-alpha",
           "title": "DAO Voting Alpha",
-          "status": "in-progress",
+          "status": "completed",
           "description": "Community-driven consensus internal testing"
         }
       ],
@@ -93,16 +93,16 @@
         {
           "id": "pado-alpha",
           "title": "Pado Alpha",
-          "status": "in-progress",
-          "description": "Spot trading"
+          "status": "completed",
+          "description": "Spot trading with CLOB engine"
         }
       ],
       "finance": [
         {
           "id": "infofi-alpha",
           "title": "InfoFi Alpha",
-          "status": "in-progress",
-          "description": "Proprietary leaderboard launch"
+          "status": "completed",
+          "description": "Proprietary leaderboard V3 with seasonal rankings"
         },
         {
           "id": "nasun-staging",
@@ -124,20 +124,20 @@
         {
           "id": "devnet-mvp",
           "title": "Devnet MVP",
-          "status": "upcoming",
-          "description": "Nasun L1 devnet with 2 validator nodes"
+          "status": "completed",
+          "description": "Nasun L1 devnet with 2 validator nodes, zkLogin, and state pruning"
         },
         {
           "id": "wallet-mvp",
           "title": "Wallet MVP",
-          "status": "upcoming",
-          "description": "Governance, Pado, and Web2 integration"
+          "status": "completed",
+          "description": "zkLogin, Passkey, multi-chain EVM support, and Web2 integration"
         },
         {
           "id": "explorer-mvp",
           "title": "Explorer MVP",
-          "status": "upcoming",
-          "description": "Advanced search"
+          "status": "completed",
+          "description": "NFT support, Validators page, Checkpoints, Mobile responsive design"
         },
         {
           "id": "val-staking",
@@ -180,8 +180,14 @@
         {
           "id": "pado-mvp",
           "title": "Pado MVP",
-          "status": "upcoming",
-          "description": "DEX, Prediction markets, Lending, Transactions & Payments"
+          "status": "completed",
+          "description": "Spot & Perpetuals DEX, Prediction markets, Lending, Lottery, Unified Margin, Payments"
+        },
+        {
+          "id": "baram-mvp",
+          "title": "Baram AI Settlement Layer",
+          "status": "completed",
+          "description": "TEE-based AI execution with trustless settlement and compliance tracking"
         },
         {
           "id": "gensol-partnerships",
@@ -197,9 +203,15 @@
         },
         {
           "id": "pado-unified",
-          "title": "Pado MVP",
+          "title": "Pado Unified Account",
+          "status": "completed",
+          "description": "Unified margin with multi-collateral support and zkLogin authentication"
+        },
+        {
+          "id": "baram-marketplace",
+          "title": "Baram: Model Marketplace",
           "status": "upcoming",
-          "description": "Unified accounts & zK login"
+          "description": "On-chain model registry, provider onboarding, and revenue sharing"
         },
         {
           "id": "spectra-heist-previz",
@@ -267,13 +279,13 @@
           "id": "nasun-web-launch",
           "title": "Nasun Website Launch",
           "status": "upcoming",
-          "description": "Pado, governance & NFT dashboard"
+          "description": "Leaderboard V3, governance dashboard, Battalion NFT event"
         },
         {
           "id": "battalion-nft",
           "title": "Battalion NFT",
           "status": "upcoming",
-          "description": "Free mint + utility campaign"
+          "description": "Free mint allowlist with 3-tier X API verification"
         },
         {
           "id": "infofi-preseed",
@@ -401,6 +413,12 @@
           "title": "Pado GA",
           "status": "upcoming",
           "description": "Full launch"
+        },
+        {
+          "id": "baram-production",
+          "title": "Baram: Distributed Executor Network",
+          "status": "upcoming",
+          "description": "Validator-integrated TEE nodes, on-chain executor assignment, and security audit"
         },
         {
           "id": "genesis-liquidity",
