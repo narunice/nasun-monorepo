@@ -14,7 +14,6 @@
  * - QuickActions + Hot Markets + Predictions
  */
 
-import { useState, useEffect } from "react";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import {
   QuickActions,
@@ -29,46 +28,10 @@ export function HomePage() {
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isConnected = isZkLoggedIn || (status === "unlocked" && account);
 
-  // Track if mnemonic backup is pending (set by WalletConnect)
-  // This keeps WelcomeBanner mounted until user confirms backup
-  const [backupPending, setBackupPending] = useState(() => {
-    try {
-      return localStorage.getItem("nasun_wallet_backup_pending") === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  // Check localStorage periodically for backup pending state
-  // (storage event only fires for other tabs, so we poll for same-tab changes)
-  useEffect(() => {
-    const checkBackupPending = () => {
-      try {
-        const pending = localStorage.getItem("nasun_wallet_backup_pending") === "true";
-        setBackupPending(pending);
-      } catch {
-        setBackupPending(false);
-      }
-    };
-
-    const interval = setInterval(checkBackupPending, 100);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="p-4 pt-0 md:p-6 md:pt-1 max-w-7xl mx-auto">
-      {/* ===== Backup Pending Overlay ===== */}
-      {/* When connected but backup is pending, show WelcomeBanner as overlay */}
-      {isConnected && backupPending && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-theme-bg-primary rounded-xl max-w-md w-full shadow-xl">
-            <WelcomeBanner />
-          </div>
-        </div>
-      )}
-
       {/* ===== Connected State: Portfolio-Centric Layout ===== */}
-      {isConnected && !backupPending && (
+      {isConnected && (
         <>
           {/* Asset Overview Section */}
           <div className="mb-6">

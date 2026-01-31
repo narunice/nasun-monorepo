@@ -78,7 +78,7 @@ function truncateText(text: string, maxLength: number): string {
 
 /** Inline editable wallet nickname with always-visible edit icon */
 function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallbackLabel: string }) {
-  const { label, setLabel } = useWalletLabel(address);
+  const { label, setLabel, removeLabel } = useWalletLabel(address);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +91,9 @@ function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallba
 
   const save = () => {
     const trimmed = draft.trim();
-    if (trimmed && trimmed.length <= 20) {
+    if (!trimmed) {
+      removeLabel();
+    } else if (trimmed.length <= 20) {
       setLabel(trimmed);
     }
     setIsEditing(false);
@@ -122,26 +124,39 @@ function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallba
           maxLength={20}
         />
       ) : (
-        <button
-          onClick={startEditing}
-          className="flex items-center gap-1 text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-          title="Click to edit wallet nickname"
-        >
-          <span className="font-medium">{label || "Set nickname"}</span>
-          <svg
-            className="w-2.5 h-2.5 text-gray-400 dark:text-zinc-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+        <>
+          <button
+            onClick={startEditing}
+            className="flex items-center gap-1 text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+            title="Click to edit wallet nickname"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-            />
-          </svg>
-        </button>
+            <span className="font-medium">{label || "Set nickname"}</span>
+            <svg
+              className="w-2.5 h-2.5 text-gray-400 dark:text-zinc-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+              />
+            </svg>
+          </button>
+          {label && (
+            <button
+              onClick={() => removeLabel()}
+              className="ml-0.5 text-gray-400 dark:text-zinc-500 hover:text-red-400 dark:hover:text-red-400 transition-colors"
+              title="Remove nickname"
+            >
+              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -566,20 +581,21 @@ export function WalletConnect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown, viewMode, clearError]);
 
-  // Create wallet with mnemonic backup
+  // Create wallet — backup modal is handled at the App level (MnemonicBackupModal)
+  // via localStorage/sessionStorage set by the wallet store's createWalletWithBackup.
   const handleCreate = useCallback(async () => {
     if (password.length < 8) return;
     if (password !== confirmPassword) return;
 
     try {
-      const result = await createWalletWithBackup(password);
+      await createWalletWithBackup(password);
       // Reset UI settings and chain to defaults
       resetSettings();
       useChainStore.getState().resetToDefault();
-      setMnemonic(result.mnemonic);
       setPassword("");
       setConfirmPassword("");
-      setViewMode("create-backup");
+      setViewMode("main");
+      setShowDropdown(false);
     } catch {
       // Error is stored in state
     }
@@ -587,9 +603,10 @@ export function WalletConnect({
 
   // After mnemonic backup confirmed
   const handleBackupConfirmed = useCallback(() => {
-    // Clear backup pending flag
+    // Clear all backup state
     try {
       localStorage.removeItem("nasun_wallet_backup_pending");
+      sessionStorage.removeItem("nasun_wallet_pending_mnemonic");
     } catch {
       // Ignore localStorage errors
     }
@@ -1319,108 +1336,6 @@ export function WalletConnect({
           {isNetworkModalOpen && (
             <NetworkSelectorModal onClose={() => setIsNetworkModalOpen(false)} />
           )}
-
-          {/* Quick Actions Bar */}
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode("send")}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
-                </svg>
-                Send
-              </button>
-              <button
-                onClick={() => setViewMode("receive")}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300 text-sm font-medium rounded-md transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                  />
-                </svg>
-                Recv
-              </button>
-              <button
-                onClick={() => setViewMode("staking")}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300 text-sm font-medium rounded-md transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Stake
-              </button>
-              <div className="relative">
-                <button
-                  onClick={() => setShowMoreMenu(!showMoreMenu)}
-                  className={`flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    showMoreMenu
-                      ? "bg-gray-300 dark:bg-zinc-600 text-gray-900 dark:text-white"
-                      : "bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300"
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
-                    />
-                  </svg>
-                  <svg
-                    className={`w-3 h-3 transition-transform ${showMoreMenu ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {/* More menu dropdown */}
-                {showMoreMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
-                    <MoreMenu
-                      nsaIsInitialized={nsaIsInitialized}
-                      nsaRecoveryCompleted={nsaRecoveryCompleted}
-                      pendingForMe={pendingForMe}
-                      onPortfolio={() => {
-                        setViewMode("portfolio");
-                        setShowMoreMenu(false);
-                      }}
-                      onCreateLink={() => {
-                        setViewMode("nasun-link");
-                        setShowMoreMenu(false);
-                      }}
-                      onSmartAccount={() => {
-                        setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
-                        setShowMoreMenu(false);
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* Tab navigation for zkLogin */}
           <div className="flex border-b border-gray-200 dark:border-zinc-700">
@@ -2397,6 +2312,108 @@ export function WalletConnect({
               />
             </div>
           )}
+
+          {/* Quick Actions Bar */}
+          <div className="border-t border-gray-200 dark:border-zinc-700 px-3 py-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode("send")}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+                Send
+              </button>
+              <button
+                onClick={() => setViewMode("receive")}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300 text-sm font-medium rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                  />
+                </svg>
+                Recv
+              </button>
+              <button
+                onClick={() => setViewMode("staking")}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300 text-sm font-medium rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Stake
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className={`flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    showMoreMenu
+                      ? "bg-gray-300 dark:bg-zinc-600 text-gray-900 dark:text-white"
+                      : "bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
+                    />
+                  </svg>
+                  <svg
+                    className={`w-3 h-3 transition-transform ${showMoreMenu ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {/* More menu dropdown */}
+                {showMoreMenu && (
+                  <div className="absolute right-0 bottom-full mb-1 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
+                    <MoreMenu
+                      nsaIsInitialized={nsaIsInitialized}
+                      nsaRecoveryCompleted={nsaRecoveryCompleted}
+                      pendingForMe={pendingForMe}
+                      onPortfolio={() => {
+                        setViewMode("portfolio");
+                        setShowMoreMenu(false);
+                      }}
+                      onCreateLink={() => {
+                        setViewMode("nasun-link");
+                        setShowMoreMenu(false);
+                      }}
+                      onSmartAccount={() => {
+                        setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
+                        setShowMoreMenu(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Session Actions - Always visible */}
           <div className="border-t border-gray-200 dark:border-zinc-700 px-3 py-2">

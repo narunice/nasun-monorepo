@@ -255,6 +255,16 @@ export const useWallet = create<WalletStore>((set, get) => ({
         publicKey: getPublicKeyFromKeypair(keypair),
       };
 
+      // Persist mnemonic for App-level backup modal before triggering re-renders.
+      // The UI component (WalletConnect) may unmount when status changes to 'unlocked',
+      // so we store the mnemonic in sessionStorage for an independent modal to display.
+      try {
+        localStorage.setItem('nasun_wallet_backup_pending', 'true');
+        sessionStorage.setItem('nasun_wallet_pending_mnemonic', mnemonic);
+      } catch {
+        // Ignore storage errors
+      }
+
       set({ status: 'unlocked', account, isLoading: false });
 
       return { address, mnemonic };
