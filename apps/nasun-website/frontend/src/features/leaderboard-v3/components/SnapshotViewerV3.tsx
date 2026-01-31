@@ -57,7 +57,7 @@ export function SnapshotViewerV3({
             onChange={(e) => onDateChange(e.target.value || undefined)}
             min={minDate}
             max={maxDate}
-            className="bg-black/60 border border-nasun-c7/50 rounded-sm px-3 py-1.5 text-sm text-nasun-white focus:outline-none focus:border-nasun-c7 cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-100"
+            className="bg-black/60 border border-nasun-c4/50 rounded-sm px-3 py-1.5 text-sm text-nasun-white/60 focus:outline-none focus:border-nasun-c7/50 cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-75"
           />
           {selectedDate && (
             <button

@@ -2,11 +2,12 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SeasonSelector } from "./SeasonSelector";
 import TopClimbersV3 from "./TopClimbersV3";
+import { SnapshotViewerV3 } from "./SnapshotViewerV3";
+import { UserSearchBoxV3 } from "./UserSearchBoxV3";
 import { MyRankCardV3 } from "./sidebar/MyRank";
 import { LeaderboardSidebar } from "./sidebar/LeaderboardSidebar";
 import { LeaderboardMainContent } from "./main/LeaderboardMainContent";
 import { useLeaderboardState } from "../hooks/useLeaderboardState";
-import { useRef, useState, useEffect } from "react";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -29,22 +30,6 @@ export function LeaderboardV3() {
     highlightedUsername,
     handleUserSelect,
   } = useLeaderboardState();
-
-  // Measure main content height to constrain sidebar
-  const mainContentRef = useRef<HTMLDivElement>(null);
-  const [mainContentHeight, setMainContentHeight] = useState(0);
-
-  useEffect(() => {
-    const el = mainContentRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setMainContentHeight(entry.contentRect.height);
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <SectionLayout className="!max-w-7xl px-auto">
@@ -101,16 +86,34 @@ export function LeaderboardV3() {
         </div>
       )}
 
-      {/* Main Content Area - 2 Column Layout */}
-      <div className="flex flex-col md:flex-row gap-8 items-start">
-        {/* Left Column: Leaderboard Table */}
+      {/* 2-column grid: column widths shared across rows */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] lg:grid-cols-[1fr_380px] gap-x-8 gap-y-3">
+        {/* Row 1, Col 1: Snapshot Viewer */}
+        <div>
+          {selectedSeason && (
+            <SnapshotViewerV3
+              selectedDate={snapshotDate}
+              onDateChange={setSnapshotDate}
+              minDate={selectedSeason.startDate}
+              maxDate={selectedSeason.endDate}
+              lastUpdated={leaderboardData?.calculatedAt}
+              isEnded={isSeasonEnded}
+            />
+          )}
+        </div>
+
+        {/* Row 1, Col 2: Search */}
+        <div>
+          <UserSearchBoxV3
+            seasonId={selectedSeasonId}
+            onUserSelect={handleUserSelect}
+            placeholder="Search user..."
+          />
+        </div>
+
+        {/* Row 2, Col 1: Leaderboard Table */}
         <LeaderboardMainContent
-          ref={mainContentRef}
           leaderboardData={leaderboardData}
-          selectedSeason={selectedSeason}
-          snapshotDate={snapshotDate}
-          onSnapshotDateChange={setSnapshotDate}
-          isSeasonEnded={isSeasonEnded}
           highlightedUsername={highlightedUsername}
           page={page}
           pagination={pagination}
@@ -118,14 +121,8 @@ export function LeaderboardV3() {
           ITEMS_PER_PAGE={ITEMS_PER_PAGE}
         />
 
-        {/* Right Column: Sidebar (Search + My Rank + Feed) */}
-        <div className="w-full md:flex-1 lg:flex-none lg:w-[380px]">
-          <LeaderboardSidebar
-            seasonId={selectedSeasonId}
-            onUserSelect={handleUserSelect}
-            maxHeight={mainContentHeight}
-          />
-        </div>
+        {/* Row 2, Col 2: Sidebar (My Rank + Feed) */}
+        <LeaderboardSidebar seasonId={selectedSeasonId} />
       </div>
     </SectionLayout>
   );

@@ -1,8 +1,6 @@
-import { forwardRef } from "react";
-import { SnapshotViewerV3 } from "../SnapshotViewerV3";
 import LeaderboardV3Row from "../LeaderboardV3Row";
 import PaginationControlsV3 from "../PaginationControlsV3";
-import type { SeasonLeaderboardResponse, Season } from "../../types";
+import type { SeasonLeaderboardResponse } from "../../types";
 
 interface PaginationState {
   totalPages: number;
@@ -13,10 +11,6 @@ interface PaginationState {
 
 interface LeaderboardMainContentProps {
   leaderboardData?: SeasonLeaderboardResponse;
-  selectedSeason?: Season;
-  snapshotDate?: string;
-  onSnapshotDateChange: (date: string | undefined) => void;
-  isSeasonEnded?: boolean;
   highlightedUsername?: string;
   page: number;
   pagination: PaginationState;
@@ -24,38 +18,16 @@ interface LeaderboardMainContentProps {
   ITEMS_PER_PAGE: number;
 }
 
-export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMainContentProps>(
-  (
-    {
-      leaderboardData,
-      selectedSeason,
-      snapshotDate,
-      onSnapshotDateChange,
-      isSeasonEnded,
-      highlightedUsername,
-      page,
-      pagination,
-      handlePageChange,
-      ITEMS_PER_PAGE,
-    },
-    ref,
-  ) => {
-    return (
-      <div ref={ref} className="flex-1 min-w-0 w-full ">
-        {/* Snapshot Viewer */}
-        {selectedSeason && (
-          <div className="mb-3">
-            <SnapshotViewerV3
-              selectedDate={snapshotDate}
-              onDateChange={onSnapshotDateChange}
-              minDate={selectedSeason.startDate}
-              maxDate={selectedSeason.endDate}
-              lastUpdated={leaderboardData?.calculatedAt}
-              isEnded={isSeasonEnded}
-            />
-          </div>
-        )}
-
+export function LeaderboardMainContent({
+  leaderboardData,
+  highlightedUsername,
+  page,
+  pagination,
+  handlePageChange,
+  ITEMS_PER_PAGE,
+}: LeaderboardMainContentProps) {
+  return (
+    <div className="min-w-0 w-full">
         {leaderboardData && leaderboardData.entries.length > 0 && (
           <>
             <div className="w-full border border-nasun-c7/50 bg-gray-900/70 rounded-sm overflow-hidden">
@@ -140,7 +112,4 @@ export const LeaderboardMainContent = forwardRef<HTMLDivElement, LeaderboardMain
         )}
       </div>
     );
-  },
-);
-
-LeaderboardMainContent.displayName = "LeaderboardMainContent";
+}
