@@ -1,14 +1,10 @@
 [package]
 name = "baram_executor"
 edition = "2024"
-version = "0.0.2"
-published-at = "0xcafc65ef3189e92e99dc28c627c90242ea863fb0508222fb10478c72ad2b1dd4"
+published-at = "0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff"
 
 [dependencies]
-Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
-
-[addresses]
-baram_executor = "0xcafc65ef3189e92e99dc28c627c90242ea863fb0508222fb10478c72ad2b1dd4"
+# Sui and std are implicit system dependencies in the new package system
 
 [environments]
 devnet = "12bf3808"

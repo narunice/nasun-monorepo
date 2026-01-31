@@ -46,6 +46,9 @@ export interface SuiConfig {
   attestationRegistryId: string;
   stakingRegistryId: string;
   tierRegistryId: string;
+  executorPackageId: string;         // baram_executor package ID
+  processedRequestsId: string;       // ProcessedRequests shared object ID
+  executorStakeId: string;           // ExecutorStake owned object ID (for tier refresh)
 }
 
 let client: SuiClient | null = null;
@@ -520,6 +523,31 @@ export async function submitProofWithCompliance(
     });
   } else {
     console.warn('[Sui] Compliance not configured, submitting proof only');
+  }
+
+  // Call 3: record_job_completion (self-service reputation update + dedup guard)
+  if (cfg.executorPackageId && cfg.executorRegistryId && cfg.processedRequestsId) {
+    tx.moveCall({
+      target: `${cfg.executorPackageId}::executor::record_job_completion`,
+      arguments: [
+        tx.object(cfg.executorRegistryId),
+        tx.object(cfg.processedRequestsId),
+        tx.pure.u64(requestId),
+        tx.object('0x6'), // Clock
+      ],
+    });
+  }
+
+  // Call 4: refresh_tier_from_state (permissionless tier recalculation)
+  if (cfg.executorPackageId && cfg.tierRegistryId && cfg.executorRegistryId && cfg.executorStakeId) {
+    tx.moveCall({
+      target: `${cfg.executorPackageId}::executor_tier::refresh_tier_from_state`,
+      arguments: [
+        tx.object(cfg.tierRegistryId),
+        tx.object(cfg.executorRegistryId),
+        tx.object(cfg.executorStakeId),
+      ],
+    });
   }
 
   const result = await sui.signAndExecuteTransaction({

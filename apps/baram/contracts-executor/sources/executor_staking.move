@@ -430,6 +430,11 @@ module baram_executor::executor_staking {
 
     // ========== View Functions ==========
 
+    /// Get the executor address that owns this stake
+    public fun get_executor(stake: &ExecutorStake): address {
+        stake.executor
+    }
+
     /// Get stake amount for an executor
     public fun get_stake_amount(stake: &ExecutorStake): u64 {
         balance::value(&stake.staked_amount)
