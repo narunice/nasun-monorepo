@@ -219,7 +219,7 @@
           "attestation": { "violation": "증명 실패", "penalty": "10%", "reputation": "-20" },
           "fraud": { "violation": "사기 / 조작", "penalty": "100%", "reputation": "-20" }
         },
-        "dormancy": "30일간 완료된 작업이 없는 Executor는 하루에 평판 1씩 감소합니다."
+        "dormancy": "30일간 비활성 Executor는 기간당 평판 50이 감소합니다. 누구나 이 감쇠를 permissionless로 트리거할 수 있습니다."
       }
     }
   },
