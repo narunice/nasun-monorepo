@@ -67,13 +67,13 @@
         {
           "id": "gov-staking-logic",
           "title": "거버넌스 스테이킹 로직",
-          "status": "in-progress",
+          "status": "completed",
           "description": "탈중앙화 거버넌스 기반 구축"
         },
         {
           "id": "dao-voting-alpha",
           "title": "DAO 투표 알파",
-          "status": "in-progress",
+          "status": "completed",
           "description": "커뮤니티 주도 합의 내부 테스트"
         }
       ],
@@ -93,16 +93,16 @@
         {
           "id": "pado-alpha",
           "title": "파도 알파",
-          "status": "in-progress",
-          "description": "현물 거래 기능"
+          "status": "completed",
+          "description": "CLOB 엔진 기반 현물 거래"
         }
       ],
       "finance": [
         {
           "id": "infofi-alpha",
           "title": "인포파이 알파",
-          "status": "in-progress",
-          "description": "자체 리더보드 런칭"
+          "status": "completed",
+          "description": "시즌별 순위 시스템을 갖춘 자체 리더보드 V3"
         },
         {
           "id": "nasun-staging",
@@ -124,20 +124,20 @@
         {
           "id": "devnet-mvp",
           "title": "데브넷 MVP",
-          "status": "upcoming",
-          "description": "2개의 밸리데이터 노드를 갖춘 나선 L1 데브넷"
+          "status": "completed",
+          "description": "2개 밸리데이터 노드, zkLogin, 상태 정리 기능을 갖춘 나선 L1 데브넷"
         },
         {
           "id": "wallet-mvp",
           "title": "지갑 MVP",
-          "status": "upcoming",
-          "description": "거버넌스, 파도 및 Web2 통합"
+          "status": "completed",
+          "description": "zkLogin, Passkey, 멀티체인 EVM 지원 및 Web2 통합"
         },
         {
           "id": "explorer-mvp",
           "title": "익스플로러 MVP",
-          "status": "upcoming",
-          "description": "고급 검색 기능"
+          "status": "completed",
+          "description": "NFT 지원, 검증자 페이지, 체크포인트, 모바일 반응형 디자인"
         },
         {
           "id": "val-staking",
@@ -180,8 +180,14 @@
         {
           "id": "pado-mvp",
           "title": "파도 MVP",
-          "status": "upcoming",
-          "description": "DEX, 예측 시장, 대출, 트랜잭션 및 결제"
+          "status": "completed",
+          "description": "현물 및 무기한 선물 DEX, 예측 시장, 대출, 로또, 통합 마진, 결제"
+        },
+        {
+          "id": "baram-mvp",
+          "title": "바람 AI 정산 레이어",
+          "status": "completed",
+          "description": "TEE 기반 AI 실행과 무신뢰 정산 및 컴플라이언스 추적"
         },
         {
           "id": "gensol-partnerships",
@@ -197,9 +203,15 @@
         },
         {
           "id": "pado-unified",
-          "title": "파도 MVP 통합",
+          "title": "파도 통합 계정",
+          "status": "completed",
+          "description": "다중 담보 지원 통합 마진 시스템 및 zkLogin 인증"
+        },
+        {
+          "id": "baram-marketplace",
+          "title": "바람: 모델 마켓플레이스",
           "status": "upcoming",
-          "description": "통합 계정 및 zk 로그인"
+          "description": "온체인 모델 레지스트리, 제공자 온보딩, 수익 분배"
         },
         {
           "id": "spectra-heist-previz",
@@ -267,13 +279,13 @@
           "id": "nasun-web-launch",
           "title": "나선 웹사이트 런칭",
           "status": "upcoming",
-          "description": "파도, 거버넌스 및 NFT 대시보드"
+          "description": "리더보드 V3, 거버넌스 대시보드, 바탈리온 NFT 이벤트"
         },
         {
           "id": "battalion-nft",
           "title": "바탈리온 NFT",
           "status": "upcoming",
-          "description": "무료 민팅 및 유틸리티 캠페인"
+          "description": "3단계 X API 검증 무료 민팅 얼로우리스트"
         },
         {
           "id": "infofi-preseed",
@@ -401,6 +413,12 @@
           "title": "파도 정식 런칭(GA)",
           "status": "upcoming",
           "description": "전체 서비스 런칭"
+        },
+        {
+          "id": "baram-production",
+          "title": "바람: 분산 Executor 네트워크",
+          "status": "upcoming",
+          "description": "밸리데이터 통합 TEE 노드, 온체인 Executor 배정, 보안 감사"
         },
         {
           "id": "genesis-liquidity",
