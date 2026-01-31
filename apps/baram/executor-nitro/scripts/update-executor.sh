@@ -1,5 +1,6 @@
 #!/bin/bash
-# On-chain Executor endpoint update (BOTH registries)
+# On-chain Executor endpoint update (devnet-ids registry only)
+# Uses update_own_endpoint (Phase F-2 self-service) — no AdminCap required.
 # Usage: ./update-executor.sh <NEW_IP>
 set -e
 
@@ -11,8 +12,12 @@ if [ -z "$NEW_IP" ]; then
 fi
 
 NEW_ENDPOINT="http://$NEW_IP:3000"
-OPERATOR="0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90"
-SUPPORTED_MODELS='["llama-3.2-3b","llama-3.2-3b-local"]'
+# Empty array = accept all models (Groq + TEE)
+SUPPORTED_MODELS='[]'
+
+# Contract IDs (devnet-ids registry)
+EXECUTOR_PACKAGE_ID="0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc"
+EXECUTOR_REGISTRY_ID="0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c"
 
 # Nasun CLI path
 NASUN_CLI="${NASUN_CLI:-/home/naru/my_apps/nasun-devnet/sui/target/release/sui}"
@@ -25,69 +30,31 @@ fi
 
 echo "=== Updating Executor Endpoint ==="
 echo "New endpoint: $NEW_ENDPOINT"
-echo "Models: $SUPPORTED_MODELS"
+echo "Registry: devnet-ids ($EXECUTOR_REGISTRY_ID)"
+echo "Models: $SUPPORTED_MODELS (empty = accept all)"
 echo ""
 
-# --- Registry 1: Frontend registry (used by UI) ---
-echo "--- [1/2] Frontend Registry ---"
+# Self-service endpoint update (Phase F-2)
+# Requires active Nasun CLI address to match the registered executor operator.
+echo "--- update_own_endpoint (self-service, no AdminCap) ---"
 $NASUN_CLI client call \
-  --package 0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5 \
+  --package "$EXECUTOR_PACKAGE_ID" \
   --module executor \
-  --function update_executor \
+  --function update_own_endpoint \
   --args \
-    0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7 \
-    0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b \
-    "$OPERATOR" \
-    '"Nasun TEE Executor"' \
+    "$EXECUTOR_REGISTRY_ID" \
     "\"$NEW_ENDPOINT\"" \
     "$SUPPORTED_MODELS" \
-    true \
-  --gas-budget 100000000
-
-echo ""
-
-# --- Registry 2: devnet-ids registry (used by Host settlement) ---
-echo "--- [2/2] devnet-ids Registry ---"
-$NASUN_CLI client call \
-  --package 0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff \
-  --module executor \
-  --function update_executor \
-  --args \
-    0xd4e4576a072f7aba56100b40cb4663539532fcc8cfd2b2802ff1f52490b89089 \
-    0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
-    "$OPERATOR" \
-    '"Nasun TEE Executor"' \
-    "\"$NEW_ENDPOINT\"" \
-    "$SUPPORTED_MODELS" \
-    true \
+    0x6 \
   --gas-budget 100000000
 
 echo ""
 echo "==========================================="
-echo "  Both Registries Updated"
+echo "  Executor Endpoint Updated"
 echo "==========================================="
 echo ""
 echo "Verify with:"
 echo "  curl $NEW_ENDPOINT/health"
 echo ""
-echo "Check on-chain (frontend registry):"
-echo "  curl -s -X POST https://rpc.devnet.nasun.io -H 'Content-Type: application/json' \\"
-echo "    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"suix_getDynamicFieldObject\",\"params\":[\"0xe74b2b336b96b8634ded977d3c861197d4b73d435bf784e71923af4996620056\",{\"type\":\"address\",\"value\":\"$OPERATOR\"}]}' | jq '.result.data.content.fields.value.fields.endpoint_url'"
-
-echo ""
-echo "==========================================="
-echo "  Self-Service Endpoint Update (Phase F-2)"
-echo "==========================================="
-echo ""
-echo "Executor can update their own endpoint without AdminCap:"
-echo ""
-echo "  $NASUN_CLI client call \\"
-echo "    --package <EXECUTOR_PACKAGE_ID> \\"
-echo "    --module executor \\"
-echo "    --function update_own_endpoint \\"
-echo "    --args \\"
-echo "      <EXECUTOR_REGISTRY_ID> \\"
-echo "      '\"$NEW_ENDPOINT\"' \\"
-echo "      '$SUPPORTED_MODELS' \\"
-echo "      0x6 \\"
-echo "    --gas-budget 100000000"
+echo "Note: If the active Nasun CLI address does not match the executor operator,"
+echo "use the Admin-based update_executor instead (requires AdminCap)."

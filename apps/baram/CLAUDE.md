@@ -199,9 +199,7 @@ cd apps/baram/executor-nitro
 
 ### Executor Registry + Staking + Tier
 
-> **Note**: 두 개의 ExecutorRegistry가 존재함. `update-executor.sh`는 양쪽 모두 업데이트.
-
-**devnet-ids Registry** (Host settlement용):
+> Frontend와 Settlement 모두 단일 registry를 사용합니다 (Dual Registry 통합 완료, 2026-01-31).
 
 | 항목 | 주소 |
 |------|------|
@@ -216,14 +214,6 @@ cd apps/baram/executor-nitro
 | StakingAdminCap | `0x9ce33344d01578a8e121016af13caa11e773073d4e37e739b0c494a8ad9e5a35` |
 | TierRegistry | `0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c` |
 
-**Frontend Registry** (UI에서 Executor 조회용):
-
-| 항목 | 주소 |
-|------|------|
-| Package ID | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
-| ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
-| AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
-
 ### Attestation Registry
 
 | 항목 | 주소 |
@@ -232,7 +222,7 @@ cd apps/baram/executor-nitro
 | AttestationRegistry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
 | AdminCap | `0x3bedf33f6c35bd2f4e32822e94f8b2f14ab5b5b4c117e6beed02a74f2e1a1e27` |
 | UpgradeCap | `0x84602bc64e766da6637e765984e51fedbd0672f772a4f71ed893832f0ec56e23` |
-| Active PCR0 (v3) | `3ee63e5c4001f182...daad7ed0` |
+| Active PCR0 (v5) | `35f21cd4697bfa48...d1b7bb` |
 
 ### Compliance Registry
 

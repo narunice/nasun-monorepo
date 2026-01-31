@@ -26,11 +26,11 @@ export const BARAM_CONFIG = {
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
 } as const;
 
-// Executor Registry Configuration
+// Executor Registry Configuration — single source from @nasun/devnet-config
 export const EXECUTOR_CONFIG = {
-  packageId: import.meta.env.VITE_EXECUTOR_PACKAGE_ID || BARAM.executorPackageId,
-  registryId: import.meta.env.VITE_EXECUTOR_REGISTRY_ID || BARAM.executorRegistry,
-  tierRegistryId: import.meta.env.VITE_TIER_REGISTRY_ID || BARAM.tierRegistry,
+  packageId: BARAM.executorPackageId,
+  registryId: BARAM.executorRegistry,
+  tierRegistryId: BARAM.tierRegistry,
 } as const;
 
 // Compliance (ECR) Configuration

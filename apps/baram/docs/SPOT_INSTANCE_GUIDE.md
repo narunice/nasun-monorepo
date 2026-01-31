@@ -249,16 +249,15 @@ curl http://<NEW_IP>:3000/health
 
 ### Step 8: Update On-chain Executor Endpoint
 
-New IP이므로 반드시 양쪽 registry를 업데이트 (Section A 참조):
+New IP이므로 on-chain endpoint를 업데이트 (Section A 참조):
 
 ```bash
-# From local machine
+# From local machine (executor 키로 self-service 업데이트)
 cd apps/baram/executor-nitro
 bash scripts/update-executor.sh <NEW_IP>
 ```
 
-- [ ] Frontend registry (`0xeaac739...`) 업데이트됨
-- [ ] devnet-ids registry (`0xcb694425...`) 업데이트됨
+- [ ] devnet-ids registry (`0xcb6944...`) endpoint 업데이트됨
 
 ### Step 9: Check PCR0 Baseline
 
@@ -439,8 +438,87 @@ ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "sudo systemctl restart baram-host"
 | CID mismatch | Host가 Enclave에 연결 불가 | `nitro-cli describe-enclaves` vs systemd |
 | PCR0 변경 미등록 | Attestation Unverified + Settlement MoveAbort | Host 로그에서 `mismatch` 검색 |
 | Executor endpoint 미업데이트 | Frontend 연결 타임아웃 (old IP) | `update-executor.sh <IP>` |
-| 두 Registry 중 하나만 업데이트 | Frontend 또는 Settlement 한쪽만 동작 | 양쪽 모두 확인 |
 | Executor 키 불일치 | Host 시작 즉시 종료 (FATAL) | `EXECUTOR_PRIVATE_KEY`가 온체인 등록 주소와 일치하는지 확인 |
+
+> **NOTE: Frontend `.env` 위치**
+>
+> Vite의 `envDir: '../'` 설정 때문에, Frontend가 읽는 `.env`는 `apps/baram/frontend/.env`가 **아니라** `apps/baram/.env`입니다.
+> `apps/baram/frontend/.env`를 수정해도 Vite에 반영되지 않습니다.
+> Executor Registry는 `@nasun/devnet-config`에서 직접 읽으므로 `.env`에 `VITE_EXECUTOR_REGISTRY_ID`를 설정하지 마세요.
+
+### Comprehensive: 매번 스팟 인스턴스 런칭 시 변경되는 항목 전체 목록
+
+> **WARNING**: 스팟 인스턴스는 종료 후 재생성할 때마다 아래 항목들이 변경됩니다.
+> 하나라도 빠지면 TEE가 정상 동작하지 않습니다.
+
+#### A. 인스턴스 레벨 (매번 변경)
+
+| # | 항목 | 변경 이유 | 업데이트 위치 |
+|---|------|----------|--------------|
+| 1 | **Public IP** | 스팟 인스턴스마다 새 IP 할당 | On-chain endpoint (`update-executor.sh <IP>`) |
+| 2 | **Instance ID** | 새 인스턴스 생성 | AWS 콘솔, terminate-spot.sh 참조 |
+| 3 | **Enclave CID** | 인스턴스마다 재할당 (보통 16, 재생성 시 증가) | `/etc/systemd/system/baram-host.service` ENCLAVE_CID |
+| 4 | **`.env` 파일** | gitignored, AMI에 없음, 매번 재생성 필요 | `~/nasun-monorepo/apps/baram/executor-nitro/.env` |
+
+#### B. On-chain (IP 변경 시 업데이트 필수)
+
+> Frontend와 Settlement 모두 단일 devnet-ids registry (`0xcb6944...`)를 사용합니다.
+
+| # | 항목 | 업데이트 명령 | 비고 |
+|---|------|-------------|------|
+| 5 | **ExecutorRegistry endpoint** | `update_own_endpoint` on `0xcb6944...` (F-2) | Executor 키로 self-service. `update-executor.sh <IP>` |
+| 6 | **TierRegistry tier 설정** | `update_tier` on `0x21c234...` | Admin 키 필요. Bronze(1) 이상 필요. 신규 executor만 해당 |
+
+#### C. EIF 재빌드 시 (코드/의존성 변경 시)
+
+| # | 항목 | 변경 이유 | 업데이트 명령 |
+|---|------|----------|--------------|
+| 8 | **PCR0 / PCR1 / PCR2** | 코드, 의존성, Docker 이미지 변경 | `register_baseline` + `activate_baseline` on AttestationRegistry |
+| 9 | **Baseline version** | 새 PCR baseline 등록 시 버전 증가 | 문서 업데이트 (SPOT_INSTANCE_GUIDE, CLAUDE.md, BARAM_IMPLEMENTATION_PLAN) |
+
+#### D. Executor 키 변경 시 (Secrets Manager 키 교체 시)
+
+| # | 항목 | 변경 이유 | 업데이트 위치 |
+|---|------|----------|--------------|
+| 10 | **EXECUTOR_PRIVATE_KEY** | Secrets Manager에서 키 교체 | `.env` on instance |
+| 11 | **Executor operator address** | 키에서 파생되는 주소 변경 | ExecutorRegistry에 `register_executor` + TierRegistry `update_tier` 필요 |
+| 12 | **Secrets Manager** | 키 교체 시 | `baram/executor-private-key` |
+| 13 | **문서 operator address** | 새 주소 반영 | SPOT_INSTANCE_GUIDE Reference 테이블 |
+
+#### E. 체크리스트 실행 순서
+
+```
+1. launch-spot.sh (또는 수동)
+   └─ Instance ID, Public IP 기록
+
+2. SSH → .env 확인/생성 (Step 2)
+   ├─ Secrets Manager에서 EXECUTOR_PRIVATE_KEY 조회
+   ├─ devnet-ids.json에서 컨트랙트 ID 추출
+   └─ .env 생성 (13개 변수)
+
+3. Enclave CID 확인 + systemd 동기화 (Step 3-4)
+   └─ CID 불일치 시 sed + daemon-reload
+
+4. Host 시작 (Step 5)
+   └─ "Sui settlement enabled" + "Executor registration verified" 로그 확인
+      └─ FATAL exit 시: Executor 키 불일치 → register_executor 필요 (Step D)
+
+5. On-chain endpoint 업데이트 (Step 6)
+   └─ devnet-ids registry: update_own_endpoint (Executor 키) 또는 update_executor (Admin 키)
+      └─ Frontend도 이 registry를 읽으므로, 이것만 업데이트하면 됨
+
+5b. Executor Tier 설정 (신규 executor인 경우)
+   └─ update_tier on TierRegistry: stake_amount=1000000000000, reputation=300 → Bronze(1)
+      └─ 누락 시 Frontend에서 "No eligible executors available" 발생
+
+6. PCR baseline 확인 (Step 7)
+   └─ PCR0 변경 시: register_baseline(v_next) → activate_baseline(v_next)
+
+7. Frontend E2E 검증 (Step 8)
+   ├─ TEE 모델 선택 → 프롬프트 전송
+   ├─ Attestation: Verified
+   └─ Settlement: TX Digest 확인
+```
 
 ---
 
@@ -459,46 +537,15 @@ cd apps/baram/executor-nitro
 bash scripts/update-executor.sh <NEW_IP>
 ```
 
-This updates the **frontend registry** (`0xeaac739...`).
+This updates the devnet-ids registry (`0xcb6944...`) using self-service `update_own_endpoint`.
+Both Frontend and Settlement read from this single registry.
 
-**Manual update (both registries):**
-
-There are **two** ExecutorRegistry objects (see Known Issues). Both should be updated.
+**Manual update:**
 
 ```bash
-# 1. Frontend registry (the one the UI reads from)
-nasun client call \
-  --package 0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5 \
-  --module executor \
-  --function update_executor \
-  --args \
-    0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7 \
-    0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b \
-    0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90 \
-    '"Nasun TEE Executor"' \
-    '"http://<NEW_IP>:3000"' \
-    '["llama-3.2-3b","llama-3.2-3b-local"]' \
-    true \
-  --gas-budget 100000000
-
-# 2. devnet-ids registry (used by Host for settlement)
-# NOTE: Package upgraded to v2 (2026-01-31)
-nasun client call \
-  --package 0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc \
-  --module executor \
-  --function update_executor \
-  --args \
-    0xd4e4576a072f7aba56100b40cb4663539532fcc8cfd2b2802ff1f52490b89089 \
-    0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
-    0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90 \
-    '"Nasun TEE Executor"' \
-    '"http://<NEW_IP>:3000"' \
-    '["llama-3.2-3b","llama-3.2-3b-local"]' \
-    true \
-  --gas-budget 100000000
-
-# 2b. Alternative: Self-service endpoint update (Phase F-2)
-# Executor can update own endpoint without AdminCap using EXECUTOR_PRIVATE_KEY:
+# Self-service endpoint update (Phase F-2, no AdminCap required)
+# Requires active CLI address = registered executor operator
+# supportedModels=[] means "accept all models" (Groq + TEE)
 nasun client call \
   --package 0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc \
   --module executor \
@@ -506,12 +553,31 @@ nasun client call \
   --args \
     0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
     '"http://<NEW_IP>:3000"' \
-    '["llama-3.2-3b","llama-3.2-3b-local"]' \
+    '[]' \
     0x6 \
+  --gas-budget 100000000
+
+# Alternative: Admin update (requires AdminCap)
+nasun client call \
+  --package 0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc \
+  --module executor \
+  --function update_executor \
+  --args \
+    0xd4e4576a072f7aba56100b40cb4663539532fcc8cfd2b2802ff1f52490b89089 \
+    0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
+    <EXECUTOR_OPERATOR_ADDRESS> \
+    '"Baram TEE Executor"' \
+    '"http://<NEW_IP>:3000"' \
+    '[]' \
+    true \
   --gas-budget 100000000
 ```
 
-**Operator address:** `0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90`
+> **supportedModels 규칙**: `[]` (빈 배열) = 모든 모델 수용 (Groq + TEE).
+> `["llama-3.2-3b-local"]`로 설정하면 TEE 모델만 수용하고 Groq 모델이 필터링됩니다.
+
+**Operator address (current):** `0xa952b023c471e51457eb71b5c9e7424f0799103fc2336d79c0ffc2164c5ca854`
+(Derived from EXECUTOR_PRIVATE_KEY in AWS Secrets Manager. Changes if key is rotated.)
 
 ### B. Check PCR Baseline
 
@@ -559,7 +625,7 @@ nasun client call \
 | Attestation Package | `0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3` |
 | Attestation Registry | `0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b` |
 | Attestation AdminCap | `0x3bedf33f6c351573dd3f654f31b0efb449aac31bebe766106160d18b9ba3b238` |
-| Active PCR0 (baseline v3) | `3ee63e5c4001f182db6f5a1f0ebdd07154880a9e58c25697e65d085c7ce9e522891595d3de69abada655ebe09fd18285` |
+| Active PCR0 (baseline v5) | `35f21cd4697bfa48d8cca30e1cc15c19fa8ba68217a3529d155c42104f80e4e0b869ef422567c600a99118b1d4d1b7bb` |
 
 ---
 
@@ -574,21 +640,7 @@ curl http://<NEW_IP>:3000/health
 ### 2. Verify Executor Endpoint On-chain
 
 ```bash
-# Check executor info from the frontend registry
-# Uses suix_getDynamicFieldObject on the ExecutorRegistry's executors Table
-# The Table object ID is a dynamic field within the ExecutorRegistry
-nasun client object 0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b \
-  --json | python3 -c "
-import sys, json
-obj = json.load(sys.stdin)
-# Find executors table ID from the registry fields
-fields = obj['data']['content']['fields']
-print(f'Executors Table: {fields[\"executors\"][\"fields\"][\"id\"][\"id\"]}')
-print(f'Total executors: {fields[\"total_executors\"]}')
-print(f'Active executors: {fields[\"active_executors\"]}')
-"
-
-# Or check the devnet-ids registry (used by settlement):
+# Check executor info from the ExecutorRegistry
 nasun client object 0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
   --json | python3 -c "
 import sys, json
@@ -655,9 +707,8 @@ curl -X POST http://<NEW_IP>:3000/execute \
 ### Frontend shows old IP / connection timeout
 
 1. The on-chain `endpoint_url` was not updated (see Section A)
-2. **IMPORTANT**: There are TWO registries. The frontend reads from `0xeaac739...`
-3. Hard refresh the frontend (Ctrl+Shift+R) after updating on-chain
-4. Verify with the RPC query in Verification section
+2. Hard refresh the frontend (Ctrl+Shift+R) after updating on-chain
+3. Verify with the RPC query in Verification section
 
 ---
 
@@ -685,19 +736,14 @@ EBS volume is auto-deleted (`DeleteOnTermination=true`).
 
 ## Known Issues
 
-### Dual ExecutorRegistry (2026-01-30)
+### ~~Dual ExecutorRegistry~~ (Resolved 2026-01-31)
 
-Two ExecutorRegistry objects exist on-chain due to a V6 chain reset where the
-frontend `.env` was not updated to match `devnet-ids.json`.
+~~Two ExecutorRegistry objects exist on-chain.~~ **해결됨**: Frontend와 Settlement 모두 devnet-ids registry (`0xcb6944...`)를 사용합니다.
 
-| Registry | Package ID | Registry ID | Used by |
-|----------|-----------|-------------|---------|
-| Frontend | `0xbc29ac03...` | `0xeaac739...` | Frontend UI (useExecutors hook) |
-| devnet-ids | `0x4b0e89fa...` (v2) | `0xcb694425...` | devnet-ids.json, Host settlement |
-
-**Impact**: If you only update one registry, either the frontend or settlement will use the old IP.
-
-**TODO**: Consolidate to a single registry.
+Legacy frontend registry (`0xeaac739...`)는 on-chain에 잔존하지만 더 이상 사용되지 않습니다.
+- `network.ts`: `EXECUTOR_CONFIG`가 `@nasun/devnet-config`에서 직접 읽음 (env fallback 제거됨)
+- `update-executor.sh`: devnet-ids registry만 업데이트 (self-service `update_own_endpoint`)
+- `.env`: `VITE_EXECUTOR_REGISTRY_ID` 제거됨
 
 ### PCR0 Changes on Every EIF Rebuild
 
@@ -801,6 +847,37 @@ sudo journalctl -u baram-host -n 5 --no-pager | grep -E "settlement|Sui"
 ls -la apps/baram/executor-nitro/.env || echo "WARNING: .env missing!"
 ```
 
+### Frontend `.env` envDir Gotcha (2026-01-31 발견)
+
+**근본 원인**: `apps/baram/frontend/vite.config.ts`에 `envDir: '../'` 설정이 있어서,
+Vite 개발 서버는 `apps/baram/frontend/.env`가 **아닌** `apps/baram/.env`를 읽습니다.
+
+**증상**: `apps/baram/frontend/.env`를 수정해도 변경사항이 Vite에 반영되지 않습니다.
+예를 들어 `VITE_EXECUTOR_REGISTRY_ID`를 frontend `.env`에서 제거해도,
+`apps/baram/.env`에 해당 변수가 남아 있으면 Vite는 여전히 이전 값을 사용합니다.
+
+**결과**: Frontend가 잘못된 registry를 읽어서:
+- `tee_type=0` → "No TEE Protection" 경고 표시
+- 프롬프트가 plaintext로 전송 (`(TEE encrypted)` 대신 `(plaintext)`)
+- Audit Trail 비활성화 (`metadata.teeVerified = false`)
+
+**수정 (2026-01-31)**:
+1. `apps/baram/.env`에서 `VITE_EXECUTOR_REGISTRY_ID`, `VITE_EXECUTOR_PACKAGE_ID`, `VITE_EXECUTOR_ADMIN_CAP` 제거
+2. `apps/baram/frontend/.env`에 "이 파일은 Vite가 사용하지 않음" 안내 추가
+3. `network.ts`의 `EXECUTOR_CONFIG`에서 env fallback 제거 — `@nasun/devnet-config`에서 직접 읽음 (재발 불가)
+
+**향후 예방**: Frontend 환경변수를 수정할 때는 반드시 `apps/baram/.env`를 수정할 것.
+`apps/baram/frontend/.env`는 Vite가 읽지 않는 파일입니다.
+
+```
+apps/baram/
+├── .env                    <-- Vite가 실제로 읽는 파일 (envDir: '../')
+├── frontend/
+│   ├── .env                <-- Vite가 읽지 않음! 수정해도 무의미
+│   └── vite.config.ts      <-- envDir: '../' 설정
+└── ...
+```
+
 ---
 
 ## Reference
@@ -813,7 +890,7 @@ ls -la apps/baram/executor-nitro/.env || echo "WARNING: .env missing!"
 | `scripts/terminate-spot.sh` | Terminate running spot instance |
 | `scripts/build-eif.sh` | Build EIF from Docker image |
 | `scripts/run-enclave.sh` | Start Nitro Enclave |
-| `scripts/update-executor.sh` | Update executor endpoint on-chain (both registries) |
+| `scripts/update-executor.sh` | Update executor endpoint on-chain (self-service, single registry) |
 | `scripts/decay-reputation.ts` | Permissionless reputation decay cron script (Phase F-2) |
 | `scripts/create-ami.sh` | Create AMI from running instance |
 | `scripts/setup-ec2.sh` | Initial EC2 environment setup |
@@ -836,11 +913,10 @@ Key IDs for executor operations:
 | Contract | ID Source |
 |----------|-----------|
 | Executor Package (v2) | `0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc` |
-| ExecutorRegistry (devnet-ids) | `0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c` |
+| ExecutorRegistry | `0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c` |
 | ProcessedRequests | `0xc68e22ca8cc7851695c2a5466cc148221f31a94e02f4a65b1676c33ab8855404` |
-| Frontend ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
-| Frontend Executor Package | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
-| Frontend AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
+| AdminCap | `0xd4e4576a072f7aba56100b40cb4663539532fcc8cfd2b2802ff1f52490b89089` |
+| TierRegistry | `0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c` |
 | AttestationRegistry | `0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b` |
 | Attestation Package | `0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3` |
-| Executor Operator | `0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90` |
+| Executor Operator | `0xa952b023c471e51457eb71b5c9e7424f0799103fc2336d79c0ffc2164c5ca854` |
