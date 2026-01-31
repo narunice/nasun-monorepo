@@ -76,7 +76,7 @@ function truncateText(text: string, maxLength: number): string {
   return `${text.slice(0, maxLength)}...`;
 }
 
-/** Inline editable wallet label */
+/** Inline editable wallet nickname with always-visible edit icon */
 function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallbackLabel: string }) {
   const { label, setLabel } = useWalletLabel(address);
   const [isEditing, setIsEditing] = useState(false);
@@ -99,36 +99,39 @@ function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallba
 
   const cancel = () => setIsEditing(false);
 
-  if (isEditing) {
-    return (
-      <input
-        ref={inputRef}
-        type="text"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value.slice(0, 20))}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") save();
-          if (e.key === "Escape") cancel();
-        }}
-        onBlur={save}
-        className="text-xs text-gray-900 dark:text-white bg-transparent border-b border-gray-400 dark:border-zinc-500 outline-none w-full py-0.5"
-        placeholder="Wallet name..."
-        maxLength={20}
-      />
-    );
-  }
-
   return (
-    <button
-      onClick={startEditing}
-      className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors group"
-      title="Click to set wallet name"
-    >
-      <span>{label || fallbackLabel}</span>
-      <svg className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-      </svg>
-    </button>
+    <div>
+      {/* Static label - not editable */}
+      <p className="text-[10px] text-gray-400 dark:text-zinc-500 mb-0.5">{fallbackLabel}</p>
+      {/* Editable nickname */}
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.slice(0, 20))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") cancel();
+          }}
+          onBlur={save}
+          className="text-xs text-gray-900 dark:text-white bg-transparent border-b border-gray-400 dark:border-zinc-500 outline-none w-full py-0.5"
+          placeholder="Wallet name..."
+          maxLength={20}
+        />
+      ) : (
+        <button
+          onClick={startEditing}
+          className="flex items-center gap-1 text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+          title="Click to edit wallet nickname"
+        >
+          <span className="font-medium">{label || "Set nickname"}</span>
+          <svg className="w-2.5 h-2.5 text-gray-400 dark:text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 
