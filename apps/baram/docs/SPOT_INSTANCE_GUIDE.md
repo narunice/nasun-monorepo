@@ -552,13 +552,13 @@ nasun client call \
   --gas-budget 100000000
 ```
 
-**Current values (as of 2026-01-30):**
+**Current values (as of 2026-01-31):**
 
 | Field | Value |
 |-------|-------|
-| Attestation Package | `0xc7ede9327e5179ed17f16eb2aa4efeee2e8b8c3dba7d34f3c1dcf3a5daad7ed0` |
-| Attestation Registry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
-| Attestation AdminCap | `0x3bedf33f6c35bd2f4e32822e94f8b2f14ab5b5b4c117e6beed02a74f2e1a1e27` |
+| Attestation Package | `0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3` |
+| Attestation Registry | `0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b` |
+| Attestation AdminCap | `0x3bedf33f6c351573dd3f654f31b0efb449aac31bebe766106160d18b9ba3b238` |
 | Active PCR0 (baseline v3) | `3ee63e5c4001f182db6f5a1f0ebdd07154880a9e58c25697e65d085c7ce9e522891595d3de69abada655ebe09fd18285` |
 
 ---
@@ -574,18 +574,31 @@ curl http://<NEW_IP>:3000/health
 ### 2. Verify Executor Endpoint On-chain
 
 ```bash
-# Check the frontend registry's dynamic field for the executor
-curl -s -X POST https://rpc.devnet.nasun.io \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0","id":1,
-    "method":"suix_getDynamicFieldObject",
-    "params":[
-      "0xe74b2b336b96b8634ded977d3c861197d4b73d435bf784e71923af4996620056",
-      {"type":"address","value":"0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90"}
-    ]
-  }' | jq '.result.data.content.fields.value.fields.endpoint_url'
-# Expected: "http://<NEW_IP>:3000"
+# Check executor info from the frontend registry
+# Uses suix_getDynamicFieldObject on the ExecutorRegistry's executors Table
+# The Table object ID is a dynamic field within the ExecutorRegistry
+nasun client object 0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b \
+  --json | python3 -c "
+import sys, json
+obj = json.load(sys.stdin)
+# Find executors table ID from the registry fields
+fields = obj['data']['content']['fields']
+print(f'Executors Table: {fields[\"executors\"][\"fields\"][\"id\"][\"id\"]}')
+print(f'Total executors: {fields[\"total_executors\"]}')
+print(f'Active executors: {fields[\"active_executors\"]}')
+"
+
+# Or check the devnet-ids registry (used by settlement):
+nasun client object 0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c \
+  --json | python3 -c "
+import sys, json
+obj = json.load(sys.stdin)
+fields = obj['data']['content']['fields']
+print(f'Executors Table: {fields[\"executors\"][\"fields\"][\"id\"][\"id\"]}')
+print(f'Total executors: {fields[\"total_executors\"]}')
+print(f'Active executors: {fields[\"active_executors\"]}')
+"
+# Expected: endpoint_url should contain the current instance IP
 ```
 
 ### 3. Test TEE Inference
@@ -828,6 +841,6 @@ Key IDs for executor operations:
 | Frontend ExecutorRegistry | `0xeaac73903c49e3583085e2889cf2770b68bab9c06e239a6304ca12aa82b2d60b` |
 | Frontend Executor Package | `0xbc29ac0374a30203fe45f6d16965b117638f6816c209320c365961ccea2040d5` |
 | Frontend AdminCap | `0x0953696c5e412f6e6af77e2aae381e06afd4d738b6c26e8dc522d48f00412cd7` |
-| AttestationRegistry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
-| Attestation Package | `0xc7ede9327e5179ed17f16eb2aa4efeee2e8b8c3dba7d34f3c1dcf3a5daad7ed0` |
+| AttestationRegistry | `0xf05cffcd59ac6889eea1c8cd2b3ab76c05e313912bebc15c412759282c6f6b1b` |
+| Attestation Package | `0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3` |
 | Executor Operator | `0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90` |
