@@ -16,7 +16,7 @@ import {
 } from '@nasun/wallet';
 import { ValidatorList } from './ValidatorList';
 import { StakingStatus } from './StakingStatus';
-import { CopyableAddress } from './CopyableAddress';
+import { CopyableAddress } from '../address/CopyableAddress';
 
 type TabType = 'stake' | 'unstake' | 'positions';
 type StakeStep = 'select' | 'amount' | 'confirm' | 'result';

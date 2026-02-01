@@ -11,7 +11,7 @@ import {
   shortenAddress,
   getNFTImageUrl,
 } from '@nasun/wallet';
-import { CopyableAddress } from './CopyableAddress';
+import { CopyableAddress } from '../address/CopyableAddress';
 
 interface NFTTransferProps {
   /** NFT to transfer */
