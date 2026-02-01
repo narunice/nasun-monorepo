@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
-import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, Time, MouseEventParams } from 'lightweight-charts';
 import { useMarket } from '../context/MarketContext';
 import { useTheme } from '../../../providers/theme';
 import {
@@ -74,6 +74,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const [interval, setInterval] = useState<TimeInterval>('15m');
   const [indicators, setIndicators] = useState({ ma: true, rsi: false, macd: false });
   const [lastPrice, setLastPrice] = useState<{ value: number; change: number } | null>(null);
+  const [ohlcv, setOhlcv] = useState<{ open: number; high: number; low: number; close: number; volume: number } | null>(null);
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
   const colors = CHART_COLORS[theme];
 
@@ -215,6 +216,29 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     ma5SeriesRef.current = ma5Series;
     ma20SeriesRef.current = ma20Series;
     volumeSeriesRef.current = volumeSeries;
+
+    // Crosshair move → update OHLCV overlay
+    chart.subscribeCrosshairMove((param: MouseEventParams) => {
+      if (!param.time || !param.seriesData) {
+        setOhlcv(null);
+        return;
+      }
+      const candleValue = param.seriesData.get(candleSeries) as
+        | { open: number; high: number; low: number; close: number }
+        | undefined;
+      const volumeValue = param.seriesData.get(volumeSeries) as
+        | { value: number }
+        | undefined;
+      if (candleValue) {
+        setOhlcv({
+          open: candleValue.open,
+          high: candleValue.high,
+          low: candleValue.low,
+          close: candleValue.close,
+          volume: volumeValue?.value ?? 0,
+        });
+      }
+    });
 
     // Sync timescales
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -629,6 +653,30 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
           </div>
         </div>
       </div>
+
+      {/* OHLCV Overlay */}
+      {(() => {
+        const lastCandle = effectiveCandleData.length > 0 ? effectiveCandleData[effectiveCandleData.length - 1] : null;
+        const display = ohlcv || (lastCandle ? { open: lastCandle.open, high: lastCandle.high, low: lastCandle.low, close: lastCandle.close, volume: lastCandle.volume } : null);
+        if (!display) return null;
+        const isUp = display.close >= display.open;
+        const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        const fmtVol = (v: number) => {
+          if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+          if (v >= 1_000) return `${(v / 1_000).toFixed(2)}K`;
+          return v.toFixed(2);
+        };
+        return (
+          <div className="flex items-center gap-3 px-3 py-1 text-xs font-mono border-b border-theme-border/50">
+            <span className="text-theme-text-muted">{baseSymbol} · {interval} · {binanceSymbol ? 'Lighter' : 'Sim'}</span>
+            <span className="text-theme-text-muted">O<span className={isUp ? 'text-green-400' : 'text-red-400'}>{fmt(display.open)}</span></span>
+            <span className="text-theme-text-muted">H<span className={isUp ? 'text-green-400' : 'text-red-400'}>{fmt(display.high)}</span></span>
+            <span className="text-theme-text-muted">L<span className={isUp ? 'text-green-400' : 'text-red-400'}>{fmt(display.low)}</span></span>
+            <span className="text-theme-text-muted">C<span className={isUp ? 'text-green-400' : 'text-red-400'}>{fmt(display.close)}</span></span>
+            <span className="text-theme-text-muted">Volume <span className="text-theme-text-secondary">{fmtVol(display.volume)}</span></span>
+          </div>
+        );
+      })()}
 
       {/* Indicator Legends */}
       {(indicators.ma || indicators.rsi || indicators.macd) && (

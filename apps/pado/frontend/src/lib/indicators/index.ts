@@ -11,7 +11,8 @@ export { calculateRSI } from './rsi';
 export { calculateMACD } from './macd';
 
 // Data Generators
-export { generateCandleData, generateVolumeData, fetchBinanceCandles, getBinanceSymbol } from './dataGenerator';
+export { generateCandleData, generateVolumeData, fetchBinanceCandles, fetchBinance24hTicker, fetchBinanceRecentTrades, getBinanceSymbol } from './dataGenerator';
+export type { Binance24hTicker, RecentTrade } from './dataGenerator';
 
 // Types
 export type { CandleWithVolume, MACDResult, CandlestickData, Time, LineData, HistogramData } from './types';
