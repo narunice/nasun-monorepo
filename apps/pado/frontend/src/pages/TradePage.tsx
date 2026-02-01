@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
 import { TradingPanel } from '../features/trading/containers';
-import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook } from '../features/trading/components';
+import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles } from '../features/trading/components';
 import { useTradeMode, useOrderbook } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
@@ -61,35 +61,53 @@ function TradePageContent() {
   return (
     <div className="space-y-3">
       {/* Header: Market Selector + Mode Toggle */}
-      <div className="flex items-center justify-between gap-4">
-        <MarketSelector />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+        <div className="lg:col-span-9 xl:col-span-10">
+          <MarketSelector />
+        </div>
 
         {/* Simple/Pro Toggle */}
-        <div className="flex items-center gap-2">
-          <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
-            Simple
-          </span>
-          <button
-            onClick={toggleMode}
-            className="relative w-10 h-5 rounded-full transition-colors bg-theme-bg-tertiary"
-            aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
-          >
-            <span
-              className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${
-                isSimple
-                  ? 'left-0.5 bg-theme-accent'
-                  : 'left-5 bg-purple-500'
-              }`}
-            />
-          </button>
-          <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
-            Pro
-          </span>
+        <div className="lg:col-span-3 xl:col-span-2">
+          <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 h-full flex items-center justify-between">
+            <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+                Simple
+              </span>
+              <button
+                onClick={toggleMode}
+                className="relative w-10 h-5 rounded-full transition-colors bg-theme-bg-tertiary"
+                aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${
+                    isSimple
+                      ? 'left-0.5 bg-theme-accent'
+                      : 'left-5 bg-purple-500'
+                  }`}
+                />
+              </button>
+              <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+                Pro
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Market Info Bar */}
-      <MarketInfoBar {...marketInfo} />
+      {/* Market Info Bar + Trading Toggles (Pro mode: grid-aligned with trading panel) */}
+      {!isSimple ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+          <div className="lg:col-span-9 xl:col-span-10">
+            <MarketInfoBar {...marketInfo} />
+          </div>
+          <div className="lg:col-span-3 xl:col-span-2">
+            <TradingToggles />
+          </div>
+        </div>
+      ) : (
+        <MarketInfoBar {...marketInfo} />
+      )}
 
       {/* Main Trading Grid */}
       {isSimple ? (

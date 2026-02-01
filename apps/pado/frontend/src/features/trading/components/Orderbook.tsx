@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Orderbook as OrderbookType } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
 import { fetchBinanceRecentTrades, getBinanceSymbol } from '@/lib/indicators';
+import { UnderlineTabs } from '@/components/common';
 
 type DepthLevel = 5 | 10 | 20;
 type OrderbookTab = 'book' | 'trades';
@@ -150,47 +151,33 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   return (
     <div className="flex flex-col h-full">
       {/* Header: Book/Trades tabs + depth selector */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('book')}
-            className={`text-sm font-semibold transition-colors ${
-              activeTab === 'book'
-                ? 'text-theme-text-primary'
-                : 'text-theme-text-muted hover:text-theme-text-secondary'
-            }`}
-          >
-            Order Book
-          </button>
-          <button
-            onClick={() => setActiveTab('trades')}
-            className={`text-sm font-semibold transition-colors ${
-              activeTab === 'trades'
-                ? 'text-theme-text-primary'
-                : 'text-theme-text-muted hover:text-theme-text-secondary'
-            }`}
-          >
-            Trades
-          </button>
-        </div>
-        {activeTab === 'book' && (
-          <div className="flex gap-1">
-            {([5, 10, 20] as DepthLevel[]).map((level) => (
-              <button
-                key={level}
-                onClick={() => setDepthLevel(level)}
-                className={`px-1.5 py-0.5 text-trading-xs rounded transition-colors ${
-                  depthLevel === level
-                    ? 'bg-theme-accent text-white'
-                    : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
-                }`}
-              >
-                {level}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <UnderlineTabs
+        tabs={[
+          { id: 'book' as const, label: 'Order Book' },
+          { id: 'trades' as const, label: 'Trades' },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        rightContent={
+          activeTab === 'book' ? (
+            <div className="flex gap-1">
+              {([5, 10, 20] as DepthLevel[]).map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setDepthLevel(level)}
+                  className={`px-1.5 py-0.5 text-trading-xs rounded transition-colors ${
+                    depthLevel === level
+                      ? 'bg-theme-accent text-white'
+                      : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          ) : undefined
+        }
+      />
 
       {/* Trades Tab */}
       {activeTab === 'trades' && <TradesPanel compact={compact} />}
