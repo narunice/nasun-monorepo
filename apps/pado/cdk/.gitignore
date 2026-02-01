@@ -1,0 +1,8 @@
+node_modules
+cdk.out
+dist
+*.js
+*.d.ts
+!lambda-src/**/*.ts
+lambda-src/**/dist
+lambda-src/**/node_modules
