@@ -76,14 +76,14 @@ function TradePageContent() {
               </span>
               <button
                 onClick={toggleMode}
-                className="relative w-10 h-5 rounded-full transition-colors bg-gray-600"
+                className={`w-7 h-3.5 rounded-full transition-colors ${
+                  isSimple ? 'bg-theme-toggle-off' : 'bg-purple-500'
+                }`}
                 aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${
-                    isSimple
-                      ? 'left-0.5 bg-theme-accent'
-                      : 'left-5 bg-purple-500'
+                  className={`block w-3 h-3 rounded-full bg-white transition-transform ${
+                    isSimple ? 'translate-x-0.5' : 'translate-x-3.5'
                   }`}
                 />
               </button>
@@ -119,9 +119,9 @@ function TradePageContent() {
           <TradingPanel mode={mode} />
         </div>
       ) : (
-        /* Pro Mode: Full width - Chart | Orderbook | Order Form */
+        /* Pro Mode: 2-row grid with Order Form spanning both rows */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          {/* Chart - Takes majority of space */}
+          {/* Row 1 Left: Chart */}
           <div
             className="lg:col-span-7 xl:col-span-8 bg-theme-bg-secondary rounded-lg p-3"
             style={{ height: `${CHART_HEIGHT}px` }}
@@ -129,7 +129,7 @@ function TradePageContent() {
             <PriceChart currentPrice={displayPrice} />
           </div>
 
-          {/* Orderbook - Fixed width, same height as chart */}
+          {/* Row 1 Middle: Orderbook */}
           <div
             className="lg:col-span-2 xl:col-span-2 bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
             style={{ height: `${CHART_HEIGHT}px` }}
@@ -141,18 +141,17 @@ function TradePageContent() {
             />
           </div>
 
-          {/* Trading Panel - Order Form */}
-          <div
-            className="lg:col-span-3 xl:col-span-2 overflow-y-auto rounded-lg"
-            style={{ maxHeight: `${CHART_HEIGHT}px` }}
-          >
+          {/* Right: Order Form — spans row 1 + row 2 */}
+          <div className="lg:col-span-3 xl:col-span-2 lg:row-span-2 rounded-lg">
             <TradingPanel mode={mode} />
+          </div>
+
+          {/* Row 2 Left: Bottom Tab Panel */}
+          <div className="lg:col-span-9 xl:col-span-10">
+            <BottomTabPanel />
           </div>
         </div>
       )}
-
-      {/* Bottom Tab Panel - Pro mode only */}
-      {!isSimple && <BottomTabPanel />}
     </div>
   );
 }

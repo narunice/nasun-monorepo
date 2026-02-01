@@ -46,9 +46,9 @@ export function OrderConfirmModal({
       {/* Modal */}
       <div className="relative bg-theme-bg-secondary rounded-lg w-full max-w-sm mx-4 overflow-hidden">
         {/* Header */}
-        <div className={`p-4 ${isBuy ? 'bg-green-900/30' : 'bg-red-900/30'}`}>
-          <h2 className={`text-lg font-semibold ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
-            {isBuy ? 'Buy Order' : 'Sell Order'} Confirmation
+        <div className={`p-4 ${isBuy ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+          <h2 className={`text-lg font-semibold ${isBuy ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+            {isBuy ? 'Buy Order' : 'Sell Order'}
           </h2>
         </div>
 
@@ -58,7 +58,7 @@ export function OrderConfirmModal({
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-theme-text-secondary">Type</span>
-              <span className={`font-medium ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`font-medium ${isBuy ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {isBuy ? 'Buy' : 'Sell'} {baseToken}
               </span>
             </div>
@@ -89,7 +89,7 @@ export function OrderConfirmModal({
 
             <div className="flex justify-between text-lg font-semibold">
               <span>{isBuy ? 'You Pay' : 'You Receive'}</span>
-              <span className={isBuy ? 'text-red-400' : 'text-green-400'}>
+              <span className={isBuy ? '' : 'text-green-600 dark:text-green-400'}>
                 {isBuy
                   ? `~${(total + fee).toFixed(2)} ${quoteToken}`
                   : `~${(total - fee).toFixed(2)} ${quoteToken}`
@@ -98,9 +98,12 @@ export function OrderConfirmModal({
             </div>
           </div>
 
-          {/* Warning */}
-          <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700/50 rounded text-sm text-yellow-700 dark:text-yellow-400">
-            This is a limit order. It will be placed in the order book and may not execute immediately.
+          {/* Info */}
+          <div className="flex items-start gap-2 p-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm text-theme-text-secondary">
+            <svg className="w-4 h-4 mt-0.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>This is a limit order. It will be placed in the order book and may not execute immediately.</span>
           </div>
 
           {/* Buttons */}
@@ -114,7 +117,7 @@ export function OrderConfirmModal({
             </button>
             <button
               onClick={onConfirm}
-              className={`py-3 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+              className={`py-3 rounded-lg font-medium text-white transition-colors disabled:opacity-50 ${
                 isBuy
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-red-600 hover:bg-red-700'
