@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { useMarket } from '../context/MarketContext';
@@ -9,6 +10,8 @@ import {
   calculateMACD,
   generateCandleData,
   generateVolumeData,
+  fetchBinanceCandles,
+  getBinanceSymbol,
 } from '@/lib/indicators';
 
 // Theme-aware chart colors
@@ -74,11 +77,32 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
   const colors = CHART_COLORS[theme];
 
-  // Memoized candle data
-  const candleData = useMemo(() => {
-    const { count, ms } = INTERVAL_CONFIG[interval];
-    return generateCandleData(currentPrice, count, ms);
-  }, [interval, currentPrice]);
+  // Determine if we can fetch real data from Binance
+  const baseSymbol = currentPool.baseToken.symbol;
+  const binanceSymbol = getBinanceSymbol(baseSymbol);
+  const { count, ms: intervalMs } = INTERVAL_CONFIG[interval];
+
+  // Fetch real candle data from Binance for supported pairs, fallback to simulated
+  const { data: binanceData } = useQuery({
+    queryKey: ['candles', binanceSymbol, interval],
+    queryFn: async () => {
+      const result = await fetchBinanceCandles(binanceSymbol, interval, count);
+      return result ?? [];
+    },
+    enabled: !!binanceSymbol,
+    refetchInterval: intervalMs,
+    staleTime: intervalMs / 2,
+    placeholderData: (prev) => prev,
+  });
+
+  // Fallback: simulated data for tokens without Binance mapping
+  const simulatedData = useMemo(() => {
+    if (binanceSymbol) return null;
+    return generateCandleData(currentPrice, count, intervalMs);
+  }, [binanceSymbol, interval, currentPrice]);
+
+  // Use real data if available, otherwise simulated
+  const effectiveCandleData = (binanceSymbol && binanceData && binanceData.length > 0) ? binanceData : (simulatedData ?? []);
 
   // Initialize charts
   useEffect(() => {
@@ -228,29 +252,29 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     };
   }, []);
 
-  // Update data when candleData changes (NOT when showMA changes)
+  // Update data when effectiveCandleData changes (NOT when showMA changes)
   useEffect(() => {
-    if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+    if (!candleSeriesRef.current || !volumeSeriesRef.current || effectiveCandleData.length === 0) return;
 
     // Set candle data
-    candleSeriesRef.current.setData(candleData);
+    candleSeriesRef.current.setData(effectiveCandleData);
 
     // Set MA data (always set data, visibility controlled separately)
     if (ma5SeriesRef.current && ma20SeriesRef.current) {
-      const ma5Data = calculateMA(candleData, 5);
-      const ma20Data = calculateMA(candleData, 20);
+      const ma5Data = calculateMA(effectiveCandleData, 5);
+      const ma20Data = calculateMA(effectiveCandleData, 20);
       ma5SeriesRef.current.setData(ma5Data);
       ma20SeriesRef.current.setData(ma20Data);
     }
 
     // Set volume data
-    const volumeData = generateVolumeData(candleData);
+    const volumeData = generateVolumeData(effectiveCandleData);
     volumeSeriesRef.current.setData(volumeData);
 
     // Update last price
-    if (candleData.length > 1) {
-      const last = candleData[candleData.length - 1];
-      const prev = candleData[candleData.length - 2];
+    if (effectiveCandleData.length > 1) {
+      const last = effectiveCandleData[effectiveCandleData.length - 1];
+      const prev = effectiveCandleData[effectiveCandleData.length - 2];
       const change = ((last.close - prev.close) / prev.close) * 100;
       setLastPrice({ value: last.close, change });
     }
@@ -262,7 +286,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     if (volumeChartRef.current) {
       volumeChartRef.current.timeScale().fitContent();
     }
-  }, [candleData]);
+  }, [effectiveCandleData]);
 
   // Toggle MA visibility (separate from data updates)
   useEffect(() => {
@@ -317,7 +341,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     });
 
     // Set RSI data
-    const rsiData = calculateRSI(candleData);
+    const rsiData = calculateRSI(effectiveCandleData);
     rsiSeries.setData(rsiData);
 
     // Add overbought/oversold lines (70/30)
@@ -341,7 +365,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     return () => {
       rsiChart.remove();
     };
-  }, [indicators.rsi, candleData, colors]);
+  }, [indicators.rsi, effectiveCandleData, colors]);
 
   // MACD Chart initialization and updates
   useEffect(() => {
@@ -403,7 +427,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     });
 
     // Set MACD data
-    const macdData = calculateMACD(candleData);
+    const macdData = calculateMACD(effectiveCandleData);
     macdHistSeries.setData(macdData.histogram);
     macdSeries.setData(macdData.macd);
     signalSeries.setData(macdData.signal);
@@ -427,7 +451,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     return () => {
       macdChart.remove();
     };
-  }, [indicators.macd, candleData, colors]);
+  }, [indicators.macd, effectiveCandleData, colors]);
 
   // Update chart colors when theme changes
   useEffect(() => {
@@ -462,58 +486,74 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     });
   }, [theme]);
 
-  // Real-time simulation
+  // Real-time update: oracle price updates the last candle for real data pairs,
+  // random tick simulation for pairs without real data
   useEffect(() => {
     if (!candleSeriesRef.current || !chartRef.current || !volumeSeriesRef.current) return;
+    if (effectiveCandleData.length === 0) return;
 
-    const { ms: intervalMs } = INTERVAL_CONFIG[interval];
+    if (binanceSymbol) {
+      // Real data mode: update the last candle's close with oracle currentPrice
+      const lastCandle = effectiveCandleData[effectiveCandleData.length - 1];
+      if (!lastCandle || !currentPrice) return;
 
-    const updateTimer = window.setInterval(() => {
-      if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
-
-      const now = Date.now();
-      const normalizedTime = Math.floor(now / intervalMs) * Math.floor(intervalMs / 1000) as Time;
-
-      const volatility = 0.001;
-      const basePrice = lastPrice?.value || currentPrice;
-      const priceChange = (Math.random() - 0.5) * 2 * volatility * basePrice;
-      const newPrice = basePrice + priceChange;
-
-      const currentCandle = currentCandleRef.current;
-      if (!currentCandle || currentCandle.time !== normalizedTime) {
-        currentCandleRef.current = {
-          time: normalizedTime as number,
-          open: basePrice,
-          high: Math.max(basePrice, newPrice),
-          low: Math.min(basePrice, newPrice),
-          close: newPrice,
-          volume: 100 + Math.random() * 200,
-        };
-      } else {
-        currentCandle.high = Math.max(currentCandle.high, newPrice);
-        currentCandle.low = Math.min(currentCandle.low, newPrice);
-        currentCandle.close = newPrice;
-        currentCandle.volume += Math.random() * 10;
-      }
-
-      const candle = currentCandleRef.current!;
+      const updatedClose = currentPrice;
       candleSeriesRef.current.update({
-        time: candle.time as Time,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
+        time: lastCandle.time,
+        open: lastCandle.open,
+        high: Math.max(lastCandle.high, updatedClose),
+        low: Math.min(lastCandle.low, updatedClose),
+        close: updatedClose,
       });
+    } else {
+      // Simulated mode: random tick every 3 seconds
+      const updateTimer = window.setInterval(() => {
+        if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
 
-      volumeSeriesRef.current.update({
-        time: candle.time as Time,
-        value: candle.volume,
-        color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-      });
-    }, 3000);
+        const now = Date.now();
+        const normalizedTime = Math.floor(now / intervalMs) * Math.floor(intervalMs / 1000) as Time;
 
-    return () => clearInterval(updateTimer);
-  }, [interval, currentPrice, lastPrice]);
+        const volatility = 0.001;
+        const basePrice = lastPrice?.value || currentPrice;
+        const priceChange = (Math.random() - 0.5) * 2 * volatility * basePrice;
+        const newPrice = basePrice + priceChange;
+
+        const currentCandle = currentCandleRef.current;
+        if (!currentCandle || currentCandle.time !== normalizedTime) {
+          currentCandleRef.current = {
+            time: normalizedTime as number,
+            open: basePrice,
+            high: Math.max(basePrice, newPrice),
+            low: Math.min(basePrice, newPrice),
+            close: newPrice,
+            volume: 100 + Math.random() * 200,
+          };
+        } else {
+          currentCandle.high = Math.max(currentCandle.high, newPrice);
+          currentCandle.low = Math.min(currentCandle.low, newPrice);
+          currentCandle.close = newPrice;
+          currentCandle.volume += Math.random() * 10;
+        }
+
+        const candle = currentCandleRef.current!;
+        candleSeriesRef.current!.update({
+          time: candle.time as Time,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+        });
+
+        volumeSeriesRef.current!.update({
+          time: candle.time as Time,
+          value: candle.volume,
+          color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+        });
+      }, 3000);
+
+      return () => clearInterval(updateTimer);
+    }
+  }, [interval, currentPrice, lastPrice, binanceSymbol, effectiveCandleData]);
 
   return (
     <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
