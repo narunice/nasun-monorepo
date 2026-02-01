@@ -88,6 +88,88 @@ export async function fetchBinanceCandles(
 }
 
 /**
+ * 24-hour ticker data from Binance
+ */
+export interface Binance24hTicker {
+  priceChange: number;
+  priceChangePercent: number;
+  highPrice: number;
+  lowPrice: number;
+  volume: number;
+  quoteVolume: number;
+}
+
+/**
+ * Fetch 24h ticker data from Binance
+ * @param symbol - Binance symbol (e.g., 'BTCUSDT')
+ * @returns 24h ticker data, or null on error
+ */
+export async function fetchBinance24hTicker(
+  symbol: string
+): Promise<Binance24hTicker | null> {
+  try {
+    const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+
+    if (!response.ok) throw new Error(`Binance API ${response.status}`);
+
+    const data = await response.json();
+    return {
+      priceChange: parseFloat(data.priceChange),
+      priceChangePercent: parseFloat(data.priceChangePercent),
+      highPrice: parseFloat(data.highPrice),
+      lowPrice: parseFloat(data.lowPrice),
+      volume: parseFloat(data.volume),
+      quoteVolume: parseFloat(data.quoteVolume),
+    };
+  } catch (error) {
+    console.warn('[Market] Binance 24h ticker failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Recent trade data from Binance
+ */
+export interface RecentTrade {
+  id: number;
+  price: number;
+  qty: number;
+  time: number;
+  isBuyerMaker: boolean;
+}
+
+/**
+ * Fetch recent trades from Binance
+ * @param symbol - Binance symbol (e.g., 'BTCUSDT')
+ * @param limit - Number of trades (max 1000, default 50)
+ * @returns Array of recent trades, or null on error
+ */
+export async function fetchBinanceRecentTrades(
+  symbol: string,
+  limit: number = 50
+): Promise<RecentTrade[] | null> {
+  try {
+    const url = `https://api.binance.com/api/v3/trades?symbol=${symbol}&limit=${limit}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+
+    if (!response.ok) throw new Error(`Binance API ${response.status}`);
+
+    const data = await response.json();
+    return data.map((t: Record<string, unknown>) => ({
+      id: t.id as number,
+      price: parseFloat(t.price as string),
+      qty: parseFloat(t.qty as string),
+      time: t.time as number,
+      isBuyerMaker: t.isBuyerMaker as boolean,
+    }));
+  } catch (error) {
+    console.warn('[Market] Binance recent trades failed:', error);
+    return null;
+  }
+}
+
+/**
  * Generate volume histogram data from candle data
  * @param candleData - Array of candle data with volume
  * @returns Array of histogram data for volume chart

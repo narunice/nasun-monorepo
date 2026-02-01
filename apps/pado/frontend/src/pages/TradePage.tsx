@@ -5,13 +5,15 @@
  * Simple mode: 2-column mobile-friendly layout
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
-import { BalancePanel, TradingPanel } from '../features/trading/containers';
+import { TradingPanel } from '../features/trading/containers';
 import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook } from '../features/trading/components';
 import { useTradeMode, useOrderbook } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
-import { getPriceChange24h, type TokenSymbol } from '../lib/prices';
+import { type TokenSymbol } from '../lib/prices';
+import { fetchBinance24hTicker, getBinanceSymbol } from '../lib/indicators';
 
 // Fixed height for chart and orderbook to ensure consistent layout
 const CHART_HEIGHT = 480;
@@ -31,14 +33,24 @@ function TradePageContent() {
   const oraclePrice = getPrice(baseSymbol);
   const displayPrice = midPrice || oraclePrice;
 
+  // Fetch real 24h market data from Binance
+  const binanceSymbol = getBinanceSymbol(baseSymbol);
+  const { data: ticker24h } = useQuery({
+    queryKey: ['ticker24h', binanceSymbol],
+    queryFn: () => fetchBinance24hTicker(binanceSymbol),
+    enabled: !!binanceSymbol,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
   // Market info data
   const marketInfo = {
     symbol: `${currentPool.baseToken.symbol}/${currentPool.quoteToken.symbol}`,
     price: displayPrice,
-    priceChange24h: getPriceChange24h(baseSymbol),
-    volume24h: 1_250_000,
-    high24h: displayPrice * 1.025,
-    low24h: displayPrice * 0.975,
+    priceChange24h: ticker24h?.priceChangePercent ?? 0,
+    volume24h: ticker24h?.quoteVolume ?? 0,
+    high24h: ticker24h?.highPrice,
+    low24h: ticker24h?.lowPrice,
   };
 
   // Handle orderbook price click
@@ -79,9 +91,6 @@ function TradePageContent() {
       {/* Market Info Bar */}
       <MarketInfoBar {...marketInfo} />
 
-      {/* Balance Panel - Pro mode only */}
-      {!isSimple && <BalancePanel />}
-
       {/* Main Trading Grid */}
       {isSimple ? (
         /* Simple Mode: Chart + Trading Panel (2 columns) */
@@ -115,7 +124,10 @@ function TradePageContent() {
           </div>
 
           {/* Trading Panel - Order Form */}
-          <div className="lg:col-span-3 xl:col-span-2">
+          <div
+            className="lg:col-span-3 xl:col-span-2 overflow-y-auto rounded-lg"
+            style={{ maxHeight: `${CHART_HEIGHT}px` }}
+          >
             <TradingPanel mode={mode} />
           </div>
         </div>

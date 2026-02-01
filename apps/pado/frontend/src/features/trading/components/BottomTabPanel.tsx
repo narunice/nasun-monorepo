@@ -37,7 +37,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   return (
     <div className={`bg-theme-bg-secondary rounded-lg ${className}`}>
       {/* Tab Headers */}
-      <div className="flex border-b border-theme-border overflow-x-auto">
+      <div className="flex border-b border-theme-border overflow-x-auto scrollbar-hide">
         {tabs.map((tab) => (
           <button
             key={tab.id}
