@@ -1,144 +1,190 @@
-# Pado 개발 로드맵
+# Pado Next Steps: Prototype Launch
 
-> 작성일: 2025-12-26
-> 최종 업데이트: 2026-01-17
-> 비전: **"One Account. One Margin Pool. Every Asset Works Harder."**
-
----
-
-## Executive Summary
-
-### 핵심 전략 선언
-
-> **Pado = Decentralized Prime Brokerage + Unified Account**
-
-현재 Pado는 **Unified Margin v1**과 **Perpetuals DEX Core** 구현을 완료하여 비전 달성에 한 걸음 더 다가섰습니다. 다음 단계는 **Perpetuals Trading UI의 고도화**와 **Spot-Perp Integration**을 통해 진정한 통합 마진 경험을 제공하는 것입니다.
-
-### 비전 부합도 점수
-
-| 영역 | 점수 | 비전 임팩트 | 상태 |
-|------|------|------------|------|
-| **Unified Margin** | **80%** | ⭐⭐⭐⭐⭐ | ✅ v1 완료 (Multi-collateral + Risk Engine + Liquidation) |
-| **Smart Account** | **70%** | ⭐⭐⭐⭐⭐ | ✅ 잔고 통합 UI 완료 |
-| **Risk Engine** | **80%** | ⭐⭐⭐⭐ | ✅ v1 완료 (4-Tier Threshold) |
-| **Perpetuals** | **85%** | ⭐⭐⭐⭐ | ✅ Phase 11.4 완료 (청산 엔진 + Keeper) |
-| Spot Trading | 80% | ⭐⭐⭐ | ⚠️ 별도 BalanceManager (통합 예정) |
-| zkLogin | 100% | ⭐⭐⭐ | ✅ 완료 |
-| Lending | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
-| Staking | 70% | ⭐⭐ | ⚠️ Core 통합 대기 |
-| Prediction | 60% | ⭐⭐ | ⚠️ Core 통합 대기 |
-| Payments | 80% | ⭐⭐ | ✅ 기능 완료 |
-| Lottery | 100% | ⭐ | ✅ 완료 |
-
-**전체 비전 부합도: 약 75%** (Phase 16 v1 + Phase 11.4 완료 후)
+> Last Updated: 2026-01-31
+> Vision: **Finance-first social -- a financial platform where community forms around execution, not hype.**
+> Strategic Reference: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
 ---
 
-## 구현 완료 상태
+## Current State Summary
 
-### Core Era ✅ (v1 완료)
+Pado has **17 completed development phases** covering spot trading, perpetuals, prediction markets, lottery, payments, unified margin, and zkLogin. The core financial engine works.
 
-| Phase | 상태 | 내용 | 비전 기여도 | 완료일 |
-|-------|------|------|------------|--------|
-| **Phase 16** | ✅ | **Unified Margin v1** | ⭐⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 16.1 | ✅ | Oracle Integration | ⭐⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 16.2 | ✅ | Multi-Collateral | ⭐⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 16.3 | ✅ | Position Registry + Risk Engine v1 | ⭐⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 16.4 | ✅ | Liquidation Engine | ⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 16.5 | ✅ | Smart Account UI | ⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 16.1c | ✅ | Risk Engine UI Integration | ⭐⭐⭐ | 2026-01-10 |
-| **Phase 11** | ✅ | **Perpetuals DEX** | ⭐⭐⭐⭐ | 2026-01-10 |
-| Phase 11.1 | ✅ | perpetual.move (PerpMarket, Position) | ⭐⭐⭐ | 2026-01-10 |
-| Phase 11.2 | ✅ | funding.move (8h Funding Rate) | ⭐⭐⭐ | 2026-01-10 |
-| Phase 11.3 | ✅ | Perp Trading UI | ⭐⭐⭐ | 2026-01-10 |
-| Phase 11.4 | ✅ | Perp Liquidation + Keeper | ⭐⭐⭐ | 2026-01-10 |
-| Phase 17 | ✅ | **Lottery v2** | ⭐ | 2026-01-09 |
+What's missing for prototype launch is not more features -- it's **polish, reliability, and community infrastructure**.
+
+### Devnet V6 Deployment Status
+
+| Category | Status |
+|----------|--------|
+| Tokens (NBTC, NUSDC, Faucet) | Deployed |
+| DeepBook V3 (Spot CLOB) | Deployed |
+| Prediction Markets | Deployed |
+| Lottery | Deployed |
+| Governance | Deployed |
+| Baram (Escrow + Executor) | Deployed |
+| Oracle, Margin, Perp | **Not yet deployed on V6** (not blocking prototype) |
 
 ---
 
-## 우선순위 매트릭스
+## Priority 1: Prototype Polish (Phase 18)
 
-```
-                         HIGH VISION IMPACT
-                              ▲
-                              │
-         ┌────────────────────┼────────────────────┐
-         │                    │                    │
-         │   ⭐ PRIORITY 1    │   ⭐ PRIORITY 0    │
-         │   (다음 단계)      │   (완료!)          │
-         │                    │                    │
-         │  • Spot-Perp       │  • Unified Margin ✅│
-         │    Integration     │  • Smart Account ✅ │
-         │  • Portfolio       │  • Risk Engine ✅   │
-         │    Margin          │  • Perp Core ✅     │
-         │                    │                    │
-  LOW ◄──┼────────────────────┼────────────────────┼──► HIGH
-  EFFORT │                    │                    │   EFFORT
-         │   PRIORITY 3      │   PRIORITY 2       │
-         │   (선택적)         │   (완료!)          │
-         │                    │                    │
-         │  • 차트 인디케이터 │  • Oracle 통합 ✅   │
-         │  • 테마/모바일 ✅  │  • 청산 엔진 ✅     │
-         │  • Prediction ✅   │  • 펀딩 레이트 ✅   │
-         │    시드 유동성     │  • Keeper 인프라 ✅│
-         │                    │                    │
-         └────────────────────┼────────────────────┘
-                              │
-                              ▼
-                         LOW VISION IMPACT
-```
+The single most important thing at launch: **a visitor creates a wallet, gets faucet tokens, and executes a trade on a real orderbook -- all within 60 seconds**.
 
----
+### 18.1 End-to-End Trading Flow QA
 
-## 다음 단계 목표 (Next Steps)
+Walk through the full visitor journey and fix every friction point:
 
-### Phase 11.5: Spot-Perp Integration 🚀
+1. Land on Pado → First impression (landing page or direct to trading)
+2. Create wallet → Must be < 30 seconds, zero confusion
+3. Get faucet tokens → Instant, never fails silently
+4. Place a limit order → Confirm it appears in orderbook
+5. Fill the order → Confirm balance updates correctly
+6. View order history → Confirm trade is recorded
 
-**목표**: Spot 거래와 Perpetual 거래가 동일한 Unified Margin 풀을 공유하도록 통합합니다.
+**Known areas to verify**:
+- Faucet claim flow (ClaimRecord shared object contention under load)
+- DeepBook balance manager deposit/withdraw reliability
+- Orderbook real-time sync (WebSocket vs polling)
+- Chart data population (needs active trading data)
 
-| 순서 | 작업 | 설명 |
-|------|------|------|
-| 11.5.1 | MarginAccount 연동 | Perp 포지션 개설 시 MarginAccount 담보 확인 |
-| 11.5.2 | PnL 반영 | Perp 미실현 PnL을 MarginAccount 총 자산 가치에 반영 |
-| 11.5.3 | 청산 연쇄 작용 | Perp 청산 시 Spot 자산도 청산 대상에 포함 (또는 그 반대) |
-| 11.5.4 | UI 통합 | Trade 페이지에서 Spot/Perp 전환 시 잔고가 통합되어 보이도록 개선 |
+### 18.2 Onboarding UX
 
-### Phase 12: Lending & Borrowing 📋
+- Consider a first-time guided flow (tooltip or modal sequence)
+- Ensure wallet creation → faucet → first trade is a single unbroken flow
+- Error messages must be human-readable, not raw RPC errors
 
-**목표**: 유휴 자산을 예치하여 이자 수익을 얻거나, 담보를 통해 자산을 대출받는 기능.
+### 18.3 UI Polish
 
-| 순서 | 작업 | 설명 |
-|------|------|------|
-| 12.1 | Lending Pool 컨트랙트 | 공급/대출 풀 로직 구현 |
-| 12.2 | Interest Rate Model | 이용률 기반 동적 금리 모델 |
-| 12.3 | Margin 통합 | 예치 자산을 Unified Margin 담보로 인정 (Haircut 적용) |
-| 12.4 | UI 구현 | Earn 페이지에 Lending/Borrowing 기능 추가 |
+- Consistent loading states across all pages
+- Empty states for orderbook, trade history, portfolio
+- Mobile responsiveness check on trading page
+- Navigation clarity: Trading / Prediction / Lottery clearly accessible
 
 ---
 
-## 배포된 컨트랙트 (2026-01-17 기준)
+## Priority 2: Social Layer MVP (Phase 19)
 
-### Unified Margin v1
-- **Package**: `0x2886424ff9b3ed9ecdb408ea1f68ca9598efbcbf796311ad3dc33c97d31d63c7`
-- **MarginRegistry**: `0x57979cb0...`
-- **UpgradeCap**: `0x4781e6fd...`
+The community infrastructure that converts a demo into a gathering place.
 
-### Perpetuals DEX (v2)
-- **Package**: `0x4e2a36299ce4b17ecbd3c4049fa99aae77afeb193a0724c4ad738765072be2e5`
-- **UpgradeCap**: `0x19f09fb2fe1c4406b61d134881743e37a3cab2f8ae5b538f350025213c0fb910`
-- **BTC-PERP Market**: `0x0a3ba00cce5aae262ea48ca989dbdf9270addc06e796242f9c0189087c111ec2`
+### 19.1 Global Chat
 
-### Lottery (v2)
-- **Package**: `0x8dce08316436ed3fa8c4a183895101ee4a4c4eb8e1dcd19e121b46ee5e256538`
-- **LotteryRegistry**: `0x56e1875df39be66f3c591678ff75866b6c44637c4b84e4c2767926f738ea7f16`
+**Scope**: Single chat room, visible in the trading page sidebar.
+
+**Technical approach**:
+- WebSocket server running on existing EC2 instance
+- Backend: Node.js WebSocket server (ws or Socket.IO)
+- Storage: SQLite file on EC2 (simple, zero cost, 90-day message retention)
+- Frontend: Collapsible sidebar panel on the trading page
+- Identity: Connected wallet address (truncated), optional display name
+
+**What it needs to do**:
+- Send/receive messages in real-time
+- Show wallet address (linked to explorer) per message
+- Show online user count
+- Basic moderation (admin can delete messages)
+- Rate limiting (prevent spam)
+
+**What it does NOT need**:
+- User authentication beyond wallet connection
+- Message encryption
+- File/image uploads
+- Multiple channels
+- Message reactions or threading
+
+### 19.2 Testnet Leaderboard
+
+**Scope**: Public leaderboard ranked by testnet trading activity.
+
+**Technical approach**:
+- Data source: Index DeepBook trade events from RPC (or maintain a simple server-side event listener)
+- Metrics: Total volume traded, number of trades, P&L (if computable from fills)
+- Display: Dedicated leaderboard page + compact widget on trading page
+- Identity: Wallet address + optional nickname
+
+**Key design decisions**:
+- Opt-in vs auto-included: Start with auto-included (all traders visible), add opt-out later if requested
+- Update frequency: Every few minutes (not real-time, to reduce load)
+- Timeframe: Rolling 7-day and all-time
+
+**NFT whitelist connection**: Leaderboard ranking should be designed so it can later be used as a factor in NFT whitelist allocation. This creates the incentive loop: trade on testnet → climb leaderboard → earn whitelist priority.
+
+### 19.3 Chat-Trading Integration
+
+- Chat panel lives in the trading page layout (sidebar or bottom panel)
+- Collapsible so it doesn't interfere with trading
+- Optionally show trade notifications in chat ("User 0x1234... bought 0.5 BTC")
 
 ---
 
-## 변경 이력
+## Priority 3: Activation (Phase 20)
 
-| 날짜 | 변경 내용 |
-|------|----------|
-| 2026-01-17 | **문서 현행화**: Phase 11.4, 16 v1, 17 완료 반영. 패키지 ID 최신화. |
-| 2026-01-10 | **Phase 16 v1 완료 + Phase 11.1-11.2 완료** |
-| 2026-01-09 | **Phase 17: Lottery 완료** |
-| 2026-01-04 | **Vision Analysis 기반 전면 재구성** |
+Ensure the vision-differentiating features are live at launch.
+
+### 20.1 Prediction Market
+
+- Create 1-2 markets with clear outcomes (e.g., a time-bound event)
+- Seed with initial liquidity so the market isn't empty
+- Verify resolution flow works end-to-end
+
+### 20.2 Lottery
+
+- Create 1 active round before launch
+- Verify ticket purchase → draw → settlement → claim flow
+- Ensure prize pool display is clear and compelling
+
+### 20.3 Navigation & Discovery
+
+- Main nav clearly shows: Trading | Predictions | Lottery
+- Each section has a clear value proposition visible on first load
+- Portfolio/Dashboard accessible but not primary navigation focus for prototype
+
+---
+
+## Not For Prototype (Tier 4)
+
+These are explicitly deferred. Do not work on them until after community formation and funding.
+
+- Perpetuals UI activation (contracts need V6 redeploy first)
+- Unified Margin v2 (Spot-Perp integration)
+- Lending & Borrowing UI
+- Encrypted DMs
+- AI Agents
+- Copy Trading
+- Reputation System / ZKP Leaderboards
+- Strategy Marketplace
+- Tournaments
+
+---
+
+## Dependencies & Infrastructure
+
+| Need | Solution | Cost |
+|------|----------|------|
+| WebSocket server (chat) | Run on existing EC2 alongside RPC/Faucet | $0 additional |
+| Message storage | SQLite file on EC2 | $0 |
+| Leaderboard indexer | Node.js process on EC2, polling RPC for trade events | $0 |
+| Domain/SSL | Already configured (pado.nasun.io or similar) | $0 |
+
+No new AWS resources required for prototype launch.
+
+---
+
+## Open Questions
+
+1. Should the chat and leaderboard backend be a single Node.js service or separate processes?
+2. What testnet campaign (leaderboard competition, faucet event) will drive initial activity at launch?
+3. Should leaderboard rankings carry weight in NFT whitelist allocation?
+4. Landing page: should visitors land on a dedicated landing page or go directly to the trading view?
+5. What is the target concurrent user count for launch day?
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-01-31 | Full rewrite: prototype launch priorities aligned with social layer strategy |
+| 2026-01-17 | Phase 11.4, 16 v1, 17 completion. Package IDs updated |
+| 2026-01-10 | Phase 16 v1, 11.1-11.2 completion |
+| 2026-01-09 | Phase 17: Lottery completion |
+| 2026-01-04 | Vision analysis-based full restructure |

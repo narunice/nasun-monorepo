@@ -1,102 +1,145 @@
-# Pado 구현 계획서 (Implementation Plan)
+# Pado Implementation Plan
 
-**작성일**: 2025-12-25
-**최종 업데이트**: 2026-01-17
-**상태**: Phase 16 v1, 11.1-11.4, 17 완료
-
----
-
-## 📅 Phase별 구현 계획
-
-### Phase 0: Infrastructure (✅ 완료)
-- [x] Nasun Devnet V3 리셋 (Sui v1.63.0 fork)
-- [x] 2-Node Validator 합의 구성
-- [x] Fullnode RPC + Faucet 구축
-
-### Phase 1: Spot DEX Core (✅ 완료)
-- [x] DeepBook V3 패키지 배포
-- [x] Test Tokens (NBTC, NUSDC) 배포
-- [x] NBTC/NUSDC 풀 생성
-
-### Phase 2: Trading UI MVP (✅ 완료)
-- [x] Orderbook 컴포넌트
-- [x] OrderForm (Limit/Market)
-- [x] UserBalance 관리
-
-### Phase 3: Trading UX (✅ 완료)
-- [x] Chart (Lightweight Charts)
-- [x] Order History
-- [x] Real-time Updates
-
-### Phase 4: Multi-Pool (✅ 완료)
-- [x] NASUN/NUSDC 풀 추가
-- [x] Market Selector UI
-
-### Phase 5: Native Token (✅ 완료)
-- [x] NASUN 입금/출금
-- [x] 가스비 예약 로직
-
-### Phase 6: Trading UX Pro (✅ 완료)
-- [x] 차트 보조지표 (MA, RSI, MACD)
-- [x] Volume 차트
-
-### Phase 7: Portfolio Dashboard (✅ 완료)
-- [x] 자산 현황 요약
-- [x] P&L 차트
-
-### Phase 8: Mobile & Theme (✅ 완료)
-- [x] 모바일 반응형 디자인
-- [x] 다크/라이트 테마
-
-### Phase 9: Smart Account v2 (✅ 완료)
-- [x] zkLogin 통합 (Google)
-- [x] Salt 관리 Lambda
-
-### Phase 14: Prediction Markets (✅ 완료)
-- [x] Prediction 컨트랙트 배포
-- [x] 마켓 생성/거래/정산 UI
-- [x] 시드 유동성 공급
-
-### Phase 15: Payments (✅ 완료)
-- [x] 토큰 전송 UI
-- [x] QR 코드 결제
-
-### Phase 16: Unified Margin v1 (✅ 완료)
-- [x] **MarginAccount 컨트랙트** (Multi-collateral)
-- [x] **Risk Engine v1** (4-Tier Threshold)
-- [x] **Liquidation Engine** (5% 보너스)
-- [x] **Smart Account UI** (통합 잔고 표시)
-
-### Phase 17: Lottery (✅ 완료)
-- [x] **Lottery v2 컨트랙트** (Sui Random)
-- [x] **티켓 구매 UI**
-- [x] **라운드 관리 및 추첨**
-
-### Phase 11: Perpetuals DEX (✅ 11.4 완료)
-- [x] **11.1 Core**: PerpMarket, Position, Leverage (20x)
-- [x] **11.2 Funding**: 8시간 펀딩, Oracle 연동
-- [x] **11.3 UI**: Perp Trading 페이지, 주문 UI
-- [x] **11.4 Liquidation**: 청산 엔진, Keeper
-- [ ] **11.5 Integration**: Spot-Perp 통합 마진 (Unified Margin v2)
+**Created**: 2025-12-25
+**Last Updated**: 2026-01-31
+**Status**: Prototype launch preparation
+**Strategic Reference**: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
 ---
 
-## 다음 단계 (Next Steps)
+## Strategic Context
 
-> 상세 계획은 **[PADO_NEXT_STEPS.md](PADO_NEXT_STEPS.md)**를 참조하세요.
+Pado launches as a **prototype**, not a finished product. The goal is to demonstrate a compelling vision with credible execution, build a community, and fund further development through NFT sales and VC investment.
 
-1. **Phase 11.5**: Spot-Perp Integration (Unified Margin v2)
-2. **Phase 12**: Lending & Borrowing
-3. **Phase 13**: Staking
+**Sequence**: Vision + Prototype → Community (Social Layer) → NFT Funding → Liquidity → Product Completion
+
+See [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md) for the full strategic analysis.
 
 ---
 
-## 변경 이력
+## Completed Phases (History)
 
-| 날짜 | 내용 |
-|------|------|
-| 2026-01-17 | Phase 16 v1, 11.1-11.4, 17 완료 상태 업데이트 |
-| 2026-01-10 | Phase 16 v1, 11.1-11.2 완료 상태 업데이트 |
-| 2026-01-09 | Phase 17 완료 상태 업데이트 |
-| 2026-01-04 | Phase 9, 14, 15 완료 상태 업데이트 |
-| 2025-12-25 | 최초 작성 |
+All phases below are implemented and functional on Nasun Devnet.
+
+| Phase | Name | Key Deliverables |
+|-------|------|-----------------|
+| 0 | Infrastructure | Devnet V6 (Sui fork), 2-Node Validator, RPC + Faucet |
+| 1 | Spot DEX Core | DeepBook V3 CLOB, NBTC/NUSDC pool |
+| 2 | Trading UI MVP | Orderbook, OrderForm (Limit/Market), Balance management |
+| 3 | Trading UX | Lightweight Charts, Order History, Real-time updates |
+| 4 | Multi-Pool | NASUN/NUSDC pool, Market Selector |
+| 5 | Native Token | NASUN deposit/withdraw, Gas reservation |
+| 6 | Trading UX Pro | MA/RSI/MACD indicators, Volume chart |
+| 7 | Portfolio Dashboard | Asset summary, P&L chart |
+| 8 | Mobile & Theme | Responsive design, Dark/Light theme |
+| 9 | Smart Account v2 | zkLogin (Google OAuth) |
+| 14 | Prediction Markets | Contract, Market creation/trading/settlement UI, Seed liquidity |
+| 15 | Payments | Token transfer UI, QR code payments |
+| 16 | Unified Margin v1 | MarginAccount (multi-collateral), Risk Engine (4-tier), Liquidation Engine |
+| 17 | Lottery v2 | Lottery contract (Sui Random), Ticket purchase UI, Multi-tier prizes |
+| 11.1-11.4 | Perpetuals DEX | PerpMarket, Position, Leverage (20x), Funding, Trading UI, Liquidation + Keeper |
+
+---
+
+## Deployed Contracts (Devnet V6, 2026-01-28)
+
+> Full addresses: `packages/devnet-config/devnet-ids.json`
+
+| Contract | Status | Package ID (prefix) |
+|----------|--------|-------------------|
+| devnet_tokens (NBTC, NUSDC, Faucet) | Deployed | `0x1074...` |
+| DeepBook V3 (CLOB) | Deployed | `0xaad9...` |
+| Prediction (GlobalState) | Deployed | `0xbc4b...` |
+| Lottery (LotteryRegistry) | Deployed | `0x3b54...` |
+| Governance (Dashboard) | Deployed | `0x02da...` |
+| Baram (BaramRegistry + Executor) | Deployed | `0xfbe1...` |
+| pado_oracle | **Not yet deployed on V6** | -- |
+| unified_margin | **Not yet deployed on V6** | -- |
+| pado_perp | **Not yet deployed on V6** | -- |
+
+---
+
+## Forward Plan: Prototype Launch
+
+The forward plan is organized by the tier system defined in [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md), aligned with the prototype visitor journey.
+
+### Phase 18: Prototype Polish (Tier 1 -- Must Ship)
+
+**Goal**: Core financial proof -- visitors must be able to trade on a real orderbook within 60 seconds of landing.
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 18.1 Spot Trading QA | End-to-end testing: wallet creation → faucet → place order → fill → balance update | Pending |
+| 18.2 Onboarding Flow | Streamline wallet creation + faucet claim into a single guided flow | Pending |
+| 18.3 Orderbook + Chart Stability | Fix any rendering/sync issues, ensure real-time updates are reliable | Pending |
+| 18.4 UI Polish Pass | Landing page, navigation, error states, loading states, empty states | Pending |
+| 18.5 Faucet Reliability | Ensure faucet never fails silently, add rate limiting for abuse prevention | Pending |
+
+### Phase 19: Social Layer MVP (Tier 2 -- Must Ship)
+
+**Goal**: Community foundation -- turn one-time visitors into returning community members.
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 19.1 Global Chat | Single room, WebSocket-based, trading page sidebar. Wallet address as identity | Pending |
+| 19.2 Testnet Leaderboard | Opt-in, ranked by trading volume and PnL. Publicly visible on Pado | Pending |
+| 19.3 Chat-Trading Integration | Chat lives alongside the live orderbook. Messages visible while trading | Pending |
+
+**Technical Decisions (Phase 19)**:
+- Chat backend: WebSocket server on existing EC2 (cost: $0 additional)
+- Message storage: SQLite or PostgreSQL on EC2 (90-day retention)
+- Identity: Wallet address (truncated display), optional nickname
+- No separate auth -- wallet connection = chat access
+
+### Phase 20: Vision Differentiation (Tier 3 -- Strongly Recommended)
+
+**Goal**: Demonstrate that Pado is more than a DEX -- it's a unified financial platform.
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 20.1 Prediction Market Activation | Ensure 1-2 active markets are running at launch with seed liquidity | Pending |
+| 20.2 Lottery Round Activation | Ensure 1 active lottery round is running at launch | Pending |
+| 20.3 Cross-Feature Navigation | Smooth transitions between Trading, Prediction, Lottery from main nav | Pending |
+
+### Phase 21: V6 Contract Redeployment
+
+**Goal**: Redeploy remaining contracts that were not migrated in the V6 devnet reset.
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 21.1 Oracle Redeployment | Redeploy pado_oracle, update devnet-ids.json and .env | Pending |
+| 21.2 Margin Redeployment | Redeploy unified_margin, update devnet-ids.json and .env | Pending |
+| 21.3 Perp Redeployment | Redeploy pado_perp, update devnet-ids.json and .env | Pending |
+| 21.4 Bot Reconfiguration | Update price-updater and liquidation-keeper with new contract addresses | Pending |
+
+> Note: Phases 18-20 can proceed without 21. Perp/Margin UI is Tier 4 (post-funding). Oracle redeployment is needed only if prediction markets require on-chain price feeds.
+
+---
+
+## Post-Funding Roadmap (Tier 4 -- Vision Document Only)
+
+These features are implemented or partially implemented but are **not required for prototype launch**. They become priorities after community formation and initial funding.
+
+| Feature | Current State | Priority Trigger |
+|---------|--------------|-----------------|
+| Perpetuals Trading UI | Phase 11.3 UI exists, contracts need V6 redeploy | After funding, when liquidity is meaningful |
+| Unified Margin v2 (Spot-Perp Integration) | Contracts exist, UI integration pending | After perp redeploy |
+| Lending & Borrowing | Contract exists, UI not built | After core user base established |
+| Encrypted DMs | Not started | When users request it |
+| AI Agents (Risk Sentinel, Market Narrator) | Not started | When data indexing is stable |
+| Category Chat Tabs | Not started | When single chat becomes too noisy |
+| Copy Trading / Reputation System | Not started | When community has meaningful participation |
+| Strategy Marketplace / Tournaments | Not started | When community is self-sustaining |
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-01-31 | Full rewrite: prototype launch strategy aligned with social layer discussion |
+| 2026-01-17 | Phase 16 v1, 11.1-11.4, 17 completion status update |
+| 2026-01-10 | Phase 16 v1, 11.1-11.2 completion status update |
+| 2026-01-09 | Phase 17 completion status update |
+| 2026-01-04 | Phase 9, 14, 15 completion status update |
+| 2025-12-25 | Initial creation |

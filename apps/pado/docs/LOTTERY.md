@@ -50,13 +50,13 @@ No Winners Case:
 
 ## 3. Smart Contract
 
-### 3.1 Deployed Addresses (Nasun Devnet) - v2 Multi-Tier
+### 3.1 Deployed Addresses (Nasun Devnet V6)
 | Item | Address |
 |------|---------|
-| Package | `0x8dce08316436ed3fa8c4a183895101ee4a4c4eb8e1dcd19e121b46ee5e256538` |
-| LotteryRegistry | `0x56e1875df39be66f3c591678ff75866b6c44637c4b84e4c2767926f738ea7f16` |
-| AdminCap | `0xf60cb648dc721bc14b794914518732e809efc7ac471ad1e1213706d209447d68` |
-| UpgradeCap | `0xacd8378d0c184155abf3f782c83de51830a5f8b964b60ea3406cb2213854d1d0` |
+| Package | `0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80` |
+| LotteryRegistry | `0x0a64e225326746ff7c1ff7bb0b130cd0df922cc00101aedbfa442550e7995794` |
+| AdminCap | `0x8329a17bed9e4b98aeb502b1ecca5ee9d73b7ca1dd8a60a85e09dfd7f61f0cec` |
+| UpgradeCap | `0x770677ca76e9adb8830271db7bed30ff9cb400abbe4130e6c61af58ec954a3c8` |
 
 ### 3.2 Module Structure
 ```
@@ -326,13 +326,14 @@ nasun client call \
 
 ---
 
-## 8. Future Roadmap (v2+)
+## 8. Future Roadmap
 
-1. **Multi-tier Prizes**: 5-match, 4-match, 3-match tiers
-2. **NFT Tickets**: Tradeable NFT tickets on secondary market
-3. **Pado XP Integration**: Lottery participation earns XP
-4. **Automated Keeper**: Auto-execute draw/settlement
-5. **Unified Margin Integration**: Purchase directly from margin account
+> Multi-tier prizes (5-match, 4-match, 3-match) are already implemented in v2.
+
+1. **NFT Tickets**: Tradeable NFT tickets on secondary market
+2. **Pado XP Integration**: Lottery participation earns XP
+3. **Automated Keeper**: Auto-execute draw/settlement
+4. **Unified Margin Integration**: Purchase directly from margin account
 
 ---
 
