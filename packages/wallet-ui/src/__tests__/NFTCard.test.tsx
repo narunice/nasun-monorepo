@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { NFTCard } from '../NFTCard';
+import { NFTCard } from '../nft/NFTCard';
 import type { NFTInfo } from '@nasun/wallet';
 
 // Mock @nasun/wallet

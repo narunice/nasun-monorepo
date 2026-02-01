@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { BalanceDisplay } from '../BalanceDisplay';
+import { BalanceDisplay } from '../balance/BalanceDisplay';
 
 // Get mocked functions
 const mockUseWallet = vi.fn();
@@ -11,6 +11,15 @@ vi.mock('@nasun/wallet', () => ({
   useWallet: () => mockUseWallet(),
   useBalance: () => mockUseBalance(),
   useRefreshBalance: () => mockUseRefreshBalance(),
+  useChain: vi.fn(() => ({
+    chain: { id: 'nasun-devnet', name: 'Nasun Devnet', type: 'move', nativeCurrency: { symbol: 'NSN', name: 'Nasun', decimals: 9 }, rpcUrl: 'https://rpc.devnet.nasun.io' },
+    isEVM: false,
+    isMoveChain: true,
+    switchChain: vi.fn(),
+    availableChains: [],
+  })),
+  useEVMBalance: vi.fn(() => ({ balance: null, isLoading: false, error: null, refetch: vi.fn() })),
+  getStoredEVMAddress: vi.fn(() => null),
 }));
 
 describe('BalanceDisplay', () => {

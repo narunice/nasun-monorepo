@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from './setup';
-import { ValidatorList } from '../ValidatorList';
+import { ValidatorList } from '../staking/ValidatorList';
 
 // The default mock from setup.tsx provides validators
 // We'll use those defaults for most tests

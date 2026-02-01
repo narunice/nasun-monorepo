@@ -2,7 +2,8 @@
   "extends": "@nasun/tsconfig/react.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src"]
 }

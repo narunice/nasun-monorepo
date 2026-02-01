@@ -154,8 +154,8 @@ export {
   NsaRecoveryPanel,
 } from './nsa';
 
-// Shared components
-export { Tooltip, InlineTooltip } from './shared';
+// Shared components and design tokens
+export { Tooltip, InlineTooltip, WALLET_STYLES } from './shared';
 export type { TooltipProps, InlineTooltipProps } from './shared';
 
 // UI Settings (stores and hooks)

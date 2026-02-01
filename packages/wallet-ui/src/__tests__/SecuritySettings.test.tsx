@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from './setup';
-import { SecuritySettings } from '../SecuritySettings';
+import { SecuritySettings } from '../security/SecuritySettings';
 
 // Uses mocks from setup.tsx
 
