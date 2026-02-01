@@ -48,9 +48,8 @@ export function Header() {
   }, []);
 
   // Wallet connection state
-  const { status, account } = useWallet();
+  const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = isZkLoggedIn || (status === 'unlocked' && account);
 
   // Admin access check
   const { isAdmin } = useAdminAccess();

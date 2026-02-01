@@ -110,7 +110,6 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
         {reversedAsks.length > 0 ? (
           <div className="space-y-px">
             {reversedAsks.map((level, i) => {
-              const originalIndex = displayedAsks.length - 1 - i;
               const cumulative = reversedAskCumulatives[i];
               const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
 

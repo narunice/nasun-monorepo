@@ -10,7 +10,7 @@
 
 /** Deployed pado_perp package ID (TODO: Redeploy for V6) */
 export const PERP_PACKAGE_ID =
-  '0x4e2a36299ce4b17ecbd3c4049fa99aae77afeb193a0724c4ad738765072be2e5';
+  import.meta.env.VITE_PERP_PACKAGE_ID || '';
 
 /** Module names */
 export const PERP_MODULE = 'perpetual';
@@ -19,9 +19,9 @@ export const LIQUIDATION_MODULE = 'liquidation';
 
 // ===== Market IDs (to be populated after market creation) =====
 
-/** BTC-PERP market shared object ID */
+/** BTC-PERP market shared object ID (TODO: Create after V6 redeployment) */
 export const PERP_MARKET_BTC =
-  '0x0a3ba00cce5aae262ea48ca989dbdf9270addc06e796242f9c0189087c111ec2';
+  import.meta.env.VITE_PERP_MARKET_BTC || '';
 
 // ===== Oracle Configuration =====
 
@@ -32,9 +32,9 @@ export const ORACLE_SYMBOL = {
   NASUN: 3,
 } as const;
 
-/** Oracle Registry shared object ID */
+/** Oracle Registry shared object ID (TODO: Redeploy for V6) */
 export const ORACLE_REGISTRY_ID =
-  '0x023944875d36fe148facf696cc00b6c4a850074556890e547dcd61f5d8710b9b';
+  import.meta.env.VITE_ORACLE_REGISTRY_ID || '';
 
 // ===== Contract Constants (mirrored from perpetual.move) =====
 

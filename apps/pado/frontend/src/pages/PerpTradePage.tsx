@@ -4,6 +4,9 @@
  */
 
 import { PerpTradingPanel } from '../features/perp/containers/PerpTradingPanel';
+import { PERP_PACKAGE_ID } from '../features/perp/constants';
+
+const isDeployed = !!PERP_PACKAGE_ID;
 
 export function PerpTradePage() {
   return (
@@ -15,7 +18,16 @@ export function PerpTradePage() {
         </p>
       </div>
 
-      <PerpTradingPanel />
+      {!isDeployed ? (
+        <div className="p-6 bg-theme-bg-secondary rounded-lg border border-theme-border text-center">
+          <p className="text-lg font-medium text-theme-text-primary mb-2">Coming Soon</p>
+          <p className="text-sm text-theme-text-muted">
+            Perpetual futures contracts are pending V6 redeployment.
+          </p>
+        </div>
+      ) : (
+        <PerpTradingPanel />
+      )}
 
       {/* Info Section */}
       <div className="mt-8 p-4 bg-theme-bg-secondary rounded-lg">

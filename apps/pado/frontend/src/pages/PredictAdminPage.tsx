@@ -7,8 +7,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { CreateMarketForm, usePredictionAdmin } from '../features/prediction';
 
-// Admin address that owns AdminCap
-const ADMIN_ADDRESS = '0x05eef6d318e5a824fdf763270e3a719bb0327ddf814dea29cba6c963ebdb8f21';
+// Admin address that owns AdminCap (from devnet-config)
+const ADMIN_ADDRESS = import.meta.env.VITE_PREDICTION_RESOLVER_ADDRESS || '';
 
 export function PredictAdminPage() {
   const { status, account } = useWallet();

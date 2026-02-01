@@ -14,8 +14,7 @@ import { SuiClient } from '@mysten/sui/client';
 // ========================================
 
 const ORACLE_REGISTRY_ID =
-  import.meta.env.VITE_ORACLE_REGISTRY_ID ||
-  '0x023944875d36fe148facf696cc00b6c4a850074556890e547dcd61f5d8710b9b';
+  import.meta.env.VITE_ORACLE_REGISTRY_ID || '';
 
 const DECIMALS = 8;
 
