@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from './setup';
-import { StakingPanel } from '../StakingPanel';
+import { StakingPanel } from '../staking/StakingPanel';
 import * as walletModule from '@nasun/wallet';
 
 // The default mocks from setup.tsx provide:
