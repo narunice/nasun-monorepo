@@ -1,0 +1,52 @@
+
+
+
+
+<refactorRequest>
+  <context>
+    <project>nasun-monorepo</project>
+    <packages>/home/naru/my_apps/nasun-monorepo/packages/wallet 
+    /home/naru/my_apps/nasun-monorepo/packages/wallet-ui
+    </packages>
+    <language>TypeScript + React (Vite)</language>
+    <framework>React 19, TailwindCSS 3.4</framework>
+    <description>
+      VibeCoding으로 생성된 코드 중 일부 파일이 지나치게 길고,
+      여러 UI 로직과 상태 관리가 뒤섞여 있습니다.
+    </description>
+  </context>
+
+  <goals>
+    <goal>긴 컴포넌트를 작은 단위로 분리</goal>
+    <goal>UI 로직과 상태 관리 로직을 분리</goal>
+    <goal>코드 가독성과 유지보수성 강화</goal>
+    <goal>nasun-wallet패키지는 나선 모노레포의 모든 앱들이 공통적으로 불러와서 사용하는 패키지임으로, 지갑 패키지에서 변경한 내용이 지갑을 사용중인 모든 앱에서 동일하게 반영되어야 함</goal>
+  </goals>
+
+  <actions>
+  <action>롤백포인트 확보</action>
+    <action>React 컴포넌트는 UI/컨테이너/훅으로 나누기</action>
+    <action>중복된 유틸 함수는 packages/tsconfig 또는 packages/ui로 이동</action>
+    <action>상태 관리 로직은 hooks 디렉토리로 분리</action>
+    <action>TailwindCSS 스타일은 공통 config에 맞게 정리</action>
+    <action>컴포넌트 사용처에서 가급적 텍스트 사이즈와 폰트 두께를 class를 사용해 커스터마이즈 하지 말고, h나 p tag를 사용해 글로벌 css를 추종하도록 할 것</action>
+    <action>꼭 필요하다고 판단되는 곳에서는 컴포넌트 사용처에서 텍스트사이즈와 폰트 두께를 class로 커스터마이즈할 수 있고, 이때도 반응형 디자인을 고려해야함</action>
+    <action>불필요한 props drilling은 context API 또는 recoil로 대체</action>
+    <action>리팩토링된 컴포넌트에 대해 단위 테스트 작성</action>
+    <action>리팩토링 후 기존 기능이 정상 동작하는지 E2E 테스트 작성</action>
+  </actions>
+
+  <constraints>
+    <constraint>기존 API 인터페이스와 props는 변경하지 말 것</constraint>
+    <constraint>보안 규칙 준수 (XSS, CSP, OAuth 등)</constraint>
+    <constraint>불필요한 주석이나 타입 변경 금지</constraint>
+    <constraint>텍스트를 쉽게 읽을 수 있도록 가독성 좋게 디자인 할 것</constraint>   
+   <constraint> border이나 background 색상, hover효과는 강렬한 대비를 지양하고 subtle하고 세련된 느낌 선호함 </constraint>
+  </constraints>
+
+  <output>
+    <format>리팩토링된 코드와 디렉토리 구조 제안</format>
+    <explanation>각 변경의 이유와 기대 효과 설명</explanation>
+    <fileReferenceFormat>VS Code markdown 링크</fileReferenceFormat>
+  </output>
+</refactorRequest>
