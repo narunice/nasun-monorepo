@@ -61,8 +61,21 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   // 슬리피지 상태 (Market) - 기본값 0.5%
   const [slippage, setSlippage] = useState(0.5);
 
-  // One-Click Trading 상태 (기본값: false)
-  const [oneClickEnabled, setOneClickEnabled] = useState(false);
+  // One-Click Trading 상태 (localStorage 저장)
+  const [oneClickEnabled, setOneClickEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('pado:oneClickEnabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleSetOneClickEnabled = useCallback((enabled: boolean) => {
+    setOneClickEnabled(enabled);
+    try {
+      localStorage.setItem('pado:oneClickEnabled', String(enabled));
+    } catch { /* ignore */ }
+  }, []);
 
   // OrderType 변환
   const getOrderType = useCallback((): OrderType => {
@@ -104,7 +117,7 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         slippage,
         setSlippage,
         oneClickEnabled,
-        setOneClickEnabled,
+        setOneClickEnabled: handleSetOneClickEnabled,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,
