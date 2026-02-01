@@ -134,7 +134,7 @@ export function ConnectedView(props: ConnectedViewProps) {
     <div className="w-full ">
       {/* Header */}
       <div className="px-3 py-3 bg-gray-100 dark:bg-zinc-700/50">
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-start justify-between gap-2">
           {/* Left: variant-specific header */}
           {header.variant === "zkLogin" ? (
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -156,6 +156,14 @@ export function ConnectedView(props: ConnectedViewProps) {
                 <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 truncate">
                   {header.zkUserInfo?.email || header.zkUserInfo?.provider || "Connected"}
                 </p>
+                <CopyableAddress
+                  value={header.zkAddress}
+                  shorten={isMobile ? 4 : 6}
+                  showCopy
+                  showExplorer
+                  explorerType="address"
+                  size="xs"
+                />
               </div>
             </div>
           ) : (
@@ -186,17 +194,6 @@ export function ConnectedView(props: ConnectedViewProps) {
           />
         </div>
 
-        {/* Address for zkLogin (below profile info) */}
-        {header.variant === "zkLogin" && (
-          <CopyableAddress
-            value={header.zkAddress}
-            shorten={isMobile ? 4 : 6}
-            showCopy
-            showExplorer
-            explorerType="address"
-            size="xs"
-          />
-        )}
       </div>
 
       {/* Network selector modal */}

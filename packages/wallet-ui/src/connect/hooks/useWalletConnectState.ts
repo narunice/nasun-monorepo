@@ -375,7 +375,7 @@ export function useWalletConnectState() {
   }, [clearError]);
 
   const handleDelete = useCallback(() => {
-    if (confirm("Are you sure you want to delete your wallet? This action cannot be undone.")) {
+    if (confirm("Remove this wallet from your browser?\nYour assets are safe on-chain, but you will need your recovery phrase (mnemonic) or private key to restore access.\nMake sure you have a backup before proceeding.")) {
       deleteWallet();
       resetSettings();
       setShowDropdown(false);
