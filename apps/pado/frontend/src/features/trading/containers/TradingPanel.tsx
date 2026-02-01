@@ -9,15 +9,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm, useMarket } from '../context';
-import {
-  OrderForm,
-  OrderConfirmModal,
-  BalanceManagerCard,
-  OpenOrders,
-  PoolInfo,
-  SimpleOrderForm,
-  TradingBalanceBar,
-} from '../components';
+import { OrderForm, OrderConfirmModal, PoolInfo, SimpleOrderForm, TradingBalanceBar } from '../components';
 
 function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) {
   const [open, setOpen] = useState(false);
@@ -128,23 +120,13 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     isLoading,
     balanceManagerId,
     isAutoDepositing,
-    autoDepositEnabled,
-    setAutoDepositEnabled,
-    lastAutoDepositError,
     handleLimitOrder,
     handleMarketOrder,
-    handleCancelOrder,
     handleCreateBalanceManager,
-    handleDeposit,
-    handleWithdraw,
   } = useOrderActions();
 
-  // Advanced settings (for manual deposit)
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // 오픈 오더 데이터
+  // BM balance data
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
-  const orders = openOrdersData?.orders ?? [];
   const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
 
   // Wallet balances for unified available balance
@@ -158,13 +140,14 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const {
     price,
     amount,
+    side,
+    setSide,
     executionOption,
     setExecutionOption,
     getOrderType,
     slippage,
     setSlippage,
     oneClickEnabled,
-    setOneClickEnabled,
     isConfirmModalOpen,
     pendingOrderType,
     setPrice,
@@ -173,30 +156,6 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     closeConfirmModal,
     resetForm,
   } = useOrderForm();
-
-  // One-Click warning modal
-  const [showOneClickWarning, setShowOneClickWarning] = useState(false);
-
-  const handleOneClickToggle = useCallback(() => {
-    if (oneClickEnabled) {
-      setOneClickEnabled(false);
-    } else {
-      const acknowledged = localStorage.getItem('pado:oneClickAcknowledged') === 'true';
-      if (acknowledged) {
-        setOneClickEnabled(true);
-      } else {
-        setShowOneClickWarning(true);
-      }
-    }
-  }, [oneClickEnabled, setOneClickEnabled]);
-
-  const confirmOneClick = useCallback(() => {
-    try {
-      localStorage.setItem('pado:oneClickAcknowledged', 'true');
-    } catch { /* ignore */ }
-    setOneClickEnabled(true);
-    setShowOneClickWarning(false);
-  }, [setOneClickEnabled]);
 
   // One-Click 주문 핸들러 (확인 모달 스킵)
   const handleOneClickOrder = async (type: 'buy' | 'sell') => {
@@ -213,16 +172,16 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     }
   };
 
-  // 주문 버튼 클릭 핸들러 (One-Click 또는 Modal)
-  const handleOrderClick = (type: 'buy' | 'sell') => {
+  // Unified limit order handler (One-Click or Modal)
+  const handleOrderClick = (orderSide: 'buy' | 'sell') => {
     if (oneClickEnabled) {
-      handleOneClickOrder(type);
+      handleOneClickOrder(orderSide);
     } else {
-      openConfirmModal(type);
+      openConfirmModal(orderSide);
     }
   };
 
-  // 지정가 주문 실행
+  // Confirm modal order execution
   const handleConfirmOrder = async () => {
     if (!price || !amount) return;
 
@@ -239,21 +198,11 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     }
   };
 
-  // 시장가 매수
-  const handleMarketBuy = async () => {
+  // Unified market order handler
+  const handleMarketOrderClick = async (orderSide: 'buy' | 'sell') => {
     if (!amount) return;
     const amountNum = parseFloat(amount);
-    const result = await handleMarketOrder('buy', amountNum);
-    if (result.success) {
-      setAmount('');
-    }
-  };
-
-  // 시장가 매도
-  const handleMarketSell = async () => {
-    if (!amount) return;
-    const amountNum = parseFloat(amount);
-    const result = await handleMarketOrder('sell', amountNum);
+    const result = await handleMarketOrder(orderSide, amountNum);
     if (result.success) {
       setAmount('');
     }
@@ -332,134 +281,6 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // Pro Mode UI (with auto deposit)
   return (
     <div className="space-y-4">
-      {/* Trading Status Bar */}
-      {isConnected && balanceManagerId && (
-        <div className="bg-theme-bg-secondary rounded-lg p-4">
-          {/* Row 1: Title */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-theme-text-primary whitespace-nowrap">Trading Balance</span>
-            {isAutoDepositing && (
-              <span className="text-xs text-blue-400 animate-pulse">Depositing...</span>
-            )}
-          </div>
-
-          {/* Row 2: Balance Display */}
-          <div className="flex items-center gap-4 text-sm mb-3">
-            <span className="text-theme-text-secondary">
-              <span className="text-theme-text-primary font-mono">{bmBalance.base.toFixed(4)}</span> {baseSymbol}
-            </span>
-            <span className="text-theme-text-secondary">
-              <span className="text-theme-text-primary font-mono">{bmBalance.quote.toFixed(2)}</span> NUSDC
-            </span>
-          </div>
-
-          {/* Row 3: Toggle groups (justify-around), each with info text below */}
-          <div className="flex justify-around mb-3">
-            {/* One-Click group */}
-            <div className="flex flex-col items-center gap-1">
-              <label className="flex items-center gap-1.5 cursor-pointer" title="Execute orders immediately without confirmation">
-                <span className="text-xs text-theme-text-muted">One-Click</span>
-                <button
-                  onClick={handleOneClickToggle}
-                  className={`w-7 h-3.5 rounded-full transition-colors ${
-                    oneClickEnabled ? 'bg-purple-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                      oneClickEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
-                    }`}
-                  />
-                </button>
-              </label>
-              {oneClickEnabled && (
-                <p className="text-[10px] text-purple-400 text-center leading-tight">
-                  Orders execute immediately
-                </p>
-              )}
-            </div>
-
-            {/* Auto Deposit group */}
-            <div className="flex flex-col items-center gap-1">
-              <label className="flex items-center gap-1.5 cursor-pointer" title="Automatically deposit from wallet when balance is insufficient">
-                <span className="text-xs text-theme-text-muted">Auto Deposit</span>
-                <button
-                  onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
-                  className={`w-7 h-3.5 rounded-full transition-colors ${
-                    autoDepositEnabled ? 'bg-green-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                      autoDepositEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
-                    }`}
-                  />
-                </button>
-              </label>
-              {autoDepositEnabled && !lastAutoDepositError && (
-                <p className="text-[10px] text-theme-text-muted text-center leading-tight">
-                  Auto-deposits from wallet
-                </p>
-              )}
-              {!autoDepositEnabled && (
-                <p className="text-[10px] text-yellow-500 text-center leading-tight">
-                  Manual deposit required
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Auto Deposit Error */}
-          {lastAutoDepositError && (
-            <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <p className="text-xs text-red-400 mb-1">
-                Auto deposit failed: {lastAutoDepositError}
-              </p>
-              <button
-                onClick={() => setShowAdvanced(true)}
-                className="text-xs text-blue-500 hover:text-blue-400 underline"
-              >
-                Try manual deposit
-              </button>
-            </div>
-          )}
-
-          {/* Advanced button */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-400 transition-colors"
-            >
-              Advanced
-              <svg
-                className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Advanced Settings (BalanceManagerCard) */}
-          {showAdvanced && (
-            <div className="mt-4 pt-4 border-t border-theme-border">
-              <h4 className="text-xs font-semibold text-theme-text-secondary mb-3">Manual Deposit/Withdraw</h4>
-              <BalanceManagerCard
-                balanceManagerId={balanceManagerId}
-                balance={bmBalance}
-                isLoading={isLoading}
-                onCreate={handleCreateBalanceManager}
-                onDeposit={handleDeposit}
-                onWithdraw={handleWithdraw}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Enable Pado prompt (when no BalanceManager) */}
       {isConnected && !balanceManagerId && (
         <div className="bg-theme-bg-secondary rounded-lg p-4">
@@ -478,26 +299,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
         </div>
       )}
 
-      {/* Place Order Card */}
-      <div className="bg-theme-bg-secondary rounded-lg p-4">
-        <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Place Order</h3>
-
+      {/* Order Form Card */}
+      <div className="bg-theme-bg-secondary rounded-lg p-3">
         {/* Connect wallet banner when not connected */}
         {!isConnected && (
           <div className="mb-4 p-3 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
             Connect wallet to start trading
-          </div>
-        )}
-
-        {/* Balance Bar + Faucet (Pro mode - shown when connected and has BalanceManager) */}
-        {isConnected && balanceManagerId && (
-          <div className="mb-4">
-            <TradingBalanceBar
-              baseSymbol={baseSymbol}
-              tradingBase={bmBalance.base}
-              tradingQuote={bmBalance.quote}
-              mode="pro"
-            />
           </div>
         )}
 
@@ -507,10 +314,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           amount={amount}
           onPriceChange={setPrice}
           onAmountChange={setAmount}
-          onBuy={() => handleOrderClick('buy')}
-          onSell={() => handleOrderClick('sell')}
-          onMarketBuy={handleMarketBuy}
-          onMarketSell={handleMarketSell}
+          onOrder={handleOrderClick}
+          onMarketOrder={handleMarketOrderClick}
           disabled={!isConnected || !balanceManagerId}
           isLoading={isLoading}
           isAutoDepositing={isAutoDepositing}
@@ -523,6 +328,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onSlippageChange={setSlippage}
           availableQuote={availableQuote}
           availableBase={availableBase}
+          side={side}
+          onSideChange={setSide}
         />
 
         {/* Order Confirmation Modal */}
@@ -536,45 +343,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           isLoading={isLoading}
         />
 
-        {/* One-Click Warning Modal */}
-        {showOneClickWarning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-theme-bg-secondary rounded-lg p-5 max-w-sm mx-4 border border-theme-border">
-              <h3 className="text-sm font-semibold text-theme-text-primary mb-3">Enable One-Click Trading</h3>
-              <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
-                Orders will execute immediately without a confirmation step.
-                On-chain transactions cannot be cancelled or reversed.
-                Make sure you review price and amount before clicking Buy or Sell.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowOneClickWarning(false)}
-                  className="flex-1 py-2 text-xs font-medium rounded-lg bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmOneClick}
-                  className="flex-1 py-2 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors"
-                >
-                  Enable
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Pool Info */}
         <PoolInfo />
-
-        {/* Open Orders */}
-        {isConnected && balanceManagerId && (
-          <OpenOrders
-            orders={orders}
-            isLoading={isLoading}
-            onCancel={handleCancelOrder}
-          />
-        )}
       </div>
     </div>
   );

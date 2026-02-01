@@ -25,6 +25,10 @@ export interface OrderFormContextType {
   setPrice: (price: string) => void;
   setAmount: (amount: string) => void;
 
+  // Buy/Sell side
+  side: 'buy' | 'sell';
+  setSide: (side: 'buy' | 'sell') => void;
+
   // 실행 옵션 (Limit)
   executionOption: ExecutionOption;
   setExecutionOption: (option: ExecutionOption) => void;
@@ -37,6 +41,10 @@ export interface OrderFormContextType {
   // One-Click Trading
   oneClickEnabled: boolean;
   setOneClickEnabled: (enabled: boolean) => void;
+
+  // Auto Deposit
+  autoDepositEnabled: boolean;
+  setAutoDepositEnabled: (enabled: boolean) => void;
 
   // 확인 모달 상태
   isConfirmModalOpen: boolean;
@@ -54,6 +62,9 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   // 주문 입력 상태
   const [price, setPrice] = useState('');
   const [amount, setAmount] = useState('');
+
+  // Buy/Sell side
+  const [side, setSide] = useState<'buy' | 'sell'>('buy');
 
   // 실행 옵션 상태 (Limit)
   const [executionOption, setExecutionOption] = useState<ExecutionOption>('GTC');
@@ -74,6 +85,23 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
     setOneClickEnabled(enabled);
     try {
       localStorage.setItem('pado:oneClickEnabled', String(enabled));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Auto Deposit 상태 (localStorage 저장, default enabled)
+  const [autoDepositEnabled, setAutoDepositEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pado:autoDepositEnabled');
+      return stored === null ? true : stored === 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleSetAutoDepositEnabled = useCallback((enabled: boolean) => {
+    setAutoDepositEnabled(enabled);
+    try {
+      localStorage.setItem('pado:autoDepositEnabled', String(enabled));
     } catch { /* ignore */ }
   }, []);
 
@@ -111,6 +139,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         amount,
         setPrice,
         setAmount,
+        side,
+        setSide,
         executionOption,
         setExecutionOption,
         getOrderType,
@@ -118,6 +148,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         setSlippage,
         oneClickEnabled,
         setOneClickEnabled: handleSetOneClickEnabled,
+        autoDepositEnabled,
+        setAutoDepositEnabled: handleSetAutoDepositEnabled,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,
