@@ -46,11 +46,11 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
     <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
       <div className="p-3 border-b border-theme-border flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-sm">Recent Trades</h3>
+          <h3 className="font-semibold text-sm xl:text-base">Recent Trades</h3>
           <ConnectionStatusBadge mode={connectionMode} />
         </div>
         {simCount > 0 && connectionMode !== "simulation" && (
-          <span className="text-xs text-yellow-600 dark:text-yellow-500">
+          <span className="text-xs xl:text-sm text-yellow-600 dark:text-yellow-500">
             {realCount > 0 ? `${simCount}/${displayedTrades.length} sim` : "Simulated"}
           </span>
         )}
@@ -58,11 +58,11 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
 
       <div>
         {isLoading ? (
-          <div className="p-4 text-center text-theme-text-muted text-sm">Loading...</div>
+          <div className="p-4 text-center text-theme-text-muted text-sm xl:text-base">Loading...</div>
         ) : trades.length === 0 ? (
-          <div className="p-4 text-center text-theme-text-muted text-sm">No trades yet</div>
+          <div className="p-4 text-center text-theme-text-muted text-sm xl:text-base">No trades yet</div>
         ) : (
-          <table className="w-full text-xs">
+          <table className="w-full text-xs xl:text-sm">
             <thead className="text-theme-text-secondary">
               <tr>
                 <th className="py-2 px-3 text-left font-medium">Price ({quoteSymbol})</th>
@@ -91,7 +91,7 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
                   <td className="py-1.5 px-3 text-right text-theme-text-muted flex items-center justify-end gap-1">
                     {formatTime(trade.timestamp)}
                     {trade.isSimulated && realCount > 0 && (
-                      <span className="text-yellow-600 dark:text-yellow-500 text-[10px]">•</span>
+                      <span className="text-yellow-600 dark:text-yellow-500 text-[10px] xl:text-xs">•</span>
                     )}
                   </td>
                 </tr>

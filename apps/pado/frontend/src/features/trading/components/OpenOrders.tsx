@@ -37,20 +37,20 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
 
   return (
     <div className="mt-6 pt-4 border-t border-theme-border">
-      <h4 className="text-sm font-medium text-theme-text-secondary mb-2">
+      <h4 className="text-sm xl:text-base font-medium text-theme-text-secondary mb-2">
         Open Orders ({orders.length})
       </h4>
       {orders.length === 0 ? (
-        <p className="text-xs text-theme-text-muted">No open orders</p>
+        <p className="text-xs xl:text-sm text-theme-text-muted">No open orders</p>
       ) : (
         <div className="space-y-2">
           {visibleOrders.map((order) => (
             <div
               key={order.orderId}
-              className="flex items-center justify-between p-2 bg-theme-bg-tertiary rounded text-xs"
+              className="flex items-center justify-between p-2 bg-theme-bg-tertiary rounded text-xs xl:text-sm"
             >
               <div className="flex items-center gap-2">
-                <span className={order.isBid ? 'text-green-400' : 'text-red-400'}>
+                <span className={`font-semibold ${order.isBid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                   {order.isBid ? 'BUY' : 'SELL'}
                 </span>
                 <span className="text-theme-text-primary">
@@ -60,7 +60,7 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
               <button
                 onClick={() => onCancel(order.orderId)}
                 disabled={isLoading}
-                className="px-2 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded text-white"
+                className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-600/10 dark:hover:bg-red-500/15 disabled:opacity-50 rounded transition-colors"
               >
                 Cancel
               </button>
@@ -73,7 +73,7 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
               {canShowMore && (
                 <button
                   onClick={handleShowMore}
-                  className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+                  className="text-xs xl:text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors"
                 >
                   Show {Math.min(PAGE_SIZE, remainingCount)} more
                 </button>
@@ -81,7 +81,7 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
               {canShowLess && (
                 <button
                   onClick={handleShowLess}
-                  className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+                  className="text-xs xl:text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors"
                 >
                   Collapse
                 </button>

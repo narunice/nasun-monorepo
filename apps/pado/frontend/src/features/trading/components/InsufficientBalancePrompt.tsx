@@ -47,11 +47,11 @@ export function InsufficientBalancePrompt({
           />
         </svg>
         <div className="flex-1">
-          <p className="text-sm text-red-400 font-medium">{displayMessage}</p>
-          <p className="text-xs text-theme-text-muted mt-0.5">
+          <p className="text-sm xl:text-base text-red-400 font-medium">{displayMessage}</p>
+          <p className="text-xs xl:text-sm text-theme-text-muted mt-0.5">
             Available: {availableAmount.toFixed(2)} {tokenSymbol}
           </p>
-          <p className="text-xs text-theme-text-muted mt-1">
+          <p className="text-xs xl:text-sm text-theme-text-muted mt-1">
             Get {tokenSymbol} from Faucet in your wallet.
           </p>
         </div>

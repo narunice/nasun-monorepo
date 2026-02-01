@@ -25,7 +25,7 @@ export function QuickAmountButtons({
           key={amount}
           onClick={() => onSelect(amount)}
           disabled={disabled || (maxBalance !== undefined && amount > maxBalance)}
-          className={`py-2 px-1 text-sm font-medium rounded transition-colors ${
+          className={`py-2 px-1 text-sm xl:text-base font-medium rounded transition-colors ${
             selectedAmount === amount
               ? 'bg-blue-600 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
@@ -37,7 +37,7 @@ export function QuickAmountButtons({
       <button
         onClick={() => maxBalance && onSelect(maxBalance)}
         disabled={disabled || !maxBalance || maxBalance <= 0}
-        className={`py-2 px-1 text-sm font-medium rounded transition-colors ${
+        className={`py-2 px-1 text-sm xl:text-base font-medium rounded transition-colors ${
           selectedAmount === maxBalance
             ? 'bg-blue-600 text-white'
             : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'

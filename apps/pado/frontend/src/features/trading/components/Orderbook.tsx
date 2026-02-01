@@ -39,7 +39,7 @@ function TradesPanel({ compact }: { compact: boolean }) {
     staleTime: 3000,
   });
 
-  const fontSize = compact ? 'text-trading-xs' : 'text-trading-sm';
+  const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
   const rowHeight = compact ? 'py-px' : 'py-0.5';
 
   const displayTrades = useMemo(() => {
@@ -146,7 +146,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   const reversedAskCumulatives = useMemo(() => [...askCumulatives].reverse(), [askCumulatives]);
 
   const rowHeight = compact ? 'py-px' : 'py-0.5';
-  const fontSize = compact ? 'text-trading-xs' : 'text-trading-sm';
+  const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
 
   return (
     <div className="flex flex-col h-full">
@@ -165,7 +165,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                 <button
                   key={level}
                   onClick={() => setDepthLevel(level)}
-                  className={`px-1.5 py-0.5 text-trading-xs rounded transition-colors ${
+                  className={`px-1.5 py-0.5 text-trading-xs xl:text-trading-sm rounded transition-colors ${
                     depthLevel === level
                       ? 'bg-theme-accent text-white'
                       : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
@@ -232,7 +232,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
               <span className="text-trading-xl font-bold text-theme-text-primary font-mono">
                 {spreadInfo.midPrice.toFixed(2)}
               </span>
-              <span className="text-trading-xs text-theme-text-muted">
+              <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">
                 Spread: <span className="font-mono">{spreadInfo.spread.toFixed(2)}</span> ({spreadInfo.spreadPercent.toFixed(3)}%)
               </span>
             </div>

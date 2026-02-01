@@ -17,13 +17,12 @@ module.exports = {
         'sans': ['Rubik', 'system-ui', 'sans-serif'],
       },
       fontSize: {
-        // Compact typography scale for trading UI
-        'trading-xs': ['10px', { lineHeight: '14px' }],
-        'trading-sm': ['11px', { lineHeight: '16px' }],
-        'trading-base': ['12px', { lineHeight: '18px' }],
-        'trading-md': ['13px', { lineHeight: '20px' }],
-        'trading-lg': ['14px', { lineHeight: '20px' }],
-        'trading-xl': ['18px', { lineHeight: '24px' }],
+        // Trading typography scale — bumped 1-2px from original for readability
+        // Use xl: breakpoint variants in components for desktop scaling
+        'trading-xs': ['11px', { lineHeight: '16px' }],
+        'trading-sm': ['12px', { lineHeight: '16px' }],
+        'trading-lg': ['13px', { lineHeight: '18px' }],
+        'trading-xl': ['16px', { lineHeight: '22px' }],
       },
       colors: {
         // Pado brand colors (Teal → Mint/Lime gradient)

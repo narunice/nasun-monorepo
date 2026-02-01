@@ -61,7 +61,7 @@ export function TradingBalanceBar({
   // Not connected state
   if (!isConnected) {
     return (
-      <div className="flex items-center justify-center px-3 py-2 bg-theme-bg-tertiary/50 rounded-lg text-sm text-theme-text-muted">
+      <div className="flex items-center justify-center px-3 py-2 bg-theme-bg-tertiary/50 rounded-lg text-sm xl:text-base text-theme-text-muted">
         Connect wallet to start trading
       </div>
     );
@@ -83,7 +83,7 @@ export function TradingBalanceBar({
     <div className="bg-theme-bg-tertiary/50 rounded-lg">
       {/* Main Balance Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 gap-2">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm xl:text-base">
           <span className="text-theme-text-muted">Available:</span>
           <span className="font-mono text-theme-text-primary">
             {totalBase.toFixed(4)} {baseSymbol}
@@ -114,7 +114,7 @@ export function TradingBalanceBar({
       {/* Auto-deposit Hint (shown when collapsed) */}
       {!showBreakdown && (
         <div className="px-3 pb-2">
-          <p className="text-[10px] text-theme-text-muted flex items-center gap-1">
+          <p className="text-[10px] xl:text-xs text-theme-text-muted flex items-center gap-1">
             <span>ⓘ</span>
             <span>Shows total available (wallet + trading). Auto-deposits when you trade.</span>
           </p>
@@ -123,7 +123,7 @@ export function TradingBalanceBar({
 
       {/* Breakdown Section */}
       {showBreakdown && (
-        <div className="px-3 py-2 border-t border-theme-border/50 text-xs space-y-1">
+        <div className="px-3 py-2 border-t border-theme-border/50 text-xs xl:text-sm space-y-1">
           {/* Wallet Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span className="text-theme-text-muted">Wallet:</span>

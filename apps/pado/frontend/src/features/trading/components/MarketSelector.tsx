@@ -61,7 +61,7 @@ export function MarketSelector() {
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-64 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-xl z-50">
           <div className="p-2">
-            <div className="text-xs text-theme-text-muted px-3 py-1 mb-1">Select Market</div>
+            <div className="text-xs xl:text-sm text-theme-text-muted px-3 py-1 mb-1">Select Market</div>
             {markets.map(market => (
               <button
                 key={market.key}
@@ -81,7 +81,7 @@ export function MarketSelector() {
                 {/* 마켓 정보 */}
                 <div className="flex-1 text-left">
                   <div className="font-medium">{market.label}</div>
-                  <div className="text-xs text-theme-text-muted">
+                  <div className="text-xs xl:text-sm text-theme-text-muted">
                     {market.pool.baseToken.name} / {market.pool.quoteToken.name}
                   </div>
                 </div>
@@ -116,7 +116,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
 
   return (
     <div
-      className={`w-6 h-6 rounded-full ${bgColors[symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs font-bold text-white border-2 border-theme-bg-primary`}
+      className={`w-6 h-6 rounded-full ${bgColors[symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs xl:text-sm font-bold text-white border-2 border-theme-bg-primary`}
     >
       {symbol.charAt(0)}
     </div>
