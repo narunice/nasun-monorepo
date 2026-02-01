@@ -76,7 +76,7 @@ function TradePageContent() {
               </span>
               <button
                 onClick={toggleMode}
-                className="relative w-10 h-5 rounded-full transition-colors bg-theme-bg-tertiary"
+                className="relative w-10 h-5 rounded-full transition-colors bg-gray-600"
                 aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
               >
                 <span

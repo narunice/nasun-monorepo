@@ -4,17 +4,13 @@
  * Displayed next to MarketInfoBar in Pro mode, grid-aligned with the Order Form column.
  */
 
-import { useState, useCallback } from 'react';
-import { useOrderForm } from '../context/OrderFormContext';
-import { useOrderActions } from '../hooks/useOrderActions';
+import { useState, useCallback } from "react";
+import { useOrderForm } from "../context/OrderFormContext";
+import { useOrderActions } from "../hooks/useOrderActions";
 
 export function TradingToggles() {
-  const {
-    oneClickEnabled,
-    setOneClickEnabled,
-    autoDepositEnabled,
-    setAutoDepositEnabled,
-  } = useOrderForm();
+  const { oneClickEnabled, setOneClickEnabled, autoDepositEnabled, setAutoDepositEnabled } =
+    useOrderForm();
   const { isAutoDepositing } = useOrderActions();
 
   // One-Click warning modal state
@@ -27,11 +23,13 @@ export function TradingToggles() {
     }
     // Check if user already acknowledged the warning
     try {
-      if (localStorage.getItem('pado:oneClickAcknowledged') === 'true') {
+      if (localStorage.getItem("pado:oneClickAcknowledged") === "true") {
         setOneClickEnabled(true);
         return;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setShowWarning(true);
   }, [oneClickEnabled, setOneClickEnabled]);
 
@@ -39,8 +37,10 @@ export function TradingToggles() {
     setOneClickEnabled(true);
     setShowWarning(false);
     try {
-      localStorage.setItem('pado:oneClickAcknowledged', 'true');
-    } catch { /* ignore */ }
+      localStorage.setItem("pado:oneClickAcknowledged", "true");
+    } catch {
+      /* ignore */
+    }
   }, [setOneClickEnabled]);
 
   return (
@@ -49,17 +49,20 @@ export function TradingToggles() {
         {/* Toggle row */}
         <div className="flex items-center justify-between">
           {/* One-Click Toggle */}
-          <label className="flex items-center gap-1.5 cursor-pointer" title="Execute orders immediately without confirmation">
+          <label
+            className="flex items-center gap-1.5 cursor-pointer"
+            title="Execute orders immediately without confirmation"
+          >
             <span className="text-xs text-theme-text-muted whitespace-nowrap">One-Click</span>
             <button
               onClick={handleOneClickToggle}
               className={`w-7 h-3.5 rounded-full transition-colors ${
-                oneClickEnabled ? 'bg-purple-500' : 'bg-gray-600'
+                oneClickEnabled ? "bg-purple-500" : "bg-theme-toggle-off"
               }`}
             >
               <span
                 className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                  oneClickEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
+                  oneClickEnabled ? "translate-x-3.5" : "translate-x-0.5"
                 }`}
               />
             </button>
@@ -67,17 +70,20 @@ export function TradingToggles() {
 
           {/* Auto Deposit Toggle */}
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 cursor-pointer" title="Automatically deposit from wallet when balance is insufficient">
+            <label
+              className="flex items-center gap-1.5 cursor-pointer"
+              title="Automatically deposit from wallet when balance is insufficient"
+            >
               <span className="text-xs text-theme-text-muted whitespace-nowrap">Auto Deposit</span>
               <button
                 onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
                 className={`w-7 h-3.5 rounded-full transition-colors ${
-                  autoDepositEnabled ? 'bg-green-500' : 'bg-gray-600'
+                  autoDepositEnabled ? "bg-green-500" : "bg-theme-toggle-off"
                 }`}
               >
                 <span
                   className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                    autoDepositEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
+                    autoDepositEnabled ? "translate-x-3.5" : "translate-x-0.5"
                   }`}
                 />
               </button>
@@ -90,13 +96,17 @@ export function TradingToggles() {
 
         {/* Info text row */}
         <div className="flex items-center justify-between mt-1">
-          <span className={`text-[10px] leading-tight ${oneClickEnabled ? 'text-purple-400' : 'text-theme-text-muted'}`}>
-            {oneClickEnabled ? 'Orders execute immediately' : 'Requires confirmation'}
+          <span
+            className={`text-[10px] leading-tight ${oneClickEnabled ? "text-purple-400" : "text-theme-text-muted"}`}
+          >
+            {oneClickEnabled ? "Orders execute immediately" : "Requires confirmation"}
           </span>
-          <span className={`text-[10px] leading-tight ${
-            autoDepositEnabled ? 'text-theme-text-muted' : 'text-yellow-500'
-          }`}>
-            {autoDepositEnabled ? 'Auto-deposits from wallet' : 'Manual deposit required'}
+          <span
+            className={`text-[10px] leading-tight ${
+              autoDepositEnabled ? "text-theme-text-muted" : "text-orange-500 dark:text-yellow-600"
+            }`}
+          >
+            {autoDepositEnabled ? "Auto-deposits from wallet" : "Manual deposit required"}
           </span>
         </div>
       </div>
@@ -109,9 +119,9 @@ export function TradingToggles() {
               Enable One-Click Trading
             </h3>
             <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
-              Orders will execute immediately without a confirmation step.
-              On-chain transactions cannot be cancelled or reversed.
-              Make sure you review price and amount before clicking Buy or Sell.
+              Orders will execute immediately without a confirmation step. On-chain transactions
+              cannot be cancelled or reversed. Make sure you review price and amount before clicking
+              Buy or Sell.
             </p>
             <div className="flex gap-2">
               <button
