@@ -10,18 +10,17 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '@nasun/wallet';
 
-// Contract addresses
+// Contract addresses (TODO: Redeploy for V6)
 export const UNIFIED_MARGIN_PACKAGE =
-  '0x2886424ff9b3ed9ecdb408ea1f68ca9598efbcbf796311ad3dc33c97d31d63c7';
+  import.meta.env.VITE_MARGIN_PACKAGE_ID || '';
 export const MARGIN_REGISTRY_ID =
-  '0x57979cb0f06a61c65f0f26a41cb3c53461e4c5638bed6740797a80bbb8fe3914';
+  import.meta.env.VITE_MARGIN_REGISTRY_ID || '';
 const CLOCK_ID = '0x6';
 
-// Token types (Pado tokens package)
-export const PADO_TOKENS_PACKAGE =
-  '0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8';
-export const NUSDC_TYPE = `${PADO_TOKENS_PACKAGE}::nusdc::NUSDC`;
-export const NBTC_TYPE = `${PADO_TOKENS_PACKAGE}::nbtc::NBTC`;
+// Token types (from env config)
+const TOKENS_PACKAGE = import.meta.env.VITE_TOKENS_PACKAGE || '';
+export const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || `${TOKENS_PACKAGE}::nusdc::NUSDC`;
+export const NBTC_TYPE = import.meta.env.VITE_NBTC_TYPE || `${TOKENS_PACKAGE}::nbtc::NBTC`;
 
 // Supported collateral tokens
 export type CollateralToken = 'NUSDC' | 'NBTC';

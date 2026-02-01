@@ -3,9 +3,9 @@
  * Type definitions for NUSDC lending pool
  */
 
-// Deployed contract addresses (2026-01-03)
-export const LENDING_PACKAGE_ID = '0xeaa6d4ac6c6bb0b805bd6863a1b3e3d15c15b72f85c12131d83e9208635ecd15';
-export const LENDING_POOL_ID = '0x5add35dcbc7384c8b2704e5f4ed322881d085a45440a84b4fe9309914a397afe';
+// Deployed contract addresses (TODO: Redeploy for V6)
+export const LENDING_PACKAGE_ID = import.meta.env.VITE_LENDING_PACKAGE_ID || '';
+export const LENDING_POOL_ID = import.meta.env.VITE_LENDING_POOL_ID || '';
 
 // Constants matching smart contract
 export const RATE_PRECISION = 100_000_000n; // 1e8 = 100%

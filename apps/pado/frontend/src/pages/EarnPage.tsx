@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { StakingSection, LendingSection } from '../features/earn/components';
+import { LENDING_PACKAGE_ID } from '../features/earn/types/lending';
 
 type TabType = 'staking' | 'lending';
 
@@ -16,7 +17,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: 'staking', label: 'Staking', enabled: true },
-  { id: 'lending', label: 'Lending', enabled: true },
+  { id: 'lending', label: 'Lending', enabled: !!LENDING_PACKAGE_ID },
 ];
 
 export function EarnPage() {
