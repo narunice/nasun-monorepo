@@ -3,13 +3,13 @@
 # this file should not be committed to source control
 
 build-env = "devnet"
-chain-id = "56c8b101"
+chain-id = "12bf3808"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts-nsa" }
-published-at = "0x73c87f5b49441f467f55f0ffad3ac472e81c9f605b294e747c90f57f9dc500c0"
-original-id = "0x73c87f5b49441f467f55f0ffad3ac472e81c9f605b294e747c90f57f9dc500c0"
+published-at = "0xb13d8870c4403fabe76677a3ca260d3eee1aae907c8eb4e4f430657d0eb471eb"
+original-id = "0xb13d8870c4403fabe76677a3ca260d3eee1aae907c8eb4e4f430657d0eb471eb"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x27f2cbd89479bd04968151ee30177e2aae4ea19a39abf46c8f401b043947d585"
+upgrade-capability = "0xce85878770cdb4f734449c02dbf356cdd0b54921b1f1b4053f4a3e35a14213b3"

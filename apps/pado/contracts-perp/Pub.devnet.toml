@@ -15,19 +15,10 @@ build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x2017d606c566ff13cbaf23bf18b5e413b95bb9bcd333c2f413878e7ddddf2a87"
 
 [[published]]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts-lottery" }
-published-at = "0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80"
-original-id = "0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80"
-version = 1
-toolchain-version = "1.63.3"
-build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x770677ca76e9adb8830271db7bed30ff9cb400abbe4130e6c61af58ec954a3c8"
-
-[[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/pado/contracts-perp" }
-published-at = "0xcd10a92287ed8cc47ff8f951a179efb1abaaf55aab9fe5c58b104a848f8a6e5c"
-original-id = "0xcd10a92287ed8cc47ff8f951a179efb1abaaf55aab9fe5c58b104a848f8a6e5c"
+published-at = "0xf58a1ac99ae0b5ecececfdad5a1d3b7aa2763c1e0828adab91cd639e4a25f680"
+original-id = "0xf58a1ac99ae0b5ecececfdad5a1d3b7aa2763c1e0828adab91cd639e4a25f680"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x6298f06c4d1549b32dd2e7a89b4b16a7015851a800d6eaecb523e051592b5cc7"
+upgrade-capability = "0x1c145ed7406415168ceaaf090c6f51310064915ef5b62099e9f7d4c5f3e3eb11"

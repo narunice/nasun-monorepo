@@ -4,20 +4,20 @@
 [move]
 version = 4
 
-[pinned.testnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c9fb9a4cdf80fd5771bdb6dcee833bbaaab3056b" }
-use_environment = "testnet"
+[pinned.devnet.MoveStdlib]
+source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/move-stdlib" }
+use_environment = "devnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
-[pinned.testnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c9fb9a4cdf80fd5771bdb6dcee833bbaaab3056b" }
-use_environment = "testnet"
-manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+[pinned.devnet.Sui]
+source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
+use_environment = "devnet"
+manifest_digest = "E2EF92175C2575B1EA85274B70A9CFD8DE08662B35A68669746BBE7BAC06C17A"
 deps = { MoveStdlib = "MoveStdlib" }
 
-[pinned.testnet.pado_oracle]
+[pinned.devnet.pado_oracle]
 source = { root = true }
-use_environment = "testnet"
-manifest_digest = "44E12408B26ECE1D70D8349D644F9052E24272C84676B50E1C7E5A7C329FAB42"
+use_environment = "devnet"
+manifest_digest = "D753EFE50789161503BEDFF442C2F3653AE256963623AA8BF35DD0142DB99258"
 deps = { Sui = "Sui" }

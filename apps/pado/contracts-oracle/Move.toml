@@ -1,9 +1,13 @@
 [package]
 name = "pado_oracle"
-edition = "2024.beta"
+edition = "2024"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.37.3" }
+Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
 pado_oracle = "0x0"
+
+[environments]
+devnet = "12bf3808"
+nasun-devnet = "12bf3808"
