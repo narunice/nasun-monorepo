@@ -16,6 +16,8 @@ interface LiveNowData {
   subtitle: string;
   explorerButton: string;
   nasun: LiveNowCategory;
+  pado: LiveNowCategory;
+  baram: LiveNowCategory;
 }
 
 const LiveItem = ({ text, delay }: { text: string; delay: number }) => (
@@ -75,21 +77,26 @@ export const LiveNowSection = () => {
           </Button>
         </div>
 
-        {/* NASUN L1 Network */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          viewport={{ once: true }}
-        >
-          <DividerBox title={liveNow.nasun.title} color="c5" padding="sm" className="">
-            <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
-              {liveNow.nasun.items.map((item, index) => (
-                <LiveItem key={item} text={item} delay={0.3 + index * 0.05} />
-              ))}
-            </ul>
-          </DividerBox>
-        </motion.div>
+        {/* Categories */}
+        <div className="space-y-4 md:space-y-5">
+        {([liveNow.nasun, liveNow.pado, liveNow.baram] as LiveNowCategory[]).map((category, catIndex) => (
+          <motion.div
+            key={category.title}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 + catIndex * 0.1 }}
+            viewport={{ once: true }}
+          >
+            <DividerBox title={category.title} color="c5" padding="sm" className="">
+              <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+                {category.items.map((item, index) => (
+                  <LiveItem key={item} text={item} delay={0.3 + index * 0.05} />
+                ))}
+              </ul>
+            </DividerBox>
+          </motion.div>
+        ))}
+        </div>
       </OuterBox>
     </SectionLayout>
   );
