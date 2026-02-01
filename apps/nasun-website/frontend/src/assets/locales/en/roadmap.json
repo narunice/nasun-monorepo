@@ -29,16 +29,37 @@
   "viewDetails": "View Details",
   "liveNow": {
     "title": "LIVE NOW",
-    "subtitle": "Currently Running Infrastructure",
+    "subtitle": "Currently Running Infrastructure & Products",
     "explorerButton": "Nasun Explorer",
     "nasun": {
       "title": "NASUN L1 Network",
       "items": [
         "Devnet Live (2 Validator Nodes)",
         "Blockchain Explorer",
-        "Wallet",
+        "Wallet (Embedded + zkLogin)",
         "Faucet",
-        "Smart Contract Deployment"
+        "Smart Contract Deployment",
+        "On-chain Governance"
+      ]
+    },
+    "pado": {
+      "title": "Pado — Unified Onchain Finance",
+      "items": [
+        "Spot DEX (CLOB Engine)",
+        "Perpetual Futures (20x Leverage)",
+        "Prediction Markets",
+        "Weekly Lottery",
+        "Payments (QR Transfer)",
+        "Unified Margin System"
+      ]
+    },
+    "baram": {
+      "title": "Baram — AI Settlement Layer",
+      "items": [
+        "TEE-secured AI Execution",
+        "On-chain Escrow Settlement",
+        "Compliance Tracking",
+        "Executor Staking & Tiers"
       ]
     }
   },
