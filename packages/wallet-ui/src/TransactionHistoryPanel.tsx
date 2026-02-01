@@ -193,7 +193,7 @@ function TransactionItem({
             )}
           </div>
           <div>
-            <p className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
               {getLabel()}
             </p>
             {counterparty && hasTransfers && (
