@@ -100,7 +100,7 @@ export function useOrderActions(): UseOrderActionsResult {
       const minPrice = getMinPrice(currentPool);
       const baseSymbol = currentPool.baseToken.symbol;
 
-      // Parse error to get type
+      // Parse error to get type and code
       const parsed = parseError(error);
 
       // Gas-related errors
@@ -108,18 +108,44 @@ export function useOrderActions(): UseOrderActionsResult {
         return "Not enough NASUN for gas. Get NASUN from Faucet in your wallet.";
       }
 
-      // Quantity error
-      if (error.includes("ORDER_INFO-2") || error.includes("lot size")) {
-        return `Invalid quantity. Use ${minQty}, ${minQty * 10}, ${minQty * 100}... ${baseSymbol} (multiples of ${minQty})`;
+      // Use parsed code for reliable matching (raw error strings don't contain these codes)
+      if (parsed.code) {
+        // Price errors: ORDER_INFO-0 (tick size) or POOL-2
+        if (parsed.code === "ORDER_INFO-0" || parsed.code === "POOL-2") {
+          return `Price must be a multiple of $${minPrice}`;
+        }
+
+        // Quantity errors: ORDER_INFO-1 (min size) or ORDER_INFO-2 (lot size)
+        if (parsed.code === "ORDER_INFO-1") {
+          return `Order too small. Minimum size: ${minQty} ${baseSymbol}`;
+        }
+        if (parsed.code === "ORDER_INFO-2") {
+          return `Invalid quantity. Use multiples of ${minQty} ${baseSymbol}`;
+        }
+
+        // Expired order: ORDER_INFO-3
+        if (parsed.code === "ORDER_INFO-3") {
+          return "Order expired. Please try again.";
+        }
+
+        // Post-only: ORDER_INFO-5 or POOL-6
+        if (parsed.code === "ORDER_INFO-5" || parsed.code === "POOL-6") {
+          return "Post-only rejected: order would fill immediately. Adjust price further from market.";
+        }
+
+        // FOK: ORDER_INFO-6
+        if (parsed.code === "ORDER_INFO-6") {
+          return "Fill-or-Kill order cannot be fully filled at current prices.";
+        }
+
+        // Insufficient balance: BM-3
+        if (parsed.code === "BM-3") {
+          return "Not enough balance. Get tokens from Faucet in your wallet.";
+        }
       }
 
-      // Price error
-      if (error.includes("POOL-2") || error.includes("tick size")) {
-        return `Price must be a multiple of $${minPrice}`;
-      }
-
-      // Insufficient balance
-      if (error.includes("BM-3") || error.includes("Insufficient balance")) {
+      // Fallback: check raw string patterns
+      if (error.includes("Insufficient balance") || error.includes("BM-3")) {
         return "Not enough balance. Get tokens from Faucet in your wallet.";
       }
 
@@ -128,9 +154,9 @@ export function useOrderActions(): UseOrderActionsResult {
         return "Not enough margin. Deposit more NUSDC or reduce order size.";
       }
 
-      // Post-only error
-      if (error.includes("POOL-6") || error.includes("cross the book")) {
-        return "Post-only rejected: order would fill immediately. Adjust price further from market.";
+      // If parseError found a known error, use its message
+      if (parsed.isKnown) {
+        return parsed.message;
       }
 
       return error;
