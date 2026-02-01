@@ -17,6 +17,7 @@ export const WALLET_STYLES = {
 
   // === Dropdown Container Tokens ===
   dropdownDesktop: "w-[380px] xl:w-[440px]",
+  dropdownCompact: "w-[320px]",
   dropdownMobile: "w-[calc(100vw-32px)] max-w-[420px] max-h-[85vh]",
 
   // === Component Tokens ===
