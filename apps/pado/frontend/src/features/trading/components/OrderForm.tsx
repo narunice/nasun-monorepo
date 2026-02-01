@@ -67,7 +67,7 @@ export function OrderForm({
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const [orderMode, setOrderMode] = useState<OrderModeType>('limit');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
 
   const isMarket = orderMode === 'market';
   const isBuy = side === 'buy';
