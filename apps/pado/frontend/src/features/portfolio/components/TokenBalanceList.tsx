@@ -93,7 +93,7 @@ export function TokenBalanceList() {
           <h2 className="font-semibold">Assets</h2>
         </div>
         <div className="p-8 text-center text-theme-text-muted">
-          Connect wallet to view your assets
+          {status === 'locked' ? 'Unlock wallet to view your assets' : 'Connect wallet to view your assets'}
         </div>
       </div>
     );
