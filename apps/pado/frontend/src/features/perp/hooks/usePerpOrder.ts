@@ -127,7 +127,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     if (!walletAddress) return null;
 
     const client = getSuiClient();
-    const nusdcType = '0xc84727af62147f35ccf070f521e441f48be9325ab0a1b56225f361f0bc266bb8::nusdc::NUSDC';
+    const nusdcType = import.meta.env.VITE_NUSDC_TYPE || '';
 
     try {
       const coins = await client.getCoins({

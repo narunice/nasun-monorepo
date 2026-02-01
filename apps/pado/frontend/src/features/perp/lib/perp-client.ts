@@ -167,9 +167,9 @@ export async function fetchUserPositionsWithMetrics(
 
 // ===== Oracle Queries =====
 
-// Table ID within OracleRegistry (extracted from feeds.id)
+// Table ID within OracleRegistry (TODO: Update after V6 oracle redeployment)
 const ORACLE_FEEDS_TABLE_ID =
-  '0x94d81c6a5737f02b56e3c052afcecd9c92ac3ddc0589460f68bcc01a5fe35d6b';
+  import.meta.env.VITE_ORACLE_FEEDS_TABLE_ID || '';
 
 /**
  * Fetch oracle price for a symbol using dynamic field access

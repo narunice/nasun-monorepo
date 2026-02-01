@@ -24,9 +24,8 @@ import {
 import { AssetOverview, TokenBalanceList, ActivityTabs } from "../features/portfolio";
 
 export function HomePage() {
-  const { status, account } = useWallet();
+  const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = isZkLoggedIn || (status === "unlocked" && account);
   const hasNoWallet = status === "disconnected" && !isZkLoggedIn;
 
   return (
