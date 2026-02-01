@@ -18,7 +18,7 @@ interface UnderlineTabsProps<T extends string> {
   onTabChange: (tab: T) => void;
   /** Optional content rendered on the right side (e.g., depth selector, Advanced badge) */
   rightContent?: ReactNode;
-  /** Font size class, default: 'text-trading-sm' */
+  /** Font size class, default: 'text-sm' */
   fontSize?: string;
 }
 
@@ -27,7 +27,7 @@ export function UnderlineTabs<T extends string>({
   activeTab,
   onTabChange,
   rightContent,
-  fontSize = 'text-trading-sm',
+  fontSize = 'text-sm',
 }: UnderlineTabsProps<T>) {
   return (
     <div className="flex items-center justify-between border-b border-theme-border">
