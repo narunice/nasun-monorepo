@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from './setup';
-import { AddressBookPanel } from '../AddressBookPanel';
+import { AddressBookPanel } from '../address/AddressBookPanel';
 
 // Mock useAddressBook
 const mockGetAllEntries = vi.fn();
@@ -9,20 +9,20 @@ const mockTrustAddress = vi.fn();
 const mockUntrustAddress = vi.fn();
 const mockRemoveAddress = vi.fn();
 
-vi.mock('@nasun/wallet', async () => {
-  const actual = await vi.importActual('@nasun/wallet');
-  return {
-    ...actual,
-    useAddressBook: () => ({
-      getAllEntries: mockGetAllEntries,
-      updateLabel: mockUpdateLabel,
-      trustAddress: mockTrustAddress,
-      untrustAddress: mockUntrustAddress,
-      removeAddress: mockRemoveAddress,
-    }),
-    shortenAddress: (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`,
-  };
-});
+vi.mock('@nasun/wallet', () => ({
+  useAddressBook: () => ({
+    getAllEntries: mockGetAllEntries,
+    updateLabel: mockUpdateLabel,
+    trustAddress: mockTrustAddress,
+    untrustAddress: mockUntrustAddress,
+    removeAddress: mockRemoveAddress,
+  }),
+  shortenAddress: (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`,
+  isValidAddress: vi.fn((addr: string) => /^0x[a-fA-F0-9]{64}$/.test(addr)),
+  getExplorerAddressUrl: vi.fn((addr: string) => `https://explorer.nasun.io/devnet/address/${addr}`),
+  getExplorerObjectUrl: vi.fn((id: string) => `https://explorer.nasun.io/devnet/object/${id}`),
+  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`),
+}));
 
 const mockEntries = [
   {
@@ -150,7 +150,7 @@ describe('AddressBookPanel', () => {
     it('should show edit input when clicking Edit button', () => {
       render(<AddressBookPanel />);
 
-      const editButtons = screen.getAllByText('Edit');
+      const editButtons = screen.getAllByTitle('Edit name');
       fireEvent.click(editButtons[0]);
 
       // Should show Save and Cancel buttons
@@ -161,7 +161,7 @@ describe('AddressBookPanel', () => {
     it('should call updateLabel when saving', () => {
       render(<AddressBookPanel />);
 
-      const editButtons = screen.getAllByText('Edit');
+      const editButtons = screen.getAllByTitle('Edit name');
       fireEvent.click(editButtons[0]);
 
       const input = screen.getByPlaceholderText('Enter label...');
@@ -174,7 +174,7 @@ describe('AddressBookPanel', () => {
     it('should cancel editing when clicking Cancel', () => {
       render(<AddressBookPanel />);
 
-      const editButtons = screen.getAllByText('Edit');
+      const editButtons = screen.getAllByTitle('Edit name');
       fireEvent.click(editButtons[0]);
       fireEvent.click(screen.getByText('Cancel'));
 

@@ -1,0 +1,44 @@
+/**
+ * Shared design tokens and style constants for wallet-ui components.
+ * Centralizes repeated Tailwind class patterns to ensure visual consistency.
+ */
+
+export const WALLET_STYLES = {
+  // Menu items (Account tab, More menu, action lists)
+  menuItem:
+    "w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50/80 dark:hover:bg-zinc-700/50 transition-all duration-150 flex items-center gap-3",
+
+  // Section dividers
+  divider: "border-t border-gray-100 dark:border-zinc-700/50 my-2",
+
+  // Section headers / labels
+  sectionHeader: "text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2",
+
+  // Primary action button
+  primaryButton:
+    "px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors",
+
+  // Danger / destructive action
+  dangerButton:
+    "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors",
+
+  // Cancel / secondary button
+  secondaryButton:
+    "px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors",
+
+  // Text input fields
+  input:
+    "px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500",
+
+  // Loading skeleton
+  skeleton: "bg-gray-200 dark:bg-zinc-700 rounded animate-pulse",
+
+  // Panel header background
+  panelHeader: "bg-gray-100 dark:bg-zinc-700/50",
+
+  // Tab content container
+  tabContent: "py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg",
+
+  // Icon style for menu items
+  menuIcon: "w-4 h-4 text-gray-500 dark:text-zinc-400",
+} as const;

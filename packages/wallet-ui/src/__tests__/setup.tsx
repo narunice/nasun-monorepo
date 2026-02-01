@@ -1,5 +1,7 @@
-import '@testing-library/jest-dom/vitest';
-import { vi, beforeEach, afterEach } from 'vitest';
+import { vi, expect, beforeEach, afterEach } from 'vitest';
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+expect.extend(matchers);
 
 // Mock @nasun/wallet module
 vi.mock('@nasun/wallet', () => ({
@@ -213,6 +215,55 @@ vi.mock('@nasun/wallet', () => ({
     SUI: (account = 0) => `m/44'/784'/0'/0'/${account}'`,
     EVM: (account = 0) => `44'/60'/0'/0/${account}`,
   },
+  // Chain selection
+  useChain: vi.fn(() => ({
+    chain: {
+      id: 'nasun-devnet',
+      name: 'Nasun Devnet',
+      type: 'move',
+      nativeCurrency: { symbol: 'NSN', name: 'Nasun', decimals: 9 },
+      rpcUrl: 'https://rpc.devnet.nasun.io',
+    },
+    isEVM: false,
+    isMoveChain: true,
+    switchChain: vi.fn(),
+    availableChains: [],
+  })),
+  // EVM hooks
+  useEVMBalance: vi.fn(() => ({
+    balance: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+  useEVMTransaction: vi.fn(() => ({
+    sendTransfer: vi.fn(),
+    isPending: false,
+    error: null,
+    lastResult: null,
+    clearError: vi.fn(),
+    clearResult: vi.fn(),
+  })),
+  useEVMGasEstimate: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  })),
+  getStoredEVMAddress: vi.fn(() => null),
+  getTokenByType: vi.fn((type: string) => {
+    if (type === '0x2::sui::SUI') return { symbol: 'NSN', name: 'Nasun', decimals: 9, type };
+    return null;
+  }),
+  // Network hooks
+  useNetwork: vi.fn(() => ({
+    network: 'devnet',
+    rpcUrl: 'https://rpc.devnet.nasun.io',
+    switchNetwork: vi.fn(),
+  })),
+  useWalletLabel: vi.fn(() => ({
+    label: '',
+    setLabel: vi.fn(),
+  })),
 }));
 
 // Mock localStorage

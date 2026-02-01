@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { SendTransaction } from '../SendTransaction';
+import { SendTransaction } from '../transaction/SendTransaction';
 
 // Mock functions
 const mockSendTokenTransaction = vi.fn();
@@ -83,6 +83,17 @@ vi.mock('@nasun/wallet', () => ({
   getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`),
   getExplorerAddressUrl: vi.fn((address: string) => `https://explorer.nasun.io/devnet/address/${address}`),
   getExplorerObjectUrl: vi.fn((objectId: string) => `https://explorer.nasun.io/devnet/object/${objectId}`),
+  useChain: vi.fn(() => ({
+    chain: { id: 'nasun-devnet', name: 'Nasun Devnet', type: 'move', nativeCurrency: { symbol: 'NSN', name: 'Nasun', decimals: 9 }, rpcUrl: 'https://rpc.devnet.nasun.io' },
+    isEVM: false,
+    isMoveChain: true,
+    switchChain: vi.fn(),
+    availableChains: [],
+  })),
+  useEVMBalance: vi.fn(() => ({ balance: null, isLoading: false, error: null, refetch: vi.fn() })),
+  useEVMTransaction: vi.fn(() => ({ sendTransfer: vi.fn(), isPending: false, error: null, lastResult: null, clearError: vi.fn(), clearResult: vi.fn() })),
+  useEVMGasEstimate: vi.fn(() => ({ data: null, isLoading: false, error: null })),
+  getStoredEVMAddress: vi.fn(() => null),
 }));
 
 describe('SendTransaction', () => {

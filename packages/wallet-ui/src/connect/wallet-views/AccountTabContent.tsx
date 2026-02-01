@@ -5,6 +5,7 @@
  */
 
 import type { ViewMode } from "../LockedStateUI";
+import { WALLET_STYLES } from "../../shared";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -24,9 +25,8 @@ const ICON_PATHS = {
     "M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z",
 } as const;
 
-const MENU_ITEM_CLASS =
-  "w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-3";
-const ICON_CLASS = "w-4 h-4 text-gray-500 dark:text-zinc-400";
+const MENU_ITEM_CLASS = WALLET_STYLES.menuItem;
+const ICON_CLASS = WALLET_STYLES.menuIcon;
 
 function MenuIcon({ d }: { d: string | string[] }) {
   const paths = Array.isArray(d) ? d : [d];
@@ -74,7 +74,7 @@ export function AccountTabContent({
         Create Link
       </button>
 
-      <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+      <div className={WALLET_STYLES.divider} />
 
       {/* Contacts & Security */}
       <button onClick={() => onNavigate("address-book")} className={MENU_ITEM_CLASS}>
@@ -113,7 +113,7 @@ export function AccountTabContent({
             Security Settings
           </button>
 
-          <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
+          <div className={WALLET_STYLES.divider} />
 
           <button onClick={() => onNavigate("export")} className={MENU_ITEM_CLASS}>
             <MenuIcon d={ICON_PATHS.exportKey} />
