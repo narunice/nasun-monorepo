@@ -38,7 +38,7 @@ export function WalletLabelEditor({
   return (
     <div>
       {/* Static label - not editable */}
-      <p className="text-[10px] text-gray-500 dark:text-zinc-400 mb-0.5 text-left">
+      <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400 mb-0.5 text-left">
         {fallbackLabel}
       </p>
       {/* Editable nickname */}
@@ -53,12 +53,12 @@ export function WalletLabelEditor({
             if (e.key === "Escape") cancel();
           }}
           onBlur={save}
-          className="text-xs text-gray-900 dark:text-white bg-transparent border-b border-gray-400 dark:border-zinc-500 outline-none w-full py-0.5"
+          className="text-xs xl:text-sm text-gray-900 dark:text-white bg-transparent border-b border-gray-400 dark:border-zinc-500 outline-none w-full py-0.5"
           placeholder="Wallet name..."
           maxLength={20}
         />
       ) : (
-        <span className="inline-flex items-center text-xs text-gray-700 dark:text-zinc-300">
+        <span className="inline-flex items-center text-xs xl:text-sm text-gray-700 dark:text-zinc-300">
           <button
             onClick={startEditing}
             className="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-white transition-colors"

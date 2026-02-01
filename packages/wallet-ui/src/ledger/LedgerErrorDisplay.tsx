@@ -168,10 +168,10 @@ export function LedgerErrorDisplay({
         className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${bgStyles} ${className}`}
         role="alert"
       >
-        <span className={`text-xl ${iconStyles}`}>{config.icon}</span>
+        <span className={`text-xl xl:text-2xl ${iconStyles}`}>{config.icon}</span>
         <div className="flex-1">
           <p className={`font-medium ${titleStyles}`}>{config.title}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 mt-1">
             {config.solution}
           </p>
         </div>
@@ -206,14 +206,14 @@ export function LedgerErrorDisplay({
           <span className={`text-2xl ${iconStyles}`}>{config.icon}</span>
           <div className="flex-1">
             <h3 className={`font-semibold ${titleStyles}`}>{config.title}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 mt-1">
               {config.description}
             </p>
           </div>
         </div>
 
         {/* Solution */}
-        <div className="mt-4 flex items-center gap-2 text-sm">
+        <div className="mt-4 flex items-center gap-2 text-sm xl:text-base">
           <span className="text-gray-500 dark:text-gray-400">💡</span>
           <span className="text-gray-700 dark:text-gray-300">
             {config.solution}
@@ -225,7 +225,7 @@ export function LedgerErrorDisplay({
           {onRetry && (
             <button
               onClick={onRetry}
-              className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 px-4 py-2.5 text-sm xl:text-base font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Try Again
             </button>
@@ -233,7 +233,7 @@ export function LedgerErrorDisplay({
           {onHelp && (
             <button
               onClick={onHelp}
-              className="px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              className="px-4 py-2.5 text-sm xl:text-base font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
               Need Help?
             </button>
@@ -245,13 +245,13 @@ export function LedgerErrorDisplay({
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setShowDetails(!showDetails)}
-              className="flex items-center justify-between w-full text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              className="flex items-center justify-between w-full text-xs xl:text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               <span>Technical details</span>
               <span>{showDetails ? '−' : '+'}</span>
             </button>
             {showDetails && (
-              <code className="block mt-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono overflow-x-auto">
+              <code className="block mt-2 text-xs xl:text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono overflow-x-auto">
                 {code}: {rawMessage}
               </code>
             )}
@@ -286,7 +286,7 @@ function LedgerDeviceIllustration({
         className={`w-28 h-16 rounded-lg border-2 ${deviceColor} bg-white dark:bg-gray-800 flex items-center justify-center relative`}
       >
         {/* Screen */}
-        <div className="w-20 h-8 bg-gray-900 dark:bg-black rounded flex items-center justify-center text-white text-lg">
+        <div className="w-20 h-8 bg-gray-900 dark:bg-black rounded flex items-center justify-center text-white text-lg xl:text-xl">
           {screenContent}
         </div>
 
@@ -298,7 +298,7 @@ function LedgerDeviceIllustration({
 
       {/* Action indicator */}
       {action === 'DEVICE_LOCKED' && (
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs">
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs xl:text-sm">
           !
         </div>
       )}

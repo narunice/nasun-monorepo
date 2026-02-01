@@ -67,7 +67,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
       <button
         onClick={handleRequest}
         disabled={isLoading}
-        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+        className={`px-3 py-1.5 text-xs xl:text-sm font-medium rounded transition-colors ${
           success
             ? 'bg-green-500/20 text-green-400 cursor-default'
             : error
@@ -136,7 +136,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
       </button>
 
       {error && (
-        <p className="mt-2 text-xs text-red-400 text-center">{error}</p>
+        <p className="mt-2 text-xs xl:text-sm text-red-400 text-center">{error}</p>
       )}
     </div>
   );

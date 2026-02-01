@@ -211,7 +211,7 @@ export function NasunLinkWizard({
             d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
           />
         </svg>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           Connect wallet to create Nasun Links
         </p>
       </div>
@@ -235,10 +235,10 @@ export function NasunLinkWizard({
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
           />
         </svg>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           Link creation requires a local wallet.
         </p>
-        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
           zkLogin wallets cannot create links yet.
         </p>
       </div>
@@ -249,13 +249,13 @@ export function NasunLinkWizard({
   if (step === 'amount') {
     return (
       <div className={className}>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Create Nasun Link
         </h3>
 
         {/* Token selector */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
             Token
           </label>
           <select
@@ -271,7 +271,7 @@ export function NasunLinkWizard({
 
         {/* Amount input */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
             Amount
           </label>
           <div className="relative">
@@ -282,18 +282,18 @@ export function NasunLinkWizard({
               placeholder="0.00"
               className="w-full px-3 py-2 pr-16 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-zinc-400">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm xl:text-base text-gray-500 dark:text-zinc-400">
               {form.coinType}
             </span>
           </div>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-1">
             Balance: {formatBalance(tokenBalance, decimals)} {form.coinType}
           </p>
         </div>
 
         {/* Link type */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
             Link Type
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -305,14 +305,14 @@ export function NasunLinkWizard({
               <button
                 key={opt.value}
                 onClick={() => updateForm('linkType', opt.value as LinkType)}
-                className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                className={`px-3 py-2 rounded-lg border text-sm xl:text-base transition-colors ${
                   form.linkType === opt.value
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                     : 'border-gray-300 dark:border-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500'
                 }`}
               >
                 <span className="font-medium">{opt.label}</span>
-                <span className="block text-xs text-gray-500 dark:text-zinc-400">{opt.desc}</span>
+                <span className="block text-xs xl:text-sm text-gray-500 dark:text-zinc-400">{opt.desc}</span>
               </button>
             ))}
           </div>
@@ -320,7 +320,7 @@ export function NasunLinkWizard({
 
         {/* Message */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
             Message (optional)
           </label>
           <input
@@ -335,7 +335,7 @@ export function NasunLinkWizard({
 
         {/* Validation error */}
         {parsedAmount > 0n && !hasEnoughBalance && (
-          <p className="text-sm text-red-500 mb-4">Insufficient balance</p>
+          <p className="text-sm xl:text-base text-red-500 mb-4">Insufficient balance</p>
         )}
 
         {/* Actions */}
@@ -373,7 +373,7 @@ export function NasunLinkWizard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white">
             Link Conditions
           </h3>
         </div>
@@ -381,7 +381,7 @@ export function NasunLinkWizard({
         {/* Max claims (for multi/first-n) */}
         {form.linkType !== 'single' && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+            <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
               Max Claims
             </label>
             <input
@@ -392,7 +392,7 @@ export function NasunLinkWizard({
               max={1000}
               className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-1">
               Total: {formatBalance(parsedAmount * BigInt(form.maxClaims), decimals)} {form.coinType}
             </p>
           </div>
@@ -400,7 +400,7 @@ export function NasunLinkWizard({
 
         {/* Expiration */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+          <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
             Expires In
           </label>
           <select
@@ -426,7 +426,7 @@ export function NasunLinkWizard({
               onChange={(e) => updateForm('requirePassword', e.target.checked)}
               className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500"
             />
-            <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+            <span className="text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300">
               Password protect
             </span>
           </label>
@@ -443,8 +443,8 @@ export function NasunLinkWizard({
 
         {/* Summary */}
         <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 mb-6">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Summary</h4>
-          <div className="space-y-1 text-sm text-gray-600 dark:text-zinc-400">
+          <h4 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-2">Summary</h4>
+          <div className="space-y-1 text-sm xl:text-base text-gray-600 dark:text-zinc-400">
             <p>Amount: {form.amount} {form.coinType}</p>
             <p>Type: {form.linkType === 'single' ? 'Single use' : `${form.maxClaims} claims`}</p>
             <p>Expires: {form.expirationHours > 0 ? `${form.expirationHours}h` : 'Never'}</p>
@@ -454,7 +454,7 @@ export function NasunLinkWizard({
         </div>
 
         {/* Error */}
-        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+        {error && <p className="text-sm xl:text-base text-red-500 mb-4">{error}</p>}
 
         {/* Actions */}
         <div className="flex gap-3">
@@ -498,17 +498,17 @@ export function NasunLinkWizard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white">
             Link Created!
           </h3>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+          <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400 mt-1">
             Share this link with the recipient
           </p>
         </div>
 
         {/* Link display */}
         <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 mb-4">
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1 font-mono break-all">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 font-mono break-all">
             {createdLink.url.fullUrl}
           </p>
         </div>
@@ -541,7 +541,7 @@ export function NasunLinkWizard({
         </button>
 
         {/* Info */}
-        <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-zinc-400">
+        <div className="mt-4 space-y-2 text-sm xl:text-base text-gray-600 dark:text-zinc-400">
           <p>Amount: {form.amount} {form.coinType}</p>
           {form.expirationHours > 0 && (
             <p>

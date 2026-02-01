@@ -31,7 +31,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
 
   return (
     <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
-      <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-2">
+      <h3 className="text-lg xl:text-xl font-bold text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-2">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
@@ -46,7 +46,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
       {/* Mnemonic word grid */}
       <div className="grid grid-cols-3 gap-2 mb-4 p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-700">
         {words.map((word, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm py-1">
+          <div key={i} className="flex items-center gap-2 text-sm xl:text-base py-1">
             <span className="text-gray-400 dark:text-zinc-500 w-5 text-right">{i + 1}.</span>
             <span className="text-gray-900 dark:text-white font-mono">{word}</span>
           </div>
@@ -56,7 +56,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
       {/* Copy button */}
       <button
         onClick={handleCopy}
-        className={`w-full mb-2 px-3 py-2 text-sm rounded transition-colors flex items-center justify-center gap-2 ${
+        className={`w-full mb-2 px-3 py-2 text-sm xl:text-base rounded transition-colors flex items-center justify-center gap-2 ${
           copied
             ? 'bg-green-500/20 text-green-600 dark:text-green-400'
             : copyError
@@ -89,7 +89,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
       </button>
 
       {copyError && (
-        <p className="text-xs text-center text-gray-500 dark:text-zinc-400 mb-4">
+        <p className="text-xs xl:text-sm text-center text-gray-500 dark:text-zinc-400 mb-4">
           Select the words above and use Ctrl+C (or Cmd+C) to copy
         </p>
       )}
@@ -97,7 +97,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
 
       {/* Warning messages */}
       <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-500/50 rounded p-3 mb-4">
-        <ul className="text-xs text-red-700 dark:text-red-400 space-y-1">
+        <ul className="text-xs xl:text-sm text-red-700 dark:text-red-400 space-y-1">
           <li className="flex items-start gap-2">
             <span className="text-red-600 dark:text-red-500 mt-0.5">!</span>
             <span>Never share your recovery phrase with anyone</span>
@@ -121,7 +121,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
           onChange={(e) => setConfirmed(e.target.checked)}
           className="w-4 h-4 mt-0.5 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-zinc-800"
         />
-        <span className="text-sm text-gray-600 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+        <span className="text-sm xl:text-base text-gray-600 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
           I have saved my recovery phrase securely and understand that losing it means losing access to my wallet forever
         </span>
       </label>

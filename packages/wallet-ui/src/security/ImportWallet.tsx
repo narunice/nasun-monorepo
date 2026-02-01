@@ -79,7 +79,7 @@ export function ImportWallet({
   if (mode === 'select') {
     return (
       <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import Wallet</h3>
+        <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Import Wallet</h3>
         <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-4">
           Choose how to import your existing wallet
         </p>
@@ -97,7 +97,7 @@ export function ImportWallet({
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">Recovery Phrase</div>
-                <div className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
+                <div className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
               </div>
             </div>
           </button>
@@ -114,7 +114,7 @@ export function ImportWallet({
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">Private Key</div>
-                <div className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
+                <div className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
               </div>
             </div>
           </button>
@@ -144,7 +144,7 @@ export function ImportWallet({
           Back
         </button>
 
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import with Recovery Phrase</h3>
+        <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Import with Recovery Phrase</h3>
 
         <div className="space-y-4">
           <div>
@@ -156,7 +156,7 @@ export function ImportWallet({
               onChange={(e) => setMnemonic(e.target.value)}
               placeholder="Enter your recovery phrase, separated by spaces..."
               rows={3}
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm resize-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base resize-none"
               disabled={isLoading}
             />
           </div>
@@ -192,14 +192,14 @@ export function ImportWallet({
 
           {/* Real-time password validation */}
           {password.length > 0 && password.length < 8 && (
-            <p className="text-xs text-red-400">Password must be at least 8 characters</p>
+            <p className="text-xs xl:text-sm text-red-400">Password must be at least 8 characters</p>
           )}
           {confirmPassword.length > 0 && password !== confirmPassword && (
-            <p className="text-xs text-red-400">Passwords do not match</p>
+            <p className="text-xs xl:text-sm text-red-400">Passwords do not match</p>
           )}
 
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm xl:text-base text-red-400">{error}</p>
           )}
 
           <div className="flex gap-2">
@@ -236,11 +236,11 @@ export function ImportWallet({
         Back
       </button>
 
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Import with Private Key</h3>
+      <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Import with Private Key</h3>
 
       {/* Warning */}
       <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-500/50 rounded p-3 mb-4">
-        <p className="text-xs text-yellow-700 dark:text-yellow-400">
+        <p className="text-xs xl:text-sm text-yellow-700 dark:text-yellow-400">
           Never share your private key with anyone. Make sure you are on the correct website.
         </p>
       </div>
@@ -255,7 +255,7 @@ export function ImportWallet({
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
             placeholder="suiprivkey1..."
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base"
             disabled={isLoading}
           />
         </div>

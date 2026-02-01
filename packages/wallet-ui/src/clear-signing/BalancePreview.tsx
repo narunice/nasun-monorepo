@@ -80,7 +80,7 @@ export function BalancePreview({
       >
         <div className="flex items-center gap-2">
           <span className="text-yellow-600 dark:text-yellow-400">⚠</span>
-          <span className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">
+          <span className="text-sm xl:text-base text-yellow-700 dark:text-yellow-300 font-medium">
             Preview unavailable
           </span>
           {showTooltips && (
@@ -91,7 +91,7 @@ export function BalancePreview({
           )}
         </div>
         {simulation.error && (
-          <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+          <p className="mt-1 text-xs xl:text-sm text-yellow-600 dark:text-yellow-400">
             {simulation.error}
           </p>
         )}
@@ -104,7 +104,7 @@ export function BalancePreview({
       <div
         className={`p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 ${className}`}
       >
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400">
           No balance changes expected
         </p>
       </div>
@@ -115,7 +115,7 @@ export function BalancePreview({
     <div className={`space-y-3 ${className}`}>
       {/* Title */}
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+        <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
           What will happen
         </h3>
         {showTooltips && (
@@ -157,7 +157,7 @@ export function BalancePreview({
       {/* Approval Changes */}
       {simulation.approvalChanges.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <h4 className="text-xs xl:text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             Permissions
           </h4>
           {simulation.approvalChanges.map((change, index) => (
@@ -172,7 +172,7 @@ export function BalancePreview({
 
       {/* Gas Estimate */}
       {simulation.estimatedGas !== undefined && (
-        <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between text-sm xl:text-base pt-2 border-t border-gray-200 dark:border-gray-700">
           <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
             Estimated fee
             {showTooltips && (
@@ -231,7 +231,7 @@ function TokenChangeRow({ change, variant, showUsd, isLast }: TokenChangeRowProp
     >
       <div className="flex items-center gap-2">
         <span
-          className={`text-lg ${
+          className={`text-lg xl:text-xl ${
             isPositive
               ? 'text-green-500 dark:text-green-400'
               : 'text-gray-400 dark:text-gray-500'
@@ -256,7 +256,7 @@ function TokenChangeRow({ change, variant, showUsd, isLast }: TokenChangeRowProp
           {change.displayAmount || formatAmount(absAmount, change.decimals)}
         </div>
         {showUsd && change.usdValue !== undefined && variant === 'detailed' && (
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
             ${Math.abs(change.usdValue).toFixed(2)}
           </div>
         )}
@@ -293,7 +293,7 @@ function NFTChangeRow({ change, variant }: NFTChangeRowProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span
-            className={`text-sm font-medium ${
+            className={`text-sm xl:text-base font-medium ${
               change.isIncoming
                 ? 'text-green-600 dark:text-green-400'
                 : 'text-red-600 dark:text-red-400'
@@ -302,14 +302,14 @@ function NFTChangeRow({ change, variant }: NFTChangeRowProps) {
             {change.isIncoming ? "You'll receive" : "You'll send"}
           </span>
         </div>
-        <div className="text-sm text-gray-900 dark:text-white truncate">
+        <div className="text-sm xl:text-base text-gray-900 dark:text-white truncate">
           {change.name || `#${change.tokenId.slice(0, 8)}`}
         </div>
       </div>
 
       {/* Direction indicator */}
       <span
-        className={`text-lg ${
+        className={`text-lg xl:text-xl ${
           change.isIncoming
             ? 'text-green-500 dark:text-green-400'
             : 'text-red-500 dark:text-red-400'
@@ -345,7 +345,7 @@ function ApprovalChangeRow({ change, showTooltips }: ApprovalChangeRowProps) {
     >
       <div className="flex items-center gap-2">
         <span
-          className={`text-lg ${
+          className={`text-lg xl:text-xl ${
             isRevoking
               ? 'text-green-500 dark:text-green-400'
               : isUnlimited
@@ -356,10 +356,10 @@ function ApprovalChangeRow({ change, showTooltips }: ApprovalChangeRowProps) {
           {isRevoking ? '🚫' : '🛡'}
         </span>
         <div>
-          <div className="text-sm font-medium text-gray-900 dark:text-white">
+          <div className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
             {isRevoking ? 'Revoke access' : 'Allow spending'}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
             {change.spenderName || formatAddress(change.spender)}
           </div>
         </div>
@@ -367,7 +367,7 @@ function ApprovalChangeRow({ change, showTooltips }: ApprovalChangeRowProps) {
 
       <div className="text-right flex items-center gap-1">
         <span
-          className={`text-sm font-medium ${
+          className={`text-sm xl:text-base font-medium ${
             isUnlimited
               ? 'text-orange-600 dark:text-orange-400'
               : 'text-gray-900 dark:text-white'
@@ -375,7 +375,7 @@ function ApprovalChangeRow({ change, showTooltips }: ApprovalChangeRowProps) {
         >
           {isRevoking ? 'Removing' : isUnlimited ? 'Unlimited' : formatAmount(change.amount, 6)}
         </span>
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-sm xl:text-base text-gray-600 dark:text-gray-400">
           {change.symbol}
         </span>
         {isUnlimited && showTooltips && (

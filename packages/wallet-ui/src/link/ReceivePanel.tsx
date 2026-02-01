@@ -96,7 +96,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
   if (!address) {
     return (
       <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base">
           Please connect your wallet first.
         </p>
       </div>
@@ -109,7 +109,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
     <div className="p-4 w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-sm md:text-base xl:text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -163,7 +163,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
       {/* Optional Amount */}
       <div className="space-y-3 mb-4">
-        <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">
+        <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           Optional: Request specific amount
         </p>
 
@@ -173,7 +173,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
             placeholder="Amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <TokenSelector
             value={selectedToken}
@@ -188,7 +188,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
             <svg className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <p className="text-xs text-green-600 dark:text-green-400">
+            <p className="text-xs xl:text-sm text-green-600 dark:text-green-400">
               Payment link ready ({amount} {selectedToken})
             </p>
           </div>
@@ -198,7 +198,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
       {/* Error */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <p className="text-sm xl:text-base text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -206,7 +206,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
       <div className="flex gap-2">
         <button
           onClick={handleCopyLink}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded transition-colors flex items-center justify-center gap-2 ${
+          className={`flex-1 px-4 py-2 text-sm xl:text-base font-medium rounded transition-colors flex items-center justify-center gap-2 ${
             copySuccess
               ? 'bg-green-600 text-white'
               : 'bg-gray-200 dark:bg-zinc-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-zinc-600'
@@ -237,7 +237,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
         {typeof navigator.share === 'function' && (
           <button
             onClick={handleShare}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm xl:text-base font-medium rounded transition-colors flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -254,7 +254,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
       {/* Info */}
       <div className="mt-4 p-3 bg-gray-100 dark:bg-zinc-700/50 rounded">
-        <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">
+        <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           {paymentLink
             ? 'Share this link to request a specific payment amount.'
             : 'Scan this QR code or share your address to receive tokens.'}

@@ -59,7 +59,7 @@ export function CopyableAddress({
   const [copied, setCopied] = useState(false);
 
   const displayValue = shorten && shorten > 0 ? shortenAddress(value, shorten) : value;
-  const textSize = size === 'xs' ? 'text-xs' : 'text-sm';
+  const textSize = size === 'xs' ? 'text-xs xl:text-sm' : 'text-sm xl:text-base';
 
   const handleCopy = useCallback(async () => {
     try {
@@ -74,7 +74,7 @@ export function CopyableAddress({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <p className="text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wide">{label}</p>
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 uppercase tracking-wide">{label}</p>
       )}
       <div className="flex items-center">
         <span

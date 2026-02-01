@@ -100,11 +100,11 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
           {/* Guardian addresses */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs text-gray-500 dark:text-zinc-400">Guardian Addresses</label>
+              <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Guardian Addresses</label>
               <button
                 onClick={addGuardian}
                 disabled={guardians.length >= 5}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50"
+                className="text-xs xl:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50"
               >
                 + Add
               </button>
@@ -117,7 +117,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
                     value={g}
                     onChange={(e) => updateGuardian(i, e.target.value)}
                     placeholder={`Guardian ${i + 1} address (0x...)`}
-                    className="flex-1 px-2 py-1.5 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                    className="flex-1 px-2 py-1.5 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
                   />
                   {guardians.length > 2 && (
                     <button
@@ -136,7 +136,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
 
           {/* Threshold */}
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">
               Approval Threshold ({threshold} of {validGuardians.length})
             </label>
             <input
@@ -148,7 +148,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
               className="w-full"
             />
             {threshold === 1 && validGuardians.length > 1 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              <p className="text-xs xl:text-sm text-amber-600 dark:text-amber-400 mt-0.5">
                 A single guardian can initiate recovery. Consider using a higher threshold.
               </p>
             )}
@@ -156,27 +156,27 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
 
           {/* Recovery Owner */}
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Recovery Owner</label>
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">Recovery Owner</label>
             <input
               type="text"
               value={recoveryOwner}
               onChange={(e) => setRecoveryOwner(e.target.value)}
               placeholder={address ? `Default: ${address.slice(0, 10)}...` : '0x...'}
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
             />
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-0.5">
               Recovery will restore access to this address only.
             </p>
           </div>
 
           {hasOverlap && (
-            <p className="text-xs text-red-500">Guardian addresses cannot overlap with existing signers.</p>
+            <p className="text-xs xl:text-sm text-red-500">Guardian addresses cannot overlap with existing signers.</p>
           )}
 
           <button
             onClick={() => setStep('review')}
             disabled={!isFormValid}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm transition-colors mt-2"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm xl:text-base transition-colors mt-2"
           >
             Review
           </button>
@@ -203,11 +203,11 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
 
         <div className="space-y-3 mb-4">
           <div className="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded space-y-2">
-            <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 font-medium">
               {validGuardians.length} guardians, {threshold} required to recover
             </p>
             {validGuardians.map((g, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
+              <div key={i} className="flex items-center gap-2 text-xs xl:text-sm">
                 <span className="text-gray-400 dark:text-zinc-500">#{i + 1}</span>
                 <span className="font-mono text-gray-900 dark:text-white">
                   {g.slice(0, 8)}...{g.slice(-6)}
@@ -215,32 +215,32 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
               </div>
             ))}
             <div className="pt-1 border-t border-gray-200 dark:border-zinc-600 mt-1">
-              <span className="text-xs text-gray-500 dark:text-zinc-400">Recovery to: </span>
-              <span className="text-xs font-mono text-gray-900 dark:text-white">
+              <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Recovery to: </span>
+              <span className="text-xs xl:text-sm font-mono text-gray-900 dark:text-white">
                 {effectiveRecoveryOwner.slice(0, 8)}...{effectiveRecoveryOwner.slice(-6)}
               </span>
             </div>
           </div>
 
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-            <p className="text-xs text-blue-800 dark:text-blue-300">
+            <p className="text-xs xl:text-sm text-blue-800 dark:text-blue-300">
               Recovery requires {threshold} guardian approvals + 48-hour timelock. You can cancel during the timelock period.
             </p>
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs xl:text-sm text-red-500">{error}</p>}
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => setStep('form')}
-            className="flex-1 px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="flex-1 px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             Back
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+            className="flex-1 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             Confirm
           </button>
@@ -255,7 +255,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
       <div className="p-4 w-full">
         <div className="flex flex-col items-center justify-center py-8">
           <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm text-gray-700 dark:text-zinc-300">Setting up guardians...</p>
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">Setting up guardians...</p>
         </div>
       </div>
     );
@@ -270,13 +270,13 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Guardians Configured</h3>
-        <p className="text-xs text-gray-500 dark:text-zinc-400 text-center mb-4">
+        <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-1">Guardians Configured</h3>
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 text-center mb-4">
           {validGuardians.length} guardians set with {threshold}-of-{validGuardians.length} threshold.
         </p>
         <button
           onClick={onClose}
-          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
         >
           Done
         </button>

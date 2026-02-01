@@ -74,7 +74,7 @@ export function TokenFaucetButton({
       <button
         onClick={handleClick}
         disabled={loading || !canUseFaucet || needsNsnFirst}
-        className={`px-2 py-0.5 text-xs font-medium rounded transition-colors
+        className={`px-2 py-0.5 text-xs xl:text-sm font-medium rounded transition-colors
           ${message?.type === 'success'
             ? 'bg-green-500/20 text-green-400'
             : message?.type === 'error'
@@ -108,7 +108,7 @@ export function TokenFaucetButton({
       <button
         onClick={handleClick}
         disabled={loading || !canUseFaucet || needsNsnFirst}
-        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
+        className={`px-3 py-1.5 text-sm xl:text-base font-medium rounded-lg transition-colors
           ${message?.type === 'success'
             ? 'bg-green-500/20 text-green-400'
             : message?.type === 'error'
@@ -147,7 +147,7 @@ export function TokenFaucetButton({
       )}
       </button>
       {needsNsnFirst && (
-        <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-500 mt-1">
           NSN required for gas fees
         </p>
       )}

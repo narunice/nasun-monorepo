@@ -87,10 +87,10 @@ export function SecurityProgress({
     <div className={`${className}`}>
       {/* Header with progress */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+        <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
           Security Progress
         </h3>
-        <span className={`text-sm font-medium ${getProgressTextColor()}`}>
+        <span className={`text-sm xl:text-base font-medium ${getProgressTextColor()}`}>
           {completedCount}/{totalCount}
         </span>
       </div>
@@ -133,7 +133,7 @@ export function SecurityProgress({
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <p className={`text-xs font-medium ${
+                  <p className={`text-xs xl:text-sm font-medium ${
                     item.isComplete
                       ? 'text-green-700 dark:text-green-400'
                       : 'text-gray-700 dark:text-zinc-300'
@@ -143,13 +143,13 @@ export function SecurityProgress({
                   {!item.isComplete && item.action && onSetupClick && (
                     <button
                       onClick={() => onSetupClick(item.action!)}
-                      className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                      className="text-[10px] xl:text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       Set up
                     </button>
                   )}
                 </div>
-                <p className="text-[10px] text-gray-500 dark:text-zinc-400">
+                <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
                   {item.description}
                 </p>
               </div>
@@ -160,7 +160,7 @@ export function SecurityProgress({
 
       {/* Recommendation */}
       {completedCount < totalCount && (
-        <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-400">
+        <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs xl:text-sm text-blue-700 dark:text-blue-400">
           <p className="flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

@@ -33,7 +33,7 @@ export function TabBar({
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs xl:text-sm font-medium transition-all ${
               isActive
                 ? "bg-white dark:bg-zinc-800 rounded-t-lg text-blue-600 dark:text-blue-400"
                 : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 rounded-t-lg"

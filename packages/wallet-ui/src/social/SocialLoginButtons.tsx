@@ -105,9 +105,9 @@ const providerConfig: Record<ZkLoginProvider, {
 };
 
 const sizeClasses = {
-  sm: 'h-9 text-sm px-3',
-  md: 'h-11 text-base px-4',
-  lg: 'h-12 text-lg px-5',
+  sm: 'h-9 text-sm xl:text-base px-3',
+  md: 'h-11 text-base xl:text-lg px-4',
+  lg: 'h-12 text-lg xl:text-xl px-5',
 };
 
 export function SocialLoginButtons({

@@ -156,7 +156,7 @@ export function ActionsList({
 
   if (actions.length === 0) {
     return (
-      <div className={`text-gray-500 dark:text-gray-400 text-sm ${className}`}>
+      <div className={`text-gray-500 dark:text-gray-400 text-sm xl:text-base ${className}`}>
         No actions to display
       </div>
     );
@@ -179,7 +179,7 @@ export function ActionsList({
       {hasMore && !expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+          className="text-sm xl:text-base text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
         >
           Show {actions.length - maxVisible} more action
           {actions.length - maxVisible > 1 ? 's' : ''}
@@ -189,7 +189,7 @@ export function ActionsList({
       {hasMore && expanded && (
         <button
           onClick={() => setExpanded(false)}
-          className="text-sm text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
+          className="text-sm xl:text-base text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
         >
           Show less
         </button>
@@ -216,7 +216,7 @@ function ActionItem({ action, variant, showIcon }: ActionItemProps) {
 
   if (variant === 'compact') {
     return (
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm xl:text-base">
         {showIcon && (
           <span className={`flex-shrink-0 ${config.iconStyles}`}>{icon}</span>
         )}
@@ -233,7 +233,7 @@ function ActionItem({ action, variant, showIcon }: ActionItemProps) {
       {showIcon && (
         <InlineTooltip tooltip={config.tooltip}>
           <span
-            className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-lg ${config.iconStyles}`}
+            className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-lg xl:text-xl ${config.iconStyles}`}
           >
             {icon}
           </span>
@@ -242,17 +242,17 @@ function ActionItem({ action, variant, showIcon }: ActionItemProps) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
+          <span className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
             {action.label}
           </span>
           {action.sublabel && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
               {action.sublabel}
             </span>
           )}
         </div>
 
-        <div className="mt-0.5 text-sm text-gray-600 dark:text-gray-300 font-mono truncate">
+        <div className="mt-0.5 text-sm xl:text-base text-gray-600 dark:text-gray-300 font-mono truncate">
           {action.value}
         </div>
       </div>

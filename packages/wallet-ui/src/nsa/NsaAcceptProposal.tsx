@@ -144,29 +144,29 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
         </div>
 
         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded mb-4">
-          <p className="text-xs text-blue-800 dark:text-blue-300">
+          <p className="text-xs xl:text-sm text-blue-800 dark:text-blue-300">
             Enter the proposal ID shared with you to become a signer on someone's Smart Account.
           </p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Proposal ID</label>
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">Proposal ID</label>
             <input
               type="text"
               value={proposalId}
               onChange={(e) => setProposalId(e.target.value)}
               placeholder="0x..."
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm xl:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs xl:text-sm text-red-500">{error}</p>}
 
           <button
             onClick={fetchProposal}
             disabled={!proposalId.trim() || isLoading}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 text-white font-medium rounded text-sm transition-colors"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             {isLoading ? 'Loading...' : 'Look Up Proposal'}
           </button>
@@ -194,28 +194,28 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
         <div className="space-y-3 mb-4">
           {/* Account info section */}
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Smart Account</p>
-            <p className="text-xs font-mono text-blue-800 dark:text-blue-300">
+            <p className="text-xs xl:text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">Smart Account</p>
+            <p className="text-xs xl:text-sm font-mono text-blue-800 dark:text-blue-300">
               {proposal.accountId.slice(0, 10)}...{proposal.accountId.slice(-8)}
             </p>
           </div>
 
           <div className="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded space-y-2">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm xl:text-base">
               <span className="text-gray-500 dark:text-zinc-400">Your Role</span>
               <span className="text-gray-900 dark:text-white">{proposal.label}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm xl:text-base">
               <span className="text-gray-500 dark:text-zinc-400">Signer Type</span>
               <span className="text-gray-900 dark:text-white">
                 {SIGNER_TYPE_LABELS[proposal.signerType] || proposal.signerType}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm xl:text-base">
               <span className="text-gray-500 dark:text-zinc-400">Weight</span>
               <span className="text-gray-900 dark:text-white">{proposal.weight}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm xl:text-base">
               <span className="text-gray-500 dark:text-zinc-400">Expires</span>
               <span
                 className="text-gray-900 dark:text-white cursor-help"
@@ -224,33 +224,33 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
                 {formatTimeRemaining(proposal.expiresAt)}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm xl:text-base">
               <span className="text-gray-500 dark:text-zinc-400">Invited by</span>
-              <span className="text-gray-900 dark:text-white font-mono text-xs">
+              <span className="text-gray-900 dark:text-white font-mono text-xs xl:text-sm">
                 {proposal.proposer.slice(0, 8)}...{proposal.proposer.slice(-6)}
               </span>
             </div>
           </div>
 
           <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-            <p className="text-xs text-amber-800 dark:text-amber-300">
+            <p className="text-xs xl:text-sm text-amber-800 dark:text-amber-300">
               By accepting, you will become a signer on the Smart Account. You will be able to authorize transactions up to your weight limit.
             </p>
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs xl:text-sm text-red-500">{error}</p>}
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => setStep('input')}
-            className="flex-1 px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="flex-1 px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             Back
           </button>
           <button
             onClick={handleAccept}
-            className="flex-1 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded text-sm transition-colors"
+            className="flex-1 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             Accept & Sign
           </button>
@@ -265,7 +265,7 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
       <div className="p-4 w-full">
         <div className="flex flex-col items-center justify-center py-8">
           <div className="w-10 h-10 border-2 border-green-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm text-gray-700 dark:text-zinc-300">Accepting proposal...</p>
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">Accepting proposal...</p>
         </div>
       </div>
     );
@@ -281,13 +281,13 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Failed to Accept</h3>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 text-center mb-4">
+          <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-1">Failed to Accept</h3>
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 text-center mb-4">
             {error || 'An error occurred while accepting the proposal.'}
           </p>
           <button
             onClick={() => setStep('review')}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             Try Again
           </button>
@@ -305,13 +305,13 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Signer Added</h3>
-        <p className="text-xs text-gray-500 dark:text-zinc-400 text-center mb-4">
+        <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-1">Signer Added</h3>
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 text-center mb-4">
           You are now a signer on the Smart Account with label "{proposal?.label}".
         </p>
         <button
           onClick={onClose}
-          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
         >
           Done
         </button>

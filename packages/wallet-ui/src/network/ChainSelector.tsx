@@ -64,14 +64,14 @@ export function ChainSelector({
     setIsOpen(false);
   };
 
-  const sizeClasses = size === 'sm' ? 'text-xs py-1 px-2' : 'text-sm py-1.5 px-3';
+  const sizeClasses = size === 'sm' ? 'text-xs xl:text-sm py-1 px-2' : 'text-sm xl:text-base py-1.5 px-3';
   const iconSize = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Label */}
       {showLabel && (
-        <label className="block text-[10px] font-medium text-gray-500 dark:text-zinc-400 mb-1">
+        <label className="block text-[10px] xl:text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">
           Network
         </label>
       )}
@@ -87,7 +87,7 @@ export function ChainSelector({
             {chain.name}
           </span>
           {chain.testnet && (
-            <span className="px-1 py-0.5 text-[9px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
+            <span className="px-1 py-0.5 text-[10px] xl:text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
               Testnet
             </span>
           )}
@@ -108,7 +108,7 @@ export function ChainSelector({
           {/* Move Networks */}
           {moveChains.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider bg-gray-50 dark:bg-zinc-900/50">
+              <div className="px-3 py-1.5 text-[10px] xl:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider bg-gray-50 dark:bg-zinc-900/50">
                 Move Networks
               </div>
               {moveChains.map((c) => (
@@ -126,7 +126,7 @@ export function ChainSelector({
           {/* EVM Networks */}
           {evmChains.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-200 dark:border-zinc-700">
+              <div className="px-3 py-1.5 text-[10px] xl:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-200 dark:border-zinc-700">
                 EVM Networks
               </div>
               {evmChains.map((c) => (
@@ -160,7 +160,7 @@ function ChainOption({
   onSelect: (id: string) => void;
   size: 'sm' | 'md';
 }) {
-  const sizeClasses = size === 'sm' ? 'text-xs py-1.5 px-3' : 'text-sm py-2 px-3';
+  const sizeClasses = size === 'sm' ? 'text-xs xl:text-sm py-1.5 px-3' : 'text-sm xl:text-base py-2 px-3';
   const iconSize = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
 
   return (
@@ -175,12 +175,12 @@ function ChainOption({
         {chain.name}
       </span>
       {chain.testnet && (
-        <span className="px-1 py-0.5 text-[9px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
+        <span className="px-1 py-0.5 text-[10px] xl:text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
           Testnet
         </span>
       )}
       {chain.aa && (
-        <span className="px-1 py-0.5 text-[9px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+        <span className="px-1 py-0.5 text-[10px] xl:text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
           AA
         </span>
       )}

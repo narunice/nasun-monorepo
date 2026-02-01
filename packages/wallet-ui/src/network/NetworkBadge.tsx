@@ -21,8 +21,8 @@ const NETWORK_STYLES: Record<NetworkType, string> = {
 };
 
 const SIZE_STYLES = {
-  xs: 'px-1 py-0.5 text-[10px]',
-  sm: 'px-1.5 py-0.5 text-xs',
+  xs: 'px-1 py-0.5 text-[10px] xl:text-xs',
+  sm: 'px-1.5 py-0.5 text-xs xl:text-sm',
 };
 
 /**
