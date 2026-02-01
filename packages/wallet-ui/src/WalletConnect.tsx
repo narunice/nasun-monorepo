@@ -151,7 +151,13 @@ function WalletLabelEditor({ address, fallbackLabel }: { address: string; fallba
               className="inline-flex p-0.5 ml-1 text-gray-400 dark:text-zinc-500 hover:text-red-400 dark:hover:text-red-400 transition-colors"
               title="Remove nickname"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -335,14 +341,56 @@ function LockedStateUI({
 type TabMode = "assets" | "history" | "account";
 
 const TAB_CONFIG: Record<TabMode, { path: string; label: string }> = {
-  assets: { path: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z", label: "Assets" },
+  assets: {
+    path: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+    label: "Assets",
+  },
   history: { path: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", label: "History" },
-  account: { path: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", label: "Account" },
+  account: {
+    path: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+    label: "Account",
+  },
 };
 
-function TabBar({ activeTab, onTabChange }: { activeTab: TabMode; onTabChange: (tab: TabMode) => void }) {
+const CUSTOM_SCROLLBAR_ID = 'nasun-wallet-scrollbar';
+
+function injectScrollbarStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(CUSTOM_SCROLLBAR_ID)) return;
+  const style = document.createElement('style');
+  style.id = CUSTOM_SCROLLBAR_ID;
+  style.textContent = `
+    .nasun-thin-scroll::-webkit-scrollbar { width: 4px; }
+    .nasun-thin-scroll::-webkit-scrollbar-track { background: transparent; }
+    .nasun-thin-scroll::-webkit-scrollbar-thumb {
+      background: rgba(156,163,175,0.4);
+      border-radius: 9999px;
+    }
+    .nasun-thin-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(156,163,175,0.6);
+    }
+    @media (prefers-color-scheme: dark) {
+      .nasun-thin-scroll::-webkit-scrollbar-thumb {
+        background: rgba(161,161,170,0.3);
+      }
+      .nasun-thin-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(161,161,170,0.5);
+      }
+    }
+    .nasun-thin-scroll { scrollbar-width: thin; scrollbar-color: rgba(156,163,175,0.4) transparent; }
+  `;
+  document.head.appendChild(style);
+}
+
+function TabBar({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: TabMode;
+  onTabChange: (tab: TabMode) => void;
+}) {
   return (
-    <div className="mx-3 my-2 p-1 bg-gray-100 dark:bg-zinc-800 rounded-lg flex gap-1">
+    <div className="flex gap-1 px-2 pt-2">
       {(Object.keys(TAB_CONFIG) as TabMode[]).map((tab) => {
         const isActive = tab === activeTab;
         const { path, label } = TAB_CONFIG[tab];
@@ -350,13 +398,13 @@ function TabBar({ activeTab, onTabChange }: { activeTab: TabMode; onTabChange: (
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
               isActive
-                ? "bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400"
-                : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
+                ? "bg-white dark:bg-zinc-800 rounded-t-lg text-blue-600 dark:text-blue-400"
+                : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 rounded-t-lg"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
             </svg>
             {label}
@@ -369,8 +417,16 @@ function TabBar({ activeTab, onTabChange }: { activeTab: TabMode; onTabChange: (
 
 const QUICK_ACTIONS = [
   { key: "send", label: "Send", path: "M12 19l9 2-9-18-9 18 9-2zm0 0v-8" },
-  { key: "receive", label: "Recv", path: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" },
-  { key: "staking", label: "Stake", path: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+  {
+    key: "receive",
+    label: "Recv",
+    path: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z",
+  },
+  {
+    key: "staking",
+    label: "Stake",
+    path: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
 ] as const;
 
 function QuickActionsBar({
@@ -385,12 +441,12 @@ function QuickActionsBar({
   moreMenuContent: React.ReactNode;
 }) {
   return (
-    <div className="mx-3 my-2 p-1 bg-gray-100 dark:bg-zinc-800 rounded-lg flex gap-1">
+    <div className="px-2 py-1 flex gap-2 bg-gray-100 dark:bg-zinc-700/50">
       {QUICK_ACTIONS.map(({ key, label, path }) => (
         <button
           key={key}
           onClick={() => onAction(key)}
-          className="flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[11px] font-medium transition-all text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 hover:bg-white/50 dark:hover:bg-zinc-700/50"
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-medium transition-all text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
@@ -401,14 +457,19 @@ function QuickActionsBar({
       <div className="relative flex-1">
         <button
           onClick={onToggleMore}
-          className={`w-full flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+          className={`w-full flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-medium transition-all ${
             showMoreMenu
               ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
-              : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 hover:bg-white/50 dark:hover:bg-zinc-700/50"
+              : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700"
           }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
+            />
           </svg>
           More
         </button>
@@ -509,6 +570,9 @@ export function WalletConnect({
   const nsaRecoveryCompleted = [nsaHasMultipath, nsaHasBackup, nsaHasGuardian].filter(
     Boolean,
   ).length;
+
+  // Inject custom scrollbar styles
+  useEffect(() => { injectScrollbarStyles(); }, []);
 
   // Auto-refresh incoming invitations when wallet connects
   useEffect(() => {
@@ -1187,7 +1251,7 @@ export function WalletConnect({
             </div>
             <CopyableAddress
               value={ledgerAddress}
-              shorten={8}
+              shorten={isMobile ? 4 : 6}
               showCopy
               showExplorer
               explorerType="address"
@@ -1236,7 +1300,7 @@ export function WalletConnect({
               onClick={async () => {
                 await ledgerDisconnect();
               }}
-              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1323,7 +1387,7 @@ export function WalletConnect({
       return (
         <div className="w-full ">
           {/* User info header with network selector */}
-          <div className="px-3 py-3">
+          <div className="px-3 py-3 bg-gray-100 dark:bg-zinc-700/50">
             <div className="flex items-start justify-between gap-2 mb-2">
               {/* Left: User info */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1348,14 +1412,14 @@ export function WalletConnect({
                 </div>
               </div>
 
-              {/* Right: Network selector */}
-              <div className="flex-shrink-0">
+              {/* Right: Network selector + Interface switch */}
+              <div className="flex-shrink-0 flex flex-col items-center gap-2">
                 {isAdvancedMode ? (
                   <button
                     onClick={() => setIsNetworkModalOpen(true)}
                     className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
-                      bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600
-                      text-gray-700 dark:text-zinc-300 transition-colors"
+                      bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700
+                      text-gray-700 dark:text-zinc-300 transition-colors shadow-sm"
                   >
                     <span className="max-w-[100px] truncate">{chain.name}</span>
                     {chain.type === "evm" && (
@@ -1381,7 +1445,7 @@ export function WalletConnect({
                   <div className="group relative">
                     <div
                       className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
-                      bg-gray-100 dark:bg-zinc-700 text-gray-500 dark:text-zinc-400 cursor-default"
+                      bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 cursor-default shadow-sm"
                     >
                       <span className="max-w-[100px] truncate">{chain.name}</span>
                       <svg
@@ -1408,11 +1472,12 @@ export function WalletConnect({
                     </div>
                   </div>
                 )}
+                <AdvancedToggle compact showDescription={false} />
               </div>
             </div>
             <CopyableAddress
               value={zkState.address}
-              shorten={8}
+              shorten={isMobile ? 4 : 6}
               showCopy
               showExplorer
               explorerType="address"
@@ -1425,12 +1490,13 @@ export function WalletConnect({
             <NetworkSelectorModal onClose={() => setIsNetworkModalOpen(false)} />
           )}
 
-          {/* Tab navigation for zkLogin */}
+          {/* Tab frame: gray background wraps tabs + content */}
+          <div className="bg-gray-100 dark:bg-zinc-700/50 pb-1">
           <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
           {/* Tokens tab content */}
           {activeTab === "assets" && (
-            <div className="py-1">
+            <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tr-lg">
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
                 <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
@@ -1542,7 +1608,7 @@ export function WalletConnect({
 
           {/* Account tab content for zkLogin */}
           {activeTab === "account" && (
-            <div className="py-1">
+            <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tl-lg">
               {/* Asset Management */}
               <button
                 onClick={() => setViewMode("staking")}
@@ -1679,19 +1745,12 @@ export function WalletConnect({
                   <span className="text-xs text-blue-500 dark:text-blue-400">Setup</span>
                 </button>
               )}
-
-              <div className="border-t border-gray-200 dark:border-zinc-700 my-2" />
-
-              {/* Settings */}
-              <div className="px-3 py-2">
-                <AdvancedToggle compact showDescription={false} />
-              </div>
             </div>
           )}
 
           {/* History tab content */}
           {activeTab === "history" && (
-            <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
+            <div className="max-h-[280px] overflow-y-auto overflow-x-hidden mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-t-lg nasun-thin-scroll">
               <TransactionHistoryPanel
                 hideHeader
                 limit={10}
@@ -1706,6 +1765,7 @@ export function WalletConnect({
               />
             </div>
           )}
+          </div>{/* end tab frame */}
 
           {/* Quick Actions Bar */}
           <QuickActionsBar
@@ -1717,21 +1777,30 @@ export function WalletConnect({
                 nsaIsInitialized={nsaIsInitialized}
                 nsaRecoveryCompleted={nsaRecoveryCompleted}
                 pendingForMe={pendingForMe}
-                onPortfolio={() => { setViewMode("portfolio"); setShowMoreMenu(false); }}
-                onCreateLink={() => { setViewMode("nasun-link"); setShowMoreMenu(false); }}
-                onSmartAccount={() => { setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup"); setShowMoreMenu(false); }}
+                onPortfolio={() => {
+                  setViewMode("portfolio");
+                  setShowMoreMenu(false);
+                }}
+                onCreateLink={() => {
+                  setViewMode("nasun-link");
+                  setShowMoreMenu(false);
+                }}
+                onSmartAccount={() => {
+                  setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
+                  setShowMoreMenu(false);
+                }}
               />
             }
           />
 
           {/* Session Actions - Always visible */}
-          <div className="px-3 py-2">
+          <div className="px-2 pb-2 pt-1 bg-gray-100 dark:bg-zinc-700/50">
             <button
               onClick={() => {
                 zkLogout();
                 setShowDropdown(false);
               }}
-              className="w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center justify-center gap-2"
+              className="w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1787,7 +1856,7 @@ export function WalletConnect({
       return (
         <div className="w-full ">
           {/* Address header with network selector */}
-          <div className="px-3 py-2">
+          <div className="px-3 py-2 bg-gray-100 dark:bg-zinc-700/50">
             <div className="flex items-start justify-between gap-2">
               {/* Left: Address info with editable label */}
               <div className="flex-1 min-w-0 text-left">
@@ -1799,7 +1868,7 @@ export function WalletConnect({
                 ) : (
                   <CopyableAddress
                     value={displayAddress}
-                    shorten={8}
+                    shorten={isMobile ? 4 : 6}
                     showCopy
                     showExplorer
                     explorerType="address"
@@ -1808,14 +1877,14 @@ export function WalletConnect({
                 )}
               </div>
 
-              {/* Right: Network selector */}
-              <div className="flex-shrink-0">
+              {/* Right: Network selector + Interface switch */}
+              <div className="flex-shrink-0 flex flex-col items-center gap-2">
                 {isAdvancedMode ? (
                   <button
                     onClick={() => setIsNetworkModalOpen(true)}
                     className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
-                      bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600
-                      text-gray-700 dark:text-zinc-300 transition-colors"
+                      bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700
+                      text-gray-700 dark:text-zinc-300 transition-colors shadow-sm"
                   >
                     <span className="max-w-[100px] truncate">{chain.name}</span>
                     {chain.type === "evm" && (
@@ -1841,7 +1910,7 @@ export function WalletConnect({
                   <div className="group relative">
                     <div
                       className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
-                      bg-gray-100 dark:bg-zinc-700 text-gray-500 dark:text-zinc-400 cursor-default"
+                      bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 cursor-default shadow-sm"
                     >
                       <span className="max-w-[100px] truncate">{chain.name}</span>
                       <svg
@@ -1868,6 +1937,7 @@ export function WalletConnect({
                     </div>
                   </div>
                 )}
+                <AdvancedToggle compact showDescription={false} />
               </div>
             </div>
           </div>
@@ -1925,12 +1995,13 @@ export function WalletConnect({
             </div>
           )}
 
-          {/* Tab navigation */}
+          {/* Tab frame: gray background wraps tabs + content */}
+          <div className="bg-gray-100 dark:bg-zinc-700/50 pb-1">
           <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
           {/* Tokens tab content */}
           {activeTab === "assets" && (
-            <div className="py-1">
+            <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tr-lg">
               {/* Token Balances Section */}
               <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
                 <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
@@ -2042,7 +2113,7 @@ export function WalletConnect({
 
           {/* Account tab content for software wallet */}
           {activeTab === "account" && (
-            <div className="py-1">
+            <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tl-lg">
               {/* Asset Management */}
               <button
                 onClick={() => setViewMode("staking")}
@@ -2229,16 +2300,12 @@ export function WalletConnect({
                 </svg>
                 Export Private Key
               </button>
-
-              <div className="px-3 py-2">
-                <AdvancedToggle compact showDescription={false} />
-              </div>
             </div>
           )}
 
           {/* History tab content */}
           {activeTab === "history" && (
-            <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
+            <div className="max-h-[280px] overflow-y-auto overflow-x-hidden mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-t-lg nasun-thin-scroll">
               <TransactionHistoryPanel
                 hideHeader
                 limit={10}
@@ -2253,6 +2320,7 @@ export function WalletConnect({
               />
             </div>
           )}
+          </div>{/* end tab frame */}
 
           {/* Quick Actions Bar */}
           <QuickActionsBar
@@ -2264,22 +2332,31 @@ export function WalletConnect({
                 nsaIsInitialized={nsaIsInitialized}
                 nsaRecoveryCompleted={nsaRecoveryCompleted}
                 pendingForMe={pendingForMe}
-                onPortfolio={() => { setViewMode("portfolio"); setShowMoreMenu(false); }}
-                onCreateLink={() => { setViewMode("nasun-link"); setShowMoreMenu(false); }}
-                onSmartAccount={() => { setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup"); setShowMoreMenu(false); }}
+                onPortfolio={() => {
+                  setViewMode("portfolio");
+                  setShowMoreMenu(false);
+                }}
+                onCreateLink={() => {
+                  setViewMode("nasun-link");
+                  setShowMoreMenu(false);
+                }}
+                onSmartAccount={() => {
+                  setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
+                  setShowMoreMenu(false);
+                }}
               />
             }
           />
 
           {/* Session Actions - Always visible */}
-          <div className="px-3 py-2">
+          <div className="px-2 pb-2 pt-1 bg-gray-100 dark:bg-zinc-700/50">
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   lockWallet();
                   setShowDropdown(false);
                 }}
-                className="flex-1 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -2293,7 +2370,7 @@ export function WalletConnect({
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
