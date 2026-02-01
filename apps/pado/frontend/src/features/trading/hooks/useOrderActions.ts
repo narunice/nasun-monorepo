@@ -3,10 +3,11 @@
  * 주문 실행 래퍼 (useTrading + Toast 통합)
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrading } from "../useTrading";
 import { useMarket } from "../context/MarketContext";
+import { useOrderForm } from "../context/OrderFormContext";
 import { useAutoDeposit } from "./useAutoDeposit";
 import { useMarginAccount } from "../../core/unified-margin/useMarginAccount";
 import type { TradeResult, OrderType } from "../types";
@@ -20,10 +21,8 @@ export interface UseOrderActionsResult {
   isLoading: boolean;
   balanceManagerId: string | null;
 
-  // Auto deposit state
+  // Auto deposit runtime state
   isAutoDepositing: boolean;
-  autoDepositEnabled: boolean;
-  setAutoDepositEnabled: (enabled: boolean) => void;
   lastAutoDepositError: string | null;
 
   // 주문 실행
@@ -79,22 +78,8 @@ export function useOrderActions(): UseOrderActionsResult {
     withdrawAllTokens,
   } = useTrading();
 
-  // Auto deposit state (localStorage 저장, default enabled)
-  const [autoDepositEnabled, setAutoDepositEnabledState] = useState(() => {
-    try {
-      const stored = localStorage.getItem('pado:autoDepositEnabled');
-      return stored === null ? true : stored === 'true';
-    } catch {
-      return true;
-    }
-  });
-
-  const setAutoDepositEnabled = useCallback((enabled: boolean) => {
-    setAutoDepositEnabledState(enabled);
-    try {
-      localStorage.setItem('pado:autoDepositEnabled', String(enabled));
-    } catch { /* ignore */ }
-  }, []);
+  // Auto deposit setting from context
+  const { autoDepositEnabled } = useOrderForm();
 
   // Auto deposit hook
   const {
@@ -404,8 +389,6 @@ export function useOrderActions(): UseOrderActionsResult {
     isLoading,
     balanceManagerId,
     isAutoDepositing,
-    autoDepositEnabled,
-    setAutoDepositEnabled,
     lastAutoDepositError,
     handleLimitOrder,
     handleMarketOrder,
