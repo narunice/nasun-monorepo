@@ -27,12 +27,12 @@ export function BalancePanel() {
     return (
       <div className="bg-theme-bg-secondary rounded-lg p-4 flex items-center justify-between">
         <div>
-          <div className="text-sm text-theme-text-muted">Pool Mid Price</div>
-          <div className="text-xl font-semibold text-green-400">
+          <div className="text-sm xl:text-base text-theme-text-muted">Pool Mid Price</div>
+          <div className="text-xl xl:text-2xl font-semibold text-green-400">
             ${midPrice > 0 ? midPrice.toFixed(2) : '--'}
           </div>
         </div>
-        <div className="text-sm text-theme-text-muted">
+        <div className="text-sm xl:text-base text-theme-text-muted">
           Connect wallet to view balances and trade
         </div>
       </div>
@@ -43,26 +43,26 @@ export function BalancePanel() {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
       {/* NASUN */}
       <div className="bg-theme-bg-secondary rounded-lg p-4">
-        <div className="text-sm text-theme-text-muted">NASUN</div>
-        <div className="text-xl font-semibold text-theme-text-primary">{balances?.nasun.formatted || '0'}</div>
+        <div className="text-sm xl:text-base text-theme-text-muted">NASUN</div>
+        <div className="text-xl xl:text-2xl font-semibold text-theme-text-primary">{balances?.nasun.formatted || '0'}</div>
       </div>
 
       {/* NBTC */}
       <div className="bg-theme-bg-secondary rounded-lg p-4">
-        <div className="text-sm text-theme-text-muted">NBTC</div>
-        <div className="text-xl font-semibold text-theme-text-primary">{balances?.nbtc.formatted || '0'}</div>
+        <div className="text-sm xl:text-base text-theme-text-muted">NBTC</div>
+        <div className="text-xl xl:text-2xl font-semibold text-theme-text-primary">{balances?.nbtc.formatted || '0'}</div>
       </div>
 
       {/* NUSDC */}
       <div className="bg-theme-bg-secondary rounded-lg p-4">
-        <div className="text-sm text-theme-text-muted">NUSDC</div>
-        <div className="text-xl font-semibold text-theme-text-primary">{balances?.nusdc.formatted || '0'}</div>
+        <div className="text-sm xl:text-base text-theme-text-muted">NUSDC</div>
+        <div className="text-xl xl:text-2xl font-semibold text-theme-text-primary">{balances?.nusdc.formatted || '0'}</div>
       </div>
 
       {/* Mid Price */}
       <div className="bg-theme-bg-secondary rounded-lg p-4">
-        <div className="text-sm text-theme-text-muted">Pool Mid Price</div>
-        <div className="text-xl font-semibold text-green-400">
+        <div className="text-sm xl:text-base text-theme-text-muted">Pool Mid Price</div>
+        <div className="text-xl xl:text-2xl font-semibold text-green-400">
           ${midPrice > 0 ? midPrice.toFixed(2) : '--'}
         </div>
       </div>

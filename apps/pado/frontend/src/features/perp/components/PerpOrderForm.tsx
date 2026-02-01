@@ -168,7 +168,7 @@ export function PerpOrderForm({
           onClick={() => handleSideChange(POSITION_SIDE.LONG)}
           className={`py-3 text-sm font-bold rounded transition-colors ${
             isLong
-              ? 'bg-green-500 text-white'
+              ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
               : 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
           }`}
         >
@@ -178,7 +178,7 @@ export function PerpOrderForm({
           onClick={() => handleSideChange(POSITION_SIDE.SHORT)}
           className={`py-3 text-sm font-bold rounded transition-colors ${
             !isLong
-              ? 'bg-red-500 text-white'
+              ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
               : 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
           }`}
         >

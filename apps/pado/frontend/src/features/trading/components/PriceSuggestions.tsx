@@ -36,7 +36,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handleSelect(midPrice)}
         disabled={!midPrice}
-        className="px-2 py-1 text-xs bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="Current mid price"
       >
         Mid
@@ -44,7 +44,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handleSelect(bestBid)}
         disabled={!bestBid}
-        className="px-2 py-1 text-xs bg-green-200 dark:bg-green-700/50 hover:bg-green-300 dark:hover:bg-green-700 text-green-700 dark:text-green-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-green-200 dark:bg-green-700/50 hover:bg-green-300 dark:hover:bg-green-700 text-green-700 dark:text-green-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="Best bid price"
       >
         Bid
@@ -52,7 +52,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handleSelect(bestAsk)}
         disabled={!bestAsk}
-        className="px-2 py-1 text-xs bg-red-200 dark:bg-red-700/50 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-red-200 dark:bg-red-700/50 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="Best ask price"
       >
         Ask
@@ -65,7 +65,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handlePercentage(-5)}
         disabled={!midPrice}
-        className="px-2 py-1 text-xs bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="5% below mid price"
       >
         -5%
@@ -73,7 +73,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handlePercentage(-1)}
         disabled={!midPrice}
-        className="px-2 py-1 text-xs bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="1% below mid price"
       >
         -1%
@@ -81,7 +81,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handlePercentage(1)}
         disabled={!midPrice}
-        className="px-2 py-1 text-xs bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="1% above mid price"
       >
         +1%
@@ -89,7 +89,7 @@ export function PriceSuggestions({
       <button
         onClick={() => handlePercentage(5)}
         disabled={!midPrice}
-        className="px-2 py-1 text-xs bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2 py-1 text-xs xl:text-sm bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="5% above mid price"
       >
         +5%

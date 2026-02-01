@@ -53,7 +53,7 @@ export function TradingToggles() {
             className="flex items-center gap-1.5 cursor-pointer"
             title="Execute orders immediately without confirmation"
           >
-            <span className="text-xs text-theme-text-muted whitespace-nowrap">One-Click</span>
+            <span className="text-xs xl:text-sm text-theme-text-muted whitespace-nowrap">One-Click</span>
             <button
               onClick={handleOneClickToggle}
               className={`w-7 h-3.5 rounded-full transition-colors ${
@@ -74,7 +74,7 @@ export function TradingToggles() {
               className="flex items-center gap-1.5 cursor-pointer"
               title="Automatically deposit from wallet when balance is insufficient"
             >
-              <span className="text-xs text-theme-text-muted whitespace-nowrap">Auto Deposit</span>
+              <span className="text-xs xl:text-sm text-theme-text-muted whitespace-nowrap">Auto Deposit</span>
               <button
                 onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
                 className={`w-7 h-3.5 rounded-full transition-colors ${
@@ -89,7 +89,7 @@ export function TradingToggles() {
               </button>
             </label>
             {isAutoDepositing && (
-              <span className="text-[10px] text-blue-400 animate-pulse">Depositing...</span>
+              <span className="text-[10px] xl:text-xs text-blue-400 animate-pulse">Depositing...</span>
             )}
           </div>
         </div>
@@ -97,12 +97,12 @@ export function TradingToggles() {
         {/* Info text row */}
         <div className="flex items-center justify-between mt-1">
           <span
-            className={`text-[10px] leading-tight ${oneClickEnabled ? "text-purple-400" : "text-theme-text-muted"}`}
+            className={`text-[10px] xl:text-xs leading-tight ${oneClickEnabled ? "text-purple-400" : "text-theme-text-muted"}`}
           >
             {oneClickEnabled ? "Orders execute immediately" : "Requires confirmation"}
           </span>
           <span
-            className={`text-[10px] leading-tight ${
+            className={`text-[10px] xl:text-xs leading-tight ${
               autoDepositEnabled ? "text-theme-text-muted" : "text-orange-500 dark:text-yellow-600"
             }`}
           >
@@ -115,10 +115,10 @@ export function TradingToggles() {
       {showWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-theme-bg-secondary rounded-lg p-5 max-w-sm mx-4 border border-theme-border">
-            <h3 className="text-sm font-semibold text-theme-text-primary mb-3">
+            <h3 className="text-sm xl:text-base font-semibold text-theme-text-primary mb-3">
               Enable One-Click Trading
             </h3>
-            <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
+            <p className="text-xs xl:text-sm text-theme-text-secondary mb-4 leading-relaxed">
               Orders will execute immediately without a confirmation step. On-chain transactions
               cannot be cancelled or reversed. Make sure you review price and amount before clicking
               Buy or Sell.
@@ -126,13 +126,13 @@ export function TradingToggles() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowWarning(false)}
-                className="flex-1 py-2 text-xs font-medium rounded-lg bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary transition-colors"
+                className="flex-1 py-2 text-xs xl:text-sm font-medium rounded-lg bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmOneClick}
-                className="flex-1 py-2 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                className="flex-1 py-2 text-xs xl:text-sm font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors"
               >
                 Enable
               </button>

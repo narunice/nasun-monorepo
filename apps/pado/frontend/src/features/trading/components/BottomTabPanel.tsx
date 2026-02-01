@@ -78,7 +78,7 @@ function OpenOrdersTab({ orders, isLoading, onCancel }: OpenOrdersTabProps) {
 function OrderHistoryTab() {
   return (
     <div className="min-h-[180px]">
-      <div className="text-trading-xs text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
+      <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
         <span>Time</span>
         <span>Type</span>
         <span className="text-right">Price</span>
@@ -86,8 +86,8 @@ function OrderHistoryTab() {
         <span className="text-right">Status</span>
       </div>
       <div className="text-center text-theme-text-muted py-6">
-        <p className="text-trading-sm">No order history available</p>
-        <p className="text-trading-xs mt-1">Your completed and cancelled orders will appear here</p>
+        <p className="text-trading-sm xl:text-trading-lg">No order history available</p>
+        <p className="text-trading-xs xl:text-trading-sm mt-1">Your completed and cancelled orders will appear here</p>
       </div>
     </div>
   );
@@ -122,7 +122,7 @@ function AssetsTab() {
   if (!isConnected) {
     return (
       <div className="min-h-[180px]">
-        <div className="text-trading-xs text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
+        <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
           <span>Asset</span>
           <span className="text-right">Wallet</span>
           <span className="text-right">Trading</span>
@@ -130,8 +130,8 @@ function AssetsTab() {
           <span className="text-right">Actions</span>
         </div>
         <div className="text-center text-theme-text-muted py-6">
-          <p className="text-trading-sm">Connect wallet to view assets</p>
-          <p className="text-trading-xs mt-1">Your balances will appear here</p>
+          <p className="text-trading-sm xl:text-trading-lg">Connect wallet to view assets</p>
+          <p className="text-trading-xs xl:text-trading-sm mt-1">Your balances will appear here</p>
         </div>
       </div>
     );
@@ -155,7 +155,7 @@ function AssetsTab() {
   return (
     <div className="min-h-[180px]">
       {/* Column Headers */}
-      <div className="text-trading-xs text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
+      <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
         <span>Asset</span>
         <span className="text-right">Wallet</span>
         <span className="text-right">Trading</span>
@@ -165,7 +165,7 @@ function AssetsTab() {
 
       {/* Asset Rows */}
       {assets.map((asset) => (
-        <div key={asset.symbol} className="grid grid-cols-5 gap-2 py-1.5 text-trading-sm">
+        <div key={asset.symbol} className="grid grid-cols-5 gap-2 py-1.5 text-trading-sm xl:text-trading-lg">
           <span className="font-medium text-theme-text-primary">{asset.symbol}</span>
           <span className="text-right font-mono text-theme-text-secondary">
             {asset.wallet.toFixed(asset.decimals)}
@@ -182,14 +182,14 @@ function AssetsTab() {
                 <button
                   onClick={handleDeposit}
                   disabled={isLoading}
-                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 transition-colors"
+                  className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm font-medium rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 transition-colors"
                 >
                   Deposit
                 </button>
                 <button
                   onClick={handleWithdraw}
                   disabled={isLoading}
-                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 disabled:opacity-50 transition-colors"
+                  className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm font-medium rounded bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 disabled:opacity-50 transition-colors"
                 >
                   Withdraw
                 </button>
@@ -202,14 +202,14 @@ function AssetsTab() {
       {/* Auto Deposit Error */}
       {lastAutoDepositError && (
         <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <p className="text-xs text-red-400">Auto deposit failed: {lastAutoDepositError}</p>
+          <p className="text-xs xl:text-sm text-red-400">Auto deposit failed: {lastAutoDepositError}</p>
         </div>
       )}
 
       {/* Enable Pado hint */}
       {!balanceManagerId && (
         <div className="mt-3 text-center">
-          <p className="text-trading-xs text-theme-text-muted">
+          <p className="text-trading-xs xl:text-trading-sm text-theme-text-muted">
             Enable Pado from the order form to deposit funds for trading
           </p>
         </div>

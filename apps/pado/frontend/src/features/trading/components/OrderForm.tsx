@@ -67,7 +67,7 @@ export function OrderForm({
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const [orderMode, setOrderMode] = useState<OrderModeType>('limit');
-  const [showAdvanced, setShowAdvanced] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const isMarket = orderMode === 'market';
   const isBuy = side === 'buy';
@@ -130,7 +130,7 @@ export function OrderForm({
         onTabChange={setOrderMode}
         rightContent={
           !isMarket && executionOption !== 'GTC' ? (
-            <span className="px-1.5 py-0.5 text-trading-xs bg-blue-600/30 text-blue-400 rounded">
+            <span className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm bg-blue-600/30 text-blue-400 rounded">
               {executionOption}
             </span>
           ) : undefined
@@ -141,9 +141,9 @@ export function OrderForm({
       <div className="grid grid-cols-2">
         <button
           onClick={() => onSideChange('buy')}
-          className={`py-2 text-sm font-semibold transition-colors rounded-l ${
+          className={`py-2 text-sm xl:text-base font-semibold transition-colors rounded-l ${
             isBuy
-              ? 'bg-green-600 text-white'
+              ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
               : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
@@ -151,9 +151,9 @@ export function OrderForm({
         </button>
         <button
           onClick={() => onSideChange('sell')}
-          className={`py-2 text-sm font-semibold transition-colors rounded-r ${
+          className={`py-2 text-sm xl:text-base font-semibold transition-colors rounded-r ${
             !isBuy
-              ? 'bg-red-600 text-white'
+              ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
               : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
@@ -162,7 +162,7 @@ export function OrderForm({
       </div>
 
       {/* C. Available Balance */}
-      <div className="flex items-center justify-between text-trading-xs">
+      <div className="flex items-center justify-between text-trading-xs xl:text-trading-sm">
         <span className="text-theme-text-muted">Available</span>
         <span className="font-mono text-theme-text-secondary">
           {isBuy
@@ -175,8 +175,8 @@ export function OrderForm({
       {!isMarket ? (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-trading-xs text-theme-text-muted">Price ({quoteSymbol})</label>
-            <span className="text-trading-xs text-theme-text-muted">Min ${minPrice}</span>
+            <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Price ({quoteSymbol})</label>
+            <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Min ${minPrice}</span>
           </div>
           <PriceSuggestions
             midPrice={midPrice || 0}
@@ -189,20 +189,20 @@ export function OrderForm({
             placeholder="0.00"
             value={price}
             onChange={(e) => onPriceChange(e.target.value)}
-            className={`w-full px-3 py-2 text-sm bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
+            className={`w-full px-3 py-2 text-sm xl:text-base bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
               effectivePrice > 0 && !priceValidation.valid
                 ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
                 : 'focus:ring-blue-500'
             }`}
           />
           {effectivePrice > 0 && !priceValidation.valid && (
-            <p className="text-trading-xs text-yellow-400 mt-1">{priceValidation.message}</p>
+            <p className="text-trading-xs xl:text-trading-sm text-yellow-400 mt-1">{priceValidation.message}</p>
           )}
         </div>
       ) : (
         <>
           {midPrice && midPrice > 0 && (
-            <div className="flex items-center justify-between text-trading-xs py-2 px-3 bg-theme-bg-tertiary/50 rounded">
+            <div className="flex items-center justify-between text-trading-xs xl:text-trading-sm py-2 px-3 bg-theme-bg-tertiary/50 rounded">
               <span className="text-theme-text-muted">Market Price</span>
               <span className="text-green-400 font-mono">
                 ~${midPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -218,22 +218,22 @@ export function OrderForm({
       {/* E. Amount Input + Percentage Buttons */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="text-trading-xs text-theme-text-muted">Amount ({baseSymbol})</label>
-          <span className="text-trading-xs text-theme-text-muted">Min {minQuantity}</span>
+          <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Amount ({baseSymbol})</label>
+          <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Min {minQuantity}</span>
         </div>
         <input
           type="number"
           placeholder="0.0000"
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
-          className={`w-full px-3 py-2 text-sm bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
+          className={`w-full px-3 py-2 text-sm xl:text-base bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
             amountNum > 0 && !quantityValidation.valid
               ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
               : 'focus:ring-blue-500'
           }`}
         />
         {amountNum > 0 && !quantityValidation.valid && (
-          <p className="text-trading-xs text-yellow-400 mt-1">{quantityValidation.message}</p>
+          <p className="text-trading-xs xl:text-trading-sm text-yellow-400 mt-1">{quantityValidation.message}</p>
         )}
         {/* Percentage buttons */}
         <div className="flex gap-1 mt-1.5">
@@ -241,7 +241,7 @@ export function OrderForm({
             <button
               key={pct}
               onClick={() => handlePercentAmount(pct)}
-              className="flex-1 py-1 text-trading-xs font-medium rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+              className="flex-1 py-1 text-trading-xs xl:text-trading-sm font-medium rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary transition-colors"
             >
               {pct}%
             </button>
@@ -252,13 +252,13 @@ export function OrderForm({
       {/* F. Info Rows */}
       <div className="space-y-1 pt-1 border-t border-theme-border">
         {total > 0 && (
-          <div className="flex justify-between text-trading-xs">
+          <div className="flex justify-between text-trading-xs xl:text-trading-sm">
             <span className="text-theme-text-muted">{isMarket ? 'Est. Value' : 'Order Value'}</span>
             <span className="font-mono text-theme-text-secondary">{total.toFixed(2)} {quoteSymbol}</span>
           </div>
         )}
         {isMarket && (
-          <div className="flex justify-between text-trading-xs">
+          <div className="flex justify-between text-trading-xs xl:text-trading-sm">
             <span className="text-theme-text-muted">Slippage</span>
             <span className="font-mono text-theme-text-secondary">{slippage}%</span>
           </div>
@@ -278,7 +278,7 @@ export function OrderForm({
         <div>
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1 text-trading-xs text-theme-text-muted hover:text-theme-text-primary transition-colors"
+            className="flex items-center gap-1 text-trading-xs xl:text-trading-sm text-theme-text-muted hover:text-theme-text-primary transition-colors"
           >
             <svg
               className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
@@ -290,7 +290,7 @@ export function OrderForm({
             </svg>
             Advanced
             {executionOption !== 'GTC' && (
-              <span className="ml-1 px-1.5 py-0.5 bg-blue-600/30 text-blue-400 rounded text-[10px]">
+              <span className="ml-1 px-1.5 py-0.5 bg-blue-600/30 text-blue-400 rounded text-[10px] xl:text-xs">
                 {executionOption}
               </span>
             )}
@@ -298,13 +298,13 @@ export function OrderForm({
 
           {showAdvanced && (
             <div className="mt-2 p-2 bg-theme-bg-tertiary/50 rounded">
-              <div className="text-trading-xs text-theme-text-muted mb-1.5">Execution</div>
+              <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted mb-1.5">Execution</div>
               <div className="grid grid-cols-4 gap-1">
                 {EXECUTION_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => onExecutionOptionChange(opt.value)}
-                    className={`py-1 px-1.5 text-trading-xs font-medium rounded transition-colors ${
+                    className={`py-1 px-1.5 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
                       executionOption === opt.value
                         ? 'bg-blue-600 text-white'
                         : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
@@ -315,7 +315,7 @@ export function OrderForm({
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-[10px] text-theme-text-muted">
+              <p className="mt-1.5 text-[10px] xl:text-xs text-theme-text-muted">
                 {EXECUTION_OPTIONS.find((o) => o.value === executionOption)?.description}
               </p>
             </div>

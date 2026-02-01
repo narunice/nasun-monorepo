@@ -69,7 +69,7 @@ function TradePageContent() {
         {/* Simple/Pro Toggle */}
         <div className="lg:col-span-3 xl:col-span-2">
           <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 h-full flex items-center justify-between">
-            <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
+            <span className="text-xs xl:text-sm text-theme-text-muted whitespace-nowrap">Interface</span>
             <div className="flex items-center gap-2">
               <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
                 Simple

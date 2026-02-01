@@ -45,14 +45,14 @@ function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) 
         <div className="absolute right-0 top-full mt-2 w-80 bg-theme-bg-secondary border border-theme-border rounded-lg p-4 shadow-lg z-50 text-left">
           {variant === 'simple' ? (
             <>
-              <p className="text-xs font-semibold text-theme-text-primary mb-2">
+              <p className="text-xs xl:text-sm font-semibold text-theme-text-primary mb-2">
                 Why do I need to enable Pado?
               </p>
-              <p className="text-xs text-theme-text-secondary mb-2 leading-relaxed">
+              <p className="text-xs xl:text-sm text-theme-text-secondary mb-2 leading-relaxed">
                 On centralized exchanges, the platform holds your funds. Pado is
                 a decentralized exchange where you control your own assets.
               </p>
-              <p className="text-xs text-theme-text-secondary mb-3 leading-relaxed">
+              <p className="text-xs xl:text-sm text-theme-text-secondary mb-3 leading-relaxed">
                 &ldquo;Enable Pado&rdquo; creates a secure on-chain account to hold
                 your trading funds. This is a one-time setup&mdash;once enabled,
                 you can start trading immediately.
@@ -60,15 +60,15 @@ function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) 
             </>
           ) : (
             <>
-              <p className="text-xs font-semibold text-theme-text-primary mb-2">
+              <p className="text-xs xl:text-sm font-semibold text-theme-text-primary mb-2">
                 What does Enable Pado do?
               </p>
-              <p className="text-xs text-theme-text-secondary mb-2 leading-relaxed">
+              <p className="text-xs xl:text-sm text-theme-text-secondary mb-2 leading-relaxed">
                 Creates a DeepBook V3 <span className="text-theme-text-primary">BalanceManager</span> and
                 a <span className="text-theme-text-primary">Unified Margin Account</span> in
                 a single transaction.
               </p>
-              <div className="text-xs text-theme-text-secondary mb-2 leading-relaxed">
+              <div className="text-xs xl:text-sm text-theme-text-secondary mb-2 leading-relaxed">
                 <p className="font-medium text-theme-text-primary mb-1">BalanceManager</p>
                 <ul className="list-disc list-inside space-y-0.5 ml-1">
                   <li>On-chain object that holds your trading balances</li>
@@ -76,14 +76,14 @@ function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) 
                   <li>Auto-deposit from wallet when placing orders</li>
                 </ul>
               </div>
-              <div className="text-xs text-theme-text-secondary mb-3 leading-relaxed">
+              <div className="text-xs xl:text-sm text-theme-text-secondary mb-3 leading-relaxed">
                 <p className="font-medium text-theme-text-primary mb-1">Margin Account</p>
                 <ul className="list-disc list-inside space-y-0.5 ml-1">
                   <li>Shared across Trading, Predictions, and Lending</li>
                   <li>Multi-collateral support (NUSDC + NBTC)</li>
                 </ul>
               </div>
-              <p className="text-xs text-theme-text-muted mb-3 leading-relaxed">
+              <p className="text-xs xl:text-sm text-theme-text-muted mb-3 leading-relaxed">
                 Comparable to CEX API key + account activation, but fully
                 self-custodial on-chain.
               </p>
@@ -225,11 +225,11 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     return (
       <div className="space-y-4">
         <div className="bg-theme-bg-secondary rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4 text-theme-text-primary">Quick Trade</h3>
+          <h3 className="text-lg xl:text-xl font-semibold mb-4 text-theme-text-primary">Quick Trade</h3>
 
           {/* Connect wallet banner when not connected */}
           {!isConnected && (
-            <div className="mb-4 p-3 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
+            <div className="mb-4 p-3 rounded text-sm xl:text-base bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
               Connect wallet to start trading
             </div>
           )}
@@ -237,14 +237,14 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           {/* Trading Balance setup for Simple mode */}
           {isConnected && !balanceManagerId && (
             <div className="mb-4 p-4 bg-theme-bg-tertiary rounded-lg text-center">
-              <div className="text-sm text-theme-text-secondary mb-3">
+              <div className="text-sm xl:text-base text-theme-text-secondary mb-3">
                 Enable Pado to start placing orders
                 <EnablePadoInfo />
               </div>
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
               >
                 {isLoading ? 'Enabling...' : 'Enable Pado'}
               </button>
@@ -284,15 +284,15 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       {/* Enable Pado prompt (when no BalanceManager) */}
       {isConnected && !balanceManagerId && (
         <div className="bg-theme-bg-secondary rounded-lg p-4">
-          <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
-          <div className="text-xs text-theme-text-muted mb-3">
+          <h3 className="text-sm xl:text-base font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
+          <div className="text-xs xl:text-sm text-theme-text-muted mb-3">
             Enable Pado to start trading. Funds will be automatically deposited when needed.
             <EnablePadoInfo variant="pro" />
           </div>
           <button
             onClick={handleCreateBalanceManager}
             disabled={isLoading}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors"
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
           >
             {isLoading ? 'Enabling...' : 'Enable Pado'}
           </button>
@@ -303,7 +303,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       <div className="bg-theme-bg-secondary rounded-lg p-3">
         {/* Connect wallet banner when not connected */}
         {!isConnected && (
-          <div className="mb-4 p-3 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
+          <div className="mb-4 p-3 rounded text-sm xl:text-base bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
             Connect wallet to start trading
           </div>
         )}

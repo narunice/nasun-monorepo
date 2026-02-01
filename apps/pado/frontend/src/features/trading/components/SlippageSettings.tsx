@@ -39,8 +39,8 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
   return (
     <div className="p-3 bg-theme-bg-tertiary/50 rounded">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-theme-text-secondary">Slippage Tolerance</span>
-        <span className="text-xs font-mono text-blue-400">{value}%</span>
+        <span className="text-xs xl:text-sm text-theme-text-secondary">Slippage Tolerance</span>
+        <span className="text-xs xl:text-sm font-mono text-blue-400">{value}%</span>
       </div>
 
       <div className="flex gap-1">
@@ -48,7 +48,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
           <button
             key={preset}
             onClick={() => handlePresetClick(preset)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${
+            className={`flex-1 py-1.5 text-xs xl:text-sm font-medium rounded transition-colors ${
               isPresetSelected(preset)
                 ? 'bg-blue-600 text-white'
                 : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
@@ -74,7 +74,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
             step="0.1"
           />
           {isCustom && customValue && (
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-200">
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs xl:text-sm text-blue-200">
               %
             </span>
           )}
@@ -82,7 +82,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
       </div>
 
       {value > 1 && (
-        <p className="mt-2 text-[10px] text-yellow-500">
+        <p className="mt-2 text-[10px] xl:text-xs text-yellow-500">
           ⚠️ High slippage may result in unfavorable execution
         </p>
       )}
