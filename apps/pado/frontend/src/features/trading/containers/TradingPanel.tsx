@@ -443,8 +443,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       )}
 
       {/* Place Order Card */}
-      <div className="bg-theme-bg-secondary rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4 text-theme-text-primary">Place Order</h3>
+      <div className="bg-theme-bg-secondary rounded-lg p-4">
+        <h3 className="text-sm font-semibold mb-3 text-theme-text-primary">Place Order</h3>
 
         {/* Connect wallet banner when not connected */}
         {!isConnected && (
