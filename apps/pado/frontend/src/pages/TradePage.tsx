@@ -10,6 +10,8 @@ import { BalancePanel, TradingPanel } from '../features/trading/containers';
 import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook } from '../features/trading/components';
 import { useTradeMode, useOrderbook } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
+import { usePrices } from '../features/core/usePrices';
+import { getPriceChange24h, type TokenSymbol } from '../lib/prices';
 
 // Fixed height for chart and orderbook to ensure consistent layout
 const CHART_HEIGHT = 480;
@@ -19,18 +21,24 @@ function TradePageContent() {
   const { currentPool } = useMarket();
   const { data: orderbookData } = useOrderbook();
   const { setPrice } = useOrderForm();
+  const { getPrice } = usePrices();
 
   const orderbook = orderbookData?.orderbook ?? { bids: [], asks: [], spread: 0, midPrice: 0 };
   const midPrice = orderbookData?.midPrice ?? 0;
 
+  // Price priority: DeepBook midPrice > oracle/simulated price
+  const baseSymbol = currentPool.baseToken.symbol as TokenSymbol;
+  const oraclePrice = getPrice(baseSymbol);
+  const displayPrice = midPrice || oraclePrice;
+
   // Market info data
   const marketInfo = {
     symbol: `${currentPool.baseToken.symbol}/${currentPool.quoteToken.symbol}`,
-    price: midPrice || 95000,
-    priceChange24h: 2.34,
+    price: displayPrice,
+    priceChange24h: getPriceChange24h(baseSymbol),
     volume24h: 1_250_000,
-    high24h: (midPrice || 95000) * 1.025,
-    low24h: (midPrice || 95000) * 0.975,
+    high24h: displayPrice * 1.025,
+    low24h: displayPrice * 0.975,
   };
 
   // Handle orderbook price click
@@ -79,7 +87,7 @@ function TradePageContent() {
         /* Simple Mode: Chart + Trading Panel (2 columns) */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
           <div className="bg-theme-bg-secondary rounded-lg p-4">
-            <PriceChart currentPrice={midPrice || 95000} />
+            <PriceChart currentPrice={displayPrice} />
           </div>
           <TradingPanel mode={mode} />
         </div>
@@ -91,7 +99,7 @@ function TradePageContent() {
             className="lg:col-span-7 xl:col-span-8 bg-theme-bg-secondary rounded-lg p-3"
             style={{ height: `${CHART_HEIGHT}px` }}
           >
-            <PriceChart currentPrice={midPrice || 95000} />
+            <PriceChart currentPrice={displayPrice} />
           </div>
 
           {/* Orderbook - Fixed width, same height as chart */}

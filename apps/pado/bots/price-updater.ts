@@ -24,10 +24,10 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 
-// Contract addresses (Devnet - deployed 2026-01-04)
-const ORACLE_PACKAGE_ID = '0x10ffe5c6fe47e6e046a0692863937d270708f4bf8f74c18aab578c97b862f84c';
-const ORACLE_REGISTRY_ID = '0x023944875d36fe148facf696cc00b6c4a850074556890e547dcd61f5d8710b9b';
-const ADMIN_CAP_ID = '0x355529a091bf18bec82f733434817cde66238e216d7e7eb2ef744fc978427e47';
+// Contract addresses (Devnet V6 - 2026-01-27)
+const ORACLE_PACKAGE_ID = '0x560788890e0d5f1fa757f6bd34e1d015c9f29061eea01ef9afe4635799cfab53';
+const ORACLE_REGISTRY_ID = '0x83b8a7bf66cfdb85f13670e833837d5c51b23f097bded20a740e6a397bc09e1e';
+const ADMIN_CAP_ID = '0x92dbfba1248d976a6c2d1befee6200b6fde9d691cccdd8e8cceeb040efc88584';
 const CLOCK_ID = '0x6';
 
 const DECIMALS = 8;

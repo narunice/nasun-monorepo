@@ -29,7 +29,7 @@ interface CachedPrice {
 }
 
 const CACHE_TTL_MS = 10_000; // 10 seconds
-const MAX_ORACLE_AGE_MS = 60_000; // 1 minute staleness threshold
+const MAX_ORACLE_AGE_MS = 120_000; // 2 minutes (Lambda updates every 1 minute)
 
 const priceCache: Map<TokenSymbol, CachedPrice> = new Map();
 

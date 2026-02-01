@@ -18,6 +18,9 @@ const ORACLE_REGISTRY_ID =
 
 const DECIMALS = 8;
 
+// Cache the Table object ID (resolved from registry on first call)
+let feedsTableId: string | null = null;
+
 // Symbol ID mapping (must match dev_oracle.move constants)
 export const SYMBOLS = {
   BTCUSD: 1,
@@ -47,6 +50,36 @@ export interface PriceData {
 // ========================================
 
 /**
+ * Resolve the Table<u64, PriceFeed> object ID from the OracleRegistry.
+ * The registry stores feeds in a Table, which is a separate Sui object.
+ * Dynamic fields are on the Table, not on the registry itself.
+ */
+async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
+  if (feedsTableId) return feedsTableId;
+
+  try {
+    const registry = await client.getObject({
+      id: ORACLE_REGISTRY_ID,
+      options: { showContent: true },
+    });
+
+    if (registry.data?.content?.dataType !== 'moveObject') return null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fields = (registry.data.content as any).fields;
+    const tableId = fields?.feeds?.fields?.id?.id;
+    if (tableId) {
+      feedsTableId = tableId;
+      console.log(`[Oracle] Resolved feeds table: ${tableId.slice(0, 16)}...`);
+    }
+    return feedsTableId;
+  } catch (error) {
+    console.error('[Oracle] Failed to resolve feeds table:', error);
+    return null;
+  }
+}
+
+/**
  * Get price data from on-chain oracle
  *
  * @param client - SuiClient instance
@@ -58,8 +91,14 @@ export async function getPrice(
   symbol: SymbolKey
 ): Promise<PriceData | null> {
   try {
+    const tableId = await resolveFeedsTableId(client);
+    if (!tableId) {
+      console.warn('[Oracle] Cannot resolve feeds table ID');
+      return null;
+    }
+
     const result = await client.getDynamicFieldObject({
-      parentId: ORACLE_REGISTRY_ID,
+      parentId: tableId,
       name: {
         type: 'u64',
         value: SYMBOLS[symbol].toString(),
