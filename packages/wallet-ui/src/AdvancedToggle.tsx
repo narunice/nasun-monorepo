@@ -1,13 +1,8 @@
 /**
- * Pro Mode Toggle Component
+ * Interface Mode Toggle Component
  *
- * Allows users to switch between simple and pro wallet modes.
- * Pro mode reveals additional features like:
- * - Smart Account status
- * - Session Key management
- * - ZK-ID proofs
- * - WalletConnect sessions
- * - Multi-chain support
+ * Segment-style switch: Simple [track ●] Pro
+ * Labels sit outside the track, dot slides inside.
  */
 
 import { useUISettingsStore } from './stores/uiSettingsStore';
@@ -28,52 +23,75 @@ export function AdvancedToggle({
 }: AdvancedToggleProps) {
   const { isAdvancedMode, toggleAdvancedMode } = useUISettingsStore();
 
+  const textSize = compact ? 'text-[11px]' : 'text-xs';
+
   return (
     <div className={`${className}`}>
-      <label className="flex items-center justify-between cursor-pointer">
-        <div className="flex-1">
-          <span
-            className={`font-medium text-gray-900 dark:text-white ${
-              compact ? 'text-sm' : ''
-            }`}
-          >
-            Pro Mode
-          </span>
-          {showDescription && (
+      <div className="flex items-center justify-between">
+        {showDescription && (
+          <div className="flex-1">
+            <span
+              className={`font-medium text-gray-900 dark:text-white ${
+                compact ? 'text-sm' : ''
+              }`}
+            >
+              Interface
+            </span>
             <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-              Unlock multi-chain support and advanced features
+              Switch between simple and pro interface
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Toggle switch */}
-        <button
-          type="button"
+        {/* Simple [track] Pro */}
+        <div
+          className="inline-flex items-center gap-2 cursor-pointer"
+          onClick={toggleAdvancedMode}
           role="switch"
           aria-checked={isAdvancedMode}
-          onClick={toggleAdvancedMode}
-          className={`relative inline-flex items-center ${
-            compact ? 'h-5 w-9' : 'h-6 w-11'
-          } rounded-full transition-colors ${
-            isAdvancedMode
-              ? 'bg-blue-600'
-              : 'bg-gray-300 dark:bg-zinc-600'
-          }`}
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAdvancedMode(); } }}
         >
-          <span className="sr-only">Toggle pro mode</span>
+          {/* Simple label — outside track */}
           <span
-            className={`inline-block ${
-              compact ? 'h-4 w-4' : 'h-4 w-4'
-            } transform rounded-full bg-white transition-transform ${
-              isAdvancedMode
-                ? compact
-                  ? 'translate-x-[18px]'
-                  : 'translate-x-6'
-                : 'translate-x-1'
+            className={`${textSize} font-medium select-none transition-colors duration-200 ${
+              !isAdvancedMode
+                ? 'text-gray-800 dark:text-zinc-200'
+                : 'text-gray-300 dark:text-zinc-600'
             }`}
-          />
-        </button>
-      </label>
+          >
+            Simple
+          </span>
+
+          {/* Track with sliding dot */}
+          <span
+            className={`relative inline-flex items-center ${
+              compact ? 'h-5 w-9' : 'h-6 w-11'
+            } rounded-full bg-white dark:bg-zinc-800 shadow-sm flex-shrink-0`}
+          >
+            <span
+              className={`inline-block ${
+                compact ? 'h-3.5 w-3.5' : 'h-4 w-4'
+              } rounded-full bg-blue-500 shadow-sm transition-transform duration-200 ease-in-out ${
+                isAdvancedMode
+                  ? compact ? 'translate-x-[18px]' : 'translate-x-[22px]'
+                  : 'translate-x-[3px]'
+              }`}
+            />
+          </span>
+
+          {/* Pro label — outside track */}
+          <span
+            className={`${textSize} font-medium select-none transition-colors duration-200 ${
+              isAdvancedMode
+                ? 'text-gray-800 dark:text-zinc-200'
+                : 'text-gray-300 dark:text-zinc-600'
+            }`}
+          >
+            Pro
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
