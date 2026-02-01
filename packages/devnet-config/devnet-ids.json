@@ -63,7 +63,7 @@
     "complianceUpgradeCap": "0xdfb25919d387fdfa154b4e640c78c90feb66aa3a7dc8644b5c5acee98f776395"
   },
   "pools": {
-    "nbtcNusdc": "0x487b73ed239b454d6e57e48c19c39a519d1137f169c5d0b1b0d9e4d5713fc3be",
+    "nbtcNusdc": "0x0463496773116d873db85098e049dd805daf45c1ba1da9010e29e26f4fcaf64c",
     "nsnNusdc": "0x235cb1aef5fb8dbde313f067728f6bee8d80f6f78eb82e4361362a0c4cc6a710"
   },
   "oracle": {

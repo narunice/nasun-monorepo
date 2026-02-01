@@ -31,13 +31,17 @@ const POOL_ERRORS: Record<number, string> = {
   6: 'Post-only order would cross the book',
 };
 
-// DeepBook V3 order_info 에러 코드
+// DeepBook V3 order_info 에러 코드 (order_info.move 참조)
 const ORDER_INFO_ERRORS: Record<number, string> = {
-  1: 'Invalid order',
-  2: 'Invalid quantity (must be > 0 and match lot size)',
-  3: 'Order expired',
-  4: 'Invalid price',
-  5: 'Order not found',
+  0: 'Invalid price (must be a multiple of tick size)',    // EOrderInvalidPrice
+  1: 'Order below minimum size',                          // EOrderBelowMinimumSize
+  2: 'Invalid quantity (must be a multiple of lot size)',  // EOrderInvalidLotSize
+  3: 'Order expired',                                     // EInvalidExpireTimestamp
+  4: 'Invalid order type',                                // EInvalidOrderType
+  5: 'Post-only order rejected: would cross the book',    // EPOSTOrderCrossesOrderbook
+  6: 'Fill-or-Kill cannot be fully filled',                // EFOKOrderCannotBeFullyFilled
+  7: 'Market order cannot be post-only',                   // EMarketOrderCannotBePostOnly
+  8: 'Self-matching: taker order canceled',                // ESelfMatchingCancelTaker
 };
 
 // 일반적인 Sui 에러 패턴
