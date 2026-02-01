@@ -3,7 +3,7 @@
  * 주문 실행 래퍼 (useTrading + Toast 통합)
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrading } from "../useTrading";
 import { useMarket } from "../context/MarketContext";
@@ -79,8 +79,22 @@ export function useOrderActions(): UseOrderActionsResult {
     withdrawAllTokens,
   } = useTrading();
 
-  // Auto deposit state (default enabled)
-  const [autoDepositEnabled, setAutoDepositEnabled] = useState(true);
+  // Auto deposit state (localStorage 저장, default enabled)
+  const [autoDepositEnabled, setAutoDepositEnabledState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pado:autoDepositEnabled');
+      return stored === null ? true : stored === 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const setAutoDepositEnabled = useCallback((enabled: boolean) => {
+    setAutoDepositEnabledState(enabled);
+    try {
+      localStorage.setItem('pado:autoDepositEnabled', String(enabled));
+    } catch { /* ignore */ }
+  }, []);
 
   // Auto deposit hook
   const {

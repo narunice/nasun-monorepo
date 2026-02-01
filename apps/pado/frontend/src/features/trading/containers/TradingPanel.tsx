@@ -174,6 +174,30 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     resetForm,
   } = useOrderForm();
 
+  // One-Click warning modal
+  const [showOneClickWarning, setShowOneClickWarning] = useState(false);
+
+  const handleOneClickToggle = useCallback(() => {
+    if (oneClickEnabled) {
+      setOneClickEnabled(false);
+    } else {
+      const acknowledged = localStorage.getItem('pado:oneClickAcknowledged') === 'true';
+      if (acknowledged) {
+        setOneClickEnabled(true);
+      } else {
+        setShowOneClickWarning(true);
+      }
+    }
+  }, [oneClickEnabled, setOneClickEnabled]);
+
+  const confirmOneClick = useCallback(() => {
+    try {
+      localStorage.setItem('pado:oneClickAcknowledged', 'true');
+    } catch { /* ignore */ }
+    setOneClickEnabled(true);
+    setShowOneClickWarning(false);
+  }, [setOneClickEnabled]);
+
   // One-Click 주문 핸들러 (확인 모달 스킵)
   const handleOneClickOrder = async (type: 'buy' | 'sell') => {
     if (!price || !amount) return;
@@ -311,90 +335,83 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       {/* Trading Status Bar */}
       {isConnected && balanceManagerId && (
         <div className="bg-theme-bg-secondary rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-theme-text-primary">Trading Balance</span>
-              {isAutoDepositing && (
-                <span className="text-xs text-blue-400 animate-pulse">Depositing...</span>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              {/* One-Click Trading Toggle */}
-              <label className="flex items-center gap-2 cursor-pointer" title="Execute orders immediately without confirmation">
-                <span className="text-xs text-theme-text-secondary">One-Click</span>
+          {/* Row 1: Title */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-theme-text-primary whitespace-nowrap">Trading Balance</span>
+            {isAutoDepositing && (
+              <span className="text-xs text-blue-400 animate-pulse">Depositing...</span>
+            )}
+          </div>
+
+          {/* Row 2: Balance Display */}
+          <div className="flex items-center gap-4 text-sm mb-3">
+            <span className="text-theme-text-secondary">
+              <span className="text-theme-text-primary font-mono">{bmBalance.base.toFixed(4)}</span> {baseSymbol}
+            </span>
+            <span className="text-theme-text-secondary">
+              <span className="text-theme-text-primary font-mono">{bmBalance.quote.toFixed(2)}</span> NUSDC
+            </span>
+          </div>
+
+          {/* Row 3: Toggle groups (justify-around), each with info text below */}
+          <div className="flex justify-around mb-3">
+            {/* One-Click group */}
+            <div className="flex flex-col items-center gap-1">
+              <label className="flex items-center gap-1.5 cursor-pointer" title="Execute orders immediately without confirmation">
+                <span className="text-xs text-theme-text-muted">One-Click</span>
                 <button
-                  onClick={() => setOneClickEnabled(!oneClickEnabled)}
-                  className={`w-10 h-5 rounded-full transition-colors ${
+                  onClick={handleOneClickToggle}
+                  className={`w-7 h-3.5 rounded-full transition-colors ${
                     oneClickEnabled ? 'bg-purple-500' : 'bg-gray-600'
                   }`}
                 >
                   <span
-                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
-                      oneClickEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                    className={`block w-3 h-3 rounded-full bg-white transition-transform ${
+                      oneClickEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
                     }`}
                   />
                 </button>
               </label>
-              {/* Auto Deposit Toggle */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <span className="text-xs text-theme-text-secondary">Auto Deposit</span>
+              {oneClickEnabled && (
+                <p className="text-[10px] text-purple-400 text-center leading-tight">
+                  Orders execute immediately
+                </p>
+              )}
+            </div>
+
+            {/* Auto Deposit group */}
+            <div className="flex flex-col items-center gap-1">
+              <label className="flex items-center gap-1.5 cursor-pointer" title="Automatically deposit from wallet when balance is insufficient">
+                <span className="text-xs text-theme-text-muted">Auto Deposit</span>
                 <button
                   onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
-                  className={`w-10 h-5 rounded-full transition-colors ${
+                  className={`w-7 h-3.5 rounded-full transition-colors ${
                     autoDepositEnabled ? 'bg-green-500' : 'bg-gray-600'
                   }`}
                 >
                   <span
-                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${
-                      autoDepositEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                    className={`block w-3 h-3 rounded-full bg-white transition-transform ${
+                      autoDepositEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
                     }`}
                   />
                 </button>
               </label>
+              {autoDepositEnabled && !lastAutoDepositError && (
+                <p className="text-[10px] text-theme-text-muted text-center leading-tight">
+                  Auto-deposits from wallet
+                </p>
+              )}
+              {!autoDepositEnabled && (
+                <p className="text-[10px] text-yellow-500 text-center leading-tight">
+                  Manual deposit required
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Balance Display */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex gap-4">
-              <span className="text-theme-text-secondary">
-                <span className="text-theme-text-primary font-mono">{bmBalance.base.toFixed(4)}</span> {baseSymbol}
-              </span>
-              <span className="text-theme-text-secondary">
-                <span className="text-theme-text-primary font-mono">{bmBalance.quote.toFixed(2)}</span> NUSDC
-              </span>
-            </div>
-            {/* Advanced settings toggle */}
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-blue-500 hover:text-blue-400"
-            >
-              {showAdvanced ? 'Hide Advanced' : 'Advanced'}
-            </button>
-          </div>
-
-          {/* One-Click Trading Warning */}
-          {oneClickEnabled && (
-            <p className="text-xs text-purple-400 mt-2">
-              One-Click enabled: Orders execute immediately without confirmation.
-            </p>
-          )}
-
-          {/* Auto Deposit Info */}
-          {autoDepositEnabled && !lastAutoDepositError && !oneClickEnabled && (
-            <p className="text-xs text-theme-text-muted mt-2">
-              Funds will be automatically moved from wallet when needed.
-            </p>
-          )}
-          {!autoDepositEnabled && (
-            <p className="text-xs text-yellow-500 mt-2">
-              Auto deposit disabled. You may need to manually add funds before trading.
-            </p>
-          )}
-
-          {/* Auto Deposit Error Fallback */}
+          {/* Auto Deposit Error */}
           {lastAutoDepositError && (
-            <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
               <p className="text-xs text-red-400 mb-1">
                 Auto deposit failed: {lastAutoDepositError}
               </p>
@@ -406,6 +423,25 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               </button>
             </div>
           )}
+
+          {/* Advanced button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-400 transition-colors"
+            >
+              Advanced
+              <svg
+                className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
 
           {/* Advanced Settings (BalanceManagerCard) */}
           {showAdvanced && (
@@ -499,6 +535,34 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           amount={amount}
           isLoading={isLoading}
         />
+
+        {/* One-Click Warning Modal */}
+        {showOneClickWarning && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-theme-bg-secondary rounded-lg p-5 max-w-sm mx-4 border border-theme-border">
+              <h3 className="text-sm font-semibold text-theme-text-primary mb-3">Enable One-Click Trading</h3>
+              <p className="text-xs text-theme-text-secondary mb-4 leading-relaxed">
+                Orders will execute immediately without a confirmation step.
+                On-chain transactions cannot be cancelled or reversed.
+                Make sure you review price and amount before clicking Buy or Sell.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowOneClickWarning(false)}
+                  className="flex-1 py-2 text-xs font-medium rounded-lg bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmOneClick}
+                  className="flex-1 py-2 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                >
+                  Enable
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Pool Info */}
         <PoolInfo />
