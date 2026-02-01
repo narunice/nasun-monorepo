@@ -16,6 +16,7 @@ interface MarketInfoBarProps {
   openInterest?: number;
   fundingRate?: number;
   nextFundingTime?: Date;
+  className?: string;
 }
 
 export function MarketInfoBar({
@@ -28,6 +29,7 @@ export function MarketInfoBar({
   openInterest,
   fundingRate,
   nextFundingTime,
+  className,
 }: MarketInfoBarProps) {
   const isPositiveChange = priceChange24h >= 0;
 
@@ -64,7 +66,7 @@ export function MarketInfoBar({
   }, [nextFundingTime]);
 
   return (
-    <div className="bg-theme-bg-secondary rounded-lg px-3 py-2">
+    <div className={`bg-theme-bg-secondary rounded-lg px-3 py-2 ${className ?? ''}`}>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
         {/* Symbol & Price */}
         <div className="flex items-center gap-2">
