@@ -129,12 +129,12 @@ export function LedgerSigningPrompt({
           </div>
 
           {/* Title */}
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
             {message || defaultText.title}
           </h2>
 
           {/* Subtitle */}
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
+          <p className="text-gray-600 dark:text-gray-400 text-sm xl:text-base">
             {defaultText.subtitle}
           </p>
 
@@ -147,7 +147,7 @@ export function LedgerSigningPrompt({
           </div>
 
           {/* Waiting indicator */}
-          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm xl:text-base text-gray-500 dark:text-gray-400">
             <span className="animate-pulse">●</span>
             <span>Waiting for device...</span>
           </div>
@@ -158,7 +158,7 @@ export function LedgerSigningPrompt({
           <div className="px-8 pb-6">
             <button
               onClick={onCancel}
-              className="w-full px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="w-full px-4 py-2.5 text-sm xl:text-base font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
@@ -181,8 +181,8 @@ function LedgerDeviceAnimation() {
         <div className="w-24 h-10 bg-black rounded flex items-center justify-center">
           {/* Screen content - animated checkmark prompt */}
           <div className="flex items-center gap-3">
-            <span className="text-green-400 text-xl animate-pulse">✓</span>
-            <span className="text-white text-xs">Confirm</span>
+            <span className="text-green-400 text-xl xl:text-2xl animate-pulse">✓</span>
+            <span className="text-white text-xs xl:text-sm">Confirm</span>
           </div>
         </div>
 
@@ -201,7 +201,7 @@ function LedgerDeviceAnimation() {
       <div className="absolute -top-3 right-0">
         <div className="w-6 h-6 bg-blue-500/30 rounded-full animate-ping" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg">👆</span>
+          <span className="text-lg xl:text-xl">👆</span>
         </div>
       </div>
     </div>
@@ -231,7 +231,7 @@ export function LedgerSigningIndicator({
         <p className="font-medium text-blue-700 dark:text-blue-300">
           {text.title}
         </p>
-        <p className="text-sm text-blue-600 dark:text-blue-400">
+        <p className="text-sm xl:text-base text-blue-600 dark:text-blue-400">
           {text.subtitle}
         </p>
       </div>

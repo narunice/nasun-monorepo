@@ -88,7 +88,7 @@ export function AccountTabContent({
           <MenuIcon d={ICON_PATHS.shield} />
           <span className="flex-1">Smart Account</span>
           <span
-            className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+            className={`px-1.5 py-0.5 text-[10px] xl:text-xs font-medium rounded ${
               nsaRecoveryCompleted === 3
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                 : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
@@ -101,7 +101,7 @@ export function AccountTabContent({
         <button onClick={() => onNavigate("nsa-setup")} className={MENU_ITEM_CLASS}>
           <MenuIcon d={ICON_PATHS.shield} />
           <span className="flex-1">Smart Account</span>
-          <span className="text-xs text-blue-500 dark:text-blue-400">Setup</span>
+          <span className="text-xs xl:text-sm text-blue-500 dark:text-blue-400">Setup</span>
         </button>
       )}
 

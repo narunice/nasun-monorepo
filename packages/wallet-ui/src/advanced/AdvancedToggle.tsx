@@ -23,7 +23,7 @@ export function AdvancedToggle({
 }: AdvancedToggleProps) {
   const { isAdvancedMode, toggleAdvancedMode } = useUISettingsStore();
 
-  const textSize = compact ? 'text-[11px]' : 'text-xs';
+  const textSize = compact ? 'text-xs xl:text-sm' : 'text-xs xl:text-sm';
 
   return (
     <div className={`${className}`}>
@@ -32,12 +32,12 @@ export function AdvancedToggle({
           <div className="flex-1">
             <span
               className={`font-medium text-gray-900 dark:text-white ${
-                compact ? 'text-sm' : ''
+                compact ? 'text-sm xl:text-base' : ''
               }`}
             >
               Interface
             </span>
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-0.5">
               Switch between simple and pro interface
             </p>
           </div>

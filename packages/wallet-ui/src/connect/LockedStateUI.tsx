@@ -94,7 +94,7 @@ export function LockedStateUI({
       </h3>
 
       {isLocked && (
-        <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
+        <div className="mb-3 p-2 bg-red-500/20 border border-red-500/50 rounded text-sm xl:text-base text-red-400">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -126,7 +126,7 @@ export function LockedStateUI({
 
         {/* Error message with remaining attempts */}
         {error && !isLocked && (
-          <div className="text-xs">
+          <div className="text-xs xl:text-sm">
             <p className="text-red-400">{error}</p>
             {failedAttempts > 0 && attemptsRemaining > 0 && (
               <p className="text-yellow-500 mt-1">
@@ -139,7 +139,7 @@ export function LockedStateUI({
 
         {/* Warning when approaching lockout */}
         {!error && !isLocked && failedAttempts > 0 && failedAttempts < firstLockoutThreshold && (
-          <p className="text-xs text-yellow-500">
+          <p className="text-xs xl:text-sm text-yellow-500">
             {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining before lockout
           </p>
         )}

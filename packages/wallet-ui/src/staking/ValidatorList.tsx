@@ -47,7 +47,7 @@ export function ValidatorList({
   if (error) {
     return (
       <div className="p-4 bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg">
-        <p className="text-sm text-red-600 dark:text-red-400">Failed to load validators</p>
+        <p className="text-sm xl:text-base text-red-600 dark:text-red-400">Failed to load validators</p>
       </div>
     );
   }
@@ -59,7 +59,7 @@ export function ValidatorList({
   if (filteredValidators.length === 0) {
     return (
       <div className="p-4 bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg">
-        <p className="text-sm text-gray-500 dark:text-zinc-400 text-center">No validators available</p>
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400 text-center">No validators available</p>
       </div>
     );
   }
@@ -111,15 +111,15 @@ function ValidatorCard({ validator, isSelected, onSelect, compact }: ValidatorCa
               />
             ) : (
               <div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-zinc-600 flex items-center justify-center">
-                <span className="text-xs text-gray-600 dark:text-zinc-300">{validator.name[0]}</span>
+                <span className="text-xs xl:text-sm text-gray-600 dark:text-zinc-300">{validator.name[0]}</span>
               </div>
             )}
-            <span className="text-sm text-gray-900 dark:text-white font-medium truncate max-w-[120px]">
+            <span className="text-sm xl:text-base text-gray-900 dark:text-white font-medium truncate max-w-[120px]">
               {validator.name}
             </span>
           </div>
           <div className="text-right">
-            <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+            <span className="text-sm xl:text-base text-green-600 dark:text-green-400 font-medium">
               {formatApy(validator.apy)}
             </span>
           </div>
@@ -147,32 +147,32 @@ function ValidatorCard({ validator, isSelected, onSelect, compact }: ValidatorCa
           />
         ) : (
           <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-zinc-600 flex items-center justify-center">
-            <span className="text-lg text-gray-600 dark:text-zinc-300">{validator.name[0]}</span>
+            <span className="text-lg xl:text-xl text-gray-600 dark:text-zinc-300">{validator.name[0]}</span>
           </div>
         )}
 
         {/* Validator Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <h4 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white truncate">
               {validator.name}
             </h4>
-            <span className="text-sm text-green-600 dark:text-green-400 font-medium ml-2">
+            <span className="text-sm xl:text-base text-green-600 dark:text-green-400 font-medium ml-2">
               {formatApy(validator.apy)}
             </span>
           </div>
 
           <div className="flex items-center justify-between mt-1">
-            <span className="text-xs text-gray-500 dark:text-zinc-400">
+            <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
               Commission: {(validator.commissionRate * 100).toFixed(0)}%
             </span>
-            <span className="text-xs text-gray-500 dark:text-zinc-400">
+            <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
               Pool: {formatStakedAmount(validator.stakingPoolSuiBalance)}
             </span>
           </div>
 
           {validator.description && (
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1 truncate">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1 truncate">
               {validator.description}
             </p>
           )}

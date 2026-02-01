@@ -134,10 +134,10 @@ export function LinkClaimPage({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Link Not Found
         </h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">{linkDataError}</p>
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">{linkDataError}</p>
       </div>
     );
   }
@@ -151,10 +151,10 @@ export function LinkClaimPage({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Invalid Link
         </h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           This link format is not valid.
         </p>
       </div>
@@ -170,10 +170,10 @@ export function LinkClaimPage({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white mb-2">
           {linkStatus.status === 'claimed' ? 'Already Claimed' : 'Link Expired'}
         </h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400">
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           {linkStatus.message}
         </p>
       </div>
@@ -189,18 +189,18 @@ export function LinkClaimPage({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Claimed Successfully!
         </h3>
         <p className="text-2xl font-bold text-blue-500 mb-2">
           {claimedAmount ? formatBalance(claimedAmount, decimals) : formatBalance(amount, decimals)} {coinType}
         </p>
         {linkData.config.message && (
-          <p className="text-sm text-gray-600 dark:text-zinc-400 mb-4">
+          <p className="text-sm xl:text-base text-gray-600 dark:text-zinc-400 mb-4">
             "{linkData.config.message}"
           </p>
         )}
-        <p className="text-xs text-gray-400 dark:text-zinc-500">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
           Transaction: {claimedTxDigest.slice(0, 8)}...{claimedTxDigest.slice(-6)}
         </p>
       </div>
@@ -218,7 +218,7 @@ export function LinkClaimPage({
           </svg>
         </div>
 
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+        <h2 className="text-xl xl:text-2xl font-bold text-gray-900 dark:text-white mb-1">
           You received a gift!
         </h2>
 
@@ -234,16 +234,16 @@ export function LinkClaimPage({
 
         {/* Balance check */}
         {isLoadingBalance ? (
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-2">Checking funds...</p>
+          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-2">Checking funds...</p>
         ) : hasFunds === false ? (
-          <p className="text-xs text-red-500 mt-2">This link has no funds</p>
+          <p className="text-xs xl:text-sm text-red-500 mt-2">This link has no funds</p>
         ) : null}
       </div>
 
       {/* Not connected - show login options */}
       {!isConnected && (
         <div className="space-y-4">
-          <p className="text-center text-sm text-gray-600 dark:text-zinc-400">
+          <p className="text-center text-sm xl:text-base text-gray-600 dark:text-zinc-400">
             Sign in to claim your tokens
           </p>
 
@@ -254,7 +254,7 @@ export function LinkClaimPage({
             size="lg"
           />
 
-          <p className="text-center text-xs text-gray-400 dark:text-zinc-500">
+          <p className="text-center text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
             Claim in 10 seconds with your Google account
           </p>
         </div>
@@ -266,7 +266,7 @@ export function LinkClaimPage({
           {/* Password input if required */}
           {requiresPassword && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
+              <label className="block text-sm xl:text-base font-medium text-gray-700 dark:text-zinc-300 mb-1">
                 Password
               </label>
               <input
@@ -281,7 +281,7 @@ export function LinkClaimPage({
 
           {/* Error */}
           {claimError && (
-            <p className="text-sm text-red-500 text-center">{claimError}</p>
+            <p className="text-sm xl:text-base text-red-500 text-center">{claimError}</p>
           )}
 
           {/* Claim button */}
@@ -304,7 +304,7 @@ export function LinkClaimPage({
 
           {/* Expiration info */}
           {linkData.config.expiresAt && (
-            <p className="text-xs text-center text-gray-400 dark:text-zinc-500">
+            <p className="text-xs xl:text-sm text-center text-gray-400 dark:text-zinc-500">
               Expires: {new Date(linkData.config.expiresAt).toLocaleString('en-US')}
             </p>
           )}
@@ -313,7 +313,7 @@ export function LinkClaimPage({
 
       {/* Sender info */}
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-zinc-700">
-        <p className="text-xs text-gray-400 dark:text-zinc-500 text-center">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 text-center">
           From: {linkData.creator.slice(0, 8)}...{linkData.creator.slice(-6)}
         </p>
       </div>

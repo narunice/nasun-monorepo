@@ -81,16 +81,16 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
       <div className="space-y-4">
         {/* Auto-lock timeout */}
         <div>
-          <label className="block text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-1.5">
+          <label className="block text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1.5">
             Auto-lock Timeout
           </label>
-          <p className="text-xs md:text-sm text-gray-400 dark:text-zinc-500 mb-2">
+          <p className="text-xs md:text-sm xl:text-base text-gray-400 dark:text-zinc-500 mb-2">
             Automatically lock wallet after inactivity
           </p>
           <select
             value={security.autoLockMinutes}
             onChange={(e) => handleAutoLockChange(Number(e.target.value))}
-            className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {AUTO_LOCK_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -103,10 +103,10 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         {/* Confirm large transactions toggle */}
         <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm text-gray-900 dark:text-white">
+            <label className="block text-sm xl:text-base text-gray-900 dark:text-white">
               Confirm Large Transactions
             </label>
-            <p className="text-xs md:text-sm text-gray-400 dark:text-zinc-500 mt-0.5">
+            <p className="text-xs md:text-sm xl:text-base text-gray-400 dark:text-zinc-500 mt-0.5">
               Require extra confirmation for large amounts
             </p>
           </div>
@@ -127,16 +127,16 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         {/* Large transaction threshold */}
         {security.confirmLargeTransactions && (
           <div>
-            <label className="block text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-1.5">
+            <label className="block text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1.5">
               Large Transaction Threshold
             </label>
-            <p className="text-xs md:text-sm text-gray-400 dark:text-zinc-500 mb-2">
+            <p className="text-xs md:text-sm xl:text-base text-gray-400 dark:text-zinc-500 mb-2">
               Transactions above this amount require confirmation
             </p>
             <select
               value={security.largeTransactionThreshold}
               onChange={(e) => handleThresholdChange(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {THRESHOLD_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -166,13 +166,13 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
 
         {/* Security tips */}
         <div className="bg-gray-100 dark:bg-zinc-700/50 rounded p-3 mt-4">
-          <h4 className="text-xs font-medium text-gray-700 dark:text-zinc-300 mb-2 flex items-center gap-1">
+          <h4 className="text-xs xl:text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2 flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Security Tips
           </h4>
-          <ul className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 space-y-1">
+          <ul className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400 space-y-1">
             <li>• Never share your private key or mnemonic</li>
             <li>• Always verify recipient addresses</li>
             <li>• Use auto-lock for added protection</li>
@@ -182,7 +182,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         {/* Reset to defaults */}
         <button
           onClick={handleResetDefaults}
-          className="w-full px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white border border-gray-300 dark:border-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500 rounded transition-colors"
+          className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white border border-gray-300 dark:border-zinc-600 hover:border-gray-400 dark:hover:border-zinc-500 rounded transition-colors"
         >
           Reset to Defaults
         </button>

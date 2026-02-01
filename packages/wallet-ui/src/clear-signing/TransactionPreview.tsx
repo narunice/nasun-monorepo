@@ -123,7 +123,7 @@ export function TransactionPreview({
             <h2 className="font-semibold text-gray-900 dark:text-white">
               {summary.title}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm xl:text-base text-gray-500 dark:text-gray-400">
               {summary.description}
             </p>
           </div>
@@ -138,10 +138,10 @@ export function TransactionPreview({
           <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
             <ActionIcon action={summary.actions[0]} />
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
                 {summary.actions[0].label}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+              <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 font-mono">
                 {formatAddress(summary.actions[0].value)}
               </p>
             </div>
@@ -149,7 +149,7 @@ export function TransactionPreview({
         )}
 
         {/* Gas/Fee */}
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-sm xl:text-base">
           <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
             Network Fee
             <Tooltip
@@ -173,10 +173,10 @@ export function TransactionPreview({
       <div className="px-5">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="w-full flex items-center justify-between py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="w-full flex items-center justify-between py-2 text-sm xl:text-base text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <span>{showAdvanced ? 'Hide details' : 'Show details'}</span>
-          <span className="text-xs">{showAdvanced ? '▲' : '▼'}</span>
+          <span className="text-xs xl:text-sm">{showAdvanced ? '▲' : '▼'}</span>
         </button>
       </div>
 
@@ -186,7 +186,7 @@ export function TransactionPreview({
           {/* All Actions */}
           {summary.actions.length > 1 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+              <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-2">
                 All Actions
               </h3>
               <ActionsList actions={summary.actions} variant="compact" />
@@ -219,10 +219,10 @@ export function TransactionPreview({
               className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
             />
             <div>
-              <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+              <span className="text-sm xl:text-base font-medium text-orange-700 dark:text-orange-300">
                 I understand the risks
               </span>
-              <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+              <p className="text-xs xl:text-sm text-orange-600 dark:text-orange-400 mt-0.5">
                 This transaction requires your careful review. Please confirm
                 you have read and understood all warnings.
               </p>
@@ -236,14 +236,14 @@ export function TransactionPreview({
         <button
           onClick={onReject}
           disabled={isLoading}
-          className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="flex-1 px-4 py-2.5 text-sm xl:text-base font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={onApprove}
           disabled={isLoading || !canApprove}
-          className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg text-white transition-colors ${
+          className={`flex-1 px-4 py-2.5 text-sm xl:text-base font-medium rounded-lg text-white transition-colors ${
             canApprove
               ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
               : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
@@ -309,7 +309,7 @@ function CategoryIcon({ category }: { category: string }) {
   };
 
   return (
-    <span className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xl">
+    <span className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xl xl:text-2xl">
       {icons[category] || icons.unknown}
     </span>
   );
@@ -334,7 +334,7 @@ function ActionIcon({ action }: { action: { type: string } }) {
   };
 
   return (
-    <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-lg">
+    <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-lg xl:text-xl">
       {icons[action.type] || '⌘'}
     </span>
   );
@@ -350,7 +350,7 @@ function TechnicalDetails({ decoded }: { decoded: DecodedTx }) {
     <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+        className="flex items-center justify-between w-full text-sm xl:text-base text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
       >
         <span className="flex items-center gap-1">
           Technical Details
@@ -360,7 +360,7 @@ function TechnicalDetails({ decoded }: { decoded: DecodedTx }) {
       </button>
 
       {expanded && (
-        <div className="mt-3 space-y-2 text-xs">
+        <div className="mt-3 space-y-2 text-xs xl:text-sm">
           <DetailRow label="Chain" value={decoded.chainType.toUpperCase()} />
           <DetailRow label="Chain ID" value={decoded.chainId} />
           <DetailRow

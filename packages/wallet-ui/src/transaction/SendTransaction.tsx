@@ -184,7 +184,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   if (!isWalletConnected || !connectedAddress) {
     return (
       <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">Please connect your wallet first.</p>
+        <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base">Please connect your wallet first.</p>
       </div>
     );
   }
@@ -211,11 +211,11 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
             <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {successAmount} {successToken} sent successfully
             </p>
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
               on {chain.name}
             </p>
           </div>
@@ -239,7 +239,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                 setAmount('');
                 setShowConfirm(false);
               }}
-              className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded text-sm transition-colors"
+              className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded text-sm xl:text-base transition-colors"
             >
               New Transfer
             </button>
@@ -249,7 +249,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                   clearResult();
                   onClose();
                 }}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
               >
                 Close
               </button>
@@ -278,7 +278,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
       <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
         {/* Header with Status Badge */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
+          <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
           <StatusBadge level={riskLevel} variant="compact" />
         </div>
 
@@ -291,10 +291,10 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
+                  <p className="text-sm xl:text-base font-medium text-yellow-700 dark:text-yellow-400">
                     First-time recipient
                   </p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+                  <p className="text-xs xl:text-sm text-yellow-600 dark:text-yellow-500 mt-1">
                     You have never sent tokens to this address before. Please verify the address carefully.
                   </p>
                 </div>
@@ -313,31 +313,31 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               size="xs"
             />
             {addressStatus.isKnown && addressStatus.entry && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              <p className="text-xs xl:text-sm text-green-600 dark:text-green-400 mt-1">
                 ✓ {addressStatus.entry.transactionCount} previous transaction{addressStatus.entry.transactionCount > 1 ? 's' : ''}
               </p>
             )}
           </div>
 
           <div className="bg-gray-200 dark:bg-zinc-700 rounded p-3">
-            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Amount</p>
-            <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
-              {amount} <span className="text-blue-400 text-sm">{selectedToken}</span>
+            <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Amount</p>
+            <p className="text-lg xl:text-xl text-gray-900 dark:text-white font-medium mt-1">
+              {amount} <span className="text-blue-400 text-sm xl:text-base">{selectedToken}</span>
             </p>
           </div>
 
           {/* Gas fee estimation */}
           <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3 border border-gray-300 dark:border-zinc-600">
-            <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">
+            <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
               Estimated Gas Fee
             </p>
-            <p className="text-sm text-gray-900 dark:text-white mt-1">
+            <p className="text-sm xl:text-base text-gray-900 dark:text-white mt-1">
               {isEVM ? (
                 isGasLoading ? (
                   <span className="text-gray-500 dark:text-zinc-400">Loading...</span>
                 ) : gasEstimate ? (
                   <>≈ {gasEstimate.estimatedTransferFee} <span className="text-blue-400">{gasEstimate.symbol}</span>
-                    <span className="text-xs text-gray-400 dark:text-zinc-500 ml-2">
+                    <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 ml-2">
                       ({gasEstimate.gasPriceGwei} gwei)
                     </span>
                   </>
@@ -349,7 +349,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               )}
             </p>
             {selectedToken !== nativeSymbol && (
-              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+              <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
                 Available for gas: {getNativeBalance().toFixed(4)} {nativeSymbol}
               </p>
             )}
@@ -368,11 +368,11 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                 Transaction Details
                 <Tooltip content="Technical information about this transaction" size="xs" />
               </span>
-              <span className="text-xs">{showDetails ? '▲' : '▼'}</span>
+              <span className="text-xs xl:text-sm">{showDetails ? '▲' : '▼'}</span>
             </div>
 
             {showDetails && (
-              <div className="mt-2 space-y-2 text-xs bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
+              <div className="mt-2 space-y-2 text-xs xl:text-sm bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-zinc-400">Type</span>
                   <span className="text-gray-900 dark:text-white">Token Transfer</span>
@@ -388,7 +388,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                 {selectedToken !== 'NSN' && !isEVM && (
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-zinc-400">Token Type</span>
-                    <span className="text-gray-900 dark:text-white font-mono text-[10px] truncate max-w-[180px]">
+                    <span className="text-gray-900 dark:text-white font-mono text-[10px] xl:text-xs truncate max-w-[180px]">
                       {tokenConfig.type}
                     </span>
                   </div>
@@ -415,7 +415,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
 
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm xl:text-base text-red-400">{error}</p>
           </div>
         )}
 
@@ -426,7 +426,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               clearError();
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-gray-900 dark:text-white rounded text-sm transition-colors"
+            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-gray-900 dark:text-white rounded text-sm xl:text-base transition-colors"
           >
             Cancel
           </button>
@@ -467,7 +467,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               }
             }}
             disabled={isPending}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-zinc-600 disabled:text-gray-200 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors"
+            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-zinc-600 disabled:text-gray-200 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             {isPending ? 'Sending...' : 'Confirm'}
           </button>
@@ -495,7 +495,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   return (
     <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Send Token</h3>
+        <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Send Token</h3>
         {onClose && (
           <button
             onClick={onClose}
@@ -522,17 +522,17 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
 
         {/* Balance display */}
         <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
-          <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400">Available Balance</p>
-          <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
+          <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Available Balance</p>
+          <p className="text-lg xl:text-xl text-gray-900 dark:text-white font-medium mt-1">
             {getSelectedBalance()}{' '}
-            <span className="text-blue-400 text-sm">{selectedToken}</span>
+            <span className="text-blue-400 text-sm xl:text-base">{selectedToken}</span>
           </p>
         </div>
 
         {/* Gas warning */}
         {!hasEnoughGas && (
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
-            <p className="text-sm text-yellow-600 dark:text-yellow-400">
+            <p className="text-sm xl:text-base text-yellow-600 dark:text-yellow-400">
               Insufficient {nativeSymbol} for gas fees. You need at least {MIN_GAS_BALANCE} {nativeSymbol}.
             </p>
           </div>
@@ -546,17 +546,17 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
             placeholder="0x..."
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
-            className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm font-mono focus:outline-none transition-colors ${
+            className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm xl:text-base font-mono focus:outline-none transition-colors ${
               !isValidRecipient
                 ? 'border-red-500 focus:border-red-500'
                 : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
           {!isValidRecipient && (
-            <p className="text-xs text-red-400 mt-1">Invalid address format</p>
+            <p className="text-xs xl:text-sm text-red-400 mt-1">Invalid address format</p>
           )}
           {isValidChainAddress(recipient) && addressStatus.isKnown && addressStatus.entry && (
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+            <p className="text-xs xl:text-sm text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
@@ -565,7 +565,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
             </p>
           )}
           {isNewAddress && (
-            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 flex items-center gap-1">
+            <p className="text-xs xl:text-sm text-yellow-600 dark:text-yellow-400 mt-1 flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
@@ -584,17 +584,17 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
             onChange={(e) => setAmount(e.target.value)}
             step="0.0001"
             min="0"
-            className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm focus:outline-none transition-colors ${
+            className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none transition-colors ${
               !isValidAmount
                 ? 'border-red-500 focus:border-red-500'
                 : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
           {!isValidAmount && (
-            <p className="text-xs text-red-400 mt-1">Please enter a valid amount</p>
+            <p className="text-xs xl:text-sm text-red-400 mt-1">Please enter a valid amount</p>
           )}
           {isValidAmount && amount && !hasEnoughBalance && (
-            <p className="text-xs text-red-400 mt-1">
+            <p className="text-xs xl:text-sm text-red-400 mt-1">
               Insufficient balance. Available: {getSelectedBalance()} {selectedToken}
             </p>
           )}

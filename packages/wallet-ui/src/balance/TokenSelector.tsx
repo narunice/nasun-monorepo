@@ -86,7 +86,7 @@ export function TokenSelector({
         className={`
           flex items-center justify-between gap-2 w-full px-3 py-2
           bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg
-          text-gray-900 dark:text-white text-sm font-medium
+          text-gray-900 dark:text-white text-sm xl:text-base font-medium
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-zinc-600 cursor-pointer'}
           transition-colors
         `}
@@ -97,7 +97,7 @@ export function TokenSelector({
           )}
           <span>{selectedToken?.symbol || 'Select token'}</span>
           {showBalance && selectedToken && (
-            <span className="text-gray-500 dark:text-zinc-400 text-xs">
+            <span className="text-gray-500 dark:text-zinc-400 text-xs xl:text-sm">
               ({getBalance(selectedToken.symbol) || '0'})
             </span>
           )}
@@ -131,7 +131,7 @@ export function TokenSelector({
                 }}
                 className={`
                   flex items-center justify-between w-full px-3 py-2
-                  text-sm text-left
+                  text-sm xl:text-base text-left
                   ${isSelected ? 'bg-gray-100 dark:bg-zinc-700 text-blue-500 dark:text-blue-400' : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-700/50'}
                   transition-colors
                 `}
@@ -142,12 +142,12 @@ export function TokenSelector({
                   )}
                   <div className="flex flex-col">
                     <span className="font-medium">{token.symbol}</span>
-                    <span className="text-xs text-gray-500 dark:text-zinc-400">{token.name}</span>
+                    <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">{token.name}</span>
                   </div>
                 </div>
 
                 {showBalance && balance && (
-                  <span className="text-xs text-gray-500 dark:text-zinc-400">{balance}</span>
+                  <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">{balance}</span>
                 )}
               </button>
             );

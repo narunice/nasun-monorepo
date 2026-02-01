@@ -100,11 +100,11 @@ export function SessionKeyPanel({
     return (
       <div className={`${className}`}>
         {!compact && (
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-2">
             Session Keys
           </h3>
         )}
-        <p className="text-xs text-gray-500 dark:text-zinc-400">
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
           Session keys require a smart account. Connect a smart account to manage sessions.
         </p>
       </div>
@@ -116,7 +116,7 @@ export function SessionKeyPanel({
     return (
       <div className={`${className}`}>
         {!compact && (
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-2">
             Session Keys
           </h3>
         )}
@@ -132,10 +132,10 @@ export function SessionKeyPanel({
     <div className={`${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className={`font-medium text-gray-900 dark:text-white ${compact ? 'text-xs' : 'text-sm'}`}>
+        <h3 className={`font-medium text-gray-900 dark:text-white ${compact ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'}`}>
           Session Keys
           {activeSessions.length > 0 && (
-            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] xl:text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
               {activeSessions.length}
             </span>
           )}
@@ -143,7 +143,7 @@ export function SessionKeyPanel({
         {activeSessions.length > 1 && (
           <button
             onClick={handleRevokeAll}
-            className="text-[10px] text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+            className="text-[10px] xl:text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
           >
             Revoke All
           </button>
@@ -166,10 +166,10 @@ export function SessionKeyPanel({
               d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
             />
           </svg>
-          <p className="text-xs text-gray-500 dark:text-zinc-400">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
             No active sessions
           </p>
-          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-0.5">
+          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
             dApps will request authorization when needed
           </p>
         </div>
@@ -190,22 +190,22 @@ export function SessionKeyPanel({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     {/* Session name */}
-                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-xs xl:text-sm font-medium text-gray-900 dark:text-white truncate">
                       {session.name || 'Unnamed Session'}
                     </p>
 
                     {/* Session address */}
-                    <p className="text-[10px] font-mono text-gray-500 dark:text-zinc-400">
+                    <p className="text-[10px] xl:text-xs font-mono text-gray-500 dark:text-zinc-400">
                       {shortenAddress(session.address)}
                     </p>
 
                     {/* Permissions count */}
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-gray-500 dark:text-zinc-400">
+                      <span className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
                         {session.permissions.length} permission{session.permissions.length !== 1 ? 's' : ''}
                       </span>
                       <span className="text-gray-300 dark:text-zinc-600">|</span>
-                      <span className={`text-[10px] ${
+                      <span className={`text-[10px] xl:text-xs ${
                         isExpired
                           ? 'text-red-500 dark:text-red-400'
                           : 'text-gray-500 dark:text-zinc-400'

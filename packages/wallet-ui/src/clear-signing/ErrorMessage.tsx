@@ -137,10 +137,10 @@ export function ErrorMessage({
         className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${bgStyles} ${className}`}
         role="alert"
       >
-        <span className={`text-xl ${iconStyles}`}>{config.icon}</span>
+        <span className={`text-xl xl:text-2xl ${iconStyles}`}>{config.icon}</span>
         <div className="flex-1">
           <p className={`font-medium ${titleStyles}`}>{config.title}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 mt-1">
             {config.suggestion}
           </p>
         </div>
@@ -167,14 +167,14 @@ export function ErrorMessage({
         <span className={`text-2xl ${iconStyles}`}>{config.icon}</span>
         <div className="flex-1">
           <h3 className={`font-medium ${titleStyles}`}>{config.title}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 mt-1">
             {config.description}
           </p>
         </div>
         {onDismiss && variant === 'inline' && (
           <button
             onClick={onDismiss}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl xl:text-2xl"
             aria-label="Dismiss"
           >
             ×
@@ -184,7 +184,7 @@ export function ErrorMessage({
 
       {/* Suggestion */}
       <div className="px-4 pb-3">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm xl:text-base">
           <span className="text-gray-500 dark:text-gray-400">💡</span>
           <span className="text-gray-700 dark:text-gray-300">
             {config.suggestion}
@@ -198,7 +198,7 @@ export function ErrorMessage({
           {onRetry && (
             <button
               onClick={onRetry}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-sm xl:text-base font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Try Again
             </button>
@@ -206,7 +206,7 @@ export function ErrorMessage({
           {onLearnMore && (
             <button
               onClick={onLearnMore}
-              className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              className="px-4 py-2 text-sm xl:text-base font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
               Learn More
             </button>
@@ -219,14 +219,14 @@ export function ErrorMessage({
         <div className="border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setDetailsOpen(!detailsOpen)}
-            className="w-full flex items-center justify-between px-4 py-2 text-xs text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5"
+            className="w-full flex items-center justify-between px-4 py-2 text-xs xl:text-sm text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5"
           >
             <span>Technical details</span>
             <span>{detailsOpen ? '−' : '+'}</span>
           </button>
           {detailsOpen && (
             <div className="px-4 pb-3">
-              <code className="block text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono overflow-x-auto">
+              <code className="block text-xs xl:text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono overflow-x-auto">
                 {code}: {rawMessage}
               </code>
             </div>
@@ -283,13 +283,13 @@ export function GenericErrorMessage({
       role="alert"
     >
       <div className="flex items-start gap-3">
-        <span className="text-xl text-red-500 dark:text-red-400">⚠</span>
+        <span className="text-xl xl:text-2xl text-red-500 dark:text-red-400">⚠</span>
         <div className="flex-1">
           <p className="font-medium text-red-700 dark:text-red-300">
             {error.message}
           </p>
           {error.suggestion && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 mt-1">
               {error.suggestion}
             </p>
           )}
@@ -307,7 +307,7 @@ export function GenericErrorMessage({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="mt-3 px-4 py-2 text-sm xl:text-base font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           Try Again
         </button>

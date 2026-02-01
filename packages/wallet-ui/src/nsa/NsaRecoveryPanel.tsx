@@ -121,7 +121,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
             : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
         }`}>
           <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-xs xl:text-sm">
               <span className="text-gray-500 dark:text-zinc-400">Status</span>
               <span className="font-medium text-gray-900 dark:text-white capitalize">
                 {status.replace(/_/g, ' ')}
@@ -129,11 +129,11 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
             </div>
             {(status === 'timelock_active' || status === 'pending_approvals') && (
               <>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs xl:text-sm">
                   <span className="text-gray-500 dark:text-zinc-400">Timelock</span>
                   <span className="font-medium text-gray-900 dark:text-white">{timelockDisplay}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs xl:text-sm">
                   <span className="text-gray-500 dark:text-zinc-400">Approvals Needed</span>
                   <span className="font-medium text-gray-900 dark:text-white">{approvalsNeeded}</span>
                 </div>
@@ -147,10 +147,10 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {role === 'owner' && status !== 'idle' && !showCancelConfirm && (
         <div className="space-y-3">
           <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
-            <p className="text-xs text-red-800 dark:text-red-300 font-medium">
+            <p className="text-xs xl:text-sm text-red-800 dark:text-red-300 font-medium">
               A guardian has initiated recovery on your account.
             </p>
-            <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+            <p className="text-xs xl:text-sm text-red-700 dark:text-red-400 mt-1">
               If you did not request this, cancel immediately.
             </p>
           </div>
@@ -158,7 +158,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
           <button
             onClick={() => setShowCancelConfirm(true)}
             disabled={isLoading || !!actionInProgress}
-            className="w-full px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded text-sm transition-colors"
+            className="w-full px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             Cancel Recovery
           </button>
@@ -168,20 +168,20 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {/* Cancel Confirmation Dialog */}
       {showCancelConfirm && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-700 dark:text-zinc-300">
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">
             Are you sure you want to cancel this recovery request?
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => setShowCancelConfirm(false)}
-              className="flex-1 px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="flex-1 px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               Back
             </button>
             <button
               onClick={handleCancel}
               disabled={!!actionInProgress}
-              className="flex-1 px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded text-sm transition-colors"
+              className="flex-1 px-3 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded text-sm xl:text-base transition-colors"
             >
               {actionInProgress === 'cancel' ? 'Cancelling...' : 'Confirm Cancel'}
             </button>
@@ -192,26 +192,26 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {/* Guardian View - No active recovery */}
       {role === 'guardian' && status === 'idle' && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-700 dark:text-zinc-300">
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">
             Initiate recovery to rotate the account{"'"}s signers to a new owner address.
           </p>
 
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">New Owner Address</label>
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">New Owner Address</label>
             <input
               type="text"
               value={newOwnerInput}
               onChange={(e) => setNewOwnerInput(e.target.value)}
               placeholder="0x..."
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
             />
             {newOwnerInput && !isValidSuiAddress(newOwnerInput) && (
-              <p className="text-xs text-red-400 mt-1">Invalid address format</p>
+              <p className="text-xs xl:text-sm text-red-400 mt-1">Invalid address format</p>
             )}
           </div>
 
           <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-            <p className="text-xs text-amber-800 dark:text-amber-300">
+            <p className="text-xs xl:text-sm text-amber-800 dark:text-amber-300">
               This starts a 48-hour timelock. The account owner can cancel during this period.
             </p>
           </div>
@@ -219,7 +219,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
           <button
             onClick={handleInitiate}
             disabled={!isValidSuiAddress(newOwnerInput) || !!actionInProgress}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm transition-colors"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             {actionInProgress === 'initiate' ? 'Initiating...' : 'Initiate Recovery'}
           </button>
@@ -233,7 +233,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
             <button
               onClick={handleApprove}
               disabled={!!actionInProgress}
-              className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded text-sm transition-colors"
+              className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded text-sm xl:text-base transition-colors"
             >
               {actionInProgress === 'approve' ? 'Approving...' : 'Approve Recovery'}
             </button>
@@ -243,7 +243,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
             <button
               onClick={handleExecute}
               disabled={!!actionInProgress}
-              className="w-full px-3 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium rounded text-sm transition-colors"
+              className="w-full px-3 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium rounded text-sm xl:text-base transition-colors"
             >
               {actionInProgress === 'execute' ? 'Executing...' : 'Execute Recovery'}
             </button>
@@ -254,7 +254,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {/* No role */}
       {role === 'none' && (
         <div className="text-center py-4">
-          <p className="text-sm text-gray-500 dark:text-zinc-400">
+          <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
             {status === 'idle'
               ? 'No active recovery. You are not a signer or guardian of this account.'
               : 'Recovery is in progress. You do not have a role in this account.'}
@@ -265,7 +265,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {/* Idle state for owner */}
       {role === 'owner' && status === 'idle' && (
         <div className="text-center py-4">
-          <p className="text-sm text-gray-500 dark:text-zinc-400">
+          <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
             No active recovery requests.
           </p>
         </div>
@@ -273,7 +273,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
 
       {/* Error */}
       {error && (
-        <p className="text-xs text-red-500 mt-3">{error}</p>
+        <p className="text-xs xl:text-sm text-red-500 mt-3">{error}</p>
       )}
     </div>
   );

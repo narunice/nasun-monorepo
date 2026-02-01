@@ -193,11 +193,11 @@ function TransactionItem({
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+            <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
               {getLabel()}
             </p>
             {counterparty && hasTransfers && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-400">
+              <div className="flex items-center gap-1 text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
                 <span>{isIn ? 'From: ' : 'To: '}</span>
                 {addressEntry?.label ? (
                   <>
@@ -262,12 +262,12 @@ function TransactionItem({
           {hasTransfers ? (
             <div className="space-y-0.5 whitespace-nowrap">
               {tx.transfers.slice(0, 2).map((transfer, i) => (
-                <div key={i} className="text-sm">
+                <div key={i} className="text-sm xl:text-base">
                   <TransferItem transfer={transfer} />
                 </div>
               ))}
               {tx.transfers.length > 2 && (
-                <p className="text-xs text-gray-400 dark:text-zinc-500">
+                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
                   +{tx.transfers.length - 2} more
                 </p>
               )}
@@ -278,13 +278,13 @@ function TransactionItem({
                 {tx.status === 'failure' ? 'Failed' : 'Contract Call'}
               </p>
               {tx.gasUsed && tx.status === 'success' && (
-                <p className="text-xs text-gray-400 dark:text-zinc-500">
+                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
                   Gas: {formatCompactAmount((Number(tx.gasUsed) / 1e9).toString())}
                 </p>
               )}
             </div>
           )}
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
             {formatRelativeTime(tx.timestamp)}
           </p>
         </div>
@@ -292,7 +292,7 @@ function TransactionItem({
 
       {/* Error message for failed transactions */}
       {tx.status === 'failure' && tx.error && (
-        <p className="mt-2 text-xs text-red-500 dark:text-red-400 truncate">{tx.error}</p>
+        <p className="mt-2 text-xs xl:text-sm text-red-500 dark:text-red-400 truncate">{tx.error}</p>
       )}
     </div>
   );
@@ -331,7 +331,7 @@ export function TransactionHistoryPanel({
             <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">
               Transaction History
             </h3>
-            <span className="text-xs text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
+            <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
               {chain.name}
             </span>
           </div>
@@ -350,7 +350,7 @@ export function TransactionHistoryPanel({
               d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
             />
           </svg>
-          <p className="text-gray-500 dark:text-zinc-400 text-sm mb-3">
+          <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base mb-3">
             View transaction history on {chain.name} block explorer
           </p>
           {addressExplorerUrl && (
@@ -358,7 +358,7 @@ export function TransactionHistoryPanel({
               href={addressExplorerUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm xl:text-base font-medium rounded-lg transition-colors"
             >
               <span>Open in Explorer</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -417,10 +417,10 @@ export function TransactionHistoryPanel({
         )}
         <div className="p-4">
           <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p className="text-sm xl:text-base text-red-600 dark:text-red-400">{error}</p>
             <button
               onClick={() => refetch()}
-              className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+              className="mt-2 text-sm xl:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
             >
               Try again
             </button>
@@ -469,7 +469,7 @@ export function TransactionHistoryPanel({
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
             />
           </svg>
-          <p className="text-gray-500 dark:text-zinc-400 text-sm">{emptyMessage}</p>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -520,7 +520,7 @@ export function TransactionHistoryPanel({
         <div className="p-2 border-t border-gray-100 dark:border-zinc-700">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-full py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            className="w-full py-1.5 text-sm xl:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
           >
             {expanded ? 'Show less' : `Show ${transactions.length - 5} more`}
           </button>
@@ -529,7 +529,7 @@ export function TransactionHistoryPanel({
 
       {/* Load more indicator */}
       {hasNextPage && expanded && (
-        <p className="text-center text-xs text-gray-400 dark:text-zinc-500 py-2">
+        <p className="text-center text-xs xl:text-sm text-gray-400 dark:text-zinc-500 py-2">
           More transactions available in Explorer
         </p>
       )}

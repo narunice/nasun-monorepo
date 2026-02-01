@@ -61,7 +61,7 @@ export function LedgerConnectView({
           <p className="text-sm md:text-base text-gray-600 dark:text-zinc-400 mb-1">
             Connect your Ledger device
           </p>
-          <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-500">
+          <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-500">
             Make sure the Sui/Nasun app is open on your device
           </p>
         </div>
@@ -118,7 +118,7 @@ export function LedgerSelectView({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 mb-3">
+        <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-3">
           Choose which account index to use
         </p>
         <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function LedgerSelectView({
             -
           </button>
           <div className="flex-1 text-center">
-            <span className="text-lg font-medium text-gray-900 dark:text-white">
+            <span className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">
               Account {ledgerAccountIndex}
             </span>
           </div>
@@ -142,7 +142,7 @@ export function LedgerSelectView({
           </button>
         </div>
         {ledgerAddress && (
-          <div className="mt-3 p-2 bg-gray-50 dark:bg-zinc-800 rounded text-xs text-gray-600 dark:text-zinc-400 break-all">
+          <div className="mt-3 p-2 bg-gray-50 dark:bg-zinc-800 rounded text-xs xl:text-sm text-gray-600 dark:text-zinc-400 break-all">
             {ledgerAddress}
           </div>
         )}
@@ -177,7 +177,7 @@ export function LedgerConnectedView({
       <div className="px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-amber-500">🔐</span>
-          <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+          <span className="text-xs xl:text-sm font-medium text-amber-600 dark:text-amber-400">
             Hardware Secured
           </span>
         </div>

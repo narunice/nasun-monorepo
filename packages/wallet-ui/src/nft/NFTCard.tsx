@@ -79,7 +79,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
 
         {/* Name */}
         <div className="p-2">
-          <p className="text-xs text-gray-900 dark:text-white truncate" title={name}>
+          <p className="text-xs xl:text-sm text-gray-900 dark:text-white truncate" title={name}>
             {name}
           </p>
         </div>
@@ -115,7 +115,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
         <p className="text-sm md:text-base font-medium text-gray-900 dark:text-white truncate" title={name}>
           {name}
         </p>
-        <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 truncate mt-0.5" title={collection}>
+        <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400 truncate mt-0.5" title={collection}>
           {collection}
         </p>
       </div>

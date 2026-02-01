@@ -54,11 +54,11 @@ export function CreateWalletView({
         />
 
         {password.length > 0 && password.length < 8 && (
-          <p className="text-xs text-red-400">Password must be at least 8 characters</p>
+          <p className="text-xs xl:text-sm text-red-400">Password must be at least 8 characters</p>
         )}
 
         {confirmPassword.length > 0 && password !== confirmPassword && (
-          <p className="text-xs text-red-400">Passwords do not match</p>
+          <p className="text-xs xl:text-sm text-red-400">Passwords do not match</p>
         )}
 
         {error && <p className="text-xs text-red-400">{error}</p>}

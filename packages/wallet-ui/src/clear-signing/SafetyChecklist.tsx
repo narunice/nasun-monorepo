@@ -103,7 +103,7 @@ export function SafetyChecklist({
       >
         <div className="flex items-center gap-2">
           <span className="text-green-600 dark:text-green-400">✓</span>
-          <span className="text-sm font-medium text-green-700 dark:text-green-300">
+          <span className="text-sm xl:text-base font-medium text-green-700 dark:text-green-300">
             All checks passed
           </span>
         </div>
@@ -129,7 +129,7 @@ export function SafetyChecklist({
       {/* Summary header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+          <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
             Safety Checks
           </h3>
           <Tooltip
@@ -138,7 +138,7 @@ export function SafetyChecklist({
           />
         </div>
         <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+          className={`text-xs xl:text-sm font-medium px-2 py-0.5 rounded-full ${
             counts.critical > 0 || counts.high > 0
               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
               : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
@@ -163,7 +163,7 @@ export function SafetyChecklist({
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+          className="text-sm xl:text-base text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
         >
           {expanded
             ? 'Show less'
@@ -197,18 +197,18 @@ function FactorItem({ factor, showMitigation }: FactorItemProps) {
         className="w-full flex items-start gap-3 p-3 text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
       >
         {/* Icon */}
-        <span className={`flex-shrink-0 text-lg ${config.styles}`}>
+        <span className={`flex-shrink-0 text-lg xl:text-xl ${config.styles}`}>
           {config.icon}
         </span>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
+            <span className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
               {factor.title}
             </span>
             <span
-              className={`text-xs px-1.5 py-0.5 rounded ${
+              className={`text-xs xl:text-sm px-1.5 py-0.5 rounded ${
                 factor.level === 'low'
                   ? 'bg-green-200/50 text-green-700 dark:bg-green-800/30 dark:text-green-400'
                   : factor.level === 'medium'
@@ -222,7 +222,7 @@ function FactorItem({ factor, showMitigation }: FactorItemProps) {
             </span>
           </div>
           {factor.description && (
-            <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+            <p className="mt-0.5 text-xs xl:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
               {factor.description}
             </p>
           )}
@@ -230,7 +230,7 @@ function FactorItem({ factor, showMitigation }: FactorItemProps) {
 
         {/* Expand indicator */}
         {(factor.mitigation || showMitigation) && (
-          <span className="text-gray-400 dark:text-gray-500 text-sm">
+          <span className="text-gray-400 dark:text-gray-500 text-sm xl:text-base">
             {showDetails ? '−' : '+'}
           </span>
         )}
@@ -240,7 +240,7 @@ function FactorItem({ factor, showMitigation }: FactorItemProps) {
       {showDetails && factor.mitigation && (
         <div className="px-3 pb-3 pl-10">
           <div className="p-2 rounded bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
+            <p className="text-xs xl:text-sm text-gray-600 dark:text-gray-400">
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 Suggestion:{' '}
               </span>

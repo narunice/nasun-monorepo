@@ -1,22 +1,39 @@
 /**
  * Shared design tokens and style constants for wallet-ui components.
  * Centralizes repeated Tailwind class patterns to ensure visual consistency.
+ *
+ * Responsive text scale (3-tier):
+ *   mobile (<640px) / tablet (640-1279px) / desktop (>=1280px via xl:)
  */
 
 export const WALLET_STYLES = {
+  // === Text Scale Tokens ===
+  // Each tier bumps text one step up at xl: breakpoint for desktop readability
+  textCaption: "text-[10px] xl:text-xs",
+  textLabel: "text-xs xl:text-sm",
+  textBody: "text-sm xl:text-base",
+  textHeading: "text-base xl:text-lg font-semibold",
+  textDisplay: "text-xl xl:text-2xl font-bold",
+
+  // === Dropdown Container Tokens ===
+  dropdownDesktop: "w-[380px] xl:w-[440px]",
+  dropdownMobile: "w-[calc(100vw-32px)] max-w-[420px] max-h-[85vh]",
+
+  // === Component Tokens ===
+
   // Menu items (Account tab, More menu, action lists)
   menuItem:
-    "w-full px-3 py-2.5 text-left text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50/80 dark:hover:bg-zinc-700/50 transition-all duration-150 flex items-center gap-3",
+    "w-full px-3 py-2.5 text-left text-sm xl:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-50/80 dark:hover:bg-zinc-700/50 transition-all duration-150 flex items-center gap-3",
 
   // Section dividers
   divider: "border-t border-gray-100 dark:border-zinc-700/50 my-2",
 
   // Section headers / labels
-  sectionHeader: "text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2",
+  sectionHeader: "text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-2",
 
   // Primary action button
   primaryButton:
-    "px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm transition-colors",
+    "px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm xl:text-base transition-colors",
 
   // Danger / destructive action
   dangerButton:
@@ -24,7 +41,7 @@ export const WALLET_STYLES = {
 
   // Cancel / secondary button
   secondaryButton:
-    "px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors",
+    "px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors",
 
   // Text input fields
   input:

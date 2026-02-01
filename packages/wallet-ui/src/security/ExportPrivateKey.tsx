@@ -63,7 +63,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
   if (privateKey) {
     return (
       <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
-        <h3 className="text-lg font-bold text-red-600 dark:text-red-500 mb-4 flex items-center gap-2">
+        <h3 className="text-lg xl:text-xl font-bold text-red-600 dark:text-red-500 mb-4 flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
@@ -72,7 +72,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
 
         {/* Warning messages */}
         <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-500/50 rounded p-3 mb-4">
-          <ul className="text-xs text-red-700 dark:text-red-400 space-y-1">
+          <ul className="text-xs xl:text-sm text-red-700 dark:text-red-400 space-y-1">
             <li className="flex items-start gap-2">
               <span className="text-red-600 dark:text-red-500 mt-0.5">!</span>
               <span>Anyone with this key can access your funds</span>
@@ -91,7 +91,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
         {/* Private key display */}
         <div className="mb-4">
           <div className="relative">
-            <div className="p-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded font-mono text-sm break-all">
+            <div className="p-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded font-mono text-sm xl:text-base break-all">
               {showKey ? (
                 <span className="text-gray-900 dark:text-white">{privateKey}</span>
               ) : (
@@ -119,7 +119,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
 
         {/* Copy error message */}
         {copyError && (
-          <p className="text-xs text-center text-red-500 dark:text-red-400 mb-2">
+          <p className="text-xs xl:text-sm text-center text-red-500 dark:text-red-400 mb-2">
             Copy failed. Select the key above and use Ctrl+C (or Cmd+C)
           </p>
         )}
@@ -173,11 +173,11 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
   // Password input screen
   return (
     <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Export Private Key</h3>
+      <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Export Private Key</h3>
 
       {/* Warning */}
       <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-500/50 rounded p-3 mb-4">
-        <p className="text-xs text-yellow-700 dark:text-yellow-400">
+        <p className="text-xs xl:text-sm text-yellow-700 dark:text-yellow-400">
           Warning: Your private key grants full access to your wallet. Make sure no one is watching your screen.
         </p>
       </div>
@@ -199,7 +199,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
         </div>
 
         {error && (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm xl:text-base text-red-400">{error}</p>
         )}
 
         <div className="flex gap-2">

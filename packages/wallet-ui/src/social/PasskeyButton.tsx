@@ -105,7 +105,7 @@ export function PasskeyButton({
   // Not supported
   if (!isSupported) {
     return (
-      <div className={`text-gray-500 text-sm ${className}`}>
+      <div className={`text-gray-500 text-sm xl:text-base ${className}`}>
         Passkey not supported in this browser
       </div>
     );
@@ -114,7 +114,7 @@ export function PasskeyButton({
   // Platform authenticator not available
   if (isPlatformAvailable === false) {
     return (
-      <div className={`text-gray-500 text-sm ${className}`}>
+      <div className={`text-gray-500 text-sm xl:text-base ${className}`}>
         No biometric authenticator available
       </div>
     );
@@ -166,20 +166,20 @@ export function PasskeyButton({
         {showMenu && (
           <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-50">
             <div className="p-2 border-b border-gray-200 dark:border-zinc-700">
-              <div className="text-xs text-gray-500 dark:text-gray-400">Address</div>
-              <div className="text-sm font-mono text-gray-900 dark:text-white truncate">
+              <div className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">Address</div>
+              <div className="text-sm xl:text-base font-mono text-gray-900 dark:text-white truncate">
                 {shortenAddress(address)}
               </div>
             </div>
             <button
               onClick={handleLock}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm xl:text-base text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700"
             >
               Lock Wallet
             </button>
             <button
               onClick={handleDelete}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm xl:text-base text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700"
             >
               Delete Wallet
             </button>
@@ -201,7 +201,7 @@ export function PasskeyButton({
           <span>Unlock with Passkey</span>
         </button>
         {error && (
-          <div className="text-sm text-red-400">{error.message}</div>
+          <div className="text-sm xl:text-base text-red-400">{error.message}</div>
         )}
       </div>
     );
@@ -211,10 +211,10 @@ export function PasskeyButton({
   if (viewState === 'setup') {
     return (
       <div className={`flex flex-col gap-3 p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg ${className}`}>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+        <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
           Setup Passkey Wallet
         </h3>
-        <p className="text-xs text-gray-600 dark:text-gray-400">
+        <p className="text-xs xl:text-sm text-gray-600 dark:text-gray-400">
           Use Face ID, Touch ID, or Windows Hello to secure your wallet.
         </p>
         <input
@@ -240,7 +240,7 @@ export function PasskeyButton({
           </button>
         </div>
         {error && (
-          <div className="text-sm text-red-400">{error.message}</div>
+          <div className="text-sm xl:text-base text-red-400">{error.message}</div>
         )}
       </div>
     );

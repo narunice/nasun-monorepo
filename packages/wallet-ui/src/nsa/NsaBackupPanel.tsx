@@ -77,18 +77,18 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
         </div>
 
         <div className="space-y-3 mb-4">
-          <p className="text-sm text-gray-700 dark:text-zinc-300">
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">
             Create an encrypted backup file to restore your Smart Account access if you lose all your devices.
           </p>
 
-          <div className="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded space-y-2 text-xs text-gray-600 dark:text-zinc-400">
+          <div className="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded space-y-2 text-xs xl:text-sm text-gray-600 dark:text-zinc-400">
             <p>- Encrypted with your PIN (PBKDF2 600K iterations + AES-256-GCM)</p>
             <p>- Decryption happens entirely on your device</p>
             <p>- Store the file in a secure location (cloud drive, USB, etc.)</p>
           </div>
 
           <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-            <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+            <p className="text-xs xl:text-sm text-amber-800 dark:text-amber-300 font-medium">
               If you forget your PIN, the backup cannot be recovered.
             </p>
           </div>
@@ -96,7 +96,7 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
 
         <button
           onClick={() => setStep('set-pin')}
-          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
         >
           Create Backup
         </button>
@@ -122,26 +122,26 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">PIN (6+ characters)</label>
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">PIN (6+ characters)</label>
             <input
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               placeholder="Enter a secure PIN"
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm xl:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
             {pin.length > 0 && pin.length < 6 && (
-              <p className="text-xs text-red-400 mt-1">PIN must be at least 6 characters</p>
+              <p className="text-xs xl:text-sm text-red-400 mt-1">PIN must be at least 6 characters</p>
             )}
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs xl:text-sm text-red-500">{error}</p>}
 
           <button
             onClick={() => setStep('confirm-pin')}
             disabled={pin.length < 6}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm transition-colors"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             Continue
           </button>
@@ -170,25 +170,25 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Re-enter PIN</label>
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">Re-enter PIN</label>
             <input
               type="password"
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value)}
               placeholder="Confirm your PIN"
               onKeyDown={(e) => e.key === 'Enter' && pinsMatch && handleCreateBackup()}
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm xl:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
             {confirmPin.length > 0 && !pinsMatch && (
-              <p className="text-xs text-red-400 mt-1">PINs do not match</p>
+              <p className="text-xs xl:text-sm text-red-400 mt-1">PINs do not match</p>
             )}
           </div>
 
           <button
             onClick={handleCreateBackup}
             disabled={!pinsMatch}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm transition-colors"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             Create Backup
           </button>
@@ -203,8 +203,8 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
       <div className="p-4 w-full">
         <div className="flex flex-col items-center justify-center py-8">
           <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm text-gray-700 dark:text-zinc-300">Encrypting backup...</p>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">This may take a moment</p>
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">Encrypting backup...</p>
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-1">This may take a moment</p>
         </div>
       </div>
     );
@@ -219,15 +219,15 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Backup Created</h3>
-        <p className="text-xs text-gray-500 dark:text-zinc-400 text-center mb-4">
+        <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-1">Backup Created</h3>
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 text-center mb-4">
           Store this file in a secure location. You will need your PIN to restore.
         </p>
 
         <div className="w-full space-y-2">
           <button
             onClick={handleDownload}
-            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors flex items-center justify-center gap-2"
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -236,7 +236,7 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
           </button>
           <button
             onClick={onClose}
-            className="w-full px-3 py-2 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             Done
           </button>
