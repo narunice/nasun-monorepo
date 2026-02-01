@@ -11,7 +11,7 @@ import {
   type NsaSignerInfo,
   type NsaSignerProposal,
 } from '@nasun/wallet';
-import { CopyableAddress } from '../CopyableAddress';
+import { CopyableAddress } from '../address/CopyableAddress';
 
 interface NsaAccountInfoProps {
   onClose: () => void;

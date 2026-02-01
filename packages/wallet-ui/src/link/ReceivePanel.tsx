@@ -5,8 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { usePaymentQR, usePaymentLink, getAllTokens, useSigner } from '@nasun/wallet';
-import { CopyableAddress } from './CopyableAddress';
-import { TokenSelector } from './TokenSelector';
+import { CopyableAddress } from '../address/CopyableAddress';
+import { TokenSelector } from '../balance/TokenSelector';
 
 interface ReceivePanelProps {
   onClose?: () => void;

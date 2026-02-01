@@ -24,11 +24,11 @@ import {
   useAddressBook,
   type TokenConfig,
 } from '@nasun/wallet';
-import { TokenSelector } from './TokenSelector';
-import { CopyableAddress } from './CopyableAddress';
-import { LedgerSigningPrompt } from './ledger';
-import { StatusBadge } from './clear-signing';
-import { Tooltip } from './shared';
+import { TokenSelector } from '../balance/TokenSelector';
+import { CopyableAddress } from '../address/CopyableAddress';
+import { LedgerSigningPrompt } from '../ledger';
+import { StatusBadge } from '../clear-signing';
+import { Tooltip } from '../shared';
 
 interface SendTransactionProps {
   onClose?: () => void;

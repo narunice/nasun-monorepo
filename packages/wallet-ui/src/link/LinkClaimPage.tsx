@@ -14,7 +14,7 @@ import {
   useZkLogin,
 } from '@nasun/wallet';
 import type { LinkData, ZkLoginProvider } from '@nasun/wallet';
-import { SocialLoginButtons } from './SocialLoginButtons';
+import { SocialLoginButtons } from '../social/SocialLoginButtons';
 
 export interface LinkClaimPageProps {
   /** Link URL (full URL including secret) */

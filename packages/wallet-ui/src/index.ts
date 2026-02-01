@@ -22,88 +22,81 @@
  * ```
  */
 
-export { WalletProvider } from './WalletProvider';
-export { WalletConnect } from './WalletConnect';
-export { BalanceDisplay } from './BalanceDisplay';
-export { SendTransaction } from './SendTransaction';
-export { FaucetButton } from './FaucetButton';
-export { TokenFaucetButton } from './TokenFaucetButton';
-export { MnemonicBackup } from './MnemonicBackup';
-export { ImportWallet } from './ImportWallet';
-export { ExportPrivateKey } from './ExportPrivateKey';
+// Connect components
+export { WalletProvider } from './connect/WalletProvider';
+export { WalletConnect } from './connect/WalletConnect';
 
-// Multi-token components
-export { MultiBalanceDisplay } from './MultiBalanceDisplay';
-export { TokenSelector } from './TokenSelector';
+// Balance components
+export { BalanceDisplay } from './balance/BalanceDisplay';
+export { FaucetButton } from './balance/FaucetButton';
+export { TokenFaucetButton } from './balance/TokenFaucetButton';
+export { MultiBalanceDisplay } from './balance/MultiBalanceDisplay';
+export { TokenSelector } from './balance/TokenSelector';
 
-// NFT components
-export { NFTCard } from './NFTCard';
-export { NFTGallery } from './NFTGallery';
-export { NFTDetail } from './NFTDetail';
-export { NFTTransfer } from './NFTTransfer';
-
-// Staking components
-export { ValidatorList } from './ValidatorList';
-export { StakingStatus } from './StakingStatus';
-export { StakingPanel } from './StakingPanel';
-
-// Portfolio components
-export { PortfolioPanel } from './PortfolioPanel';
-export type { PortfolioPanelProps } from './PortfolioPanel';
-
-// Nasun Link components
-export { NasunLinkWizard } from './NasunLinkWizard';
-export type { NasunLinkWizardProps } from './NasunLinkWizard';
-export { LinkClaimPage } from './LinkClaimPage';
-export type { LinkClaimPageProps } from './LinkClaimPage';
-
-// Settings components
-export { AdvancedToggle } from './AdvancedToggle';
-export type { AdvancedToggleProps } from './AdvancedToggle';
-
-// Advanced Mode components
-export { SessionKeyPanel } from './SessionKeyPanel';
-export type { SessionKeyPanelProps } from './SessionKeyPanel';
-export { ZKIDManager } from './ZKIDManager';
-export type { ZKIDManagerProps } from './ZKIDManager';
-export { ChainSelector } from './ChainSelector';
-export type { ChainSelectorProps } from './ChainSelector';
-
-// Onboarding components
-export { PurposeSelector } from './PurposeSelector';
-export type { PurposeSelectorProps } from './PurposeSelector';
-export { SecurityProgress } from './SecurityProgress';
-export type { SecurityProgressProps } from './SecurityProgress';
-
-// Utility components
-export { CopyableAddress } from './CopyableAddress';
-export type { CopyableAddressProps } from './CopyableAddress';
+// Transaction components
+export { SendTransaction } from './transaction/SendTransaction';
+export { TransactionHistoryPanel } from './transaction/TransactionHistoryPanel';
 
 // Security components
-export { SecuritySettings } from './SecuritySettings';
-export { AddressBookPanel } from './AddressBookPanel';
+export { MnemonicBackup } from './security/MnemonicBackup';
+export { ImportWallet } from './security/ImportWallet';
+export { ExportPrivateKey } from './security/ExportPrivateKey';
+export { SecuritySettings } from './security/SecuritySettings';
+export { SecurityProgress } from './security/SecurityProgress';
+export type { SecurityProgressProps } from './security/SecurityProgress';
 
-// Payment components
-export { ReceivePanel } from './ReceivePanel';
+// NFT components
+export { NFTCard } from './nft/NFTCard';
+export { NFTGallery } from './nft/NFTGallery';
+export { NFTDetail } from './nft/NFTDetail';
+export { NFTTransfer } from './nft/NFTTransfer';
 
-// Transaction History components
-export { TransactionHistoryPanel } from './TransactionHistoryPanel';
+// Staking components
+export { ValidatorList } from './staking/ValidatorList';
+export { StakingStatus } from './staking/StakingStatus';
+export { StakingPanel } from './staking/StakingPanel';
 
-// zkLogin components
-export { SocialLoginButtons, SocialLoginIconButtons } from './SocialLoginButtons';
-export type { SocialLoginButtonsProps } from './SocialLoginButtons';
-export { ZkLoginCallback } from './ZkLoginCallback';
-export type { ZkLoginCallbackProps } from './ZkLoginCallback';
+// Portfolio components
+export { PortfolioPanel } from './portfolio/PortfolioPanel';
+export type { PortfolioPanelProps } from './portfolio/PortfolioPanel';
 
-// Passkey components
-export { PasskeyButton } from './PasskeyButton';
-export type { PasskeyButtonProps } from './PasskeyButton';
+// Nasun Link components
+export { NasunLinkWizard } from './link/NasunLinkWizard';
+export type { NasunLinkWizardProps } from './link/NasunLinkWizard';
+export { LinkClaimPage } from './link/LinkClaimPage';
+export type { LinkClaimPageProps } from './link/LinkClaimPage';
+export { ReceivePanel } from './link/ReceivePanel';
+
+// Advanced Mode components
+export { AdvancedToggle } from './advanced/AdvancedToggle';
+export type { AdvancedToggleProps } from './advanced/AdvancedToggle';
+export { SessionKeyPanel } from './advanced/SessionKeyPanel';
+export type { SessionKeyPanelProps } from './advanced/SessionKeyPanel';
+export { PurposeSelector } from './advanced/PurposeSelector';
+export type { PurposeSelectorProps } from './advanced/PurposeSelector';
+
+// Address components
+export { CopyableAddress } from './address/CopyableAddress';
+export type { CopyableAddressProps } from './address/CopyableAddress';
+export { AddressBookPanel } from './address/AddressBookPanel';
+
+// Social/zkLogin components
+export { SocialLoginButtons, SocialLoginIconButtons } from './social/SocialLoginButtons';
+export type { SocialLoginButtonsProps } from './social/SocialLoginButtons';
+export { ZkLoginCallback } from './social/ZkLoginCallback';
+export type { ZkLoginCallbackProps } from './social/ZkLoginCallback';
+export { PasskeyButton } from './social/PasskeyButton';
+export type { PasskeyButtonProps } from './social/PasskeyButton';
+export { ZKIDManager } from './social/ZKIDManager';
+export type { ZKIDManagerProps } from './social/ZKIDManager';
 
 // Network components
-export { NetworkBadge } from './NetworkBadge';
-export type { NetworkBadgeProps } from './NetworkBadge';
-export { NetworkSelector } from './NetworkSelector';
-export type { NetworkSelectorProps } from './NetworkSelector';
+export { NetworkBadge } from './network/NetworkBadge';
+export type { NetworkBadgeProps } from './network/NetworkBadge';
+export { NetworkSelector } from './network/NetworkSelector';
+export type { NetworkSelectorProps } from './network/NetworkSelector';
+export { ChainSelector } from './network/ChainSelector';
+export type { ChainSelectorProps } from './network/ChainSelector';
 
 // Clear Signing components
 export {

@@ -11,7 +11,7 @@ import {
   getExplorerObjectUrl,
 } from '@nasun/wallet';
 import { NFTTransfer } from './NFTTransfer';
-import { CopyableAddress } from './CopyableAddress';
+import { CopyableAddress } from '../address/CopyableAddress';
 
 interface NFTDetailProps {
   /** NFT data */

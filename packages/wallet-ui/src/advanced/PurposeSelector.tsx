@@ -6,8 +6,8 @@
  * affects default views and shortcuts.
  */
 
-import { useUISettingsStore } from './stores/uiSettingsStore';
-import type { UserPurpose } from './types/navigation';
+import { useUISettingsStore } from '../stores/uiSettingsStore';
+import type { UserPurpose } from '../types/navigation';
 
 export interface PurposeSelectorProps {
   /** Callback when purpose is selected and onboarding completes */

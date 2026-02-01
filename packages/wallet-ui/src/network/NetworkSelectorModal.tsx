@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useChain, useChainStore, type ChainConfig } from '@nasun/wallet';
-import { useAdvancedMode } from './stores/uiSettingsStore';
+import { useAdvancedMode } from '../stores/uiSettingsStore';
 
 export interface NetworkSelectorModalProps {
   /** Callback when modal should close */
