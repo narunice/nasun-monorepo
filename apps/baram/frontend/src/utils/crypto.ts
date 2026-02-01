@@ -132,7 +132,7 @@ export async function decryptResponse(
 
   const aesKey = await crypto.subtle.importKey(
     'raw',
-    aesKeyBytes,
+    aesKeyBytes as BufferSource,
     { name: 'AES-GCM' },
     false,
     ['decrypt']

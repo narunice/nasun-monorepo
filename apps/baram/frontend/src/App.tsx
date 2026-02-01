@@ -93,7 +93,7 @@ function AppContent() {
     if (executors.length === 0) return null;
     // TEE models must only use TEE executors (teeType > 0)
     const pool = needsAttestation ? executors.filter(e => e.teeType > 0) : executors;
-    return selectExecutorWeightedRandom(pool, failedExecutorIds, requiredMinTier, selectedModel);
+    return selectExecutorWeightedRandom(pool, failedExecutorIds, requiredMinTier, selectedModel ?? undefined);
   }, [executors, failedExecutorIds, requiredMinTier, selectedModel, needsAttestation]);
 
   useEffect(() => {
@@ -211,7 +211,7 @@ function AppContent() {
       } catch {
         console.warn(`[App] Executor ${currentExecutor.name} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
         excluded.add(currentExecutor.id);
-        currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier, selectedModel);
+        currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier, selectedModel ?? undefined);
         if (currentExecutor) {
           setSelectedExecutor(currentExecutor);
         }

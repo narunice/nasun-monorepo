@@ -25,6 +25,11 @@ const statusConfig = {
     color: 'text-[var(--color-success)]',
     animate: false,
   },
+  cancelling: {
+    text: 'Cancelling...',
+    color: 'text-baram-1',
+    animate: true,
+  },
   error: {
     text: 'Failed',
     color: 'text-[var(--color-error)]',
