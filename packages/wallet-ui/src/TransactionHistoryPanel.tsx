@@ -149,9 +149,12 @@ function TransactionItem({
   };
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onClick?.(tx.digest)}
-      className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors border-b border-gray-100 dark:border-zinc-700 last:border-b-0"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(tx.digest); }}
+      className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors border-b border-gray-100 dark:border-zinc-700 last:border-b-0 cursor-pointer"
     >
       <div className="flex items-start gap-2">
         {/* Direction icon and label */}
@@ -291,7 +294,7 @@ function TransactionItem({
       {tx.status === 'failure' && tx.error && (
         <p className="mt-2 text-xs text-red-500 dark:text-red-400 truncate">{tx.error}</p>
       )}
-    </button>
+    </div>
   );
 }
 
