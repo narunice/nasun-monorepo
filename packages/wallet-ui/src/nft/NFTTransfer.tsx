@@ -61,8 +61,8 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
+            <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {name} has been sent successfully
             </p>
           </div>
@@ -125,8 +125,8 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{name}</p>
-            <p className="text-xs text-gray-500 dark:text-zinc-400 font-mono">{shortenAddress(nft.objectId, 6)}</p>
+            <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white truncate">{name}</p>
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 font-mono">{shortenAddress(nft.objectId, 6)}</p>
           </div>
         </div>
 
@@ -145,8 +145,8 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
 
         {/* Gas Fee */}
         <div className="bg-gray-100 dark:bg-zinc-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-zinc-600">
-          <p className="text-xs text-gray-500 dark:text-zinc-400">Estimated Gas Fee</p>
-          <p className="text-sm text-gray-900 dark:text-white mt-1">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Estimated Gas Fee</p>
+          <p className="text-sm xl:text-base text-gray-900 dark:text-white mt-1">
             ≈ 0.003 <span className="text-blue-400">NSN</span>
           </p>
         </div>
@@ -154,7 +154,7 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
         {/* Error */}
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm xl:text-base text-red-400">{error}</p>
           </div>
         )}
 
@@ -218,26 +218,26 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
 
       {/* Recipient Address */}
       <div className="mb-4">
-        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
+        <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
         <input
           type="text"
           placeholder="0x..."
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          className={`w-full px-3 py-2 bg-gray-50 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm font-mono focus:outline-none transition-colors ${
+          className={`w-full px-3 py-2 bg-gray-50 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm xl:text-base font-mono focus:outline-none transition-colors ${
             !isValidRecipient
               ? 'border-red-500 focus:border-red-500'
               : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
           }`}
         />
         {!isValidRecipient && (
-          <p className="text-xs text-red-400 mt-1">Invalid address format</p>
+          <p className="text-xs xl:text-sm text-red-400 mt-1">Invalid address format</p>
         )}
       </div>
 
       {/* Warning */}
       <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
-        <p className="text-sm text-yellow-400">
+        <p className="text-sm xl:text-base text-yellow-400">
           Please double-check the recipient address. NFT transfers cannot be reversed.
         </p>
       </div>

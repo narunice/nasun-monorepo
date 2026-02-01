@@ -146,7 +146,7 @@ export function ZkLoginCallback({
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        <h2 className="text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
           Login Failed
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
@@ -206,7 +206,7 @@ export function ZkLoginCallback({
               />
             </svg>
           ) : (
-            <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+            <span className="text-lg xl:text-xl font-semibold text-gray-700 dark:text-gray-300">
               {stepProgress[step]}%
             </span>
           )}
@@ -214,7 +214,7 @@ export function ZkLoginCallback({
       </div>
 
       {/* Status text */}
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+      <h2 className="text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
         {step === 'complete' ? 'Welcome!' : 'Setting up your wallet...'}
       </h2>
       <p className="text-gray-500 dark:text-gray-400 text-center">
@@ -222,7 +222,7 @@ export function ZkLoginCallback({
       </p>
 
       {/* Step indicators */}
-      <div className="flex flex-col gap-2 mt-6 text-sm">
+      <div className="flex flex-col gap-2 mt-6 text-sm xl:text-base">
         <StepIndicator
           label="Login verified"
           status={getStepStatus('verifying', step)}
@@ -239,7 +239,7 @@ export function ZkLoginCallback({
 
       {/* Time estimate */}
       {step === 'generating_proof' && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-gray-500 mt-4">
           This may take 15-30 seconds
         </p>
       )}

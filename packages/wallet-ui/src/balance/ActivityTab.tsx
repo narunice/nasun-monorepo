@@ -39,7 +39,7 @@ export function ActivityTab({
       {/* Pending Proposals Section - only show if there are any */}
       {nsaIsInitialized && proposalsForMe.length > 0 && (
         <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
-          <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2">
+          <p className="text-xs xl:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
             Pending Invitations ({proposalsForMe.length})
           </p>
           <div className="space-y-2">
@@ -65,10 +65,10 @@ export function ActivityTab({
                       />
                     </svg>
                     <div>
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                      <p className="text-sm xl:text-base font-medium text-blue-700 dark:text-blue-300">
                         {proposal.label || "Signer Invitation"}
                       </p>
-                      <p className="text-xs text-blue-600/70 dark:text-blue-400/70">
+                      <p className="text-xs xl:text-sm text-blue-600/70 dark:text-blue-400/70">
                         From: {proposal.proposer.slice(0, 8)}...{proposal.proposer.slice(-4)}
                       </p>
                     </div>

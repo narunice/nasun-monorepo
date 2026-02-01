@@ -90,7 +90,7 @@ export function LedgerAddressSelector({
     return (
       <div className={`p-6 text-center ${className}`}>
         <LoadingSpinner />
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-3 text-sm xl:text-base text-gray-600 dark:text-gray-400">
           Loading addresses from your Ledger...
         </p>
       </div>
@@ -112,7 +112,7 @@ export function LedgerAddressSelector({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+          <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
             Select Address
           </h3>
           <Tooltip
@@ -120,7 +120,7 @@ export function LedgerAddressSelector({
             size="xs"
           />
         </div>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
           {chainType === 'move' ? 'Sui/Nasun' : 'Ethereum'} addresses
         </span>
       </div>
@@ -149,7 +149,7 @@ export function LedgerAddressSelector({
         {hasMore && !isLoading && onLoadMore && (
           <button
             onClick={onLoadMore}
-            className="w-full p-3 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-t border-gray-200 dark:border-gray-700 transition-colors"
+            className="w-full p-3 text-sm xl:text-base text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-t border-gray-200 dark:border-gray-700 transition-colors"
           >
             Load more addresses
           </button>
@@ -157,7 +157,7 @@ export function LedgerAddressSelector({
       </div>
 
       {/* Path info */}
-      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+      <p className="text-xs xl:text-sm text-gray-500 dark:text-gray-400 text-center">
         Using BIP-44 derivation path for{' '}
         {chainType === 'move' ? 'Sui/Nasun' : 'Ethereum'}
       </p>
@@ -217,16 +217,16 @@ function AddressRow({
       {/* Address info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-gray-900 dark:text-white">
+          <span className="font-mono text-sm xl:text-base text-gray-900 dark:text-white">
             {formatAddress(address.address)}
           </span>
           {address.isUsed && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+            <span className="text-xs xl:text-sm px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
               Used
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+        <span className="text-xs xl:text-sm text-gray-500 dark:text-gray-400 font-mono">
           {getPathDisplay(chainType, address.index)}
         </span>
       </div>
@@ -234,11 +234,11 @@ function AddressRow({
       {/* Balance */}
       {showBalance && address.balance !== undefined && (
         <div className="text-right flex-shrink-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">
+          <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
             {address.balance}
           </p>
           {address.usdValue !== undefined && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
               ${address.usdValue.toFixed(2)}
             </p>
           )}
@@ -301,10 +301,10 @@ export function LedgerAddressDropdown({
         <div>
           {selectedAddress ? (
             <>
-              <p className="font-mono text-sm text-gray-900 dark:text-white">
+              <p className="font-mono text-sm xl:text-base text-gray-900 dark:text-white">
                 {formatAddress(selectedAddress.address)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
                 Account {selectedAddress.index + 1}
               </p>
             </>
@@ -335,11 +335,11 @@ export function LedgerAddressDropdown({
                     : ''
                 }`}
               >
-                <span className="text-sm font-mono text-gray-900 dark:text-white">
+                <span className="text-sm xl:text-base font-mono text-gray-900 dark:text-white">
                   {formatAddress(addr.address)}
                 </span>
                 {addr.balance && (
-                  <span className="ml-auto text-sm text-gray-500 dark:text-gray-400">
+                  <span className="ml-auto text-sm xl:text-base text-gray-500 dark:text-gray-400">
                     {addr.balance}
                   </span>
                 )}

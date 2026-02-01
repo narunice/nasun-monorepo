@@ -98,7 +98,7 @@ export function StatusBadge({
     <span
       className={`
         inline-flex items-center gap-1.5 font-medium rounded-full border
-        ${variant === 'compact' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'}
+        ${variant === 'compact' ? 'px-2 py-0.5 text-xs xl:text-sm' : 'px-3 py-1 text-sm xl:text-base'}
         ${config.styles}
         ${className}
       `}

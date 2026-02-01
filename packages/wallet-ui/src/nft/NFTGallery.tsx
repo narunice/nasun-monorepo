@@ -69,7 +69,7 @@ export function NFTGallery({
       <div className={`${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">My NFTs</h3>
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">My NFTs</h3>
           </div>
         )}
         <div className={`grid ${gridClasses[columns]} gap-3`}>
@@ -96,14 +96,14 @@ export function NFTGallery({
       <div className={`${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">My NFTs</h3>
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">My NFTs</h3>
           </div>
         )}
         <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg p-4">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <p className="text-sm xl:text-base text-red-600 dark:text-red-400">{error}</p>
           <button
             onClick={() => refetch()}
-            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+            className="mt-2 text-sm xl:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
           >
             Try again
           </button>
@@ -121,7 +121,7 @@ export function NFTGallery({
       <div className={`${className}`}>
         {!hideHeader && (
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">My NFTs</h3>
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">My NFTs</h3>
           </div>
         )}
         <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-6 text-center">
@@ -138,7 +138,7 @@ export function NFTGallery({
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-gray-500 dark:text-zinc-400 text-sm">{emptyMessage}</p>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -157,7 +157,7 @@ export function NFTGallery({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as NFTSortBy)}
-                className="text-xs px-2 py-1 bg-gray-100 dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="text-xs xl:text-sm px-2 py-1 bg-gray-100 dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>

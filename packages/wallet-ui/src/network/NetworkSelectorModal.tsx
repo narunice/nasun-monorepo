@@ -93,7 +93,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
         disabled={isChainDisabled}
         className={`
           w-full px-4 py-3 text-left flex items-center justify-between
-          transition-colors text-sm rounded-lg mb-1
+          transition-colors text-sm xl:text-base rounded-lg mb-1
           ${
             !isChainDisabled
               ? 'hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer'
@@ -130,12 +130,12 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
               )}
             </span>
             {chain.devnet && (
-              <span className="ml-2 text-xs text-amber-500 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded font-medium">
+              <span className="ml-2 text-xs xl:text-sm text-amber-500 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded font-medium">
                 Devnet
               </span>
             )}
             {chain.testnet && !chain.devnet && (
-              <span className="ml-2 text-xs text-gray-400 dark:text-zinc-500">
+              <span className="ml-2 text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
                 Testnet
               </span>
             )}
@@ -144,7 +144,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
 
         {/* Badge for disabled sections (e.g. Pro Mode required) */}
         {!sectionEnabled && disabledReason && (
-          <span className="text-xs text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
+          <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
             {disabledReason}
           </span>
         )}
@@ -179,7 +179,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
 
     return (
       <div className="mb-4">
-        <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+        <div className="px-4 py-2 text-xs xl:text-sm font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
           {title}
         </div>
         <div className="px-2">
@@ -208,7 +208,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-zinc-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white">
             Select Network
           </h3>
           <button
@@ -252,7 +252,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
               placeholder="Search networks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-700 border-0 rounded-lg text-sm xl:text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -295,7 +295,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           {/* Hint when Pro Mode is off */}
           {!isAdvancedMode && evmChains.length > 0 && (
             <div className="mx-4 mt-2 px-4 py-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
-              <p className="text-xs text-gray-500 dark:text-zinc-400">
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
                 Enable <span className="font-medium">Pro Mode</span> in
                 Settings to access EVM networks.
               </p>

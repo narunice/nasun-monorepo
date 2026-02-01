@@ -35,7 +35,7 @@ export function QuickActionsBar({
         <button
           key={key}
           onClick={() => onAction(key)}
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-medium transition-all text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700"
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
@@ -46,7 +46,7 @@ export function QuickActionsBar({
       <div className="relative flex-1">
         <button
           onClick={onToggleMore}
-          className={`w-full flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-medium transition-all ${
+          className={`w-full flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all ${
             showMoreMenu
               ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
               : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700"

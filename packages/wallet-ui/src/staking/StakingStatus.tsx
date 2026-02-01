@@ -41,7 +41,7 @@ export function StakingStatus({
   if (error) {
     return (
       <div className="p-4 bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded-lg">
-        <p className="text-sm text-red-600 dark:text-red-400">Failed to load staking data</p>
+        <p className="text-sm xl:text-base text-red-600 dark:text-red-400">Failed to load staking data</p>
       </div>
     );
   }
@@ -63,8 +63,8 @@ export function StakingStatus({
               d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">No active stakes</p>
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+          <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">No active stakes</p>
+          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
             Stake NSN to earn rewards
           </p>
         </div>
@@ -79,19 +79,19 @@ export function StakingStatus({
         <div className={`bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500 dark:text-zinc-400">Total Staked</p>
-              <p className={`font-medium text-gray-900 dark:text-white ${compact ? 'text-base' : 'text-lg'}`}>
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Total Staked</p>
+              <p className={`font-medium text-gray-900 dark:text-white ${compact ? 'text-base xl:text-lg' : 'text-lg xl:text-xl'}`}>
                 {summary.formattedTotalStaked}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-zinc-400">Estimated Rewards</p>
-              <p className={`font-medium text-green-600 dark:text-green-400 ${compact ? 'text-base' : 'text-lg'}`}>
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Estimated Rewards</p>
+              <p className={`font-medium text-green-600 dark:text-green-400 ${compact ? 'text-base xl:text-lg' : 'text-lg xl:text-xl'}`}>
                 +{summary.formattedTotalRewards}
               </p>
             </div>
           </div>
-          <div className="flex gap-4 mt-3 text-xs text-gray-500 dark:text-zinc-400">
+          <div className="flex gap-4 mt-3 text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
             <span>Active: {summary.activeStakeCount}</span>
             {summary.pendingStakeCount > 0 && (
               <span>Pending: {summary.pendingStakeCount}</span>
@@ -147,16 +147,16 @@ function StakePositionCard({
           />
         ) : (
           <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-zinc-600 flex items-center justify-center">
-            <span className="text-sm text-gray-600 dark:text-zinc-300">
+            <span className="text-sm xl:text-base text-gray-600 dark:text-zinc-300">
               {validator?.name?.[0] || '?'}
             </span>
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <h4 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white truncate">
             {validator?.name || 'Unknown Validator'}
           </h4>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 font-mono truncate">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 font-mono truncate">
             {validatorAddress.slice(0, 8)}...{validatorAddress.slice(-6)}
           </p>
         </div>
@@ -166,14 +166,14 @@ function StakePositionCard({
       <div className="bg-gray-100 dark:bg-zinc-800/50 rounded p-3 mb-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500 dark:text-zinc-400">Staked</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Staked</p>
+            <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
               {formatStakedAmount(totalPrincipal)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-zinc-400">Rewards</p>
-            <p className="text-sm font-medium text-green-600 dark:text-green-400">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Rewards</p>
+            <p className="text-sm xl:text-base font-medium text-green-600 dark:text-green-400">
               +{formatStakedAmount(totalRewards)}
             </p>
           </div>
@@ -218,14 +218,14 @@ function StakePositionItem({ stake, onUnstake, compact }: StakePositionItemProps
   return (
     <div className="flex items-center justify-between bg-gray-100/50 dark:bg-zinc-800/30 rounded p-2">
       <div className="flex items-center gap-2">
-        <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(stake.status)}`}>
+        <span className={`text-xs xl:text-sm px-2 py-0.5 rounded ${getStatusColor(stake.status)}`}>
           {stake.status}
         </span>
-        <span className="text-sm text-gray-900 dark:text-white">
+        <span className="text-sm xl:text-base text-gray-900 dark:text-white">
           {formatStakedAmount(stake.principal)}
         </span>
         {stake.estimatedReward && stake.estimatedReward > 0n && (
-          <span className="text-xs text-green-600 dark:text-green-400">
+          <span className="text-xs xl:text-sm text-green-600 dark:text-green-400">
             +{formatStakedAmount(stake.estimatedReward)}
           </span>
         )}
@@ -234,7 +234,7 @@ function StakePositionItem({ stake, onUnstake, compact }: StakePositionItemProps
       {stake.status === 'Active' && onUnstake && (
         <button
           onClick={() => onUnstake(stake.stakedSuiId, stake.principal)}
-          className={`text-xs px-2 py-1 bg-gray-200 dark:bg-zinc-600 hover:bg-gray-300 dark:hover:bg-zinc-500 text-gray-900 dark:text-white rounded transition-colors ${
+          className={`text-xs xl:text-sm px-2 py-1 bg-gray-200 dark:bg-zinc-600 hover:bg-gray-300 dark:hover:bg-zinc-500 text-gray-900 dark:text-white rounded transition-colors ${
             compact ? '' : 'px-3'
           }`}
         >

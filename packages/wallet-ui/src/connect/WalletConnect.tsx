@@ -7,6 +7,7 @@
 import { createPortal } from "react-dom";
 import { LockedStateUI } from "./LockedStateUI";
 import { useWalletConnectState } from "./hooks/useWalletConnectState";
+import { WALLET_STYLES } from "../shared/styles";
 import {
   ConnectedView,
   DisconnectedView,
@@ -322,7 +323,7 @@ export function WalletConnect({
       {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
       {s.showDropdown && !s.isMobile && (
         <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute w-[320px] sm:w-[380px] md:w-[420px] overflow-hidden ${
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute ${WALLET_STYLES.dropdownDesktop} overflow-hidden ${
             dropdownAlign === "left"
               ? "left-0"
               : dropdownAlign === "center"
@@ -346,7 +347,7 @@ export function WalletConnect({
             />
             <div
               ref={s.mobileDropdownRef}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-32px)] max-w-[420px] max-h-[85vh] overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]"
+              className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${WALLET_STYLES.dropdownMobile} overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}
             >
               {renderDropdownContent()}
             </div>

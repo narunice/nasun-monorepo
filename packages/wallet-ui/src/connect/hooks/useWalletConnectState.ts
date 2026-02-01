@@ -28,6 +28,8 @@ import { useAdvancedMode, useUISettingsStore } from "../../stores";
 import type { ViewMode } from "../LockedStateUI";
 import type { TabMode } from "../TabBar";
 
+export type ViewportTier = "mobile" | "tablet" | "desktop";
+
 /** Truncate email for mobile display: "user@gmail.com" → "user@..." */
 function truncateEmail(email: string, isMobile: boolean): string {
   if (!isMobile) return email;
@@ -180,7 +182,7 @@ export function useWalletConnectState() {
   const [activeTab, setActiveTab] = useState<TabMode>("assets");
   const [nftSortBy, _setNftSortBy] = useState<NFTSortBy>("newest");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [viewport, setViewport] = useState<ViewportTier>("tablet");
   const [nftCursor, setNftCursor] = useState<string | undefined>(undefined);
   const [accumulatedNfts, setAccumulatedNfts] = useState<NFTInfo[]>([]);
   const [sendRecipient, setSendRecipient] = useState<string | undefined>(undefined);
@@ -190,13 +192,18 @@ export function useWalletConnectState() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Detect mobile viewport
+  // Detect viewport tier (mobile < 640px, tablet 640-1279px, desktop >= 1280px)
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const check = () => {
+      const w = window.innerWidth;
+      setViewport(w < 640 ? "mobile" : w < 1280 ? "tablet" : "desktop");
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
+
+  const isMobile = viewport === "mobile";
 
   // Save backup pending state to localStorage
   useEffect(() => {
@@ -462,6 +469,7 @@ export function useWalletConnectState() {
     setActiveTab,
     selectedNFT,
     setSelectedNFT,
+    viewport,
     isMobile,
     sendRecipient,
     setSendRecipient,

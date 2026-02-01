@@ -38,20 +38,20 @@ export function AssetsTabContent({
     <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tr-lg">
       {/* Token Balances Section */}
       <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
-        <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
+        <p className="text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-2">
           Token Balances {isEVM && `(${chain.name})`}
         </p>
         {isEVM ? (
           // EVM chain balance display
           <div className="space-y-1.5">
             {!storedEVMAddress ? (
-              <p className="text-sm text-gray-500 dark:text-zinc-400">
+              <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
                 EVM wallet not configured
               </p>
             ) : evmBalanceLoading ? (
               <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
             ) : (
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-sm xl:text-base">
                 <span className="text-gray-700 dark:text-zinc-300">
                   {chain.nativeCurrency.symbol}
                 </span>
@@ -73,7 +73,7 @@ export function AssetsTabContent({
         ) : (
           <div className="space-y-1.5">
             {/* Native token (NSN) */}
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm xl:text-base">
               <span className="text-gray-700 dark:text-zinc-300">NSN</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-gray-900 dark:text-white">
@@ -95,7 +95,7 @@ export function AssetsTabContent({
                       ] as const,
                   )
             ).map(([symbol, token]) => (
-              <div key={symbol} className="flex items-center justify-between text-sm">
+              <div key={symbol} className="flex items-center justify-between text-sm xl:text-base">
                 <span className="text-gray-700 dark:text-zinc-300">{symbol}</span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-gray-900 dark:text-white">
@@ -112,7 +112,7 @@ export function AssetsTabContent({
       {/* NFT Preview Section */}
       {!isEVM && (
         <div className="px-3 py-2">
-          <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
+          <p className="text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-2">
             NFTs {accumulatedNfts.length > 0 && `(${accumulatedNfts.length})`}
           </p>
           {nftsLoading && accumulatedNfts.length === 0 ? (
@@ -125,7 +125,7 @@ export function AssetsTabContent({
               ))}
             </div>
           ) : accumulatedNfts.length === 0 ? (
-            <p className="text-xs text-gray-400 dark:text-zinc-500 text-center py-4">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 text-center py-4">
               No NFTs found
             </p>
           ) : (

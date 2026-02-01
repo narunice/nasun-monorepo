@@ -89,9 +89,9 @@ const STATUS_CONFIG: Record<LedgerConnectionStatus, StatusConfig> = {
 };
 
 const SIZE_STYLES = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-2.5 text-base',
+  sm: 'px-3 py-1.5 text-sm xl:text-base',
+  md: 'px-4 py-2 text-sm xl:text-base',
+  lg: 'px-5 py-2.5 text-base xl:text-lg',
 };
 
 /**
@@ -151,7 +151,7 @@ export function LedgerConnect({
         <span>{config.icon}</span>
         <span className="font-medium">{config.label}</span>
         {isConnected && connectedAddress && (
-          <span className="text-sm opacity-75 font-mono">
+          <span className="text-sm xl:text-base opacity-75 font-mono">
             ({formatAddress(connectedAddress)})
           </span>
         )}
@@ -181,14 +181,14 @@ export function LedgerConnect({
 
         {/* Connected address (compact) */}
         {isConnected && connectedAddress && size !== 'sm' && (
-          <span className="text-xs opacity-75 font-mono ml-1">
+          <span className="text-xs xl:text-sm opacity-75 font-mono ml-1">
             {formatAddress(connectedAddress)}
           </span>
         )}
 
         {/* Dropdown arrow */}
         {variant === 'dropdown' && isConnected && (
-          <span className="text-xs ml-1">{dropdownOpen ? '▲' : '▼'}</span>
+          <span className="text-xs xl:text-sm ml-1">{dropdownOpen ? '▲' : '▼'}</span>
         )}
       </button>
 
@@ -199,7 +199,7 @@ export function LedgerConnect({
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <span className="text-green-600 dark:text-green-400 text-lg">
+                <span className="text-green-600 dark:text-green-400 text-lg xl:text-xl">
                   ✓
                 </span>
               </div>
@@ -207,7 +207,7 @@ export function LedgerConnect({
                 <p className="font-medium text-gray-900 dark:text-white">
                   Hardware Secured
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
                   {deviceInfo?.model || 'Ledger Nano'}
                   {deviceInfo?.appName && ` · ${deviceInfo.appName}`}
                 </p>
@@ -218,10 +218,10 @@ export function LedgerConnect({
           {/* Connected address */}
           {connectedAddress && (
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-gray-400 mb-1">
                 Connected Address
               </p>
-              <p className="text-sm font-mono text-gray-900 dark:text-white truncate">
+              <p className="text-sm xl:text-base font-mono text-gray-900 dark:text-white truncate">
                 {connectedAddress}
               </p>
             </div>
@@ -235,7 +235,7 @@ export function LedgerConnect({
                   setDropdownOpen(false);
                   onDisconnect();
                 }}
-                className="w-full px-3 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                className="w-full px-3 py-2 text-sm xl:text-base text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
               >
                 Disconnect
               </button>
@@ -279,12 +279,12 @@ export function LedgerBrowserWarning({ className = '' }: { className?: string })
       className={`p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 ${className}`}
     >
       <div className="flex items-start gap-3">
-        <span className="text-xl text-yellow-500 dark:text-yellow-400">🌐</span>
+        <span className="text-xl xl:text-2xl text-yellow-500 dark:text-yellow-400">🌐</span>
         <div>
           <p className="font-medium text-yellow-700 dark:text-yellow-300">
             Browser not compatible
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm xl:text-base text-gray-600 dark:text-gray-400 mt-1">
             Your browser doesn&apos;t support hardware wallets. Use Chrome, Edge, or
             Brave for Ledger support.
           </p>

@@ -19,13 +19,13 @@ export function NetworkSelector({
       {isAdvancedMode ? (
         <button
           onClick={onOpenModal}
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
+          className="flex items-center gap-1.5 px-2 py-1 text-xs xl:text-sm font-medium rounded-md
             bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700
             text-gray-700 dark:text-zinc-300 transition-colors shadow-sm"
         >
           <span className="max-w-[100px] truncate">{chain.name}</span>
           {chain.type === "evm" && (
-            <span className="text-[10px] text-purple-500 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1 rounded">
+            <span className="text-[10px] xl:text-xs text-purple-500 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1 rounded">
               EVM
             </span>
           )}
@@ -46,7 +46,7 @@ export function NetworkSelector({
       ) : (
         <div className="group relative">
           <div
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
+            className="flex items-center gap-1.5 px-2 py-1 text-xs xl:text-sm font-medium rounded-md
             bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 cursor-default shadow-sm"
           >
             <span className="max-w-[100px] truncate">{chain.name}</span>
@@ -66,7 +66,7 @@ export function NetworkSelector({
           </div>
           {/* Tooltip */}
           <div
-            className="absolute right-0 top-full mt-1 w-48 p-2 text-xs text-gray-600 dark:text-zinc-300
+            className="absolute right-0 top-full mt-1 w-48 p-2 text-xs xl:text-sm text-gray-600 dark:text-zinc-300
             bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg
             opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50"
           >

@@ -24,14 +24,14 @@ export function DisconnectedView({
       {/* Quick Start Section - Social Login (Recommended) */}
       <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+          <span className="text-sm xl:text-base font-medium text-blue-700 dark:text-blue-300">
             Quick Start
           </span>
-          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded">
+          <span className="px-1.5 py-0.5 text-[10px] xl:text-xs font-medium bg-blue-600 text-white rounded">
             Recommended
           </span>
         </div>
-        <p className="text-xs text-blue-600 dark:text-blue-400 text-center mb-3">
+        <p className="text-xs xl:text-sm text-blue-600 dark:text-blue-400 text-center mb-3">
           No seed phrase needed
         </p>
         <SocialLoginButtons
@@ -41,12 +41,12 @@ export function DisconnectedView({
           providers={["google"]}
           size="md"
         />
-        {zkError && <p className="text-xs text-red-400 mt-2 text-center">{zkError.message}</p>}
+        {zkError && <p className="text-xs xl:text-sm text-red-400 mt-2 text-center">{zkError.message}</p>}
       </div>
 
       {/* Traditional Wallet Options */}
       <div className="space-y-1">
-        <p className="text-[10px] text-gray-400 dark:text-zinc-500 uppercase tracking-wider text-center mb-2">
+        <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider text-center mb-2">
           Or use traditional wallet
         </p>
         <button

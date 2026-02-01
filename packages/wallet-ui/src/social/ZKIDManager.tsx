@@ -163,10 +163,10 @@ export function ZKIDManager({
     <div className={`${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className={`font-medium text-gray-900 dark:text-white ${compact ? 'text-xs' : 'text-sm'}`}>
+        <h3 className={`font-medium text-gray-900 dark:text-white ${compact ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'}`}>
           ZK-ID Proofs
           {validProofs.length > 0 && (
-            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full">
+            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] xl:text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full">
               {validProofs.length}
             </span>
           )}
@@ -174,7 +174,7 @@ export function ZKIDManager({
         {proofEntries.length > 1 && (
           <button
             onClick={handleClearAll}
-            className="text-[10px] text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+            className="text-[10px] xl:text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
           >
             Clear All
           </button>
@@ -197,10 +197,10 @@ export function ZKIDManager({
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
             />
           </svg>
-          <p className="text-xs text-gray-500 dark:text-zinc-400">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
             No proofs stored
           </p>
-          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-0.5">
+          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
             Proofs are generated when required by dApps
           </p>
         </div>
@@ -231,10 +231,10 @@ export function ZKIDManager({
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-medium text-gray-900 dark:text-white">
+                      <p className="text-xs xl:text-sm font-medium text-gray-900 dark:text-white">
                         {getClaimTypeName(type)}
                       </p>
-                      <span className={`px-1 py-0.5 text-[9px] rounded ${
+                      <span className={`px-1 py-0.5 text-[10px] xl:text-xs rounded ${
                         isExpired
                           ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                           : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
@@ -244,11 +244,11 @@ export function ZKIDManager({
                     </div>
 
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-gray-500 dark:text-zinc-400">
+                      <span className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
                         Stored {formatStoredTime(entry.storedAt)}
                       </span>
                       <span className="text-gray-300 dark:text-zinc-600">|</span>
-                      <span className={`text-[10px] ${
+                      <span className={`text-[10px] xl:text-xs ${
                         isExpired
                           ? 'text-red-500 dark:text-red-400'
                           : 'text-gray-500 dark:text-zinc-400'

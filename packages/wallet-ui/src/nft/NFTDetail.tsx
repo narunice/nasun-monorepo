@@ -83,7 +83,7 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
       <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-lg w-full overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white truncate">{name}</h2>
+          <h2 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white truncate">{name}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors p-1"
@@ -124,23 +124,23 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
         <div className="p-4 space-y-3">
           {/* Collection */}
           <div>
-            <p className="text-xs text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Collection</p>
-            <p className="text-sm text-gray-900 dark:text-white mt-1">{collection}</p>
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Collection</p>
+            <p className="text-sm xl:text-base text-gray-900 dark:text-white mt-1">{collection}</p>
           </div>
 
           {/* Description */}
           {description && (
             <div>
-              <p className="text-xs text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Description</p>
-              <p className="text-sm text-gray-600 dark:text-zinc-300 mt-1 line-clamp-2">{description}</p>
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Description</p>
+              <p className="text-sm xl:text-base text-gray-600 dark:text-zinc-300 mt-1 line-clamp-2">{description}</p>
             </div>
           )}
 
           {/* Creator */}
           {creator && (
             <div>
-              <p className="text-xs text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Creator</p>
-              <p className="text-sm text-gray-900 dark:text-white mt-1">{creator}</p>
+              <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-500 uppercase tracking-wide">Creator</p>
+              <p className="text-sm xl:text-base text-gray-900 dark:text-white mt-1">{creator}</p>
             </div>
           )}
 

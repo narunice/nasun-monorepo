@@ -48,7 +48,7 @@ export function StakingPanel({
   if (!isWalletConnected) {
     return (
       <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
-        <p className="text-gray-500 dark:text-zinc-400 text-sm text-center">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base text-center">
           Please connect your wallet first.
         </p>
       </div>
@@ -59,7 +59,7 @@ export function StakingPanel({
     <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'w-full' : 'min-w-[360px]'}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Staking</h3>
+        <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Staking</h3>
         {onClose && (
           <button
             onClick={onClose}
@@ -78,7 +78,7 @@ export function StakingPanel({
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 text-sm xl:text-base font-medium transition-colors ${
               activeTab === tab
                 ? 'text-blue-500 dark:text-blue-400 border-b-2 border-blue-500 dark:border-blue-400'
                 : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
@@ -140,7 +140,7 @@ function StakeTab({ compact }: StakeTabProps) {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Stake Successful</h3>
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Stake Successful</h3>
             <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {lastResult.amount} NSN staked
             </p>
@@ -176,32 +176,32 @@ function StakeTab({ compact }: StakeTabProps) {
 
         <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3 space-y-3">
           <div>
-            <p className="text-xs text-gray-500 dark:text-zinc-400">Validator</p>
-            <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedValidator.name}</p>
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Validator</p>
+            <p className="text-sm xl:text-base text-gray-900 dark:text-white mt-1">{selectedValidator.name}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 dark:text-zinc-400">Amount</p>
-            <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
-              {amount} <span className="text-blue-500 dark:text-blue-400 text-sm">NSN</span>
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Amount</p>
+            <p className="text-lg xl:text-xl text-gray-900 dark:text-white font-medium mt-1">
+              {amount} <span className="text-blue-500 dark:text-blue-400 text-sm xl:text-base">NSN</span>
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 dark:text-zinc-400">Expected APY</p>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+            <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Expected APY</p>
+            <p className="text-sm xl:text-base text-green-600 dark:text-green-400 mt-1">
               {(selectedValidator.apy * 100).toFixed(2)}%
             </p>
           </div>
         </div>
 
         <div className="bg-yellow-100 dark:bg-yellow-500/10 border border-yellow-300 dark:border-yellow-500/30 rounded p-3">
-          <p className="text-xs text-yellow-700 dark:text-yellow-400">
+          <p className="text-xs xl:text-sm text-yellow-700 dark:text-yellow-400">
             Staked tokens will be activated at the next epoch (typically within 24 hours).
           </p>
         </div>
 
         {error && (
           <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p className="text-sm xl:text-base text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
@@ -259,9 +259,9 @@ function StakeTab({ compact }: StakeTabProps) {
         </div>
 
         <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded p-3">
-          <p className="text-xs text-gray-500 dark:text-zinc-400">Available Balance</p>
-          <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
-            {availableBalance} <span className="text-blue-500 dark:text-blue-400 text-sm">NSN</span>
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Available Balance</p>
+          <p className="text-lg xl:text-xl text-gray-900 dark:text-white font-medium mt-1">
+            {availableBalance} <span className="text-blue-500 dark:text-blue-400 text-sm xl:text-base">NSN</span>
           </p>
         </div>
 
@@ -270,7 +270,7 @@ function StakeTab({ compact }: StakeTabProps) {
             <label className="text-sm md:text-base text-gray-500 dark:text-zinc-400">Stake Amount</label>
             <button
               onClick={() => setAmount(maxStake)}
-              className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
+              className="text-xs xl:text-sm text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
             >
               Max
             </button>
@@ -282,13 +282,13 @@ function StakeTab({ compact }: StakeTabProps) {
             onChange={(e) => setAmount(e.target.value)}
             step="0.0001"
             min="0"
-            className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {isBelowMinimum && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Minimum stake is {MIN_STAKE_NSN} NSN</p>
+            <p className="text-xs xl:text-sm text-red-600 dark:text-red-400 mt-1">Minimum stake is {MIN_STAKE_NSN} NSN</p>
           )}
           {isAboveBalance && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Insufficient balance</p>
+            <p className="text-xs xl:text-sm text-red-600 dark:text-red-400 mt-1">Insufficient balance</p>
           )}
         </div>
 
@@ -357,7 +357,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Unstake Successful</h3>
+            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Unstake Successful</h3>
             <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
               Your NSN will be available after the current epoch ends.
             </p>
@@ -392,22 +392,22 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
         <h4 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Unstake</h4>
 
         <div className="bg-gray-200 dark:bg-zinc-700 rounded-lg p-3">
-          <p className="text-xs text-gray-500 dark:text-zinc-400">Amount to Unstake</p>
-          <p className="text-lg text-gray-900 dark:text-white font-medium mt-1">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">Amount to Unstake</p>
+          <p className="text-lg xl:text-xl text-gray-900 dark:text-white font-medium mt-1">
             {formatStakedAmount(selectedStake.principal)}{' '}
-            <span className="text-blue-500 dark:text-blue-400 text-sm">NSN</span>
+            <span className="text-blue-500 dark:text-blue-400 text-sm xl:text-base">NSN</span>
           </p>
         </div>
 
         <div className="bg-yellow-100 dark:bg-yellow-500/10 border border-yellow-300 dark:border-yellow-500/30 rounded p-3">
-          <p className="text-xs text-yellow-700 dark:text-yellow-400">
+          <p className="text-xs xl:text-sm text-yellow-700 dark:text-yellow-400">
             Unstaked tokens will be available after the current epoch ends (typically within 24 hours).
           </p>
         </div>
 
         {error && (
           <div className="bg-red-100 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 rounded p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p className="text-sm xl:text-base text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 

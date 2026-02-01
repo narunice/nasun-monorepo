@@ -25,9 +25,9 @@ export interface TooltipProps {
 }
 
 const SIZE_STYLES = {
-  xs: 'w-3 h-3 text-[10px]',
-  sm: 'w-4 h-4 text-xs',
-  md: 'w-5 h-5 text-sm',
+  xs: 'w-3 h-3 text-[10px] xl:text-xs',
+  sm: 'w-4 h-4 text-xs xl:text-sm',
+  md: 'w-5 h-5 text-sm xl:text-base',
 };
 
 const POSITION_STYLES = {
@@ -129,7 +129,7 @@ export function Tooltip({
           role="tooltip"
           className={`
             absolute z-50 px-3 py-2 max-w-xs
-            bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-lg
+            bg-gray-900 dark:bg-gray-800 text-white text-xs xl:text-sm rounded-lg shadow-lg
             ${POSITION_STYLES[adjustedPosition]}
             animate-fade-in
           `}
@@ -183,7 +183,7 @@ export function InlineTooltip({
           role="tooltip"
           className={`
             absolute z-50 px-2 py-1 whitespace-nowrap
-            bg-gray-900 dark:bg-gray-800 text-white text-xs rounded shadow-lg
+            bg-gray-900 dark:bg-gray-800 text-white text-xs xl:text-sm rounded shadow-lg
             ${POSITION_STYLES[position]}
           `}
         >
