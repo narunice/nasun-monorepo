@@ -5,17 +5,16 @@
  */
 
 import { useState } from 'react';
+import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { TradeHistory } from './TradeHistory';
 import { useOpenOrders, useOrderActions } from '../hooks';
+import { useMarket } from '../context/MarketContext';
+import { UnderlineTabs, type TabItem } from '@/components/common';
 
 export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
 
-interface TabConfig {
-  id: TabType;
-  label: string;
-  badge?: number;
-}
+type TabConfig = TabItem<TabType>;
 
 interface BottomTabPanelProps {
   className?: string;
@@ -37,26 +36,11 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   return (
     <div className={`bg-theme-bg-secondary rounded-lg ${className}`}>
       {/* Tab Headers */}
-      <div className="flex border-b border-theme-border overflow-x-auto scrollbar-hide">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-trading-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
-              activeTab === tab.id
-                ? 'text-theme-text-primary border-theme-accent'
-                : 'text-theme-text-muted border-transparent hover:text-theme-text-secondary hover:border-theme-border'
-            }`}
-          >
-            {tab.label}
-            {tab.badge !== undefined && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-4 px-1 text-trading-xs font-bold rounded-full bg-theme-accent/20 text-theme-accent">
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Tab Content */}
       <div className="p-3">
@@ -118,20 +102,118 @@ function TradeHistoryTab() {
   );
 }
 
-// Assets Tab - shows user balances
+// Assets Tab - shows user balances with Deposit/Withdraw actions
 function AssetsTab() {
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+
+  const { currentPool } = useMarket();
+  const baseSymbol = currentPool.baseToken.symbol;
+
+  const { balanceManagerId, isLoading, handleDeposit, handleWithdraw, lastAutoDepositError } = useOrderActions();
+  const { data: openOrdersData } = useOpenOrders(balanceManagerId);
+  const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
+
+  const { data: multiBalance } = useMultiBalance();
+  const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
+  const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
+
+  if (!isConnected) {
+    return (
+      <div className="min-h-[180px]">
+        <div className="text-trading-xs text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
+          <span>Asset</span>
+          <span className="text-right">Wallet</span>
+          <span className="text-right">Trading</span>
+          <span className="text-right">Total</span>
+          <span className="text-right">Actions</span>
+        </div>
+        <div className="text-center text-theme-text-muted py-6">
+          <p className="text-trading-sm">Connect wallet to view assets</p>
+          <p className="text-trading-xs mt-1">Your balances will appear here</p>
+        </div>
+      </div>
+    );
+  }
+
+  const assets = [
+    {
+      symbol: baseSymbol,
+      wallet: walletBase,
+      trading: bmBalance.base,
+      decimals: 4,
+    },
+    {
+      symbol: 'NUSDC',
+      wallet: walletQuote,
+      trading: bmBalance.quote,
+      decimals: 2,
+    },
+  ];
+
   return (
     <div className="min-h-[180px]">
-      <div className="text-trading-xs text-theme-text-muted grid grid-cols-4 gap-2 mb-2 pb-2 border-b border-theme-border">
+      {/* Column Headers */}
+      <div className="text-trading-xs text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
         <span>Asset</span>
         <span className="text-right">Wallet</span>
         <span className="text-right">Trading</span>
         <span className="text-right">Total</span>
+        <span className="text-right">Actions</span>
       </div>
-      <div className="text-center text-theme-text-muted py-6">
-        <p className="text-trading-sm">Connect wallet to view assets</p>
-        <p className="text-trading-xs mt-1">Your balances will appear here</p>
-      </div>
+
+      {/* Asset Rows */}
+      {assets.map((asset) => (
+        <div key={asset.symbol} className="grid grid-cols-5 gap-2 py-1.5 text-trading-sm">
+          <span className="font-medium text-theme-text-primary">{asset.symbol}</span>
+          <span className="text-right font-mono text-theme-text-secondary">
+            {asset.wallet.toFixed(asset.decimals)}
+          </span>
+          <span className="text-right font-mono text-blue-400">
+            {asset.trading.toFixed(asset.decimals)}
+          </span>
+          <span className="text-right font-mono text-theme-text-primary">
+            {(asset.wallet + asset.trading).toFixed(asset.decimals)}
+          </span>
+          <div className="flex justify-end gap-1">
+            {balanceManagerId && (
+              <>
+                <button
+                  onClick={handleDeposit}
+                  disabled={isLoading}
+                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 transition-colors"
+                >
+                  Deposit
+                </button>
+                <button
+                  onClick={handleWithdraw}
+                  disabled={isLoading}
+                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 disabled:opacity-50 transition-colors"
+                >
+                  Withdraw
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {/* Auto Deposit Error */}
+      {lastAutoDepositError && (
+        <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <p className="text-xs text-red-400">Auto deposit failed: {lastAutoDepositError}</p>
+        </div>
+      )}
+
+      {/* Enable Pado hint */}
+      {!balanceManagerId && (
+        <div className="mt-3 text-center">
+          <p className="text-trading-xs text-theme-text-muted">
+            Enable Pado from the order form to deposit funds for trading
+          </p>
+        </div>
+      )}
     </div>
   );
 }
