@@ -55,9 +55,10 @@ export function Header() {
   // Admin access check
   const { isAdmin } = useAdminAccess();
 
-  // Hide wallet button on homepage when not connected (WelcomeBanner has its own button)
+  // Hide wallet button on homepage only when no wallet exists (WelcomeBanner has "Get Started")
+  // Show it when locked (unlock from header) or connected
   const isHomePage = location.pathname === '/';
-  const showWalletButton = !isHomePage || isConnected;
+  const showWalletButton = !isHomePage || status !== 'disconnected' || isZkLoggedIn;
 
   // Close mobile menu on route change
   useEffect(() => {

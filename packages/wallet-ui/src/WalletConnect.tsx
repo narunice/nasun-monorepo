@@ -768,12 +768,12 @@ export function WalletConnect({
   }, [deleteWallet, resetSettings]);
 
   // Get button text based on status
-  // zkLogin: show email, self-custody: show label, fallback: truncated address
+  // zkLogin: show name, self-custody: show label, fallback: truncated address
   const getButtonText = () => {
     // zkLogin takes priority if connected
     if (isZkLoggedIn && zkState?.address) {
-      if (zkUserInfo?.email) return truncateEmail(zkUserInfo.email, isMobile);
       if (zkUserInfo?.name) return isMobile ? truncateText(zkUserInfo.name, 12) : zkUserInfo.name;
+      if (zkUserInfo?.email) return truncateEmail(zkUserInfo.email, isMobile);
       return shortenAddressResponsive(zkState.address, isMobile);
     }
     // Ledger connected
