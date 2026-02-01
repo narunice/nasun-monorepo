@@ -110,7 +110,7 @@ export function ZkLoginCallback({
   // After successful login, state.proof is set and isCallback becomes false
   if (!isCallback && !isProcessingRef.current && step === 'verifying') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] p-6">
+      <div className="flex flex-col items-center justify-center flex-1 h-full p-6">
         <p className="text-gray-500 dark:text-gray-400">
           Invalid callback URL
         </p>
@@ -130,7 +130,7 @@ export function ZkLoginCallback({
     }
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] p-6">
+      <div className="flex flex-col items-center justify-center flex-1 h-full p-6">
         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
           <svg
             className="w-8 h-8 text-red-500"
@@ -164,7 +164,7 @@ export function ZkLoginCallback({
 
   // Loading/Progress state
   return (
-    <div className="flex flex-col items-center justify-center min-h-[300px] p-6">
+    <div className="flex flex-col items-center justify-center flex-1 h-full p-6">
       {/* Progress circle */}
       <div className="relative w-20 h-20 mb-6">
         <svg className="w-20 h-20 transform -rotate-90">

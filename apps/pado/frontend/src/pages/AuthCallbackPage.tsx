@@ -10,8 +10,8 @@ export function AuthCallbackPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-theme-bg-primary flex items-center justify-center">
-      <div className="bg-theme-bg-secondary rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl">
+    <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-theme-bg-secondary rounded-2xl p-8 max-w-md w-full shadow-xl h-[420px] flex flex-col items-center justify-center">
         <ZkLoginCallback
           onSuccess={() => {
             // Redirect to home after successful login

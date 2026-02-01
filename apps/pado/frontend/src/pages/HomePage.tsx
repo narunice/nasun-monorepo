@@ -27,11 +27,12 @@ export function HomePage() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isConnected = isZkLoggedIn || (status === "unlocked" && account);
+  const hasNoWallet = status === "disconnected" && !isZkLoggedIn;
 
   return (
     <div className="p-4 pt-0 md:p-6 md:pt-1 max-w-7xl mx-auto">
-      {/* ===== Connected State: Portfolio-Centric Layout ===== */}
-      {isConnected && (
+      {/* ===== Connected or Locked State: Portfolio-Centric Layout ===== */}
+      {!hasNoWallet && (
         <>
           {/* Asset Overview Section */}
           <div className="mb-6">
@@ -69,8 +70,8 @@ export function HomePage() {
         </>
       )}
 
-      {/* ===== Not Connected: Onboarding Layout ===== */}
-      {!isConnected && (
+      {/* ===== No Wallet: Onboarding Layout ===== */}
+      {hasNoWallet && (
         <>
           {/* Welcome Banner */}
           <div className="mb-6">
