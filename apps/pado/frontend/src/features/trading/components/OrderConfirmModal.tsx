@@ -47,7 +47,7 @@ export function OrderConfirmModal({
       <div className="relative bg-theme-bg-secondary rounded-lg w-full max-w-sm mx-4 overflow-hidden">
         {/* Header */}
         <div className={`p-4 ${isBuy ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-          <h2 className={`text-lg font-semibold ${isBuy ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+          <h2 className={`text-lg xl:text-xl font-semibold ${isBuy ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
             {isBuy ? 'Buy Order' : 'Sell Order'}
           </h2>
         </div>
@@ -80,14 +80,14 @@ export function OrderConfirmModal({
               <span className="font-mono">{total.toFixed(2)} {quoteToken}</span>
             </div>
 
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm xl:text-base">
               <span className="text-theme-text-muted">Est. Fee (0.1%)</span>
               <span className="text-theme-text-muted font-mono">~{fee.toFixed(2)} {quoteToken}</span>
             </div>
 
             <div className="border-t border-theme-border my-2" />
 
-            <div className="flex justify-between text-lg font-semibold">
+            <div className="flex justify-between text-lg xl:text-xl font-semibold">
               <span>{isBuy ? 'You Pay' : 'You Receive'}</span>
               <span className={isBuy ? '' : 'text-green-600 dark:text-green-400'}>
                 {isBuy
@@ -99,7 +99,7 @@ export function OrderConfirmModal({
           </div>
 
           {/* Info */}
-          <div className="flex items-start gap-2 p-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm text-theme-text-secondary">
+          <div className="flex items-start gap-2 p-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm xl:text-base text-theme-text-secondary">
             <svg className="w-4 h-4 mt-0.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

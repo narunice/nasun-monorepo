@@ -55,7 +55,7 @@ export function MarketPanel({ mode = 'pro' }: MarketPanelProps) {
           {/* Orderbook */}
           <div className="bg-theme-bg-secondary rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-theme-text-secondary">Order Book</h2>
+              <h2 className="text-sm xl:text-base font-medium text-theme-text-secondary">Order Book</h2>
             </div>
             <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
           </div>

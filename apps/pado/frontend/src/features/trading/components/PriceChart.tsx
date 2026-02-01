@@ -587,10 +587,10 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
           <span className="font-semibold">{currentPool.baseToken.symbol}/{currentPool.quoteToken.symbol}</span>
           {lastPrice && (
             <div className="flex items-center gap-2">
-              <span className="font-mono text-lg">
+              <span className="font-mono text-lg xl:text-xl">
                 ${lastPrice.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-              <span className={`text-sm ${lastPrice.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`text-sm xl:text-base ${lastPrice.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {lastPrice.change >= 0 ? '+' : ''}{lastPrice.change.toFixed(2)}%
               </span>
             </div>
@@ -602,7 +602,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
           <div className="flex gap-1">
             <button
               onClick={() => setIndicators((prev) => ({ ...prev, ma: !prev.ma }))}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
+              className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
                 indicators.ma
                   ? 'bg-yellow-600 text-white'
                   : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
@@ -613,7 +613,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
             </button>
             <button
               onClick={() => setIndicators((prev) => ({ ...prev, rsi: !prev.rsi }))}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
+              className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
                 indicators.rsi
                   ? 'bg-purple-600 text-white'
                   : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
@@ -624,7 +624,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
             </button>
             <button
               onClick={() => setIndicators((prev) => ({ ...prev, macd: !prev.macd }))}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
+              className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
                 indicators.macd
                   ? 'bg-cyan-600 text-white'
                   : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
@@ -641,7 +641,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
               <button
                 key={key}
                 onClick={() => setInterval(key)}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
+                className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
                   interval === key
                     ? 'bg-blue-600 text-white'
                     : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
@@ -667,7 +667,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
           return v.toFixed(2);
         };
         return (
-          <div className="flex items-center gap-3 px-3 py-1 text-xs font-mono border-b border-theme-border/50">
+          <div className="flex items-center gap-3 px-3 py-1 text-xs xl:text-sm font-mono border-b border-theme-border/50">
             <span className="text-theme-text-muted">{baseSymbol} · {interval} · {binanceSymbol ? 'Lighter' : 'Sim'}</span>
             <span className="text-theme-text-muted">O<span className={isUp ? 'text-green-400' : 'text-red-400'}>{fmt(display.open)}</span></span>
             <span className="text-theme-text-muted">H<span className={isUp ? 'text-green-400' : 'text-red-400'}>{fmt(display.high)}</span></span>
@@ -680,7 +680,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
 
       {/* Indicator Legends */}
       {(indicators.ma || indicators.rsi || indicators.macd) && (
-        <div className="flex items-center gap-4 px-3 py-1 text-xs border-b border-theme-border/50">
+        <div className="flex items-center gap-4 px-3 py-1 text-xs xl:text-sm border-b border-theme-border/50">
           {indicators.ma && (
             <>
               <span className="flex items-center gap-1">
@@ -720,7 +720,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       {/* RSI Chart */}
       {indicators.rsi && (
         <div className="border-t border-theme-border">
-          <div className="px-3 py-1 text-xs text-theme-text-muted bg-theme-bg-tertiary/30">
+          <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">
             RSI (14)
           </div>
           <div ref={rsiContainerRef} className="w-full" />
@@ -730,7 +730,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       {/* MACD Chart */}
       {indicators.macd && (
         <div className="border-t border-theme-border">
-          <div className="px-3 py-1 text-xs text-theme-text-muted bg-theme-bg-tertiary/30">
+          <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">
             MACD (12, 26, 9)
           </div>
           <div ref={macdContainerRef} className="w-full" />

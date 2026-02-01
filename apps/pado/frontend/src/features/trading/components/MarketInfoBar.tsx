@@ -78,8 +78,8 @@ export function MarketInfoBar({
 
         {/* 24h Change */}
         <div className="flex flex-col">
-          <span className="text-trading-xs text-theme-text-muted">24h Change</span>
-          <span className={`text-trading-sm font-medium ${isPositiveChange ? 'text-trading-bid' : 'text-trading-ask'}`}>
+          <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">24h Change</span>
+          <span className={`text-trading-sm xl:text-trading-lg font-medium ${isPositiveChange ? 'text-trading-bid' : 'text-trading-ask'}`}>
             {isPositiveChange ? '+' : ''}{priceChange24h.toFixed(2)}%
           </span>
         </div>
@@ -87,8 +87,8 @@ export function MarketInfoBar({
         {/* 24h High */}
         {high24h !== undefined && (
           <div className="flex flex-col">
-            <span className="text-trading-xs text-theme-text-muted">24h High</span>
-            <span className="text-trading-sm font-medium text-theme-text-secondary">
+            <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">24h High</span>
+            <span className="text-trading-sm xl:text-trading-lg font-medium text-theme-text-secondary">
               ${high24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -97,8 +97,8 @@ export function MarketInfoBar({
         {/* 24h Low */}
         {low24h !== undefined && (
           <div className="flex flex-col">
-            <span className="text-trading-xs text-theme-text-muted">24h Low</span>
-            <span className="text-trading-sm font-medium text-theme-text-secondary">
+            <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">24h Low</span>
+            <span className="text-trading-sm xl:text-trading-lg font-medium text-theme-text-secondary">
               ${low24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -106,25 +106,25 @@ export function MarketInfoBar({
 
         {/* 24h Volume */}
         <div className="flex flex-col">
-          <span className="text-trading-xs text-theme-text-muted">24h Volume</span>
-          <span className="text-trading-sm font-medium text-theme-text-secondary">{formattedVolume}</span>
+          <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">24h Volume</span>
+          <span className="text-trading-sm xl:text-trading-lg font-medium text-theme-text-secondary">{formattedVolume}</span>
         </div>
 
         {/* Open Interest (Perp only) */}
         {formattedOI && (
           <div className="flex flex-col">
-            <span className="text-trading-xs text-theme-text-muted">Open Interest</span>
-            <span className="text-trading-sm font-medium text-theme-text-secondary">{formattedOI}</span>
+            <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Open Interest</span>
+            <span className="text-trading-sm xl:text-trading-lg font-medium text-theme-text-secondary">{formattedOI}</span>
           </div>
         )}
 
         {/* Funding Rate (Perp only) */}
         {fundingRate !== undefined && (
           <div className="flex flex-col">
-            <span className="text-trading-xs text-theme-text-muted">
+            <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">
               Funding {fundingCountdown && <span className="text-theme-text-muted">({fundingCountdown})</span>}
             </span>
-            <span className={`text-trading-sm font-medium ${fundingRate >= 0 ? 'text-trading-bid' : 'text-trading-ask'}`}>
+            <span className={`text-trading-sm xl:text-trading-lg font-medium ${fundingRate >= 0 ? 'text-trading-bid' : 'text-trading-ask'}`}>
               {fundingRate >= 0 ? '+' : ''}{(fundingRate * 100).toFixed(4)}%
             </span>
           </div>

@@ -82,13 +82,13 @@
   /* Toggle switch OFF background */
   --color-toggle-off: #b0ada9;
 
-  /* Trading-specific colors (light mode) */
-  --color-bid: #16a34a;
-  --color-bid-muted: rgba(22, 163, 74, 0.7);
-  --color-bid-bg: rgba(22, 163, 74, 0.1);
-  --color-ask: #dc2626;
-  --color-ask-muted: rgba(220, 38, 38, 0.7);
-  --color-ask-bg: rgba(220, 38, 38, 0.1);
+  /* Trading-specific colors (light mode — darker for readability) */
+  --color-bid: #15803d;
+  --color-bid-muted: rgba(21, 128, 61, 0.7);
+  --color-bid-bg: rgba(21, 128, 61, 0.1);
+  --color-ask: #b91c1c;
+  --color-ask-muted: rgba(185, 28, 28, 0.7);
+  --color-ask-bg: rgba(185, 28, 28, 0.1);
 }
 
 .dark {

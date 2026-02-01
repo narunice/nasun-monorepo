@@ -82,9 +82,9 @@ export function SimpleOrderForm({
       <div className="flex bg-theme-bg-tertiary rounded-lg p-1">
         <button
           onClick={() => setOrderSide('buy')}
-          className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-colors ${
+          className={`flex-1 py-2.5 text-sm xl:text-base font-semibold rounded-md transition-colors ${
             orderSide === 'buy'
-              ? 'bg-green-600 text-white shadow-sm'
+              ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
@@ -92,9 +92,9 @@ export function SimpleOrderForm({
         </button>
         <button
           onClick={() => setOrderSide('sell')}
-          className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-colors ${
+          className={`flex-1 py-2.5 text-sm xl:text-base font-semibold rounded-md transition-colors ${
             orderSide === 'sell'
-              ? 'bg-red-600 text-white shadow-sm'
+              ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
@@ -105,8 +105,8 @@ export function SimpleOrderForm({
       {/* Market Price Display */}
       {midPrice > 0 && (
         <div className="p-3 bg-theme-bg-tertiary/50 rounded text-center">
-          <div className="text-xs text-theme-text-muted mb-1">Market Price</div>
-          <div className="text-lg font-bold text-theme-text-primary">
+          <div className="text-xs xl:text-sm text-theme-text-muted mb-1">Market Price</div>
+          <div className="text-lg xl:text-xl font-bold text-theme-text-primary">
             ${midPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
@@ -120,8 +120,8 @@ export function SimpleOrderForm({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-yellow-400">No market liquidity</p>
-              <p className="text-xs text-theme-text-muted mt-1">
+              <p className="text-sm xl:text-base font-medium text-yellow-400">No market liquidity</p>
+              <p className="text-xs xl:text-sm text-theme-text-muted mt-1">
                 No market liquidity yet. Switch to Pro mode to place limit orders.
               </p>
             </div>
@@ -131,7 +131,7 @@ export function SimpleOrderForm({
 
       {/* Quick Amount Buttons */}
       <div>
-        <div className="text-sm text-theme-text-secondary mb-2">
+        <div className="text-sm xl:text-base text-theme-text-secondary mb-2">
           {orderSide === 'buy' ? 'Buy Amount' : 'Sell Amount'} ({quoteSymbol})
         </div>
         <QuickAmountButtons
@@ -163,13 +163,13 @@ export function SimpleOrderForm({
       {/* Amount Summary */}
       {usdAmount && usdAmount > 0 && (
         <div className="p-3 bg-theme-bg-tertiary/50 rounded space-y-2">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm xl:text-base">
             <span className="text-theme-text-secondary">You {orderSide === 'buy' ? 'pay' : 'receive'}</span>
             <span className="font-mono text-theme-text-primary">
               ${usdAmount.toFixed(2)} {quoteSymbol}
             </span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm xl:text-base">
             <span className="text-theme-text-secondary">You {orderSide === 'buy' ? 'receive' : 'sell'}</span>
             <span className="font-mono text-theme-text-primary">
               ~{baseAmount.toFixed(4)} {baseSymbol}
@@ -217,7 +217,7 @@ export function SimpleOrderForm({
       </button>
 
       {/* Info Text */}
-      <p className="text-xs text-theme-text-muted text-center">
+      <p className="text-xs xl:text-sm text-theme-text-muted text-center">
         Fills at best available price
       </p>
     </div>
