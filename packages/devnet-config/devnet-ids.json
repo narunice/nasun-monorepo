@@ -1,6 +1,6 @@
 {
   "version": "V6",
-  "lastUpdated": "2026-01-28",
+  "lastUpdated": "2026-01-31",
   "admin": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
   "network": {
     "chainId": "12bf3808",
@@ -63,12 +63,33 @@
     "complianceUpgradeCap": "0xdfb25919d387fdfa154b4e640c78c90feb66aa3a7dc8644b5c5acee98f776395"
   },
   "pools": {
-    "nbtcNusdc": "",
-    "nsnNusdc": ""
+    "nbtcNusdc": "0x487b73ed239b454d6e57e48c19c39a519d1137f169c5d0b1b0d9e4d5713fc3be",
+    "nsnNusdc": "0x235cb1aef5fb8dbde313f067728f6bee8d80f6f78eb82e4361362a0c4cc6a710"
   },
   "oracle": {
-    "packageId": "",
-    "registry": "",
-    "adminCap": ""
+    "packageId": "0x560788890e0d5f1fa757f6bd34e1d015c9f29061eea01ef9afe4635799cfab53",
+    "registry": "0x83b8a7bf66cfdb85f13670e833837d5c51b23f097bded20a740e6a397bc09e1e",
+    "adminCap": "0x92dbfba1248d976a6c2d1befee6200b6fde9d691cccdd8e8cceeb040efc88584",
+    "upgradeCap": "0x8e47be5875e163c41f967011c2d1e6b885db487320ec48d313dd0d66cf73ede8"
+  },
+  "lending": {
+    "packageId": "0xa287666b50276883f06018e189297e4bbacd02ffb68d62dd93115a34b735532f",
+    "pool": "0xe63abc998898c3f065f956991b69df2a5891d973ca56fc7aba84bb461cd0dd6a",
+    "adminCap": "0x715b1fd990c42263fd1084ceacd70bf2fd74ee8af8c0e04e18d5d53afdbed856",
+    "upgradeCap": "0xbf22f0df96127689287d3cd030d99599fdc34f71e8e9cabb0e7e527c12104fcb"
+  },
+  "margin": {
+    "packageId": "0x19703531a4a385c8335190ba97e2d774961133781492994f8fb6f8d4c9014ce7",
+    "registry": "0xc8287fe33033d3845990244984ca2510d6e4be5075489231804060e0058789fd",
+    "upgradeCap": "0x14a8a238d4bb97797e5f991d3b4a0f5e968206a1bc436361659df822609b62e6"
+  },
+  "perp": {
+    "packageId": "0xf58a1ac99ae0b5ecececfdad5a1d3b7aa2763c1e0828adab91cd639e4a25f680",
+    "btcMarket": "0xee64b552df115a387827d69d8fe0a1cb2408941915a2373497f61635b67100fc",
+    "upgradeCap": "0x1c145ed7406415168ceaaf090c6f51310064915ef5b62099e9f7d4c5f3e3eb11"
+  },
+  "nsa": {
+    "packageId": "0xb13d8870c4403fabe76677a3ca260d3eee1aae907c8eb4e4f430657d0eb471eb",
+    "upgradeCap": "0xce85878770cdb4f734449c02dbf356cdd0b54921b1f1b4053f4a3e35a14213b3"
   }
 }

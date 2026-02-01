@@ -15,19 +15,10 @@ build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x2017d606c566ff13cbaf23bf18b5e413b95bb9bcd333c2f413878e7ddddf2a87"
 
 [[published]]
-source = { local = "<MONOREPO>/apps/pado/contracts-lottery" }
-published-at = "0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80"
-original-id = "0x3b54a4e29caf4de9582766af8a9f54327161a5ac21cb8cfc6e99fa458117be80"
-version = 1
-toolchain-version = "1.63.3"
-build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x770677ca76e9adb8830271db7bed30ff9cb400abbe4130e6c61af58ec954a3c8"
-
-[[published]]
 source = { local = "<MONOREPO>/apps/pado/contracts-margin" }
-published-at = "0x94f8cea3dadbb06fe8794271429702ddad0cee2eaad378217f84990bcc6f9b17"
-original-id = "0x94f8cea3dadbb06fe8794271429702ddad0cee2eaad378217f84990bcc6f9b17"
+published-at = "0x19703531a4a385c8335190ba97e2d774961133781492994f8fb6f8d4c9014ce7"
+original-id = "0x19703531a4a385c8335190ba97e2d774961133781492994f8fb6f8d4c9014ce7"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x4d5ee834330704631843d2010ea6539055bca385e0c3cf8700561c42890c0436"
+upgrade-capability = "0x14a8a238d4bb97797e5f991d3b4a0f5e968206a1bc436361659df822609b62e6"

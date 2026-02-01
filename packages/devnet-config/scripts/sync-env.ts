@@ -56,10 +56,25 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
     VITE_POOL_NBTC_NUSDC: () => config.pools.nbtcNusdc || '',
     VITE_POOL_NASUN_NUSDC: () => config.pools.nsnNusdc || '',
 
-    // Oracle (may be empty)
-    VITE_ORACLE_PACKAGE_ID: () => config.oracle.packageId || '',
-    VITE_ORACLE_REGISTRY_ID: () => config.oracle.registry || '',
-    VITE_ORACLE_ADMIN_CAP_ID: () => config.oracle.adminCap || '',
+    // Oracle
+    VITE_ORACLE_PACKAGE_ID: () => config.oracle?.packageId || '',
+    VITE_ORACLE_REGISTRY_ID: () => config.oracle?.registry || '',
+    VITE_ORACLE_ADMIN_CAP_ID: () => config.oracle?.adminCap || '',
+
+    // Lending
+    VITE_LENDING_PACKAGE_ID: () => config.lending?.packageId || '',
+    VITE_LENDING_POOL_ID: () => config.lending?.pool || '',
+
+    // Unified Margin
+    VITE_MARGIN_PACKAGE_ID: () => config.margin?.packageId || '',
+    VITE_MARGIN_REGISTRY_ID: () => config.margin?.registry || '',
+
+    // Perpetuals
+    VITE_PERP_PACKAGE_ID: () => config.perp?.packageId || '',
+    VITE_PERP_MARKET_BTC: () => config.perp?.btcMarket || '',
+
+    // Smart Account (NSA)
+    VITE_NSA_PACKAGE_ID: () => config.nsa?.packageId || '',
   },
 
   'apps/baram': {
@@ -77,8 +92,8 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
     VITE_EXECUTOR_REGISTRY_ID: () => config.baram.executorRegistry,
     VITE_EXECUTOR_ADMIN_CAP: () => config.baram.executorAdminCap,
 
-    // Baram's bundled NUSDC
-    VITE_NUSDC_TYPE: () => `${config.baram.packageId}::nusdc::NUSDC`,
+    // Shared NUSDC from devnet-tokens
+    VITE_NUSDC_TYPE: () => `${config.tokens.packageId}::nusdc::NUSDC`,
   },
 
   'apps/nasun-website': {

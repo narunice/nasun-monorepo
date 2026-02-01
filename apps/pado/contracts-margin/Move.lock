@@ -29,25 +29,25 @@ manifest_digest = "F83B791CCBCD4E09F703B361A5C1A1A1732D4A9B0CE8C26B5B4315DF3CE00
 deps = { Sui = "Sui", devnet_tokens = "devnet_tokens" }
 
 [pinned.testnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "a14d9e8ddadfcea837de46b43d0b72a289320afb" }
+source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/move-stdlib" }
 use_environment = "testnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
 [pinned.testnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "a14d9e8ddadfcea837de46b43d0b72a289320afb" }
+source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
 use_environment = "testnet"
 manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
 deps = { MoveStdlib = "MoveStdlib" }
 
-[pinned.testnet.pado_tokens]
-source = { local = "../contracts" }
+[pinned.testnet.devnet_tokens]
+source = { local = "../../../packages/devnet-tokens" }
 use_environment = "testnet"
-manifest_digest = "0532D72C4F42A4472D331C54E2F8FB1595A305815D58568D26C6F8A4AC9BBFCE"
+manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
 deps = { Sui = "Sui" }
 
 [pinned.testnet.unified_margin]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "7F1F8DB77CDE7609C3A43C06525B2C077D5E2786704DAD445E45D6A7E68689BC"
-deps = { Sui = "Sui", pado_tokens = "pado_tokens" }
+manifest_digest = "F1BCDE0C16654B4FEC5D661CCCE6E427D98D05259239118782DA6935B3EB4EDB"
+deps = { Sui = "Sui", devnet_tokens = "devnet_tokens" }
