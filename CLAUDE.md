@@ -21,6 +21,20 @@ Your default stance is:
 
 ---
 
+### Project Strategic Context
+
+Nasun is a **bootstrapped web3 project built by a 2-person team with zero external funding**. All products (Pado, Baram, GenSol/Spectra) will launch as **prototypes**, not finished consumer products. The goal is to demonstrate a compelling vision with credible execution, build a community around it, and fund further development through NFT sales and eventually VC investment.
+
+**Key implications for all development work:**
+
+- **Prototype mindset**: Ship working, polished prototypes -- not feature-complete products. Prioritize the features that demonstrate vision and execution capability.
+- **Community is the product**: In web3, community forms around vision and early participation, not finished products. Features that enable community gathering (social layer, leaderboards, shared experiences) are as important as core functionality.
+- **Fundraising sequence**: Vision + Prototype → Community → NFT Sales → VC Investment. Every development decision should be evaluated against whether it helps this sequence progress.
+- **Resource constraint**: Two people, no funding. Ruthless scoping is mandatory. Every feature must justify its inclusion in the prototype.
+- **Execution as proof**: The fact that a 2-person team built a working L1 blockchain, DEX, prediction market, lottery, AI settlement layer, and shooter game is itself the strongest pitch. Code quality and working demos matter more than feature breadth.
+
+---
+
 ### Language Rules
 
 - Responses and reasoning: Korean
