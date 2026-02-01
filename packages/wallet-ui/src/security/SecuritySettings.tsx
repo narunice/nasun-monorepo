@@ -4,10 +4,10 @@
  */
 
 import { useSecuritySettings, DEFAULT_SECURITY_SETTINGS } from '@nasun/wallet';
-import { AdvancedToggle } from './AdvancedToggle';
-import { SessionKeyPanel } from './SessionKeyPanel';
-import { ZKIDManager } from './ZKIDManager';
-import { useAdvancedMode } from './stores';
+import { AdvancedToggle } from '../advanced/AdvancedToggle';
+import { SessionKeyPanel } from '../advanced/SessionKeyPanel';
+import { ZKIDManager } from '../social/ZKIDManager';
+import { useAdvancedMode } from '../stores';
 
 interface SecuritySettingsProps {
   onClose?: () => void;

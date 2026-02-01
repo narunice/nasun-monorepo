@@ -5,7 +5,7 @@
  * Labels sit outside the track, dot slides inside.
  */
 
-import { useUISettingsStore } from './stores/uiSettingsStore';
+import { useUISettingsStore } from '../stores/uiSettingsStore';
 
 export interface AdvancedToggleProps {
   /** Custom class name */

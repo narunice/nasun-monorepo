@@ -6,7 +6,7 @@
  */
 
 import { type NsaSignerProposal } from "@nasun/wallet";
-import { TransactionHistoryPanel } from "./TransactionHistoryPanel";
+import { TransactionHistoryPanel } from "../transaction/TransactionHistoryPanel";
 
 interface ActivityTabProps {
   /** Pending signer proposals */

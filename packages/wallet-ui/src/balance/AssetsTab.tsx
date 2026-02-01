@@ -20,7 +20,7 @@ import {
 // Convert null to undefined for hook parameter compatibility
 const nullToUndefined = <T,>(value: T | null): T | undefined =>
   value === null ? undefined : value;
-import { NFTCard } from "./NFTCard";
+import { NFTCard } from "../nft/NFTCard";
 import { TokenFaucetButton } from "./TokenFaucetButton";
 
 interface AssetsTabProps {
