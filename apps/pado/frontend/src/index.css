@@ -79,6 +79,9 @@
   --pado-4: #86f3b7;
   --pado-5: #d2f6a2;
 
+  /* Toggle switch OFF background */
+  --color-toggle-off: #b0ada9;
+
   /* Trading-specific colors (light mode) */
   --color-bid: #16a34a;
   --color-bid-muted: rgba(22, 163, 74, 0.7);
@@ -101,6 +104,9 @@
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
+
+  /* Toggle switch OFF background */
+  --color-toggle-off: #4b4b4b;
 
   /* Trading-specific colors (subtle) */
   --color-bid: #16a34a;

@@ -53,6 +53,8 @@ module.exports = {
         'trading-ask': 'var(--color-ask)',
         'trading-ask-muted': 'var(--color-ask-muted)',
         'trading-ask-bg': 'var(--color-ask-bg)',
+        // Toggle switch
+        'theme-toggle-off': 'var(--color-toggle-off)',
       },
     },
   },
