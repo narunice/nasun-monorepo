@@ -232,17 +232,31 @@ This is where KV Cache would help significantly — reusing prior computations i
 
 ---
 
-## 6. KV Cache: Why Baram Doesn't Have One
+## 6. KV Cache: Current Status and Path Forward
 
-### Not a Hardware Problem — An Architecture Problem
+### Current Architecture: Stateless
 
-The absence of KV Cache is not due to instance specifications. It's a design decision tied to Baram's stateless architecture.
-
-Currently, each request to the Enclave follows:
+Each request to the Enclave follows:
 1. Receive HTTP request
-2. Run inference
+2. Run inference on full context (history + new prompt)
 3. Return response
 4. **Discard all state** (no relation to next request)
+
+This means every prompt re-processes the entire conversation history. With a 10-message cap (~2,500 tokens), cost and latency grow linearly with conversation length.
+
+### Security Model: Identical for Stateless and Stateful
+
+A critical clarification: **TEE security guarantees do not change with session duration.**
+
+| Property | Stateless (2-sec window) | Stateful / KV Cache (30-min window) |
+|----------|--------------------------|-------------------------------------|
+| Memory encryption | AES-256 | AES-256 |
+| Hardware isolation | TEE boundary | TEE boundary |
+| Admin/Host access | Blocked | Blocked |
+| Attestation | Required | Required |
+| **Security model** | **Same** | **Same** |
+
+The only theoretical difference is exposure duration: if a zero-day TEE exploit were discovered, a stateful session would expose more data than a stateless one. However, no public exploits for AWS Nitro exist, making this a conditional risk assessment rather than a structural vulnerability.
 
 ### What KV Cache Would Require
 
@@ -253,17 +267,33 @@ Currently, each request to the Enclave follows:
 | Concurrent sessions | N/A | Sessions × KV Cache size = memory needed |
 | Inference engine | Basic llama.cpp | vLLM or llama.cpp with `--keep` option |
 
-A higher-spec instance (e.g., r6i.2xlarge, 64GB RAM) would provide more Enclave memory for KV Cache retention — but **code changes are equally necessary** (session management, persistent inference engine, user-executor binding).
+### Session-Affine Binding: A Topology Trade-off, Not a Centralization Problem
 
-### The Binding Problem
-
-If KV Cache is introduced, a user's session becomes **bound to a specific executor** (because the cache lives in that executor's memory). This creates new problems:
+With KV Cache, a user's session becomes **bound to a specific executor** during the session lifetime. This creates operational considerations:
 
 - **Executor busy**: If the bound executor is handling another request, the user must wait
 - **Executor dies**: Nitro has no sealing — instance termination = KV Cache permanently lost
 - **Spot reclaim**: AWS can reclaim spot instances with 2-minute notice — cache is gone
 
-This directly conflicts with Baram's distributed executor vision (Phase H).
+However, **session-affine binding is not centralization**:
+
+```
+1000 active sessions = 1000 different executors possible
+Each session bound to one executor during its lifetime
+New sessions can use any available executor
+Executors compete in open marketplace
+```
+
+This is a different network topology (session-affine distribution), not a failure of decentralization. The system degrades gracefully: if a bound executor fails, the client falls back to stateless mode (re-sends full context to any available executor).
+
+### Implementation Roadmap
+
+| Phase | Scope | Key Change |
+|-------|-------|------------|
+| **Prototype (current)** | Stateless | No change needed. Demo-sufficient. |
+| **Post-launch v1** | Single-session KV Cache | llama.cpp `--keep` option. Enclave-internal only. Frontend adds session ID. |
+| **Post-launch v2** | Multi-session + LRU eviction | vLLM or equivalent. OOM protection. Stateless fallback on cache miss. |
+| **Phase H (multi-executor)** | Session-affine routing | Frontend routes to bound executor. Fallback to any executor on failure. |
 
 ---
 
@@ -313,32 +343,52 @@ Baram's core value proposition is **"even the Executor cannot see your prompt."*
 
 ---
 
-## 8. The Fundamental Trade-off: Stateful vs Stateless
+## 8. Stateful vs Stateless: A Topology Trade-off
 
-### The Tension
+### Corrected Framing
 
-KV Cache (stateful) and distributed executors (decentralization) are **fundamentally in conflict**:
+Earlier analysis characterized KV Cache and distributed executors as "fundamentally in conflict." This overstated the tension. The accurate framing:
 
 ```
-Stateful (KV Cache)      → Bound to specific executor → Reduced availability, weaker decentralization
-Stateless (current Baram) → Any executor can handle    → High availability, full re-processing cost
+Stateful (KV Cache)       → Session-affine distribution → Different users still use different executors
+Stateless (current Baram) → Executor-agnostic           → Any executor for any request
 ```
+
+Both are valid distributed architectures. Session-affine binding is a **topology difference**, not a centralization failure.
+
+### What Actually Differs
+
+| Dimension | Stateless | Stateful (KV Cache) | Structurally Different? |
+|-----------|-----------|---------------------|-------------------------|
+| TEE security model | Encrypted memory, hardware isolation | Encrypted memory, hardware isolation | No — Same |
+| Privacy guarantees | Host cannot see prompt/response | Host cannot see prompt/response | No — Same |
+| Attack surface (conditional) | ~2-sec exposure window | ~30-min exposure window | Marginal — Only if zero-day exists |
+| Executor binding | None | Session-locked | Yes — Different topology |
+| Fault tolerance | Executor-agnostic | Executor-dependent (with fallback) | Yes — Different resilience model |
+| Load distribution | Optimal | Constrained per-session | Yes — Different efficiency |
+| Network decentralization | High | Medium-High | Yes — But still distributed |
+| **Performance** | **Re-processes full context every prompt** | **Incremental — new tokens only** | **Yes — Major improvement** |
 
 ### Realistic Strategies
 
 | Strategy | Pros | Cons |
 |----------|------|------|
 | **Stateless + larger model** | Free executor assignment, fault-tolerant | Token cost grows linearly, latency increases |
-| **Stateful + sticky sessions** | Fast incremental inference | Executor-bound, cache lost on failure |
-| **Hybrid**: use cache if available, full-context fallback otherwise | Partial benefits of both | Implementation complexity |
+| **Stateful + sticky sessions** | Fast incremental inference, 2-3x speed improvement | Cache lost on executor failure |
+| **Hybrid** (recommended): use cache if available, full-context fallback otherwise | Performance when possible, resilience always | Implementation complexity |
 
-### Why Stateless Is the Right Choice for Baram Today
+### Why Stateless for the Prototype — But KV Cache Is Next
 
-- **2-person team**: Stateful session management adds significant complexity
-- **Single executor**: No benefit from sticky sessions when there's only one TEE executor
-- **Prototype stage**: Demonstrating the vision matters more than optimizing inference costs
-- **Phase H compatibility**: Distributed executor networks naturally favor stateless design
-- **Spot instances**: AWS can reclaim instances at any time — stateful designs are fragile here
+**Prototype phase (current):**
+- **2-person team**: Session management is real engineering cost that doesn't serve the demo
+- **Single executor**: Session-affine routing provides no benefit when there's only one TEE executor
+- **Prototype goal**: Demonstrating vision (E2E encryption + TEE + on-chain settlement) matters more than inference optimization
+
+**Post-prototype priority:**
+- KV Cache should be implemented as a **high-priority post-launch improvement**
+- The security argument against it was overstated — TEE guarantees are identical
+- The decentralization argument was overstated — session-affine is still distributed
+- The remaining argument is purely **implementation cost**, which is justified to defer for prototype but not beyond
 
 ---
 
@@ -361,17 +411,33 @@ The real bottleneck is not storage or encryption — it is:
 2. **No KV Cache**: Cannot reuse prior computations
 3. **Intentional context cap**: ~10 messages / ~2,500 tokens to control cost and latency
 
+KV Cache is the highest-impact solution. The security and decentralization concerns previously cited against it were overstated (see Sections 6 and 8 for the corrected analysis).
+
 ### Nitro vs SGX: Privacy vs Statefulness
 
 Nitro was chosen to guarantee complete privacy (LLM runs entirely inside the enclave). SGX would enable sealing (persistent state) but cannot run LLMs inside the enclave due to memory constraints, which would fundamentally change Baram's privacy model.
 
+Note: KV Cache does not require sealing. It operates as in-memory state within the running Nitro enclave. The lack of sealing means cache is lost on instance termination, but this is an operational consideration (graceful fallback to stateless), not a security limitation.
+
 ### Recommended Path Forward
 
-For the prototype phase, the current stateless architecture is appropriate. When scaling:
-1. **Near-term**: Raise the context cap as infrastructure allows; consider larger TEE instances for bigger models
-2. **Mid-term**: Evaluate Walrus + Seal for chat portability (cross-device sync, decentralized storage)
-3. **Long-term**: Explore hybrid stateful/stateless designs if the executor network stabilizes; monitor SGX memory improvements (Confidential Computing is evolving rapidly)
+**Near-term (post-prototype, highest priority):**
+1. Implement KV Cache via llama.cpp `--keep` option — enclave-internal change only
+2. Add session ID to frontend ↔ executor communication
+3. Raise the context cap as KV Cache reduces re-processing cost
+4. Implement stateless fallback for cache miss / executor failure
+
+**Mid-term:**
+1. Evaluate Walrus + Seal for chat portability (cross-device sync, decentralized storage)
+2. Multi-session support with LRU cache eviction
+3. Consider larger TEE instances for bigger models
+
+**Long-term:**
+1. Session-affine routing in multi-executor network (Phase H)
+2. Monitor SGX memory improvements (Confidential Computing is evolving rapidly)
+3. Evaluate hybrid architectures as the executor network matures
 
 ---
 
 *Document generated from internal architecture discussion, 2026-02-02.*
+*Sections 6, 8, 9 updated 2026-02-02 to correct overstated security/decentralization concerns regarding KV Cache.*
