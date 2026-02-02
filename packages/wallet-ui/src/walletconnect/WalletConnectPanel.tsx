@@ -13,7 +13,7 @@ import {
 } from "@nasun/wallet";
 import type { ViewMode } from "../connect/LockedStateUI";
 
-const WC_PROJECT_ID = "b40fd84dc72b914d32d25a9417ba5fbc";
+const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? "";
 
 const WC_METADATA = {
   name: "Nasun Wallet",
