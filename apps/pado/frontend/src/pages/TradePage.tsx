@@ -60,14 +60,21 @@ function TradePageContent() {
 
   return (
     <div className="space-y-3">
-      {/* Header: Market Selector + Mode Toggle */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
-        <div className="lg:col-span-9 xl:col-span-10">
+      {/* Header: Market Selector + Info + Toggles
+          Desktop (lg+): Row 1 = MarketSelector | Interface toggle
+                         Row 2 = MarketInfoBar  | TradingToggles
+          Tablet (md-lg): Row 1 = MarketSelector (full)
+                          Row 2 = MarketInfoBar (full)
+                          Row 3 = Interface toggle | TradingToggles (side by side)
+          Mobile (<md):   All stacked vertically */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3">
+        {/* MarketSelector — full width on mobile/tablet, left on desktop */}
+        <div className="md:col-span-2 lg:col-span-9 xl:col-span-10 order-1">
           <MarketSelector />
         </div>
 
-        {/* Simple/Pro Toggle */}
-        <div className="lg:col-span-3 xl:col-span-2">
+        {/* Interface Toggle — mobile: row 3 left (or full if Simple), desktop: row 1 right */}
+        <div className={`order-3 lg:order-2 lg:col-span-3 xl:col-span-2 ${isSimple ? 'md:col-span-2' : ''}`}>
           <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 h-full flex items-center justify-between">
             <span className="text-xs xl:text-sm text-theme-text-muted whitespace-nowrap">Interface</span>
             <div className="flex items-center gap-2">
@@ -93,21 +100,19 @@ function TradePageContent() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Market Info Bar + Trading Toggles (Pro mode: grid-aligned with trading panel) */}
-      {!isSimple ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          <div className="lg:col-span-9 xl:col-span-10">
-            <MarketInfoBar {...marketInfo} />
-          </div>
-          <div className="lg:col-span-3 xl:col-span-2">
+        {/* MarketInfoBar — full width on mobile row 2, left on desktop row 2 */}
+        <div className="md:col-span-2 lg:col-span-9 xl:col-span-10 order-2 lg:order-3">
+          <MarketInfoBar {...marketInfo} />
+        </div>
+
+        {/* TradingToggles (Pro only) — mobile: row 3 right, desktop: row 2 right */}
+        {!isSimple && (
+          <div className="order-4 lg:col-span-3 xl:col-span-2">
             <TradingToggles />
           </div>
-        </div>
-      ) : (
-        <MarketInfoBar {...marketInfo} />
-      )}
+        )}
+      </div>
 
       {/* Main Trading Grid */}
       {isSimple ? (
