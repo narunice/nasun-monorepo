@@ -265,8 +265,9 @@ async function handleSuiRequest(request: WCRequest, _network: string): Promise<u
       return result;
     }
 
-    case 'sui_signMessage': {
-      // sui_signMessage: { message }
+    case 'sui_signMessage':
+    case 'sui_signPersonalMessage': {
+      // sui_signMessage / sui_signPersonalMessage: { message }
       const { message } = request.params as { message: string };
 
       const messageBytes = base64ToBytes(message);
@@ -327,6 +328,7 @@ export function getRequestDescription(request: WCRequest): string {
     case 'sui_signAndExecuteTransaction':
       return 'Sign and execute Sui transaction';
     case 'sui_signMessage':
+    case 'sui_signPersonalMessage':
       return 'Sign Sui message';
     case 'wallet_switchEthereumChain':
       return 'Switch network';

@@ -44,6 +44,7 @@ export const SUI_METHODS = [
   'sui_signTransaction',
   'sui_signAndExecuteTransaction',
   'sui_signMessage',
+  'sui_signPersonalMessage',
 ] as const;
 
 /**

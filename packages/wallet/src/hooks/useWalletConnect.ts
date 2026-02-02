@@ -161,6 +161,8 @@ export function useWalletConnect(): UseWalletConnectResult {
         ...prev,
         initialized: true,
         sessions: WalletConnectClient.getSessions(),
+        pendingProposals: WalletConnectClient.getPendingProposals(),
+        pendingRequests: WalletConnectClient.getPendingRequests(),
       }));
     }
 

@@ -37,7 +37,8 @@ export type EVMMethod =
 export type SuiMethod =
   | 'sui_signTransaction'
   | 'sui_signAndExecuteTransaction'
-  | 'sui_signMessage';
+  | 'sui_signMessage'
+  | 'sui_signPersonalMessage';
 
 /**
  * All supported WalletConnect methods
