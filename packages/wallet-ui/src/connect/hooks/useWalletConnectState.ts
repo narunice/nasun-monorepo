@@ -161,13 +161,17 @@ export function useWalletConnectState() {
   const wcSessionCount = wcState.sessions.length;
   const wcPendingCount = wcState.pendingProposals.length + wcState.pendingRequests.length;
 
-  // Auto-navigate to WC views when pending proposals/requests arrive
+  // Auto-navigate to WC views when pending proposals/requests arrive.
+  // Intentionally omitting viewMode from deps: we only want to trigger
+  // on count changes, not on every viewMode transition.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (wcState.pendingProposals.length > 0 && viewMode === "main") {
       setViewMode("wc-proposal");
     }
   }, [wcState.pendingProposals.length]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (wcState.pendingRequests.length > 0 && viewMode === "main") {
       setViewMode("wc-request");
