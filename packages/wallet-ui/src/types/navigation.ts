@@ -112,4 +112,9 @@ export const LEGACY_VIEW_MODE_MAP: Record<string, NavigationState> = {
   export: { section: 'settings', view: 'security' },
   'ledger-connect': { section: 'settings', view: 'security' },
   'ledger-select': { section: 'settings', view: 'security' },
+  'wc-main': { section: 'settings', view: 'advanced' },
+  'wc-pair': { section: 'settings', view: 'advanced' },
+  'wc-proposal': { section: 'settings', view: 'advanced' },
+  'wc-request': { section: 'settings', view: 'advanced' },
+  'wc-session-detail': { section: 'settings', view: 'advanced' },
 };

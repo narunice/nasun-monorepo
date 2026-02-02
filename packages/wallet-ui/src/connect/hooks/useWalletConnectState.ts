@@ -20,6 +20,7 @@ import {
   useNsaStore,
   useNasunSmartAccount,
   useWalletLabel,
+  useWalletConnect,
   type NFTInfo,
   type NFTSortBy,
   type ZkLoginProvider,
@@ -154,6 +155,24 @@ export function useWalletConnectState() {
     (p) => account?.address && p.pendingSigner.toLowerCase() === account.address.toLowerCase(),
   ).length;
   const pendingForMe = pendingForMeFromAccount + nsaIncomingInvitations.length;
+
+  // WalletConnect state
+  const { state: wcState } = useWalletConnect();
+  const wcSessionCount = wcState.sessions.length;
+  const wcPendingCount = wcState.pendingProposals.length + wcState.pendingRequests.length;
+
+  // Auto-navigate to WC views when pending proposals/requests arrive
+  useEffect(() => {
+    if (wcState.pendingProposals.length > 0 && viewMode === "main") {
+      setViewMode("wc-proposal");
+    }
+  }, [wcState.pendingProposals.length]);
+
+  useEffect(() => {
+    if (wcState.pendingRequests.length > 0 && viewMode === "main") {
+      setViewMode("wc-request");
+    }
+  }, [wcState.pendingRequests.length]);
 
   // Track which provider is loading
   const [loadingProvider, setLoadingProvider] = useState<ZkLoginProvider | null>(null);
@@ -451,6 +470,10 @@ export function useWalletConnectState() {
     nsaRecoveryCompleted,
     pendingForMe,
     nsaIncomingInvitations,
+
+    // WalletConnect
+    wcSessionCount,
+    wcPendingCount,
 
     // UI state
     viewMode,
