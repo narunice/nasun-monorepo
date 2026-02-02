@@ -1,6 +1,6 @@
 # @nasun/wallet - Implementation Status
 
-> Last Updated: 2026-01-24
+> Last Updated: 2026-02-02
 > Package: @nasun/wallet
 > Version: 0.1.0
 
@@ -11,11 +11,11 @@
 Universal Web3 wallet library supporting Sui/Move and EVM chains. Provides core cryptography, signer abstraction, hardware wallet integration, account abstraction, payment UX, zkLogin authentication, and Nasun Smart Account (NSA) with Trinity Recovery.
 
 **Related Docs:**
-- [WalletConnect v2](./P2-WALLETCONNECT-V2.md)
-- [EVM Account Abstraction](./P3-EVM-ACCOUNT-ABSTRACTION.md)
-- [Nasun Link v2](./P4-NASUN-LINK-V2.md)
-- [zkLogin Multi-Provider](./ZKLOGIN-MULTI-PROVIDER.md)
-- [NSA & Trinity Recovery](./P5-NSA-SMART-ACCOUNT.md)
+- [README](../README.md) — Package overview, feature summary, hooks reference
+- [Developer Guide](./WALLET-GUIDE.md) — Integration guide with code examples
+- [UI Improvement Plan](./WALLET_UI_IMPROVEMENT_PLAN.md) — UX improvement roadmap
+
+> **Note:** Feature-specific documents (P2-WalletConnect, P3-EVM/AA, P4-NasunLink, P5-NSA, ZKLOGIN-MULTI-PROVIDER) were consolidated into this document and the README as of 2026-02-02.
 
 ---
 
@@ -306,6 +306,26 @@ src/
 
 ### Tests (`__tests__/`)
 18 test files: aa, addressBook, clear-signing, client, crypto, keystore, ledger, link, nft, payment, portfolio, rate-limit, sanity, staking, tokenTransaction, tokens, zkid
+
+---
+
+## WalletConnect v2 UI (`@nasun/wallet-ui`)
+
+UI components for dApp connections via WalletConnect protocol. Located in `packages/wallet-ui/src/walletconnect/`.
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `WCViewRouter` | `WCViewRouter.tsx` | Routes `wc-*` ViewModes to components |
+| `WalletConnectPanel` | `WalletConnectPanel.tsx` | Main panel: session list, pending items, init |
+| `WCPairingView` | `WCPairingView.tsx` | QR code display + URI paste for dApp pairing |
+| `WCSessionProposal` | `WCSessionProposal.tsx` | Session approval/rejection with namespace display |
+| `WCRequestApproval` | `WCRequestApproval.tsx` | Sign/TX request approval with type-specific formatting |
+| `WCSessionDetail` | `WCSessionDetail.tsx` | Active session detail with chains, methods, disconnect |
+
+**Integration Points:**
+- `MoreMenu.tsx` — "WalletConnect" menu item with session count badge
+- `useWalletConnectState.ts` — WC state aggregation, auto-navigation on pending events
+- `ConnectedView.tsx` — Passes WC session/pending counts to MoreMenu
 
 ---
 

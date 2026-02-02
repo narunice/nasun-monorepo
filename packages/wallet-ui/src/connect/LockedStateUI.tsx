@@ -33,7 +33,12 @@ export type ViewMode =
   | "nsa-accept-proposal"
   | "nsa-backup"
   | "nsa-guardians"
-  | "nsa-recovery";
+  | "nsa-recovery"
+  | "wc-main"
+  | "wc-pair"
+  | "wc-proposal"
+  | "wc-request"
+  | "wc-session-detail";
 
 export function LockedStateUI({
   password,

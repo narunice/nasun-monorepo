@@ -1,6 +1,6 @@
 # Nasun Wallet - Developer Guide
 
-> Last Updated: 2026-01-24
+> Last Updated: 2026-02-02
 > Package: `@nasun/wallet`
 > Version: 0.1.0
 
@@ -409,6 +409,25 @@ await pair(wcUri);
 await approveSession(proposal.id);
 ```
 
+### WalletConnect UI Components (`@nasun/wallet-ui`)
+
+The `@nasun/wallet-ui` package provides ready-to-use UI components for the full WalletConnect flow:
+
+```typescript
+import { WCViewRouter, WalletConnectPanel } from '@nasun/wallet-ui';
+
+// WCViewRouter routes wc-* ViewModes automatically.
+// Access via MoreMenu → "WalletConnect" in the wallet dropdown.
+```
+
+| Component | Purpose |
+|-----------|---------|
+| `WalletConnectPanel` | Session list, init, pending notifications |
+| `WCPairingView` | QR code + URI paste for dApp pairing |
+| `WCSessionProposal` | Approve/reject session with namespace display |
+| `WCRequestApproval` | Approve/reject sign/TX requests |
+| `WCSessionDetail` | Session info + disconnect |
+
 ---
 
 ## Security Model
@@ -447,7 +466,7 @@ await approveSession(proposal.id);
 | RPC | `https://rpc.devnet.nasun.io` |
 | Faucet | `https://faucet.devnet.nasun.io` |
 | Explorer | `https://explorer.nasun.io/devnet` |
-| Chain ID | `6681cdfd` |
+| Chain ID | `12bf3808` |
 | Native Token | NASUN (unit: SOE) |
 
 ### Supported EVM Chains
@@ -470,16 +489,45 @@ Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, BSC, Fantom, Gnosis, Cel
 | Hook | Primary Use |
 |------|-------------|
 | `useWallet()` | Wallet lifecycle (create, unlock, lock) |
+| `useWalletStatus()` | Status selector ('disconnected' \| 'locked' \| 'unlocked') |
+| `useWalletAccount()` | Account info (address, publicKey) |
 | `useSigner()` | Active signer management |
 | `useBalance()` | Native token balance |
+| `useMultiBalance()` | All registered token balances |
+| `useTokenBalance(symbol)` | Specific token balance |
 | `useTransaction()` | Transaction signing + submission |
+| `useTokenTransaction()` | Any registered token transfer |
+| `useTransactionHistory()` | TX history with cursor pagination |
+| `useNetwork()` | Network configuration |
+| `useAddressBook()` | Address book CRUD |
+| `useAddressStatus(addr)` | Check if address is known/trusted |
+| `useZkLogin()` | OAuth + ZK proof authentication |
+| `usePasskey()` | WebAuthn credential management |
+| `useChain()` | Chain selection (Move + EVM) |
+| `useNFTs()` | NFT gallery query |
+| `useNFTTransfer()` | NFT transfer operations |
+| `useValidators()` | Validator list with APY/commission |
+| `useStaking()` | Staking positions and rewards |
+| `useStakeTransaction()` | Stake/unstake TX builder |
+| `useEVMBalance()` | EVM native + ERC-20 balance |
+| `useEVMTransaction()` | EVM transaction sending |
+| `useSmartAccount()` | ERC-4337 Smart Account state |
+| `useGaslessTransaction()` | Gasless TX via paymaster |
+| `useSessionKey()` | Session key create/revoke |
+| `useWalletConnect()` | dApp connection |
 | `useNasunSmartAccount()` | NSA account operations |
 | `useNsaRecovery()` | Guardian recovery flow |
 | `useNsaBackup()` | Encrypted backup management |
-| `useZkLogin()` | OAuth + ZK proof authentication |
-| `useChain()` | Multi-chain selection |
-| `useWalletConnect()` | dApp connection |
 | `useNasunLink()` | Token distribution links |
+| `usePayment()` | Unified payment flow |
+| `usePaymentIntent()` | WalletConnect payment requests |
+| `usePaymentLink()` | Payment URL creation/parsing |
+| `usePaymentQR()` | QR code generation |
+| `usePortfolio()` | Portfolio value tracking |
+| `useLedger()` | Ledger connection and signing |
+| `useZKID()` | ZK-ID proof/verify |
+| `useTokenFaucet()` | Token faucet requests |
+| `useSecuritySettings()` | Security configuration |
 
 ### Signer Types
 
@@ -501,33 +549,38 @@ Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, BSC, Fantom, Gnosis, Cel
 ```
 packages/wallet/
 ├── src/
-│   ├── config/          # Chain, network, token registries
+│   ├── config/                    Chain, network, token registries
 │   ├── core/
-│   │   ├── aa/          # ERC-4337 Account Abstraction
-│   │   ├── evm/         # EVM client, wallet, ERC-20
-│   │   ├── ledger/      # Hardware wallet
-│   │   ├── link/        # Nasun Link
-│   │   ├── nsa/         # Smart Account (client, backup, recovery)
-│   │   ├── payment/     # Payment intent, QR
-│   │   ├── signer/      # Signer abstraction (7 adapters)
-│   │   ├── walletconnect/
-│   │   └── zkid/        # ZK identity
-│   ├── hooks/           # 36 React hooks
-│   ├── stores/          # Zustand state (3 stores)
-│   ├── sui/             # Sui RPC utilities
-│   ├── types/           # Shared TypeScript types
-│   └── index.ts         # Package exports
-├── docs/                # This documentation
-└── __tests__/           # 18 test files
+│   │   ├── aa/                    ERC-4337 Account Abstraction + Session Keys
+│   │   ├── clear-signing/         Transaction decoding & risk assessment
+│   │   ├── evm/                   EVM client, HD wallet, ERC-20
+│   │   ├── ledger/                Ledger hardware wallet (Sui + EVM)
+│   │   ├── link/                  Nasun Link (token distribution URLs)
+│   │   ├── nsa/                   Nasun Smart Account (multi-signer, recovery)
+│   │   ├── payment/               Payment intent, QR, validation
+│   │   ├── portfolio/             Price provider, portfolio aggregation
+│   │   ├── signer/                Signer abstraction (7 adapters)
+│   │   ├── walletconnect/         WalletConnect v2 SignClient
+│   │   ├── zkid/                  Zero-knowledge identity (age, KYC, sybil)
+│   │   ├── crypto.ts              BIP39 mnemonic, AES-256-GCM, secure memory
+│   │   ├── keystore.ts            Encrypted key storage (PBKDF2 100K)
+│   │   ├── passkey.ts             WebAuthn/Passkey (biometric auth)
+│   │   ├── rate-limit.ts          Brute-force progressive lockout
+│   │   └── zklogin.ts             OAuth + ZK proof authentication
+│   ├── hooks/                     36 React hooks
+│   ├── schemas/                   Zod RPC validation
+│   ├── stores/                    Zustand state stores
+│   ├── sui/                       Sui-specific utilities (faucet, NFT, staking)
+│   ├── types/                     Shared type definitions
+│   └── index.ts                   Package exports
+├── docs/                          This documentation
+└── __tests__/                     18 test files
 ```
 
 ---
 
 ## Related Documents
 
+- [README](../README.md) - Package overview, feature summary, hooks reference
 - [Implementation Status](./P1-IMPLEMENTATION-STATUS.md) - Full module map and file reference
-- [WalletConnect v2](./P2-WALLETCONNECT-V2.md) - WC integration details
-- [EVM Account Abstraction](./P3-EVM-ACCOUNT-ABSTRACTION.md) - ERC-4337 details
-- [Nasun Link v2](./P4-NASUN-LINK-V2.md) - Token distribution links
-- [NSA & Trinity Recovery](./P5-NSA-SMART-ACCOUNT.md) - Smart Account architecture
-- [zkLogin Multi-Provider](./ZKLOGIN-MULTI-PROVIDER.md) - OAuth provider status
+- [UI Improvement Plan](./WALLET_UI_IMPROVEMENT_PLAN.md) - UX improvement roadmap
