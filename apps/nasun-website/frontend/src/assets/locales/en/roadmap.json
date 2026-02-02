@@ -36,7 +36,9 @@
       "items": [
         "Devnet Live (2 Validator Nodes)",
         "Blockchain Explorer",
-        "Wallet (Embedded + zkLogin)",
+        "Non-custodial Wallet (Create, Import, Backup)",
+        "zkLogin & Passkey Authentication",
+        "Multi-token Support (NSN, NBTC, NUSDC)",
         "Faucet",
         "Smart Contract Deployment",
         "On-chain Governance"
