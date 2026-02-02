@@ -13,28 +13,28 @@ interface Suggestion {
 
 const SUGGESTIONS: Suggestion[] = [
   {
-    icon: '📝',
-    title: 'Write a story',
-    description: 'about a robot discovering emotions',
-    prompt: 'Write a short story about a robot that discovers it can feel emotions for the first time.',
+    icon: '🔒',
+    title: 'Confidential analysis',
+    description: 'review a sensitive document',
+    prompt: 'Analyze the following confidential business strategy and highlight potential risks: ...',
   },
   {
-    icon: '💡',
-    title: 'Brainstorm ideas',
-    description: 'for a mobile app startup',
-    prompt: 'Brainstorm 5 innovative mobile app ideas that could solve everyday problems.',
+    icon: '🏥',
+    title: 'Private health question',
+    description: 'ask without a trace',
+    prompt: 'What are possible causes of persistent lower back pain, and when should I see a specialist?',
   },
   {
-    icon: '🔍',
-    title: 'Explain a concept',
-    description: 'like quantum computing',
-    prompt: 'Explain quantum computing in simple terms that a high school student could understand.',
+    icon: '💼',
+    title: 'Financial planning',
+    description: 'numbers no one else sees',
+    prompt: 'Help me create a monthly budget plan for someone earning $5,000 with the following expenses...',
   },
   {
-    icon: '🧮',
-    title: 'Help with code',
-    description: 'debug or write a function',
-    prompt: 'Write a TypeScript function that checks if a string is a valid palindrome, ignoring spaces and punctuation.',
+    icon: '🧠',
+    title: 'Brainstorm freely',
+    description: 'unfiltered creative thinking',
+    prompt: 'Brainstorm 10 unconventional startup ideas at the intersection of AI and privacy.',
   },
 ];
 
@@ -59,11 +59,10 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
 
       {/* Welcome Text */}
       <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2 text-center">
-        Private AI with TEE Protection
+        Your Private AI Session is Ready
       </h2>
       <p className="text-[var(--color-text-secondary)] text-center max-w-md mb-8">
-        Your prompts are encrypted and processed inside a Trusted Execution Environment.
-        No one can see what you ask.
+        Everything you type is encrypted end-to-end and processed in hardware isolation.
       </p>
 
       {/* Suggestion Cards */}
@@ -77,6 +76,18 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
             onClick={() => onSuggestionClick(suggestion.prompt)}
           />
         ))}
+      </div>
+
+      {/* Why Private? callout */}
+      <div className="mt-6 p-4 bg-baram-1/5 border border-baram-1/20 rounded-xl max-w-lg mx-auto">
+        <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+          Why does privacy matter for AI?
+        </p>
+        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+          Regular AI providers can read, store, and train on your prompts.
+          Baram runs inference inside a Trusted Execution Environment —
+          your data is encrypted in transit and invisible even to the server operator.
+        </p>
       </div>
     </div>
   );

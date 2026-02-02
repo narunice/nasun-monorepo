@@ -16,6 +16,7 @@ import { ChatLayout } from './layouts/ChatLayout';
 import { ChatInput } from './components/input/ChatInput';
 import { InputFooter } from './components/input/InputFooter';
 import { WelcomeScreen } from './components/empty/WelcomeScreen';
+import { LandingScreen } from './components/empty/LandingScreen';
 import { MessageList, Message as UIMessage } from './components/chat/MessageList';
 import { useCreateRequest } from './features/request/hooks/useCreateRequest';
 import { useExecutors, selectExecutorWeightedRandom, ExecutorInfo } from './features/request/hooks/useExecutors';
@@ -288,21 +289,7 @@ function AppContent() {
   return (
     <ChatLayout header={header} inputArea={inputArea}>
       {!isConnected ? (
-        // Not Connected State
-        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-baram-1 to-baram-2 flex items-center justify-center mb-6">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2 text-center">
-            Private AI with TEE Protection
-          </h2>
-          <p className="text-[var(--color-text-secondary)] text-center max-w-md">
-            Your prompts are encrypted and processed inside a Trusted Execution Environment.
-            Connect your wallet in the header to get started.
-          </p>
-        </div>
+        <LandingScreen />
       ) : !hasMessages ? (
         // Empty State - Show Welcome Screen
         <>

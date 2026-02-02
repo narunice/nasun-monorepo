@@ -67,6 +67,10 @@ interface ConnectedViewProps {
   nsaIsInitialized: boolean;
   nsaRecoveryCompleted: number;
 
+  // WalletConnect
+  wcSessionCount?: number;
+  wcPendingCount?: number;
+
   // Quick actions
   showMoreMenu: boolean;
   setShowMoreMenu: (v: boolean) => void;
@@ -112,6 +116,8 @@ export function ConnectedView(props: ConnectedViewProps) {
     setSelectedNFT,
     nsaIsInitialized,
     nsaRecoveryCompleted,
+    wcSessionCount,
+    wcPendingCount,
     showMoreMenu,
     setShowMoreMenu,
     pendingForMe,
@@ -310,6 +316,12 @@ export function ConnectedView(props: ConnectedViewProps) {
             }}
             onSmartAccount={() => {
               setViewMode(nsaIsInitialized ? "nsa-info" : "nsa-setup");
+              setShowMoreMenu(false);
+            }}
+            wcSessionCount={wcSessionCount}
+            wcPendingCount={wcPendingCount}
+            onWalletConnect={() => {
+              setViewMode("wc-main");
               setShowMoreMenu(false);
             }}
           />
