@@ -27,6 +27,7 @@ import {
   AddressBookView,
   ReceiveView,
 } from "./wallet-views";
+import { WCViewRouter } from "../walletconnect";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -80,6 +81,8 @@ export function WalletConnect({
     setSelectedNFT: s.setSelectedNFT,
     nsaIsInitialized: s.nsaIsInitialized,
     nsaRecoveryCompleted: s.nsaRecoveryCompleted,
+    wcSessionCount: s.wcSessionCount,
+    wcPendingCount: s.wcPendingCount,
     showMoreMenu: s.showMoreMenu,
     setShowMoreMenu: s.setShowMoreMenu,
     pendingForMe: s.pendingForMe,
@@ -191,6 +194,11 @@ export function WalletConnect({
           setSelectedProposalId={s.setSelectedProposalId}
         />
       );
+    }
+
+    // WalletConnect views
+    if (s.viewMode.startsWith("wc-")) {
+      return <WCViewRouter viewMode={s.viewMode} setViewMode={s.setViewMode} />;
     }
 
     // Ledger connected state (no software wallet)

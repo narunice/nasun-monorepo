@@ -13,19 +13,27 @@ interface MoreMenuProps {
   nsaRecoveryCompleted: number;
   /** Number of pending proposals for current user */
   pendingForMe: number;
+  /** Number of active WalletConnect sessions */
+  wcSessionCount?: number;
+  /** Number of pending WC proposals + requests */
+  wcPendingCount?: number;
   /** Callbacks for menu actions */
   onPortfolio: () => void;
   onCreateLink: () => void;
   onSmartAccount: () => void;
+  onWalletConnect?: () => void;
 }
 
 export function MoreMenu({
   nsaIsInitialized,
   nsaRecoveryCompleted,
   pendingForMe,
+  wcSessionCount = 0,
+  wcPendingCount = 0,
   onPortfolio,
   onCreateLink,
   onSmartAccount,
+  onWalletConnect,
 }: MoreMenuProps) {
   return (
     <div className="py-1">
@@ -58,6 +66,29 @@ export function MoreMenu({
         </svg>
         Create Nasun Link
       </button>
+
+      {/* WalletConnect */}
+      {onWalletConnect && (
+        <button
+          onClick={onWalletConnect}
+          className="w-full px-3 py-2 text-left text-sm xl:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6.09 9.6c3.26-3.2 8.56-3.2 11.82 0l.39.39c.16.16.16.42 0 .58l-1.34 1.31a.2.2 0 01-.3 0l-.54-.53c-2.28-2.23-5.97-2.23-8.24 0l-.58.56a.2.2 0 01-.3 0L5.66 10.6a.41.41 0 010-.58l.43-.42zm14.6 2.72l1.2 1.17c.16.16.16.42 0 .58l-5.38 5.27a.41.41 0 01-.58 0l-3.82-3.74a.1.1 0 00-.15 0l-3.82 3.74a.41.41 0 01-.58 0L2.18 14.07a.41.41 0 010-.58l1.19-1.17a.41.41 0 01.58 0l3.82 3.74a.1.1 0 00.15 0l3.82-3.74a.41.41 0 01.58 0l3.82 3.74a.1.1 0 00.15 0l3.82-3.74a.41.41 0 01.58 0z" />
+          </svg>
+          <span className="flex-1">WalletConnect</span>
+          {wcSessionCount > 0 && (
+            <span className="px-1.5 py-0.5 text-[10px] xl:text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">
+              {wcSessionCount}
+            </span>
+          )}
+          {wcPendingCount > 0 && (
+            <span className="px-1.5 py-0.5 text-[10px] xl:text-xs font-medium bg-blue-600 text-white rounded-full">
+              {wcPendingCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Smart Account - shown when initialized */}
       {nsaIsInitialized && (

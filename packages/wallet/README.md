@@ -1,88 +1,69 @@
 # @nasun/wallet
 
-Nasun Wallet Core Package - A secure, feature-rich wallet library for the Nasun blockchain.
+> Last Updated: 2026-02-02
 
-## Features
+Nasun Wallet Core Package — A production-grade, multi-chain wallet library for the Nasun Network. Provides 23 core modules, 36 React hooks, and 7 signer adapters spanning Move and EVM chains.
 
-### Core Wallet
-- **Wallet Creation** - Generate new wallets with BIP39 mnemonic backup
-- **Wallet Import** - Restore from mnemonic phrase or private key (Bech32 format)
-- **Wallet Lock/Unlock** - Password-protected wallet access
-- **Session Persistence** - Optional auto-unlock on page refresh
+## Architecture
 
-### Multi-Token Support
-- **Native Token (NASUN)** - Built-in support for the native token
-- **Custom Tokens** - Register and manage NBTC, NUSDC, and other tokens
-- **Token Registry** - Centralized token configuration management
-
-### Transactions
-- **Token Transfers** - Send any registered token
-- **Transaction Simulation** - Preview gas costs and balance changes before signing
-- **Explorer Links** - Direct links to transaction details
-
-### NFT Management
-- **NFT Gallery** - Fetch and display owned NFTs
-- **NFT Transfer** - Send NFTs to other addresses
-- **Display Standard** - Support for Sui Display standard with fallback
-
-### Staking
-- **Validator List** - View all validators with APY
-- **Stake/Unstake** - Delegate NASUN to validators
-- **Staking Positions** - Track active stakes and rewards
-
-### Address Book
-- **Contact Management** - Save frequently used addresses
-- **Transaction History** - Track transactions per recipient
-- **First-time Warnings** - Alert when sending to new addresses
-
-## Security
-
-### Encryption
-- **AES-256-GCM** - Industry-standard symmetric encryption
-- **PBKDF2** - 100,000 iterations for key derivation
-- **Secure Memory** - Private keys cleared from memory after use (`secureZero`, `secureZeroString`)
-
-### Rate Limiting (Brute Force Protection)
-Progressive lockout policy for failed password attempts:
-
-| Failed Attempts | Lockout Duration |
-|-----------------|------------------|
-| 8               | 30 seconds       |
-| 12              | 5 minutes        |
-| 16+             | 30 minutes       |
-
-- Counter resets only on successful unlock
-- State persists in localStorage (survives page refresh)
-
-### Auto-Lock
-- Configurable timeout (5min / 15min / 30min / 1hr / disabled)
-- Automatic wallet lock on inactivity
-
-### Session Persistence Security
-When `sessionPersist` is enabled (disabled by default), the wallet can auto-unlock on page refresh:
-- **30-minute expiry** - Session automatically expires after 30 minutes
-- **Domain binding** - Session cannot be used on other domains
-- **XOR obfuscation** - Minimal protection against casual inspection
-- **sessionStorage** - Clears automatically when browser tab closes
-
-⚠️ **Note**: Session persistence is a convenience feature with security trade-offs. For maximum security, keep `sessionPersist` disabled.
-
-### Large Transaction Confirmation
-- Optional confirmation for large transfers
-- Configurable threshold amount
-
-## Installation
-
-```bash
-pnpm add @nasun/wallet
 ```
+src/
+├── config/                    Chain, network, token registries
+├── core/
+│   ├── aa/                    ERC-4337 Account Abstraction + Session Keys
+│   ├── clear-signing/         Transaction decoding & risk assessment
+│   ├── evm/                   EVM client, HD wallet, ERC-20
+│   ├── ledger/                Ledger hardware wallet (Sui + EVM)
+│   ├── link/                  Nasun Link (token distribution URLs)
+│   ├── nsa/                   Nasun Smart Account (multi-signer, recovery)
+│   ├── payment/               Payment intent, QR, validation
+│   ├── portfolio/             Price provider, portfolio aggregation
+│   ├── signer/                Signer abstraction (7 adapters)
+│   ├── walletconnect/         WalletConnect v2 SignClient
+│   ├── zkid/                  Zero-knowledge identity (age, KYC, sybil)
+│   ├── crypto.ts              BIP39 mnemonic, AES-256-GCM, secure memory
+│   ├── keystore.ts            Encrypted key storage (PBKDF2 100K)
+│   ├── passkey.ts             WebAuthn/Passkey (biometric auth)
+│   ├── rate-limit.ts          Brute-force progressive lockout
+│   └── zklogin.ts             OAuth + ZK proof authentication
+├── hooks/                     36 React hooks
+├── schemas/                   Zod RPC validation
+├── stores/                    Zustand state stores
+├── sui/                       Sui-specific utilities (faucet, NFT, staking)
+├── types/                     Shared type definitions
+└── index.ts                   Package exports
+```
+
+## Feature Summary
+
+| Category | Features |
+|----------|----------|
+| **Core Wallet** | Create, lock/unlock, delete, BIP39 mnemonic backup, import/export private key (Bech32), session persistence, auto-lock |
+| **Security** | AES-256-GCM encryption, PBKDF2 100K iterations, secure memory zeroing, progressive brute-force lockout (8/12/16+ attempts) |
+| **Authentication** | Embedded wallet (password), zkLogin (Google/Apple/Twitch/Facebook/Kakao OAuth), Passkey (WebAuthn biometric) |
+| **Signer Abstraction** | 7 adapters: Local, ZkLogin, EVM, SmartAccount, SessionKey, Ledger, NSA |
+| **Multi-chain** | Move (Nasun) + EVM (Ethereum, Sepolia, Arbitrum, Polygon) with chain switching |
+| **Multi-token** | NSN/NBTC/NUSDC token registry, balance queries, transfers, per-token faucets |
+| **NFT** | Gallery with sorting/pagination, detail view, transfer, IPFS support, Display standard |
+| **Staking** | Validator list (APY, commission), delegation, unstaking, reward tracking |
+| **EVM** | ERC-20 balance/transfer, gas estimation, BIP-44 HD key derivation |
+| **Account Abstraction** | ERC-4337, Bundler/Paymaster, gasless transactions, session keys with scoped permissions |
+| **WalletConnect v2** | dApp pairing, multi-chain sessions, EVM + Sui request handling |
+| **Nasun Smart Account** | Multi-signer (max 5, weighted), guardian social recovery, 48h timelock, encrypted backup |
+| **Nasun Link** | URL-based token distribution, QR codes, batch creation, encrypted payloads, claim validation |
+| **Clear Signing** | Transaction decoding (Move + EVM), human-readable summaries, risk assessment, balance preview |
+| **ZK-ID** | Age verification, KYC proofs, sybil-resistant nullifiers, credential storage |
+| **Payment** | Intent-based flow, QR generation, multi-chain, WalletConnect compatible |
+| **Portfolio** | Total value calculation, 24h change tracking, multi-chain aggregation |
+| **Address Book** | Trusted address management, labels, new-address warnings |
+| **Ledger** | WebHID transport, Sui/EVM derivation paths, transaction signing (implemented, UI hidden) |
+| **TX History** | Past transaction queries, cursor-based pagination |
 
 ## Quick Start
 
 ```tsx
 import { useWallet, useBalance, configureWallet } from '@nasun/wallet';
 
-// Configure wallet (optional, defaults to Nasun Devnet)
 configureWallet({
   rpcUrl: 'https://rpc.devnet.nasun.io',
   faucetUrl: 'https://faucet.devnet.nasun.io',
@@ -95,11 +76,9 @@ function WalletComponent() {
   if (status === 'disconnected') {
     return <button onClick={() => createWallet('mypassword')}>Create Wallet</button>;
   }
-
   if (status === 'locked') {
     return <button onClick={() => unlockWallet('mypassword')}>Unlock</button>;
   }
-
   return (
     <div>
       <p>Address: {account?.address}</p>
@@ -110,131 +89,98 @@ function WalletComponent() {
 }
 ```
 
-## API Reference
+## Hooks Reference (36 hooks)
 
-### Hooks
-
-#### Wallet Management
+### Wallet Core
 | Hook | Description |
 |------|-------------|
-| `useWallet()` | Main wallet state and actions |
-| `useWalletStatus()` | Wallet status only ('disconnected' \| 'locked' \| 'unlocked') |
+| `useWallet()` | Main wallet state and actions (Zustand) |
+| `useWalletStatus()` | Status selector ('disconnected' \| 'locked' \| 'unlocked') |
 | `useWalletAccount()` | Account info (address, publicKey) |
-| `useWalletLoading()` | Loading state |
-| `useSecuritySettings()` | Security settings management |
-
-#### Balance
-| Hook | Description |
-|------|-------------|
-| `useBalance()` | Native token balance |
-| `useMultiBalance()` | All registered token balances |
+| `useWalletLoading()` | Loading/error state |
+| `useSecuritySettings()` | Security configuration |
+| `useBalance()` | Native token balance (TanStack Query, 30s poll) |
+| `useMultiBalance()` | All registered token balances (10s poll) |
 | `useTokenBalance(symbol)` | Specific token balance |
 | `useNativeBalance()` | Native token balance (alias) |
-
-#### Transactions
-| Hook | Description |
-|------|-------------|
 | `useTransaction()` | Native token transfer |
-| `useTokenTransaction()` | Any token transfer |
+| `useTokenTransaction()` | Any registered token transfer |
+| `useTransactionHistory()` | TX history with cursor pagination |
+| `useNetwork()` | Network configuration |
+| `useAddressBook()` | Address book CRUD |
+| `useAddressStatus(addr)` | Check if address is known/trusted |
 
-#### NFTs
+### Signer & Authentication
 | Hook | Description |
 |------|-------------|
-| `useNFTs()` | Fetch owned NFTs |
-| `useNFTTransfer()` | NFT transfer actions |
+| `useSigner()` | Active signer selection (auto-registers NSA) |
+| `useZkLogin()` | zkLogin flow (init, callback, sign, session check) |
+| `usePasskey()` | WebAuthn credential register/authenticate |
+| `useChain()` | Chain selection (Move + 11 EVM chains) |
 
-#### Staking
+### NFT & Staking
 | Hook | Description |
 |------|-------------|
-| `useValidators()` | Validator list with APY |
-| `useStaking()` | User's staking positions |
-| `useStakeTransaction()` | Stake/unstake actions |
+| `useNFTs()` | NFT gallery query with sorting/pagination |
+| `useNFTTransfer()` | NFT transfer operations |
+| `useValidators()` | Validator list with APY/commission |
+| `useStaking()` | User's staking positions and rewards |
+| `useStakeTransaction()` | Stake/unstake TX builder |
 
-#### Address Book
+### EVM & Account Abstraction
 | Hook | Description |
 |------|-------------|
-| `useAddressBook()` | Address book management |
-| `useAddressStatus(address)` | Check if address is known |
+| `useEVMBalance()` | EVM native + ERC-20 balance |
+| `useEVMTransaction()` | EVM transaction sending |
+| `useSmartAccount()` | ERC-4337 Smart Account state |
+| `useGaslessTransaction()` | Gasless TX via paymaster |
+| `useSessionKey()` | Session key create/revoke |
 
-### Utilities
+### Advanced Features
+| Hook | Description |
+|------|-------------|
+| `useWalletConnect()` | WalletConnect v2 session management |
+| `useNasunSmartAccount()` | NSA creation, deposit, withdraw, signer/guardian management |
+| `useNsaRecovery()` | Guardian recovery flow (initiate, approve, execute) |
+| `useNsaBackup()` | Encrypted backup create/restore |
+| `useNasunLink()` | Token distribution link creation/claiming |
+| `usePayment()` | Unified payment flow |
+| `usePaymentIntent()` | WalletConnect payment requests |
+| `usePaymentLink()` | Payment URL creation/parsing |
+| `usePaymentQR()` | QR code generation |
+| `usePortfolio()` | Portfolio value tracking |
+| `useLedger()` | Ledger connection and signing |
+| `useZKID()` | ZK-ID proof generation/verification |
+| `useTokenFaucet()` | Token faucet requests |
 
-#### Configuration
-```tsx
-import { configureWallet, getWalletConfig, getSuiClient } from '@nasun/wallet';
+## Security Model
 
-// Set network
-configureWallet({
-  rpcUrl: 'https://rpc.devnet.nasun.io',
-  faucetUrl: 'https://faucet.devnet.nasun.io',
-  explorerUrl: 'https://explorer.nasun.io/devnet',
-});
+### Encryption
+- **AES-256-GCM** (AEAD) with random 12-byte IV and 16-byte salt per operation
+- **PBKDF2** key derivation with SHA-256, 100,000 iterations
+- **Secure memory clearing** — `secureZero()` overwrites buffer with random then zeros
 
-// Get current config
-const config = getWalletConfig();
+### Brute Force Protection
+| Failed Attempts | Lockout Duration |
+|-----------------|------------------|
+| 8               | 30 seconds       |
+| 12              | 5 minutes        |
+| 16+             | 30 minutes       |
 
-// Get SUI client instance
-const client = getSuiClient();
-```
+Counter persists in localStorage (survives page refresh). Resets on successful unlock.
 
-#### Token Registry
-```tsx
-import { registerToken, registerTokens, getToken, getAllTokens } from '@nasun/wallet';
+### Auto-Lock
+Configurable inactivity timeout (5min / 15min / 30min / 1hr / disabled). Checked every 30 seconds.
 
-// Register single token
-registerToken({
-  symbol: 'NBTC',
-  name: 'Nasun Bitcoin',
-  decimals: 8,
-  type: '0x...',
-});
+### Authentication Comparison
 
-// Register multiple tokens
-registerTokens([
-  { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type: '0x...' },
-  { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x...' },
-]);
-
-// Get token config
-const nbtc = getToken('NBTC');
-
-// Get all registered tokens
-const tokens = getAllTokens();
-```
-
-#### Formatting
-```tsx
-import { formatBalance, parseAmount, shortenAddress, isValidAddress } from '@nasun/wallet';
-
-formatBalance(1000000000n, 9);  // "1.00"
-parseAmount('1.5', 9);          // 1500000000n
-shortenAddress('0x1234...5678'); // "0x1234...5678"
-isValidAddress('0x...');         // true/false
-```
-
-#### Rate Limiting
-```tsx
-import { isLockedOut, getLockoutRemainingMs, getUnlockAttemptState } from '@nasun/wallet';
-
-if (isLockedOut()) {
-  const remainingMs = getLockoutRemainingMs();
-  console.log(`Locked for ${Math.ceil(remainingMs / 1000)} seconds`);
-}
-
-const state = getUnlockAttemptState();
-console.log(`Failed attempts: ${state.failedAttempts}`);
-```
-
-## Storage
-
-The wallet uses localStorage for persistence:
-
-| Key | Description |
-|-----|-------------|
-| `nasun_wallet_keystore` | Encrypted private key |
-| `nasun_wallet_unlock_attempts` | Rate limiting state |
-| `nasun_wallet_session` | Session password (optional) |
-| `nasun_address_book` | Saved addresses |
-| `nasun_security_settings` | Security configuration |
+| Feature | Mnemonic Wallet | zkLogin | Passkey |
+|---------|-----------------|---------|---------|
+| Key storage | Encrypted locally | Ephemeral + ZK proof | WebAuthn credential |
+| Export private key | Yes | No | No |
+| Biometric | No | No | Yes (Face ID, Touch ID) |
+| Social login | No | Yes (5 OAuth providers) | No |
+| Lock/Unlock | Password | Session-based | Biometric |
 
 ## Network Configuration
 
@@ -242,53 +188,45 @@ Default: Nasun Devnet
 
 | Property | Value |
 |----------|-------|
-| RPC Endpoint | https://rpc.devnet.nasun.io |
-| Faucet | https://faucet.devnet.nasun.io |
-| Explorer | https://explorer.nasun.io/devnet |
-| Chain ID | `6681cdfd` |
-| Native Token | NASUN (decimals: 9) |
+| RPC Endpoint | `https://rpc.devnet.nasun.io` |
+| Faucet | `https://faucet.devnet.nasun.io` |
+| Explorer | `https://explorer.nasun.io/devnet` |
+| Chain ID | `12bf3808` |
+| Native Token | NSN (decimals: 9) |
 
-## Authentication Methods
+## Storage Keys
 
-The wallet package supports two authentication methods with different characteristics:
-
-### 1. Mnemonic Wallet (Password-based)
-Traditional wallet with locally stored encrypted private key.
-- **Best for**: Power users, developers, users who want full control
-- **Security**: User manages their own keys
-- **Features**: Full access to all wallet features
-
-### 2. zkLogin (Social Login)
-Zero-knowledge proof based authentication using Google/Apple OAuth.
-- **Best for**: New users, easy onboarding, users unfamiliar with blockchain
-- **Security**: No private key stored locally, session-based, protected by OAuth 2FA
-- **Features**: Subset of wallet features (no key export/import)
-
-### Menu Comparison (WalletConnect UI)
-
-| Feature | Mnemonic Wallet | zkLogin | Reason |
-|---------|-----------------|---------|--------|
-| Tokens/NFTs Tab | ✅ | ✅ | Same |
-| Copy Address | ✅ | ✅ | Same |
-| Send Token | ✅ | ✅ | Same |
-| Staking | ✅ | ✅ | Same |
-| NFT Gallery | ✅ | ✅ | Same |
-| Export Private Key | ✅ | ❌ | zkLogin has no private key |
-| Security Settings | ✅ | ❌ | Not needed for session-based auth |
-| Lock | ✅ | ❌ | Session-based → use Disconnect |
-| Delete Wallet | ✅ | ❌ | No local storage to delete |
-| Disconnect | ❌ | ✅ | zkLogin session logout |
-
-**Design Rationale for zkLogin**:
-- zkLogin's primary goal is easy onboarding for non-blockchain users
-- Fewer menu options = less confusion for new users
-- Session-based security means Lock/Auto-lock are unnecessary
-- OAuth provider's 2FA provides adequate security
+| Key | Storage | Description |
+|-----|---------|-------------|
+| `nasun_wallet_keystore` | localStorage | Encrypted private key (AES-256-GCM) |
+| `nasun_wallet_unlock_attempts` | localStorage | Rate limiting state |
+| `nasun_address_book` | localStorage | Saved addresses |
+| `nasun_security_settings` | localStorage | Security configuration |
+| `nasun-wallet-chain` | localStorage | Selected chain (Zustand persist) |
+| `nasun-wallet-nsa` | localStorage | NSA account state (Zustand persist) |
+| zkLogin session | sessionStorage | Ephemeral keypair + nonce (clears on tab close) |
+| zkLogin state | sessionStorage | Authenticated state (jwt, salt, proof) |
+| OAuth CSRF state | sessionStorage | CSRF protection token |
 
 ## Related Packages
 
-- **@nasun/wallet-ui** - React UI components (WalletConnect, BalanceDisplay, SendTransaction, etc.)
-- **@nasun/tailwind-config** - Nasun brand colors for Tailwind CSS
+- **@nasun/wallet-ui** — React UI components (60+ components, 175+ exports)
+  - WalletConnect dropdown, BalanceDisplay, SendTransaction, NFTGallery
+  - WalletConnect v2 UI: WalletConnectPanel, WCPairingView, WCSessionProposal, WCRequestApproval, WCSessionDetail
+  - MnemonicBackup, ImportWallet, ExportPrivateKey, StakingPanel
+  - SocialLoginButtons, PasskeyButton, LedgerConnect
+  - Clear Signing TransactionPreview, NasunLinkWizard, PortfolioPanel
+  - NetworkSelector, AddressBookPanel, SecuritySettings
+- **@nasun/tailwind-config** — Nasun brand colors for Tailwind CSS
+- **@nasun/devnet-config** — Contract addresses (auto-imported for token types)
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [WALLET-GUIDE.md](docs/WALLET-GUIDE.md) | Developer integration guide with code examples |
+| [P1-IMPLEMENTATION-STATUS.md](docs/P1-IMPLEMENTATION-STATUS.md) | Detailed module map and architecture reference |
+| [WALLET_UI_IMPROVEMENT_PLAN.md](docs/WALLET_UI_IMPROVEMENT_PLAN.md) | UX improvement roadmap |
 
 ## License
 
