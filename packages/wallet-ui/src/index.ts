@@ -154,6 +154,16 @@ export {
   NsaRecoveryPanel,
 } from './nsa';
 
+// WalletConnect components
+export {
+  WCViewRouter,
+  WalletConnectPanel,
+  WCPairingView,
+  WCSessionProposal,
+  WCRequestApproval,
+  WCSessionDetail,
+} from './walletconnect';
+
 // Shared components and design tokens
 export { Tooltip, InlineTooltip, WALLET_STYLES } from './shared';
 export type { TooltipProps, InlineTooltipProps } from './shared';
