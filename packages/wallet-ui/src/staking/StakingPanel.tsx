@@ -17,6 +17,7 @@ import {
 import { ValidatorList } from './ValidatorList';
 import { StakingStatus } from './StakingStatus';
 import { CopyableAddress } from '../address/CopyableAddress';
+import { PanelHeader } from '../shared';
 
 type TabType = 'stake' | 'unstake' | 'positions';
 type StakeStep = 'select' | 'amount' | 'confirm' | 'result';
@@ -47,7 +48,7 @@ export function StakingPanel({
   const isWalletConnected = (status === 'unlocked' && account) || isZkConnected;
   if (!isWalletConnected) {
     return (
-      <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'p-3' : 'p-4'}`}>
+      <div className={compact ? 'p-3 w-full' : 'p-4 w-full'}>
         <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base text-center">
           Please connect your wallet first.
         </p>
@@ -56,20 +57,10 @@ export function StakingPanel({
   }
 
   return (
-    <div className={`bg-gray-100 dark:bg-zinc-800 rounded-lg ${compact ? 'w-full' : 'min-w-[360px]'}`}>
+    <div className={compact ? 'w-full' : 'min-w-[360px]'}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-300 dark:border-zinc-700">
-        <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Staking</h3>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
+      <div className="px-4 pt-4 border-b border-gray-300 dark:border-zinc-700">
+        <PanelHeader title="Staking" onClose={onClose} />
       </div>
 
       {/* Tabs */}

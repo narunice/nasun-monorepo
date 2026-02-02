@@ -97,13 +97,13 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
     return (
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
           <button
             onClick={() => {
               setShowConfirm(false);
               clearError();
             }}
-            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -186,10 +186,10 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Transfer NFT</h3>
+        <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Transfer NFT</h3>
         <button
           onClick={onClose}
-          className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

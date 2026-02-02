@@ -28,7 +28,7 @@ import { TokenSelector } from '../balance/TokenSelector';
 import { CopyableAddress } from '../address/CopyableAddress';
 import { LedgerSigningPrompt } from '../ledger';
 import { StatusBadge } from '../clear-signing';
-import { Tooltip } from '../shared';
+import { Tooltip, PanelHeader } from '../shared';
 
 interface SendTransactionProps {
   onClose?: () => void;
@@ -202,7 +202,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
     const successAmount = 'amount' in lastResult ? lastResult.amount : amount;
 
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
+      <div className="p-4 w-full">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,8 +211,8 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
-            <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-1">
+            <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Transfer Complete</h3>
+            <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {successAmount} {successToken} sent successfully
             </p>
             <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
@@ -275,12 +275,9 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
     const riskLevel = getRiskLevel();
 
     return (
-      <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
+      <div className="p-4 w-full">
         {/* Header with Status Badge */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Confirm Transfer</h3>
-          <StatusBadge level={riskLevel} variant="compact" />
-        </div>
+        <PanelHeader title="Confirm Transfer" rightExtra={<StatusBadge level={riskLevel} variant="compact" />} />
 
         <div className="space-y-3 mb-4">
           {/* New address warning */}
@@ -320,7 +317,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
           </div>
 
           <div className="bg-gray-200 dark:bg-zinc-700 rounded p-3">
-            <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Amount</p>
+            <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">Amount</p>
             <p className="text-lg xl:text-xl text-gray-900 dark:text-white font-medium mt-1">
               {amount} <span className="text-blue-400 text-sm xl:text-base">{selectedToken}</span>
             </p>
@@ -362,7 +359,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               tabIndex={0}
               onClick={() => setShowDetails(!showDetails)}
               onKeyDown={(e) => e.key === 'Enter' && setShowDetails(!showDetails)}
-              className="w-full flex items-center justify-between text-sm md:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors py-1 cursor-pointer"
+              className="w-full flex items-center justify-between text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 transition-colors py-1 cursor-pointer"
             >
               <span className="flex items-center gap-1">
                 Transaction Details
@@ -493,25 +490,13 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   const canSubmit = isValidChainAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas && hasEnoughBalance;
 
   return (
-    <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-lg w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Send Token</h3>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
+    <div className="p-4 w-full">
+      <PanelHeader title="Send Token" onClose={onClose} />
 
       <div className="space-y-4">
         {/* Token selector */}
         <div>
-          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-1">Token</label>
+          <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1">Token</label>
           <TokenSelector
             value={selectedToken}
             onChange={setSelectedToken}
@@ -540,7 +525,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
 
         {/* Recipient address */}
         <div>
-          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
+          <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1">Recipient Address</label>
           <input
             type="text"
             placeholder="0x..."
@@ -576,7 +561,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
 
         {/* Amount */}
         <div>
-          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-1">Amount ({selectedToken})</label>
+          <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1">Amount ({selectedToken})</label>
           <input
             type="number"
             placeholder="0.0"
