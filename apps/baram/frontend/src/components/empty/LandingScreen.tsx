@@ -18,10 +18,11 @@ export function LandingScreen() {
           </svg>
         </div>
         <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-3">
-          Your Prompts, Your Eyes Only
+          Your Prompts and Outputs, Your Eyes Only
         </h1>
         <p className="text-[var(--color-text-secondary)] max-w-lg text-sm leading-relaxed">
-          End-to-end encrypted AI inference inside a hardware enclave. No logs, no training, no leaks.
+          End-to-end encrypted AI inference inside a hardware enclave. No logs, no training, no
+          leaks.
         </p>
       </div>
 
@@ -34,8 +35,18 @@ export function LandingScreen() {
           {/* Step 1: Encrypt */}
           <div className="p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-center">
             <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-baram-1/10 flex items-center justify-center">
-              <svg className="w-4 h-4 text-baram-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg
+                className="w-4 h-4 text-baram-1"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
               </svg>
             </div>
             <div className="font-medium text-sm text-[var(--color-text-primary)] mb-1">
@@ -49,8 +60,18 @@ export function LandingScreen() {
           {/* Step 2: Process in TEE */}
           <div className="p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-center">
             <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-baram-1/10 flex items-center justify-center">
-              <svg className="w-4 h-4 text-baram-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              <svg
+                className="w-4 h-4 text-baram-1"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                />
               </svg>
             </div>
             <div className="font-medium text-sm text-[var(--color-text-primary)] mb-1">
@@ -64,8 +85,18 @@ export function LandingScreen() {
           {/* Step 3: Verify On-Chain */}
           <div className="p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-center">
             <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-baram-1/10 flex items-center justify-center">
-              <svg className="w-4 h-4 text-baram-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-4 h-4 text-baram-1"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
             <div className="font-medium text-sm text-[var(--color-text-primary)] mb-1">
@@ -81,16 +112,30 @@ export function LandingScreen() {
       {/* Trust Indicators */}
       <div className="flex flex-wrap justify-center gap-2 mb-6">
         {[
-          { label: 'AES-256-GCM Encryption', d: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
-          { label: 'AWS Nitro Enclaves', d: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z' },
-          { label: 'On-Chain Compliance Records', d: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-          { label: 'Open Source Contracts', d: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' },
+          {
+            label: "AES-256-GCM Encryption",
+            d: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z",
+          },
+          {
+            label: "AWS Nitro Enclaves",
+            d: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z",
+          },
+          {
+            label: "On-Chain Compliance Records",
+            d: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+          },
+          { label: "Open Source Contracts", d: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" },
         ].map(({ label, d }) => (
           <span
             key={label}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-full"
           >
-            <svg className="w-3.5 h-3.5 text-[var(--color-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <svg
+              className="w-3.5 h-3.5 text-[var(--color-text-muted)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
             </svg>
             {label}
@@ -105,7 +150,12 @@ export function LandingScreen() {
         </p>
         <div className="inline-flex items-center gap-1.5 text-xs text-baram-1">
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 10l7-7m0 0l7 7m-7-7v18"
+            />
           </svg>
           <span>Use the wallet button in the top right</span>
         </div>
@@ -138,7 +188,12 @@ export function LandingScreen() {
           className="inline-flex items-center gap-2 px-4 py-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover:border-baram-1/50 transition-colors"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+            />
           </svg>
           Nasun.io
         </a>
