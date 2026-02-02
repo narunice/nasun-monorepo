@@ -235,12 +235,13 @@ class WalletConnectClientImpl {
    */
   getPendingProposals(): SignClientTypes.EventArguments['session_proposal'][] {
     if (!this.client) return [];
-    // proposal.getAll returns Record<number, ProposalTypes.Struct>
     const proposals = this.client.proposal.getAll();
-    // Convert to event format
-    return Object.entries(proposals).map(([id, params]) => ({
-      id: parseInt(id, 10),
-      params,
+    // Convert to session_proposal event format: { id, params }
+    // Use the proposal's own `id` field — not the Object.entries key,
+    // which is an array index (0, 1, ...) when getAll() returns an array.
+    return Object.values(proposals).map((proposal) => ({
+      id: proposal.id,
+      params: proposal,
     })) as SignClientTypes.EventArguments['session_proposal'][];
   }
 
