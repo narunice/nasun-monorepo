@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { usePaymentQR, usePaymentLink, getAllTokens, useSigner } from '@nasun/wallet';
 import { CopyableAddress } from '../address/CopyableAddress';
 import { TokenSelector } from '../balance/TokenSelector';
+import { PanelHeader } from '../shared';
 
 interface ReceivePanelProps {
   onClose?: () => void;
@@ -107,10 +108,11 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
   return (
     <div className="p-4 w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm md:text-base xl:text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <PanelHeader
+        title="Receive"
+        onClose={onClose}
+        titleIcon={
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -118,19 +120,8 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
               d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
             />
           </svg>
-          Receive
-        </h3>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
+        }
+      />
 
       {/* QR Code */}
       <div className="flex justify-center mb-4">
@@ -163,7 +154,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
       {/* Optional Amount */}
       <div className="space-y-3 mb-4">
-        <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           Optional: Request specific amount
         </p>
 
@@ -254,7 +245,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
       {/* Info */}
       <div className="mt-4 p-3 bg-gray-100 dark:bg-zinc-700/50 rounded">
-        <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
+        <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           {paymentLink
             ? 'Share this link to request a specific payment amount.'
             : 'Scan this QR code or share your address to receive tokens.'}

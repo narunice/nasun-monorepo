@@ -249,7 +249,7 @@ export function NasunLinkWizard({
   if (step === 'amount') {
     return (
       <div className={className}>
-        <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-4">
           Create Nasun Link
         </h3>
 
@@ -373,7 +373,7 @@ export function NasunLinkWizard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">
             Link Conditions
           </h3>
         </div>
@@ -498,7 +498,7 @@ export function NasunLinkWizard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="text-lg xl:text-xl font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">
             Link Created!
           </h3>
           <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400 mt-1">
