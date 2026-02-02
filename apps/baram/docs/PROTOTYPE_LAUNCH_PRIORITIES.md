@@ -148,7 +148,7 @@ bash scripts/update-executor.sh <IP>     # On-chain endpoint update
 
 | Temptation | Why Not |
 |-----------|---------|
-| KV Cache / Stateful TEE | Architecture change risks stability, not needed for prototype demo |
+| KV Cache / Stateful TEE | Not needed for prototype demo. High priority post-launch (see BARAM_CHAT_CONTINUITY_ANALYSIS.md §6) |
 | Walrus / Seal integration | Infrastructure too large, Nasun Devnet compatibility issues |
 | New models (GPT-4o, etc.) | OpenAI credit issues, existing Groq + TEE is sufficient |
 | HTTPS / domain for TEE | Lambda is already HTTPS, TEE HTTP is internal (not user-facing) |
@@ -187,6 +187,8 @@ bash scripts/update-executor.sh <IP>     # On-chain endpoint update
 - [ ] Keep TEE instance running during demo period
 - [ ] Terminate TEE instance after demo: `terminate-spot.sh`
 - [ ] Collect community feedback (Discord)
+- [ ] Plan community beta: BetaAccessNFT contract + llama.cpp server upgrade
+- [ ] Switch to On-demand instance before beta opens
 
 ---
 
@@ -199,6 +201,102 @@ bash scripts/update-executor.sh <IP>     # On-chain endpoint update
 | Lambda (free tier) | ~$0 |
 | API Gateway (free tier) | ~$0 |
 | **Total launch period** | **~$7** |
+| Limited Beta (50 users, post-launch) | ~$51/month |
+| Public Test (500 users, post-launch) | ~$133/month |
+
+---
+
+## Community Beta Test — Infrastructure Capacity
+
+> Post-launch community testing infrastructure analysis. Based on current codebase review, 2026-02-02.
+
+### Current Enclave Processing Model
+
+The Enclave processes requests **sequentially** — one at a time:
+
+```
+enclave/main.ts     → Single vsock connection, `await handleRequest()` loop
+enclave/local-llm.ts → Creates new LlamaContext per request, disposes after
+host/vsock-client.ts → Singleton instance, pendingRequests Map for queueing
+```
+
+For **Local LLM mode** (llama-3.2-3b inside TEE), each request takes ~50 seconds. Only 1 concurrent user is supported.
+
+### Concurrency by Mode
+
+| Mode | Concurrent Users | Bottleneck |
+|------|-----------------|------------|
+| Local LLM (TEE inference) | **1** | node-llama-cpp sequential processing, ~50sec/request |
+| Proxy (Groq via TEE) | ~100 | Groq API is fast, Enclave only relays |
+| Lambda + Groq (direct) | ~100 | API Gateway throttle: 100 RPS |
+
+### Concurrency Improvements
+
+**Step 1: llama.cpp HTTP server (highest impact)**
+
+Replace the current `node-llama-cpp` binding with llama.cpp's built-in HTTP server inside the Enclave:
+
+```bash
+llama-server --model model.gguf --cont-batching --parallel 4 --threads 2
+```
+
+- `--cont-batching`: Continuous batching — multiple requests processed at GPU/CPU level in parallel
+- `--parallel 4`: 4 concurrent request slots
+- Expected throughput: **4-6x improvement** (4 concurrent users)
+- Scope: Enclave-internal change only, Host API unchanged
+
+**Step 2: Multiple Enclave instances**
+
+A single EC2 can run up to 4 Enclaves (depending on vCPU allocation):
+- r5.2xlarge (8 vCPU, 64GB) → 2-3 Enclaves possible
+- Load balancer distributes requests across Enclaves
+
+### Access Control: BetaAccessNFT
+
+Move contract for gated access:
+
+```move
+struct BetaAccessNFT has key, store {
+    id: UID,
+    issued_at: u64,
+    expires_at: u64,      // Time-limited access
+    remaining_uses: u64,  // Usage-limited access
+}
+```
+
+- Community applies via Discord → Admin mints NFT → Transferred to wallet
+- Frontend checks NFT ownership before allowing chat
+- Usage count / expiry prevents resource abuse
+- On-chain — transparent and verifiable
+
+### Phased Rollout
+
+**Phase 1 — Prototype Demo (current)**
+- Current infrastructure: r6i.xlarge Spot
+- Groq + TEE modes both available
+- Cost: ~$7/2 weeks
+
+**Phase 2 — Limited Beta (post-launch)**
+- BetaAccessNFT contract deployed, 50 testers
+- llama.cpp HTTP server upgrade (4 concurrent slots)
+- Switch to r5.2xlarge **On-demand** (Spot can be reclaimed mid-session)
+- Cost: ~$51/month (8hr/day operation)
+
+**Phase 3 — Public Test**
+- Multiple Enclave instances or multiple EC2s
+- Rate limiting + monitoring
+- 500 testers capacity
+- Cost: ~$133/month (8hr/day, 3 instances)
+
+### Beta Period Cost Estimates
+
+| Scenario | Instance | Monthly Cost | Notes |
+|----------|----------|-------------|-------|
+| Limited Beta (50 users) | r5.2xlarge On-demand ×1 | ~$51 | 8hr/day, llama.cpp server upgrade |
+| Public Test (500 users) | r5.2xlarge On-demand ×3 | ~$133 | 8hr/day, load balanced |
+| Current (Spot demo) | r6i.xlarge Spot | ~$7/2wk | Demo period only |
+
+**On-demand recommended for beta**: Spot instances can be reclaimed with 2-minute notice, disrupting active user sessions.
 
 ---
 
