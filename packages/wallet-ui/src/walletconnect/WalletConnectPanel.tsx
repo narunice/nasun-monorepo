@@ -47,7 +47,7 @@ export function WalletConnectPanel({ setViewMode }: WalletConnectPanelProps) {
     return (
       <div className="p-4 w-full">
         <BackButton onClick={() => setViewMode("main")} />
-        <h3 className={"text-sm md:text-base font-medium text-gray-900 dark:text-white"}>WalletConnect</h3>
+        <h3 className={"text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white"}>WalletConnect</h3>
         <div className="text-center py-6">
           <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-500/10 flex items-center justify-center">
             <WCIcon className="w-6 h-6 text-blue-500" />
@@ -74,7 +74,7 @@ export function WalletConnectPanel({ setViewMode }: WalletConnectPanelProps) {
     return (
       <div className="p-4 w-full">
         <BackButton onClick={() => setViewMode("main")} />
-        <h3 className={"text-sm md:text-base font-medium text-gray-900 dark:text-white"}>WalletConnect</h3>
+        <h3 className={"text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white"}>WalletConnect</h3>
         <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-500 dark:text-zinc-400">
           <Spinner />
           Initializing...
@@ -92,7 +92,7 @@ export function WalletConnectPanel({ setViewMode }: WalletConnectPanelProps) {
       <BackButton onClick={() => setViewMode("main")} />
 
       <div className="flex items-center justify-between mb-3">
-        <h3 className={"text-sm md:text-base font-medium text-gray-900 dark:text-white"}>
+        <h3 className={"text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white"}>
           WalletConnect
           {totalPending > 0 && (
             <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded-full">

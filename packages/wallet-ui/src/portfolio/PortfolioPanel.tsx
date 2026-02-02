@@ -5,11 +5,13 @@
 
 import { usePortfolio, useWallet, useRefreshPortfolio, useZkLogin } from '@nasun/wallet';
 import type { TokenAsset, ChainPortfolio } from '@nasun/wallet';
+import { PanelHeader } from '../shared';
 
 export interface PortfolioPanelProps {
   className?: string;
   showChainBreakdown?: boolean;
   compact?: boolean;
+  onClose?: () => void;
 }
 
 /**
@@ -128,6 +130,7 @@ export function PortfolioPanel({
   className = '',
   showChainBreakdown = true,
   compact = false,
+  onClose,
 }: PortfolioPanelProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
@@ -235,7 +238,8 @@ export function PortfolioPanel({
 
   // Full mode
   return (
-    <div className={className}>
+    <div className={`p-4 w-full ${className}`}>
+      <PanelHeader title="Portfolio" onClose={onClose} />
       {/* Header */}
       <div className="mb-4">
         <div className="flex items-center justify-between">

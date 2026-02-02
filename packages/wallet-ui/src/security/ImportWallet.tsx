@@ -79,7 +79,7 @@ export function ImportWallet({
   if (mode === 'select') {
     return (
       <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
-        <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Import Wallet</h3>
+        <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-4">Import Wallet</h3>
         <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-4">
           Choose how to import your existing wallet
         </p>
@@ -97,7 +97,7 @@ export function ImportWallet({
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">Recovery Phrase</div>
-                <div className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
+                <div className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">Import using 12 or 24 word mnemonic</div>
               </div>
             </div>
           </button>
@@ -114,7 +114,7 @@ export function ImportWallet({
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">Private Key</div>
-                <div className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
+                <div className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">Import using Bech32 private key (suiprivkey1...)</div>
               </div>
             </div>
           </button>
@@ -144,11 +144,11 @@ export function ImportWallet({
           Back
         </button>
 
-        <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Import with Recovery Phrase</h3>
+        <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-4">Import with Recovery Phrase</h3>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
+            <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-2">
               Recovery Phrase (12 or 24 words)
             </label>
             <textarea
@@ -162,7 +162,7 @@ export function ImportWallet({
           </div>
 
           <div>
-            <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
+            <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-2">
               New Password (min 8 characters)
             </label>
             <input
@@ -176,7 +176,7 @@ export function ImportWallet({
           </div>
 
           <div>
-            <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
+            <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-2">
               Confirm Password
             </label>
             <input
@@ -236,7 +236,7 @@ export function ImportWallet({
         Back
       </button>
 
-      <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Import with Private Key</h3>
+      <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-4">Import with Private Key</h3>
 
       {/* Warning */}
       <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-500/50 rounded p-3 mb-4">
@@ -247,7 +247,7 @@ export function ImportWallet({
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-2">
             Private Key (Bech32 format)
           </label>
           <input
@@ -261,7 +261,7 @@ export function ImportWallet({
         </div>
 
         <div>
-          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-2">
             New Password (min 8 characters)
           </label>
           <input
@@ -275,7 +275,7 @@ export function ImportWallet({
         </div>
 
         <div>
-          <label className="block text-sm md:text-base text-gray-500 dark:text-zinc-400 mb-2">
+          <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-2">
             Confirm Password
           </label>
           <input

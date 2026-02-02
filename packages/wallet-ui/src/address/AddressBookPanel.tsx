@@ -6,6 +6,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAddressBook, shortenAddress } from '@nasun/wallet';
 import { CopyableAddress } from './CopyableAddress';
+import { PanelHeader } from '../shared';
 
 interface AddressBookPanelProps {
   onClose?: () => void;
@@ -144,10 +145,11 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
 
   return (
     <div className={`${compact ? 'p-3' : 'p-4'} w-full`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm md:text-base xl:text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <PanelHeader
+        title="Address Book"
+        onClose={onClose}
+        titleIcon={
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -155,19 +157,8 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
             />
           </svg>
-          Address Book
-        </h3>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
+        }
+      />
 
       {/* Search */}
       <div className="relative mb-4">
@@ -301,7 +292,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
                     />
                   ) : (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm md:text-base xl:text-lg font-medium text-gray-900 dark:text-white truncate">
+                      <span className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white truncate">
                         {entry.label || shortenAddress(entry.address)}
                       </span>
                       <button
@@ -319,7 +310,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
                     </div>
                   )}
                 </div>
-                <span className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
+                <span className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
                   {entry.transactionCount} tx{entry.transactionCount !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -354,7 +345,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="px-2 py-1 text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+                      className="px-2 py-1 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
                     >
                       Cancel
                     </button>
@@ -400,7 +391,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
       {/* Info Box */}
       {entries.length > 0 && (
         <div className="mt-4 bg-gray-100 dark:bg-zinc-700/50 rounded p-3">
-          <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
+          <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
             <span className="font-medium text-gray-600 dark:text-zinc-300">Tip:</span> Mark addresses as trusted to skip the first-time recipient warning when sending.
           </p>
         </div>

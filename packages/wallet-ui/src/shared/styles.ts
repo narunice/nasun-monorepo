@@ -12,7 +12,7 @@ export const WALLET_STYLES = {
   textCaption: "text-[10px] xl:text-xs",
   textLabel: "text-xs xl:text-sm",
   textBody: "text-sm xl:text-base",
-  textHeading: "text-base xl:text-lg font-semibold",
+  textHeading: "text-base md:text-lg xl:text-xl font-medium",
   textDisplay: "text-xl xl:text-2xl font-bold",
 
   // === Dropdown Container Tokens ===
@@ -59,4 +59,24 @@ export const WALLET_STYLES = {
 
   // Icon style for menu items
   menuIcon: "w-4 h-4 text-gray-500 dark:text-zinc-400",
+
+  // === Panel Layout Tokens ===
+
+  // Standard panel container
+  panelContainer: "p-4 w-full",
+
+  // Panel title (3-tier responsive: 16px → 18px → 20px)
+  panelTitle: "text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white",
+
+  // Close X button (top-right)
+  closeButton: "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors",
+
+  // Close X icon size
+  closeIcon: "w-5 h-5",
+
+  // Back button (top-left, sub-navigation)
+  backButton: "flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors",
+
+  // Back icon size
+  backIcon: "w-4 h-4",
 } as const;

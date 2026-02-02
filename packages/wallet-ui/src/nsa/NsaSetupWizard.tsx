@@ -56,7 +56,7 @@ export function NsaSetupWizard({ onClose, onSuccess }: NsaSetupWizardProps) {
     return (
       <div className="p-4 w-full">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Create Smart Account</h3>
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Create Smart Account</h3>
           <button
             onClick={onClose}
             className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
@@ -128,7 +128,7 @@ export function NsaSetupWizard({ onClose, onSuccess }: NsaSetupWizardProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Confirm Creation</h3>
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Confirm Creation</h3>
         </div>
 
         <div className="space-y-3 mb-4">
