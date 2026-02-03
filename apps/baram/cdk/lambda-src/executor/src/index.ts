@@ -21,16 +21,18 @@ import { ExecuteRequest, ExecuteResponse, DEFAULT_MODEL } from './types';
 // AWS Secrets Manager client
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
 
-// Cached secrets
+// Cached secrets (cleared after initialization)
 let openaiApiKey: string | null = null;
 let groqApiKey: string | null = null;
 let executorPrivateKey: string | null = null;
+let groqEnabled = false;
 let initialized = false;
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+// CORS headers — restricted to configured origin (fail-secure: no header if unset)
+const CORS_ALLOWED_ORIGIN = process.env.CORS_ALLOWED_ORIGIN;
+const corsHeaders: Record<string, string> = {
+  ...(CORS_ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': CORS_ALLOWED_ORIGIN } : {}),
+  'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
@@ -63,7 +65,7 @@ function maskSensitive<T>(obj: T): T {
  * Load secrets from AWS Secrets Manager
  */
 async function loadSecrets(): Promise<void> {
-  if (openaiApiKey && executorPrivateKey) return;
+  if (initialized) return;
 
   // Load OpenAI API key
   const openaiSecret = await secretsClient.send(
@@ -108,6 +110,7 @@ async function initialize(): Promise<void> {
   // Initialize Groq (if available)
   if (groqApiKey) {
     initGroq(groqApiKey);
+    groqEnabled = true;
   }
 
   // Initialize Sui client
@@ -120,6 +123,11 @@ async function initialize(): Promise<void> {
     complianceRegistryId: process.env.COMPLIANCE_REGISTRY_ID || '',
     executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
   });
+
+  // Clear raw secrets from memory — SDKs hold their own copies internally
+  openaiApiKey = null;
+  groqApiKey = null;
+  executorPrivateKey = null;
 
   initialized = true;
   console.log('[Init] Services initialized');
@@ -252,7 +260,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           packageId: process.env.BARAM_PACKAGE_ID,
           registryId: process.env.BARAM_REGISTRY_ID,
           supportedModels: getSupportedModels(),
-          groqEnabled: !!groqApiKey,
+          groqEnabled,
           network: 'Nasun Devnet',
         }),
       };

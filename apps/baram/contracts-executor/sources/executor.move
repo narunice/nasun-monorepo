@@ -416,6 +416,12 @@ module baram_executor::executor {
     /// Record successful job completion — callable by the executor itself.
     /// Must be called in the same PTB as submit_proof for correctness.
     /// request_id dedup prevents double-claiming reputation for the same job.
+    ///
+    /// SECURITY NOTE: This function cannot cross-validate that request_id exists
+    /// in BaramRegistry (separate package). A registered executor could fabricate
+    /// request_ids to inflate reputation. Mitigated by: dedup guard, executor
+    /// whitelist, reputation cap (1000). Proper fix requires cross-package witness
+    /// pattern or package merge (tracked for Phase G).
     public entry fun record_job_completion(
         registry: &mut ExecutorRegistry,
         processed: &mut ProcessedRequests,
