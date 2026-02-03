@@ -15,6 +15,7 @@
 import { getSuiClient } from './sui-client';
 import * as oracleClient from './oracle-client';
 import type { SymbolKey } from './oracle-client';
+import { logOnce, logThrottled } from './logger';
 
 export type TokenSymbol = 'NASUN' | 'NBTC' | 'NUSDC';
 
@@ -94,25 +95,24 @@ export async function fetchOraclePrice(
       return { price: priceData.price, source: 'oracle' };
     }
 
-    // Oracle stale or unavailable - use simulated
+    // Oracle stale or unavailable - use simulated (log once per symbol)
     if (priceData) {
       const ageMs = Date.now() - priceData.timestamp;
-      console.warn(
-        `[Prices] Oracle ${oracleSymbol} stale (age: ${Math.round(ageMs / 1000)}s, max: ${MAX_ORACLE_AGE_MS / 1000}s), using simulated price. ` +
-        `WARNING: Simulated price ($${SIMULATED_PRICES[symbol]}) may diverge from market.`
+      logOnce(
+        `prices-${symbol}-stale`, 'warn',
+        `[Prices] Oracle ${oracleSymbol} stale (age: ${Math.round(ageMs / 1000)}s, max: ${MAX_ORACLE_AGE_MS / 1000}s), using simulated price ($${SIMULATED_PRICES[symbol]}).`
       );
     } else {
-      console.warn(
-        `[Prices] Oracle ${oracleSymbol} unavailable, using simulated price ($${SIMULATED_PRICES[symbol]}). ` +
-        `WARNING: This is a hardcoded fallback and may not reflect current market conditions.`
+      logOnce(
+        `prices-${symbol}-unavailable`, 'warn',
+        `[Prices] Oracle ${oracleSymbol} unavailable, using simulated price ($${SIMULATED_PRICES[symbol]}).`
       );
     }
     return { price: SIMULATED_PRICES[symbol], source: 'simulated' };
   } catch (error) {
-    console.error(
-      `[Prices] Failed to fetch oracle price for ${symbol}:`, error,
-      `\nFalling back to simulated price ($${SIMULATED_PRICES[symbol]}). ` +
-      `WARNING: Simulated prices are hardcoded and may diverge significantly from market.`
+    logThrottled(
+      `prices-${symbol}-error`, 'error', 60_000,
+      `[Prices] Failed to fetch oracle price for ${symbol}:`, error
     );
     return { price: SIMULATED_PRICES[symbol], source: 'simulated' };
   }

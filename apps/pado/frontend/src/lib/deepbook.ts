@@ -7,6 +7,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from './sui-client';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../config/network';
 import type { PoolConfig } from '../features/trading/types';
+import { logOnce, logThrottled } from './logger';
 
 // 기본 Pool (하위 호환)
 const DEFAULT_POOL = POOLS.NBTC_NUSDC;
@@ -97,7 +98,7 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
 
     return { bids, asks, spread, midPrice };
   } catch (error) {
-    console.error('Failed to fetch orderbook:', error);
+    logOnce('deepbook-orderbook', 'warn', '[DeepBook] Orderbook unavailable (pool may not exist on-chain):', error);
     return { bids: [], asks: [], spread: 0, midPrice: 0 };
   }
 }
@@ -321,7 +322,7 @@ export async function getPoolMidPrice(pool: PoolConfig = DEFAULT_POOL): Promise<
 
     return 0;
   } catch (error) {
-    console.error('Failed to get mid price:', error);
+    logOnce('deepbook-midprice', 'warn', '[DeepBook] Mid price unavailable (pool may not exist on-chain):', error);
     return 0;
   }
 }
@@ -394,7 +395,7 @@ export async function getOpenOrders(
     const orders = parseOrderVector(returnValues[0][0], pool.quoteToken.decimals, pool.baseToken.decimals);
     return orders;
   } catch (error) {
-    console.error('Failed to get open orders:', error);
+    logThrottled('deepbook-open-orders', 'error', 60_000, '[DeepBook] Failed to get open orders:', error);
     return [];
   }
 }
@@ -568,7 +569,7 @@ export async function getBalanceManagerBalances(
       quote: quoteBalance / Math.pow(10, pool.quoteToken.decimals),
     };
   } catch (error) {
-    console.error('Failed to get BalanceManager balances:', error);
+    logThrottled('deepbook-balances', 'error', 60_000, '[DeepBook] Failed to get BalanceManager balances:', error);
     return { base: 0, quote: 0 };
   }
 }

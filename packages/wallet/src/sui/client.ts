@@ -322,35 +322,30 @@ export function isSessionPersistEnabled(): boolean {
 }
 
 /**
- * Simple obfuscation for session password
- * Not cryptographically secure, but provides minimal protection
- * against casual inspection. Real security comes from:
- * - Session expiry (30 minutes)
- * - Domain binding
- * - sessionStorage clearing on tab close
+ * Encode password for session storage.
+ * Uses base64 encoding — NOT cryptographic protection.
+ *
+ * Actual security relies on:
+ * - sessionStorage isolation (same-origin, cleared on tab close)
+ * - 30-minute expiry
+ * - Domain binding check on read
+ *
+ * If XSS exists, no client-side obfuscation can prevent extraction.
+ * The correct mitigation is CSP + XSS prevention, not encoding tricks.
  */
-function obfuscatePassword(password: string): string {
-  // Convert to UTF-8 bytes, XOR with key, then base64
-  const key = window.location.origin.length;
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(password);
-  const xored = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    xored[i] = bytes[i] ^ ((key + i) % 256);
-  }
-  // Convert to base64-safe string
-  return btoa(String.fromCharCode(...xored));
+function encodePassword(password: string): string {
+  return btoa(new TextEncoder().encode(password).reduce(
+    (s, b) => s + String.fromCharCode(b), ''
+  ));
 }
 
-function deobfuscatePassword(obfuscated: string): string {
-  const key = window.location.origin.length;
-  const decoded = atob(obfuscated);
-  const xored = new Uint8Array(decoded.length);
-  for (let i = 0; i < decoded.length; i++) {
-    xored[i] = decoded.charCodeAt(i) ^ ((key + i) % 256);
+function decodePassword(encoded: string): string {
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
   }
-  const decoder = new TextDecoder();
-  return decoder.decode(xored);
+  return new TextDecoder().decode(bytes);
 }
 
 /**
@@ -360,7 +355,6 @@ function deobfuscatePassword(obfuscated: string): string {
  * Security features:
  * - 30-minute expiry time
  * - Domain binding (prevents use on other domains)
- * - XOR obfuscation (minimal protection against casual inspection)
  * - sessionStorage clears on tab close
  *
  * Note: This is a convenience feature with security trade-offs.
@@ -371,7 +365,7 @@ export function saveSessionPassword(password: string): void {
   try {
     const now = Date.now();
     const sessionData: SecureSessionData = {
-      p: obfuscatePassword(password),
+      p: encodePassword(password),
       c: now,
       e: now + SESSION_EXPIRY_MS,
       d: window.location.origin,
@@ -419,7 +413,7 @@ export function getSessionPassword(): string | null {
         return null;
       }
 
-      return deobfuscatePassword(sessionData.p);
+      return decodePassword(sessionData.p);
     } catch {
       // Legacy format (plain base64) - migrate or clear
       clearSessionPassword();

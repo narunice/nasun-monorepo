@@ -4,6 +4,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { getSuiClient } from '../sui/client';
@@ -224,7 +225,7 @@ async function fetchTransactionHistory(
         },
         order: 'descending',
         limit: perQueryLimit,
-      }).catch(() => ({ data: [], hasNextPage: false })), // Fallback if not supported
+      }).catch((): { data: SuiTransactionBlockResponse[]; hasNextPage: false } => ({ data: [], hasNextPage: false })), // Fallback if not supported
       // Recipient filter catches TransferObjects recipients
       client.queryTransactionBlocks({
         filter: { Recipient: address } as unknown as Parameters<typeof client.queryTransactionBlocks>[0]['filter'],
@@ -235,12 +236,12 @@ async function fetchTransactionHistory(
         },
         order: 'descending',
         limit: perQueryLimit,
-      }).catch(() => ({ data: [], hasNextPage: false })), // Fallback if not supported
+      }).catch((): { data: SuiTransactionBlockResponse[]; hasNextPage: false } => ({ data: [], hasNextPage: false })), // Fallback if not supported
     ]);
 
     // Merge and deduplicate by digest from all three queries
     const seenDigests = new Set<string>();
-    const allTxs = [];
+    const allTxs: SuiTransactionBlockResponse[] = [];
 
     for (const tx of [...sentResponse.data, ...receivedByToAddress.data, ...receivedByRecipient.data]) {
       if (!seenDigests.has(tx.digest)) {
