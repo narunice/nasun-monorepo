@@ -12,8 +12,12 @@ import { getSuiClient } from '../../lib/sui-client';
 const DEFAULT_POOL = POOLS.NBTC_NUSDC;
 
 // ============================================
-// Security: Validation Functions
+// Security: Constants & Validation Functions
 // ============================================
+
+/** Maximum sane order values to prevent fat-finger errors */
+const MAX_PRICE = 100_000_000_000_000n; // $100M in smallest unit
+const MAX_QUANTITY = 100_000_000_000_000n;
 
 /**
  * Validate Sui object ID format (0x + 64 hex chars)
@@ -86,10 +90,6 @@ function validateMarketOrderParams(params: PlaceMarketOrderParams): void {
     throw new Error('[Security] Quantity exceeds maximum allowed value');
   }
 }
-
-// Maximum sane order values to prevent fat-finger errors
-const MAX_PRICE = 100_000_000_000_000n; // $100M in smallest unit
-const MAX_QUANTITY = 100_000_000_000_000n;
 
 /**
  * Validate slippage parameters for swaps

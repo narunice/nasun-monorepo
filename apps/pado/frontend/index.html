@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self';
+      style-src 'self' 'unsafe-inline' https://use.typekit.net https://p.typekit.net;
+      font-src 'self' https://use.typekit.net https://p.typekit.net data:;
+      img-src 'self' data: blob:;
+      connect-src 'self'
+        https://rpc.devnet.nasun.io
+        https://faucet.devnet.nasun.io
+        https://api.coingecko.com
+        https://api.binance.com
+        https://accounts.google.com
+        https://prover-dev.mystenlabs.com;
+      frame-src https://accounts.google.com;
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+    " />
+
     <!-- Adobe Fonts: Pirulen (Brand font) -->
     <link rel="preconnect" href="https://p.typekit.net" crossorigin />
     <link rel="preconnect" href="https://use.typekit.net" crossorigin />

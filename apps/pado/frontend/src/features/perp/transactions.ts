@@ -4,7 +4,15 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { PERP_PACKAGE_ID, PERP_MODULE, ORACLE_REGISTRY_ID } from './constants';
+import {
+  PERP_PACKAGE_ID,
+  PERP_MODULE,
+  ORACLE_REGISTRY_ID,
+  MAX_LEVERAGE,
+  MIN_LEVERAGE,
+  MIN_POSITION_SIZE,
+  BPS,
+} from './constants';
 import type {
   OpenPositionParams,
   ClosePositionParams,
@@ -14,6 +22,84 @@ import type {
 
 /** Standard clock object ID */
 const CLOCK_ID = '0x6';
+
+// ============================================
+// Security: Validation Functions
+// ============================================
+
+/** Maximum collateral/amount to prevent fat-finger errors (10M NUSDC) */
+const MAX_COLLATERAL = 10_000_000_000_000n; // 10M NUSDC (6 decimals)
+
+/** Maximum position size */
+const MAX_POSITION_SIZE = 100_000_000_000_000n;
+
+/** Maximum fee in BPS (10% = 1000 bps) */
+const MAX_FEE_BPS = 1000;
+
+/**
+ * Validate open position parameters
+ * @throws Error if any parameter is out of acceptable range
+ */
+function validateOpenPositionParams(params: OpenPositionParams): void {
+  // Leverage: 1-20 (mirrors on-chain MAX_LEVERAGE)
+  if (params.leverage < MIN_LEVERAGE || params.leverage > MAX_LEVERAGE) {
+    throw new Error(
+      `[Security] Leverage must be between ${MIN_LEVERAGE}x and ${MAX_LEVERAGE}x (got ${params.leverage}x)`
+    );
+  }
+  if (!Number.isInteger(params.leverage)) {
+    throw new Error('[Security] Leverage must be an integer');
+  }
+
+  // Size: positive and within bounds
+  if (params.size <= 0n) {
+    throw new Error('[Security] Position size must be positive');
+  }
+  if (params.size < BigInt(MIN_POSITION_SIZE)) {
+    throw new Error(`[Security] Position size below minimum (${MIN_POSITION_SIZE})`);
+  }
+  if (params.size > MAX_POSITION_SIZE) {
+    throw new Error('[Security] Position size exceeds maximum allowed value');
+  }
+
+  // Collateral: positive and within bounds
+  if (params.collateralAmount <= 0n) {
+    throw new Error('[Security] Collateral amount must be positive');
+  }
+  if (params.collateralAmount > MAX_COLLATERAL) {
+    throw new Error('[Security] Collateral amount exceeds maximum allowed value');
+  }
+
+  // Price: must be positive
+  if (params.currentPrice <= 0n) {
+    throw new Error('[Security] Current price must be positive');
+  }
+}
+
+/**
+ * Validate collateral amount
+ */
+function validateCollateralAmount(amount: bigint): void {
+  if (amount <= 0n) {
+    throw new Error('[Security] Amount must be positive');
+  }
+  if (amount > MAX_COLLATERAL) {
+    throw new Error('[Security] Amount exceeds maximum allowed value');
+  }
+}
+
+/**
+ * Validate fee BPS value
+ */
+function validateFeeBps(fee: number, label: string): void {
+  if (!Number.isInteger(fee) || fee < 0 || fee > MAX_FEE_BPS) {
+    throw new Error(`[Security] ${label} must be 0-${MAX_FEE_BPS} basis points (got ${fee})`);
+  }
+}
+
+// ============================================
+// User Transaction Builders
+// ============================================
 
 /**
  * Build transaction to open a new perpetual position
@@ -28,10 +114,10 @@ export function buildOpenPosition(
   nusdcCoinId: string,
   senderAddress: string,
 ): Transaction {
+  validateOpenPositionParams(params);
+
   const tx = new Transaction();
 
-  // Call open_position
-  // open_position(market, is_long, size, leverage, collateral, current_price, clock, ctx)
   const [position] = tx.moveCall({
     target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::open_position`,
     arguments: [
@@ -63,6 +149,8 @@ export function buildOpenPositionWithAmount(
   params: OpenPositionParams,
   nusdcCoinId: string,
 ): Transaction {
+  validateOpenPositionParams(params);
+
   const tx = new Transaction();
 
   // Split the exact collateral amount from the coin
@@ -95,6 +183,10 @@ export function buildOpenPositionWithAmount(
  * @returns Transaction object
  */
 export function buildClosePosition(params: ClosePositionParams): Transaction {
+  if (params.currentPrice <= 0n) {
+    throw new Error('[Security] Current price must be positive');
+  }
+
   const tx = new Transaction();
 
   // close_position returns Coin<NUSDC> (collateral + P&L)
@@ -151,6 +243,8 @@ export function buildAddCollateralWithAmount(
   params: AddCollateralParams,
   nusdcCoinId: string,
 ): Transaction {
+  validateCollateralAmount(params.amount);
+
   const tx = new Transaction();
 
   // Split the exact amount
@@ -181,6 +275,8 @@ export function buildAddCollateralWithAmount(
 export function buildRemoveCollateral(
   params: RemoveCollateralParams,
 ): Transaction {
+  validateCollateralAmount(params.amount);
+
   const tx = new Transaction();
 
   // remove_collateral returns Coin<NUSDC>
@@ -198,7 +294,9 @@ export function buildRemoveCollateral(
   return tx;
 }
 
-// ===== Admin Functions =====
+// ============================================
+// Admin Transaction Builders
+// ============================================
 
 /**
  * Build transaction to create a new perpetual market
@@ -214,6 +312,16 @@ export function buildCreateMarket(
   name: string,
   maxOpenInterest: bigint,
 ): Transaction {
+  if (!Number.isInteger(baseSymbol) || baseSymbol < 1 || baseSymbol > 100) {
+    throw new Error(`[Security] Invalid oracle symbol ID: ${baseSymbol}`);
+  }
+  if (!name || name.length > 50) {
+    throw new Error('[Security] Market name must be 1-50 characters');
+  }
+  if (maxOpenInterest <= 0n) {
+    throw new Error('[Security] Max open interest must be positive');
+  }
+
   const tx = new Transaction();
 
   tx.moveCall({
@@ -263,6 +371,9 @@ export function buildSetMarketFees(
   makerFeeBps: number,
   takerFeeBps: number,
 ): Transaction {
+  validateFeeBps(makerFeeBps, 'Maker fee');
+  validateFeeBps(takerFeeBps, 'Taker fee');
+
   const tx = new Transaction();
 
   tx.moveCall({
@@ -277,7 +388,9 @@ export function buildSetMarketFees(
   return tx;
 }
 
-// ===== Funding Functions =====
+// ============================================
+// Funding Functions
+// ============================================
 
 /**
  * Build transaction to settle funding rate
