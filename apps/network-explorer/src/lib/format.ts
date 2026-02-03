@@ -97,6 +97,17 @@ export function truncateId(id: string, startLen: number = 10, endLen: number = 8
   return `${id.slice(0, startLen)}...${id.slice(-endLen)}`;
 }
 
+// Truncate address for display (e.g., "0x1234ab...cdef56")
+export function truncateAddress(address: string, startLen: number = 8, endLen: number = 6): string {
+  if (address.length <= startLen + endLen + 3) return address;
+  return `${address.slice(0, startLen)}...${address.slice(-endLen)}`;
+}
+
+// Format percentage (e.g., 0.0512 -> "5.12%")
+export function formatPercentage(value: number): string {
+  return `${(value * 100).toFixed(2)}%`;
+}
+
 // Token Balance Format (considering decimals)
 // Known decimals: NSN=9, NUSDC=6, NBTC=8
 export function formatTokenBalance(balance: string, coinType: string): string {

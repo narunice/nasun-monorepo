@@ -3,7 +3,7 @@
  * Specialized view for NFT objects with visual-first layout
  */
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import NFTMedia from './NFTMedia';
@@ -14,51 +14,20 @@ import { Card } from './ui/Card';
 import { getDisplayMediaUrl, getNFTName, getNFTDescription } from '../lib/media';
 import { extractAttributes, getCollectionName, getModuleName, shortenId } from '../lib/nft';
 import { formatObjectType } from '../lib/format';
+import { parseContent, getOwnerAddress } from '../lib/object-utils';
 
 interface NFTDetailViewProps {
   object: SuiObjectResponse;
 }
 
-// Parse content to get fields
-function parseContent(
-  content: SuiObjectResponse['data']
-): { fields?: Record<string, unknown> } | null {
-  if (!content?.content) return null;
-  if (content.content.dataType !== 'moveObject') return null;
-  return { fields: content.content.fields as Record<string, unknown> };
-}
-
-// Get owner address from owner object
-function getOwnerAddress(owner: unknown): string | null {
-  if (!owner || typeof owner !== 'object') return null;
-  if ('AddressOwner' in (owner as Record<string, unknown>)) {
-    return (owner as { AddressOwner: string }).AddressOwner;
-  }
-  if ('ObjectOwner' in (owner as Record<string, unknown>)) {
-    return (owner as { ObjectOwner: string }).ObjectOwner;
-  }
-  return null;
-}
-
 export default function NFTDetailView({ object }: NFTDetailViewProps) {
   const [showRawData, setShowRawData] = useState(false);
-  const [ownerCopied, setOwnerCopied] = useState(false);
-
-  const handleCopyOwner = useCallback(async (address: string) => {
-    try {
-      await navigator.clipboard.writeText(address);
-      setOwnerCopied(true);
-      setTimeout(() => setOwnerCopied(false), 1500);
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
-  }, []);
 
   const data = object.data;
   if (!data) return null;
 
   const display = data.display?.data;
-  const content = parseContent(data);
+  const content = parseContent(data.content);
 
   // Extract NFT info with fallback
   const mediaUrl = getDisplayMediaUrl(display, content);
@@ -150,50 +119,14 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Owner</p>
-                  <div className="flex items-center gap-1">
-                    <Link
-                      to={`/address/${ownerAddress}`}
-                      className="text-sm text-primary hover:underline font-mono"
-                    >
-                      {shortenId(ownerAddress, 8)}
-                    </Link>
-                    <button
-                      onClick={() => handleCopyOwner(ownerAddress)}
-                      className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                      title={ownerCopied ? 'Copied!' : 'Copy address'}
-                      type="button"
-                    >
-                      {ownerCopied ? (
-                        <svg
-                          className="w-3.5 h-3.5 dark:text-nasun-c3 text-teal-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+                  <CopyableId
+                    value={ownerAddress}
+                    shorten={8}
+                    showCopy
+                    showLink
+                    linkType="address"
+                    size="sm"
+                  />
                 </div>
               </div>
             </Card>
