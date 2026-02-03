@@ -4,7 +4,7 @@
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { csvResponse, errorResponse } from '@/utils/response';
+import { csvResponse, errorResponse, corsHeaders } from '@/utils/response';
 import { validateAdminApiKey } from '@/utils/auth';
 import { scanAllItems } from '@/utils/dynamodb';
 
@@ -13,15 +13,13 @@ export async function handler(
 ): Promise<APIGatewayProxyResult> {
   console.log('Admin Export Request:', JSON.stringify(event, null, 2));
 
+  const requestOrigin = event.headers?.origin || event.headers?.Origin;
+
   // OPTIONS 요청 처리 (CORS Preflight)
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, Authorization',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS'
-      },
+      headers: corsHeaders(requestOrigin),
       body: ''
     };
   }
@@ -31,7 +29,7 @@ export async function handler(
     const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
     if (!validateAdminApiKey(apiKey)) {
       console.warn('Unauthorized export attempt');
-      return errorResponse('UNAUTHORIZED', 'Invalid API Key', 401);
+      return errorResponse('UNAUTHORIZED', 'Invalid API Key', 401, undefined, requestOrigin);
     }
 
     // 2. Query parameter 파싱
@@ -75,13 +73,15 @@ export async function handler(
     console.log(`CSV generated: ${filename} (${csvContent.length} bytes)`);
 
     // 6. CSV 응답 반환
-    return csvResponse(csvContent, filename);
+    return csvResponse(csvContent, filename, requestOrigin);
   } catch (error: any) {
     console.error('Admin export error:', error);
     return errorResponse(
       'INTERNAL_ERROR',
       'Failed to export whitelist. Please try again.',
-      500
+      500,
+      undefined,
+      requestOrigin
     );
   }
 }

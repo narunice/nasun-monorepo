@@ -1,20 +1,38 @@
 /**
- * API Gateway 응답 헬퍼 함수
+ * API Gateway response helpers
  */
 
-export function corsHeaders() {
+const ALLOWED_ORIGINS = [
+  'https://nasun.io',
+  'https://www.nasun.io',
+  'https://staging.nasun.io',
+  'https://gensol.io',
+  'https://www.gensol.io',
+];
+
+if (process.env.NODE_ENV !== 'production') {
+  ALLOWED_ORIGINS.push('http://localhost:5174');
+}
+
+function resolveOrigin(requestOrigin?: string): string {
+  if (!requestOrigin) return ALLOWED_ORIGINS[0];
+  const normalized = requestOrigin.replace(/\/$/, '');
+  return ALLOWED_ORIGINS.includes(normalized) ? normalized : ALLOWED_ORIGINS[0];
+}
+
+export function corsHeaders(requestOrigin?: string) {
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': resolveOrigin(requestOrigin),
     'Access-Control-Allow-Headers': 'Content-Type, x-api-key, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json'
   };
 }
 
-export function successResponse(data: any, statusCode: number = 200) {
+export function successResponse(data: any, statusCode: number = 200, requestOrigin?: string) {
   return {
     statusCode,
-    headers: corsHeaders(),
+    headers: corsHeaders(requestOrigin),
     body: JSON.stringify({
       success: true,
       data
@@ -26,11 +44,12 @@ export function errorResponse(
   error: string,
   message: string,
   statusCode: number = 400,
-  data?: any
+  data?: any,
+  requestOrigin?: string
 ) {
   return {
     statusCode,
-    headers: corsHeaders(),
+    headers: corsHeaders(requestOrigin),
     body: JSON.stringify({
       success: false,
       error,
@@ -40,13 +59,13 @@ export function errorResponse(
   };
 }
 
-export function csvResponse(csvContent: string, filename: string) {
+export function csvResponse(csvContent: string, filename: string, requestOrigin?: string) {
   return {
     statusCode: 200,
     headers: {
       'Content-Type': 'text/csv',
       'Content-Disposition': `attachment; filename="${filename}"`,
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': resolveOrigin(requestOrigin),
     },
     body: csvContent
   };
