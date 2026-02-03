@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useCopyToClipboard } from '../../hooks';
 
 interface JsonBlockProps {
   data: unknown;
@@ -6,23 +7,14 @@ interface JsonBlockProps {
 }
 
 export function JsonBlock({ data, borderColor = 'border-border' }: JsonBlockProps) {
-  const [copied, setCopied] = useState(false);
-  const jsonString = JSON.stringify(data, null, 2);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(jsonString);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
+  const { copied, handleCopy } = useCopyToClipboard();
+  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
 
   return (
     <div className="relative">
       <button
-        onClick={handleCopy}
+        onClick={() => handleCopy(jsonString)}
+        aria-label="Copy JSON"
         className="absolute top-2 right-4 z-10 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 bg-secondary/20 hover:bg-secondary/40 text-foreground border border-border"
       >
         {copied ? (

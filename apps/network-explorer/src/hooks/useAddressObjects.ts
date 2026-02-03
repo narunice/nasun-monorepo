@@ -4,7 +4,6 @@ import { getAddressInfo, loadMoreObjects } from '../lib/sui-client';
 import { isNFTObject } from '../lib/media';
 import { parseContent } from '../lib/object-utils';
 import type { SuiObjectResponse } from '@mysten/sui/client';
-import type { AddressInfo } from '../lib/types';
 
 export function useAddressObjects(addr: string | undefined) {
   const [accumulatedObjects, setAccumulatedObjects] = useState<SuiObjectResponse[]>([]);
@@ -15,7 +14,7 @@ export function useAddressObjects(addr: string | undefined) {
     queryKey: ['address', addr],
     queryFn: () => getAddressInfo(addr!),
     enabled: !!addr,
-  }) as { data: AddressInfo | undefined, isLoading: boolean, error: unknown };
+  });
 
   // Initialize accumulated objects when addressInfo changes
   useEffect(() => {
