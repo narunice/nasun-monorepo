@@ -34,7 +34,7 @@ interface SelfCustodyHeaderProps {
 
 type HeaderProps = ZkLoginHeaderProps | SelfCustodyHeaderProps;
 
-interface ConnectedViewProps {
+export interface ConnectedViewProps {
   // Header variant
   header: HeaderProps;
   isMobile: boolean;
