@@ -143,6 +143,39 @@ export async function getPrice(
 }
 
 /**
+ * Get price with staleness validation.
+ * Throws if price is unavailable or stale, preventing trades with outdated data.
+ *
+ * @param client - SuiClient instance
+ * @param symbol - Symbol key
+ * @param maxStaleMs - Maximum acceptable age (default: 120 seconds)
+ * @returns Validated PriceData
+ * @throws Error if price is unavailable or stale
+ */
+export async function getPriceWithValidation(
+  client: SuiClient,
+  symbol: SymbolKey,
+  maxStaleMs: number = 120_000
+): Promise<PriceData> {
+  const price = await getPrice(client, symbol);
+
+  if (!price) {
+    throw new Error(`[Oracle] Price unavailable for ${symbol}. Cannot proceed with trade.`);
+  }
+
+  if (!isFresh(price, maxStaleMs)) {
+    const ageMs = Date.now() - price.timestamp;
+    throw new Error(
+      `[Oracle] Price stale for ${symbol}. ` +
+      `Age: ${Math.floor(ageMs / 1000)}s, Max: ${Math.floor(maxStaleMs / 1000)}s. ` +
+      `Wait for fresh oracle data before trading.`
+    );
+  }
+
+  return price;
+}
+
+/**
  * Get all prices at once
  *
  * @param client - SuiClient instance

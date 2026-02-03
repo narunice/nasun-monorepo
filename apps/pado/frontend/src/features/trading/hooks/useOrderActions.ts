@@ -16,6 +16,7 @@ import { useToast } from "@/components/common";
 import { quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepbook";
 import { isMarginError } from "../../../lib/risk-engine";
 import { parseError } from "../utils/errorParser";
+import { RPC_SYNC_DELAY_MS } from "../../../lib/constants";
 
 export interface UseOrderActionsResult {
   isLoading: boolean;
@@ -219,7 +220,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
         if (hasQuoteDeposit || hasBaseDeposit) {
           // Wait for RPC to sync new object versions after deposit
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
         }
       }
 
@@ -295,7 +296,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
         if (hasQuoteDeposit || hasBaseDeposit) {
           // Wait for RPC to sync new object versions after deposit
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
         }
       }
 
@@ -363,7 +364,7 @@ export function useOrderActions(): UseOrderActionsResult {
     if (!hasMarginAccount) {
       try {
         // Wait for RPC to sync after BalanceManager creation
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
         await createMarginAccount();
         showToast("Pado enabled!", "success");
       } catch (error) {

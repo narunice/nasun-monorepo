@@ -103,12 +103,13 @@ function validateSlippageParams(minOutput: bigint, inputAmount?: bigint): void {
 
   // If input is provided, ensure minimum output is reasonable
   if (inputAmount && inputAmount > 0n) {
-    // Reject if slippage > 50% (likely a mistake or attack)
-    const halfInput = inputAmount / 2n;
-    if (minOutput < halfInput) {
+    // Reject if slippage > 10% (likely a mistake or front-running risk)
+    const tenPercentThreshold = (inputAmount * 90n) / 100n;
+    if (minOutput < tenPercentThreshold) {
       throw new Error(
-        '[Security] Slippage tolerance exceeds 50%. ' +
-        'This is likely an error. Adjust minOutput to protect against excessive slippage.'
+        '[Security] Slippage tolerance exceeds 10%. ' +
+        'This is likely an error or exposes the trade to front-running. ' +
+        'Adjust minOutput to protect against excessive slippage.'
       );
     }
   }

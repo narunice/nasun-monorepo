@@ -13,200 +13,15 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import type { PredictionMarket, Position } from '../types';
 import { calculateProbability } from '../types';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
+import { useTransactionSync } from '../../../hooks/useTransactionSync';
 import { NUSDC_DECIMALS } from '../constants';
+import { PayoffCard } from './position/PayoffCard';
+import { FullyHedgedCard } from './position/FullyHedgedCard';
 
 interface PositionListProps {
   market: PredictionMarket;
   positions: Position[];
   onSuccess?: () => void;
-}
-
-// ========================================
-// PayoffCard - Shows single position with payoff structure
-// ========================================
-interface PayoffCardProps {
-  position: Position;
-  market: PredictionMarket;
-  onSell: (positionId: string) => void;
-  onClaim: (positionId: string) => void;
-  isLoading: boolean;
-}
-
-function PayoffCard({ position, market, onSell, onClaim, isLoading }: PayoffCardProps) {
-  const shares = Number(position.shares) / Math.pow(10, NUSDC_DECIMALS);
-  const costBasis = Number(position.costBasis) / Math.pow(10, NUSDC_DECIMALS);
-  const avgPrice = position.shares > 0n ? costBasis / shares : 0;
-
-  const isWinning = market.status === 'resolved' && position.isYes === market.outcome;
-  const isLosing = market.status === 'resolved' && position.isYes !== market.outcome;
-  const outcomeLabel = position.isYes ? 'YES' : 'NO';
-  const oppositeLabel = position.isYes ? 'NO' : 'YES';
-
-  return (
-    <div className={`p-4 rounded-xl border ${
-      position.isYes
-        ? 'bg-green-500/10 border-green-500/30'
-        : 'bg-red-500/10 border-red-500/30'
-    }`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${
-            position.isYes ? 'bg-green-500' : 'bg-red-500'
-          }`} />
-          <span className={`font-bold ${
-            position.isYes ? 'text-green-500' : 'text-red-500'
-          }`}>
-            {outcomeLabel} Position
-          </span>
-        </div>
-      </div>
-
-      {/* Position Info */}
-      <div className="space-y-2 text-sm mb-3">
-        <div className="flex justify-between">
-          <span className="text-theme-text-muted">Shares</span>
-          <span className="font-mono text-theme-text-primary">
-            {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-theme-text-muted">Avg Price</span>
-          <span className="font-mono text-theme-text-primary">
-            {avgPrice.toFixed(2)} NUSDC
-          </span>
-        </div>
-      </div>
-
-      {/* Payoff at Resolution */}
-      <div className="mt-3 pt-3 border-t border-theme-border/50">
-        <p className="text-xs text-theme-text-muted mb-2">Payoff at Resolution</p>
-        <div className="space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-theme-text-secondary">If {outcomeLabel} wins →</span>
-            <span className="text-green-500 font-mono">
-              {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-theme-text-secondary">If {oppositeLabel} wins →</span>
-            <span className="text-red-500 font-mono">0 NUSDC</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="mt-4">
-        {market.status === 'open' && (
-          <button
-            onClick={() => onSell(position.id)}
-            disabled={isLoading}
-            className="w-full py-2 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {isLoading ? 'Processing...' : 'Sell Position'}
-          </button>
-        )}
-
-        {isWinning && (
-          <button
-            onClick={() => onClaim(position.id)}
-            disabled={isLoading}
-            className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {isLoading ? 'Claiming...' : `Claim ${shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC`}
-          </button>
-        )}
-
-        {isLosing && (
-          <div className="w-full py-2 bg-gray-600/50 text-gray-400 rounded-lg text-sm font-medium text-center">
-            Position Lost
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ========================================
-// FullyHedgedCard - Shows when user holds both YES and NO
-// ========================================
-interface FullyHedgedCardProps {
-  yesPosition: Position;
-  noPosition: Position;
-  market: PredictionMarket;
-  onSellYes: () => void;
-  onSellNo: () => void;
-  isLoading: boolean;
-}
-
-function FullyHedgedCard({ yesPosition, noPosition, market, onSellYes, onSellNo, isLoading }: FullyHedgedCardProps) {
-  const yesShares = Number(yesPosition.shares) / Math.pow(10, NUSDC_DECIMALS);
-  const noShares = Number(noPosition.shares) / Math.pow(10, NUSDC_DECIMALS);
-  const hedgedShares = Math.min(yesShares, noShares);
-
-  return (
-    <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-4">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">⚖️</span>
-        <span className="font-bold text-theme-text-primary">Fully Hedged Position</span>
-      </div>
-
-      {/* Explanation */}
-      <p className="text-sm text-theme-text-secondary mb-4">
-        You hold both YES and NO. Your payout is fixed regardless of outcome.
-      </p>
-
-      {/* Guaranteed Payout */}
-      <div className="bg-theme-bg-secondary rounded-lg p-3 mb-4">
-        <div className="flex justify-between items-center">
-          <span className="text-theme-text-muted">Guaranteed Payout</span>
-          <span className="font-bold text-green-500">
-            {hedgedShares.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
-          </span>
-        </div>
-        <div className="flex justify-between items-center mt-2">
-          <span className="text-theme-text-muted">Risk</span>
-          <span className="text-blue-400 font-medium">None</span>
-        </div>
-      </div>
-
-      {/* Position breakdown (smaller text) */}
-      <div className="text-xs text-theme-text-muted mb-3 space-y-1">
-        <div className="flex justify-between">
-          <span>YES shares:</span>
-          <span className="font-mono">{yesShares.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>NO shares:</span>
-          <span className="font-mono">{noShares.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      {market.status === 'open' && (
-        <>
-          <p className="text-xs text-theme-text-muted mb-2">To take a position:</p>
-          <div className="flex gap-2">
-            <button
-              onClick={onSellYes}
-              disabled={isLoading}
-              className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              Sell YES → Bet NO
-            </button>
-            <button
-              onClick={onSellNo}
-              disabled={isLoading}
-              className="flex-1 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              Sell NO → Bet YES
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
 
 export function PositionList({ market, positions, onSuccess }: PositionListProps) {
@@ -216,7 +31,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
   const [sellModalPosition, setSellModalPosition] = useState<string | null>(null);
   const [sellPriceNusdc, setSellPriceNusdc] = useState(''); // Changed from % to NUSDC
   const [error, setError] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { isSyncing, startSync } = useTransactionSync(onSuccess);
 
   // Calculate current probability for default price
   const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
@@ -267,31 +82,21 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     if (result.success) {
       setSellModalPosition(null);
       setSellPriceNusdc('');
-      // Show syncing state while blockchain updates
-      setIsSyncing(true);
-      setTimeout(() => {
-        setIsSyncing(false);
-        onSuccess?.();
-      }, 1500);
+      startSync();
     } else {
       setError(result.error || 'Failed to place sell order');
     }
-  }, [sellModalPosition, sellPriceNusdc, market.id, placeSellOrder, onSuccess]);
+  }, [sellModalPosition, sellPriceNusdc, market.id, placeSellOrder, startSync]);
 
   const handleClaim = useCallback(async (positionId: string) => {
     setError(null);
     const result = await claimWinnings(market.id, positionId);
     if (result.success) {
-      // Show syncing state while blockchain updates
-      setIsSyncing(true);
-      setTimeout(() => {
-        setIsSyncing(false);
-        onSuccess?.();
-      }, 1500);
+      startSync();
     } else {
       setError(result.error || 'Failed to claim winnings');
     }
-  }, [market.id, claimWinnings, onSuccess]);
+  }, [market.id, claimWinnings, startSync]);
 
   if (status !== 'unlocked' && !isZkConnected) {
     return null;
