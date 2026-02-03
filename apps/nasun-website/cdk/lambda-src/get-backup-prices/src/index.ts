@@ -6,15 +6,24 @@ const client = new DynamoDBClient({ region: "ap-northeast-2" });
 const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = "CryptoBackupPrices";
 
-// CORS 헤더를 포함한 응답 헬퍼
-const corsHeaders = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-  "Access-Control-Allow-Methods": "GET,OPTIONS",
-};
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
 
-export const handler = async () => {
+function corsHeaders(origin?: string) {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": getCorsOrigin(origin),
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+  };
+}
+
+export const handler = async (event?: { headers?: Record<string, string> }) => {
+  const origin = event?.headers?.origin || event?.headers?.Origin;
+  const headers = corsHeaders(origin);
   try {
     const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
 
@@ -29,14 +38,14 @@ export const handler = async () => {
     return {
       statusCode: 200,
       body: JSON.stringify(prices),
-      headers: corsHeaders,
+      headers,
     };
   } catch (err) {
     console.error("Error reading DynamoDB:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Failed to fetch backup prices" }),
-      headers: corsHeaders,
+      headers,
     };
   }
 };

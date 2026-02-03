@@ -17,6 +17,9 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { Account, Platform, DYNAMO_KEYS, SeasonAccountScore } from '../types';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -53,12 +56,7 @@ function createResponse(
 ): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    },
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
@@ -151,6 +149,7 @@ async function getSeasonRanks(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return createResponse(200, { accounts: [], total: 0 });

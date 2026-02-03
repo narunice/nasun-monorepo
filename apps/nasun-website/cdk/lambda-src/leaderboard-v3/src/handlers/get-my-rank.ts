@@ -27,6 +27,9 @@ import {
   RankChange,
   DYNAMO_KEYS,
 } from '../types';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -53,12 +56,7 @@ function createResponse(
 ): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    },
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
@@ -390,6 +388,7 @@ async function syncProfileFromUserProfiles(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     const emptyResponse: MyRankResponse = {

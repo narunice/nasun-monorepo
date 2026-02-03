@@ -3,17 +3,27 @@ import { getWallet } from './handlers/getWallet';
 import { saveWallet } from './handlers/saveWallet';
 import { deleteWallet } from './handlers/deleteWallet';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-  'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-  'Content-Type': 'application/json'
-};
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+let _requestOrigin: string | undefined;
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': getCorsOrigin(_requestOrigin),
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+    'Content-Type': 'application/json'
+  };
+}
 
 export const handler = async (
   event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   console.log('Wallet API invoked:', {
     httpMethod: event.httpMethod,
     path: event.path,
@@ -24,7 +34,7 @@ export const handler = async (
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers: corsHeaders(),
       body: ''
     };
   }
@@ -36,7 +46,7 @@ export const handler = async (
     if (!identityId) {
       return {
         statusCode: 401,
-        headers: corsHeaders,
+        headers: corsHeaders(),
         body: JSON.stringify({ error: 'Unauthorized', message: 'No identity found in token' })
       };
     }
@@ -49,14 +59,14 @@ export const handler = async (
         if (!wallet) {
           return {
             statusCode: 404,
-            headers: corsHeaders,
+            headers: corsHeaders(),
             body: JSON.stringify({ error: 'Not Found', message: 'No wallet address found' })
           };
         }
 
         return {
           statusCode: 200,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify(wallet)
         };
       }
@@ -67,7 +77,7 @@ export const handler = async (
         if (!body.walletAddress) {
           return {
             statusCode: 400,
-            headers: corsHeaders,
+            headers: corsHeaders(),
             body: JSON.stringify({ error: 'Bad Request', message: 'walletAddress is required' })
           };
         }
@@ -80,7 +90,7 @@ export const handler = async (
 
         return {
           statusCode: 200,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify(wallet)
         };
       }
@@ -90,7 +100,7 @@ export const handler = async (
 
         return {
           statusCode: 204,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: ''
         };
       }
@@ -98,7 +108,7 @@ export const handler = async (
       default:
         return {
           statusCode: 405,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({ error: 'Method Not Allowed' })
         };
     }
@@ -107,7 +117,7 @@ export const handler = async (
 
     return {
       statusCode: 500,
-      headers: corsHeaders,
+      headers: corsHeaders(),
       body: JSON.stringify({
         error: 'Internal Server Error',
         message: error.message || 'Unknown error occurred'

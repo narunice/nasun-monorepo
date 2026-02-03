@@ -32,6 +32,9 @@ import {
   UpdateSeasonRequest,
   DYNAMO_KEYS,
 } from '../types';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -47,17 +50,10 @@ const POSTS_TABLE =
   process.env.LEADERBOARD_V3_POSTS_TABLE || DYNAMO_KEYS.POSTS_TABLE;
 const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
 
-const corsHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Username',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-};
-
 function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: corsHeaders,
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
@@ -428,6 +424,7 @@ export async function getDefaultSeason(): Promise<Season | null> {
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   console.log('Admin Seasons request:', JSON.stringify(event, null, 2));
 
   // Handle CORS preflight

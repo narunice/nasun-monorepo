@@ -1,6 +1,13 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE!;
 const ddbClient = new DynamoDBClient({});
 
@@ -13,15 +20,17 @@ const ddbClient = new DynamoDBClient({});
  */
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   console.log("[AccountDeactivation] Request received:", JSON.stringify(event, null, 2));
+  const origin = event.headers?.origin || event.headers?.Origin;
+  const corsHeader = { 'Access-Control-Allow-Origin': getCorsOrigin(origin) };
 
-  // ✅ 쿼리 파라미터에서 identityId 추출
+  // 쿼리 파라미터에서 identityId 추출
   const identityId = event.queryStringParameters?.identityId;
 
   if (!identityId) {
     console.error("[AccountDeactivation] IdentityId not found in query parameters.");
     return {
       statusCode: 400,
-      headers: { 'Access-Control-Allow-Origin': '*' },
+      headers: corsHeader,
       body: JSON.stringify({ message: "Bad Request: identityId query parameter is required" }),
     };
   }
@@ -53,7 +62,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return {
       statusCode: 202, // Accepted
-      headers: { 'Access-Control-Allow-Origin': '*' },
+      headers: corsHeader,
       body: JSON.stringify({ message: "Account deactivation request accepted." })
     };
 
@@ -62,14 +71,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       console.warn(`[AccountDeactivation] Profile not found for IdentityId: ${identityId}. Considering as success.`);
       return {
         statusCode: 202, // Still return Accepted, as the goal is a deleted state
-        headers: { 'Access-Control-Allow-Origin': '*' },
+        headers: corsHeader,
         body: JSON.stringify({ message: "Account already deleted or does not exist." })
       };
     }
     console.error(`[AccountDeactivation] Failed for IdentityId: ${identityId}`, error);
     return {
       statusCode: 500,
-      headers: { 'Access-Control-Allow-Origin': '*' },
+      headers: corsHeader,
       body: JSON.stringify({ message: "Internal server error during account deactivation." }),
     };
   }

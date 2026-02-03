@@ -6,24 +6,7 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as logs from 'aws-cdk-lib/aws-logs';
-
-// Security: CORS 허용 도메인 목록
-// Note: Devnet 환경이므로 localhost 개발 서버도 허용
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.nasun.io',
-  'https://staging.gensol.io',
-  'https://pado.finance',
-  'https://staging.pado.finance',
-  // Localhost development servers (devnet only)
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'http://localhost:5177', // baram
-];
+import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export interface AuthStackProps extends cdk.StackProps {
   readonly userProfilesTable: dynamodb.ITable;
@@ -34,6 +17,14 @@ export class AuthStack extends cdk.Stack {
     super(scope, id, props);
 
     const twitterSessionsTable = dynamodb.Table.fromTableName(this, "TwitterOAuthSessionsTable", "TwitterOAuthSessions");
+
+    // Import NFT event tasks table for secure X access token storage
+    const nftEventTasksTableName = cdk.Fn.importValue('NftEventTasksTableName');
+    const nftEventTasksTableArn = cdk.Fn.importValue('NftEventTasksTableArn');
+    const nftEventTasksTable = dynamodb.Table.fromTableAttributes(this, 'NftEventTasksTable', {
+      tableName: nftEventTasksTableName,
+      tableArn: nftEventTasksTableArn,
+    });
 
     // Determine secret name based on environment
     const isProduction = process.env.NODE_ENV === 'production';
@@ -62,6 +53,9 @@ export class AuthStack extends cdk.Stack {
         OAUTH2_CLIENT_SECRET: process.env.OAUTH2_CLIENT_SECRET || "",
         // Leaderboard V3 profile sync (optional - fails gracefully if table doesn't exist)
         LEADERBOARD_V3_ACCOUNTS_TABLE: leaderboardV3AccountsTableName,
+        // NFT event tasks table for secure X access token storage (backend proxy)
+        NFT_EVENT_TASKS_TABLE_NAME: nftEventTasksTableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, "TwitterAuthLambdaLogGroup", {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -76,6 +70,8 @@ export class AuthStack extends cdk.Stack {
     // Grant DynamoDB permissions
     twitterSessionsTable.grantReadWriteData(twitterLoginFunction);
     props.userProfilesTable.grantReadWriteData(twitterLoginFunction);
+    // Grant write access to NFT event tasks table for X access token storage
+    nftEventTasksTable.grantWriteData(twitterLoginFunction);
 
     // Grant permissions to leaderboard-v3-accounts table (for profile sync)
     twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({
@@ -159,6 +155,7 @@ export class AuthStack extends cdk.Stack {
         COGNITO_DEVELOPER_PROVIDER_NAME: process.env.COGNITO_DEVELOPER_PROVIDER_NAME || 'nasun.io',
         ETHEREUM_CHAIN_ID_MAINNET: process.env.ETHEREUM_CHAIN_ID_MAINNET || '1',
         ETHEREUM_CHAIN_ID_SEPOLIA: process.env.ETHEREUM_CHAIN_ID_SEPOLIA || '11155111',
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, 'MetaMaskAuthLambdaLogGroup', {
         logGroupName: '/aws/lambda/nasun-auth-metamask',
@@ -245,7 +242,7 @@ export class AuthStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         ZKLOGIN_TABLE_NAME: zkLoginTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         ALLOWED_AUD: process.env.GOOGLE_CLIENT_ID || '',
       },
       logGroup: new logs.LogGroup(this, 'ZkLoginSaltLambdaLogGroup', {

@@ -23,6 +23,13 @@ import {
 import { WhitelistService } from './services/whitelistService';
 import { TaskTracker } from './services/taskTracker';
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 /**
  * Lambda 환경 변수
  */
@@ -42,6 +49,7 @@ const env: NftEventEnv = {
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   console.log('[register-user] Event:', JSON.stringify(event, null, 2));
+  const origin = event.headers?.origin || event.headers?.Origin;
 
   try {
     // 1. 요청 파싱
@@ -90,7 +98,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         statusCode: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': getCorsOrigin(origin),
           'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
         },
         body: JSON.stringify({
@@ -117,7 +125,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': getCorsOrigin(origin),
         'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
       },
       body: JSON.stringify(response),
@@ -130,7 +138,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         statusCode: error.statusCode,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': getCorsOrigin(origin),
         },
         body: JSON.stringify({
           success: false,
@@ -144,7 +152,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': getCorsOrigin(origin),
       },
       body: JSON.stringify({
         success: false,

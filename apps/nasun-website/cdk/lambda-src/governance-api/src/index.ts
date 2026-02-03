@@ -515,11 +515,20 @@ function getAlchemyClient(): Alchemy {
 }
 
 // CORS headers
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+let _requestOrigin: string | undefined;
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": getCorsOrigin(_requestOrigin),
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  };
+}
 
 interface VotingPowerResponse {
   address: string;
@@ -633,9 +642,11 @@ function calculateVotingPower(
  * Main handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+
   // Handle CORS preflight
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: corsHeaders, body: "" };
+    return { statusCode: 200, headers: corsHeaders(), body: "" };
   }
 
   console.log("Governance API called:", {
@@ -656,7 +667,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!twitterHandle) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             error: "Missing twitterHandle parameter",
           }),
@@ -691,7 +702,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       return {
         statusCode: 200,
-        headers: corsHeaders,
+        headers: corsHeaders(),
         body: JSON.stringify(response),
       };
     }
@@ -700,7 +711,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     if (path.endsWith("/config") && event.httpMethod === "GET") {
       return {
         statusCode: 200,
-        headers: corsHeaders,
+        headers: corsHeaders(),
         body: JSON.stringify({
           leaderboardWeight: LEADERBOARD_WEIGHT,
           tokenWeight: TOKEN_WEIGHT,
@@ -715,7 +726,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!event.body) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({ error: "Request body is required" }),
         };
       }
@@ -725,7 +736,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!message || !signature || !proposalId) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             error: "Missing required fields: message, signature, proposalId",
           }),
@@ -736,7 +747,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!validateNftVerificationMessage(message, proposalId)) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             error: "Invalid or expired message format",
           }),
@@ -753,7 +764,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
         return {
           statusCode: 200,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             ethAddress,
             hasNasunNft: hasNft,
@@ -764,7 +775,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         console.error("NFT verification error:", maskSensitiveData({ message: error.message, stack: error.stack }));
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             error: "Invalid signature",
             message: error.message,
@@ -778,7 +789,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!event.body) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({ error: "Request body is required" }),
         };
       }
@@ -788,7 +799,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!voter || !proposalId) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({ error: "Missing voter or proposalId" }),
         };
       }
@@ -867,14 +878,14 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
         return {
           statusCode: 200,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify(certificate),
         };
       } catch (error: any) {
         console.error("Certificate issuance error:", maskSensitiveData({ message: error.message, stack: error.stack }));
         return {
           statusCode: 500,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             error: "Failed to issue certificate",
             message: error.message,
@@ -888,7 +899,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!event.body) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({ error: "Request body is required" }),
         };
       }
@@ -898,7 +909,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!txKindBytes || !sender) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({ error: "Missing txKindBytes or sender" }),
         };
       }
@@ -913,7 +924,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           console.error("Transaction validation failed:", validation.error);
           return {
             statusCode: 400,
-            headers: corsHeaders,
+            headers: corsHeaders(),
             body: JSON.stringify({
               error: "Transaction validation failed",
               details: validation.error,
@@ -926,7 +937,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         if (!proposalId) {
           return {
             statusCode: 400,
-            headers: corsHeaders,
+            headers: corsHeaders(),
             body: JSON.stringify({ error: "Could not extract proposal ID from transaction" }),
           };
         }
@@ -938,7 +949,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           console.log(`Rejecting sponsor request for Governance proposal ${proposalId}`);
           return {
             statusCode: 400,
-            headers: corsHeaders,
+            headers: corsHeaders(),
             body: JSON.stringify({
               error: "Governance proposals require user gas payment",
               code: "NOT_SPONSORED",
@@ -962,7 +973,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         if (coins.data.length === 0) {
           return {
             statusCode: 500,
-            headers: corsHeaders,
+            headers: corsHeaders(),
             body: JSON.stringify({ error: "Sponsor has no gas coins" }),
           };
         }
@@ -986,7 +997,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
         return {
           statusCode: 200,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             txBytes: toBase64(txBytes),
             sponsorSignature: sponsorSignature.signature,
@@ -996,7 +1007,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         console.error("Sponsor error:", maskSensitiveData({ message: error.message, stack: error.stack }));
         return {
           statusCode: 500,
-          headers: corsHeaders,
+          headers: corsHeaders(),
           body: JSON.stringify({
             error: "Failed to sponsor transaction",
             message: error.message,
@@ -1007,14 +1018,14 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     return {
       statusCode: 404,
-      headers: corsHeaders,
+      headers: corsHeaders(),
       body: JSON.stringify({ error: "Not found" }),
     };
   } catch (error: any) {
     console.error("Governance API error:", maskSensitiveData({ message: error.message, stack: error.stack }));
     return {
       statusCode: 500,
-      headers: corsHeaders,
+      headers: corsHeaders(),
       body: JSON.stringify({
         error: "Internal server error",
         message: error.message,

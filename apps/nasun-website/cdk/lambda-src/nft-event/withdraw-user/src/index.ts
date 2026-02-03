@@ -20,6 +20,22 @@ import {
 } from './types';
 import { WhitelistService } from './services/whitelistService';
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+function corsHeaders(origin?: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': getCorsOrigin(origin),
+    'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  };
+}
+
 /**
  * Lambda 환경 변수
  */
@@ -29,28 +45,16 @@ const env: NftEventEnv = {
 };
 
 /**
- * CORS 헤더
- */
-const CORS_HEADERS = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS',
-};
-
-/**
  * Lambda Handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   console.log('[withdraw-user] Event:', JSON.stringify(event, null, 2));
+  const origin = event.headers?.origin || event.headers?.Origin;
+  const headers = corsHeaders(origin);
 
   // OPTIONS 요청 처리 (CORS preflight)
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: '',
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   try {
@@ -79,7 +83,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     return {
       statusCode: 200,
-      headers: CORS_HEADERS,
+      headers,
       body: JSON.stringify(response),
     };
   } catch (error) {
@@ -88,7 +92,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     if (error instanceof NftEventError) {
       return {
         statusCode: error.statusCode,
-        headers: CORS_HEADERS,
+        headers,
         body: JSON.stringify({
           success: false,
           message: error.message,
@@ -99,7 +103,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     return {
       statusCode: 500,
-      headers: CORS_HEADERS,
+      headers,
       body: JSON.stringify({
         success: false,
         message: 'Internal server error',

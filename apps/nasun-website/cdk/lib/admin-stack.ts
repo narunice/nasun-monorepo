@@ -6,6 +6,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 import * as path from "path";
+import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 interface AdminStackProps extends cdk.StackProps {
   userProfilesTableName?: string;
@@ -50,13 +51,7 @@ export class AdminStack extends cdk.Stack {
       battalionTableName
     );
 
-    // Allowed origins for CORS
-    const allowedOrigins = [
-      "https://nasun.io",
-      "https://www.nasun.io",
-      "https://staging.nasun.io",
-      "http://localhost:5174",
-    ].join(",");
+    const allowedOrigins = ALLOWED_ORIGINS_ENV;
 
     // Admin Export Lambda
     this.exportFunction = new NodejsFunction(this, "AdminExportFunction", {
@@ -103,7 +98,7 @@ export class AdminStack extends cdk.Stack {
       restApiName: "Nasun Admin API",
       description: "Admin API for whitelist management",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ["Content-Type", "Authorization", "X-Identity-Id"],
         allowCredentials: true,
