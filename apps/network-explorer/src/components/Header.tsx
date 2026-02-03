@@ -45,25 +45,8 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
 
             <Link
               to="/"
-              className="flex items-center gap-2 text-xl md:text-2xl font-bold text-foreground"
+              className="text-xl md:text-2xl font-bold text-foreground"
             >
-              <img
-                src={`${import.meta.env.BASE_URL}nasun_symbol_white.svg`}
-                alt="Nasun"
-                className="h-6 w-6 md:h-8 md:w-8 dark:block hidden"
-              />
-              {/* Need a black logo for light mode or just filter/invert the white one? */}
-              {/* For now let's just use the same logo but handle its visibility or styling if needed.
-                  If the logo is white SVG, it won't show on white background.
-                  I should probably use a CSS filter or a different image.
-                  Let's try to invert it in light mode using CSS filter.
-              */}
-              <img
-                src={`${import.meta.env.BASE_URL}nasun_symbol_white.svg`}
-                alt="Nasun"
-                className="h-6 w-6 md:h-8 md:w-8 block dark:hidden invert"
-              />
-
               <span className="hidden sm:inline">Nasun Explorer</span>
               <span className="sm:hidden">Explorer</span>
             </Link>
