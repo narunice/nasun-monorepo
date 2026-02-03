@@ -12,6 +12,7 @@ import {
   getDAppMetadata,
 } from "@nasun/wallet";
 import type { ViewMode } from "../connect/LockedStateUI";
+import { sanitizeImageUrl } from "../shared";
 
 interface WCRequestApprovalProps {
   setViewMode: (mode: ViewMode) => void;
@@ -193,8 +194,9 @@ function BackButton({ onClick }: { onClick: () => void }) {
 
 function DAppAvatar({ name, icon }: { name: string; icon?: string }) {
   const [imgError, setImgError] = useState(false);
+  const safeIcon = sanitizeImageUrl(icon);
 
-  if (!icon || imgError) {
+  if (!safeIcon || imgError) {
     return (
       <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-600 flex items-center justify-center text-gray-500 dark:text-zinc-400 font-medium text-xs">
         {name.charAt(0).toUpperCase()}
@@ -204,7 +206,7 @@ function DAppAvatar({ name, icon }: { name: string; icon?: string }) {
 
   return (
     <img
-      src={icon}
+      src={safeIcon}
       alt={name}
       className="w-8 h-8 rounded-full"
       onError={() => setImgError(true)}

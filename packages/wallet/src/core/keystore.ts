@@ -25,6 +25,13 @@ import {
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const KEYSTORE_KEY = 'nasun_wallet_keystore';
+const MIN_PASSWORD_LENGTH = 8;
+
+function validatePassword(password: string): void {
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+}
 
 /**
  * Check if keystore exists
@@ -66,6 +73,7 @@ export function deleteKeystore(): void {
  * @returns Created address
  */
 export async function createAndSaveWallet(password: string): Promise<string> {
+  validatePassword(password);
   const keypair = generateKeypair();
   const address = getAddressFromKeypair(keypair);
   let secretKey: string | null = null;
@@ -168,6 +176,7 @@ export function getStoredAddress(): string | null {
 export async function createWalletWithMnemonic(
   password: string
 ): Promise<{ address: string; mnemonic: string }> {
+  validatePassword(password);
   // 1. Generate mnemonic
   const mnemonic = generateMnemonicPhrase();
 
@@ -210,6 +219,7 @@ export async function importWalletFromMnemonic(
   mnemonic: string,
   password: string
 ): Promise<string> {
+  validatePassword(password);
   // 1. Validate mnemonic
   if (!isValidMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic phrase');
@@ -253,6 +263,7 @@ export async function importWalletFromPrivateKey(
   privateKey: string,
   password: string
 ): Promise<string> {
+  validatePassword(password);
   // 1. Recover keypair from private key
   let keypair: Ed25519Keypair;
   try {
