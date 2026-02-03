@@ -41,13 +41,13 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
   };
 
   return (
-    <div className="bg-gray-800/80 border border-gray-700 rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
+    <div className="bg-gray-800/80 border border-gray-700 rounded-lg shadow-lg p-5 max-w-2xl mx-auto">
       {/* Warning Header */}
-      <div className="text-center mb-8">
-        <div className="mb-6 flex justify-center">
-          <div className="w-20 h-20 bg-yellow-900/20 rounded-full flex items-center justify-center">
+      <div className="text-center mb-5">
+        <div className="mb-3 flex justify-center">
+          <div className="w-12 h-12 bg-yellow-900/20 rounded-full flex items-center justify-center">
             <svg
-              className="w-12 h-12 text-yellow-500"
+              className="w-6 h-6 text-yellow-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -62,43 +62,26 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
           </div>
         </div>
 
-        <h2 className="text-nasun-white mb-4">{t("step6.walletDisconnected.title")}</h2>
-        <p className="text-gray-300 mb-2">{t("step6.walletDisconnected.description")}</p>
-        <p className="text-gray-300">{t("step6.walletDisconnected.instruction")}</p>
+        <h2 className="text-lg font-semibold text-nasun-white mb-2">{t("step6.walletDisconnected.title")}</h2>
+        <p className="text-sm text-gray-300">{t("step6.walletDisconnected.description")}</p>
+        <p className="text-sm text-gray-300 mt-1">{t("step6.walletDisconnected.instruction")}</p>
       </div>
 
       {/* Information Box */}
-      <div className="mb-8 p-6 bg-nasun-c4/20 rounded-lg border border-nasun-c4/40">
-        <div className="flex items-start space-x-3">
-          <svg
-            className="w-6 h-6 text-nasun-c4 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <div className="flex-1">
-            <h3 className="text-nasun-c4 mb-2">📝 {t("step6.info.dataPreserved")}</h3>
-            <ul className="space-y-2 text-nasun-c4">
-              <li>✅ {t("step6.info.registrationSaved")}</li>
-              <li>✅ {t("step6.info.xAccountSaved")}</li>
-              <li>⚠️ {t("step6.info.walletNeeded")}</li>
-            </ul>
-          </div>
-        </div>
+      <div className="mb-5 p-4 bg-nasun-c4/10 rounded-lg border border-nasun-c4/30">
+        <p className="text-sm font-medium text-nasun-c4 mb-2">{t("step6.info.dataPreserved")}</p>
+        <ul className="space-y-1 text-sm text-nasun-c4/80">
+          <li>{t("step6.info.registrationSaved")}</li>
+          <li>{t("step6.info.xAccountSaved")}</li>
+          <li className="text-yellow-400/80">{t("step6.info.walletNeeded")}</li>
+        </ul>
       </div>
 
       {/* Action Buttons */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Primary Action: Reconnect */}
-        <Button onClick={onReconnectClick} variant="c5" className="w-full" size="lg">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Button onClick={onReconnectClick} variant="c5" className="w-full">
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -110,8 +93,8 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
         </Button>
 
         {/* Secondary Action: Reset */}
-        <Button onClick={handleReset} variant="destructive" className="w-full" size="lg">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Button onClick={handleReset} variant="destructive" className="w-full">
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -124,8 +107,8 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
       </div>
 
       {/* Help Text */}
-      <div className="mt-8 p-4 bg-gray-700 rounded-lg">
-        <p className="text-gray-400 text-center">💡 {t("step6.walletDisconnected.helpText")}</p>
+      <div className="mt-5 p-3 bg-gray-700/50 rounded-lg">
+        <p className="text-xs text-gray-400 text-center">{t("step6.walletDisconnected.helpText")}</p>
       </div>
     </div>
   );

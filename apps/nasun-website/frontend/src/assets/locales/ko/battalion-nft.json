@@ -168,7 +168,7 @@
       "goHome": "홈으로 돌아가기"
     },
     "walletDisconnected": {
-      "title": "⚠️ 지갑 연결 해제됨",
+      "title": "Wallet Disconnected",
       "description": "등록 정보는 저장되었지만 MetaMask 지갑 연결이 해제되었습니다.",
       "instruction": "등록 상태를 확인하고 NFT 민팅에 참여하려면 지갑을 다시 연결해주세요.",
       "reconnectButton": "MetaMask 재연결",

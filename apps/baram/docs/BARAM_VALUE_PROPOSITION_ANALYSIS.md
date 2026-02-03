@@ -134,10 +134,10 @@ ExecutionComplianceRecord:
 
 **All Move contracts are independent packages** (minimal cross-package dependencies) → other dApps can import and compose with them.
 
-**What's missing for developer adoption:**
-1. REST/GraphQL API (currently requires direct Sui RPC calls)
-2. Unified SDK (`@baram/sdk` npm package)
-3. Developer Portal (docs + tutorials + playground)
+**Developer adoption status:**
+1. ~~Unified SDK~~ → `@nasun/baram-sdk` implemented (v0.1.0) — BaramClient class, executor selection, ECR query, CLI demo
+2. REST/GraphQL API — not yet built (currently requires direct Sui RPC or SDK)
+3. Developer Portal (docs + tutorials + playground) — not yet built
 
 **Use cases developers could build:**
 - DeFi + AI predictions (price forecasting, risk analysis with ECR as provenance)
@@ -182,7 +182,7 @@ ExecutionComplianceRecord:
 **Target**: AI agent developers, agentic commerce platforms
 **Message**: "The settlement infrastructure for AI agents to buy AI from other AI agents."
 **Competitive edge**: x402 is a protocol specification. Baram is a **working on-chain settlement layer**.
-**Execution**: Agent SDK (TypeScript, ~200-300 lines) + Langchain/AutoGPT/CrewAI integration
+**Execution**: Agent SDK implemented (`@nasun/baram-sdk`, ~500 lines) — Langchain/AutoGPT/CrewAI integration planned for Phase 2
 
 **Why this works:**
 - $52.62B market by 2030
@@ -215,6 +215,8 @@ ExecutionComplianceRecord:
 4. **2-person team reality** — Direct-to-Consumer marketing is cost-prohibitive. B2B strategy (provide infrastructure to AI startups / dApp builders) or Developer Platform strategy is more realistic. The working demo + code quality is the pitch.
 
 5. **Demonstrable at prototype stage** — ECR is already implemented (`compliance.move`). Agent SDK is achievable as an MVP. A working demo proving these value propositions is the strongest fundraising material.
+
+6. **SDK MVP is complete** — `@nasun/baram-sdk` v0.1.0 extracts core logic from the frontend (transaction builder, executor selection, ECR query, coin selection) into a Node.js-compatible package. A CLI demo script (`examples/agent-demo.ts`) demonstrates the full pipeline: escrow → executor selection → AI inference → ECR retrieval.
 
 ---
 

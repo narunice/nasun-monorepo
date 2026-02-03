@@ -27,7 +27,7 @@ Baram's on-chain contracts are **already agent-accessible** without modification
 
 | Gap | Current State | Required for Agents |
 |-----|--------------|-------------------|
-| **SDK** | Browser-only React hooks (`useCreateRequest`) | Node.js SDK (`@nasun/baram-sdk`) |
+| ~~**SDK**~~ | ~~Browser-only React hooks~~ → **Implemented** (`@nasun/baram-sdk` v0.1.0) | BaramClient class, executor selection, ECR query, CLI demo |
 | **API Authentication** | No auth on Executor endpoints | API keys or signed requests for rate limiting |
 | **Async/Streaming** | Synchronous request-response | Webhook callbacks, event subscriptions |
 | **Transaction Building** | `transactionBuilder.ts` (React-independent, reusable) | Extract to SDK package |
@@ -99,18 +99,23 @@ console.log(result.ecr.txDigest);     // settlement transaction digest
 └── types.ts            # Shared types
 ```
 
-### Implementation Scope
+### Implementation Status — COMPLETED
 
-The SDK is achievable as an MVP because the core logic already exists in the frontend:
+The SDK MVP has been implemented at `packages/baram-sdk/`:
 
-| SDK Module | Source | Effort |
-|-----------|--------|--------|
-| Transaction builder | `transactionBuilder.ts` (copy) | Minimal |
-| Executor selection | `useExecutors.ts` (extract pure fn) | Minimal |
-| ECR query | `ecrService.ts` (copy) | Minimal |
-| Signer abstraction | New (Ed25519Keypair from `@mysten/sui`) | Small |
-| Client orchestration | New (replaces `useCreateRequest` hook) | Medium |
-| **Total** | ~200-300 lines of new code | |
+| SDK Module | File | Status |
+|-----------|------|--------|
+| Transaction builder | `src/services/transaction.ts` | Done — extracted from frontend |
+| Executor selection | `src/services/executor.ts` | Done — pure functions extracted |
+| ECR query | `src/services/ecr.ts` | Done — extracted from frontend |
+| Coin selection | `src/services/coin.ts` | Done — extracted from frontend |
+| Encoding utilities | `src/services/encoding.ts` | Done — sha256, hexToBytes |
+| Config (devnet preset) | `src/config.ts` | Done — reads from @nasun/devnet-config |
+| Types | `src/types.ts` | Done — all shared types, constants |
+| Client orchestration | `src/client.ts` | Done — BaramClient with execute/cancel/getECR |
+| CLI demo | `examples/agent-demo.ts` | Done — full pipeline demo |
+| Unit tests | `src/__tests__/*.test.ts` | Done — 23 tests passing |
+| **Total** | ~500 lines of new code | **Complete** |
 
 ---
 
@@ -306,7 +311,7 @@ These protocols need an execution layer. Baram already has:
 
 | Need | Status | Priority |
 |------|--------|---------|
-| Node.js SDK (`@nasun/baram-sdk`) | Not built | **Highest** — enables programmatic access |
+| Node.js SDK (`@nasun/baram-sdk`) | **Done** (v0.1.0) | BaramClient, executor selection, ECR query, CLI demo |
 | Agent Wallet (Account Abstraction) | Not built | High — session keys, spending limits |
 | Streaming Payments (per-token) | Not built | Medium — currently fixed per-request |
 | Service Discovery | Not built | Medium — on-chain AI service registry |
@@ -332,12 +337,14 @@ Privacy focus            →      Audit + Privacy          →     Full settleme
 
 ### Key Takeaway
 
-The SDK is the single highest-impact addition for the prototype stage. Creating `@nasun/baram-sdk` does two things simultaneously:
+The SDK (`@nasun/baram-sdk` v0.1.0) has been implemented. It achieves two things simultaneously:
 
-1. **Enables agent access** — any Node.js agent can use Baram programmatically
+1. **Enables agent access** — any Node.js agent can use Baram programmatically via `BaramClient`
 2. **Reframes the product** — Baram becomes "AI activity audit infrastructure" rather than "private AI chat"
 
-The ECR is already implemented. The on-chain contracts are already agent-compatible. The expansion from "privacy chat" to "AI activity audit layer" is primarily a **packaging and positioning** change, not an architecture change.
+The ECR is already implemented. The on-chain contracts are already agent-compatible. The SDK completes the off-chain gap. The expansion from "privacy chat" to "AI activity audit layer" is now **demonstrated, not just proposed**.
+
+**Next steps (Phase 2)**: TEE encryption in SDK, API key rate limiting, ECR chain linking (`parent_ecr_id`), Agent Wallet (Account Abstraction).
 
 ---
 

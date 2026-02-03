@@ -168,7 +168,7 @@
       "goHome": "Go to Home"
     },
     "walletDisconnected": {
-      "title": "⚠️ Wallet Disconnected",
+      "title": "Wallet Disconnected",
       "description": "Your registration is saved, but your MetaMask wallet is no longer connected.",
       "instruction": "Please reconnect your wallet to view your registration details and participate in the NFT mint.",
       "reconnectButton": "Reconnect MetaMask",
