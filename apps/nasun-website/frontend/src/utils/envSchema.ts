@@ -40,6 +40,20 @@ const BaseEnvSchema = z.object({
 
   // 6. CSP 정책 (다중 라인 문자열 허용)
   VITE_CSP_POLICY: z.string().optional(),
+
+  // 7. Authentication
+  VITE_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  VITE_TWITTER_AUTH_API: z.string().url().optional(),
+  VITE_LINK_ACCOUNT_API: z.string().url().optional(),
+  VITE_USER_PROFILE_API: z.string().url().optional(),
+
+  // 8. MetaMask / Ethereum
+  VITE_ENABLE_METAMASK_LOGIN: z.enum(["true", "false"]).default("false"),
+  VITE_ETHEREUM_CHAIN_ID: z.string().default("1"),
+
+  // 9. Battalion NFT Event
+  VITE_EVENT_TWEET_ID: z.string().optional(),
+  VITE_TARGET_TWEET_ACCOUNT: z.string().default("Nasun_io"),
 });
 
 // 3. 환경별 추가 검증 로직

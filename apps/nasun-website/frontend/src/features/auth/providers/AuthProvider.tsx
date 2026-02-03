@@ -2,16 +2,14 @@ import React, { createContext, useEffect, useState, useCallback } from "react";
 import logger from "@/lib/logger";
 import { useUserStore } from "@/store/userStore";
 import type { UserData } from "@/store/userStore";
-import { generateCodeVerifier, parseJwt } from "@/utils/authUtils";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { AuthContextType } from "../types";
-import { 
-  handleTwitterCallback, 
-  linkAccounts, 
-  fetchUserProfile, 
-  ensureUserProfile 
-} from "../utils/authApi";
-import { getCognitoIdentityId } from "../utils/cognito";
+import { linkAccounts, ensureUserProfile } from "../utils/authApi";
+import { isValidReturnUrl } from "../utils/urlValidation";
+import { buildGoogleAuthUrl } from "../utils/googleAuthUrl";
+import { refreshAndSaveUserProfile } from "../services/userProfileService";
+import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
+import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -67,130 +65,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.history.replaceState({}, document.title, window.location.pathname);
 
     try {
-      logger.debug(`OAuth Redirect Debug: provider=${provider}, linking=${isLinkingFlow}`);
-      logger.debug(`Redirect URL: ${window.location.href}`);
-      logger.debug(`URL hash: ${url.hash}`);
-      logger.debug(`URL search params: ${url.search}`);
+      logger.debug(`OAuth Redirect: provider=${provider}, linking=${isLinkingFlow}`);
 
-      let identityId: string | undefined;
-      let userInfo: { name: string; email?: string } | undefined;
-      let twitterUserData: {
-        identityId: string;
-        username: string;
-        twitterHandle?: string;
-        twitterId?: string;
-        profileImageUrl?: string;
-      } | null = null;
+      // Dispatch to provider-specific handlers
+      let identityId: string;
+      let userInfo: { name: string; email?: string };
+      let twitterData: { twitterHandle?: string; twitterId?: string; profileImageUrl?: string } | null = null;
 
       if (provider === "Google") {
-        const idToken = new URLSearchParams(url.hash.substring(1)).get("id_token");
-        logger.debug(
-          "Google ID token extracted:",
-          idToken ? `${idToken.substring(0, 50)}...` : "null"
-        );
-
-        if (!idToken) throw new Error("Google ID token not found in redirect");
-
-        const googlePayload = parseJwt(idToken);
-        logger.debug("Parsed Google payload:", googlePayload);
-
-        if (!googlePayload) throw new Error("Failed to parse Google ID token");
-
-        userInfo = { name: googlePayload.name as string, email: googlePayload.email as string };
-        identityId = await getCognitoIdentityId("Google", idToken);
-      } else if (provider === "Twitter") {
-        const code = url.searchParams.get("code");
-        const state = url.searchParams.get("state");
+        const result = await handleGoogleOAuthRedirect(url);
+        identityId = result.identityId;
+        userInfo = result.userInfo;
+      } else {
         const sessionId =
           isLinkingFlow && twitterLinkSession
             ? JSON.parse(twitterLinkSession).sessionId
-            : localStorage.getItem("twitter_oauth_session");
-
-        if (!code || !state || !sessionId) {
-          throw new Error("Missing Twitter OAuth parameters");
-        }
-
-        twitterUserData = await handleTwitterCallback(code, state, sessionId);
-        userInfo = { name: twitterUserData?.username || "Twitter User" };
-        identityId = twitterUserData?.identityId;
+            : localStorage.getItem("twitter_oauth_session") || "";
+        const result = await handleTwitterOAuthRedirect(url, sessionId);
+        identityId = result.identityId;
+        userInfo = result.userInfo;
+        twitterData = result;
       }
 
-      // Handle account linking
-      if (isLinkingFlow && identityId) {
-        if (provider === "Twitter" && twitterUserData && twitterLinkSession) {
-          // Twitter linking
-          const linkSession = JSON.parse(twitterLinkSession);
-          await linkAccounts(linkSession.primaryIdentityId, identityId, "Twitter");
-          sessionStorage.removeItem("twitter_link_session");
+      // Handle account linking flow
+      if (isLinkingFlow) {
+        const linkSessionKey = provider === "Twitter" ? "twitter_link_session" : "google_link_session";
+        const linkSessionRaw = provider === "Twitter" ? twitterLinkSession : googleLinkSession;
 
-          // Reload user profile to get updated linked accounts
-          const updatedProfile = await fetchUserProfile(linkSession.primaryIdentityId);
-          if (updatedProfile) {
-            sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
-            setUser(updatedProfile);
-          }
-        } else if (provider === "Google" && userInfo && googleLinkSession) {
-          // Google linking
-          const linkSession = JSON.parse(googleLinkSession);
-          await linkAccounts(linkSession.primaryIdentityId, identityId, "Google");
-          sessionStorage.removeItem("google_link_session");
-
-          // Reload user profile to get updated linked accounts
-          const updatedProfile = await fetchUserProfile(linkSession.primaryIdentityId);
-          if (updatedProfile) {
-            sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
-            setUser(updatedProfile);
-          }
-        } else if (identityId && userInfo) {
-          // Linking session exists but doesn't match provider - treat as normal login
-          // Normal login flow
-          const finalUserData: UserData = {
-            identityId,
-            provider: provider as "Google" | "Twitter",
-            username: userInfo.name,
-            ...(userInfo.email && { email: userInfo.email }),
-            ...(twitterUserData?.twitterHandle && { twitterHandle: twitterUserData.twitterHandle }),
-            ...(twitterUserData?.twitterId && { twitterId: twitterUserData.twitterId }),
-            ...(twitterUserData?.profileImageUrl && {
-              profileImageUrl: twitterUserData.profileImageUrl,
-            }),
-          };
-
-          // Ensure user profile exists in DynamoDB
-          logger.log("Ensuring user profile exists in DynamoDB...");
-          const dbProfile = await ensureUserProfile(finalUserData);
-          const userDataToStore = dbProfile || finalUserData;
-
-          sessionStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
-          setUser(userDataToStore);
+        if (linkSessionRaw) {
+          const { primaryIdentityId } = JSON.parse(linkSessionRaw);
+          await linkAccounts(primaryIdentityId, identityId, provider as "Google" | "Twitter");
+          sessionStorage.removeItem(linkSessionKey);
+          await refreshAndSaveUserProfile(primaryIdentityId);
+          setUser(useUserStore.getState().user);
+        } else {
+          // Linking session mismatch - fall through to normal login
+          await performNormalLogin();
         }
-      } else if (identityId && userInfo) {
-        // Normal login flow
+      } else {
+        await performNormalLogin();
+      }
+
+      // Extracted normal login to avoid duplication between linking fallback and normal flow
+      async function performNormalLogin() {
         const finalUserData: UserData = {
           identityId,
           provider: provider as "Google" | "Twitter",
           username: userInfo.name,
           email: userInfo.email,
+          ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
+          ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
+          ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
         };
 
-        // Add Twitter-specific data if available
-        if (provider === "Twitter" && twitterUserData) {
-          finalUserData.twitterHandle = twitterUserData.twitterHandle;
-          finalUserData.twitterId = twitterUserData.twitterId;
-          finalUserData.profileImageUrl = twitterUserData.profileImageUrl;
-        }
-
-        // Ensure user profile exists in DynamoDB
         logger.log("Ensuring user profile exists in DynamoDB...");
         const dbProfile = await ensureUserProfile(finalUserData);
-
-        // Use DynamoDB profile if available, otherwise use finalUserData
         const userDataToStore = dbProfile || finalUserData;
 
         sessionStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
         setUser(userDataToStore);
-      } else {
-        throw new Error("Could not establish user identity after redirect.");
       }
     } catch (e) {
       const err = e as Error;
@@ -202,11 +135,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("twitter_oauth_session");
       setIsLoading(false);
 
-      // Redirect to saved return URL if exists
+      // Redirect to saved return URL if exists (validated to prevent open redirect)
       const returnUrl = localStorage.getItem("auth_return_url");
       if (returnUrl) {
         localStorage.removeItem("auth_return_url");
-        window.location.href = returnUrl;
+        if (isValidReturnUrl(returnUrl)) {
+          window.location.href = returnUrl;
+        } else {
+          logger.error("Blocked invalid return URL:", returnUrl);
+        }
       }
     }
     return true;
@@ -228,16 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     localStorage.setItem("auth_provider_preference", "Google");
     localStorage.setItem("auth_return_to", window.location.pathname);
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/callback`;
-    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    authUrl.searchParams.append("client_id", googleClientId);
-    authUrl.searchParams.append("redirect_uri", redirectUri);
-    authUrl.searchParams.append("response_type", "id_token");
-    authUrl.searchParams.append("scope", "openid email profile");
-    authUrl.searchParams.append("nonce", generateCodeVerifier(16));
-    authUrl.searchParams.append("prompt", "select_account");
-    window.location.href = authUrl.toString();
+    window.location.href = buildGoogleAuthUrl();
   };
 
   const signInWithTwitter = async () => {
