@@ -12,12 +12,12 @@ const statusConfig = {
   idle: null,
   creating: {
     text: 'Creating request...',
-    color: 'text-baram-1',
+    color: 'text-br-1',
     animate: true,
   },
   executing: {
     text: 'AI processing...',
-    color: 'text-baram-2',
+    color: 'text-br-2',
     animate: true,
   },
   completed: {
@@ -27,7 +27,7 @@ const statusConfig = {
   },
   cancelling: {
     text: 'Cancelling...',
-    color: 'text-baram-1',
+    color: 'text-br-1',
     animate: true,
   },
   error: {

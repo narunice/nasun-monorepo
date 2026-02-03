@@ -61,7 +61,7 @@ export function ResultDisplay({ result, executor }: ResultDisplayProps) {
             <span>Processed by a Nasun-qualified Executor</span>
             <TierBadge tier={executor.tier} tierName={executor.tierName} />
             {executor.teeType > 0 && (
-              <span className="text-xs text-baram-1">
+              <span className="text-xs text-br-1">
                 {executor.teeTypeName}
               </span>
             )}
@@ -75,7 +75,7 @@ export function ResultDisplay({ result, executor }: ResultDisplayProps) {
           href={explorerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-baram-1 hover:text-baram-2 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-br-1 hover:text-br-2 transition-colors"
         >
           <span>View settlement transaction</span>
           <svg

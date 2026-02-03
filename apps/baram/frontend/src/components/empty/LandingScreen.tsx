@@ -4,10 +4,10 @@
 
 export function LandingScreen() {
   return (
-    <div className="flex flex-col items-center px-4 py-4">
+    <div className="flex flex-col items-center py-4">
       {/* Hero */}
       <div className="flex flex-col items-center text-center mb-6">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-baram-1 to-baram-2 flex items-center justify-center mb-4">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-br-1 to-br-2 flex items-center justify-center mb-4">
           <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
               strokeLinecap="round"
@@ -20,23 +20,23 @@ export function LandingScreen() {
         <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-3">
           Your Prompts and Outputs, Your Eyes Only
         </h1>
-        <p className="text-[var(--color-text-secondary)] max-w-lg text-sm leading-relaxed">
+        <p className="text-[var(--color-text-secondary)] max-w-3xl text-sm leading-relaxed">
           End-to-end encrypted AI inference inside a hardware enclave. No logs, no training, no
           leaks.
         </p>
       </div>
 
       {/* How It Works */}
-      <div className="w-full max-w-2xl mb-6">
+      <div className="w-full  mb-6">
         <h2 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider text-center mb-4">
           How It Works
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Step 1: Encrypt */}
           <div className="p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-center">
-            <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-baram-1/10 flex items-center justify-center">
+            <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-br-1/10 flex items-center justify-center">
               <svg
-                className="w-4 h-4 text-baram-1"
+                className="w-4 h-4 text-br-1"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -59,9 +59,9 @@ export function LandingScreen() {
 
           {/* Step 2: Process in TEE */}
           <div className="p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-center">
-            <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-baram-1/10 flex items-center justify-center">
+            <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-br-1/10 flex items-center justify-center">
               <svg
-                className="w-4 h-4 text-baram-1"
+                className="w-4 h-4 text-br-1"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -84,9 +84,9 @@ export function LandingScreen() {
 
           {/* Step 3: Verify On-Chain */}
           <div className="p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-center">
-            <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-baram-1/10 flex items-center justify-center">
+            <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-br-1/10 flex items-center justify-center">
               <svg
-                className="w-4 h-4 text-baram-1"
+                className="w-4 h-4 text-br-1"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -110,7 +110,7 @@ export function LandingScreen() {
       </div>
 
       {/* Trust Indicators */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
+      <div className="flex flex-wrap justify-center gap-2 mb-6 w-full">
         {[
           {
             label: "AES-256-GCM Encryption",
@@ -148,7 +148,7 @@ export function LandingScreen() {
         <p className="text-sm text-[var(--color-text-muted)] mb-3">
           Connect your wallet to start a private AI session.
         </p>
-        <div className="inline-flex items-center gap-1.5 text-xs text-baram-1">
+        <div className="inline-flex items-center gap-1.5 text-xs text-br-1">
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
               strokeLinecap="round"
@@ -167,7 +167,7 @@ export function LandingScreen() {
           href="https://x.com/Nasun_io"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover:border-baram-1/50 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover:border-br-1/50 transition-colors"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -185,7 +185,7 @@ export function LandingScreen() {
           href="https://nasun.io"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover:border-baram-1/50 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover:border-br-1/50 transition-colors"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path

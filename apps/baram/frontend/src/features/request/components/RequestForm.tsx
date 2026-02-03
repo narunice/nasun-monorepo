@@ -82,7 +82,7 @@ export function RequestForm() {
               placeholder="Enter your prompt here..."
               rows={4}
               disabled={isProcessing}
-              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-baram-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-br-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
             />
           </div>
 
@@ -134,7 +134,7 @@ export function RequestForm() {
               <button
                 type="submit"
                 disabled={!prompt.trim() || isProcessing || !selectedExecutor}
-                className="px-6 py-2 bg-baram-1 hover:bg-baram-2 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2 bg-br-1d hover:bg-br-2d text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isProcessing ? (
                   'Processing...'

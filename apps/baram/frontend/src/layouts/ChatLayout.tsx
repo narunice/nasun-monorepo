@@ -44,14 +44,14 @@ export function ChatLayout({ children, header, inputArea }: ChatLayoutProps) {
 
         {/* Content Area (scrollable) */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 py-6">
+          <div className="max-w-4xl mx-auto px-4 py-6">
             {children}
           </div>
         </main>
 
         {/* Input Area (fixed at bottom) */}
         <div className="bg-[var(--color-bg-primary)]">
-          <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="max-w-4xl mx-auto px-4 py-4">
             {inputArea}
           </div>
         </div>

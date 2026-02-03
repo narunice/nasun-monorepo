@@ -37,7 +37,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           {/* Header with toggle */}
           <div className="flex items-center justify-between p-3 border-b border-[var(--color-border)]">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-baram-1 to-baram-2 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-br-1 to-br-2 flex items-center justify-center">
                 <span className="text-white font-bold text-xs">B</span>
               </div>
               <span className="text-sm font-medium text-[var(--color-text-primary)]">Baram</span>

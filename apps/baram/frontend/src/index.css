@@ -99,3 +99,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* Baram gradient utilities */
+@layer utilities {
+  .bg-br-linear {
+    background: linear-gradient(0.25turn, #a7d7bf, #a6c9e2, #d1c9e8, #b2e2b1, #e4f1df);
+  }
+  .bg-br-radial {
+    background: radial-gradient(circle, #a7d7bf, #a6c9e2, #d1c9e8, #b2e2b1, #e4f1df);
+  }
+}
