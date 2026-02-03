@@ -36,88 +36,84 @@
 
 @layer base {
   :root {
-    /* Base */
-    --background: 26 18% 9%; /* #191615 nasun-black */
-    --foreground: 40 29% 97%; /* #faf7f4 nasun-white */
+    /* Base - ne0 derived dark background */
+    --background: 215 30% 8%;
+    --foreground: 0 0% 96%;
 
-    /* Card */
-    --card: 205 46% 20%; /* #1b374a nasun-c6 */
-    --card-foreground: 40 29% 97%;
+    /* Card - ne0s surface */
+    --card: 215 28% 15%;
+    --card-foreground: 0 0% 96%;
 
     /* Popover */
-    --popover: 26 18% 9%;
-    --popover-foreground: 40 29% 97%;
+    --popover: 215 28% 15%;
+    --popover-foreground: 0 0% 96%;
 
-    /* Primary */
-    --primary: 203 100% 85%; /* #B3E0FF nasun-c7 */
-    --primary-foreground: 205 46% 10%;
+    /* Primary - ne3 for links/buttons on dark */
+    --primary: 201 38% 74%;
+    --primary-foreground: 215 30% 8%;
 
-    /* Secondary */
-    --secondary: 218 64% 47%; /* #2A64C5 nasun-c5 */
-    --secondary-foreground: 40 29% 97%;
+    /* Secondary - ne2 */
+    --secondary: 210 33% 62%;
+    --secondary-foreground: 0 0% 96%;
 
     /* Muted */
-    --muted: 205 46% 25%;
-    --muted-foreground: 40 29% 70%; /* nasun-white/70 */
+    --muted: 215 25% 20%;
+    --muted-foreground: 210 20% 60%;
 
     /* Accent */
-    --accent: 205 46% 30%;
-    --accent-foreground: 40 29% 97%;
+    --accent: 215 25% 20%;
+    --accent-foreground: 0 0% 96%;
 
-    /* Destructive */
-    --destructive: 11 98% 49%; /* #fa3102 scarlet */
-    --destructive-foreground: 40 29% 97%;
+    /* Destructive - semantic red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 96%;
 
     /* Border */
-    --border: 205 20% 30%; /* subtle dark border */
-    --input: 205 46% 30%;
-    --ring: 203 100% 85%;
+    --border: 215 20% 25%;
+    --input: 215 25% 20%;
+    --ring: 201 38% 74%;
 
     /* Radius */
     --radius: 0.75rem;
-
-    /* Nasun Legacy Variables (for backwards compatibility if needed) */
-    --nasun-black: #191615;
-    --nasun-white: #faf7f4;
   }
 
   .light {
-    /* Base */
-    --background: 40 29% 97%; /* #faf7f4 nasun-white */
-    --foreground: 26 18% 9%; /* #191615 nasun-black */
+    /* Base - ne5 background */
+    --background: 0 0% 96%;
+    --foreground: 215 36% 25%;
 
     /* Card */
     --card: 0 0% 100%;
-    --card-foreground: 26 18% 9%;
+    --card-foreground: 215 36% 25%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 26 18% 9%;
+    --popover-foreground: 215 36% 25%;
 
-    /* Primary */
-    --primary: 203 100% 40%; /* Slightly darker nasun-c7 for light mode accessibility */
-    --primary-foreground: 40 29% 97%;
+    /* Primary - darkened ne1 for AA contrast */
+    --primary: 215 36% 38%;
+    --primary-foreground: 0 0% 96%;
 
-    /* Secondary */
-    --secondary: 218 64% 47%; /* #2A64C5 nasun-c5 */
-    --secondary-foreground: 40 29% 97%;
+    /* Secondary - ne2 */
+    --secondary: 210 33% 62%;
+    --secondary-foreground: 215 36% 20%;
 
-    /* Muted */
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - ne4 */
+    --muted: 194 33% 86%;
+    --muted-foreground: 215 20% 45%;
 
-    /* Accent */
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - ne4 */
+    --accent: 194 33% 86%;
+    --accent-foreground: 215 36% 20%;
 
     /* Destructive */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
     /* Border */
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 215 20.2% 65.1%;
+    --border: 194 20% 82%;
+    --input: 194 20% 82%;
+    --ring: 215 36% 45%;
   }
 }
 
@@ -161,7 +157,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.5), rgba(139, 92, 246, 0.5));
+  background: linear-gradient(180deg, rgba(73, 108, 156, 0.5), rgba(125, 157, 191, 0.5));
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -171,7 +167,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.7), rgba(139, 92, 246, 0.7));
+  background: linear-gradient(180deg, rgba(73, 108, 156, 0.7), rgba(125, 157, 191, 0.7));
 }
 
 .custom-scrollbar::-webkit-scrollbar-corner {
@@ -181,7 +177,7 @@
 /* Firefox custom scrollbar */
 .custom-scrollbar {
   scrollbar-width: auto;
-  scrollbar-color: rgba(99, 102, 241, 0.5) rgba(0, 0, 0, 0.2);
+  scrollbar-color: rgba(73, 108, 156, 0.5) rgba(0, 0, 0, 0.2);
 }
 
 /* Network Explorer gradient utilities */

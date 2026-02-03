@@ -69,7 +69,7 @@ export default function Validator() {
         </Card>
         <Card variant="default" className="p-4">
           <div className="text-muted-foreground text-sm uppercase tracking-wider">APY</div>
-          <div className="text-lg font-mono dark:text-nasun-c3 text-teal-600">{formatPercentage(validator.apy)}</div>
+          <div className="text-lg font-mono text-green-600 dark:text-green-400">{formatPercentage(validator.apy)}</div>
         </Card>
         <Card variant="default" className="p-4">
           <div className="text-muted-foreground text-sm uppercase tracking-wider">Commission Rate</div>

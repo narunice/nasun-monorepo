@@ -90,7 +90,7 @@ export default function CopyableId({
           >
             {copied ? (
               <svg
-                className="w-3.5 h-3.5 dark:text-nasun-c3 text-teal-600"
+                className="w-3.5 h-3.5 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
