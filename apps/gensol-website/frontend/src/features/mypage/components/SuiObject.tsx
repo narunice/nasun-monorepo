@@ -13,10 +13,30 @@ export const SuiObject: FC<SuiObjectProps> = ({ objectRes }) => {
   const name = objectRes.data?.display?.data?.name
   const tier = objectRes.data?.display?.data?.tier
   const description = objectRes.data?.display?.data?.description
-  const imageUrl =
-    (objectRes.data?.content as any)?.fields?.image_url ||
+
+  // Extract image URL with type-safe content access
+  const content = objectRes.data?.content
+  const contentFields =
+    content?.dataType === 'moveObject' && content.fields && typeof content.fields === 'object'
+      ? (content.fields as Record<string, unknown>)
+      : undefined
+  const rawImageUrl =
+    (contentFields?.image_url as string | undefined) ||
     objectRes.data?.display?.data?.image_url ||
-    (objectRes.data?.content as any)?.fields?.url
+    (contentFields?.url as string | undefined)
+
+  // Validate URL protocol to prevent javascript: or data: injection
+  const imageUrl = (() => {
+    if (!rawImageUrl) return undefined
+    try {
+      const url = new URL(rawImageUrl)
+      if (['https:', 'http:', 'ipfs:'].includes(url.protocol)) return rawImageUrl
+    } catch {
+      // Relative URLs are allowed
+      if (rawImageUrl.startsWith('/')) return rawImageUrl
+    }
+    return undefined
+  })()
 
   // 값이 있는 필드만 렌더링하는 헬퍼 함수
   const renderFieldIfExists = (label: string, value?: string | number) => {

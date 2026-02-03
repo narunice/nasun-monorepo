@@ -16,7 +16,8 @@ import "@mysten/dapp-kit/dist/index.css"
 import "./index.css"
 import { ToastContainer } from "react-toastify"
 
-Amplify.configure(awsConfig as any)
+// Legacy Amplify config format — type mismatch with v6 ResourcesConfig is expected
+Amplify.configure(awsConfig as Parameters<typeof Amplify.configure>[0])
 
 // Configure Nasun Wallet
 configureWallet({
@@ -73,8 +74,6 @@ root.render(
 function getNetwork() {
   const networks = ["mainnet", "devnet", "testnet", "localnet"]
   const network = import.meta.env.VITE_NETWORK
-
-  console.log("Selecting: " + network)
 
   if (!networks.includes(network)) {
     return "testnet"

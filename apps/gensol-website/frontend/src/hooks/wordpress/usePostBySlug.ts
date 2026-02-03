@@ -22,7 +22,7 @@ const usePostBySlug = (slug: string | undefined) => {
       setLoading(true)
       try {
         const apiUrl = getWordPressApiUrl()
-        const response = await fetch(`${apiUrl}/wp/v2/posts?slug=${slug}&_embed`)
+        const response = await fetch(`${apiUrl}/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`)
 
         if (!response.ok) {
           throw new Error(
