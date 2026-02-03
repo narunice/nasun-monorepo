@@ -563,3 +563,51 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
       return aIndex - bIndex;
     });
 };
+
+// Centralized page title maps for nested route rendering
+export const pageTitleMaps: Record<string, Record<string, string>> = {
+  network: {
+    "navigation.nasunNetwork": "Nasun Network",
+    "navigation.protocolOverview": "Protocol Overview",
+    "navigation.governance": "Governance",
+  },
+  ecosystem: {
+    "navigation.financePado": "Finance (Pado)",
+    "navigation.aiEconomy": "AI Economy",
+    "navigation.tokenizedAssets": "Tokenized Assets",
+    "navigation.stablecoinRails": "Stablecoin Rails",
+    "navigation.depinCompute": "DePIN & Compute",
+  },
+  ip: {
+    "navigation.genSol": "GenSol",
+    "navigation.genSolMain": "GenSol",
+    "navigation.genSolPlan": "GenSol Plan",
+    "navigation.genSolShooter": "Multiplayer Shooter",
+    "navigation.genSolAnimation": "Animation Series",
+    "navigation.riderStudio": "Rider Studio",
+    "navigation.riderStudioMain": "Rider Studio",
+    "navigation.riderStudioFramework": "Rider Studio Framework",
+    "navigation.wePop": "WePop",
+  },
+  team: {
+    "navigation.founders": "Founders",
+    "navigation.opportunities": "Opportunities",
+  },
+  wave1: {
+    "navigation.battalionNft": "Battalion NFT",
+    "navigation.earlyContributors": "Early Contributors",
+    "navigation.giveaways": "Giveaways",
+    "navigation.contests": "Contests",
+  },
+  updates: {
+    "navigation.news": "News",
+    "navigation.awards": "Awards",
+    "navigation.roadmap": "Roadmap",
+  },
+  about: {
+    "navigation.founders": "Founders",
+    "navigation.aboutTeam": "Team",
+    "navigation.opportunities": "Opportunities",
+    "navigation.strategy": "Strategy",
+  },
+};

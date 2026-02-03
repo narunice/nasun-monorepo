@@ -1,13 +1,15 @@
 /**
  * Generates a cryptographically secure random string for use as a code verifier or nonce.
+ * Uses crypto.getRandomValues() for unpredictable output resistant to CSRF attacks.
  * @param length The length of the string to generate.
  * @returns A random string.
  */
 export const generateCodeVerifier = (length = 64): string => {
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const randomValues = crypto.getRandomValues(new Uint8Array(length));
   let text = '';
   for (let i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
+    text += possible.charAt(randomValues[i] % possible.length);
   }
   return text;
 };
