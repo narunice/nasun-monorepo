@@ -190,6 +190,16 @@ body {
   background: transparent;
 }
 
+/* Pado custom gradient utilities */
+@layer utilities {
+  .pd-gradient-linear {
+    background: linear-gradient(0.25turn, #1f3a61, #3a5f78, #7d9dbf, #aac9d5, #e1e5ea);
+  }
+  .pd-gradient-radial {
+    background: radial-gradient(circle, #1f3a61, #3a5f78, #7d9dbf, #aac9d5, #e1e5ea);
+  }
+}
+
 /* Hide scrollbar for horizontal scroll containers */
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
