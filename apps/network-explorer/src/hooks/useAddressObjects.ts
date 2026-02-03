@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAddressInfo, loadMoreObjects, parseObjectContent } from '../lib/sui-client';
+import { getAddressInfo, loadMoreObjects } from '../lib/sui-client';
 import { isNFTObject } from '../lib/media';
+import { parseContent } from '../lib/object-utils';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import type { AddressInfo } from '../lib/types';
 
@@ -56,7 +57,7 @@ export function useAddressObjects(addr: string | undefined) {
     const others: SuiObjectResponse[] = [];
 
     accumulatedObjects.forEach((obj) => {
-      const content = parseObjectContent(obj.data?.content);
+      const content = parseContent(obj.data?.content);
       if (isNFTObject(obj.data?.display?.data, content)) {
         nfts.push(obj);
       } else {
