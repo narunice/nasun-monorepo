@@ -14,7 +14,7 @@ export default defineConfig({
     dedupe: ['@nasun/wallet', '@nasun/wallet-ui', 'react', 'react-dom', 'zustand', '@tanstack/react-query'],
   },
   optimizeDeps: {
-    include: ['@scure/bip39', '@scure/bip39/wordlists/english.js'],
+    include: ['@nasun/wallet', '@scure/bip39', '@scure/bip39/wordlists/english.js'],
   },
   build: {
     commonjsOptions: {
