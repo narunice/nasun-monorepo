@@ -14,12 +14,14 @@ import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
 import { type TokenSymbol } from '../lib/prices';
 import { fetchBinance24hTicker, getBinanceSymbol } from '../lib/indicators';
+import { ChatPanel, ChatToggleButton, MobileChatDrawer, useChatPanel } from '../features/social';
 
 // Fixed height for chart and orderbook to ensure consistent layout
 const CHART_HEIGHT = 480;
 
 function TradePageContent() {
   const { mode, toggleMode, isSimple } = useTradeMode();
+  const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
   const { currentPool } = useMarket();
   const { data: orderbookData } = useOrderbook();
   const { setPrice } = useOrderForm();
@@ -124,39 +126,58 @@ function TradePageContent() {
           <TradingPanel mode={mode} />
         </div>
       ) : (
-        /* Pro Mode: 2-row grid with Order Form spanning both rows */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          {/* Row 1 Left: Chart */}
-          <div
-            className="lg:col-span-7 xl:col-span-8 bg-theme-bg-secondary rounded-lg p-3"
-            style={{ height: `${CHART_HEIGHT}px` }}
-          >
-            <PriceChart currentPrice={displayPrice} />
+        /* Pro Mode: 2-row grid with Order Form spanning both rows + Chat sidebar */
+        <div className="flex gap-3">
+          {/* Main trading grid */}
+          <div className="flex-1 min-w-0">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+              {/* Row 1 Left: Chart */}
+              <div
+                className="lg:col-span-7 xl:col-span-8 bg-theme-bg-secondary rounded-lg p-3"
+                style={{ height: `${CHART_HEIGHT}px` }}
+              >
+                <PriceChart currentPrice={displayPrice} />
+              </div>
+
+              {/* Row 1 Middle: Orderbook */}
+              <div
+                className="lg:col-span-2 xl:col-span-2 bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
+                style={{ height: `${CHART_HEIGHT}px` }}
+              >
+                <Orderbook
+                  orderbook={orderbook}
+                  onPriceClick={handlePriceClick}
+                  compact
+                />
+              </div>
+
+              {/* Right: Order Form — spans row 1 + row 2 */}
+              <div className="lg:col-span-3 xl:col-span-2 lg:row-span-2 rounded-lg">
+                <TradingPanel mode={mode} />
+              </div>
+
+              {/* Row 2 Left: Bottom Tab Panel */}
+              <div className="lg:col-span-9 xl:col-span-10">
+                <BottomTabPanel />
+              </div>
+            </div>
           </div>
 
-          {/* Row 1 Middle: Orderbook */}
-          <div
-            className="lg:col-span-2 xl:col-span-2 bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
-            style={{ height: `${CHART_HEIGHT}px` }}
-          >
-            <Orderbook
-              orderbook={orderbook}
-              onPriceClick={handlePriceClick}
-              compact
-            />
-          </div>
-
-          {/* Right: Order Form — spans row 1 + row 2 */}
-          <div className="lg:col-span-3 xl:col-span-2 lg:row-span-2 rounded-lg">
-            <TradingPanel mode={mode} />
-          </div>
-
-          {/* Row 2 Left: Bottom Tab Panel */}
-          <div className="lg:col-span-9 xl:col-span-10">
-            <BottomTabPanel />
+          {/* Chat sidebar (xl+ only) */}
+          <div className={`hidden xl:block shrink-0 transition-all duration-200 ${
+            chatVisible ? 'w-[240px] 2xl:w-[280px]' : 'w-10'
+          }`} style={{ height: `${CHART_HEIGHT + 300}px` }}>
+            {chatVisible ? (
+              <ChatPanel onMinimize={toggleChat} />
+            ) : (
+              <ChatToggleButton onClick={toggleChat} />
+            )}
           </div>
         </div>
       )}
+
+      {/* Mobile chat drawer (below xl) */}
+      {!isSimple && <MobileChatDrawer />}
     </div>
   );
 }
