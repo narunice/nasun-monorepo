@@ -5,7 +5,7 @@
  * Follows the same pattern as NsaViewRouter.
  */
 
-import type { ViewMode } from "../connect/LockedStateUI";
+import type { ViewMode } from "../connect/types";
 import { WalletConnectPanel } from "./WalletConnectPanel";
 import { WCPairingView } from "./WCPairingView";
 import { WCSessionProposal } from "./WCSessionProposal";

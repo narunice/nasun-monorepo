@@ -11,7 +11,7 @@ import {
   getDAppMetadata,
   type DAppMetadata,
 } from "@nasun/wallet";
-import type { ViewMode } from "../connect/LockedStateUI";
+import type { ViewMode } from "../connect/types";
 import { sanitizeImageUrl } from "../shared";
 
 const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? "";

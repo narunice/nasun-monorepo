@@ -3,7 +3,7 @@
  */
 
 import { TransactionHistoryPanel } from "../../transaction/TransactionHistoryPanel";
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 
 export function HistoryTabContent({
   onNavigate,

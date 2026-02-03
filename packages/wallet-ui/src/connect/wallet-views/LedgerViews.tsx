@@ -5,7 +5,7 @@
 import { type LedgerErrorCode, type LedgerConnectionStatus } from "@nasun/wallet";
 import { CopyableAddress } from "../../address/CopyableAddress";
 import { LedgerConnect, LedgerBrowserWarning, LedgerErrorDisplay } from "../../ledger";
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 
 export function LedgerConnectView({
   ledgerStatus,

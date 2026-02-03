@@ -11,7 +11,7 @@ import {
   NsaGuardianSetup,
   NsaRecoveryPanel,
 } from "../../nsa";
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 
 export function NsaViewRouter({
   viewMode,

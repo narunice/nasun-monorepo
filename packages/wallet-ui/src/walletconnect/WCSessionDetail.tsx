@@ -10,7 +10,7 @@ import {
   useWalletConnect,
   getDAppMetadata,
 } from "@nasun/wallet";
-import type { ViewMode } from "../connect/LockedStateUI";
+import type { ViewMode } from "../connect/types";
 import { sanitizeImageUrl } from "../shared";
 
 interface WCSessionDetailProps {

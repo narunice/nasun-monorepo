@@ -10,35 +10,8 @@ import {
   LOCKOUT_TIERS,
 } from "@nasun/wallet";
 
-export type ViewMode =
-  | "main"
-  | "create"
-  | "create-backup"
-  | "unlock"
-  | "import"
-  | "export"
-  | "send"
-  | "receive"
-  | "nfts"
-  | "staking"
-  | "settings"
-  | "ledger-connect"
-  | "ledger-select"
-  | "address-book"
-  | "portfolio"
-  | "nasun-link"
-  | "nsa-setup"
-  | "nsa-info"
-  | "nsa-add-signer"
-  | "nsa-accept-proposal"
-  | "nsa-backup"
-  | "nsa-guardians"
-  | "nsa-recovery"
-  | "wc-main"
-  | "wc-pair"
-  | "wc-proposal"
-  | "wc-request"
-  | "wc-session-detail";
+import type { ViewMode } from "./types";
+export type { ViewMode } from "./types";
 
 export function LockedStateUI({
   password,
