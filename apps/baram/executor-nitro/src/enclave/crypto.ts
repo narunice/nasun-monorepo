@@ -145,19 +145,9 @@ export function decrypt(encryptedBase64: string): DecryptResult {
 
     return { plaintext: decrypted.toString('utf-8'), aesKey };
   } catch (error) {
-    // Fallback: treat as base64-encoded plaintext (non-encrypted prompt)
-    try {
-      const plaintext = Buffer.from(encryptedBase64, 'base64').toString('utf-8');
-      // Sanity check: valid UTF-8 text should not contain null bytes
-      if (plaintext.length > 0 && !plaintext.includes('\0')) {
-        console.warn('[Enclave/Crypto] Hybrid decryption failed, using plaintext fallback');
-        // No AES key in fallback path — response will not be encrypted
-        return { plaintext, aesKey: Buffer.alloc(0) };
-      }
-    } catch {
-      // Fallback also failed
-    }
-    console.error('[Enclave/Crypto] Decryption failed:', error);
+    // No plaintext fallback — always require proper hybrid encryption.
+    // Accepting unencrypted data would break E2E guarantee and leak responses.
+    console.error('[Enclave/Crypto] Decryption failed');
     throw new Error('Decryption failed - invalid encrypted data or wrong key');
   }
 }

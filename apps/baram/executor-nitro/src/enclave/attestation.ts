@@ -77,8 +77,8 @@ export async function requestNsmAttestation(
   }
 
   console.log('[Attestation] Requesting attestation from NSM...');
-  console.log('[Attestation] userData:', userData?.toString('hex').substring(0, 32) || 'none');
-  console.log('[Attestation] nonce:', nonce?.toString('hex').substring(0, 32) || 'none');
+  console.log('[Attestation] userData:', userData ? 'provided' : 'none');
+  console.log('[Attestation] nonce:', nonce ? 'provided' : 'none');
 
   // Load NSM library
   const nsm = await loadNsmLibrary();

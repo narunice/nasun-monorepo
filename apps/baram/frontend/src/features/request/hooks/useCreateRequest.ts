@@ -173,15 +173,25 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       let executeResult;
       try {
-        const executeResponse = await fetch(executorUrl + '/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            requestId,
-            encryptedPrompt,
-            model,
-          }),
-        });
+        // 60s timeout — prevents indefinite hang if executor is unresponsive
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 60_000);
+
+        let executeResponse: Response;
+        try {
+          executeResponse = await fetch(executorUrl + '/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requestId,
+              encryptedPrompt,
+              model,
+            }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
 
         if (!executeResponse.ok) {
           const errorData = await executeResponse.json();
