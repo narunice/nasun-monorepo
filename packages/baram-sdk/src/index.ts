@@ -29,6 +29,17 @@ export type { BaramClientOptions } from './client';
 // Config
 export { createDevnetConfig } from './config';
 
+// Errors
+export {
+  BaramError,
+  InsufficientBalanceError,
+  NoCoinsError,
+  NoExecutorError,
+  ExecutorApiError,
+  TransactionError,
+  TimeoutError,
+} from './errors';
+
 // Types
 export type {
   BaramConfig,
