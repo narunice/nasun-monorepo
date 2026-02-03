@@ -32,6 +32,7 @@ Nasun is a **bootstrapped web3 project built by a 2-person team with zero extern
 - **Fundraising sequence**: Vision + Prototype → Community → NFT Sales → VC Investment. Every development decision should be evaluated against whether it helps this sequence progress.
 - **Resource constraint**: Two people, no funding. Ruthless scoping is mandatory. Every feature must justify its inclusion in the prototype.
 - **Execution as proof**: The fact that a 2-person team built a working L1 blockchain, DEX, prediction market, lottery, AI settlement layer, and shooter game is itself the strongest pitch. Code quality and working demos matter more than feature breadth.
+- **새 기능 구현 또는 버그 수정할 때, git push 하기 전에 항상 security-reviewer 에이전트와 code-reviewer 에이전트를 활용해서 보안 검사를 실시하세요.**
 
 ---
 
@@ -174,14 +175,14 @@ Security expectations:
 
 ### 현재 상태 (2026-01-28)
 
-| 앱                      | 패키지명                | 상태    | 배포 방식    | 설명                         |
-| ----------------------- | ----------------------- | ------- | ------------ | ---------------------------- |
-| `apps/baram`            | @nasun/baram            | ✅ 완료 | AWS CDK      | AI Settlement Layer (TEE + Escrow) |
-| `apps/network-explorer` | @nasun/network-explorer | ✅ 완료 | EC2 스크립트 | Nasun Explorer (블록 탐색기) |
-| `apps/nasun-website`    | @nasun/nasun-website    | ✅ 완료 | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
-| `apps/gensol-website`   | @nasun/gensol-website   | ✅ 완료 | EC2 스크립트 | GenSol 웹사이트              |
-| `apps/pado`             | @nasun/pado             | ✅ 완료 | -            | Pado 앱                      |
-| `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard | ⏸️ Legacy | - | Legacy Leaderboard V2 (Extracted) |
+| 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
+| ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
+| `apps/baram`                   | @nasun/baram            | ✅ 완료   | AWS CDK      | AI Settlement Layer (TEE + Escrow)                    |
+| `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
+| `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
+| `apps/gensol-website`          | @nasun/gensol-website   | ✅ 완료   | EC2 스크립트 | GenSol 웹사이트                                       |
+| `apps/pado`                    | @nasun/pado             | ✅ 완료   | -            | Pado 앱                                               |
+| `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard    | ⏸️ Legacy | -            | Legacy Leaderboard V2 (Extracted)                     |
 
 ---
 
@@ -422,13 +423,13 @@ pnpm deploy:gensol-website:staging
 
 ## 배포 방식
 
-| 앱               | 배포 방식    | 트리거        | 대상 URL                         |
-| ---------------- | ------------ | ------------- | -------------------------------- |
-| baram            | AWS CDK      | 수동 실행     | Lambda API                       |
-| network-explorer | EC2 스크립트 | 수동 실행     | https://explorer.nasun.io/devnet |
-| nasun-website    | EC2 스크립트 | 수동 실행     | https://nasun.io                 |
-| gensol-website   | EC2 스크립트 | 수동 실행     | https://gensol.nasun.io          |
-| pado             | -            | -             | -                                |
+| 앱               | 배포 방식    | 트리거    | 대상 URL                         |
+| ---------------- | ------------ | --------- | -------------------------------- |
+| baram            | AWS CDK      | 수동 실행 | Lambda API                       |
+| network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
+| nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
+| gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
+| pado             | -            | -         | -                                |
 
 ## 기술 스택
 
@@ -552,18 +553,18 @@ cd apps/pado/contracts
 
 **배포 완료된 컨트랙트:**
 
-| 카테고리 | 컨트랙트 | 상태 |
-|----------|----------|------|
-| Tokens | devnet_tokens (NBTC, NUSDC, Faucet) | ✅ V6 |
-| Prediction | prediction (GlobalState) | ✅ V6 |
-| Lottery | lottery (LotteryRegistry) | ✅ V6 |
-| Governance | governance (Dashboard) | ✅ V6 |
-| DeepBook | DeepBook V3 (CLOB) | ✅ V6 |
-| Baram | baram (BaramRegistry) | ✅ V6 |
-| Baram | executor (ExecutorRegistry) | ✅ V6 |
-| Oracle | pado_oracle | V6 재배포 대기 |
-| Margin | unified_margin | V6 재배포 대기 |
-| Perpetuals | pado_perp | V6 재배포 대기 |
+| 카테고리   | 컨트랙트                            | 상태           |
+| ---------- | ----------------------------------- | -------------- |
+| Tokens     | devnet_tokens (NBTC, NUSDC, Faucet) | ✅ V6          |
+| Prediction | prediction (GlobalState)            | ✅ V6          |
+| Lottery    | lottery (LotteryRegistry)           | ✅ V6          |
+| Governance | governance (Dashboard)              | ✅ V6          |
+| DeepBook   | DeepBook V3 (CLOB)                  | ✅ V6          |
+| Baram      | baram (BaramRegistry)               | ✅ V6          |
+| Baram      | executor (ExecutorRegistry)         | ✅ V6          |
+| Oracle     | pado_oracle                         | V6 재배포 대기 |
+| Margin     | unified_margin                      | V6 재배포 대기 |
+| Perpetuals | pado_perp                           | V6 재배포 대기 |
 
 ## 향후 계획
 
