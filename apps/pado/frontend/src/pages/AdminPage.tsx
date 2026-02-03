@@ -49,7 +49,7 @@ export function AdminPage() {
           </p>
           <Link
             to="/"
-            className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            className="inline-block px-4 py-2 bg-pd1 hover:bg-pd1/80 text-white font-medium rounded-lg transition-colors"
           >
             Back to Home
           </Link>
@@ -74,7 +74,7 @@ export function AdminPage() {
         </div>
         <div className="flex items-center gap-2 text-sm text-theme-text-secondary">
           {isPredictionAdmin && (
-            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+            <span className="px-2 py-1 bg-pd2/20 text-pd3 rounded">
               Prediction
             </span>
           )}

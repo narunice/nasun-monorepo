@@ -70,7 +70,7 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
                 <th className="py-2 px-3 text-right font-medium">Time</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+            <tbody className="divide-y divide-theme-border">
               {displayedTrades.map((trade) => (
                 <tr
                   key={trade.id}

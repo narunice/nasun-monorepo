@@ -233,6 +233,6 @@ function getRiskColor(riskLevel: string): string {
     case RISK_LEVEL.CRITICAL:
       return 'bg-red-500/20 text-red-400';
     default:
-      return 'bg-gray-500/20 text-gray-400';
+      return 'bg-pd2/20 text-theme-text-muted';
   }
 }

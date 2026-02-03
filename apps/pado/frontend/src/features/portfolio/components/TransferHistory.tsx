@@ -103,7 +103,7 @@ export function TransferHistory() {
         <div className="text-red-600 dark:text-red-400 mb-2">{error}</div>
         <button
           onClick={refetch}
-          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-xs text-pd1 dark:text-pd3 hover:underline"
         >
           Retry
         </button>
@@ -148,8 +148,8 @@ export function TransferHistory() {
         <div className="p-4 border-t border-theme-border">
           <button
             onClick={handleLoadMore}
-            className="w-full py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400
-                       bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30
+            className="w-full py-2 px-4 text-sm font-medium text-pd1 dark:text-pd3
+                       bg-pd5 dark:bg-pd0/20 hover:bg-pd5 dark:hover:bg-pd0/30
                        rounded-lg transition-colors"
           >
             Load More ({remaining} more)

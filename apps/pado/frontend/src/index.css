@@ -57,22 +57,22 @@
 /* Pirulen Font - loaded via Adobe Fonts (Typekit) in index.html */
 /* Font family name: 'pirulen' (lowercase) */
 
-/* Theme CSS Variables */
+/* Theme CSS Variables — pd palette based */
 :root {
-  /* Light Theme (default in :root, but we use dark as default via .dark class) */
-  --color-bg-primary: #faf7f4;
-  --color-bg-secondary: #f0ede9;
-  --color-bg-tertiary: #e5e2de;
-  --color-text-primary: #191615;
-  --color-text-secondary: #5a5754;
-  --color-text-muted: #8a8784;
-  --color-border: #d4d1cd;
-  --color-accent: #1a8cbc; /* pado-1 */
+  /* Light Theme */
+  --color-bg-primary: #f5f7fa;
+  --color-bg-secondary: #e1e5ea;    /* pd5 */
+  --color-bg-tertiary: #d0d6de;
+  --color-text-primary: #0e1a2d;
+  --color-text-secondary: #3a5f78;  /* pd2 */
+  --color-text-muted: #7d9dbf;      /* pd3 */
+  --color-border: #aac9d5;          /* pd4 */
+  --color-accent: #1f3a61;          /* pd1 */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
-  /* Pado Brand Colors */
+  /* Pado Brand Colors (legacy, kept for compatibility) */
   --pado-1: #1a8cbc;
   --pado-2: #3bb9d8;
   --pado-3: #5ee1e4;
@@ -80,7 +80,7 @@
   --pado-5: #d2f6a2;
 
   /* Toggle switch OFF background */
-  --color-toggle-off: #b0ada9;
+  --color-toggle-off: #aac9d5;     /* pd4 */
 
   /* Trading-specific colors (light mode — darker for readability) */
   --color-bid: #15803d;
@@ -92,21 +92,21 @@
 }
 
 .dark {
-  /* Dark Theme - Subtle, Professional Trading UI */
-  --color-bg-primary: #0a0a0a;
-  --color-bg-secondary: #111111;
-  --color-bg-tertiary: #1a1a1a;
-  --color-text-primary: #e5e5e5;
-  --color-text-secondary: #a3a3a3;
-  --color-text-muted: #737373;
-  --color-border: #2a2a2a;
-  --color-accent: #3b82f6; /* Unified blue accent */
+  /* Dark Theme — pd palette based */
+  --color-bg-primary: #080c16;      /* pd0 -30% lightness */
+  --color-bg-secondary: #0d141e;    /* pd0s -30% lightness */
+  --color-bg-tertiary: #121a26;
+  --color-text-primary: #e1e5ea;    /* pd5 */
+  --color-text-secondary: #aac9d5;  /* pd4 */
+  --color-text-muted: #7d9dbf;      /* pd3 */
+  --color-border: #1f3a61;          /* pd1 */
+  --color-accent: #7d9dbf;          /* pd3 */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
   /* Toggle switch OFF background */
-  --color-toggle-off: #4b4b4b;
+  --color-toggle-off: #3a5f78;     /* pd2 */
 
   /* Trading-specific colors (subtle) */
   --color-bid: #16a34a;

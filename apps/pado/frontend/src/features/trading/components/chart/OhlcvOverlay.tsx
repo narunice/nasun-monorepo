@@ -49,7 +49,7 @@ export function OhlcvOverlay({ data, baseSymbol, interval, isRealData, indicator
                 <span className="text-theme-text-muted">MA5</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-3 h-0.5 bg-blue-400"></span>
+                <span className="w-3 h-0.5 bg-pd3"></span>
                 <span className="text-theme-text-muted">MA20</span>
               </span>
             </>

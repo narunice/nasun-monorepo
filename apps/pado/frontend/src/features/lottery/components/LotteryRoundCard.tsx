@@ -39,11 +39,11 @@ export function LotteryRoundCard({
       case 'closed':
         return 'bg-yellow-600';
       case 'drawn':
-        return 'bg-blue-600';
+        return 'bg-pd1';
       case 'settled':
-        return 'bg-gray-600';
+        return 'bg-pd2';
       default:
-        return 'bg-gray-600';
+        return 'bg-pd2';
     }
   }, [statusLabel]);
 
@@ -142,7 +142,7 @@ export function LotteryRoundCard({
                 onDrawNumbers();
               }}
               disabled={isKeeperLoading}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              className="w-full py-2 bg-pd1 hover:bg-pd1/80 text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {isKeeperLoading ? 'Processing...' : 'Trigger Draw'}
             </button>
@@ -170,14 +170,14 @@ export function LotteryRoundCard({
 
           {/* Tier 2 - 4 Matches */}
           <div className="text-sm flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-blue-900/30 text-blue-400">
+            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-pd0/30 text-pd3">
               2nd Prize
             </span>
             <span className="text-theme-text-secondary">
               {round.tier2Winners} winner{round.tier2Winners !== 1 ? 's' : ''}
             </span>
             {round.tier2Winners > 0 && (
-              <span className="text-blue-400 font-medium">
+              <span className="text-pd3 font-medium">
                 ({formatNusdc(round.tier2PayoutPerWinner)} each)
               </span>
             )}

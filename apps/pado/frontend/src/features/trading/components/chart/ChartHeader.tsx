@@ -84,7 +84,7 @@ export function ChartHeader({
               onClick={() => onIntervalChange(key)}
               className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
                 interval === key
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-pd1 text-white'
                   : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
               }`}
             >

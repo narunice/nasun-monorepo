@@ -47,7 +47,7 @@ export function PredictAdminPage() {
           </p>
           <Link
             to="/predict"
-            className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            className="inline-block px-4 py-2 bg-pd1 hover:bg-pd1/80 text-white font-medium rounded-lg transition-colors"
           >
             Back to Markets
           </Link>

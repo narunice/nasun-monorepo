@@ -130,7 +130,7 @@ export function OrderForm({
         onTabChange={setOrderMode}
         rightContent={
           !isMarket && executionOption !== 'GTC' ? (
-            <span className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm bg-blue-600/30 text-blue-400 rounded">
+            <span className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm bg-pd1/30 text-pd3 rounded">
               {executionOption}
             </span>
           ) : undefined
@@ -192,7 +192,7 @@ export function OrderForm({
             className={`w-full px-3 py-2 text-sm xl:text-base bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
               effectivePrice > 0 && !priceValidation.valid
                 ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
-                : 'focus:ring-blue-500'
+                : 'focus:ring-pd2'
             }`}
           />
           {effectivePrice > 0 && !priceValidation.valid && (
@@ -229,7 +229,7 @@ export function OrderForm({
           className={`w-full px-3 py-2 text-sm xl:text-base bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
             amountNum > 0 && !quantityValidation.valid
               ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
-              : 'focus:ring-blue-500'
+              : 'focus:ring-pd2'
           }`}
         />
         {amountNum > 0 && !quantityValidation.valid && (
@@ -290,7 +290,7 @@ export function OrderForm({
             </svg>
             Advanced
             {executionOption !== 'GTC' && (
-              <span className="ml-1 px-1.5 py-0.5 bg-blue-600/30 text-blue-400 rounded text-[10px] xl:text-xs">
+              <span className="ml-1 px-1.5 py-0.5 bg-pd1/30 text-pd3 rounded text-[10px] xl:text-xs">
                 {executionOption}
               </span>
             )}
@@ -306,7 +306,7 @@ export function OrderForm({
                     onClick={() => onExecutionOptionChange(opt.value)}
                     className={`py-1 px-1.5 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
                       executionOption === opt.value
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-pd1 text-white'
                         : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
                     }`}
                     title={opt.description}

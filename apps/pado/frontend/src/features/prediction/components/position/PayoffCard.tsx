@@ -99,7 +99,7 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
         )}
 
         {isLosing && (
-          <div className="w-full py-2 bg-gray-600/50 text-gray-400 rounded-lg text-sm font-medium text-center">
+          <div className="w-full py-2 bg-pd2/50 text-theme-text-muted rounded-lg text-sm font-medium text-center">
             Position Lost
           </div>
         )}

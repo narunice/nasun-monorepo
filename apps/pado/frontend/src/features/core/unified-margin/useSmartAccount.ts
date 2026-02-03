@@ -332,6 +332,6 @@ export function getRiskLevelColor(level: number): string {
     case 1: return 'text-yellow-500';
     case 2: return 'text-orange-500';
     case 3: return 'text-red-500';
-    default: return 'text-gray-500';
+    default: return 'text-theme-text-muted';
   }
 }

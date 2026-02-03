@@ -28,15 +28,15 @@ export function LendingSection() {
 
           <ul className="space-y-2 text-xs text-theme-text-muted">
             <li className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold">1.</span>
+              <span className="text-pd3 font-bold">1.</span>
               <span>Deposit NUSDC to the lending pool</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold">2.</span>
+              <span className="text-pd3 font-bold">2.</span>
               <span>Earn interest as borrowers pay fees</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold">3.</span>
+              <span className="text-pd3 font-bold">3.</span>
               <span>Withdraw anytime with accrued interest</span>
             </li>
           </ul>

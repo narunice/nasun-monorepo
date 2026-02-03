@@ -33,7 +33,7 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
     <div className="bg-theme-bg-secondary rounded-xl p-4 md:p-6">
       {/* Category & Status */}
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
+        <span className="text-xs font-medium text-pd1 dark:text-pd3 bg-pd5 dark:bg-pd0/30 px-2 py-1 rounded">
           {market.category}
         </span>
         <StatusBadge status={market.status} outcome={market.outcome} />

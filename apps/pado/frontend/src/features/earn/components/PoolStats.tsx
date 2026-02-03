@@ -13,11 +13,11 @@ export function PoolStats() {
     return (
       <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 dark:bg-zinc-700 rounded w-24" />
-          <div className="h-8 bg-gray-200 dark:bg-zinc-700 rounded w-32" />
+          <div className="h-4 bg-theme-bg-tertiary rounded w-24" />
+          <div className="h-8 bg-theme-bg-tertiary rounded w-32" />
           <div className="grid grid-cols-2 gap-4">
-            <div className="h-16 bg-gray-200 dark:bg-zinc-700 rounded" />
-            <div className="h-16 bg-gray-200 dark:bg-zinc-700 rounded" />
+            <div className="h-16 bg-theme-bg-tertiary rounded" />
+            <div className="h-16 bg-theme-bg-tertiary rounded" />
           </div>
         </div>
       </div>
@@ -50,7 +50,7 @@ export function PoolStats() {
       {/* APY & Utilization */}
       <div className="grid grid-cols-2 gap-4">
         {/* Supply APY */}
-        <div className="bg-gray-100 dark:bg-zinc-800/50 rounded-lg p-3">
+        <div className="bg-theme-bg-secondary/50 rounded-lg p-3">
           <p className="text-xs text-theme-text-muted">Supply APY</p>
           <p className="text-lg font-semibold text-green-600 dark:text-green-400 mt-1">
             {formatPercentage(stats.supplyAPY)}
@@ -58,7 +58,7 @@ export function PoolStats() {
         </div>
 
         {/* Utilization */}
-        <div className="bg-gray-100 dark:bg-zinc-800/50 rounded-lg p-3">
+        <div className="bg-theme-bg-secondary/50 rounded-lg p-3">
           <p className="text-xs text-theme-text-muted">Utilization</p>
           <p className="text-lg font-semibold text-theme-text-primary mt-1">
             {formatPercentage(stats.utilizationRate)}

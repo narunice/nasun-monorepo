@@ -67,7 +67,7 @@ export function WalletPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 py-2.5 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
               activeTab === tab.id
-                ? 'bg-blue-500 text-white'
+                ? 'bg-pd2 text-white'
                 : 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
             }`}
           >

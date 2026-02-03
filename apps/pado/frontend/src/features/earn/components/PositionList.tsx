@@ -63,8 +63,8 @@ export function PositionList() {
           Your Positions
         </h3>
         <div className="animate-pulse space-y-2">
-          <div className="h-16 bg-gray-200 dark:bg-zinc-700 rounded" />
-          <div className="h-16 bg-gray-200 dark:bg-zinc-700 rounded" />
+          <div className="h-16 bg-theme-bg-tertiary rounded" />
+          <div className="h-16 bg-theme-bg-tertiary rounded" />
         </div>
       </div>
     );
@@ -79,7 +79,7 @@ export function PositionList() {
       {positions.length === 0 ? (
         <div className="text-center py-6">
           <svg
-            className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-500 mb-3"
+            className="w-12 h-12 mx-auto text-theme-text-muted mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -99,7 +99,7 @@ export function PositionList() {
       ) : (
         <div className="space-y-4">
           {/* Summary */}
-          <div className="bg-gray-100 dark:bg-zinc-800/50 rounded-lg p-3">
+          <div className="bg-theme-bg-secondary/50 rounded-lg p-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-theme-text-muted">Total Deposited</p>
@@ -133,7 +133,7 @@ export function PositionList() {
                 href={`${NETWORK_CONFIG.explorerUrl}/tx/${success}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-500 hover:underline"
+                className="text-xs text-pd3 hover:underline"
               >
                 View transaction →
               </a>
@@ -174,7 +174,7 @@ function PositionCard({
   const { position, currentValue, earnedInterest } = positionValue;
 
   return (
-    <div className="bg-gray-100/50 dark:bg-zinc-800/30 rounded-lg p-3 border border-gray-200 dark:border-zinc-700">
+    <div className="bg-theme-bg-secondary/50 rounded-lg p-3 border border-theme-border">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ function PositionCard({
         <button
           onClick={() => onWithdraw(position.id)}
           disabled={disabled}
-          className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-zinc-600 hover:bg-gray-300 dark:hover:bg-zinc-500 disabled:opacity-50 text-gray-900 dark:text-white rounded transition-colors"
+          className="px-3 py-1.5 text-sm bg-theme-bg-tertiary hover:bg-theme-bg-secondary disabled:opacity-50 text-theme-text-primary rounded transition-colors"
         >
           {isWithdrawing ? (
             <span className="flex items-center gap-1">

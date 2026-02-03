@@ -50,7 +50,7 @@ export function StakingSection() {
                   ) : (
                     <>
                       {formattedBalance}{' '}
-                      <span className="text-sm font-normal text-blue-400">NASUN</span>
+                      <span className="text-sm font-normal text-pd3">NASUN</span>
                     </>
                   )}
                 </p>
@@ -66,7 +66,7 @@ export function StakingSection() {
                 ) : (
                   <>
                     {summary?.formattedTotalStaked || '0'}{' '}
-                    <span className="text-sm font-normal text-blue-400">NASUN</span>
+                    <span className="text-sm font-normal text-pd3">NASUN</span>
                   </>
                 )}
               </p>
@@ -123,15 +123,15 @@ export function StakingSection() {
 
           <ul className="space-y-2 text-xs text-theme-text-muted">
             <li className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold">1.</span>
+              <span className="text-pd3 font-bold">1.</span>
               <span>Select a validator and stake your NASUN</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold">2.</span>
+              <span className="text-pd3 font-bold">2.</span>
               <span>Earn rewards each epoch (~24 hours)</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-400 font-bold">3.</span>
+              <span className="text-pd3 font-bold">3.</span>
               <span>Unstake anytime (available next epoch)</span>
             </li>
           </ul>

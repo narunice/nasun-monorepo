@@ -101,7 +101,7 @@ export function PredictMarketPage() {
         <p className="text-red-500 mb-4">Failed to load market</p>
         <Link
           to="/predict"
-          className="text-blue-500 hover:text-blue-400 underline"
+          className="text-pd3 hover:text-pd3 underline"
         >
           Back to Markets
         </Link>

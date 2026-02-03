@@ -133,7 +133,7 @@ export function SmartAccountPanel() {
   // Not enabled
   if (!isPadoEnabled) {
     return (
-      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-6">
+      <div className="bg-gradient-to-r from-pd2/10 to-purple-500/10 border border-pd2/30 rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-theme-text-primary">Enable Smart Account</h3>
@@ -145,7 +145,7 @@ export function SmartAccountPanel() {
           <button
             onClick={handleEnablePado}
             disabled={isCreating}
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-6 py-3 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {isCreating ? "Enabling..." : "Enable Now"}
           </button>
@@ -420,7 +420,7 @@ export function SmartAccountPanel() {
                       selectedToken === "NUSDC" ? collateral.NUSDC.amount : collateral.NBTC.amount;
                     setAmount(maxAmount.toString());
                   }}
-                  className="text-blue-500 hover:text-blue-400"
+                  className="text-pd3 hover:text-pd3"
                 >
                   MAX
                 </button>
@@ -450,7 +450,7 @@ export function SmartAccountPanel() {
               <button
                 onClick={handleWithdraw}
                 disabled={isWithdrawing}
-                className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg disabled:opacity-50"
+                className="flex-1 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg disabled:opacity-50"
               >
                 {isWithdrawing ? "Withdrawing..." : "Withdraw"}
               </button>
