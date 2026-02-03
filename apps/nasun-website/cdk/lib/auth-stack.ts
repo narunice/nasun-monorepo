@@ -20,11 +20,7 @@ export class AuthStack extends cdk.Stack {
 
     // Import NFT event tasks table for secure X access token storage
     const nftEventTasksTableName = cdk.Fn.importValue('NftEventTasksTableName');
-    const nftEventTasksTableArn = cdk.Fn.importValue('NftEventTasksTableArn');
-    const nftEventTasksTable = dynamodb.Table.fromTableAttributes(this, 'NftEventTasksTable', {
-      tableName: nftEventTasksTableName,
-      tableArn: nftEventTasksTableArn,
-    });
+    const nftEventTasksTable = dynamodb.Table.fromTableName(this, 'NftEventTasksTable', nftEventTasksTableName);
 
     // Determine secret name based on environment
     const isProduction = process.env.NODE_ENV === 'production';
