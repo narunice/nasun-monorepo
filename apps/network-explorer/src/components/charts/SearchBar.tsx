@@ -1,42 +1,50 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getObject } from '../../lib/sui-client';
+
+// Base58 character set (no 0, O, I, l)
+const TX_DIGEST_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
+// Sui object ID or address: 0x + 64 hex chars
+const HEX_ID_RE = /^0x[0-9a-fA-F]{64}$/;
 
 export function SearchBar() {
   const [isSearching, setIsSearching] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const query = formData.get('query') as string;
+    const query = (formData.get('query') as string).trim();
 
-    if (!query.trim()) return;
+    if (!query) return;
 
-    // Detect type and redirect
-    if (query.length === 44 || query.length === 43) {
-      // Transaction digest (base58)
-      window.location.href = `/tx/${query}`;
-    } else if (query.startsWith('0x') && query.length === 66) {
-      // Could be object ID or address - check if object exists
+    // Transaction digest (base58 encoded, 43-44 chars)
+    if (TX_DIGEST_RE.test(query)) {
+      navigate(`/tx/${query}`);
+      return;
+    }
+
+    // Object ID or address (0x + 64 hex chars)
+    if (HEX_ID_RE.test(query)) {
       setIsSearching(true);
       try {
         const obj = await getObject(query);
         if (obj?.data) {
-          window.location.href = `/object/${query}`;
+          navigate(`/object/${query}`);
         } else {
-          window.location.href = `/address/${query}`;
+          navigate(`/address/${query}`);
         }
       } catch {
-        // On error, default to address
-        window.location.href = `/address/${query}`;
+        navigate(`/address/${query}`);
       } finally {
         setIsSearching(false);
       }
-    } else if (query.startsWith('0x') && query.length === 42) {
-      // Address (shorter format)
-      window.location.href = `/address/${query}`;
-    } else {
-      // Default to object
-      window.location.href = `/object/${query}`;
+      return;
+    }
+
+    // Unrecognized format — try as object ID if starts with 0x
+    if (query.startsWith('0x')) {
+      navigate(`/object/${encodeURIComponent(query)}`);
     }
   };
 

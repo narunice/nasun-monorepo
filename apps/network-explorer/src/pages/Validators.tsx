@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getValidators } from '../lib/sui-client';
 import { formatBalance } from '../lib/format';
+import { resolveMediaUrl } from '../lib/media';
 import { Card } from '../components/ui/Card';
 import { useMinDuration } from '../hooks';
 
@@ -107,9 +108,9 @@ export default function Validators() {
                         to={`/validator/${validator.address}`}
                         className="flex items-center gap-2 text-primary hover:underline"
                       >
-                        {validator.imageUrl && (
+                        {resolveMediaUrl(validator.imageUrl) && (
                           <img
-                            src={validator.imageUrl}
+                            src={resolveMediaUrl(validator.imageUrl)!}
                             alt={validator.name}
                             className="w-6 h-6 rounded-full"
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
