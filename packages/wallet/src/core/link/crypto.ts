@@ -184,35 +184,97 @@ export async function recoverKeypair(
   return Ed25519Keypair.fromSecretKey(privateKey);
 }
 
+/** Salt length for password hashing */
+const PASSWORD_SALT_LENGTH = 16;
+
+/** PBKDF2 iterations for password hashing */
+const PASSWORD_HASH_ITERATIONS = 100000;
+
 /**
  * Hash password for condition
  *
- * Creates a hash of the password for password-gated links.
+ * Uses PBKDF2 with random salt for brute-force resistance.
+ * Returns base64(salt + derived_key) so salt is embedded in the hash.
  *
  * @param password - Plain text password
- * @returns Base64-encoded hash
+ * @returns Base64-encoded salt+hash
  */
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + DERIVATION_SALT);
+  const salt = crypto.getRandomValues(new Uint8Array(PASSWORD_SALT_LENGTH));
 
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = new Uint8Array(hashBuffer);
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
 
-  return btoa(String.fromCharCode(...hashArray));
+  const derived = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: PASSWORD_HASH_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    256
+  );
+
+  // Combine salt + derived key
+  const combined = new Uint8Array(salt.length + derived.byteLength);
+  combined.set(salt);
+  combined.set(new Uint8Array(derived), salt.length);
+
+  return btoa(String.fromCharCode(...combined));
 }
 
 /**
  * Verify password against hash
  *
+ * Extracts salt from stored hash, re-derives, and compares.
+ *
  * @param password - Plain text password
- * @param hash - Stored hash
+ * @param hash - Stored base64(salt+hash)
  * @returns true if password matches
  */
 export async function verifyPassword(
   password: string,
   hash: string
 ): Promise<boolean> {
-  const computedHash = await hashPassword(password);
-  return computedHash === hash;
+  const encoder = new TextEncoder();
+  const combined = Uint8Array.from(atob(hash), (c) => c.charCodeAt(0));
+
+  // Extract salt and stored derived key
+  const salt = combined.slice(0, PASSWORD_SALT_LENGTH);
+  const storedDerived = combined.slice(PASSWORD_SALT_LENGTH);
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  const derived = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: PASSWORD_HASH_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    256
+  );
+
+  // Constant-time comparison
+  const derivedArray = new Uint8Array(derived);
+  if (derivedArray.length !== storedDerived.length) return false;
+  let diff = 0;
+  for (let i = 0; i < derivedArray.length; i++) {
+    diff |= derivedArray[i] ^ storedDerived[i];
+  }
+  return diff === 0;
 }
