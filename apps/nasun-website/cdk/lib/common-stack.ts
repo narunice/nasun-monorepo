@@ -690,7 +690,7 @@ export class CommonStack extends cdk.Stack {
     // 10-2. Lambda 공통 환경변수
     const whitelistEnv = {
       WHITELIST_TABLE_NAME: whitelistTable.tableName,
-      ADMIN_API_KEY: process.env.ADMIN_API_KEY || "default-insecure-key",
+      ADMIN_API_KEY: process.env.ADMIN_API_KEY || (() => { throw new Error("ADMIN_API_KEY environment variable is required"); })(),
     };
 
     // 10-3. Join Whitelist Lambda

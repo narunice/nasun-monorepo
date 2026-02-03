@@ -4,7 +4,7 @@
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { successResponse, errorResponse } from '@/utils/response';
+import { successResponse, errorResponse, corsHeaders } from '@/utils/response';
 import { validateEthereumAddress } from '@/utils/validation';
 import { normalizeAddress } from '@/utils/ethereum';
 import { getWhitelistItem } from '@/utils/dynamodb';
@@ -15,15 +15,13 @@ export async function handler(
 ): Promise<APIGatewayProxyResult> {
   console.log('Check Whitelist Request:', JSON.stringify(event, null, 2));
 
+  const requestOrigin = event.headers?.origin || event.headers?.Origin;
+
   // OPTIONS 요청 처리 (CORS Preflight)
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, Authorization',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS'
-      },
+      headers: corsHeaders(requestOrigin),
       body: ''
     };
   }
@@ -35,12 +33,12 @@ export async function handler(
       event.queryStringParameters?.walletAddress;
 
     if (!address) {
-      return errorResponse('INVALID_REQUEST', 'Wallet address is required', 400);
+      return errorResponse('INVALID_REQUEST', 'Wallet address is required', 400, undefined, requestOrigin);
     }
 
     // 2. 주소 검증
     if (!validateEthereumAddress(address)) {
-      return errorResponse('INVALID_ADDRESS', 'Invalid wallet address format', 400);
+      return errorResponse('INVALID_ADDRESS', 'Invalid wallet address format', 400, undefined, requestOrigin);
     }
 
     // 3. 주소 정규화
@@ -62,13 +60,15 @@ export async function handler(
 
     console.log('Check result:', response);
 
-    return successResponse(response, 200);
+    return successResponse(response, 200, requestOrigin);
   } catch (error: any) {
     console.error('Check whitelist error:', error);
     return errorResponse(
       'INTERNAL_ERROR',
       'Failed to check whitelist status. Please try again.',
-      500
+      500,
+      undefined,
+      requestOrigin
     );
   }
 }
