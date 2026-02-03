@@ -16,6 +16,13 @@ import type {
   TierLevel,
 } from './types';
 import { MODEL_PRICING, EXECUTOR_SELECTION } from './types';
+import {
+  BaramError,
+  NoExecutorError,
+  ExecutorApiError,
+  TransactionError,
+  TimeoutError,
+} from './errors';
 import { sha256, hexToBytes } from './services/encoding';
 import { getNusdcCoins } from './services/coin';
 import { fetchExecutors, selectExecutorWeightedRandom } from './services/executor';
@@ -25,19 +32,44 @@ import { fetchECRByRequestId } from './services/ecr';
 export interface BaramClientOptions {
   config: BaramConfig;
   signer: Keypair;
+  /** Timeout for executor API calls in ms (default: 30000) */
+  executorTimeoutMs?: number;
+  /** Interval between ECR poll attempts in ms (default: 2000) */
+  ecrPollIntervalMs?: number;
+  /** Number of ECR poll retries (default: 3) */
+  ecrPollRetries?: number;
 }
+
+const DEFAULT_EXECUTOR_TIMEOUT_MS = 30_000;
+const DEFAULT_ECR_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_ECR_POLL_RETRIES = 3;
 
 export class BaramClient {
   private client: SuiClient;
   private config: BaramConfig;
   private signer: Keypair;
   private address: string;
+  private executorTimeoutMs: number;
+  private ecrPollIntervalMs: number;
+  private ecrPollRetries: number;
 
   constructor(options: BaramClientOptions) {
     this.config = options.config;
     this.signer = options.signer;
     this.address = options.signer.toSuiAddress();
     this.client = new SuiClient({ url: options.config.rpcUrl });
+
+    const timeout = options.executorTimeoutMs ?? DEFAULT_EXECUTOR_TIMEOUT_MS;
+    const pollInterval = options.ecrPollIntervalMs ?? DEFAULT_ECR_POLL_INTERVAL_MS;
+    const pollRetries = options.ecrPollRetries ?? DEFAULT_ECR_POLL_RETRIES;
+
+    if (timeout <= 0) throw new BaramError('executorTimeoutMs must be positive', 'INVALID_CONFIG');
+    if (pollInterval <= 0) throw new BaramError('ecrPollIntervalMs must be positive', 'INVALID_CONFIG');
+    if (pollRetries < 0) throw new BaramError('ecrPollRetries must be non-negative', 'INVALID_CONFIG');
+
+    this.executorTimeoutMs = timeout;
+    this.ecrPollIntervalMs = pollInterval;
+    this.ecrPollRetries = pollRetries;
   }
 
   /**
@@ -63,7 +95,7 @@ export class BaramClient {
 
   /**
    * Get NUSDC balance for the signer's address.
-   * @returns Balance in NUSDC (6 decimal places)
+   * @returns Balance in NUSDC smallest units (1,000,000 = 1 NUSDC)
    */
   async getBalance(): Promise<number> {
     const coins = await this.client.getCoins({
@@ -83,7 +115,7 @@ export class BaramClient {
    * 4. Call executor API
    * 5. Fetch ECR (on-chain compliance record)
    *
-   * @throws Error if no eligible executor, insufficient balance, or execution fails
+   * @throws {BaramError} if no eligible executor, insufficient balance, or execution fails
    */
   async execute(params: ExecuteParams): Promise<ExecuteResult> {
     const { prompt, model, minTier, teeRequired } = params;
@@ -91,7 +123,8 @@ export class BaramClient {
     // Resolve model pricing
     const modelInfo = MODEL_PRICING[model];
     if (!modelInfo) {
-      throw new Error(`Unknown model: ${model}. Available: ${Object.keys(MODEL_PRICING).join(', ')}`);
+      const available = Object.keys(MODEL_PRICING).join(', ');
+      throw new BaramError(`Unknown model: ${model}. Available: ${available}`, 'UNKNOWN_MODEL');
     }
     const price = modelInfo.price;
 
@@ -117,10 +150,10 @@ export class BaramClient {
     }
 
     if (!selectedExecutor && excludeIds.size === 0) {
-      throw new Error(`No eligible executor found for model "${model}" with tier >= ${effectiveMinTier}`);
+      throw new NoExecutorError(model, effectiveMinTier);
     }
 
-    throw lastError ?? new Error('All executor attempts failed');
+    throw lastError ?? new NoExecutorError(model, effectiveMinTier);
   }
 
   /**
@@ -169,7 +202,7 @@ export class BaramClient {
     // 4. Extract requestId from RequestCreated event
     const requestId = this.extractRequestId(txResult);
     if (requestId === null) {
-      throw new Error('Failed to extract requestId from transaction events');
+      throw new TransactionError('Failed to extract requestId from transaction events', txResult.digest);
     }
 
     // 5. Call executor API
@@ -196,10 +229,10 @@ export class BaramClient {
 
     // 6. Fetch ECR (may need a short delay for on-chain propagation)
     let ecr: ECRData | null = null;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < this.ecrPollRetries; i++) {
       ecr = await this.getECR(requestId);
       if (ecr) break;
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, this.ecrPollIntervalMs));
     }
 
     return {
@@ -231,24 +264,49 @@ export class BaramClient {
     prompt: string,
     model: string,
   ): Promise<{ response: string; resultHash: string; executionTimeMs: number; txDigest: string }> {
-    const url = executor.endpointUrl.replace(/\/$/, '');
+    // Validate executor URL to prevent SSRF
+    const rawUrl = executor.endpointUrl.replace(/\/$/, '');
+    try {
+      const parsed = new URL(rawUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        throw new BaramError(`Invalid executor URL protocol: ${parsed.protocol}`, 'INVALID_EXECUTOR_URL');
+      }
+    } catch (err) {
+      if (err instanceof BaramError) throw err;
+      throw new BaramError(`Invalid executor URL: ${rawUrl}`, 'INVALID_EXECUTOR_URL');
+    }
+    const url = rawUrl;
 
     // Encode prompt as base64 for non-TEE executors
     const encodedPrompt = Buffer.from(prompt, 'utf-8').toString('base64');
 
-    const res = await fetch(`${url}/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requestId,
-        encryptedPrompt: encodedPrompt,
-        model,
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.executorTimeoutMs);
+
+    let res: Response;
+    try {
+      res = await fetch(`${url}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          encryptedPrompt: encodedPrompt,
+          model,
+        }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new TimeoutError('Executor API call', this.executorTimeoutMs);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new Error(`Executor returned ${res.status}: ${body}`);
+      throw new ExecutorApiError(res.status, body);
     }
 
     const data = await res.json() as {
@@ -259,7 +317,7 @@ export class BaramClient {
     };
 
     if (!data.result) {
-      throw new Error('Executor returned empty result');
+      throw new ExecutorApiError(200, 'Executor returned empty result');
     }
 
     return {
