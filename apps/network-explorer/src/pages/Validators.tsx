@@ -47,19 +47,19 @@ export default function Validators() {
           <h2 className="text-lg font-semibold mb-4 text-foreground">Network Staking Summary</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card variant="default" className="p-4">
-              <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Current Epoch</div>
+              <div className="text-muted-foreground text-sm uppercase tracking-wider">Current Epoch</div>
               <div className="text-lg font-mono text-foreground">{data.epoch}</div>
             </Card>
             <Card variant="default" className="p-4">
-              <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Total Staked</div>
+              <div className="text-muted-foreground text-sm uppercase tracking-wider">Total Staked</div>
               <div className="text-lg font-mono text-foreground">{formatBalance(data.totalStake)} NSN</div>
             </Card>
             <Card variant="default" className="p-4">
-              <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Active Validators</div>
+              <div className="text-muted-foreground text-sm uppercase tracking-wider">Active Validators</div>
               <div className="text-lg font-mono text-foreground">{data.activeValidators.length}</div>
             </Card>
             <Card variant="default" className="p-4">
-              <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Avg APY</div>
+              <div className="text-muted-foreground text-sm uppercase tracking-wider">Avg APY</div>
               <div className="text-lg font-mono text-foreground">
                 {data.activeValidators.length > 0
                   ? formatPercentage(
@@ -119,7 +119,7 @@ export default function Validators() {
                     {formatBalance(validator.stakingPoolSuiBalance)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span className="dark:text-nasun-c3 text-teal-600 font-medium">
+                    <span className="text-green-600 dark:text-green-400 font-medium">
                       {formatPercentage(validator.apy)}
                     </span>
                   </td>
