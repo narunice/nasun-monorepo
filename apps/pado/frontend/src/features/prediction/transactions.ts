@@ -3,7 +3,58 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { PREDICTION_PACKAGE_ID, PREDICTION_GLOBAL_STATE, CLOCK_ID } from './constants';
+import { PREDICTION_PACKAGE_ID, PREDICTION_GLOBAL_STATE, CLOCK_ID, MAX_PRICE } from './constants';
+
+// ============================================
+// Security: Validation Functions
+// ============================================
+
+/** Maximum mint/bid amount to prevent fat-finger errors (1M NUSDC) */
+const MAX_AMOUNT = 1_000_000_000_000n; // 1M NUSDC (6 decimals)
+
+/** Maximum string length for market metadata */
+const MAX_QUESTION_LENGTH = 500;
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_CATEGORY_LENGTH = 50;
+
+/**
+ * Validate prediction price (basis points: 1-9999)
+ * Boundary values 0 and 10000 represent certainty and are excluded.
+ */
+function validatePrice(price: number): void {
+  if (!Number.isInteger(price) || price <= 0 || price >= MAX_PRICE) {
+    throw new Error(
+      `[Security] Price must be an integer between 1 and ${MAX_PRICE - 1} basis points (got ${price})`
+    );
+  }
+}
+
+/** Validate amount is positive and within sane bounds */
+function validateAmount(amount: bigint): void {
+  if (amount <= 0n) {
+    throw new Error('[Security] Amount must be positive');
+  }
+  if (amount > MAX_AMOUNT) {
+    throw new Error('[Security] Amount exceeds maximum allowed value');
+  }
+}
+
+/** Validate market metadata string lengths */
+function validateMarketStrings(question: string, description: string, category: string): void {
+  if (!question || question.length > MAX_QUESTION_LENGTH) {
+    throw new Error(`[Security] Question must be 1-${MAX_QUESTION_LENGTH} characters`);
+  }
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new Error(`[Security] Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`);
+  }
+  if (!category || category.length > MAX_CATEGORY_LENGTH) {
+    throw new Error(`[Security] Category must be 1-${MAX_CATEGORY_LENGTH} characters`);
+  }
+}
+
+// ============================================
+// User Transaction Builders
+// ============================================
 
 /**
  * Mint YES and NO tokens by depositing NUSDC
@@ -37,6 +88,8 @@ export function buildMintOutcomeTokensWithAmount(
   amount: bigint,
   _senderAddress: string,
 ): Transaction {
+  validateAmount(amount);
+
   const tx = new Transaction();
 
   // Split the exact amount from the coin
@@ -61,9 +114,11 @@ export function buildMintOutcomeTokensWithAmount(
 export function buildPlaceBidOrder(
   marketId: string,
   isYes: boolean,
-  price: number, // In basis points (0-10000)
+  price: number,
   nusdcCoinId: string,
 ): Transaction {
+  validatePrice(price);
+
   const tx = new Transaction();
 
   tx.moveCall({
@@ -91,6 +146,9 @@ export function buildPlaceBidOrderWithAmount(
   nusdcCoinId: string,
   amount: bigint,
 ): Transaction {
+  validatePrice(price);
+  validateAmount(amount);
+
   const tx = new Transaction();
 
   // Split the exact amount
@@ -118,8 +176,10 @@ export function buildPlaceBidOrderWithAmount(
 export function buildPlaceAskOrder(
   marketId: string,
   positionId: string,
-  price: number, // In basis points (0-10000)
+  price: number,
 ): Transaction {
+  validatePrice(price);
+
   const tx = new Transaction();
 
   tx.moveCall({
@@ -176,6 +236,10 @@ export function buildBurnLosingPosition(
   return tx;
 }
 
+// ============================================
+// Admin Transaction Builders
+// ============================================
+
 /**
  * Resolve market with outcome (Admin only)
  * Only the designated resolver can call this after close_time
@@ -211,6 +275,12 @@ export function buildCreateMarket(
   resolveDeadline: bigint,
   resolver: string,
 ): Transaction {
+  validateMarketStrings(question, description, category);
+
+  if (resolveDeadline <= closeTime) {
+    throw new Error('[Security] Resolve deadline must be after close time');
+  }
+
   const tx = new Transaction();
 
   tx.moveCall({
