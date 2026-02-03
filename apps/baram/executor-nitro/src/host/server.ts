@@ -85,18 +85,20 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   // Middleware
   app.use(express.json({ limit: '5mb' }));
 
-  // CORS — restrict to known origins in production
-  const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN || '*';
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-      return;
-    }
-    next();
-  });
+  // CORS — fail-secure: no CORS headers unless explicitly configured
+  const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN;
+  if (allowedOrigin) {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      res.header('Access-Control-Allow-Origin', allowedOrigin);
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type');
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+        return;
+      }
+      next();
+    });
+  }
 
   /**
    * GET /health
@@ -201,8 +203,8 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       return;
     }
 
-    // Reject oversized payloads (5MB base64 ≈ ~3.75MB raw)
-    const MAX_PROMPT_LENGTH = 5 * 1024 * 1024;
+    // Reject oversized prompts (1MB base64 ≈ ~750KB raw, well above typical LLM context)
+    const MAX_PROMPT_LENGTH = 1 * 1024 * 1024;
     if (encryptedPrompt.length > MAX_PROMPT_LENGTH) {
       res.status(413).json({
         success: false,
