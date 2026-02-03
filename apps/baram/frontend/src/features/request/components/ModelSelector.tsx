@@ -30,7 +30,7 @@ export function ModelSelector({ selectedModel, onSelect, disabled }: ModelSelect
             disabled={disabled}
             className={`p-3 rounded-md border text-left transition-all ${
               selectedModel === model.id
-                ? 'border-baram-1 bg-baram-1/10'
+                ? 'border-br-1d bg-br-1/10'
                 : 'border-[var(--color-border)] bg-[var(--color-bg-tertiary)] hover:border-[var(--color-text-muted)]'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
@@ -38,7 +38,7 @@ export function ModelSelector({ selectedModel, onSelect, disabled }: ModelSelect
               <span className="font-medium text-[var(--color-text-primary)]">
                 {model.name}
               </span>
-              <span className={`text-sm ${model.price === 0 ? 'text-green-500' : 'text-baram-1'}`}>
+              <span className={`text-sm ${model.price === 0 ? 'text-green-500' : 'text-br-1'}`}>
                 {model.price === 0 ? 'Free' : `${(model.price / 1e6).toFixed(2)} NUSDC`}
               </span>
             </div>

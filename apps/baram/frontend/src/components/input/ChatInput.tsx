@@ -65,7 +65,7 @@ export function ChatInput({
           placeholder={placeholder}
           disabled={disabled}
           rows={3}
-          className="w-full px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-baram-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[72px] max-h-[200px]"
+          className="w-full px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-br-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[72px] max-h-[200px]"
         />
         {isOverLimit && (
           <p className="absolute bottom-1 right-2 text-xs text-[var(--color-error)]">
@@ -76,7 +76,7 @@ export function ChatInput({
       <button
         onClick={handleSubmit}
         disabled={!value.trim() || disabled || isOverLimit}
-        className="flex-shrink-0 w-10 h-10 self-end rounded-xl bg-baram-1 hover:bg-baram-2 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-shrink-0 w-10 h-10 self-end rounded-xl bg-br-1d hover:bg-br-2d text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Send message"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

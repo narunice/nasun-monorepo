@@ -46,7 +46,7 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
       {/* Logo/Icon */}
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-baram-1 to-baram-2 flex items-center justify-center mb-6">
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-br-1 to-br-2 flex items-center justify-center mb-6">
         <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -79,7 +79,7 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
       </div>
 
       {/* Why Private? callout */}
-      <div className="mt-6 p-4 bg-baram-1/5 border border-baram-1/20 rounded-xl max-w-lg mx-auto">
+      <div className="mt-6 p-4 bg-br-1/5 border border-br-1/20 rounded-xl max-w-lg mx-auto">
         <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Why does privacy matter for AI?
         </p>

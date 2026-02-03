@@ -39,7 +39,7 @@ export function SidebarSettings() {
           className="w-full px-2 py-1.5 text-sm rounded-md
                      bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]
                      text-[var(--color-text-primary)]
-                     focus:outline-none focus:ring-1 focus:ring-baram-1"
+                     focus:outline-none focus:ring-1 focus:ring-br-1"
         >
           <option key="_model_placeholder" value="">Select model...</option>
           {allModels.map((modelId) => {
