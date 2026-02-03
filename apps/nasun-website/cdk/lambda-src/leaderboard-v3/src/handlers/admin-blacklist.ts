@@ -11,18 +11,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { BanAccountRequest, BannedAccountEntry, BannedAccountsResponse } from '../types';
 import { banAccount, unbanAccount, getBannedAccounts, getAccountById } from '../services/dynamodb-client';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
 
-const corsHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Username',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-};
-
 function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return { statusCode, headers: corsHeaders, body: JSON.stringify(body) };
+  return { statusCode, headers: corsHeaders(_requestOrigin), body: JSON.stringify(body) };
 }
 
 function validateAuth(event: APIGatewayProxyEvent): boolean {
@@ -37,6 +33,7 @@ function getAdminUsername(event: APIGatewayProxyEvent): string {
 }
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return createResponse(200, {});

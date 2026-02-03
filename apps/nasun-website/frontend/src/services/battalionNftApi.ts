@@ -73,26 +73,13 @@ export async function verifyEligibilityApi(
   try {
     console.log('[battalionNftApi] Verifying eligibility:', request);
 
-    // Battalion NFT Access Token 가져오기 (Like 조회용)
-    // Note: Step2XAuthCard stores this in sessionStorage (not localStorage)
-    const xAccessToken = sessionStorage.getItem('battalion_nft_x_access_token');
-    console.log('[battalionNftApi] xAccessToken from sessionStorage:', xAccessToken ? `${xAccessToken.substring(0, 20)}...` : 'null');
-
-    const requestBody = {
-      ...request,
-      xAccessToken, // User Context OAuth Token 전달
-    };
-    console.log('[battalionNftApi] Request body (with token):', {
-      ...requestBody,
-      xAccessToken: xAccessToken ? `${xAccessToken.substring(0, 20)}...` : 'null',
-    });
-
+    // X access token is now stored server-side — no frontend token handling needed
     const response = await fetch(`${API_BASE_URL}/event/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(request),
     });
 
     const data = await handleResponse<VerifyEligibilityResponse>(response);

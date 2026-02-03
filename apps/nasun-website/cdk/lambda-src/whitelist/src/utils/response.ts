@@ -2,17 +2,8 @@
  * API Gateway response helpers
  */
 
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.io',
-  'https://www.gensol.io',
-];
-
-if (process.env.NODE_ENV !== 'production') {
-  ALLOWED_ORIGINS.push('http://localhost:5174');
-}
+// Read from environment variable (set by CDK from shared constants/cors.ts)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
 function resolveOrigin(requestOrigin?: string): string {
   if (!requestOrigin) return ALLOWED_ORIGINS[0];

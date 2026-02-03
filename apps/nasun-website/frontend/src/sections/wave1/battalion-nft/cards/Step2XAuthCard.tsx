@@ -76,14 +76,8 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
           throw new Error("Failed to get user information from Twitter");
         }
 
-        // Store Access Token for Battalion NFT verification (Like 조회용)
-        // Security: Using sessionStorage instead of localStorage to reduce XSS exposure
-        if (data.xAccessToken) {
-          console.log("[XAuthCard] Storing X Access Token for verification (sessionStorage)");
-          sessionStorage.setItem("battalion_nft_x_access_token", data.xAccessToken);
-        } else {
-          console.warn("[XAuthCard] No xAccessToken in response - Like verification may fail");
-        }
+        // X access token is now stored server-side (backend proxy pattern)
+        // No token handling needed in frontend
 
         // Clean up
         sessionStorage.removeItem("battalion_nft_twitter_session");

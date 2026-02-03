@@ -26,6 +26,8 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
 
+import { ALLOWED_ORIGINS_ENV } from './constants/cors';
+
 export interface LeaderboardV3StackProps extends cdk.StackProps {
   /** Environment name (dev, staging, prod) */
   environmentName: string;
@@ -194,6 +196,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
       LEADERBOARD_V3_SNAPSHOTS_TABLE: this.snapshotsTable.tableName,
       LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE: this.seasonAccountsTable.tableName,
       LEADERBOARD_V3_ADMIN_PASSWORD: adminPassword,
+      ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       NODE_OPTIONS: '--enable-source-maps',
     };
 

@@ -3,9 +3,17 @@ import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const requestOrigin = event.headers?.origin || event.headers?.Origin;
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': getCorsOrigin(requestOrigin),
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   };

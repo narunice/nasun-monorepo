@@ -22,6 +22,9 @@ import {
   DYNAMO_KEYS,
 } from '../types';
 import { getActiveSeason, getSeasonById } from '../services/dynamodb-client';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -34,17 +37,10 @@ const docClient = DynamoDBDocumentClient.from(client, {
 const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
 
-const corsHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-};
-
 function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: corsHeaders,
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
@@ -185,6 +181,7 @@ function calculateTopClimbers(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   console.log('Get Top Climbers request:', JSON.stringify(event, null, 2));
 
   // Handle CORS preflight

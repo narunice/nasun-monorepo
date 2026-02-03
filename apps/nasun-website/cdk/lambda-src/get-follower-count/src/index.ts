@@ -77,19 +77,29 @@ async function fetchFollowerCount(secrets: TwitterSecrets): Promise<number> {
 }
 
 /**
- * CORS 헤더
+ * CORS headers
  */
-const corsHeaders = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+function corsHeaders(origin?: string) {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": getCorsOrigin(origin),
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
 
 /**
  * Lambda Handler
  */
-export const handler = async () => {
+export const handler = async (event?: { headers?: Record<string, string> }) => {
+  const origin = event?.headers?.origin || event?.headers?.Origin;
+  const headers = corsHeaders(origin);
   try {
     // 캐시 확인
     const now = Date.now();
@@ -97,7 +107,7 @@ export const handler = async () => {
       console.log(`[GET_FOLLOWER_COUNT] Using cached value: ${cachedFollowerCount}`);
       return {
         statusCode: 200,
-        headers: corsHeaders,
+        headers,
         body: JSON.stringify({
           count: cachedFollowerCount,
           username: TARGET_USERNAME,
@@ -117,7 +127,7 @@ export const handler = async () => {
 
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({
         count: followerCount,
         username: TARGET_USERNAME,
@@ -133,7 +143,7 @@ export const handler = async () => {
       console.log(`[GET_FOLLOWER_COUNT] Returning stale cache due to error: ${cachedFollowerCount}`);
       return {
         statusCode: 200,
-        headers: corsHeaders,
+        headers,
         body: JSON.stringify({
           count: cachedFollowerCount,
           username: TARGET_USERNAME,
@@ -148,7 +158,7 @@ export const handler = async () => {
     console.log(`[GET_FOLLOWER_COUNT] Returning fallback value: ${FALLBACK_COUNT}`);
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({
         count: FALLBACK_COUNT,
         username: TARGET_USERNAME || "Nasun_io",

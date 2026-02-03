@@ -4,16 +4,8 @@ import { SessionManager } from '../utils/session-manager';
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateSessionId } from '../utils/pkce';
 import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
 
-// SECURITY: Allowed origins whitelist for CORS and redirect URI validation
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.io',
-  'https://www.gensol.io',
-  'http://localhost:5174',
-  'http://localhost:5173',
-];
+// Read from environment variable (set by CDK from shared constants/cors.ts)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
 // SECURITY: Dynamic CORS headers based on validated origin + security headers
 const getSecurityHeaders = (origin?: string) => {
@@ -59,7 +51,7 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
       throw new Error('Missing required environment variables or secrets.');
     }
 
-    let redirectUri = TWITTER_REDIRECT_URI || 'http://localhost:5174/callback';
+    let redirectUri = TWITTER_REDIRECT_URI || 'https://nasun.io/callback';
 
     if (origin) {
       // Extract base URL from origin (remove trailing slash)

@@ -7,19 +7,30 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.TABLE_NAME;
 
-// A simple response helper
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+// Module-level origin holder — set per invocation in handler
+let _requestOrigin: string | undefined;
+
 const createResponse = (statusCode: number, body: object) => {
   return {
     statusCode,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Credentials": true,
+      "Access-Control-Allow-Origin": getCorsOrigin(_requestOrigin),
+      "Access-Control-Allow-Credentials": "true",
     },
     body: JSON.stringify(body),
   };
 };
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+
   if (!TABLE_NAME) {
     console.error("TABLE_NAME environment variable is not set.");
     return createResponse(500, { error: "Internal server error: Missing configuration." });

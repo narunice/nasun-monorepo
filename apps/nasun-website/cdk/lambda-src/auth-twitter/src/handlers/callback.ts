@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
@@ -52,16 +53,8 @@ async function syncLeaderboardProfile(
   }
 }
 
-// SECURITY: Allowed origins whitelist for CORS validation
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.io',
-  'https://www.gensol.io',
-  'http://localhost:5174',
-  'http://localhost:5173',
-];
+// Read from environment variable (set by CDK from shared constants/cors.ts)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
 // SECURITY: Dynamic CORS headers based on validated origin + security headers
 const getSecurityHeaders = (origin?: string) => {
@@ -270,19 +263,34 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     // 7. Return user profile to frontend
     console.log('User authenticated successfully:', maskSensitiveData(userProfile));
 
-    // NFT Event 흐름일 때는 Access Token도 함께 반환 (Like 조회용)
+    // NFT Event flow: store X access token server-side (never expose to frontend)
     const isNftEventFlow = requestBody.battalionNft === true;
-    const responseBody: any = { ...userProfile };
+    const NFT_EVENT_TASKS_TABLE = process.env.NFT_EVENT_TASKS_TABLE_NAME;
 
-    if (isNftEventFlow) {
-      console.log('NFT Event flow detected - including xAccessToken in response');
-      responseBody.xAccessToken = tokenResponse.access_token;
+    if (isNftEventFlow && NFT_EVENT_TASKS_TABLE && tokenResponse.access_token) {
+      try {
+        const docClient = DynamoDBDocumentClient.from(dynamoClient);
+        const ttl = Math.floor(Date.now() / 1000) + 3600; // 1 hour TTL
+        await docClient.send(new PutCommand({
+          TableName: NFT_EVENT_TASKS_TABLE,
+          Item: {
+            walletAddress: `__X_TOKEN_STORE__`,
+            taskType: twitterUser.id,
+            xAccessToken: tokenResponse.access_token,
+            expiresAt: ttl,
+            createdAt: new Date().toISOString(),
+          },
+        }));
+        console.log(`X access token stored server-side for user ${twitterUser.id}`);
+      } catch (tokenStoreError: any) {
+        console.warn('Failed to store X access token:', maskSensitiveData({ message: tokenStoreError?.message }));
+      }
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(responseBody),
+      body: JSON.stringify(userProfile),
     };
 
   } catch (error: any) {

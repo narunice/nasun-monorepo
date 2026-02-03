@@ -15,6 +15,9 @@ import {
 } from '../types';
 import { normalizeUrl } from '../utils/url-normalizer';
 import { createPost, getPostByUrl, getAccountByUsername } from '../services/dynamodb-client';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 // Admin password from environment
 const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
@@ -145,12 +148,7 @@ function validateRequest(body: unknown): {
 function createResponse(statusCode: number, body: CreatePostResponse): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    },
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
@@ -161,6 +159,7 @@ function createResponse(statusCode: number, body: CreatePostResponse): APIGatewa
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return createResponse(200, { success: true });
