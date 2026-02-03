@@ -9,6 +9,7 @@
     "@aws-sdk/client-cognito-identity": "^3.50.0",
     "@aws-sdk/client-dynamodb": "^3.523.0",
     "@aws-sdk/client-secrets-manager": "^3.523.0",
+    "@aws-sdk/lib-dynamodb": "^3.981.0",
     "axios": "^1.6.7",
     "uuid": "^13.0.0"
   },
