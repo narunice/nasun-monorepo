@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getValidatorByAddress } from '../lib/sui-client';
 import { formatBalance, formatSoe } from '../lib/format';
+import { resolveMediaUrl, sanitizeHref } from '../lib/media';
 import { Card } from '../components/ui/Card';
 import { SectionBox } from '../components/ui/SectionBox';
 
@@ -50,9 +51,9 @@ export default function Validator() {
 
         {/* Validator Header */}
         <div className="flex items-center gap-4 mb-8">
-          {validator.imageUrl && (
+          {resolveMediaUrl(validator.imageUrl) && (
             <img
-              src={validator.imageUrl}
+              src={resolveMediaUrl(validator.imageUrl)!}
               alt={validator.name}
               className="w-16 h-16 rounded-full"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -99,11 +100,11 @@ export default function Validator() {
               <span className="text-muted-foreground text-sm min-w-[140px]">Description</span>
               <span className="text-sm text-foreground">{validator.description || '-'}</span>
             </div>
-            {validator.projectUrl && (
+            {sanitizeHref(validator.projectUrl) && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                 <span className="text-muted-foreground text-sm min-w-[140px]">Project URL</span>
                 <a
-                  href={validator.projectUrl}
+                  href={sanitizeHref(validator.projectUrl)!}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline text-sm"

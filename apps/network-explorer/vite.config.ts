@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
     port: 5175,
     proxy: {
       '/api/faucet': {
-        target: 'http://3.38.127.23:5003',
+        target: process.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/faucet/, ''),
       },

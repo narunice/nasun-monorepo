@@ -3,24 +3,66 @@
  * Handles IPFS URL conversion, media type detection, and display prioritization
  */
 
+// Safe data: URI MIME type prefixes (SVG excluded — can contain embedded scripts)
+const SAFE_DATA_PREFIXES = [
+  'data:image/png',
+  'data:image/jpeg',
+  'data:image/gif',
+  'data:image/webp',
+  'data:image/avif',
+  'data:video/mp4',
+  'data:video/webm',
+];
+
 /**
- * IPFS URL을 HTTP 게이트웨이로 변환
+ * IPFS URL을 HTTP 게이트웨이로 변환 + 프로토콜 allowlist 적용
  * @param url - 원본 URL (ipfs://, data:, https:// 등)
- * @returns 변환된 HTTP URL
+ * @returns 변환된 안전한 URL, 또는 undefined (차단된 scheme)
  */
 export function resolveMediaUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
 
-  // data URL은 그대로 반환
-  if (url.startsWith('data:')) return url;
+  const lower = url.toLowerCase().trim();
 
-  // IPFS URL 변환
-  if (url.startsWith('ipfs://')) {
-    const hash = url.replace('ipfs://', '');
+  // data: URL — safe MIME types only (no SVG, no text/html)
+  if (lower.startsWith('data:')) {
+    if (SAFE_DATA_PREFIXES.some((prefix) => lower.startsWith(prefix))) {
+      return url;
+    }
+    return undefined;
+  }
+
+  // IPFS URL 변환 → https
+  if (lower.startsWith('ipfs://')) {
+    const hash = url.slice(7); // preserve original casing
     return `https://ipfs.io/ipfs/${hash}`;
   }
 
-  return url;
+  // Only allow http(s) schemes
+  if (lower.startsWith('https://') || lower.startsWith('http://')) {
+    return url;
+  }
+
+  // Block everything else (javascript:, vbscript:, blob:, file:, etc.)
+  return undefined;
+}
+
+/**
+ * 외부 링크 URL을 안전한 scheme으로 제한
+ * @param url - 외부 URL
+ * @returns http(s) URL만 반환, 나머지는 undefined
+ */
+export function sanitizeHref(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return url;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
