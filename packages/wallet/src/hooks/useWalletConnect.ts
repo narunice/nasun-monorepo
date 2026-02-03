@@ -111,37 +111,23 @@ export function useWalletConnect(): UseWalletConnectResult {
         case 'session_proposal':
           setState((prev) => ({
             ...prev,
-            pendingProposals: [...prev.pendingProposals, event.proposal],
+            pendingProposals: WalletConnectClient.getPendingProposals(),
           }));
           break;
 
         case 'session_request':
           setState((prev) => ({
             ...prev,
-            pendingRequests: [...prev.pendingRequests, event.request],
+            pendingRequests: WalletConnectClient.getPendingRequests(),
           }));
           break;
 
         case 'session_created':
-          setState((prev) => ({
-            ...prev,
-            sessions: [...prev.sessions, event.session],
-          }));
-          break;
-
         case 'session_updated':
-          setState((prev) => ({
-            ...prev,
-            sessions: prev.sessions.map((s) =>
-              s.topic === event.session.topic ? event.session : s
-            ),
-          }));
-          break;
-
         case 'session_deleted':
           setState((prev) => ({
             ...prev,
-            sessions: prev.sessions.filter((s) => s.topic !== event.topic),
+            sessions: WalletConnectClient.getSessions(),
           }));
           break;
 
