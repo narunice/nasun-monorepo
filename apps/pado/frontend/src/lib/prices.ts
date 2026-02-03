@@ -95,12 +95,25 @@ export async function fetchOraclePrice(
     }
 
     // Oracle stale or unavailable - use simulated
-    console.warn(
-      `[Prices] Oracle ${oracleSymbol} stale or unavailable, using simulated price`
-    );
+    if (priceData) {
+      const ageMs = Date.now() - priceData.timestamp;
+      console.warn(
+        `[Prices] Oracle ${oracleSymbol} stale (age: ${Math.round(ageMs / 1000)}s, max: ${MAX_ORACLE_AGE_MS / 1000}s), using simulated price. ` +
+        `WARNING: Simulated price ($${SIMULATED_PRICES[symbol]}) may diverge from market.`
+      );
+    } else {
+      console.warn(
+        `[Prices] Oracle ${oracleSymbol} unavailable, using simulated price ($${SIMULATED_PRICES[symbol]}). ` +
+        `WARNING: This is a hardcoded fallback and may not reflect current market conditions.`
+      );
+    }
     return { price: SIMULATED_PRICES[symbol], source: 'simulated' };
   } catch (error) {
-    console.error(`[Prices] Failed to fetch oracle price for ${symbol}:`, error);
+    console.error(
+      `[Prices] Failed to fetch oracle price for ${symbol}:`, error,
+      `\nFalling back to simulated price ($${SIMULATED_PRICES[symbol]}). ` +
+      `WARNING: Simulated prices are hardcoded and may diverge significantly from market.`
+    );
     return { price: SIMULATED_PRICES[symbol], source: 'simulated' };
   }
 }

@@ -4,6 +4,8 @@ import {
   LOTTERY_REGISTRY_ID,
   CLOCK_ID,
   TICKET_PRICE,
+  MAX_NUMBER,
+  NUMBERS_COUNT,
 } from './constants';
 
 /**
@@ -18,11 +20,25 @@ export function buildBuyTicket(
   nusdcCoinId: string,
   numbers: number[]
 ): Transaction {
-  if (numbers.length !== 5) {
-    throw new Error('Must select exactly 5 numbers');
+  if (numbers.length !== NUMBERS_COUNT) {
+    throw new Error(`[Security] Must select exactly ${NUMBERS_COUNT} numbers`);
+  }
+
+  // Validate range: each number must be 1-32 (matches on-chain ENumberOutOfRange)
+  for (const num of numbers) {
+    if (!Number.isInteger(num) || num < 1 || num > MAX_NUMBER) {
+      throw new Error(`[Security] Number ${num} out of range (must be 1-${MAX_NUMBER})`);
+    }
   }
 
   const sortedNumbers = [...numbers].sort((a, b) => a - b);
+
+  // Validate no duplicates (matches on-chain EDuplicateNumber)
+  for (let i = 1; i < sortedNumbers.length; i++) {
+    if (sortedNumbers[i] === sortedNumbers[i - 1]) {
+      throw new Error(`[Security] Duplicate number detected: ${sortedNumbers[i]}`);
+    }
+  }
 
   const tx = new Transaction();
 
