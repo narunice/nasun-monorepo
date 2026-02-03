@@ -13,16 +13,3 @@
 // Empty string means verification is skipped (development mode)
 // Set to actual PCR0 hash in production
 export const EXPECTED_PCR0 = import.meta.env.VITE_EXPECTED_PCR0 || '';
-
-// TEE Provider names
-export const TEE_PROVIDERS: Record<number, string> = {
-  0: 'None',
-  1: 'AWS Nitro Enclave',
-  2: 'Intel SGX',
-  3: 'AMD SEV',
-};
-
-// Get TEE provider name by type
-export function getTeeProviderName(teeType: number): string {
-  return TEE_PROVIDERS[teeType] || 'Unknown';
-}

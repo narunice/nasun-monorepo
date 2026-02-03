@@ -5,7 +5,7 @@
  * to protect privacy of encrypted chat history.
  */
 
-import { useWallet, useZkLogin, useLedger } from '@nasun/wallet';
+import { useWalletSession } from '@/hooks/useWalletSession';
 import { useChatStore } from '../../stores/chatStore';
 import { groupSessionsByDate, DateGroup } from '../../types/chat';
 import { SessionItem } from './SessionItem';
@@ -18,10 +18,7 @@ const GROUP_LABELS: Record<DateGroup, string> = {
 };
 
 export function SessionList() {
-  const { status, account } = useWallet();
-  const { isConnected: isZkLoggedIn } = useZkLogin();
-  const { isConnected: isLedgerConnected } = useLedger();
-  const isConnected = (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
+  const { isConnected } = useWalletSession();
 
   const sessions = useChatStore((state) => state.sessions);
   const isLoading = useChatStore((state) => state.isLoading);

@@ -7,8 +7,8 @@
 
 import { useState, useCallback } from 'react';
 import { useSigner } from '@nasun/wallet';
-import { SuiClient } from '@mysten/sui/client';
-import { BARAM_CONFIG, NETWORK_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
+import { BARAM_CONFIG, MODEL_PRICING, ModelId } from '@/config/network';
+import { suiClient } from '@/config/client';
 import type { ExecutorInfo } from './useExecutors';
 import { sha256, hexToBytes, encodePrompt } from '@/utils/encoding';
 import { encryptPromptForTEE, decryptResponseFromTEE } from '@/utils/tee';
@@ -110,7 +110,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
       });
 
       // 3. Get NUSDC coins for payment
-      const client = new SuiClient({ url: NETWORK_CONFIG.rpcUrl });
+      const client = suiClient;
       const coins = await getNusdcCoins(client, address, price);
 
       // 3. Build transaction
@@ -163,9 +163,10 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
       const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
 
-      // Encrypt all prompts sent to TEE executors (Enclave always decrypts)
+      // TEE executors: RSA-OAEP + AES-256-GCM E2E encryption
+      // Cloud executors: Base64 encoding only (no TEE encryption)
       const needsTeeEncryption = executor.teeType > 0;
-      const encryptedPrompt = needsTeeEncryption
+      const promptPayload = needsTeeEncryption
         ? await encryptPromptForTEE(textToSend, executorUrl, requestId)
         : encodePrompt(textToSend);
 
@@ -184,7 +185,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               requestId,
-              encryptedPrompt,
+              encryptedPrompt: promptPayload,
               model,
             }),
             signal: controller.signal,
@@ -195,7 +196,10 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
         if (!executeResponse.ok) {
           const errorData = await executeResponse.json();
-          throw new Error(errorData.error || 'Execution failed');
+          // Sanitize executor error message: truncate and strip URLs to prevent phishing
+          const rawError = String(errorData.error || 'Execution failed');
+          const safeError = rawError.slice(0, 200).replace(/https?:\/\/\S+/g, '[URL removed]');
+          throw new Error(safeError);
         }
 
         executeResult = await executeResponse.json();

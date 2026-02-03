@@ -5,8 +5,8 @@
  * then loading the full object from chain.
  */
 
-import { SuiClient } from '@mysten/sui/client';
-import { NETWORK_CONFIG, COMPLIANCE_CONFIG, TEE_TYPES, TeeType, TIER_NAMES, TierLevel } from '@/config/network';
+import { COMPLIANCE_CONFIG, TEE_TYPES, TeeType, TIER_NAMES, TierLevel } from '@/config/network';
+import { suiClient } from '@/config/client';
 
 // Mirrors compliance.move ExecutionComplianceRecord fields
 export interface ECRData {
@@ -94,7 +94,7 @@ function parseECRFields(fields: Record<string, unknown>, objectId: string): ECRD
  * Returns null if no ECR exists for this request.
  */
 export async function fetchECRByRequestId(requestId: number): Promise<ECRData | null> {
-  const client = new SuiClient({ url: NETWORK_CONFIG.rpcUrl });
+  const client = suiClient;
 
   if (!COMPLIANCE_CONFIG.packageId) {
     console.warn('[ECR] Compliance package ID not configured');
