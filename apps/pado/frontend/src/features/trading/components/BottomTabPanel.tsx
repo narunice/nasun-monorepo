@@ -170,7 +170,7 @@ function AssetsTab() {
           <span className="text-right font-mono text-theme-text-secondary">
             {asset.wallet.toFixed(asset.decimals)}
           </span>
-          <span className="text-right font-mono text-blue-400">
+          <span className="text-right font-mono text-pd3">
             {asset.trading.toFixed(asset.decimals)}
           </span>
           <span className="text-right font-mono text-theme-text-primary">
@@ -182,7 +182,7 @@ function AssetsTab() {
                 <button
                   onClick={handleDeposit}
                   disabled={isLoading}
-                  className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm font-medium rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 transition-colors"
+                  className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm font-medium rounded bg-pd1/20 text-pd3 hover:bg-pd1/30 disabled:opacity-50 transition-colors"
                 >
                   Deposit
                 </button>

@@ -116,7 +116,7 @@ export function UnifiedBalanceCard({
         </h3>
         <div className="flex items-center gap-2">
           {hasBalanceManager && (
-            <span className="text-xs text-blue-500 bg-blue-500/10 px-2 py-1 rounded">
+            <span className="text-xs text-pd3 bg-pd2/10 px-2 py-1 rounded">
               Trading Active
             </span>
           )}
@@ -207,7 +207,7 @@ export function UnifiedBalanceCard({
             {/* In Trading */}
             <div className="flex items-center justify-between py-2 px-3 bg-theme-bg-tertiary rounded-lg">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div className="w-2 h-2 rounded-full bg-pd2"></div>
                 <div>
                   <span className="text-sm text-theme-text-primary">In Trading</span>
                   {inTrading === 0 && (
@@ -218,7 +218,7 @@ export function UnifiedBalanceCard({
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-sm font-medium text-blue-500">
+                <span className="text-sm font-medium text-pd3">
                   {formatUsdValue(inTrading)}
                 </span>
                 {inTrading > 0 && (
@@ -309,7 +309,7 @@ export function UnifiedBalanceCard({
 
       {/* Tip for new users */}
       {!hasBalanceManager && !hasMarginAccount && (
-        <div className="mt-4 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+        <div className="mt-4 p-3 bg-pd2/5 border border-pd2/20 rounded-lg">
           <div className="text-sm text-theme-text-secondary">
             <span className="font-medium">Tip:</span> Enable Trading or Pado
             Balance to unlock more features.
@@ -325,9 +325,9 @@ export function UnifiedBalanceCard({
  */
 function TokenIcon({ symbol }: { symbol: TokenSymbol }) {
   const colors: Record<TokenSymbol, string> = {
-    NASUN: 'bg-gradient-to-br from-cyan-400 to-blue-500',
+    NASUN: 'bg-gradient-to-br from-pd4 to-pd2',
     NBTC: 'bg-gradient-to-br from-orange-400 to-yellow-500',
-    NUSDC: 'bg-gradient-to-br from-blue-400 to-blue-600',
+    NUSDC: 'bg-gradient-to-br from-pd3 to-pd1',
   };
 
   return (

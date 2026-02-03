@@ -112,7 +112,7 @@ export function Header() {
       <div className="flex items-center justify-between gap-2">
         {/* Logo Wordmark - Click to go Home */}
         <Link to="/" className="hover:opacity-80 transition-opacity">
-          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pado-2">PADO</h1>
+          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">PADO</h1>
         </Link>
 
         {/* Desktop Navigation Menu */}
@@ -123,7 +123,7 @@ export function Header() {
               onClick={() => setIsMarketsOpen(!isMarketsOpen)}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
                 isActive('/markets')
-                  ? 'text-blue-400 bg-blue-400/10'
+                  ? 'text-pd3 bg-pd3/10'
                   : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
               }`}
             >
@@ -152,7 +152,7 @@ export function Header() {
                       }}
                       className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                         isActive(item.path)
-                          ? 'text-blue-400 bg-blue-400/10'
+                          ? 'text-pd3 bg-pd3/10'
                           : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
                       }`}
                     >
@@ -181,7 +181,7 @@ export function Header() {
                 onClick={(e) => handleNavClick(e, item.path)}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   isActive(item.path)
-                    ? 'text-blue-400 bg-blue-400/10'
+                    ? 'text-pd3 bg-pd3/10'
                     : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
                 }`}
               >
@@ -264,7 +264,7 @@ export function Header() {
                         }}
                         className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                           isActive(item.path)
-                            ? 'text-blue-400 bg-blue-400/10'
+                            ? 'text-pd3 bg-pd3/10'
                             : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
                         }`}
                       >
@@ -294,7 +294,7 @@ export function Header() {
                       }}
                       className={`block px-4 py-3 text-sm font-medium transition-colors ${
                         isActive(item.path)
-                          ? 'text-blue-400 bg-blue-400/10'
+                          ? 'text-pd3 bg-pd3/10'
                           : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
                       }`}
                     >

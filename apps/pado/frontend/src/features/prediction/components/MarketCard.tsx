@@ -27,18 +27,18 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
   return (
     <Link
       to={`/predict/${market.id}`}
-      className="block bg-gray-100 dark:bg-zinc-800 rounded-xl p-4 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+      className="block bg-theme-bg-secondary rounded-xl p-4 hover:bg-theme-bg-tertiary transition-colors"
     >
       {/* Header: Category & Status */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
+        <span className="text-xs font-medium text-pd1 dark:text-pd3 bg-pd5 dark:bg-pd0/30 px-2 py-1 rounded">
           {market.category}
         </span>
         {statusBadge}
       </div>
 
       {/* Question */}
-      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 line-clamp-2">
+      <h3 className="text-base font-semibold text-theme-text-primary mb-4 line-clamp-2">
         {market.question}
       </h3>
 
@@ -52,7 +52,7 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
             NO {noProbability.toFixed(0)}%
           </span>
         </div>
-        <div className="h-2 bg-gray-300 dark:bg-zinc-600 rounded-full overflow-hidden">
+        <div className="h-2 bg-theme-bg-tertiary rounded-full overflow-hidden">
           <div
             className="h-full bg-green-500 transition-all duration-300"
             style={{ width: `${yesProbability}%` }}
@@ -61,7 +61,7 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
       </div>
 
       {/* Footer: Volume & Time */}
-      <div className="flex justify-between text-xs text-gray-500 dark:text-zinc-400">
+      <div className="flex justify-between text-xs text-theme-text-muted">
         <span>Volume: {volume}</span>
         <span>{timeRemaining}</span>
       </div>

@@ -99,7 +99,7 @@ export function RoundCard({ round, isLoading, onClose, onDraw, onSettle }: Round
           <button
             onClick={onDraw}
             disabled={isLoading}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
+            className="w-full py-2 bg-pd1 hover:bg-pd1/80 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
           >
             {isLoading ? 'Processing...' : 'Draw Numbers'}
           </button>
@@ -122,13 +122,13 @@ export function RoundCard({ round, isLoading, onClose, onDraw, onSettle }: Round
                 />
               </div>
               <div>
-                <label className="block text-xs text-blue-400 mb-1">Tier 2 (4 match)</label>
+                <label className="block text-xs text-pd3 mb-1">Tier 2 (4 match)</label>
                 <input
                   type="number"
                   min="0"
                   value={tier2Winners}
                   onChange={(e) => setTier2Winners(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full px-2 py-1 bg-theme-bg-tertiary border border-blue-500/30 rounded text-theme-text-primary text-center"
+                  className="w-full px-2 py-1 bg-theme-bg-tertiary border border-pd2/30 rounded text-theme-text-primary text-center"
                 />
               </div>
               <div>

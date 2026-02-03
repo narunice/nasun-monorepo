@@ -47,11 +47,11 @@ export function NetWorthCard() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl p-6 text-white">
+    <div className="bg-gradient-to-br from-pd1 to-pd1/80 dark:from-pd1/80 dark:to-pd0 rounded-xl p-6 text-white">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-medium text-blue-100">Net Worth</h2>
-        <span className="text-xs bg-blue-500/30 px-2 py-0.5 rounded-full">Devnet</span>
+        <h2 className="text-sm font-medium text-pd5">Net Worth</h2>
+        <span className="text-xs bg-pd2/30 px-2 py-0.5 rounded-full">Devnet</span>
       </div>
 
       {/* Total Value */}
@@ -62,15 +62,15 @@ export function NetWorthCard() {
         >
           <span>{formatChange(change24h)}</span>
           <span>({formatPercent(changePercent)})</span>
-          <span className="text-blue-200">24h</span>
+          <span className="text-pd4">24h</span>
         </div>
       </div>
 
       {/* Breakdown */}
-      <div className="space-y-2 pt-4 border-t border-blue-500/30">
+      <div className="space-y-2 pt-4 border-t border-pd2/30">
         {tokens.map((token) => (
           <div key={token.symbol} className="flex items-center justify-between text-sm">
-            <span className="text-blue-100">{token.symbol}</span>
+            <span className="text-pd5">{token.symbol}</span>
             <div className="flex items-center gap-2">
               <span>{formatUsd(token.usdValue)}</span>
               <span className={token.change24h >= 0 ? "text-green-300" : "text-red-300"}>
@@ -81,7 +81,7 @@ export function NetWorthCard() {
         ))}
         {predictionValue > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-blue-100">Predictions</span>
+            <span className="text-pd5">Predictions</span>
             <span>{formatUsd(predictionValue)}</span>
           </div>
         )}

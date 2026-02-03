@@ -196,7 +196,7 @@ export function MarginAccountCard() {
   if (!hasAccount) {
     const isEnabling = isEnablingPado || isCreating;
     return (
-      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-4">
+      <div className="bg-gradient-to-r from-pd2/10 to-purple-500/10 border border-pd2/30 rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-theme-text-primary">Enable Pado</h3>
@@ -207,7 +207,7 @@ export function MarginAccountCard() {
           <button
             onClick={handleEnablePado}
             disabled={isEnabling}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {isEnabling ? "Enabling..." : "Enable Pado"}
           </button>
@@ -299,7 +299,7 @@ export function MarginAccountCard() {
                       setShowGasWarning(true);
                     }
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-400"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
                 >
                   MAX
                 </button>
@@ -374,7 +374,7 @@ export function MarginAccountCard() {
                   onClick={() =>
                     setWithdrawAmount((Number(account?.nusdcBalance || 0n) / 1e6).toString())
                   }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-400"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
                 >
                   MAX
                 </button>
@@ -396,7 +396,7 @@ export function MarginAccountCard() {
               <button
                 onClick={handleWithdraw}
                 disabled={isWithdrawing}
-                className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg disabled:opacity-50"
+                className="flex-1 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg disabled:opacity-50"
               >
                 {isWithdrawing ? "Withdrawing..." : "Confirm Withdraw"}
               </button>

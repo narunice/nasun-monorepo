@@ -40,7 +40,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
     <div className="p-3 bg-theme-bg-tertiary/50 rounded">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs xl:text-sm text-theme-text-secondary">Slippage Tolerance</span>
-        <span className="text-xs xl:text-sm font-mono text-blue-400">{value}%</span>
+        <span className="text-xs xl:text-sm font-mono text-pd3">{value}%</span>
       </div>
 
       <div className="flex gap-1">
@@ -50,7 +50,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
             onClick={() => handlePresetClick(preset)}
             className={`flex-1 py-1.5 text-xs xl:text-sm font-medium rounded transition-colors ${
               isPresetSelected(preset)
-                ? 'bg-blue-600 text-white'
+                ? 'bg-pd1 text-white'
                 : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
             }`}
           >
@@ -66,15 +66,15 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
             onFocus={handleCustomFocus}
             className={`w-full py-1.5 px-2 text-xs font-medium rounded text-center transition-colors ${
               isCustom
-                ? 'bg-blue-600 text-white placeholder-blue-200'
-                : 'bg-theme-bg-secondary text-theme-text-primary placeholder-gray-400'
+                ? 'bg-pd1 text-white placeholder-pd4'
+                : 'bg-theme-bg-secondary text-theme-text-primary placeholder-theme-text-muted'
             } focus:outline-none`}
             min="0.01"
             max="50"
             step="0.1"
           />
           {isCustom && customValue && (
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs xl:text-sm text-blue-200">
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs xl:text-sm text-pd4">
               %
             </span>
           )}

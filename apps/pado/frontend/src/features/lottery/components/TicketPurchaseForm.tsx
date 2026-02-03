@@ -80,7 +80,7 @@ export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseF
           </button>
           <button
             onClick={handleClearAll}
-            className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:opacity-90 transition-opacity"
+            className="px-3 py-1 text-sm bg-pd2 text-white rounded hover:opacity-90 transition-opacity"
           >
             Clear
           </button>
@@ -130,7 +130,7 @@ export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseF
           {Array.from({ length: NUMBERS_COUNT - selectedNumbers.size }).map((_, i) => (
             <span
               key={`empty-${i}`}
-              className="w-8 h-8 flex items-center justify-center border border-dashed border-gray-500 rounded-full text-sm"
+              className="w-8 h-8 flex items-center justify-center border border-dashed border-pd2 rounded-full text-sm"
             >
               ?
             </span>
@@ -154,7 +154,7 @@ export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseF
             ${
               canPurchase
                 ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                : "bg-pd2 text-theme-text-muted cursor-not-allowed"
             }
           `}
         >

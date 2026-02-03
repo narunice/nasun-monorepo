@@ -68,7 +68,7 @@ export function MarketSelector() {
                 onClick={() => handleSelect(market.key)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   market.key === currentMarket
-                    ? 'bg-blue-600/20 text-blue-600 dark:text-blue-400'
+                    ? 'bg-pd1/20 text-pd1 dark:text-pd3'
                     : 'hover:bg-theme-bg-tertiary text-theme-text-primary'
                 }`}
               >
@@ -88,7 +88,7 @@ export function MarketSelector() {
 
                 {/* 선택 표시 */}
                 {market.key === currentMarket && (
-                  <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-pd3" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
                       d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -110,7 +110,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
   // 토큰별 배경색
   const bgColors: Record<string, string> = {
     NBTC: 'bg-orange-500',
-    NUSDC: 'bg-blue-500',
+    NUSDC: 'bg-pd2',
     NASUN: 'bg-purple-500',
   };
 

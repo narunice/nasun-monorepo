@@ -129,7 +129,7 @@ export function AdminResolveModal({
           <button
             onClick={handleResolve}
             disabled={isLoading || selectedOutcome === null}
-            className="flex-1 py-2 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2 rounded-lg font-medium text-white bg-pd1 hover:bg-pd1/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Resolving...' : 'Resolve Market'}
           </button>

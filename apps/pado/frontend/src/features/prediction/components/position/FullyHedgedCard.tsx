@@ -20,7 +20,7 @@ export function FullyHedgedCard({ yesPosition, noPosition, market, onSellYes, on
   const hedgedShares = Math.min(yesShares, noShares);
 
   return (
-    <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-4">
+    <div className="bg-gradient-to-r from-pd2/10 to-purple-500/10 border border-pd2/30 rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xl">⚖️</span>
@@ -42,7 +42,7 @@ export function FullyHedgedCard({ yesPosition, noPosition, market, onSellYes, on
         </div>
         <div className="flex justify-between items-center mt-2">
           <span className="text-theme-text-muted">Risk</span>
-          <span className="text-blue-400 font-medium">None</span>
+          <span className="text-pd3 font-medium">None</span>
         </div>
       </div>
 

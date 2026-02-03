@@ -49,7 +49,7 @@ function MnemonicBackupModal() {
 
   return (
     <div className="fixed inset-0 z-[99999] bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-zinc-800 rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-pd5 dark:bg-pd0s rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
         <MnemonicBackup mnemonic={mnemonic} onConfirm={handleConfirm} />
       </div>
     </div>

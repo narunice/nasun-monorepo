@@ -32,7 +32,7 @@ export function PredictionHighlight() {
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-bold text-theme-text-primary">Prediction Markets</h2>
-        <Link to="/predict" className="text-xs text-blue-400 hover:text-blue-300">
+        <Link to="/predict" className="text-xs text-pd3 hover:text-pd4">
           View All →
         </Link>
       </div>

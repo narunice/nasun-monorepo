@@ -17,7 +17,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       className={`
         relative w-11 h-6 rounded-full transition-colors duration-300
-        ${isDark ? "bg-slate-700" : "bg-gray-100 ring-1 ring-inset ring-slate-400"}
+        ${isDark ? "bg-pd1" : "bg-pd5 ring-1 ring-inset ring-pd3"}
       `}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
@@ -38,7 +38,7 @@ export function ThemeToggle() {
         className={`
           absolute top-1 w-4 h-4 rounded-full shadow-sm
           transition-all duration-300 ease-out z-10
-          ${isDark ? "left-1 bg-white" : "right-[5px] bg-slate-700"}
+          ${isDark ? "left-1 bg-white" : "right-[5px] bg-pd1"}
         `}
       />
     </button>

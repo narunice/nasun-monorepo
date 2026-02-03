@@ -28,14 +28,14 @@ export function BalanceManagerCard({
 
   if (!balanceManagerId) {
     return (
-      <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded">
-        <p className="text-sm xl:text-base text-blue-700 dark:text-blue-400 mb-2">
+      <div className="p-3 bg-pd5 dark:bg-pd0/30 border border-pd4 dark:border-pd2 rounded">
+        <p className="text-sm xl:text-base text-pd1 dark:text-pd3 mb-2">
           Enable Trading to start placing orders.
         </p>
         <button
           onClick={onCreate}
           disabled={isLoading}
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm xl:text-base text-white"
+          className="w-full py-2 bg-pd1 hover:bg-pd1/80 disabled:opacity-50 rounded font-medium text-sm xl:text-base text-white"
         >
           {isLoading ? 'Enabling...' : 'Enable Trading'}
         </button>
@@ -58,7 +58,7 @@ export function BalanceManagerCard({
         <button
           onClick={onDeposit}
           disabled={isLoading}
-          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium text-sm xl:text-base text-white"
+          className="flex-1 py-2 bg-pd1 hover:bg-pd1/80 disabled:opacity-50 rounded font-medium text-sm xl:text-base text-white"
         >
           {isLoading ? '...' : 'Add to Trading'}
         </button>

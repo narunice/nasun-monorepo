@@ -22,7 +22,7 @@ function TabButton({ active, onClick, children }: TabButtonProps) {
       className={`
         px-4 py-2.5 text-sm font-medium transition-colors
         ${active
-          ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+          ? 'text-pd1 dark:text-pd3 border-b-2 border-pd1 dark:border-pd3'
           : 'text-theme-text-secondary hover:text-theme-text-primary border-b-2 border-transparent'
         }
       `}

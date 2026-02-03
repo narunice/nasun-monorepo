@@ -129,7 +129,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Will [event] happen by [date]?"
             disabled={isDisabled}
-            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
           />
           <p className="text-xs text-theme-text-muted mt-1">
             Frame as a yes/no question with clear resolution criteria
@@ -147,7 +147,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
             placeholder="Detailed resolution criteria..."
             rows={3}
             disabled={isDisabled}
-            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 resize-none"
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50 resize-none"
           />
         </div>
 
@@ -160,7 +160,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             disabled={isDisabled}
-            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
           >
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -180,7 +180,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
               onChange={(e) => setCloseDate(e.target.value)}
               min={today}
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
             />
           </div>
           <div>
@@ -192,7 +192,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
               value={closeTime}
               onChange={(e) => setCloseTime(e.target.value)}
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
             />
           </div>
         </div>
@@ -209,7 +209,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
               onChange={(e) => setResolveDate(e.target.value)}
               min={closeDate || today}
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
             />
           </div>
           <div>
@@ -221,7 +221,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
               value={resolveTime}
               onChange={(e) => setResolveTime(e.target.value)}
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
             />
           </div>
         </div>
@@ -251,7 +251,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
               onChange={(e) => setResolver(e.target.value)}
               placeholder="0x..."
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 font-mono text-sm"
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50 font-mono text-sm"
             />
           )}
         </div>
@@ -283,7 +283,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
           <button
             type="submit"
             disabled={isDisabled}
-            className="flex-1 py-2 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2 rounded-lg font-medium text-white bg-pd1 hover:bg-pd1/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading
               ? 'Creating...'

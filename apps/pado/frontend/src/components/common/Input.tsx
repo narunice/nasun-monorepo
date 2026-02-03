@@ -11,7 +11,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: string;
 }
 
-const baseInputStyles = 'w-full px-4 py-2 bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-theme-text-primary placeholder-theme-text-muted';
+const baseInputStyles = 'w-full px-4 py-2 bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-pd2 text-theme-text-primary placeholder-theme-text-muted';
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = '', ...props }, ref) => {

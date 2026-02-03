@@ -23,7 +23,7 @@ export function PredictPage() {
     return (
       <div className="text-center py-12">
         <p className="text-red-500">Failed to load markets</p>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-2">
+        <p className="text-sm text-theme-text-muted mt-2">
           {error.message}
         </p>
       </div>
@@ -35,10 +35,10 @@ export function PredictPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-theme-text-primary">
             Prediction Markets
           </h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+          <p className="text-sm text-theme-text-muted mt-1">
             Trade on the outcome of real-world events
           </p>
         </div>
@@ -57,8 +57,8 @@ export function PredictPage() {
 
       {/* Market Grid */}
       {markets.length === 0 ? (
-        <div className="text-center py-12 bg-gray-100 dark:bg-zinc-800 rounded-xl">
-          <p className="text-gray-500 dark:text-zinc-400">
+        <div className="text-center py-12 bg-theme-bg-secondary rounded-xl">
+          <p className="text-theme-text-muted">
             No markets available yet
           </p>
         </div>

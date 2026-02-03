@@ -14,8 +14,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       return "light";
     }
 
-    // 3. Default: dark
-    return "dark";
+    // 3. Default: light
+    return "light";
   };
 
   const [theme, setTheme] = useState<Theme>(getInitialTheme);

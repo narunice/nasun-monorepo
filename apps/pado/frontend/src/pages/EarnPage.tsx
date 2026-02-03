@@ -42,7 +42,7 @@ export function EarnPage() {
             disabled={!tab.enabled}
             className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
               activeTab === tab.id
-                ? 'bg-blue-500 text-white'
+                ? 'bg-pd2 text-white'
                 : tab.enabled
                   ? 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
                   : 'bg-theme-bg-secondary text-theme-text-muted cursor-not-allowed'
