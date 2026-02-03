@@ -1,0 +1,28 @@
+{
+  "name": "@nasun/baram-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.45.2",
+    "@nasun/devnet-config": "workspace:*"
+  },
+  "devDependencies": {
+    "@nasun/tsconfig": "workspace:*",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
+  }
+}
