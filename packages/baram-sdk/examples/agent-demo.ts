@@ -14,7 +14,7 @@
  *   - At least one active Executor must be registered on-chain
  */
 
-import { BaramClient, createDevnetConfig } from '../src/index';
+import { BaramClient, createDevnetConfig } from '@nasun/baram-sdk';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 async function main() {

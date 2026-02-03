@@ -4,6 +4,7 @@
 
 import { SuiClient } from '@mysten/sui/client';
 import type { CoinRef } from '../types';
+import { NoCoinsError, InsufficientBalanceError } from '../errors';
 
 /**
  * Get NUSDC coins for payment.
@@ -14,7 +15,8 @@ import type { CoinRef } from '../types';
  * @param amount - Required amount in smallest units (1e6 = 1 NUSDC)
  * @param nusdcType - Full coin type string for NUSDC
  * @returns Array of coin references
- * @throws Error if insufficient balance
+ * @throws {NoCoinsError} if no NUSDC coins found
+ * @throws {InsufficientBalanceError} if balance is insufficient
  */
 export async function getNusdcCoins(
   client: SuiClient,
@@ -28,7 +30,7 @@ export async function getNusdcCoins(
   });
 
   if (coins.data.length === 0) {
-    throw new Error('No NUSDC coins found. Please get some from the Token Faucet.');
+    throw new NoCoinsError();
   }
 
   let total = 0;
@@ -44,9 +46,7 @@ export async function getNusdcCoins(
   }
 
   if (total < amount) {
-    const needed = amount / 1e6;
-    const have = total / 1e6;
-    throw new Error(`Insufficient NUSDC balance. Need ${needed} NUSDC, have ${have} NUSDC.`);
+    throw new InsufficientBalanceError(amount, total);
   }
 
   return selected;
