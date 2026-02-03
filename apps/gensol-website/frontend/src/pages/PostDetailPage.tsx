@@ -157,7 +157,7 @@ const PostDetailPage = () => {
 
             <h1
               className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6 font-pirulen"
-              dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.title.rendered) }}
             />
 
             <div className="flex items-center gap-2 text-gray-400 text-sm justify-center md:justify-start">

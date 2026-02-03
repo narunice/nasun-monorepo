@@ -49,7 +49,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         await fetchAuthSession()
       }
     } catch {
-      console.debug('[AuthContext] No active session found on startup.')
+      // No active session found on startup
       clearUser()
     } finally {
       setIsLoading(false)
@@ -72,8 +72,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     window.history.replaceState({}, document.title, window.location.pathname)
 
     try {
-      console.debug(`[AuthContext] OAuth Redirect Debug: provider=${provider}`)
-
       let identityId: string | undefined
       let userInfo: { name: string; email?: string } | undefined
       let twitterUserData: {
@@ -86,13 +84,9 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
       if (provider === 'Google') {
         const idToken = new URLSearchParams(url.hash.substring(1)).get('id_token')
-        console.debug('[AuthContext] Google ID token extracted:', idToken ? `${idToken.substring(0, 50)}...` : 'null')
-
         if (!idToken) throw new Error('Google ID token not found in redirect')
 
         const googlePayload = parseJwt(idToken)
-        console.debug('[AuthContext] Parsed Google payload:', googlePayload)
-
         if (!googlePayload) throw new Error('Failed to parse Google ID token')
 
         userInfo = { name: googlePayload.name as string, email: googlePayload.email as string }
@@ -126,8 +120,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           finalUserData.profileImageUrl = twitterUserData.profileImageUrl
         }
 
-        // Ensure user profile exists in DynamoDB
-        console.log('[AuthContext] Ensuring user profile exists in DynamoDB...')
         const dbProfile = await ensureUserProfile(finalUserData)
         const userDataToStore = dbProfile || finalUserData
 
@@ -159,7 +151,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       }
     }
 
-    initializeAuth()
+    initializeAuth().catch(console.error)
   }, [checkAuthStatus, handleOAuthRedirect])
 
   const handleTwitterCallback = async (code: string, state: string, sessionId: string) => {
@@ -181,22 +173,16 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const createUserProfile = async (userData: UserData): Promise<void> => {
     try {
-      const payload = JSON.stringify(userData)
-      console.log('[AuthContext] Creating user profile with payload:', payload)
-
       const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: payload,
+        body: JSON.stringify(userData),
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[AuthContext] POST failed with status:', response.status, 'Body:', errorText)
         throw new Error(`Failed to create user profile: ${response.status} - ${errorText}`)
       }
-
-      console.log('[AuthContext] User profile created successfully:', userData.identityId)
     } catch (error) {
       console.error('[AuthContext] Error creating user profile:', error)
       throw error
@@ -205,7 +191,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const fetchUserProfile = async (identityId: string): Promise<UserData | null> => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}?identityId=${identityId}`)
+      const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}?identityId=${encodeURIComponent(identityId)}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch user profile')
@@ -225,7 +211,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
       // 2. If not, create it
       if (!profile) {
-        console.log('[AuthContext] User profile not found, creating...', userData.identityId)
         await createUserProfile(userData)
         profile = await fetchUserProfile(userData.identityId)
       }
@@ -238,7 +223,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   }
 
   const getCognitoIdentityId = async (provider: 'Google', token: string): Promise<string | undefined> => {
-    console.debug(`[AuthContext] Attempting to get Cognito Identity ID for provider: ${provider}`)
     const identityPoolId = import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID
     const region = import.meta.env.VITE_AWS_REGION
 
@@ -295,10 +279,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     localStorage.setItem('auth_provider_preference', 'MetaMask')
 
     try {
-      console.debug('[AuthContext] MetaMask authentication successful', { identityId, walletAddress })
-
       // Fetch user profile from backend
-      const profileResponse = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}?identityId=${identityId}`)
+      const profileResponse = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}?identityId=${encodeURIComponent(identityId)}`)
 
       if (!profileResponse.ok) {
         throw new Error('Failed to fetch user profile')
@@ -319,7 +301,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
       setUser(userData)
 
-      console.log('[AuthContext] MetaMask sign-in successful:', { identityId, walletAddress })
     } catch (error) {
       console.error('[AuthContext] MetaMask sign-in failed', error)
       setError(error as Error)
@@ -337,7 +318,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       localStorage.removeItem('auth_provider_preference')
       sessionStorage.clear() // Clear any session data
       clearUser()
-      console.log('[AuthContext] User logged out successfully')
     } catch (error) {
       console.error('[AuthContext] Logout failed', error)
     } finally {

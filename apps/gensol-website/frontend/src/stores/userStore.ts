@@ -53,7 +53,6 @@ export const useUserStore = create<UserState>((set) => ({
   error: null,
 
   setUser: (userData) => {
-    console.log('[userStore] Setting user:', userData)
     if (userData) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
     } else {
@@ -63,7 +62,6 @@ export const useUserStore = create<UserState>((set) => ({
   },
 
   clearUser: () => {
-    console.log('[userStore] Clearing user')
     localStorage.removeItem(STORAGE_KEY)
     set({ user: null, isLoading: false, error: null })
   },
@@ -82,7 +80,6 @@ export const useUserStore = create<UserState>((set) => ({
           : { ...state.user, ...updatedData } // Partial update
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser))
-        console.log('[userStore] Updating user profile:', updatedUser)
         return { user: updatedUser }
       }
       return state
