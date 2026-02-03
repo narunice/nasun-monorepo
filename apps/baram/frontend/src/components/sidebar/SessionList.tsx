@@ -5,7 +5,7 @@
  * to protect privacy of encrypted chat history.
  */
 
-import { useWalletSession } from '@/hooks/useWalletSession';
+import { useIsConnected } from '@/hooks/useWalletSession';
 import { useChatStore } from '../../stores/chatStore';
 import { groupSessionsByDate, DateGroup } from '../../types/chat';
 import { SessionItem } from './SessionItem';
@@ -18,7 +18,7 @@ const GROUP_LABELS: Record<DateGroup, string> = {
 };
 
 export function SessionList() {
-  const { isConnected } = useWalletSession();
+  const isConnected = useIsConnected();
 
   const sessions = useChatStore((state) => state.sessions);
   const isLoading = useChatStore((state) => state.isLoading);

@@ -83,7 +83,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
       setFailedExecutorIds(new Set());
       setSelectedExecutor(null);
     }
-  }, [requestStatus, result, addMessage, reset]);
+  }, [requestStatus, result, addMessage, reset, selectedExecutor, selectedModel]);
 
   const isProcessing = requestStatus === 'creating' || requestStatus === 'executing';
 
@@ -102,7 +102,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
     let currentExecutor: ExecutorInfo | null = selectedExecutor;
     const excluded = new Set<string>();
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       if (!currentExecutor) break;
 
       try {
