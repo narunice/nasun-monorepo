@@ -11,7 +11,7 @@ import { NetworkSelectorModal } from "../../network/NetworkSelectorModal";
 import { TabBar, type TabMode } from "../TabBar";
 import { QuickActionsBar } from "../QuickActionsBar";
 import { MoreMenu } from "../MoreMenu";
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 import { NetworkSelector } from "./NetworkSelector";
 import { AssetsTabContent } from "./AssetsTabContent";
 import { AccountTabContent } from "./AccountTabContent";

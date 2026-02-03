@@ -11,7 +11,7 @@ import {
   useWalletConnect,
   generateQRCodeSVG,
 } from "@nasun/wallet";
-import type { ViewMode } from "../connect/LockedStateUI";
+import type { ViewMode } from "../connect/types";
 
 interface WCPairingViewProps {
   setViewMode: (mode: ViewMode) => void;

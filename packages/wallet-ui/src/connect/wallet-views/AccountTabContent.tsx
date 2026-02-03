@@ -4,7 +4,7 @@
  * plus variant-specific items for self-custody wallets.
  */
 
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 import { WALLET_STYLES } from "../../shared";
 
 // SVG path constants for menu icons
