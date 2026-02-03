@@ -29,6 +29,7 @@ Baram's core features are **prototype-ready**:
 | Lambda Backend (Groq) | Done | HTTPS endpoint, llama-3.1-8b + llama-3.3-70b active |
 | Faucet | Done | NUSDC faucet integrated in wallet UI |
 | TypeScript Build | Done | Zero errors |
+| Agent SDK (`@nasun/baram-sdk`) | Done | Node.js SDK: BaramClient, executor selection, ECR query, CLI demo |
 
 ### What Needs Attention
 
@@ -52,6 +53,7 @@ Baram's core features are **prototype-ready**:
 **What's needed:**
 
 - **Clear value proposition**: "Your AI conversations are truly private — encrypted, processed inside a secure enclave, and settled on-chain. No one — not even us — can see what you ask."
+- **Agent Economy ready**: "Any AI agent with a wallet can use Baram's pipeline today — escrow payment, AI inference, and on-chain compliance record, all in one SDK call."
 - **How-it-works visualization**: E2E encryption → TEE inference → on-chain settlement pipeline as a simple 3-step diagram or animation
 - **Differentiation**: "Unlike ChatGPT, your prompts never leave the secure enclave. Unlike other crypto AI projects, every execution has an on-chain compliance record."
 - **Community/NFT funnel**: Clear path to Discord, Twitter, membership NFT information
@@ -155,6 +157,8 @@ bash scripts/update-executor.sh <IP>     # On-chain endpoint update
 | Context window expansion | Cost/latency increase, long conversations are rare in demos |
 | Major UI redesign | Current UI is clean and functional, polish > rebuild |
 | Multi-executor deployment | Single executor is fine for prototype, distributed is Phase H |
+| Full Agent Wallet (AA, Session Keys) | Post-prototype — SDK with Ed25519 keypair is sufficient for demo |
+| Agent API rate limiting | Post-prototype — on-chain escrow provides natural anti-spam |
 
 ---
 
@@ -169,6 +173,9 @@ bash scripts/update-executor.sh <IP>     # On-chain endpoint update
 - [ ] Mobile test: iPhone + Android browser
 - [ ] Landing/onboarding content finalized
 - [ ] Community links added to app
+- [ ] SDK unit tests passing: `cd packages/baram-sdk && npx vitest run`
+- [ ] SDK type check: `cd packages/baram-sdk && npx tsc --noEmit`
+- [ ] SDK demo script reviewed: `packages/baram-sdk/examples/agent-demo.ts`
 
 ### Launch Day
 
@@ -310,6 +317,8 @@ struct BetaAccessNFT has key, store {
 > - Automated attestation verification (COSE_Sign1 + X.509)
 > - Self-service executor management (no admin dependency)
 > - Pipeline atomicity with settlement-gated responses
+>
+> - Node.js SDK for AI agent access (`@nasun/baram-sdk`)
 >
 > **The code quality and working demo IS the pitch.**
 > The 2 weeks should be spent making sure the community **sees and understands** what's already built, not building new features.
