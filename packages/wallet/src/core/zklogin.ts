@@ -75,13 +75,11 @@ export function getZkLoginConfig(): ZkLoginConfig | null {
  * Generates ephemeral keypair and nonce for OAuth
  */
 export async function createZkLoginSession(): Promise<ZkLoginSession> {
-  console.log('[zkLogin] Creating session...');
   const client = getSuiClient();
 
   // 1. Get current epoch
   const { epoch } = await client.getLatestSuiSystemState();
   const maxEpoch = Number(epoch) + 10; // Valid for ~10 epochs (~1-2 days)
-  console.log('[zkLogin] Current epoch:', epoch, 'Max epoch:', maxEpoch);
 
   // 2. Generate ephemeral keypair
   const ephemeralKeyPair = new Ed25519Keypair();
@@ -93,7 +91,6 @@ export async function createZkLoginSession(): Promise<ZkLoginSession> {
     maxEpoch,
     randomness
   );
-  console.log('[zkLogin] Nonce generated:', nonce.substring(0, 20) + '...');
 
   // 4. Create session object
   const session: ZkLoginSession = {
@@ -106,11 +103,6 @@ export async function createZkLoginSession(): Promise<ZkLoginSession> {
 
   // 5. Save to sessionStorage (survives OAuth redirect)
   sessionStorage.setItem(ZKLOGIN_SESSION_KEY, JSON.stringify(session));
-  console.log('[zkLogin] Session saved to sessionStorage');
-
-  // Verify it was saved
-  const saved = sessionStorage.getItem(ZKLOGIN_SESSION_KEY);
-  console.log('[zkLogin] Session verification:', saved ? 'OK' : 'FAILED');
 
   return session;
 }

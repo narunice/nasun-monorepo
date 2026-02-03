@@ -12,6 +12,7 @@ import {
   type DAppMetadata,
 } from "@nasun/wallet";
 import type { ViewMode } from "../connect/LockedStateUI";
+import { sanitizeImageUrl } from "../shared";
 
 const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? "";
 
@@ -268,7 +269,7 @@ function WCIcon({ className }: { className?: string }) {
 
 function DAppIcon({ metadata, size = 24 }: { metadata: DAppMetadata; size?: number }) {
   const [imgError, setImgError] = useState(false);
-  const iconUrl = metadata.icons[0];
+  const iconUrl = sanitizeImageUrl(metadata.icons[0]);
 
   if (!iconUrl || imgError) {
     return (

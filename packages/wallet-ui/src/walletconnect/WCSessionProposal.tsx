@@ -12,6 +12,7 @@ import {
   canSatisfyProposal,
 } from "@nasun/wallet";
 import type { ViewMode } from "../connect/LockedStateUI";
+import { sanitizeImageUrl } from "../shared";
 
 interface WCSessionProposalProps {
   setViewMode: (mode: ViewMode) => void;
@@ -185,8 +186,9 @@ function BackButton({ onClick }: { onClick: () => void }) {
 
 function DAppAvatar({ name, icon }: { name: string; icon?: string }) {
   const [imgError, setImgError] = useState(false);
+  const safeIcon = sanitizeImageUrl(icon);
 
-  if (!icon || imgError) {
+  if (!safeIcon || imgError) {
     return (
       <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-zinc-600 flex items-center justify-center text-gray-500 dark:text-zinc-400 font-medium text-sm">
         {name.charAt(0).toUpperCase()}
@@ -196,7 +198,7 @@ function DAppAvatar({ name, icon }: { name: string; icon?: string }) {
 
   return (
     <img
-      src={icon}
+      src={safeIcon}
       alt={name}
       className="w-10 h-10 rounded-full"
       onError={() => setImgError(true)}
