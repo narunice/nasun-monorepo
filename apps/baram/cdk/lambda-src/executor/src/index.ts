@@ -304,7 +304,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       headers: corsHeaders,
       body: JSON.stringify({
         error: 'Internal server error',
-        message: err.message,
       }),
     };
   }

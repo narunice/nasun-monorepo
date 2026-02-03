@@ -83,11 +83,12 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   }
 
   // Middleware
-  app.use(express.json());
+  app.use(express.json({ limit: '5mb' }));
 
-  // CORS for local development
+  // CORS — restrict to known origins in production
+  const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN || '*';
   app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') {
@@ -164,7 +165,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       console.error('[Host/Server] Failed to get public key:', error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get public key',
+        error: 'Failed to get public key',
       });
     }
   });
@@ -200,7 +201,17 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       return;
     }
 
-    if (!model || typeof model !== 'string') {
+    // Reject oversized payloads (5MB base64 ≈ ~3.75MB raw)
+    const MAX_PROMPT_LENGTH = 5 * 1024 * 1024;
+    if (encryptedPrompt.length > MAX_PROMPT_LENGTH) {
+      res.status(413).json({
+        success: false,
+        error: 'Encrypted prompt too large',
+      });
+      return;
+    }
+
+    if (!model || typeof model !== 'string' || model.length > 100) {
       res.status(400).json({
         success: false,
         error: 'Missing or invalid model',
@@ -331,7 +342,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       console.error('[Host/Server] Execution failed:', error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : 'Execution failed',
+        error: 'Execution failed',
       });
     }
   });
@@ -349,11 +360,10 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   /**
    * Error handler
    */
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
     console.error('[Host/Server] Unhandled error:', err);
     res.status(500).json({
       error: 'Internal server error',
-      message: err.message,
     });
   });
 
