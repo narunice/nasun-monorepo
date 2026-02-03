@@ -3,9 +3,9 @@
  * Displays ID/address with copy and explorer link buttons
  */
 
-import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { shortenId } from '../lib/nft';
+import { useCopyToClipboard } from '../hooks';
 
 interface CopyableIdProps {
   /** The full ID/address value */
@@ -52,20 +52,10 @@ export default function CopyableId({
   size = 'sm',
   className = '',
 }: CopyableIdProps) {
-  const [copied, setCopied] = useState(false);
+  const { copied, handleCopy } = useCopyToClipboard(1500);
 
   const displayValue = shorten && shorten > 0 ? shortenId(value, shorten) : value;
   const textSize = size === 'xs' ? 'text-xs' : 'text-sm';
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
-  }, [value]);
 
   return (
     <div className="flex flex-col gap-1">
@@ -83,9 +73,10 @@ export default function CopyableId({
         {/* Copy button */}
         {showCopy && (
           <button
-            onClick={handleCopy}
+            onClick={() => handleCopy(value)}
             className="p-0.5 ml-1 text-muted-foreground hover:text-primary transition-colors shrink-0"
             title={copied ? 'Copied!' : 'Copy to clipboard'}
+            aria-label="Copy to clipboard"
             type="button"
           >
             {copied ? (

@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useCopyToClipboard } from '../hooks';
 
 interface InfoRowProps {
   label: string;
@@ -11,17 +11,7 @@ interface InfoRowProps {
 }
 
 export default function InfoRow({ label, value, mono, copyable, status, link }: InfoRowProps) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
+  const { copied, handleCopy } = useCopyToClipboard();
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center py-3 border-b border-border last:border-b-0">
@@ -49,8 +39,9 @@ export default function InfoRow({ label, value, mono, copyable, status, link }: 
 
         {copyable && (
           <button
-            onClick={handleCopy}
+            onClick={() => handleCopy(value)}
             title="Copy to clipboard"
+            aria-label="Copy to clipboard"
             className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all"
           >
             {copied ? (

@@ -20,13 +20,14 @@ export function useNetworkStatus() {
 
 /**
  * Hook for fetching epoch information
+ * Epoch data changes slowly — 30s interval is sufficient
  */
 export function useEpochInfo() {
   return useQuery({
     queryKey: ['epochInfo'],
     queryFn: getEpochInfo,
-    refetchInterval: 5000,
-    staleTime: 4000,
+    refetchInterval: 30000,
+    staleTime: 25000,
   });
 }
 
@@ -37,8 +38,8 @@ export function useTPS() {
   return useQuery({
     queryKey: ['tps'],
     queryFn: getTPS,
-    refetchInterval: 10000,
-    staleTime: 8000,
+    refetchInterval: 12000,
+    staleTime: 10000,
   });
 }
 
@@ -49,7 +50,7 @@ export function useRecentTransactions(limit: number = 10) {
   return useQuery({
     queryKey: ['recentTransactions', limit],
     queryFn: () => getRecentTransactions(limit),
-    refetchInterval: 10000,
-    staleTime: 8000,
+    refetchInterval: 8000,
+    staleTime: 6000,
   });
 }

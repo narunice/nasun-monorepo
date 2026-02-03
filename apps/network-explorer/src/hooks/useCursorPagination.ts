@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 interface CursorPaginationResult<TCursor> {
   cursor: TCursor | undefined;
@@ -13,26 +13,30 @@ interface CursorPaginationResult<TCursor> {
  */
 export function useCursorPagination<TCursor = string>(): CursorPaginationResult<TCursor> {
   const [cursor, setCursor] = useState<TCursor | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<(TCursor | undefined)[]>([undefined]);
   const [pageIndex, setPageIndex] = useState(0);
+  const cursorHistoryRef = useRef<(TCursor | undefined)[]>([undefined]);
 
   const handleNextPage = useCallback((nextCursor: TCursor) => {
-    setCursorHistory((prev) => {
-      if (pageIndex + 1 >= prev.length) {
-        return [...prev, nextCursor];
+    setPageIndex((prev) => {
+      const nextIndex = prev + 1;
+      if (nextIndex >= cursorHistoryRef.current.length) {
+        cursorHistoryRef.current = [...cursorHistoryRef.current, nextCursor];
+      }
+      return nextIndex;
+    });
+    setCursor(nextCursor);
+  }, []);
+
+  const handlePrevPage = useCallback(() => {
+    setPageIndex((prev) => {
+      if (prev > 0) {
+        const newIndex = prev - 1;
+        setCursor(cursorHistoryRef.current[newIndex]);
+        return newIndex;
       }
       return prev;
     });
-    setPageIndex((prev) => prev + 1);
-    setCursor(nextCursor);
-  }, [pageIndex]);
-
-  const handlePrevPage = useCallback(() => {
-    if (pageIndex > 0) {
-      setPageIndex((prev) => prev - 1);
-      setCursor(cursorHistory[pageIndex - 1]);
-    }
-  }, [pageIndex, cursorHistory]);
+  }, []);
 
   return { cursor, pageIndex, handleNextPage, handlePrevPage };
 }

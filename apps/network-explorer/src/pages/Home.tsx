@@ -13,9 +13,6 @@ import NetworkStatusCards from '../components/home/NetworkStatusCards';
 import NetworkActivityCharts from '../components/home/NetworkActivityCharts';
 import RecentTransactionsTable from '../components/home/RecentTransactionsTable';
 
-// Types
-import type { NetworkStatus, EpochInfo } from '../lib/types';
-
 export default function Home() {
   // Network data queries
   const {
@@ -23,17 +20,10 @@ export default function Home() {
     isLoading: statusLoading,
     dataUpdatedAt: statusUpdatedAt,
     isFetching: statusFetching,
-  } = useNetworkStatus() as {
-    data: NetworkStatus | undefined;
-    isLoading: boolean;
-    dataUpdatedAt: number;
-    isFetching: boolean;
-  };
+  } = useNetworkStatus();
 
-  const { data: epochInfo } = useEpochInfo() as {
-    data: EpochInfo | undefined;
-    isFetching: boolean;
-  };
+  const { data: epochData } = useEpochInfo();
+  const epochInfo = epochData ?? undefined;
 
   const { data: tps } = useTPS();
 
