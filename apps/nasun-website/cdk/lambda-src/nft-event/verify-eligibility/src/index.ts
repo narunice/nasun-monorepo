@@ -25,6 +25,15 @@ import {
 } from './types';
 import { VerificationService } from './services/verificationService';
 import { handleError } from './utils/errorHandler';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
 
 /**
  * Lambda 환경 변수
@@ -46,6 +55,7 @@ const env: NftEventEnv = {
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   console.log('[verify-eligibility] Event:', JSON.stringify(event, null, 2));
+  const origin = event.headers?.origin || event.headers?.Origin;
 
   try {
     // 1. 요청 파싱
@@ -58,8 +68,33 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     // 2. 입력 검증
     validateRequest(request);
 
-    // 3. Extract User Access Token for Tier 3 User Context fallback
-    const xAccessToken: string | undefined = (request as any).xAccessToken || undefined;
+    // 3. Retrieve User Access Token from server-side DynamoDB (never from request body)
+    let xAccessToken: string | undefined;
+    try {
+      const ddbClient = new DynamoDBClient({ region: env.AWS_REGION });
+      const docClient = DynamoDBDocumentClient.from(ddbClient);
+      const tokenResult = await docClient.send(new GetCommand({
+        TableName: env.TASKS_TABLE_NAME,
+        Key: {
+          walletAddress: '__X_TOKEN_STORE__',
+          taskType: request.xUserId,
+        },
+      }));
+      if (tokenResult.Item?.xAccessToken) {
+        const now = Math.floor(Date.now() / 1000);
+        if (!tokenResult.Item.expiresAt || tokenResult.Item.expiresAt > now) {
+          xAccessToken = tokenResult.Item.xAccessToken;
+        } else {
+          console.log('[verify-eligibility] Stored X token expired, cleaning up');
+          await docClient.send(new DeleteCommand({
+            TableName: env.TASKS_TABLE_NAME,
+            Key: { walletAddress: '__X_TOKEN_STORE__', taskType: request.xUserId },
+          }));
+        }
+      }
+    } catch (tokenErr: any) {
+      console.warn('[verify-eligibility] Failed to retrieve stored X token:', tokenErr?.message);
+    }
 
     console.log('[verify-eligibility] OAuth context:', {
       hasUserToken: Boolean(xAccessToken),
@@ -95,7 +130,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': getCorsOrigin(origin),
         'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
       },
       body: JSON.stringify(response),
@@ -107,7 +142,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     return handleError(error, {
       handler: 'verify-eligibility',
       timestamp: new Date().toISOString(),
-    });
+    }, origin);
   }
 };
 

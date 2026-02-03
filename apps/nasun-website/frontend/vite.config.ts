@@ -10,9 +10,14 @@ export default defineConfig(({ mode }) => {
   //    Third arg "" means “don’t filter by prefix” — we only use VITE_* anyway
   const env = loadEnv(mode, process.cwd(), "");
 
-  // 2) Turn them into definitions under process.env.*
+  // 2) Turn VITE_* vars into definitions under process.env.*
+  //    SECURITY: Only expose VITE_* prefixed vars to the client bundle.
+  //    Sensitive server-only vars (credentials, secrets) MUST NOT use the VITE_ prefix.
+  const SENSITIVE_KEYS = ['VITE_WORDPRESS_USERNAME', 'VITE_WORDPRESS_PASSWORD', 'VITE_WP_REST_NONCE'];
   const defineEnv = Object.entries(env).reduce<Record<string, string>>((acc, [key, val]) => {
-    acc[`process.env.${key}`] = JSON.stringify(val);
+    if (key.startsWith('VITE_') && !SENSITIVE_KEYS.includes(key)) {
+      acc[`process.env.${key}`] = JSON.stringify(val);
+    }
     return acc;
   }, {});
 

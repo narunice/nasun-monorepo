@@ -1,24 +1,11 @@
 import { APIGatewayProxyResult } from "aws-lambda";
 
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || "https://nasun.io";
+// Read from environment variable (set by CDK from shared constants/cors.ts)
+const ALLOWED_LIST = (process.env.ALLOWED_ORIGINS || "https://nasun.io").split(",").map((o) => o.trim());
 
 function getCorsOrigin(requestOrigin: string | undefined): string {
-  if (!requestOrigin) return ALLOWED_ORIGINS.split(",")[0];
-
-  const allowedList = ALLOWED_ORIGINS.split(",").map((o) => o.trim());
-  if (allowedList.includes(requestOrigin)) {
-    return requestOrigin;
-  }
-
-  // Allow localhost only in non-production environments
-  if (
-    process.env.NODE_ENV !== "production" &&
-    requestOrigin.startsWith("http://localhost:")
-  ) {
-    return requestOrigin;
-  }
-
-  return allowedList[0];
+  if (!requestOrigin) return ALLOWED_LIST[0];
+  return ALLOWED_LIST.includes(requestOrigin) ? requestOrigin : ALLOWED_LIST[0];
 }
 
 export function corsHeaders(requestOrigin?: string): Record<string, string> {

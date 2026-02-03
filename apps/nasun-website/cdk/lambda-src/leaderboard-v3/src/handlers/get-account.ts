@@ -12,6 +12,9 @@ import {
   getAccountByUsername,
   getPostsByAccountId,
 } from '../services/dynamodb-client';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 /**
  * Create CORS response
@@ -22,12 +25,7 @@ function createResponse(
 ): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    },
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
@@ -38,6 +36,7 @@ function createResponse(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return createResponse(200, { found: false });

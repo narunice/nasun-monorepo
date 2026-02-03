@@ -14,21 +14,7 @@ const BaseEnvSchema = z.object({
 
   // 2. AWS & 인프라 설정
   VITE_AWS_REGION: z.string().min(1),
-  VITE_COGNITO_USER_POOL_ID: z.string().min(1),
-  VITE_COGNITO_CLIENT_ID: z.string().min(1),
-  VITE_COGNITO_DOMAIN: z.string().min(1, {
-    message: "VITE_COGNITO_DOMAIN은 빈 문자열이 될 수 없습니다.",
-  }),
-  VITE_COGNITO_REDIRECT_SIGNIN: z.string().url(),
-  VITE_COGNITO_REDIRECT_SIGNOUT: z.string().url(),
-  VITE_COGNITO_USERNAME_ATTRIBUTES: z.string(),
-  VITE_COGNITO_SOCIAL_PROVIDERS: z.string(),
-  VITE_COGNITO_SIGNUP_ATTRIBUTES: z.string(),
-  VITE_COGNITO_MFA_CONFIGURATION: z.string(),
-  VITE_COGNITO_MFA_TYPES: z.string(),
-  VITE_COGNITO_PASSWORD_MIN_LENGTH: z.string().transform(Number),
-  VITE_COGNITO_PASSWORD_POLICY_CHARACTERS: z.string().default(""),
-  VITE_COGNITO_VERIFICATION_MECHANISMS: z.string(),
+  VITE_COGNITO_IDENTITY_POOL_ID: z.string().min(1),
 
   // API 엔드포인트
   VITE_RANDOM_IMAGE_API_ENDPOINT: z.string().url(),
@@ -47,9 +33,10 @@ const BaseEnvSchema = z.object({
 
   // 5. 워드프레스 설정
   VITE_WORDPRESS_DOMAIN: z.string().url(),
-  VITE_WP_REST_NONCE: z.string(),
-  VITE_WORDPRESS_USERNAME: z.string(),
-  VITE_WORDPRESS_PASSWORD: z.string(),
+  // Note: WP credentials are server-only (vite dev proxy) — excluded from client bundle via SENSITIVE_KEYS filter
+  VITE_WP_REST_NONCE: z.string().optional(),
+  VITE_WORDPRESS_USERNAME: z.string().optional(),
+  VITE_WORDPRESS_PASSWORD: z.string().optional(),
 
   // 6. CSP 정책 (다중 라인 문자열 허용)
   VITE_CSP_POLICY: z.string().optional(),

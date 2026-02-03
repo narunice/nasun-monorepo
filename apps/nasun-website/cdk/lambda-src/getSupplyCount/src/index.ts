@@ -7,15 +7,24 @@ import { APIGatewayProxyHandler } from "aws-lambda";
 const docClient = new DynamoDB.DocumentClient();
 const TABLE = process.env.TABLE_NAME || "";
 
-// CORS 헤더를 포함한 응답 헬퍼
-const corsHeaders = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-  "Access-Control-Allow-Methods": "GET,OPTIONS",
-};
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+let _requestOrigin: string | undefined;
+function corsHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": getCorsOrigin(_requestOrigin),
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+  };
+}
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   // 1) 들어온 이벤트 전체 로깅
   console.log("🚀 Received event:", JSON.stringify(event, null, 2));
   // 2) 환경변수 TABLE_NAME 확인
@@ -46,7 +55,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return {
       statusCode: 400,
       body: JSON.stringify({ error: "Missing tier" }),
-      headers: corsHeaders,
+      headers: corsHeaders(),
     };
   }
 
@@ -86,14 +95,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({ tier, currentCount }),
-      headers: corsHeaders,
+      headers: corsHeaders(),
     };
   } catch (error) {
     console.error("💥 getSupplyCount error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Internal server error" }),
-      headers: corsHeaders,
+      headers: corsHeaders(),
     };
   }
 };

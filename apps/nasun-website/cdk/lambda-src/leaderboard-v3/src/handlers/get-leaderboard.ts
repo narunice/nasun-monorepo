@@ -49,6 +49,9 @@ import {
   getBannedAccountIds,
 } from '../services/dynamodb-client';
 import { calculateUserScore, compareScores } from '../services/score-calculator';
+import { corsHeaders } from '../utils/cors';
+
+let _requestOrigin: string | undefined;
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -64,18 +67,10 @@ const SEASONS_TABLE =
   process.env.LEADERBOARD_V3_SEASONS_TABLE || DYNAMO_KEYS.SEASONS_TABLE;
 const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
 
-const corsHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Cache-Control': 'public, max-age=300', // 5 minute cache
-};
-
 function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: corsHeaders,
+    headers: { ...corsHeaders(_requestOrigin), 'Cache-Control': 'public, max-age=300' },
     body: JSON.stringify(body),
   };
 }
@@ -371,6 +366,7 @@ function toLeaderboardEntry(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  _requestOrigin = event.headers?.origin || event.headers?.Origin;
   console.log('Get Leaderboard request:', JSON.stringify(event, null, 2));
 
   if (event.httpMethod === 'OPTIONS') {

@@ -3,16 +3,8 @@ import { handleChallenge } from './handlers/challenge';
 import { handleVerify } from './handlers/verify';
 import { maskSensitiveData } from './utils/log-utils';
 
-// SECURITY: Allowed origins whitelist for CORS validation
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.io',
-  'https://www.gensol.io',
-  'http://localhost:5174',
-  'http://localhost:5173',
-];
+// Read from environment variable (set by CDK from shared constants/cors.ts)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
 // SECURITY: Dynamic CORS headers based on validated origin + security headers
 const getSecurityHeaders = (origin?: string) => {

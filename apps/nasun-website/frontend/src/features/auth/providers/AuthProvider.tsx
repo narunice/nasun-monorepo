@@ -1,7 +1,4 @@
 import React, { createContext, useEffect, useState, useCallback } from "react";
-import { Amplify } from "aws-amplify";
-import { fetchAuthSession } from "aws-amplify/auth";
-import awsConfig from "@/config/awsConfig";
 import logger from "@/lib/logger";
 import { useUserStore } from "@/store/userStore";
 import type { UserData } from "@/store/userStore";
@@ -32,8 +29,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cachedUser = sessionStorage.getItem("nasun_user_profile");
       if (cachedUser) {
         setUser(JSON.parse(cachedUser));
-      } else {
-        await fetchAuthSession();
       }
     } catch {
       logger.debug("No active session found on startup.");
@@ -218,8 +213,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [setIsLoading, setUser, clearUser]);
 
   useEffect(() => {
-    Amplify.configure(awsConfig);
-
     const initializeAuth = async () => {
       const redirectHandled = await handleOAuthRedirect();
       if (!redirectHandled) {
@@ -319,10 +312,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Reset Battalion NFT Store first
       useBattalionNftStore.getState().reset();
 
-      // Battalion NFT state (UI state can stay in localStorage, but tokens go in sessionStorage)
+      // Battalion NFT state
       localStorage.removeItem("battalion-nft-state");
       sessionStorage.removeItem("battalion_nft_twitter_session");
-      sessionStorage.removeItem("battalion_nft_x_access_token");
 
       // Clear all remaining sessionStorage items
       sessionStorage.clear();

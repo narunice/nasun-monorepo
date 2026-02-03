@@ -15,6 +15,13 @@
 
 import { APIGatewayProxyResult } from 'aws-lambda';
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+function getCorsOrigin(origin?: string): string {
+  if (!origin) return ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 export enum ErrorCode {
   // Validation Errors (400)
   MISSING_REQUIRED_FIELDS = 'MISSING_REQUIRED_FIELDS',
@@ -55,7 +62,8 @@ export interface ErrorResponse {
  */
 export function handleError(
   error: any,
-  context?: any
+  context?: any,
+  requestOrigin?: string
 ): APIGatewayProxyResult {
   console.error('[ErrorHandler] Error occurred:', {
     error: error.message || error,
@@ -124,7 +132,7 @@ export function handleError(
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': getCorsOrigin(requestOrigin),
       'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
     },
     body: JSON.stringify(errorResponse),

@@ -11,26 +11,11 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 
+import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
+
 export interface CommonStackProps extends cdk.StackProps {
   // 필요한 경우 다른 스택 참조 추가
 }
-
-// Security: CORS 허용 도메인 목록
-// Note: localhost included for devnet development/testing
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.nasun.io',
-  'https://staging.gensol.io',
-  'https://pado.finance',
-  'https://staging.pado.finance',
-  // Devnet: allow localhost for development
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-];
 
 export class CommonStack extends cdk.Stack {
   public readonly priceApiGateway: apigw.LambdaRestApi;
@@ -85,7 +70,10 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/get-backup-prices/dist"),
-      environment: { TABLE_NAME: cryptoBackupPricesTable.tableName },
+      environment: {
+        TABLE_NAME: cryptoBackupPricesTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       logGroup: new logs.LogGroup(this, "GetBackupPricesLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-backup-prices",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -109,7 +97,10 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/getSupplyCount/dist"),
-      environment: { TABLE_NAME: supplyCountTable.tableName },
+      environment: {
+        TABLE_NAME: supplyCountTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       logGroup: new logs.LogGroup(this, "GetSupplyCountLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-supply-count",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -133,7 +124,10 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/getAllSupplyCounts"),
-      environment: { TABLE_NAME: supplyCountTable.tableName },
+      environment: {
+        TABLE_NAME: supplyCountTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       logGroup: new logs.LogGroup(this, "GetAllSupplyCountsLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-all-supply-counts",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -190,7 +184,8 @@ export class CommonStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/get-user-profile"),
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
-        USER_IDENTITY_MAP_TABLE: userIdentityMapTable.tableName
+        USER_IDENTITY_MAP_TABLE: userIdentityMapTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",
@@ -217,7 +212,10 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/link-account"),
-      environment: { USER_PROFILES_TABLE: this.userProfilesTable.tableName },
+      environment: {
+        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       timeout: cdk.Duration.seconds(10),
       logGroup: new logs.LogGroup(this, "LinkAccountLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-link-account",
@@ -243,7 +241,10 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/wallet-api/dist"),
-      environment: { USER_PROFILES_TABLE: this.userProfilesTable.tableName },
+      environment: {
+        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       logGroup: new logs.LogGroup(this, "WalletApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-wallet-api",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -283,6 +284,7 @@ export class CommonStack extends cdk.Stack {
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
         GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516",
         PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0x9df462224ec969f7f0234663865c5070c4ccf3dd739423ef9ef698dab3291c76",
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-governance-api",
@@ -396,7 +398,9 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/get-aws-credentials"),
-      environment: {},
+      environment: {
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       logGroup: new logs.LogGroup(this, "GetAwsCredentialsLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-aws-credentials",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -435,6 +439,7 @@ export class CommonStack extends cdk.Stack {
         code: lambda.Code.fromAsset("lambda-src/deactivate-user-account/dist"),
         environment: {
             USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+            ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         },
         logGroup: new logs.LogGroup(this, "DeactivateUserAccountLogGroup", {
             logGroupName: "/aws/lambda/nasun-common-deactivate-user-account",
@@ -497,7 +502,10 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "index.handler",
       code: lambda.Code.fromAsset("lambda-src/get-user-count/dist"),
-      environment: { USER_PROFILES_TABLE: this.userProfilesTable.tableName },
+      environment: {
+        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
       logGroup: new logs.LogGroup(this, "GetUserCountLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-count",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -535,6 +543,7 @@ export class CommonStack extends cdk.Stack {
         TARGET_USER_ID: "1725466995565752320",
         TARGET_USERNAME: process.env.TARGET_USERNAME || "Nasun_io", // For logging only
         TWITTER_TOKENS_SECRET_NAME: process.env.TWITTER_TOKENS_SECRET_NAME || "nasun-twitter-tokens",
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, "GetFollowerCountLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-follower-count",
@@ -691,6 +700,7 @@ export class CommonStack extends cdk.Stack {
     const whitelistEnv = {
       WHITELIST_TABLE_NAME: whitelistTable.tableName,
       ADMIN_API_KEY: process.env.ADMIN_API_KEY || (() => { throw new Error("ADMIN_API_KEY environment variable is required"); })(),
+      ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
     };
 
     // 10-3. Join Whitelist Lambda

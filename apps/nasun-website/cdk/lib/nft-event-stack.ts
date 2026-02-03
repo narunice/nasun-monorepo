@@ -21,22 +21,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
-
-// Security: CORS 허용 도메인 목록
-const ALLOWED_ORIGINS = [
-  'https://nasun.io',
-  'https://www.nasun.io',
-  'https://staging.nasun.io',
-  'https://gensol.nasun.io',
-  'https://staging.gensol.io',
-  'https://pado.finance',
-  'https://staging.pado.finance',
-  // Localhost development servers
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-];
+import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export class NftEventStack extends cdk.Stack {
   public readonly whitelistTable: dynamodb.Table;
@@ -192,7 +177,7 @@ export class NftEventStack extends cdk.Stack {
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
     });
 
@@ -217,7 +202,7 @@ export class NftEventStack extends cdk.Stack {
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
     });
 
@@ -235,7 +220,7 @@ export class NftEventStack extends cdk.Stack {
       logGroup: withdrawLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
     });
 
@@ -259,7 +244,7 @@ export class NftEventStack extends cdk.Stack {
         ENABLE_RATE_LIMIT_CACHE: 'true',
         CACHE_TTL_MINUTES: '15',
         EXPORT_BUCKET_NAME: exportBucket.bucketName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
     });
 
@@ -278,7 +263,7 @@ export class NftEventStack extends cdk.Stack {
       logGroup: checkStatusLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS.join(','),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
     });
 
