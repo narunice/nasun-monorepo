@@ -21,16 +21,16 @@ export const MACD_HEIGHT = 100;
 
 export const CHART_COLORS = {
   dark: {
-    background: '#1a1a2e',
+    background: '#0d141e',
     text: '#d1d4dc',
-    grid: '#2B2B43',
-    border: '#2B2B43',
+    grid: '#1a2332',
+    border: '#1f3a61',
   },
   light: {
-    background: '#faf7f4',
+    background: '#e1e5ea',
     text: '#191615',
-    grid: '#e5e2de',
-    border: '#d4d1cd',
+    grid: '#cdd3db',
+    border: '#aac9d5',
   },
 } as const;
 

@@ -33,6 +33,9 @@ export {
   useSecuritySettings,
   initializeAutoLock,
   cleanupAutoLock,
+  // Mnemonic backup (memory-only, never persisted)
+  consumePendingMnemonic,
+  hasPendingMnemonic,
 } from './hooks/useWallet';
 
 export {

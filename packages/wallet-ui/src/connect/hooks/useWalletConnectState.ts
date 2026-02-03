@@ -340,7 +340,6 @@ export function useWalletConnectState() {
   const handleBackupConfirmed = useCallback(() => {
     try {
       localStorage.removeItem("nasun_wallet_backup_pending");
-      sessionStorage.removeItem("nasun_wallet_pending_mnemonic");
     } catch {
       // Ignore localStorage errors
     }

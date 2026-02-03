@@ -57,6 +57,7 @@ export function CopyableAddress({
   className = '',
 }: CopyableAddressProps) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const displayValue = shorten && shorten > 0 ? shortenAddress(value, shorten) : value;
   const textSize = size === 'xs' ? 'text-xs xl:text-sm' : 'text-sm xl:text-base';
@@ -65,9 +66,12 @@ export function CopyableAddress({
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 1500);
-    } catch (error) {
-      console.error('Failed to copy:', error);
+    } catch {
+      // Clipboard API may fail in non-secure contexts or iframe
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
     }
   }, [value]);
 
@@ -89,10 +93,24 @@ export function CopyableAddress({
           <button
             onClick={handleCopy}
             className="p-0.5 ml-1 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors shrink-0"
-            title={copied ? 'Copied!' : 'Copy to clipboard'}
+            title={copied ? 'Copied!' : copyFailed ? 'Copy failed' : 'Copy to clipboard'}
             type="button"
           >
-            {copied ? (
+            {copyFailed ? (
+              <svg
+                className="w-3.5 h-3.5 text-red-500 dark:text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            ) : copied ? (
               <svg
                 className="w-3.5 h-3.5 text-green-500 dark:text-green-400"
                 fill="none"

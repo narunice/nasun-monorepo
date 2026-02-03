@@ -45,11 +45,8 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
   const handleSelect = useCallback(
     (chainId: string, isEnabled: boolean) => {
       if (isEnabled) {
-        console.log('[NetworkSelectorModal] Selecting chain:', chainId);
-        console.log('[NetworkSelectorModal] Before:', useChainStore.getState().currentChainId);
         // Use store directly to ensure state update outside React lifecycle
         useChainStore.getState().setChain(chainId);
-        console.log('[NetworkSelectorModal] After:', useChainStore.getState().currentChainId);
         // Delay close to ensure state update propagates
         requestAnimationFrame(() => {
           onClose();
@@ -86,7 +83,6 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
         onClick={(e) => {
           e.stopPropagation();
           if (!isChainDisabled) {
-            console.log('[Button] Clicked chain:', chain.id, 'isEnabled:', sectionEnabled);
             handleSelect(chain.id, true);
           }
         }}

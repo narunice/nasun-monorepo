@@ -30,6 +30,26 @@ let currentKeypair: Ed25519Keypair | null = null;
 // Auto-lock interval ID
 let autoLockIntervalId: ReturnType<typeof setInterval> | null = null;
 
+// In-memory mnemonic for backup modal (never persisted to storage)
+let pendingMnemonic: string | null = null;
+
+/**
+ * Get the pending mnemonic for backup display, then clear it from memory.
+ * One-shot read: subsequent calls return null.
+ */
+export function consumePendingMnemonic(): string | null {
+  const mnemonic = pendingMnemonic;
+  pendingMnemonic = null;
+  return mnemonic;
+}
+
+/**
+ * Check if a mnemonic backup is pending (without consuming it).
+ */
+export function hasPendingMnemonic(): boolean {
+  return pendingMnemonic !== null;
+}
+
 interface WalletStore extends WalletState, WalletActions {
   // Internal methods
   _initialize: () => void;
@@ -39,6 +59,54 @@ interface WalletStore extends WalletState, WalletActions {
   security: SecuritySettings;
   updateSecuritySettings: (settings: Partial<SecuritySettings>) => void;
   updateLastActivity: () => void;
+}
+
+// ============================================
+// Shared import helpers (reduce code duplication)
+// ============================================
+type SetFn = (partial: Partial<WalletStore>) => void;
+
+async function _unlockAndActivate(
+  set: SetFn,
+  address: string,
+  password: string,
+  mnemonic?: string,
+): Promise<void> {
+  const keypair = await unlockKeystore(password);
+  currentKeypair = keypair;
+  saveSessionPassword(password);
+
+  // Auto-create EVM wallet when mnemonic is available
+  if (mnemonic) {
+    try {
+      await createEVMWalletFromMnemonic(mnemonic, password);
+    } catch {
+      // EVM wallet creation is optional; log silently
+    }
+  }
+
+  const account: WalletAccount = {
+    address,
+    publicKey: getPublicKeyFromKeypair(keypair),
+  };
+  set({ status: 'unlocked', account, isLoading: false });
+}
+
+async function _importWithMnemonic(
+  set: SetFn,
+  mnemonic: string,
+  password: string,
+): Promise<string> {
+  set({ isLoading: true, error: null });
+  try {
+    const address = await importWalletFromMnemonic(mnemonic, password);
+    await _unlockAndActivate(set, address, password, mnemonic);
+    return address;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to import wallet';
+    set({ isLoading: false, error: message });
+    throw error;
+  }
 }
 
 export const useWallet = create<WalletStore>((set, get) => ({
@@ -196,37 +264,7 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Import from mnemonic (legacy compatible)
   importWallet: async (mnemonic: string, password: string): Promise<string> => {
-    set({ isLoading: true, error: null });
-    try {
-      const address = await importWalletFromMnemonic(mnemonic, password);
-
-      const keypair = await unlockKeystore(password);
-      currentKeypair = keypair;
-
-      // Save to session for auto-unlock on page refresh
-      saveSessionPassword(password);
-
-      // Auto-create EVM wallet from the same mnemonic
-      try {
-        const evmAddress = await createEVMWalletFromMnemonic(mnemonic, password);
-        console.log('[Wallet] EVM wallet created:', evmAddress);
-      } catch (evmError) {
-        console.warn('[Wallet] Failed to auto-create EVM wallet:', evmError);
-      }
-
-      const account: WalletAccount = {
-        address,
-        publicKey: getPublicKeyFromKeypair(keypair),
-      };
-
-      set({ status: 'unlocked', account, isLoading: false });
-
-      return address;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import wallet';
-      set({ isLoading: false, error: message });
-      throw error;
-    }
+    return _importWithMnemonic(set, mnemonic, password);
   },
 
   // Create wallet with mnemonic backup
@@ -234,38 +272,15 @@ export const useWallet = create<WalletStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { address, mnemonic } = await createWalletWithMnemonic(password);
+      await _unlockAndActivate(set, address, password, mnemonic);
 
-      // Auto-unlock
-      const keypair = await unlockKeystore(password);
-      currentKeypair = keypair;
-
-      // Save to session for auto-unlock on page refresh
-      saveSessionPassword(password);
-
-      // Auto-create EVM wallet from the same mnemonic
-      try {
-        const evmAddress = await createEVMWalletFromMnemonic(mnemonic, password);
-        console.log('[Wallet] EVM wallet created:', evmAddress);
-      } catch (evmError) {
-        console.warn('[Wallet] Failed to auto-create EVM wallet:', evmError);
-      }
-
-      const account: WalletAccount = {
-        address,
-        publicKey: getPublicKeyFromKeypair(keypair),
-      };
-
-      // Persist mnemonic for App-level backup modal before triggering re-renders.
-      // The UI component (WalletConnect) may unmount when status changes to 'unlocked',
-      // so we store the mnemonic in sessionStorage for an independent modal to display.
+      // Store mnemonic in memory for App-level backup modal
+      pendingMnemonic = mnemonic;
       try {
         localStorage.setItem('nasun_wallet_backup_pending', 'true');
-        sessionStorage.setItem('nasun_wallet_pending_mnemonic', mnemonic);
       } catch {
-        // Ignore storage errors
+        console.warn('[Wallet] Failed to persist backup pending flag');
       }
-
-      set({ status: 'unlocked', account, isLoading: false });
 
       return { address, mnemonic };
     } catch (error) {
@@ -277,58 +292,15 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Import from mnemonic (explicit method)
   importFromMnemonic: async (mnemonic: string, password: string): Promise<string> => {
-    set({ isLoading: true, error: null });
-    try {
-      const address = await importWalletFromMnemonic(mnemonic, password);
-
-      const keypair = await unlockKeystore(password);
-      currentKeypair = keypair;
-
-      // Save to session for auto-unlock on page refresh
-      saveSessionPassword(password);
-
-      // Auto-create EVM wallet from the same mnemonic
-      try {
-        const evmAddress = await createEVMWalletFromMnemonic(mnemonic, password);
-        console.log('[Wallet] EVM wallet created:', evmAddress);
-      } catch (evmError) {
-        console.warn('[Wallet] Failed to auto-create EVM wallet:', evmError);
-      }
-
-      const account: WalletAccount = {
-        address,
-        publicKey: getPublicKeyFromKeypair(keypair),
-      };
-
-      set({ status: 'unlocked', account, isLoading: false });
-
-      return address;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import wallet';
-      set({ isLoading: false, error: message });
-      throw error;
-    }
+    return _importWithMnemonic(set, mnemonic, password);
   },
 
-  // Import from private key
+  // Import from private key (no EVM wallet — no mnemonic available)
   importFromPrivateKey: async (privateKey: string, password: string): Promise<string> => {
     set({ isLoading: true, error: null });
     try {
       const address = await importWalletFromPrivateKey(privateKey, password);
-
-      const keypair = await unlockKeystore(password);
-      currentKeypair = keypair;
-
-      // Save to session for auto-unlock on page refresh
-      saveSessionPassword(password);
-
-      const account: WalletAccount = {
-        address,
-        publicKey: getPublicKeyFromKeypair(keypair),
-      };
-
-      set({ status: 'unlocked', account, isLoading: false });
-
+      await _unlockAndActivate(set, address, password);
       return address;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import wallet';

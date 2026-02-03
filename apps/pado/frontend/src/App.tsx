@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useSyncExternalStore, useCallback } from 'react';
-import { registerTokenFaucet } from '@nasun/wallet';
+import { registerTokenFaucet, consumePendingMnemonic, hasPendingMnemonic } from '@nasun/wallet';
 import { MnemonicBackup } from '@nasun/wallet-ui';
 import { Header } from './components/layout';
 import { AppRoutes } from './routes';
@@ -13,11 +13,10 @@ import { useTrading } from './features/trading/useTrading';
 // ============================================
 // Mnemonic Backup Modal (App-level)
 // Renders independently of WalletConnect lifecycle.
-// WalletConnect stores mnemonic in sessionStorage on creation;
-// this modal reads it and shows the backup screen.
+// useWallet stores mnemonic in memory on creation;
+// this modal reads it once and shows the backup screen.
 // ============================================
 const BACKUP_KEY = "nasun_wallet_backup_pending";
-const MNEMONIC_KEY = "nasun_wallet_pending_mnemonic";
 
 function subscribeBackup(cb: () => void) {
   const id = setInterval(cb, 100);
@@ -27,19 +26,19 @@ function subscribeBackup(cb: () => void) {
 function getBackupSnapshot(): string | null {
   try {
     if (localStorage.getItem(BACKUP_KEY) !== "true") return null;
-    return sessionStorage.getItem(MNEMONIC_KEY);
+    return hasPendingMnemonic() ? "pending" : null;
   } catch {
     return null;
   }
 }
 
 function MnemonicBackupModal() {
-  const mnemonic = useSyncExternalStore(subscribeBackup, getBackupSnapshot);
+  const hasMnemonic = useSyncExternalStore(subscribeBackup, getBackupSnapshot);
+  const mnemonic = hasMnemonic ? consumePendingMnemonic() : null;
 
   const handleConfirm = useCallback(() => {
     try {
       localStorage.removeItem(BACKUP_KEY);
-      sessionStorage.removeItem(MNEMONIC_KEY);
     } catch {
       // Ignore storage errors
     }

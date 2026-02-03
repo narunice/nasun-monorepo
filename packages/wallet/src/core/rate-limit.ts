@@ -30,8 +30,9 @@ export function getUnlockAttemptState(): UnlockAttemptState {
 export function saveUnlockAttemptState(state: UnlockAttemptState): void {
   try {
     localStorage.setItem(UNLOCK_ATTEMPT_KEY, JSON.stringify(state));
-  } catch {
-    // Ignore storage errors
+  } catch (error) {
+    // Rate-limit state must persist for security — warn on failure
+    console.warn('[RateLimit] Failed to save unlock attempt state:', error);
   }
 }
 

@@ -12,6 +12,7 @@ import {
   getStoredEVMAddress,
   type TokenConfig,
 } from '@nasun/wallet';
+import { sanitizeImageUrl } from '../shared';
 
 interface TokenSelectorProps {
   // Currently selected token symbol
@@ -92,8 +93,8 @@ export function TokenSelector({
         `}
       >
         <div className="flex items-center gap-2">
-          {selectedToken?.icon && (
-            <img src={selectedToken.icon} alt="" className="w-5 h-5 rounded-full" />
+          {selectedToken?.icon && sanitizeImageUrl(selectedToken.icon) && (
+            <img src={sanitizeImageUrl(selectedToken.icon)} alt="" className="w-5 h-5 rounded-full" />
           )}
           <span>{selectedToken?.symbol || 'Select token'}</span>
           {showBalance && selectedToken && (
@@ -137,8 +138,8 @@ export function TokenSelector({
                 `}
               >
                 <div className="flex items-center gap-2">
-                  {token.icon && (
-                    <img src={token.icon} alt="" className="w-5 h-5 rounded-full" />
+                  {token.icon && sanitizeImageUrl(token.icon) && (
+                    <img src={sanitizeImageUrl(token.icon)} alt="" className="w-5 h-5 rounded-full" />
                   )}
                   <div className="flex flex-col">
                     <span className="font-medium">{token.symbol}</span>
