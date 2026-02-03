@@ -4,28 +4,28 @@ export type SectionColor = 'c3' | 'c4' | 'c5' | 'c6';
 
 const colorStyles: Record<SectionColor, { border: string; bg: string; text: string; divider: string }> = {
   c3: {
-    border: 'border-nasun-white/20',
-    bg: 'bg-nasun-gray/40',
-    text: 'text-nasun-white/80',
-    divider: 'border-nasun-white/10',
+    border: 'border-foreground/20',
+    bg: 'bg-muted/40',
+    text: 'text-foreground/80',
+    divider: 'border-foreground/10',
   },
   c4: {
-    border: 'border-nasun-c4/40',
-    bg: 'bg-nasun-c4/5',
-    text: 'text-nasun-c4',
-    divider: 'border-nasun-c4/20',
+    border: 'border-ne1/40',
+    bg: 'bg-ne1/5',
+    text: 'text-primary',
+    divider: 'border-ne1/20',
   },
   c5: {
-    border: 'border-nasun-c5/50',
-    bg: 'bg-nasun-c5/10',
-    text: 'text-nasun-c5',
-    divider: 'border-nasun-c5/30',
+    border: 'border-ne1/50',
+    bg: 'bg-ne1/10',
+    text: 'text-primary',
+    divider: 'border-ne1/30',
   },
   c6: {
-    border: 'border-nasun-white/20',
-    bg: 'bg-nasun-gray/60',
-    text: 'text-nasun-white',
-    divider: 'border-nasun-white/20',
+    border: 'border-foreground/20',
+    bg: 'bg-muted/60',
+    text: 'text-foreground',
+    divider: 'border-foreground/20',
   },
 };
 
@@ -73,7 +73,7 @@ export function SectionBox({
         <>
           <div className="flex items-center justify-between mb-4">
             <h2 className={`text-lg font-semibold tracking-wide ${styles.text}`}>{title}</h2>
-            {rightTitle && <div className="text-sm text-nasun-white/60">{rightTitle}</div>}
+            {rightTitle && <div className="text-sm text-muted-foreground">{rightTitle}</div>}
           </div>
           <hr className={`border-t ${styles.divider} mb-6`} />
         </>

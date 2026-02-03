@@ -19,20 +19,20 @@ export function TPSChart({ data }: TPSChartProps) {
             <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="tpsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#7d9dbf" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#7d9dbf" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
                 dataKey="time"
-                tick={{ fill: '#888888', fontSize: 10 }}
-                axisLine={{ stroke: '#888888', opacity: 0.2 }}
+                tick={{ fill: '#7d9dbf', fontSize: 10 }}
+                axisLine={{ stroke: '#7d9dbf', opacity: 0.2 }}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: '#888888', fontSize: 10 }}
-                axisLine={{ stroke: '#888888', opacity: 0.2 }}
+                tick={{ fill: '#7d9dbf', fontSize: 10 }}
+                axisLine={{ stroke: '#7d9dbf', opacity: 0.2 }}
                 tickLine={false}
                 width={40}
                 domain={[0, 'auto']}
@@ -50,7 +50,7 @@ export function TPSChart({ data }: TPSChartProps) {
               <Area
                 type="monotone"
                 dataKey="tps"
-                stroke="#3B82F6"
+                stroke="#7d9dbf"
                 strokeWidth={2}
                 fill="url(#tpsGradient)"
               />

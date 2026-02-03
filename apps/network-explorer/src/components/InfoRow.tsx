@@ -24,8 +24,8 @@ export default function InfoRow({ label, value, mono, copyable, status, link }: 
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center py-3 border-b border-nasun-white/10 last:border-b-0">
-      <div className="w-40 text-nasun-white/60 text-sm font-medium flex-shrink-0 mb-1 sm:mb-0">
+    <div className="flex flex-col sm:flex-row sm:items-center py-3 border-b border-border last:border-b-0">
+      <div className="w-40 text-muted-foreground text-sm font-medium flex-shrink-0 mb-1 sm:mb-0">
         {label}
       </div>
       <div className={`flex-1 break-all flex items-center gap-2 ${mono ? 'font-mono text-sm' : 'text-sm md:text-base'}`}>
@@ -34,24 +34,24 @@ export default function InfoRow({ label, value, mono, copyable, status, link }: 
             className={`px-2 py-0.5 rounded-sm text-xs font-semibold uppercase tracking-wider ${
               status === 'success'
                 ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                : 'bg-nasun-scarlet/10 text-nasun-scarlet border border-nasun-scarlet/20'
+                : 'bg-destructive/10 text-destructive border border-destructive/20'
             }`}
           >
             {value}
           </span>
         ) : link ? (
-          <Link to={link} className="text-nasun-c4 hover:text-nasun-c4/80 hover:underline transition-colors">
+          <Link to={link} className="text-primary hover:text-primary/80 hover:underline transition-colors">
             {value}
           </Link>
         ) : (
-          <span className="text-nasun-white/90">{value}</span>
+          <span className="text-foreground">{value}</span>
         )}
-        
+
         {copyable && (
           <button
             onClick={handleCopy}
             title="Copy to clipboard"
-            className="p-1 rounded-sm text-nasun-white/40 hover:text-nasun-white hover:bg-nasun-white/10 transition-all"
+            className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all"
           >
             {copied ? (
               <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

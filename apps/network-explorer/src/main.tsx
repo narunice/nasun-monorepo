@@ -53,8 +53,8 @@ const queryClient = new QueryClient({
 // Loading fallback
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-nasun-c6 flex items-center justify-center">
-      <div className="text-white">Loading...</div>
+    <div className="min-h-screen bg-ne0 flex items-center justify-center">
+      <div className="text-ne5">Loading...</div>
     </div>
   )
 }

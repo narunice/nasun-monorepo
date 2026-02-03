@@ -11,6 +11,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        ne0: "#0e1219",
+        "ne0s": "#1a2332",
         ne1: "#496c9c",
         ne2: "#7d9dbf",
         ne3: "#a2c5d8",

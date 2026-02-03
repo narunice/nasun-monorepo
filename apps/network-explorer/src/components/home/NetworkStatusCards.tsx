@@ -43,7 +43,7 @@ export default function NetworkStatusCards({
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card variant="default" className="p-4">
-            <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Status</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Status</div>
             <div
               className={`text-lg font-semibold ${
                 status?.isConnected ? 'text-green-500' : 'text-red-500'
@@ -53,28 +53,28 @@ export default function NetworkStatusCards({
             </div>
           </Card>
           <Card variant="default" className="p-4">
-            <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Chain ID</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Chain ID</div>
             <div className="text-lg font-mono text-foreground">{status?.chainId || '-'}</div>
           </Card>
           <Card variant="default" className="p-4">
-            <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Epoch</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Epoch</div>
             <div className="text-lg font-mono text-foreground">{epochInfo?.epoch || '-'}</div>
             <div className="text-xs text-muted-foreground">
               {epochInfo?.remainingMs ? `${formatDuration(epochInfo.remainingMs)} left` : '-'}
             </div>
           </Card>
           <Card variant="default" className="p-4">
-            <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Checkpoint</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Checkpoint</div>
             <div className="text-lg font-mono text-foreground">{status?.latestCheckpoint || '-'}</div>
           </Card>
           <Card variant="default" className="p-4">
-            <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">TPS</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">TPS</div>
             <div className="text-lg font-mono text-foreground">
               {tps !== null && tps !== undefined ? `${tps} tx/s` : '-'}
             </div>
           </Card>
           <Card variant="default" className="p-4">
-            <div className="text-nasun-black/60 dark:text-nasun-white/60 text-sm uppercase tracking-wider">Gas Price</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Gas Price</div>
             <div className="text-lg font-mono text-foreground">
               {status?.referenceGasPrice || '-'} SOE
             </div>
