@@ -58,7 +58,8 @@ let config: SuiConfig | null = null;
 export function initSuiClient(cfg: SuiConfig): void {
   client = new SuiClient({ url: cfg.rpcUrl });
   keypair = Ed25519Keypair.fromSecretKey(Buffer.from(cfg.executorPrivateKey, 'hex'));
-  config = cfg;
+  // Clear raw private key from config — keypair holds the derived key internally
+  config = { ...cfg, executorPrivateKey: '' };
   console.log(`[Sui] Initialized with executor: ${keypair.getPublicKey().toSuiAddress()}`);
 }
 
