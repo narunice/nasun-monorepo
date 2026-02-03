@@ -11,13 +11,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ne: {
-          1: "#496c9c",
-          2: "#7d9dbf",
-          3: "#a2c5d8",
-          4: "#cee2e8",
-          5: "#f5f5f5",
-        },
+        ne1: "#496c9c",
+        ne2: "#7d9dbf",
+        ne3: "#a2c5d8",
+        ne4: "#cee2e8",
+        ne5: "#f5f5f5",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
