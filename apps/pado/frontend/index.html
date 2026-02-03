@@ -7,7 +7,7 @@
 
     <!-- Security Headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <!-- Note: X-Frame-Options and frame-ancestors must be set via HTTP headers, not meta tags -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self';
@@ -22,7 +22,6 @@
         https://accounts.google.com
         https://prover-dev.mystenlabs.com;
       frame-src https://accounts.google.com;
-      frame-ancestors 'none';
       base-uri 'self';
       form-action 'self';
     " />

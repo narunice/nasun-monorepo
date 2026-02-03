@@ -66,15 +66,12 @@ export function useTradeHistory(): UseTradeHistoryResult {
 
   // Clear trades immediately when address changes (prevents stale data)
   useEffect(() => {
-    console.log('[useTradeHistory] Address changed, clearing trades:', address);
     setTrades([]);
     setError(null);
   }, [address]);
 
   // Fetch trades from blockchain (simulated for now)
   const fetchTrades = useCallback(async () => {
-    console.log('[useTradeHistory] fetchTrades called with address:', address);
-
     if (!isConnected || !address) {
       setTrades([]);
       return;
