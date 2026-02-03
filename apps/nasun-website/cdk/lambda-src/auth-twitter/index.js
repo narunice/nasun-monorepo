@@ -3,12 +3,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = void 0;
 const login_1 = require("./src/handlers/login");
 const callback_1 = require("./src/handlers/callback");
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+function getCorsOrigin(origin) {
+    if (!origin)
+        return ALLOWED_ORIGINS[0];
+    return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
 /**
  * Main Lambda handler that routes requests to appropriate handlers
  * GET /auth/twitter/login -> loginHandler
  * POST /auth/twitter/callback -> callbackHandler
  */
 const handler = async (event) => {
+    const origin = event.headers?.origin || event.headers?.Origin;
     console.log('Twitter Auth Lambda invoked:', {
         httpMethod: event.httpMethod,
         path: event.path,
@@ -22,7 +29,7 @@ const handler = async (event) => {
             return {
                 statusCode: 200,
                 headers: {
-                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Origin': getCorsOrigin(origin),
                     'Access-Control-Allow-Headers': 'Content-Type',
                     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 },
@@ -43,7 +50,7 @@ const handler = async (event) => {
             return {
                 statusCode: 404,
                 headers: {
-                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Origin': getCorsOrigin(origin),
                     'Access-Control-Allow-Headers': 'Content-Type',
                 },
                 body: JSON.stringify({
@@ -58,7 +65,7 @@ const handler = async (event) => {
         return {
             statusCode: 500,
             headers: {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': getCorsOrigin(origin),
                 'Access-Control-Allow-Headers': 'Content-Type',
             },
             body: JSON.stringify({
