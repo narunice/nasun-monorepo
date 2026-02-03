@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -13,6 +12,9 @@ export interface BaramStackProps extends cdk.StackProps {
 
   // Sui RPC URL
   suiRpcUrl?: string;
+
+  // CORS allowed origins (defaults to Baram frontend URLs)
+  corsAllowedOrigins?: string[];
 }
 
 export class BaramStack extends cdk.Stack {
@@ -26,6 +28,7 @@ export class BaramStack extends cdk.Stack {
       baramPackageId,
       baramRegistryId,
       suiRpcUrl = 'https://rpc.devnet.nasun.io',
+      corsAllowedOrigins = ['https://baram.nasun.io', 'http://localhost:5177'],
     } = props;
 
     // Import existing secrets (must be created manually in AWS Secrets Manager)
@@ -67,6 +70,7 @@ export class BaramStack extends cdk.Stack {
         OPENAI_SECRET_NAME: 'baram/openai',
         EXECUTOR_SECRET_NAME: 'baram/executor',
         GROQ_SECRET_NAME: 'baram/groq',
+        CORS_ALLOWED_ORIGIN: corsAllowedOrigins[0] || '',
       },
       description: 'Baram AI Executor - Processes AI requests and submits proofs on-chain',
     });
@@ -81,9 +85,9 @@ export class BaramStack extends cdk.Stack {
       restApiName: 'Baram Executor API',
       description: 'API for Baram AI computation execution',
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowOrigins: corsAllowedOrigins,
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type'],
       },
       deployOptions: {
         stageName: 'prod',
