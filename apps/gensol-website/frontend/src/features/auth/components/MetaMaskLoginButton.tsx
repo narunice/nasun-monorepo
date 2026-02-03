@@ -35,12 +35,10 @@ const MetaMaskLoginButton = ({ onSuccess }: MetaMaskLoginButtonProps) => {
 
       // Connect wallet
       const walletAddress = await connectWallet()
-      console.log('[MetaMask] Connected wallet:', walletAddress)
 
-      // Check network
+      // Check network and switch if needed
       const isCorrect = await isCorrectNetwork(expectedChainId)
       if (!isCorrect) {
-        console.log('[MetaMask] Wrong network, switching...')
         await switchNetwork(expectedChainId)
       }
 

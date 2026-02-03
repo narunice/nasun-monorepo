@@ -7,6 +7,14 @@
 
 import type { MetaMaskWalletInfo, MetaMaskErrorType } from '../types/metamask'
 
+/** Minimal Ethereum provider interface for type-safe access */
+interface EthereumProvider {
+  isMetaMask?: boolean
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+  on: (event: string, callback: (...args: unknown[]) => void) => void
+  removeListener: (event: string, callback: (...args: unknown[]) => void) => void
+}
+
 /**
  * MetaMask이 설치되어 있는지 확인
  */
@@ -57,14 +65,12 @@ export async function connectWallet(): Promise<string> {
     }
 
     return accounts[0].toLowerCase()
-  } catch (error: any) {
-    // 사용자가 요청을 거부한 경우
-    if (error.code === 4001) {
+  } catch (error: unknown) {
+    const ethError = error as { code?: number | string; message?: string }
+    if (ethError.code === 4001) {
       throw new Error('User rejected the connection request')
     }
-
-    console.error('Failed to connect wallet:', error)
-    throw new Error(error.message || 'Failed to connect to MetaMask')
+    throw new Error(ethError.message || 'Failed to connect to MetaMask')
   }
 }
 
@@ -150,41 +156,27 @@ export async function switchNetwork(chainId: number | string): Promise<void> {
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: chainIdHex }],
     })
-    console.log(`[MetaMask] Successfully switched to network ${chainIdNumber}`)
-  } catch (switchError: any) {
-    // 네트워크가 MetaMask에 추가되지 않은 경우 (에러 코드 4902)
-    if (switchError.code === 4902) {
-      console.log(`[MetaMask] Network ${chainIdNumber} not found, attempting to add...`)
-
+  } catch (switchError: unknown) {
+    const ethSwitchError = switchError as { code?: number | string; message?: string }
+    if (ethSwitchError.code === 4902) {
       try {
-        // 네트워크 파라미터 가져오기 (number로 전달)
         const networkParams = getNetworkParams(chainIdNumber)
 
-        // MetaMask에 네트워크 추가 요청
         await window.ethereum!.request({
           method: 'wallet_addEthereumChain',
           params: [networkParams],
         })
-
-        console.log(`[MetaMask] Successfully added and switched to network ${chainIdNumber}`)
-      } catch (addError: any) {
-        // 사용자가 네트워크 추가를 거부한 경우
-        if (addError.code === 4001) {
+      } catch (addError: unknown) {
+        const ethAddError = addError as { code?: number | string; message?: string }
+        if (ethAddError.code === 4001) {
           throw new Error('User rejected the request to add the network')
         }
-
-        console.error('[MetaMask] Failed to add network:', addError)
-        throw new Error(`Failed to add network: ${addError.message || 'Unknown error'}`)
+        throw new Error(`Failed to add network: ${ethAddError.message || 'Unknown error'}`)
       }
-    }
-    // 사용자가 전환을 거부한 경우
-    else if (switchError.code === 4001) {
+    } else if (ethSwitchError.code === 4001) {
       throw new Error('User rejected the network switch request')
-    }
-    // 기타 에러
-    else {
-      console.error('[MetaMask] Failed to switch network:', switchError)
-      throw new Error(`Failed to switch network: ${switchError.message || 'Unknown error'}`)
+    } else {
+      throw new Error(`Failed to switch network: ${ethSwitchError.message || 'Unknown error'}`)
     }
   }
 }
@@ -199,58 +191,39 @@ export async function switchNetwork(chainId: number | string): Promise<void> {
  * @throws {Error} 서명 실패 또는 사용자 거부 시
  */
 export async function signMessage(message: string, walletAddress: string): Promise<string> {
-  console.log('[DEBUG] signMessage called with:', { message: message.substring(0, 50) + '...', walletAddress })
-
   if (!isMetaMaskInstalled()) {
-    console.error('[DEBUG] MetaMask not installed!')
     throw new Error('MetaMask is not installed')
   }
-
-  console.log('[DEBUG] MetaMask is installed, using raw JSON-RPC method...')
 
   try {
     // MetaMask provider 명시적 선택 (multiple wallet 충돌 방지)
     let provider = window.ethereum!
 
-    // @ts-ignore - providers 배열이 있는 경우 MetaMask만 선택
-    if (window.ethereum?.providers?.length > 0) {
-      console.log('[DEBUG] Multiple providers detected, selecting MetaMask...')
-      // @ts-ignore
-      provider = window.ethereum.providers.find((p: any) => p.isMetaMask) || window.ethereum
+    const ethereum = window.ethereum as EthereumProvider & { providers?: EthereumProvider[] }
+    if (ethereum.providers && ethereum.providers.length > 0) {
+      provider = ethereum.providers.find((p) => p.isMetaMask) || window.ethereum!
     }
 
-    console.log('[DEBUG] Using provider:', provider.isMetaMask ? 'MetaMask' : 'Unknown')
-
-    // MetaMask의 personal_sign 메서드를 직접 호출 (ethers.js 우회)
-    // params: [message, address]
-    // message는 hex 형식으로 변환해야 함
-    console.log('[DEBUG] Converting message to hex...')
+    // Convert message to hex for personal_sign
     const messageHex =
       '0x' +
       Array.from(new TextEncoder().encode(message))
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('')
 
-    console.log('[DEBUG] Message hex length:', messageHex.length)
-    console.log('[DEBUG] Calling personal_sign...')
-
     const signature = (await provider.request({
       method: 'personal_sign',
       params: [messageHex, walletAddress.toLowerCase()],
     })) as string
 
-    console.log('[DEBUG] Signature obtained:', signature.substring(0, 20) + '...')
-
     return signature
-  } catch (error: any) {
-    console.error('[DEBUG] signMessage error:', error)
-    // 사용자가 서명을 거부한 경우
-    if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+  } catch (error: unknown) {
+    const ethError = error as { code?: number | string; message?: string }
+    if (ethError.code === 4001 || ethError.code === 'ACTION_REJECTED') {
       throw new Error('User rejected the signature request')
     }
 
-    console.error('Failed to sign message:', error)
-    throw new Error(error.message || 'Failed to sign message')
+    throw new Error(ethError.message || 'Failed to sign message')
   }
 }
 
@@ -344,7 +317,7 @@ export function onChainChanged(callback: (chainId: string) => void): void {
  * @param event - 이벤트 이름
  * @param callback - 제거할 콜백 함수
  */
-export function removeListener(event: string, callback: (...args: any[]) => void): void {
+export function removeListener(event: string, callback: (...args: unknown[]) => void): void {
   if (!isMetaMaskInstalled()) {
     return
   }
@@ -358,20 +331,22 @@ export function removeListener(event: string, callback: (...args: any[]) => void
  * @param error - 에러 객체
  * @returns MetaMask 에러 타입
  */
-export function getMetaMaskErrorType(error: any): MetaMaskErrorType {
+export function getMetaMaskErrorType(error: unknown): MetaMaskErrorType {
   if (!isMetaMaskInstalled()) {
     return 'NO_METAMASK' as MetaMaskErrorType
   }
 
-  if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+  const ethError = error as { code?: number | string; message?: string }
+
+  if (ethError.code === 4001 || ethError.code === 'ACTION_REJECTED') {
     return 'USER_REJECTED' as MetaMaskErrorType
   }
 
-  if (error.code === 4902) {
+  if (ethError.code === 4902) {
     return 'WRONG_NETWORK' as MetaMaskErrorType
   }
 
-  if (error.message?.includes('network')) {
+  if (ethError.message?.includes('network')) {
     return 'NETWORK_ERROR' as MetaMaskErrorType
   }
 

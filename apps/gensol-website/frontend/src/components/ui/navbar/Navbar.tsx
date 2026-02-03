@@ -41,6 +41,8 @@ const Navbar = () => {
           {isMobileView && (
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={isMobileMenuOpen}
               className="ml-4 text-gray-300 hover:text-[#2eacd6] focus:outline-none bg-transparent hover:bg-transparent"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -67,7 +69,8 @@ const Navbar = () => {
           {/* 프로필 버튼 (로그인 시에만 표시) */}
           {isAuthenticated && (
             <Button
-              onClick={() => navigate("/userinfo")}
+              onClick={() => navigate("/my-page")}
+              aria-label="My page"
               className="bg-transparent p-0 w-8 h-8 cursor-pointer"
             >
               <FontAwesomeIcon
