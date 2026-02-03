@@ -14,6 +14,7 @@ import type { ViewMode } from "./types";
 import { LockedStateUI } from "./LockedStateUI";
 import {
   ConnectedView,
+  type ConnectedViewProps,
   DisconnectedView,
   CreateWalletView,
   LedgerConnectView,
@@ -123,10 +124,12 @@ const PREFIX_RENDERERS: [string, ViewRenderer][] = [
   ["wc-", (s) => <WCViewRouter viewMode={s.viewMode} setViewMode={s.setViewMode} />],
 ];
 
+type SharedConnectedProps = Omit<ConnectedViewProps, "header" | "onSignOut" | "onLock" | "onDelete">;
+
 // Step 3: Wallet status fallback (viewMode === "main" or no explicit match)
 function renderByWalletStatus(
   s: WalletConnectStateReturn,
-  connectedViewSharedProps: Record<string, any>,
+  connectedViewSharedProps: SharedConnectedProps,
 ): ReactNode | null {
   // Ledger connected state (no software wallet)
   if (s.isLedgerConnected && s.ledgerAddress && s.status === "disconnected" && !s.isZkLoggedIn) {
@@ -223,7 +226,7 @@ function renderByWalletStatus(
  */
 export function renderViewContent(
   s: WalletConnectStateReturn,
-  connectedViewSharedProps: Record<string, any>,
+  connectedViewSharedProps: SharedConnectedProps,
 ): ReactNode {
   // 1. Explicit ViewMode match
   const renderer = VIEW_RENDERERS[s.viewMode];

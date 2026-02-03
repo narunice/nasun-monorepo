@@ -2,7 +2,7 @@
  * Barrel export for wallet view components.
  */
 
-export { ConnectedView } from "./ConnectedView";
+export { ConnectedView, type ConnectedViewProps } from "./ConnectedView";
 export { DisconnectedView } from "./DisconnectedView";
 export { CreateWalletView } from "./CreateWalletView";
 export { LedgerConnectView, LedgerSelectView, LedgerConnectedView } from "./LedgerViews";
