@@ -8,6 +8,7 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
+import { logOnce, logThrottled } from './logger';
 
 // ========================================
 // Constants
@@ -58,7 +59,7 @@ async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
   if (feedsTableId) return feedsTableId;
 
   if (!ORACLE_REGISTRY_ID) {
-    console.warn('[Oracle] VITE_ORACLE_REGISTRY_ID not configured. Oracle prices unavailable.');
+    logOnce('oracle-registry-missing', 'warn', '[Oracle] VITE_ORACLE_REGISTRY_ID not configured. Oracle prices unavailable.');
     return null;
   }
 
@@ -79,7 +80,7 @@ async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
     }
     return feedsTableId;
   } catch (error) {
-    console.error('[Oracle] Failed to resolve feeds table:', error);
+    logThrottled('oracle-feeds-resolve', 'error', 60_000, '[Oracle] Failed to resolve feeds table:', error);
     return null;
   }
 }
@@ -98,7 +99,7 @@ export async function getPrice(
   try {
     const tableId = await resolveFeedsTableId(client);
     if (!tableId) {
-      console.warn('[Oracle] Cannot resolve feeds table ID');
+      logOnce('oracle-feeds-unresolved', 'warn', '[Oracle] Cannot resolve feeds table ID. Using simulated prices.');
       return null;
     }
 
@@ -137,7 +138,7 @@ export async function getPrice(
       },
     };
   } catch (error) {
-    console.error(`[Oracle] Error fetching ${symbol}:`, error);
+    logThrottled(`oracle-price-${symbol}`, 'error', 60_000, `[Oracle] Error fetching ${symbol}:`, error);
     return null;
   }
 }
