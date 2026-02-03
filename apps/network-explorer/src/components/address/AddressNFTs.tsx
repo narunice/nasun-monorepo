@@ -1,6 +1,6 @@
 import { SectionBox } from '../ui/SectionBox';
 import NFTCard from '../NFTCard';
-import { parseObjectContent } from '../../lib/sui-client';
+import { parseContent } from '../../lib/object-utils';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 
 interface AddressNFTsProps {
@@ -27,7 +27,7 @@ export default function AddressNFTs({
             objectId={obj.data?.objectId ?? ''}
             type={obj.data?.type ?? undefined}
             display={obj.data?.display?.data}
-            content={parseObjectContent(obj.data?.content)}
+            content={parseContent(obj.data?.content)}
           />
         ))}
       </div>

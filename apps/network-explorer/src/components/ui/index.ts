@@ -6,3 +6,5 @@ export type { CardProps, CardVariant } from './Card';
 
 export { SectionBox } from './SectionBox';
 export type { SectionBoxProps, SectionColor } from './SectionBox';
+
+export { JsonBlock } from './JsonBlock';

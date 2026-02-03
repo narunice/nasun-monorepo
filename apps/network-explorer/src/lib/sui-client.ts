@@ -335,13 +335,3 @@ export async function getPackageModules(packageId: string) {
   }
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
-export function parseObjectContent(content: unknown): { fields?: Record<string, unknown> } | null {
-  if (!content || typeof content !== 'object') return null;
-  const c = content as { dataType?: string; fields?: unknown };
-  if (c.dataType !== 'moveObject') return null;
-  return { fields: c.fields as Record<string, unknown> };
-}

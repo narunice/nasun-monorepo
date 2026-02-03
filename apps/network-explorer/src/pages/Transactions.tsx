@@ -1,23 +1,12 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { suiClient } from '../lib/sui-client';
+import { formatTimestamp, truncateDigest } from '../lib/format';
+import { useCursorPagination } from '../hooks';
 import { Card } from '../components/ui/Card';
 
-function formatTimestamp(timestampMs: string | number | null | undefined) {
-  if (!timestampMs) return '-';
-  const date = new Date(Number(timestampMs));
-  return date.toLocaleString('en-US');
-}
-
-function truncateDigest(digest: string) {
-  return `${digest.slice(0, 8)}...${digest.slice(-6)}`;
-}
-
 export default function Transactions() {
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
-  const [pageIndex, setPageIndex] = useState(0);
+  const { cursor, pageIndex, handleNextPage, handlePrevPage } = useCursorPagination<string>();
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['transactions', cursor],
@@ -34,25 +23,6 @@ export default function Transactions() {
       return result;
     },
   });
-
-  const handleNextPage = () => {
-    if (data?.hasNextPage && data?.nextCursor) {
-      const newHistory = [...cursorHistory];
-      if (pageIndex + 1 >= newHistory.length) {
-        newHistory.push(data.nextCursor);
-        setCursorHistory(newHistory);
-      }
-      setPageIndex(pageIndex + 1);
-      setCursor(data.nextCursor);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (pageIndex > 0) {
-      setPageIndex(pageIndex - 1);
-      setCursor(cursorHistory[pageIndex - 1]);
-    }
-  };
 
   return (
     <>
@@ -129,7 +99,7 @@ export default function Transactions() {
             </button>
             <span className="text-muted-foreground">Page {pageIndex + 1}</span>
             <button
-              onClick={handleNextPage}
+              onClick={() => data?.nextCursor && handleNextPage(data.nextCursor)}
               disabled={!data?.hasNextPage}
               className="px-4 py-2 bg-card border border-border hover:bg-primary/10 disabled:bg-muted disabled:text-muted-foreground disabled:border-border/50 rounded-xl transition-all active:scale-[0.97] text-foreground"
             >
