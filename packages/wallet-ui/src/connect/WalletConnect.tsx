@@ -5,29 +5,9 @@
  */
 
 import { createPortal } from "react-dom";
-import { LockedStateUI } from "./LockedStateUI";
 import { useWalletConnectState } from "./hooks/useWalletConnectState";
 import { WALLET_STYLES } from "../shared/styles";
-import {
-  ConnectedView,
-  DisconnectedView,
-  CreateWalletView,
-  LedgerConnectView,
-  LedgerSelectView,
-  LedgerConnectedView,
-  NsaViewRouter,
-  BackupView,
-  ImportView,
-  ExportView,
-  SendView,
-  StakingView,
-  PortfolioView,
-  NasunLinkView,
-  SettingsView,
-  AddressBookView,
-  ReceiveView,
-} from "./wallet-views";
-import { WCViewRouter } from "../walletconnect";
+import { renderViewContent } from "./viewModeRouter";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -58,7 +38,7 @@ export function WalletConnect({
 }: WalletConnectProps) {
   const s = useWalletConnectState();
 
-  // Shared props for ConnectedView
+  // Shared props for ConnectedView (passed to status-based views)
   const connectedViewSharedProps = {
     isMobile: s.isMobile,
     isAdvancedMode: s.isAdvancedMode,
@@ -94,202 +74,7 @@ export function WalletConnect({
     setSelectedProposalId: s.setSelectedProposalId,
   } as const;
 
-  // Render dropdown content based on status and viewMode
-  const renderDropdownContent = () => {
-    // Mnemonic backup screen
-    if (s.viewMode === "create-backup" && s.mnemonic) {
-      return <BackupView mnemonic={s.mnemonic} onConfirm={s.handleBackupConfirmed} />;
-    }
-
-    // Create wallet form
-    if (s.viewMode === "create") {
-      return (
-        <CreateWalletView
-          password={s.password}
-          setPassword={s.setPassword}
-          confirmPassword={s.confirmPassword}
-          setConfirmPassword={s.setConfirmPassword}
-          isLoading={s.isLoading}
-          error={s.error}
-          handleCreate={s.handleCreate}
-          resetView={s.resetView}
-        />
-      );
-    }
-
-    // Import wallet
-    if (s.viewMode === "import") {
-      return (
-        <ImportView
-          onImportMnemonic={s.handleImportMnemonic}
-          onImportPrivateKey={s.handleImportPrivateKey}
-          resetView={s.resetView}
-          isLoading={s.isLoading}
-        />
-      );
-    }
-
-    // Export private key
-    if (s.viewMode === "export") {
-      return <ExportView onExport={s.handleExportPrivateKey} setViewMode={s.setViewMode} />;
-    }
-
-    // Send transaction
-    if (s.viewMode === "send") {
-      return (
-        <SendView
-          setViewMode={s.setViewMode}
-          setSendRecipient={s.setSendRecipient}
-          initialRecipient={s.sendRecipient}
-        />
-      );
-    }
-
-    // Simple sub-views
-    if (s.viewMode === "staking") return <StakingView setViewMode={s.setViewMode} />;
-    if (s.viewMode === "portfolio") return <PortfolioView setViewMode={s.setViewMode} />;
-    if (s.viewMode === "nasun-link") return <NasunLinkView setViewMode={s.setViewMode} />;
-    if (s.viewMode === "settings") return <SettingsView setViewMode={s.setViewMode} />;
-    if (s.viewMode === "receive") return <ReceiveView setViewMode={s.setViewMode} />;
-
-    if (s.viewMode === "address-book") {
-      return (
-        <AddressBookView
-          setViewMode={s.setViewMode}
-          setSendRecipient={s.setSendRecipient}
-          sendRecipient={s.sendRecipient}
-        />
-      );
-    }
-
-    // Ledger views
-    if (s.viewMode === "ledger-connect") {
-      return (
-        <LedgerConnectView
-          ledgerStatus={s.ledgerStatus}
-          ledgerError={s.ledgerError}
-          ledgerConnect={s.ledgerConnect}
-          setViewMode={s.setViewMode}
-        />
-      );
-    }
-    if (s.viewMode === "ledger-select") {
-      return (
-        <LedgerSelectView
-          ledgerAccountIndex={s.ledgerAccountIndex}
-          setLedgerAccountIndex={s.setLedgerAccountIndex}
-          ledgerAddress={s.ledgerAddress}
-          setViewMode={s.setViewMode}
-        />
-      );
-    }
-
-    // NSA Smart Account views
-    if (s.viewMode.startsWith("nsa-")) {
-      return (
-        <NsaViewRouter
-          viewMode={s.viewMode}
-          setViewMode={s.setViewMode}
-          selectedProposalId={s.selectedProposalId}
-          setSelectedProposalId={s.setSelectedProposalId}
-        />
-      );
-    }
-
-    // WalletConnect views
-    if (s.viewMode.startsWith("wc-")) {
-      return <WCViewRouter viewMode={s.viewMode} setViewMode={s.setViewMode} />;
-    }
-
-    // Ledger connected state (no software wallet)
-    if (s.isLedgerConnected && s.ledgerAddress && s.status === "disconnected" && !s.isZkLoggedIn) {
-      return (
-        <LedgerConnectedView
-          ledgerAddress={s.ledgerAddress}
-          isMobile={s.isMobile}
-          setViewMode={s.setViewMode}
-          ledgerDisconnect={s.ledgerDisconnect}
-        />
-      );
-    }
-
-    // Disconnected state
-    if (s.status === "disconnected" && !s.isZkLoggedIn && !s.isLedgerConnected) {
-      return (
-        <DisconnectedView
-          handleSocialLogin={s.handleSocialLogin}
-          isZkLoading={s.isZkLoading}
-          loadingProvider={s.loadingProvider}
-          zkError={s.zkError}
-          setViewMode={s.setViewMode}
-        />
-      );
-    }
-
-    // zkLogin connected state
-    if (s.isZkLoggedIn && s.zkState) {
-      return (
-        <ConnectedView
-          header={{
-            variant: "zkLogin",
-            zkUserInfo: s.zkUserInfo,
-            zkAddress: s.zkState.address,
-          }}
-          {...connectedViewSharedProps}
-          onSignOut={() => {
-            s.zkLogout();
-            s.setShowDropdown(false);
-          }}
-        />
-      );
-    }
-
-    // Locked state
-    if (s.status === "locked") {
-      return (
-        <LockedStateUI
-          password={s.password}
-          setPassword={s.setPassword}
-          isLoading={s.isLoading}
-          error={s.error}
-          handleUnlock={s.handleUnlock}
-          handleDelete={s.handleDelete}
-          setViewMode={s.setViewMode}
-        />
-      );
-    }
-
-    // Unlocked state (self-custody)
-    if (s.status === "unlocked" && s.account) {
-      const displayAddress = s.isEVM && s.storedEVMAddress ? s.storedEVMAddress : s.account.address;
-      const addressLabel = s.isEVM
-        ? s.storedEVMAddress
-          ? `${s.chain.name} Address`
-          : "EVM Wallet Not Configured"
-        : "Connected Address";
-
-      return (
-        <ConnectedView
-          header={{
-            variant: "self-custody",
-            accountAddress: s.account.address,
-            displayAddress,
-            addressLabel,
-            isEVM: s.isEVM,
-            storedEVMAddress: s.storedEVMAddress,
-          }}
-          {...connectedViewSharedProps}
-          onLock={() => {
-            s.lockWallet();
-            s.setShowDropdown(false);
-          }}
-          onDelete={s.handleDelete}
-        />
-      );
-    }
-
-    return null;
-  };
+  const dropdownContent = renderViewContent(s, connectedViewSharedProps);
 
   return (
     <div ref={s.dropdownRef} className="relative">
@@ -339,7 +124,7 @@ export function WalletConnect({
                 : "right-0"
           } ${dropdownPosition === "top" ? "bottom-full mb-2" : "top-full mt-2"}`}
         >
-          {renderDropdownContent()}
+          {dropdownContent}
         </div>
       )}
 
@@ -357,7 +142,7 @@ export function WalletConnect({
               ref={s.mobileDropdownRef}
               className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${WALLET_STYLES.dropdownMobile} overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}
             >
-              {renderDropdownContent()}
+              {dropdownContent}
             </div>
           </>,
           document.body,

@@ -12,7 +12,7 @@ import { AddressBookPanel } from "../../address/AddressBookPanel";
 import { ReceivePanel } from "../../link/ReceivePanel";
 import { PortfolioPanel } from "../../portfolio/PortfolioPanel";
 import { NasunLinkWizard } from "../../link/NasunLinkWizard";
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 
 export function BackupView({
   mnemonic,

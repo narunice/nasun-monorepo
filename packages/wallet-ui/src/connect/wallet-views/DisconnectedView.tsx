@@ -4,7 +4,7 @@
 
 import { type ZkLoginProvider } from "@nasun/wallet";
 import { SocialLoginButtons } from "../../social/SocialLoginButtons";
-import type { ViewMode } from "../LockedStateUI";
+import type { ViewMode } from "../types";
 
 export function DisconnectedView({
   handleSocialLogin,
