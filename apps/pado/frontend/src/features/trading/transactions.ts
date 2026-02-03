@@ -47,8 +47,14 @@ function validateLimitOrderParams(params: PlaceLimitOrderParams, pool: PoolConfi
   if (params.price <= 0n) {
     throw new Error('[Security] Price must be positive');
   }
+  if (params.price > MAX_PRICE) {
+    throw new Error('[Security] Price exceeds maximum allowed value');
+  }
   if (params.quantity <= 0n) {
     throw new Error('[Security] Quantity must be positive');
+  }
+  if (params.quantity > MAX_QUANTITY) {
+    throw new Error('[Security] Quantity exceeds maximum allowed value');
   }
 
   // Tick size validation (if available)
@@ -76,7 +82,14 @@ function validateMarketOrderParams(params: PlaceMarketOrderParams): void {
   if (params.quantity <= 0n) {
     throw new Error('[Security] Quantity must be positive');
   }
+  if (params.quantity > MAX_QUANTITY) {
+    throw new Error('[Security] Quantity exceeds maximum allowed value');
+  }
 }
+
+// Maximum sane order values to prevent fat-finger errors
+const MAX_PRICE = 100_000_000_000_000n; // $100M in smallest unit
+const MAX_QUANTITY = 100_000_000_000_000n;
 
 /**
  * Validate slippage parameters for swaps
@@ -88,11 +101,15 @@ function validateSlippageParams(minOutput: bigint, inputAmount?: bigint): void {
     throw new Error('[Security] Minimum output must be positive for slippage protection');
   }
 
-  // If input is provided, ensure minimum output is reasonable (at least 0.1% of input)
+  // If input is provided, ensure minimum output is reasonable
   if (inputAmount && inputAmount > 0n) {
-    const minReasonableOutput = inputAmount / 1000n; // 0.1% of input
-    if (minOutput < minReasonableOutput) {
-      console.warn('[Security] Slippage tolerance is very high. Consider increasing minOutput.');
+    // Reject if slippage > 50% (likely a mistake or attack)
+    const halfInput = inputAmount / 2n;
+    if (minOutput < halfInput) {
+      throw new Error(
+        '[Security] Slippage tolerance exceeds 50%. ' +
+        'This is likely an error. Adjust minOutput to protect against excessive slippage.'
+      );
     }
   }
 }

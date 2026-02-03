@@ -57,6 +57,11 @@ export interface PriceData {
 async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
   if (feedsTableId) return feedsTableId;
 
+  if (!ORACLE_REGISTRY_ID) {
+    console.warn('[Oracle] VITE_ORACLE_REGISTRY_ID not configured. Oracle prices unavailable.');
+    return null;
+  }
+
   try {
     const registry = await client.getObject({
       id: ORACLE_REGISTRY_ID,
@@ -199,42 +204,62 @@ interface BinanceTickerResponse {
 }
 
 /**
- * Fetch prices from Binance API (fallback for bot/testing)
+ * Fetch prices from external APIs (fallback for bot/testing)
  *
- * Note: Not used in frontend - only for price-updater bot
+ * Note: Not used in frontend - only for price-updater bot.
+ * Throws on failure to prevent stale/hardcoded prices from being
+ * pushed to the oracle, which could cause wrongful liquidations.
  */
 export async function fetchBinancePrices(): Promise<{
   BTC: number;
   ETH: number;
 }> {
+  const errors: string[] = [];
+
+  // Try CoinGecko first
   try {
-    // Try CoinGecko first
     const response = await fetch(
       'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd'
     );
-    const data = await response.json();
-    return {
-      BTC: data.bitcoin?.usd ?? 97000,
-      ETH: data.ethereum?.usd ?? 3400,
-    };
-  } catch {
-    // Fallback to Binance
-    console.log('[Oracle] CoinGecko failed, using Binance fallback');
-    try {
-      const [btcRes, ethRes] = await Promise.all([
-        fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
-        fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'),
-      ]);
-      const btcData: BinanceTickerResponse = await btcRes.json();
-      const ethData: BinanceTickerResponse = await ethRes.json();
-      return {
-        BTC: parseFloat(btcData.price),
-        ETH: parseFloat(ethData.price),
-      };
-    } catch {
-      // Last resort: return defaults
-      console.warn('[Oracle] All APIs failed, using default prices');
-      return { BTC: 97000, ETH: 3400 };
+    if (!response.ok) {
+      throw new Error(`CoinGecko HTTP ${response.status}`);
     }
+    const data = await response.json();
+    const btc = data.bitcoin?.usd;
+    const eth = data.ethereum?.usd;
+    if (typeof btc !== 'number' || typeof eth !== 'number' || btc <= 0 || eth <= 0) {
+      throw new Error(`CoinGecko returned invalid data: BTC=${btc}, ETH=${eth}`);
+    }
+    return { BTC: btc, ETH: eth };
+  } catch (e) {
+    errors.push(`CoinGecko: ${e instanceof Error ? e.message : String(e)}`);
   }
+
+  // Fallback to Binance
+  try {
+    const [btcRes, ethRes] = await Promise.all([
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'),
+    ]);
+    if (!btcRes.ok || !ethRes.ok) {
+      throw new Error(`Binance HTTP BTC=${btcRes.status} ETH=${ethRes.status}`);
+    }
+    const btcData: BinanceTickerResponse = await btcRes.json();
+    const ethData: BinanceTickerResponse = await ethRes.json();
+    const btc = parseFloat(btcData.price);
+    const eth = parseFloat(ethData.price);
+    if (isNaN(btc) || isNaN(eth) || btc <= 0 || eth <= 0) {
+      throw new Error(`Binance returned invalid prices: BTC=${btcData.price}, ETH=${ethData.price}`);
+    }
+    return { BTC: btc, ETH: eth };
+  } catch (e) {
+    errors.push(`Binance: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // All sources failed - throw instead of returning hardcoded prices
+  // to prevent stale data from being pushed to the oracle
+  throw new Error(
+    `[Oracle] All external price sources failed. Oracle update aborted.\n` +
+    errors.map(e => `  - ${e}`).join('\n')
+  );
 }
