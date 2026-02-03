@@ -100,9 +100,9 @@ const ACTIONS: ActionItem[] = [
 
 const COLOR_CLASSES: Record<string, { bg: string; hover: string; icon: string }> = {
   blue: {
-    bg: 'bg-blue-500/10',
-    hover: 'group-hover:bg-blue-500/20',
-    icon: 'text-blue-500',
+    bg: 'bg-pd2/10',
+    hover: 'group-hover:bg-pd2/20',
+    icon: 'text-pd3',
   },
   green: {
     bg: 'bg-green-500/10',

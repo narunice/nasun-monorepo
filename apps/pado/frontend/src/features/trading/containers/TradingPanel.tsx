@@ -229,7 +229,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
           {/* Connect wallet banner when not connected */}
           {!isConnected && (
-            <div className="mb-4 p-3 rounded text-sm xl:text-base bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
+            <div className="mb-4 p-3 rounded text-sm xl:text-base bg-pd5 dark:bg-pd0/30 text-pd1 dark:text-pd3 border border-pd4 dark:border-pd2 text-center">
               Connect wallet to start trading
             </div>
           )}
@@ -244,7 +244,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
+                className="px-4 py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
               >
                 {isLoading ? 'Enabling...' : 'Enable Pado'}
               </button>
@@ -292,7 +292,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           <button
             onClick={handleCreateBalanceManager}
             disabled={isLoading}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
+            className="w-full py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
           >
             {isLoading ? 'Enabling...' : 'Enable Pado'}
           </button>
@@ -303,7 +303,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       <div className="bg-theme-bg-secondary rounded-lg p-3">
         {/* Connect wallet banner when not connected */}
         {!isConnected && (
-          <div className="mb-4 p-3 rounded text-sm xl:text-base bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-center">
+          <div className="mb-4 p-3 rounded text-sm xl:text-base bg-pd5 dark:bg-pd0/30 text-pd1 dark:text-pd3 border border-pd4 dark:border-pd2 text-center">
             Connect wallet to start trading
           </div>
         )}

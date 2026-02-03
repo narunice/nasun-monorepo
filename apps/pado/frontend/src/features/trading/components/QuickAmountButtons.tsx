@@ -27,7 +27,7 @@ export function QuickAmountButtons({
           disabled={disabled || (maxBalance !== undefined && amount > maxBalance)}
           className={`py-2 px-1 text-sm xl:text-base font-medium rounded transition-colors ${
             selectedAmount === amount
-              ? 'bg-blue-600 text-white'
+              ? 'bg-pd1 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
           } disabled:opacity-40 disabled:cursor-not-allowed`}
         >
@@ -39,7 +39,7 @@ export function QuickAmountButtons({
         disabled={disabled || !maxBalance || maxBalance <= 0}
         className={`py-2 px-1 text-sm xl:text-base font-medium rounded transition-colors ${
           selectedAmount === maxBalance
-            ? 'bg-blue-600 text-white'
+            ? 'bg-pd1 text-white'
             : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
         } disabled:opacity-40 disabled:cursor-not-allowed`}
       >

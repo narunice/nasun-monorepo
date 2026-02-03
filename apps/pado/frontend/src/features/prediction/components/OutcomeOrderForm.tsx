@@ -191,7 +191,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
               onClick={() => setFundingSource('wallet')}
               className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
                 fundingSource === 'wallet'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-pd1 text-white'
                   : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
               }`}
             >
@@ -202,7 +202,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
               disabled={!hasMarginAccount}
               className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 fundingSource === 'margin'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-pd1 text-white'
                   : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
               }`}
               title={!hasMarginAccount ? 'Enable Pado Balance in Wallet tab first' : undefined}
@@ -214,20 +214,20 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           {/* Pado Balance hint when not enabled */}
           {!hasMarginAccount && (
             <p className="text-xs text-theme-text-muted mt-2">
-              💡 <a href="/wallet" className="text-blue-500 hover:text-blue-400 underline">Enable Pado Balance</a> to use funds across all features
+              💡 <a href="/wallet" className="text-pd3 hover:text-pd3 underline">Enable Pado Balance</a> to use funds across all features
             </p>
           )}
 
           {/* Coming Soon notice for Pado Balance */}
           {fundingSource === 'margin' && hasMarginAccount && (
-            <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <p className="text-xs text-blue-400">
+            <div className="mt-2 p-2 bg-pd2/10 border border-pd2/30 rounded-lg">
+              <p className="text-xs text-pd3">
                 🚀 Pado Balance funding coming in v0.5!
               </p>
               <p className="text-xs text-theme-text-muted mt-1">
                 Wallet will be used for this transaction.
               </p>
-              <div className="mt-2 pt-2 border-t border-blue-500/20">
+              <div className="mt-2 pt-2 border-t border-pd2/20">
                 <div className="flex justify-between text-xs">
                   <span className="text-theme-text-muted">Pado Balance:</span>
                   <span className="text-theme-text-primary font-mono">
@@ -298,7 +298,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           onClick={() => setOrderType('buy')}
           className={`flex-1 py-1.5 px-3 rounded font-medium text-xs transition-colors ${
             orderType === 'buy'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-pd1 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
@@ -308,7 +308,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           onClick={() => setOrderType('sell')}
           className={`flex-1 py-1.5 px-3 rounded font-medium text-xs transition-colors ${
             orderType === 'sell'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-pd1 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
@@ -333,7 +333,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
                 value={selectedPositionId}
                 onChange={(e) => setSelectedPositionId(e.target.value)}
                 disabled={isDisabled}
-                className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
               >
                 {filteredPositions.map((pos) => {
                   const shares = Number(pos.shares) / Math.pow(10, 6);
@@ -363,7 +363,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
               min="0"
               step="0.01"
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
             />
           </div>
         )}
@@ -382,7 +382,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             max="99.99"
             step="0.01"
             disabled={isDisabled}
-            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
           />
           <p className="text-xs text-theme-text-muted mt-1">
             Current: {defaultPrice.toFixed(1)}%
@@ -448,7 +448,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
                   {/* Position After Trade */}
                   <div className="border-t border-theme-border/50 pt-2 mt-1">
                     <p className="text-xs text-theme-text-muted mb-1">Position After Trade</p>
-                    <div className="text-xs text-blue-400 bg-blue-500/10 rounded p-2">
+                    <div className="text-xs text-pd3 bg-pd2/10 rounded p-2">
                       💡 Selling {outcomeType.toUpperCase()} = Betting on {oppositeOutcome}
                     </div>
                   </div>
@@ -470,7 +470,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </div>
         )}
         {isSyncing && (
-          <div className="text-blue-400 text-sm bg-blue-500/10 rounded-lg p-2 flex items-center gap-2">
+          <div className="text-pd3 text-sm bg-pd2/10 rounded-lg p-2 flex items-center gap-2">
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />

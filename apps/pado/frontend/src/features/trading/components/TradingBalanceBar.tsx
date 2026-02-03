@@ -137,7 +137,7 @@ export function TradingBalanceBar({
           {/* Trading Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span className="text-theme-text-muted">Trading:</span>
-            <span className="font-mono text-blue-400">
+            <span className="font-mono text-pd3">
               {tradingBase.toFixed(4)} {baseSymbol}
               <span className="text-theme-text-muted mx-2">|</span>
               {tradingQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC

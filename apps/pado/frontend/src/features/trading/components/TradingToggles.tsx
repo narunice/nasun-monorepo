@@ -89,7 +89,7 @@ export function TradingToggles() {
               </button>
             </label>
             {isAutoDepositing && (
-              <span className="text-[10px] xl:text-xs text-blue-400 animate-pulse">Depositing...</span>
+              <span className="text-[10px] xl:text-xs text-pd3 animate-pulse">Depositing...</span>
             )}
           </div>
         </div>

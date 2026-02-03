@@ -60,7 +60,7 @@ export function LotteryRoundPage() {
         <p className="text-red-500">Failed to load round</p>
         <Link
           to="/lottery"
-          className="text-blue-500 hover:text-blue-400 mt-4 inline-block"
+          className="text-pd3 hover:text-pd3 mt-4 inline-block"
         >
           &larr; Back to Lottery
         </Link>
@@ -77,17 +77,17 @@ export function LotteryRoundPage() {
       {/* Back Link */}
       <Link
         to="/lottery"
-        className="text-blue-500 hover:text-blue-400 inline-flex items-center gap-1"
+        className="text-pd3 hover:text-pd3 inline-flex items-center gap-1"
       >
         &larr; Back to Lottery
       </Link>
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-theme-text-primary">
           Round #{round.roundNumber}
         </h1>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+        <p className="text-sm text-theme-text-muted mt-1">
           {isOpen && 'Ticket sales are open'}
           {round.status === ROUND_STATUS.CLOSED && 'Sales closed, awaiting draw'}
           {isDrawn && 'Numbers drawn, awaiting settlement'}
@@ -139,7 +139,7 @@ export function LotteryRoundPage() {
                     </p>
                   )}
                   {round.tier2Winners > 0 && (
-                    <p className="text-blue-400">
+                    <p className="text-pd3">
                       {Number(round.tier2Winners)} 2nd prize winner{round.tier2Winners !== 1 ? 's' : ''}
                     </p>
                   )}
@@ -234,15 +234,15 @@ export function LotteryRoundPage() {
             </div>
 
             {/* Tier 2 - 2nd Prize */}
-            <div className="flex items-center justify-between p-3 bg-blue-900/10 rounded-lg border border-blue-900/20">
+            <div className="flex items-center justify-between p-3 bg-pd0/10 rounded-lg border border-pd0/20">
               <div className="flex items-center gap-3">
-                <span className="px-2 py-1 rounded text-xs font-medium bg-blue-900/30 text-blue-400">
+                <span className="px-2 py-1 rounded text-xs font-medium bg-pd0/30 text-pd3">
                   2nd Prize
                 </span>
                 <span className="text-theme-text-secondary">4 matches</span>
               </div>
               <div className="text-right">
-                <div className="text-blue-400 font-medium">
+                <div className="text-pd3 font-medium">
                   {Number(round.tier2Winners)} winner{round.tier2Winners !== 1 ? 's' : ''}
                 </div>
                 {round.tier2Winners > 0 && (

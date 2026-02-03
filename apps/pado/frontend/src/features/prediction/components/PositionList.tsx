@@ -182,7 +182,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
 
       {/* Syncing indicator */}
       {isSyncing && (
-        <div className="mt-4 text-blue-400 text-sm bg-blue-500/10 rounded-lg p-2 flex items-center gap-2">
+        <div className="mt-4 text-pd3 text-sm bg-pd2/10 rounded-lg p-2 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -220,7 +220,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
                   min="0.01"
                   max="0.99"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-20 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 pr-20 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted text-sm">
                   NUSDC
@@ -257,7 +257,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
                       <p className="text-theme-text-secondary">
                         You will hold: <span className="font-medium">{sellOrderSummary.oppositeLabel} only</span>
                       </p>
-                      <p className="text-blue-400 font-medium">
+                      <p className="text-pd3 font-medium">
                         You are betting on: {sellOrderSummary.oppositeLabel}
                       </p>
                     </>
@@ -284,7 +284,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
               <button
                 onClick={handleSellConfirm}
                 disabled={isLoading}
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
+                className="flex-1 py-2 bg-pd1 hover:bg-pd1/80 text-white rounded-lg font-medium disabled:opacity-50"
               >
                 {isLoading ? 'Selling...' : 'Confirm Sell'}
               </button>

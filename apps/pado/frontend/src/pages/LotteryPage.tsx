@@ -46,7 +46,7 @@ export function LotteryPage() {
     return (
       <div className="text-center py-12">
         <p className="text-red-500">Failed to load lottery</p>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-2">
+        <p className="text-sm text-theme-text-muted mt-2">
           {error.message}
         </p>
       </div>
@@ -57,10 +57,10 @@ export function LotteryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-theme-text-primary">
           Pado Lottery
         </h1>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+        <p className="text-sm text-theme-text-muted mt-1">
           Weekly draw - Pick 5 numbers from 1-32 for a chance to win the jackpot
         </p>
       </div>
@@ -87,11 +87,11 @@ export function LotteryPage() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 bg-gray-100 dark:bg-zinc-800 rounded-xl">
-          <p className="text-gray-500 dark:text-zinc-400">
+        <div className="text-center py-12 bg-theme-bg-secondary rounded-xl">
+          <p className="text-theme-text-muted">
             No active lottery round
           </p>
-          <p className="text-sm text-gray-400 dark:text-zinc-500 mt-2">
+          <p className="text-sm text-theme-text-muted mt-2">
             Check back later for the next round
           </p>
         </div>
@@ -104,8 +104,8 @@ export function LotteryPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center p-4">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-xl font-bold text-blue-400">1</span>
+            <div className="w-12 h-12 bg-pd2/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-xl font-bold text-pd3">1</span>
             </div>
             <h3 className="font-medium text-theme-text-primary mb-1">
               Pick Numbers
@@ -188,7 +188,7 @@ export function LotteryPage() {
                 <span className="text-theme-text-primary font-medium">60%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-blue-400">2nd Prize (4 match)</span>
+                <span className="text-pd3">2nd Prize (4 match)</span>
                 <span className="text-theme-text-primary font-medium">25%</span>
               </div>
               <div className="flex justify-between items-center">
@@ -208,7 +208,7 @@ export function LotteryPage() {
         <div className="text-center">
           <Link
             to={`/lottery/${currentRound.id}`}
-            className="text-blue-500 hover:text-blue-400 font-medium"
+            className="text-pd3 hover:text-pd3 font-medium"
           >
             View My Tickets &rarr;
           </Link>

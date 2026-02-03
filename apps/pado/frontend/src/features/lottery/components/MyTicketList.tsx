@@ -30,9 +30,9 @@ function getTierColorClasses(tier: PrizeTier): {
       };
     case PRIZE_TIER.SECOND:
       return {
-        border: 'border-blue-500',
-        bg: 'bg-blue-900/20',
-        text: 'text-blue-400',
+        border: 'border-pd2',
+        bg: 'bg-pd0/20',
+        text: 'text-pd3',
       };
     case PRIZE_TIER.THIRD:
       return {
@@ -42,9 +42,9 @@ function getTierColorClasses(tier: PrizeTier): {
       };
     default:
       return {
-        border: 'border-gray-600',
+        border: 'border-pd2',
         bg: 'bg-theme-bg-secondary',
-        text: 'text-gray-400',
+        text: 'text-theme-text-muted',
       };
   }
 }
@@ -87,9 +87,9 @@ function TicketCard({
     <div
       className={`
       p-4 rounded-lg border
-      ${ticket.isClaimed ? 'border-gray-500 bg-gray-900/30' : ''}
+      ${ticket.isClaimed ? 'border-pd2 bg-pd0/30' : ''}
       ${isWinner && !ticket.isClaimed ? `${tierColors.border} ${tierColors.bg}` : ''}
-      ${!isWinner && isDrawn ? 'border-gray-600 bg-theme-bg-secondary' : ''}
+      ${!isWinner && isDrawn ? 'border-pd2 bg-theme-bg-secondary' : ''}
       ${!isDrawn ? 'border-theme-border bg-theme-bg-secondary' : ''}
     `}
     >
@@ -99,7 +99,7 @@ function TicketCard({
             Ticket #{ticket.ticketId}
           </div>
           {ticket.isClaimed && (
-            <span className="text-xs text-gray-400">Claimed</span>
+            <span className="text-xs text-theme-text-muted">Claimed</span>
           )}
           {isWinner && !ticket.isClaimed && (
             <span className={`text-xs font-medium ${tierColors.text}`}>
@@ -156,7 +156,7 @@ function TicketCard({
         <button
           onClick={handleBurn}
           disabled={isClaiming}
-          className="w-full py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50"
+          className="w-full py-2 bg-pd2 hover:bg-pd1 text-white rounded-lg text-sm disabled:opacity-50"
         >
           {isClaiming ? 'Processing...' : 'Burn Ticket'}
         </button>

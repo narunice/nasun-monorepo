@@ -101,11 +101,11 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder="0.00"
-                className="w-full bg-gray-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg px-3 py-2 pr-16 text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-theme-bg-secondary border border-theme-border rounded-lg px-3 py-2 pr-16 text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2"
               />
               <button
                 onClick={handleMaxClick}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-400"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
               >
                 MAX
               </button>
@@ -119,7 +119,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
 
           {/* Estimated Earnings */}
           {stats && amount && isValidAmount && (
-            <div className="bg-gray-100 dark:bg-zinc-800/50 rounded-lg p-3">
+            <div className="bg-theme-bg-secondary/50 rounded-lg p-3">
               <div className="flex justify-between text-sm">
                 <span className="text-theme-text-muted">Est. Annual Yield</span>
                 <span className="text-green-600 dark:text-green-400 font-medium">
@@ -152,7 +152,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
                 href={`${NETWORK_CONFIG.explorerUrl}/tx/${success}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-500 hover:underline"
+                className="text-xs text-pd3 hover:underline"
               >
                 View transaction →
               </a>
@@ -163,7 +163,7 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
           <button
             onClick={handleDeposit}
             disabled={!isValidAmount || isLoading}
-            className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-zinc-600 text-white font-medium rounded-lg transition-colors"
+            className="w-full py-3 px-4 bg-pd2 hover:bg-pd1 disabled:bg-pd3 dark:disabled:bg-pd2 text-white font-medium rounded-lg transition-colors"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">

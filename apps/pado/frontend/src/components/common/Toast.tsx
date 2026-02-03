@@ -88,7 +88,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
     success: 'bg-green-900/90 border-green-700 text-green-300',
     error: 'bg-red-900/90 border-red-700 text-red-300',
     warning: 'bg-yellow-900/90 border-yellow-700 text-yellow-300',
-    info: 'bg-blue-900/90 border-blue-700 text-blue-300',
+    info: 'bg-pd0s/90 border-pd2 text-pd4',
   }[toast.type];
 
   const icon = {
