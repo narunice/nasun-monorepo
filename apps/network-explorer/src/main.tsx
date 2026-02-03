@@ -63,7 +63,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <WalletProvider>
-        <ThemeProvider defaultTheme="dark" storageKey="nasun-explorer-theme">
+        <ThemeProvider defaultTheme="light" storageKey="nasun-explorer-theme">
           <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Suspense fallback={<LoadingScreen />}>
               <App />
