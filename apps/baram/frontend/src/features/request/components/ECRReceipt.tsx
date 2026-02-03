@@ -2,9 +2,10 @@
  * ECRReceipt - Modal displaying ExecutionComplianceRecord as a receipt
  */
 
+import { useEffect, useCallback } from 'react';
 import { useECR } from '../hooks/useECR';
-import { TierBadge } from '@/components/badges/TierBadge';
-import { NETWORK_CONFIG, TEE_TYPES, type TeeType } from '@/config/network';
+import { LocalReceiptContent } from '@/components/receipt/LocalReceiptContent';
+import { OnChainReceiptContent } from '@/components/receipt/OnChainReceiptContent';
 
 // Local metadata fallback when on-chain ECR is unavailable
 interface LocalMetadata {
@@ -24,79 +25,19 @@ interface ECRReceiptProps {
   onClose: () => void;
 }
 
-function truncateHash(hash: string, chars = 8): string {
-  if (!hash || hash.length <= chars * 2 + 2) return hash || '-';
-  return `${hash.slice(0, chars)}...${hash.slice(-chars)}`;
-}
-
-function formatNusdc(amount: number): string {
-  return `${(amount / 1e6).toFixed(2)} NUSDC`;
-}
-
-function formatNasun(amount: number): string {
-  return `${(amount / 1e9).toLocaleString('en-US')} NASUN`;
-}
-
-function formatTimestamp(ms: number): string {
-  if (!ms) return '-';
-  return new Date(ms).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function CopyableHash({ hash, label }: { hash: string; label: string }) {
-  const handleCopy = () => {
-    if (hash) navigator.clipboard.writeText(hash);
-  };
-
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[var(--color-text-muted)]">{label}</span>
-      <button
-        onClick={handleCopy}
-        className="font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
-        title={hash || 'No data'}
-      >
-        {truncateHash(hash)}
-      </button>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="border-t border-[var(--color-border)] pt-3 mt-3">
-      <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-        {title}
-      </h4>
-      <div className="space-y-1.5 text-sm">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[var(--color-text-muted)]">{label}</span>
-      <span className="text-[var(--color-text-secondary)]">{children}</span>
-    </div>
-  );
-}
-
 export function ECRReceipt({ requestId, metadata, onClose }: ECRReceiptProps) {
   const { ecr, isLoading, error } = useECR(requestId);
 
-  const explorerUrl = ecr
-    ? `${NETWORK_CONFIG.explorerUrl}/object/${ecr.objectId}`
-    : null;
+  // Escape key to close (B-4)
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
 
-  // Show local data when on-chain ECR is not available
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const hasLocalData = !ecr && metadata && (metadata.resultHash || metadata.teeType);
 
   return (
@@ -168,177 +109,11 @@ export function ECRReceipt({ requestId, metadata, onClose }: ECRReceiptProps) {
           )}
 
           {!isLoading && !error && hasLocalData && metadata && (
-            <>
-              {/* Local Data Notice */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] mb-1">
-                <svg className="w-4 h-4 text-[var(--color-text-muted)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  On-chain record pending. Showing local execution data.
-                </p>
-              </div>
-
-              {/* Execution */}
-              <Section title="Execution">
-                {metadata.executionTimeMs !== undefined && (
-                  <Row label="Time">{(metadata.executionTimeMs / 1000).toFixed(2)}s</Row>
-                )}
-                {metadata.resultHash && (
-                  <CopyableHash hash={metadata.resultHash} label="Result Hash" />
-                )}
-              </Section>
-
-              {/* Environment */}
-              {metadata.teeType !== undefined && metadata.teeType > 0 && (
-                <Section title="Environment">
-                  <Row label="TEE">
-                    <span className="flex items-center gap-1.5">
-                      {TEE_TYPES[metadata.teeType as TeeType] || `Type ${metadata.teeType}`}
-                      {metadata.attestationVerified !== undefined && (
-                        metadata.attestationVerified ? (
-                          <svg className="w-3.5 h-3.5 text-[var(--color-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3.5 h-3.5 text-[var(--color-error)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        )
-                      )}
-                    </span>
-                  </Row>
-                  {metadata.attestationVerified !== undefined && (
-                    <Row label="Attestation">{metadata.attestationVerified ? 'Verified' : 'Unverified'}</Row>
-                  )}
-                  {metadata.pcr0 && (
-                    <CopyableHash hash={metadata.pcr0} label="PCR0" />
-                  )}
-                </Section>
-              )}
-
-              {/* Settlement Status */}
-              <Section title="Settlement">
-                <Row label="Status">
-                  {metadata.txDigest ? (
-                    <span className="text-[var(--color-success)]">Settled</span>
-                  ) : (
-                    <span className="text-[var(--color-text-muted)]">Pending</span>
-                  )}
-                </Row>
-                {metadata.txDigest && (
-                  <CopyableHash hash={metadata.txDigest} label="TX Digest" />
-                )}
-              </Section>
-
-              {/* Footer */}
-              <div className="border-t border-[var(--color-border)] pt-4 mt-4 flex items-center justify-between">
-                {metadata.txDigest && (
-                  <a
-                    href={`${NETWORK_CONFIG.explorerUrl}/tx/${metadata.txDigest}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-baram-1 hover:text-baram-2 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View on Explorer
-                  </a>
-                )}
-                <button
-                  onClick={onClose}
-                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors px-3 py-1 rounded border border-[var(--color-border)]"
-                >
-                  Close
-                </button>
-              </div>
-            </>
+            <LocalReceiptContent metadata={metadata} onClose={onClose} />
           )}
 
           {ecr && (
-            <>
-              {/* Execution */}
-              <Section title="Execution">
-                <Row label="Model">{ecr.model}</Row>
-                <Row label="Time">{(ecr.executionTimeMs / 1000).toFixed(2)}s</Row>
-                <CopyableHash hash={ecr.resultHash} label="Result Hash" />
-                <CopyableHash hash={ecr.promptHash} label="Prompt Hash" />
-              </Section>
-
-              {/* Environment */}
-              <Section title="Environment">
-                <Row label="TEE">
-                  <span className="flex items-center gap-1.5">
-                    {TEE_TYPES[ecr.teeType as TeeType] || 'None'}
-                    {ecr.pcrVerified ? (
-                      <svg className="w-3.5 h-3.5 text-[var(--color-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : ecr.teeType > 0 ? (
-                      <svg className="w-3.5 h-3.5 text-[var(--color-error)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    ) : null}
-                  </span>
-                </Row>
-                {ecr.teeType > 0 && (
-                  <>
-                    <Row label="PCR Verified">{ecr.pcrVerified ? 'Yes' : 'No'}</Row>
-                    <Row label="Baseline Version">v{ecr.pcrBaselineVersion}</Row>
-                    <CopyableHash hash={ecr.attestationHash} label="Attestation" />
-                    <CopyableHash hash={ecr.pcr0} label="PCR0" />
-                  </>
-                )}
-              </Section>
-
-              {/* Executor Snapshot */}
-              <Section title="Executor Snapshot">
-                <Row label="Tier">
-                  <TierBadge tier={ecr.executorTier} tierName={ecr.executorTierName as typeof ecr.executorTierName & ('Open' | 'Bronze' | 'Silver' | 'Gold')} />
-                </Row>
-                <Row label="Reputation">{ecr.executorReputation} / 1000</Row>
-                <Row label="Staked">{formatNasun(ecr.executorStakeAmount)}</Row>
-                <Row label="Slash Count">{ecr.executorSlashCount}</Row>
-              </Section>
-
-              {/* Settlement */}
-              <Section title="Settlement">
-                <Row label="Payment">{formatNusdc(ecr.paymentAmount)}</Row>
-                <Row label="Created">{formatTimestamp(ecr.requestCreatedAt)}</Row>
-                <Row label="Settled">{formatTimestamp(ecr.settledAt)}</Row>
-              </Section>
-
-              {/* Policy */}
-              <Section title="Policy">
-                <Row label="Version">v{ecr.policyVersion}</Row>
-                <Row label="Timeout">{Math.round(ecr.timeoutMs / 1000 / 60)} min</Row>
-                <Row label="Min Price">{formatNusdc(ecr.minPrice)}</Row>
-              </Section>
-
-              {/* Footer */}
-              <div className="border-t border-[var(--color-border)] pt-4 mt-4 flex items-center justify-between">
-                {explorerUrl && (
-                  <a
-                    href={explorerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-baram-1 hover:text-baram-2 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View on Explorer
-                  </a>
-                )}
-                <button
-                  onClick={onClose}
-                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors px-3 py-1 rounded border border-[var(--color-border)]"
-                >
-                  Close
-                </button>
-              </div>
-            </>
+            <OnChainReceiptContent ecr={ecr} onClose={onClose} />
           )}
         </div>
       </div>

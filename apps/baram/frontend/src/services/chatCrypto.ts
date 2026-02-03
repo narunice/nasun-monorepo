@@ -138,6 +138,15 @@ export async function decryptObject<T>(
 }
 
 /**
+ * Get the cached encryption key (if available).
+ * After loadFromStorage derives the key, subsequent operations
+ * can use the cached key without needing the password again.
+ */
+export function getCachedKey(): CryptoKey | null {
+  return cachedKey?.key ?? null;
+}
+
+/**
  * Clear cached encryption key (call on wallet disconnect)
  */
 export function clearCachedKey(): void {

@@ -3,28 +3,13 @@
  */
 
 import { useState } from 'react';
-import { getTeeProviderName } from '@/config/attestation';
+import { TEE_TYPES, type TeeType } from '@/config/network';
+import { truncateHash, formatTimestamp } from '@/utils/format';
 import type { AttestationState } from '../hooks/useAttestation';
 
 interface AttestationDisplayProps {
   teeType: number;
   attestation: AttestationState;
-}
-
-function truncateHash(hash: string, length = 16): string {
-  if (!hash || hash.length <= length * 2) return hash || 'N/A';
-  return `${hash.slice(0, length)}...${hash.slice(-length)}`;
-}
-
-function formatTimestamp(timestamp: number): string {
-  if (!timestamp) return 'Unknown';
-  const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 export function AttestationDisplay({ teeType, attestation }: AttestationDisplayProps) {
@@ -128,7 +113,7 @@ export function AttestationDisplay({ teeType, attestation }: AttestationDisplayP
 
       {/* Summary (always visible) */}
       <div className="mt-2 flex items-center gap-4 text-xs text-[var(--color-text-secondary)]">
-        <span>{getTeeProviderName(teeType)}</span>
+        <span>{TEE_TYPES[teeType as TeeType] || 'Unknown'}</span>
         <span className="text-[var(--color-text-muted)]">|</span>
         <span>{moduleId}</span>
       </div>
@@ -141,9 +126,9 @@ export function AttestationDisplay({ teeType, attestation }: AttestationDisplayP
             <span
               className="font-mono text-[var(--color-text-secondary)] cursor-pointer"
               title={pcr0}
-              onClick={() => navigator.clipboard.writeText(pcr0)}
+              onClick={() => { try { navigator.clipboard.writeText(pcr0); } catch { /* noop */ } }}
             >
-              {truncateHash(pcr0, 12)}
+              {truncateHash(pcr0)}
             </span>
           </div>
           <div className="flex justify-between">

@@ -13,7 +13,18 @@
  */
 
 import type { Message, ChatSession, EncryptedMessage, EncryptedSession } from '../types/chat';
-import { deriveStorageKey, encryptObject, decryptObject, clearCachedKey } from './chatCrypto';
+import { deriveStorageKey, getCachedKey, encryptObject, decryptObject, clearCachedKey } from './chatCrypto';
+
+/**
+ * Get encryption key: use cached key if available, otherwise derive from password.
+ * After loadFromStorage derives the key once, the cache is populated and
+ * subsequent calls don't need the password.
+ */
+async function getKey(walletAddress: string, password?: string): Promise<CryptoKey> {
+  const cached = getCachedKey();
+  if (cached) return cached;
+  return deriveStorageKey(walletAddress, password);
+}
 
 const DB_PREFIX = 'baram-chat-';
 const DB_VERSION = 2;
@@ -105,7 +116,7 @@ export async function saveSession(
   session: ChatSession
 ): Promise<void> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress, password);
+  const key = await getKey(walletAddress, password);
 
   // Encrypt session data
   const { encrypted, iv } = await encryptObject(key, session);
@@ -132,7 +143,7 @@ export async function saveSession(
  */
 export async function loadSessions(walletAddress: string, password?: string): Promise<ChatSession[]> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress, password);
+  const key = await getKey(walletAddress, password);
 
   const encryptedSessions = await new Promise<EncryptedSession[]>((resolve, reject) => {
     const tx = database.transaction(SESSIONS_STORE, 'readonly');
@@ -219,7 +230,7 @@ export async function saveMessage(
   message: Message
 ): Promise<void> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress, password);
+  const key = await getKey(walletAddress, password);
 
   // Encrypt message data
   const { encrypted, iv } = await encryptObject(key, message);
@@ -251,7 +262,7 @@ export async function loadMessages(
   sessionId: string
 ): Promise<Message[]> {
   const database = await openDatabase(walletAddress);
-  const key = await deriveStorageKey(walletAddress, password);
+  const key = await getKey(walletAddress, password);
 
   const encryptedMessages = await new Promise<EncryptedMessage[]>((resolve, reject) => {
     const tx = database.transaction(MESSAGES_STORE, 'readonly');

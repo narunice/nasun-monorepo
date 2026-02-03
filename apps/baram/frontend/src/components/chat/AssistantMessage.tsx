@@ -5,21 +5,11 @@
 import { useState } from 'react';
 import { NETWORK_CONFIG } from '@/config/network';
 import { ECRReceipt } from '@/features/request/components/ECRReceipt';
-
-interface MessageMetadata {
-  requestId?: number;
-  executionTimeMs?: number;
-  teeVerified?: boolean;
-  txDigest?: string;
-  resultHash?: string;
-  teeType?: number;
-  pcr0?: string;
-  attestationVerified?: boolean;
-}
+import type { MessageMetadata } from '@/types/chat';
 
 interface AssistantMessageProps {
   content: string;
-  timestamp?: Date;
+  timestamp?: number;
   metadata?: MessageMetadata;
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
@@ -34,17 +24,16 @@ export function AssistantMessage({
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
 
-  const timeString = timestamp?.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const timeString = timestamp
+    ? new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : undefined;
 
   const explorerUrl = metadata?.txDigest
     ? `${NETWORK_CONFIG.explorerUrl}/tx/${metadata.txDigest}`
     : null;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(content);
+    try { navigator.clipboard.writeText(content); } catch { /* noop */ }
   };
 
   return (

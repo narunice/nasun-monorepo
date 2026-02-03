@@ -55,8 +55,7 @@ function verifyAttestation(attestation: AttestationInfo): { isVerified: boolean;
   }
 
   if (!EXPECTED_PCR0) {
-    // No expected PCR0 configured - show warning but allow
-    return { isVerified: true, message: 'PCR0 verification skipped (no expected value configured)' };
+    return { isVerified: false, message: 'PCR0 verification unavailable (no expected value configured)' };
   }
 
   const isMatch = attestation.pcr0.toLowerCase() === EXPECTED_PCR0.toLowerCase();

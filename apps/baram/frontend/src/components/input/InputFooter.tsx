@@ -39,6 +39,12 @@ export function InputFooter({
             <span>{selectedExecutor.teeTypeName}</span>
           </>
         )}
+        {modelConfig && modelConfig.provider !== 'tee' && (
+          <>
+            <span className="text-[var(--color-border)]">|</span>
+            <span className="text-[var(--color-warning,#f59e0b)]">No TEE encryption</span>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-2">
         {requestId !== undefined && (

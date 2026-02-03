@@ -29,5 +29,6 @@ export function hexToBytes(hex: string): number[] {
  * Encode prompt as Base64 (for non-TEE executors)
  */
 export function encodePrompt(prompt: string): string {
-  return btoa(unescape(encodeURIComponent(prompt)));
+  const bytes = new TextEncoder().encode(prompt);
+  return btoa(String.fromCharCode(...bytes));
 }

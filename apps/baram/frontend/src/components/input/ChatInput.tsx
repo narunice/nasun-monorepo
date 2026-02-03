@@ -4,6 +4,8 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 
+const MAX_PROMPT_LENGTH = 10_000;
+
 interface ChatInputProps {
   onSubmit: (prompt: string) => void;
   disabled?: boolean;
@@ -37,8 +39,10 @@ export function ChatInput({
     }
   }, [value]);
 
+  const isOverLimit = value.length > MAX_PROMPT_LENGTH;
+
   const handleSubmit = () => {
-    if (!value.trim() || disabled) return;
+    if (!value.trim() || disabled || isOverLimit) return;
     onSubmit(value.trim());
     setValue('');
   };
@@ -63,10 +67,15 @@ export function ChatInput({
           rows={3}
           className="w-full px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-baram-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[72px] max-h-[200px]"
         />
+        {isOverLimit && (
+          <p className="absolute bottom-1 right-2 text-xs text-[var(--color-error)]">
+            {value.length.toLocaleString()} / {MAX_PROMPT_LENGTH.toLocaleString()}
+          </p>
+        )}
       </div>
       <button
         onClick={handleSubmit}
-        disabled={!value.trim() || disabled}
+        disabled={!value.trim() || disabled || isOverLimit}
         className="flex-shrink-0 w-10 h-10 self-end rounded-xl bg-baram-1 hover:bg-baram-2 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Send message"
       >

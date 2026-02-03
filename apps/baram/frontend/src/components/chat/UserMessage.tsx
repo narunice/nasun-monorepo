@@ -4,15 +4,14 @@
 
 interface UserMessageProps {
   content: string;
-  timestamp?: Date;
+  timestamp?: number;
   failed?: boolean;
 }
 
 export function UserMessage({ content, timestamp, failed }: UserMessageProps) {
-  const timeString = timestamp?.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const timeString = timestamp
+    ? new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : undefined;
 
   return (
     <div className="flex justify-end">

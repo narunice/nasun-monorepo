@@ -5,9 +5,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { SuiClient } from '@mysten/sui/client';
+import type { SuiClient } from '@mysten/sui/client';
+import { suiClient } from '@/config/client';
 import {
-  NETWORK_CONFIG,
   EXECUTOR_CONFIG,
   TEE_TYPES,
   TeeType,
@@ -60,6 +60,22 @@ function calculateEffectiveScore(stakeAmount: number, reputation: number): numbe
 /**
  * Parse ExecutorInfo from on-chain data
  */
+/**
+ * Validate executor endpoint URL.
+ * Rejects non-HTTPS URLs to prevent MITM attacks on the public key exchange.
+ */
+function isValidEndpointUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    // Allow http only in development (localhost)
+    if (parsed.protocol === 'http:' && import.meta.env.DEV) return true;
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function parseExecutorInfo(
   data: Record<string, unknown>,
   operator: string,
@@ -78,12 +94,18 @@ function parseExecutorInfo(
     : calculateTierClient(0, reputation); // Without stake data, defaults to rep-only
 
   const isDormant = lastActiveAt > 0 && (Date.now() - lastActiveAt) > DORMANT_THRESHOLD_MS;
+  const endpointUrl = String(fields.endpoint_url || '');
+  const hasValidEndpoint = isValidEndpointUrl(endpointUrl);
+
+  if (!hasValidEndpoint && endpointUrl) {
+    console.warn(`[useExecutors] Executor ${operator.slice(0, 8)}... has non-HTTPS endpoint, marking inactive`);
+  }
 
   return {
     id: operator,
     operator: String(fields.operator || operator),
     name: String(fields.name || ''),
-    endpointUrl: String(fields.endpoint_url || ''),
+    endpointUrl,
     teeType,
     teeTypeName: TEE_TYPES[teeType] || 'Unknown',
     supportedModels: (fields.supported_models as string[]) || [],
@@ -92,7 +114,7 @@ function parseExecutorInfo(
     failedJobs: Number(fields.failed_jobs || 0),
     registeredAt: Number(fields.registered_at || 0),
     lastActiveAt,
-    isActive: Boolean(fields.is_active),
+    isActive: Boolean(fields.is_active) && hasValidEndpoint,
     tier,
     tierName: TIER_NAMES[tier],
     effectiveScore: calculateEffectiveScore(0, reputation), // Stake data not in ExecutorInfo
@@ -126,23 +148,24 @@ async function fetchTierMap(client: SuiClient): Promise<Map<string, number>> {
 
     const dynamicFields = await client.getDynamicFields({ parentId: tableId });
 
-    for (const field of dynamicFields.data) {
-      try {
-        const fieldData = await client.getDynamicFieldObject({
-          parentId: tableId,
-          name: field.name,
-        });
+    // Parallel fetch all tier entries
+    const results = await Promise.allSettled(
+      dynamicFields.data.map(field =>
+        client.getDynamicFieldObject({ parentId: tableId, name: field.name })
+          .then(fieldData => ({ field, fieldData }))
+      )
+    );
 
-        if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
-          const content = fieldData.data.content.fields as Record<string, unknown>;
-          const executorAddr = String((field.name as { value?: string })?.value || '');
-          const tierValue = Number(content.value ?? 0);
-          if (executorAddr) {
-            tierMap.set(executorAddr, tierValue);
-          }
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      const { field, fieldData } = result.value;
+      if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
+        const content = fieldData.data.content.fields as Record<string, unknown>;
+        const executorAddr = String((field.name as { value?: string })?.value || '');
+        const tierValue = Number(content.value ?? 0);
+        if (executorAddr) {
+          tierMap.set(executorAddr, tierValue);
         }
-      } catch {
-        // Skip individual tier fetch failures
       }
     }
   } catch (err) {
@@ -191,9 +214,11 @@ export function selectExecutorWeightedRandom(
     return effective;
   });
 
-  // Weighted random selection
+  // Weighted random selection (CSPRNG)
   const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-  let roll = Math.random() * totalWeight;
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  let roll = (buf[0] / 0xFFFFFFFF) * totalWeight;
 
   for (let i = 0; i < eligible.length; i++) {
     roll -= weights[i];
@@ -220,7 +245,7 @@ export function useExecutors(): UseExecutorsReturn {
     setError(null);
 
     try {
-      const client = new SuiClient({ url: NETWORK_CONFIG.rpcUrl });
+      const client = suiClient;
 
       // Fetch TierRegistry and ExecutorRegistry in parallel
       const [tierMap, registry] = await Promise.all([
@@ -252,15 +277,19 @@ export function useExecutors(): UseExecutorsReturn {
         parentId: tableId,
       });
 
+      // Parallel fetch all executor entries
+      const results = await Promise.allSettled(
+        dynamicFields.data.map(field =>
+          client.getDynamicFieldObject({ parentId: tableId, name: field.name })
+            .then(fieldData => ({ field, fieldData }))
+        )
+      );
+
       const executorList: ExecutorInfo[] = [];
-
-      for (const field of dynamicFields.data) {
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        const { field, fieldData } = result.value;
         try {
-          const fieldData = await client.getDynamicFieldObject({
-            parentId: tableId,
-            name: field.name,
-          });
-
           if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
             const content = fieldData.data.content.fields as Record<string, unknown>;
             const valueWrapper = content.value as { fields?: Record<string, unknown> };

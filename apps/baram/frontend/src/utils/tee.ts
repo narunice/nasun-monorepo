@@ -5,8 +5,8 @@
  * The AES key generated during prompt encryption is retained in memory
  * for decrypting the Enclave's encrypted response.
  *
- * AES keys are also backed up to sessionStorage (tab-scoped) for resilience
- * against in-tab navigation or React HMR that clears module-level state.
+ * In development, AES keys are backed up to sessionStorage for HMR resilience.
+ * In production, keys exist only in memory to minimize XSS exposure surface.
  */
 
 import { importPublicKey, encryptWithRSA, decryptResponse } from './crypto';
@@ -63,8 +63,9 @@ export async function encryptPromptForTEE(
   // Retain AES key for response decryption
   pendingAesKey = aesKeyBytes;
 
-  // Backup to sessionStorage (tab-scoped, auto-cleared on tab close)
-  if (requestId !== undefined) {
+  // Backup to sessionStorage only in development (HMR resilience).
+  // In production, the key exists only in memory to minimize XSS exposure.
+  if (import.meta.env.DEV && requestId !== undefined) {
     try {
       sessionStorage.setItem(
         `baram_aes_${requestId}`,
@@ -91,8 +92,8 @@ export async function decryptResponseFromTEE(
 ): Promise<string> {
   let keyToUse = pendingAesKey;
 
-  // Recover from sessionStorage if module-level key was lost (HMR, navigation)
-  if (!keyToUse && requestId !== undefined) {
+  // Recover from sessionStorage if module-level key was lost (DEV only: HMR)
+  if (!keyToUse && import.meta.env.DEV && requestId !== undefined) {
     try {
       const stored = sessionStorage.getItem(`baram_aes_${requestId}`);
       if (stored) {
