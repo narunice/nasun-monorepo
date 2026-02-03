@@ -4,7 +4,7 @@
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { successResponse, errorResponse } from '@/utils/response';
+import { successResponse, errorResponse, corsHeaders } from '@/utils/response';
 import { validateJoinRequest } from '@/utils/validation';
 import { verifyWhitelistSignature, normalizeAddress, validateMessageFormat } from '@/utils/ethereum';
 import { getWhitelistItem, putWhitelistItem } from '@/utils/dynamodb';
@@ -15,15 +15,13 @@ export async function handler(
 ): Promise<APIGatewayProxyResult> {
   console.log('Join Whitelist Request:', JSON.stringify(event, null, 2));
 
+  const requestOrigin = event.headers?.origin || event.headers?.Origin;
+
   // OPTIONS 요청 처리 (CORS Preflight)
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
+      headers: corsHeaders(requestOrigin),
       body: ''
     };
   }
@@ -31,7 +29,7 @@ export async function handler(
   try {
     // 1. 요청 본문 파싱
     if (!event.body) {
-      return errorResponse('INVALID_REQUEST', 'Request body is required');
+      return errorResponse('INVALID_REQUEST', 'Request body is required', 400, undefined, requestOrigin);
     }
 
     const body: JoinRequest = JSON.parse(event.body);
@@ -39,7 +37,7 @@ export async function handler(
     // 2. 입력 검증
     const validation = validateJoinRequest(body);
     if (!validation.valid) {
-      return errorResponse('INVALID_INPUT', validation.error || 'Invalid input', 400);
+      return errorResponse('INVALID_INPUT', validation.error || 'Invalid input', 400, undefined, requestOrigin);
     }
 
     // 3. 지갑 주소 정규화
@@ -50,7 +48,9 @@ export async function handler(
       return errorResponse(
         'INVALID_MESSAGE_FORMAT',
         'Message format does not match expected format',
-        400
+        400,
+        undefined,
+        requestOrigin
       );
     }
 
@@ -66,7 +66,9 @@ export async function handler(
       return errorResponse(
         'INVALID_SIGNATURE',
         signatureCheck.error || 'Signature verification failed',
-        400
+        400,
+        undefined,
+        requestOrigin
       );
     }
 
@@ -83,7 +85,8 @@ export async function handler(
         {
           walletAddress,
           joinedAt: existingItem.joinedAt
-        }
+        },
+        requestOrigin
       );
     }
 
@@ -138,7 +141,8 @@ export async function handler(
         walletAddress,
         joinedAt: now
       },
-      200
+      200,
+      requestOrigin
     );
   } catch (error: any) {
     console.error('Join whitelist error:', error);
@@ -148,7 +152,9 @@ export async function handler(
       return errorResponse(
         'ALREADY_REGISTERED',
         'This wallet address is already registered',
-        409
+        409,
+        undefined,
+        requestOrigin
       );
     }
 
@@ -156,7 +162,9 @@ export async function handler(
     return errorResponse(
       'INTERNAL_ERROR',
       'Failed to join whitelist. Please try again.',
-      500
+      500,
+      undefined,
+      requestOrigin
     );
   }
 }

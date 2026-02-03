@@ -16,8 +16,9 @@ export default defineConfig(({ mode }) => {
     return acc;
   }, {});
 
-  // 3) CSP 정책 처리
-  const cspPolicy = env.VITE_CSP_POLICY ? env.VITE_CSP_POLICY.replace(/\s+/g, " ").trim() : "";
+  // 3) CSP 정책 처리 — enforce a restrictive default if env var is missing
+  const DEFAULT_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+  const cspPolicy = (env.VITE_CSP_POLICY || DEFAULT_CSP).replace(/\s+/g, " ").trim();
 
   // HTTP 기본 인증을 위한 Authorization 헤더 값 생성
   const wpUser = env.VITE_WORDPRESS_USERNAME;
@@ -31,18 +32,14 @@ export default defineConfig(({ mode }) => {
       createHtmlPlugin({
         minify: true,
       }),
-      // CSP 주입을 위한 커스텀 플러그인
+      // CSP injection plugin — always applies (uses DEFAULT_CSP as fallback)
       {
         name: "inject-csp",
         transformIndexHtml(html: string) {
-          if (cspPolicy) {
-            // </head> 태그 바로 앞에 CSP 메타 태그 주입
-            return html.replace(
-              "</head>",
-              `<meta http-equiv="Content-Security-Policy" content="${cspPolicy}" /></head>`
-            );
-          }
-          return html;
+          return html.replace(
+            "</head>",
+            `<meta http-equiv="Content-Security-Policy" content="${cspPolicy}" /></head>`
+          );
         },
       },
     ],

@@ -10,8 +10,11 @@ function getCorsOrigin(requestOrigin: string | undefined): string {
     return requestOrigin;
   }
 
-  // Allow localhost for development
-  if (requestOrigin.startsWith("http://localhost:")) {
+  // Allow localhost only in non-production environments
+  if (
+    process.env.NODE_ENV !== "production" &&
+    requestOrigin.startsWith("http://localhost:")
+  ) {
     return requestOrigin;
   }
 
