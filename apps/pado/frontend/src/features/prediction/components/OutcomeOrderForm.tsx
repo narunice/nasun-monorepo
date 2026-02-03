@@ -9,6 +9,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useMarginAccount, useRiskEngine } from '../../core/unified-margin';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
+import { useTransactionSync } from '../../../hooks/useTransactionSync';
 import type { PredictionMarket } from '../types';
 import { calculateProbability } from '../types';
 
@@ -16,7 +18,7 @@ type FundingSource = 'wallet' | 'margin';
 
 interface OutcomeOrderFormProps {
   market: PredictionMarket;
-  onSuccess?: (digest: string) => void;
+  onSuccess?: (digest?: string) => void;
 }
 
 type OutcomeType = 'yes' | 'no';
@@ -46,7 +48,8 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const [selectedPositionId, setSelectedPositionId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { isSubmitting, guard: submitGuard } = useSubmitGuard();
+  const { isSyncing, startSync } = useTransactionSync(onSuccess);
 
   // Get available balance based on funding source
   const availableBalance = fundingSource === 'wallet'
@@ -102,48 +105,41 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       return;
     }
 
+    // Validate price range: must be between 0.01% and 99.99% (matching on-chain 1-9999 basis points)
     if (priceNum <= 0 || priceNum >= 100) {
-      setError('Price must be between 0% and 100%');
+      setError('Price must be between 0.01% and 99.99%');
       return;
     }
 
-    if (orderType === 'buy') {
-      const result = await placeBuyOrder(market.id, outcomeType === 'yes', priceNum, amountNum);
-      if (result.success) {
-        setSuccess(`Order placed! Tx: ${result.digest?.slice(0, 8)}...`);
-        setAmount('');
-        // Show syncing state while blockchain updates
-        setIsSyncing(true);
-        setTimeout(() => {
-          setIsSyncing(false);
-          onSuccess?.(result.digest!);
-        }, 1500);
+    await submitGuard(async () => {
+      if (orderType === 'buy') {
+        const result = await placeBuyOrder(market.id, outcomeType === 'yes', priceNum, amountNum);
+        if (result.success) {
+          setSuccess(`Order placed! Tx: ${result.digest?.slice(0, 8)}...`);
+          setAmount('');
+          startSync(result.digest!);
+        } else {
+          setError(result.error || 'Failed to place order');
+        }
       } else {
-        setError(result.error || 'Failed to place order');
-      }
-    } else {
-      // Sell order using Position NFT
-      if (!selectedPositionId) {
-        setError('Please select a position to sell');
-        return;
-      }
+        // Sell order using Position NFT
+        if (!selectedPositionId) {
+          setError('Please select a position to sell');
+          return;
+        }
 
-      const result = await placeSellOrder(market.id, selectedPositionId, priceNum);
-      if (result.success) {
-        setSuccess(`Sell order placed! Tx: ${result.digest?.slice(0, 8)}...`);
-        setPrice('');
-        // Show syncing state while blockchain updates
-        setIsSyncing(true);
-        setTimeout(() => {
-          setIsSyncing(false);
+        const result = await placeSellOrder(market.id, selectedPositionId, priceNum);
+        if (result.success) {
+          setSuccess(`Sell order placed! Tx: ${result.digest?.slice(0, 8)}...`);
+          setPrice('');
           refetchPositions();
-          onSuccess?.(result.digest!);
-        }, 1500);
-      } else {
-        setError(result.error || 'Failed to place sell order');
+          startSync(result.digest!);
+        } else {
+          setError(result.error || 'Failed to place sell order');
+        }
       }
-    }
-  }, [amount, price, defaultPrice, outcomeType, orderType, market.id, selectedPositionId, placeBuyOrder, placeSellOrder, refetchPositions, onSuccess]);
+    });
+  }, [amount, price, defaultPrice, outcomeType, orderType, market.id, selectedPositionId, placeBuyOrder, placeSellOrder, refetchPositions, startSync, submitGuard]);
 
   const handleMintTokens = useCallback(async () => {
     setError(null);
@@ -155,20 +151,17 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       return;
     }
 
-    const result = await mintTokens(market.id, amountNum);
-    if (result.success) {
-      setSuccess(`Minted ${amountNum} YES + ${amountNum} NO tokens! Tx: ${result.digest?.slice(0, 8)}...`);
-      setAmount('');
-      // Show syncing state while blockchain updates
-      setIsSyncing(true);
-      setTimeout(() => {
-        setIsSyncing(false);
-        onSuccess?.(result.digest!);
-      }, 1500);
-    } else {
-      setError(result.error || 'Failed to mint tokens');
-    }
-  }, [amount, market.id, mintTokens, onSuccess]);
+    await submitGuard(async () => {
+      const result = await mintTokens(market.id, amountNum);
+      if (result.success) {
+        setSuccess(`Minted ${amountNum} YES + ${amountNum} NO tokens! Tx: ${result.digest?.slice(0, 8)}...`);
+        setAmount('');
+        startSync(result.digest!);
+      } else {
+        setError(result.error || 'Failed to mint tokens');
+      }
+    });
+  }, [amount, market.id, mintTokens, startSync, submitGuard]);
 
   // NUSDC Faucet handler
   const handleNusdcFaucet = useCallback(async () => {
@@ -184,7 +177,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     }
   }, [requestNusdc, queryClient]);
 
-  const isDisabled = !isWalletConnected || market.status !== 'open' || isLoading;
+  const isDisabled = !isWalletConnected || market.status !== 'open' || isLoading || isSubmitting;
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4">

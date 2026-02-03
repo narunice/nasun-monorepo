@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { buildBuyTicket, buildClaimPrize, buildBurnTicket } from '../transactions';
 import { getSuiClient } from '../../../lib/sui-client';
 import { NUSDC_TYPE, TICKET_PRICE } from '../constants';
+import { TX_SYNC_DELAY_MS } from '../../../lib/constants';
 
 export interface UseLotteryActionsResult {
   buyTicket: (roundId: string, numbers: number[]) => Promise<boolean>;
@@ -120,7 +121,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         await signAndExecute(tx);
 
         // Wait for RPC node to update its state after transaction
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, TX_SYNC_DELAY_MS));
 
         // Force refetch all related queries and wait for completion
         await Promise.all([
@@ -168,7 +169,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         await signAndExecute(tx);
 
         // Wait for RPC node to update its state after transaction
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, TX_SYNC_DELAY_MS));
 
         // Force refetch all related queries and wait for completion
         await Promise.all([

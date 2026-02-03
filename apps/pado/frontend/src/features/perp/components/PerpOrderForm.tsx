@@ -8,6 +8,7 @@ import { useWallet } from '@nasun/wallet';
 import { LeverageSlider } from './LeverageSlider';
 import { usePerpMarketContext } from '../context/PerpMarketContext';
 import { usePerpOrder } from '../hooks/usePerpOrder';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import {
   POSITION_SIDE,
   DEFAULT_TAKER_FEE_BPS,
@@ -41,6 +42,7 @@ export function PerpOrderForm({
   });
 
   const [availableBalance] = useState(0); // TODO: Fetch from wallet
+  const { isSubmitting, guard: submitGuard } = useSubmitGuard();
 
   // Initialize order hook
   const { openPosition, isOpening, calculatePreview } = usePerpOrder({
@@ -124,14 +126,14 @@ export function PerpOrderForm({
     }
   }, [preview.maxSize]);
 
-  // Handle submit
+  // Handle submit with double-submission guard
   const handleSubmit = useCallback(async () => {
     if (!selectedMarketId || preview.errors.length > 0) return;
 
     const size = parseFloat(formState.size);
     if (isNaN(size) || size <= 0) return;
 
-    try {
+    await submitGuard(async () => {
       await openPosition({
         isLong: formState.side === POSITION_SIDE.LONG,
         size,
@@ -145,10 +147,8 @@ export function PerpOrderForm({
         size: '',
         collateral: '',
       }));
-    } catch (err) {
-      // Error handled by onOrderError callback
-    }
-  }, [selectedMarketId, formState, currentPrice, openPosition, preview.errors]);
+    });
+  }, [selectedMarketId, formState, currentPrice, openPosition, preview.errors, submitGuard]);
 
   const isLong = formState.side === POSITION_SIDE.LONG;
   const isDisabled =
@@ -284,7 +284,7 @@ export function PerpOrderForm({
       {/* Submit Button */}
       <button
         onClick={handleSubmit}
-        disabled={isDisabled || isOpening}
+        disabled={isDisabled || isOpening || isSubmitting}
         className={`w-full py-4 text-lg font-bold rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
           isLong
             ? 'bg-green-500 hover:bg-green-600 text-white'
