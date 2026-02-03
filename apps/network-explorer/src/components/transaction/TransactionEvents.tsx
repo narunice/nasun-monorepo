@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { SectionBox } from '../ui/SectionBox';
 import { formatObjectType } from '../../lib/format';
+import { useCopyToClipboard } from '../../hooks';
 import type { SuiEvent } from '@mysten/sui/client';
 
 interface TransactionEventsProps {
@@ -22,25 +23,16 @@ export default function TransactionEvents({ events }: TransactionEventsProps) {
 }
 
 function EventCard({ type, data }: { type: string; data: unknown }) {
-  const [copied, setCopied] = useState(false);
-  const jsonString = JSON.stringify(data, null, 2);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(jsonString);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
+  const { copied, handleCopy } = useCopyToClipboard();
+  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
 
   return (
     <div className="bg-muted/30 border border-border rounded-lg p-3">
       <div className="flex items-center justify-between mb-1">
         <div className="text-sm text-muted-foreground">{formatObjectType(type)}</div>
         <button
-          onClick={handleCopy}
+          onClick={() => handleCopy(jsonString)}
+          aria-label="Copy event data"
           className="px-2 py-1 text-xs font-medium rounded transition-all duration-200 bg-secondary/20 hover:bg-secondary/40 text-foreground"
         >
           {copied ? (

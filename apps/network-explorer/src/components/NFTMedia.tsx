@@ -24,8 +24,7 @@ export default function NFTMedia({ url, name, className = '' }: NFTMediaProps) {
   if (!resolvedUrl || error) {
     return (
       <div
-        className={`flex items-center justify-center bg-muted/30 border border-border rounded-lg ${className}`}
-        style={{ minHeight: '120px' }}
+        className={`flex items-center justify-center bg-muted/30 border border-border rounded-lg min-h-[120px] ${className}`}
       >
         <div className="text-center text-muted-foreground/50 p-4">
           <svg

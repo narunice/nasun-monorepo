@@ -1,29 +1,21 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { SectionBox } from '../ui/SectionBox';
+import { useCopyToClipboard } from '../../hooks';
 
 interface TransactionRawDataProps {
   data: unknown;
 }
 
 export default function TransactionRawData({ data }: TransactionRawDataProps) {
-  const [copied, setCopied] = useState(false);
-  const jsonString = JSON.stringify(data, null, 2);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(jsonString);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
+  const { copied, handleCopy } = useCopyToClipboard();
+  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
 
   return (
     <SectionBox title="Raw Transaction Data" color="c6">
       <div className="relative">
         <button
-          onClick={handleCopy}
+          onClick={() => handleCopy(jsonString)}
+          aria-label="Copy raw transaction data"
           className="absolute top-2 right-4 z-10 px-3 py-1.5 mr-2 text-xs font-medium rounded-md transition-all duration-200 bg-secondary/20 hover:bg-secondary/40 text-foreground border border-border"
         >
           {copied ? (
