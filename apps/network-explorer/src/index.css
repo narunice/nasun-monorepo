@@ -183,3 +183,13 @@
   scrollbar-width: auto;
   scrollbar-color: rgba(99, 102, 241, 0.5) rgba(0, 0, 0, 0.2);
 }
+
+/* Network Explorer gradient utilities */
+@layer utilities {
+  .ne-gradient-linear {
+    background: linear-gradient(0.25turn, #496c9c, #7d9dbf, #a2c5d8, #cee2e8, #f5f5f5);
+  }
+  .ne-gradient-radial {
+    background: radial-gradient(circle, #496c9c, #7d9dbf, #a2c5d8, #cee2e8, #f5f5f5);
+  }
+}
