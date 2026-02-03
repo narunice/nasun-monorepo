@@ -81,7 +81,7 @@ export function PredictMarketPage() {
     // TODO: Auto-fill order form with clicked price
   }, []);
 
-  const handleTradeSuccess = useCallback((digest: string) => {
+  const handleTradeSuccess = useCallback((digest?: string) => {
     console.log('Trade successful:', digest);
     handleRefetch();
   }, [handleRefetch]);

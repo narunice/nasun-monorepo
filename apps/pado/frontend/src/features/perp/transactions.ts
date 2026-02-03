@@ -11,7 +11,6 @@ import {
   MAX_LEVERAGE,
   MIN_LEVERAGE,
   MIN_POSITION_SIZE,
-  BPS,
 } from './constants';
 import type {
   OpenPositionParams,
