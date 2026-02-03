@@ -12,18 +12,28 @@ import { useChatStore } from '@/stores/chatStore';
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
+/**
+ * Lightweight read-only hook for wallet connection state (no side effects).
+ * Use this in components that only need to check if wallet is connected.
+ */
+export function useIsConnected(): boolean {
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isConnected: isLedgerConnected } = useLedger();
+  return (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
+}
+
 export interface UseWalletSessionReturn {
   isConnected: boolean;
   walletAddress: string | null;
 }
 
 export function useWalletSession(): UseWalletSessionReturn {
-  const { status, account, lockWallet } = useWallet();
+  const isConnected = useIsConnected();
+  const { lockWallet } = useWallet();
   const { isConnected: isZkLoggedIn, logout: zkLogout } = useZkLogin();
-  const { isConnected: isLedgerConnected } = useLedger();
   const { address: signerAddress } = useSigner();
 
-  const isConnected = (status === 'unlocked' && !!account) || isZkLoggedIn || isLedgerConnected;
   const walletAddress = signerAddress || null;
 
   const loadFromStorage = useChatStore((state) => state.loadFromStorage);
