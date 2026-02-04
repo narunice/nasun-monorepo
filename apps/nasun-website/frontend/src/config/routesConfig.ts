@@ -23,6 +23,7 @@ export const Pages = {
   Founders: lazyWithRetry(() => import("../pages/about/FoundersPage")),
   GenesisNft: lazyWithRetry(() => import("../pages/GenesisNftPage")),
   Web3: lazyWithRetry(() => import("../pages/protocol/ProposalPage")),
+  ProposalDetail: lazyWithRetry(() => import("../pages/protocol/ProposalDetailPage")),
   MyAccountPage: lazyWithRetry(() => import("../pages/MyAccountPage")),
   PrivacyPolicy: lazyWithRetry(() => import("../pages/PrivacyPolicyPage")),
   TermsOfUse: lazyWithRetry(() => import("../pages/TermsOfUsePage")),

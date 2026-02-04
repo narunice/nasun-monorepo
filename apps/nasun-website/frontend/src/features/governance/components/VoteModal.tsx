@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
 import { useDirectVote } from "../hooks/useDirectVote";
+import { useAuth } from "@/features/auth";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -20,9 +21,10 @@ interface VoteModalProps {
 export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onClose, onVote }) => {
   const { t } = useTranslation("proposals");
   const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
   const toastId = useRef<number | string>();
+  const { user } = useAuth();
 
   // Sponsored vote hook (gas-free voting for Poll proposals)
   const { vote: sponsoredVote, isPending: isSponsoredPending } = useSponsoredVote();
@@ -41,31 +43,24 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   }>({ show: false, voteYes: null });
 
   // Voting Power state
-  const {
-    votingPower,
-    nftVerification,
-    isLoading: isLoadingPower,
-    verifyNftOwnership,
-    clearNftVerification,
-  } = useVotingPower();
-  const [showNftOption, setShowNftOption] = useState(false);
+  const { votingPower, isLoading: isLoadingPower, fetchVotingPower } = useVotingPower();
 
-  // Check if MetaMask is available
-  const hasMetaMask = typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
+  // Fetch voting power when modal opens
+  useEffect(() => {
+    if (isOpen && isConnected) {
+      const walletAddress = isZkConnected ? zkState?.address : account?.address;
+      fetchVotingPower(user?.twitterHandle, walletAddress);
+    }
+  }, [isOpen, isConnected, isZkConnected, zkState?.address, account?.address, user?.twitterHandle, fetchVotingPower]);
 
-  // Calculate total voting power
-  const baseVotingPower = votingPower?.totalVotingPower || 1;
-  const nftBonus = nftVerification?.nftBonus || 0;
-  const totalVotingPower = baseVotingPower + nftBonus;
+  const totalVotingPower = votingPower?.totalVotingPower || 1;
 
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
-      clearNftVerification();
-      setShowNftOption(false);
       setConfirmStep({ show: false, voteYes: null });
     }
-  }, [isOpen, clearNftVerification]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -76,16 +71,6 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
     toast(message, { autoClose: 2400 });
   };
 
-  // Handle NFT verification
-  const handleNftVerification = async () => {
-    const result = await verifyNftOwnership(proposal.id.id);
-    if (result?.hasNasunNft) {
-      toast.success("NFT verified! +100 Voting Power");
-    } else if (result) {
-      toast.info("No Nasun NFT found in your wallet");
-    }
-  };
-
   const vote = async (voteYes: boolean) => {
     if (!isConnected) {
       dismissToast(t("vote.error"));
@@ -94,23 +79,13 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
 
     showToast(t("vote.processing"));
 
-    // Prepare ETH signature for NFT bonus if verified
-    const ethSignature = nftVerification?.ethAddress
-      ? {
-          message: `Nasun Governance: Verify NFT ownership for Proposal #${proposal.id.id}\nTimestamp: ${Date.now()}`,
-          signature: "", // Would need to be captured during verification
-        }
-      : undefined;
-
-    // Use appropriate voting method based on proposal type
     const result = isSponsored
-      ? await sponsoredVote(proposal.id.id, voteYes, ethSignature)
-      : await directVote(proposal.id.id, voteYes, ethSignature);
+      ? await sponsoredVote(proposal.id.id, voteYes)
+      : await directVote(proposal.id.id, voteYes);
 
     if (result.success) {
       setIsSuccess(true);
       dismissToast(t("vote.success"));
-      console.log("Vote successful:", result.digest, "Power:", result.votingPower);
       await onVote(voteYes);
     } else {
       dismissToast(result.error || t("vote.error"));
@@ -154,8 +129,8 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
         <div className="flex flex-col gap-3 flex-shrink-0">
           {/* Current Vote Counts */}
           <div className="flex justify-between text-sm text-nasun-white/60">
-            <span>👍 {t("proposal.yes_votes")}: {proposal.yesVotes}</span>
-            <span>👎 {t("proposal.no_votes")}: {proposal.noVotes}</span>
+            <span>Yes: {proposal.yesVotes}</span>
+            <span>No: {proposal.noVotes}</span>
           </div>
 
           {/* Voting Power Display */}
@@ -183,59 +158,47 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-nasun-white/60">Your Voting Power</span>
                 <span className="text-lg font-semibold text-nasun-c1">
-                  {totalVotingPower}
+                  {isLoadingPower ? "..." : totalVotingPower}
                 </span>
               </div>
 
-              {/* Voting Power Breakdown */}
-              <div className="text-xs text-nasun-white/40 space-y-1">
-                <div className="flex justify-between">
-                  <span>Base Power</span>
-                  <span>{baseVotingPower}</span>
-                </div>
-                {nftBonus > 0 && (
-                  <div className="flex justify-between text-nasun-c1">
-                    <span>NFT Bonus</span>
-                    <span>+{nftBonus}</span>
+              {/* V2 Voting Power Breakdown */}
+              {votingPower?.breakdown && (
+                <div className="text-xs text-nasun-white/40 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Base</span>
+                    <span>{votingPower.breakdown.base}</span>
                   </div>
-                )}
-              </div>
-
-              {/* NFT Verification Option */}
-              {hasMetaMask && !nftVerification && (
-                <div className="mt-3 pt-3 border-t border-nasun-c5/10">
-                  <button
-                    onClick={handleNftVerification}
-                    disabled={isLoadingPower}
-                    className="w-full text-sm text-nasun-c4 hover:text-nasun-c5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isLoadingPower ? (
-                      "Verifying..."
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                        </svg>
-                        Add NFT Voting Power (MetaMask)
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* NFT Verified Badge */}
-              {nftVerification?.hasNasunNft && (
-                <div className="mt-3 pt-3 border-t border-nasun-c5/10">
-                  <div className="flex items-center gap-2 text-sm text-green-400">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    NFT Verified
-                  </div>
+                  {votingPower.breakdown.leaderboard > 0 && (
+                    <div className="flex justify-between">
+                      <span>Leaderboard</span>
+                      <span>+{votingPower.breakdown.leaderboard}</span>
+                    </div>
+                  )}
+                  {votingPower.breakdown.onChain > 0 && (
+                    <div className="flex justify-between">
+                      <span>On-Chain Activity</span>
+                      <span>+{votingPower.breakdown.onChain}</span>
+                    </div>
+                  )}
+                  {votingPower.breakdown.battalionAllowlist > 0 && (
+                    <div className="flex justify-between text-nasun-c1">
+                      <span>Battalion Allowlist</span>
+                      <span>+{votingPower.breakdown.battalionAllowlist}</span>
+                    </div>
+                  )}
+                  {votingPower.breakdown.genesisAllowlist > 0 && (
+                    <div className="flex justify-between text-nasun-c1">
+                      <span>Genesis Whitelist</span>
+                      <span>+{votingPower.breakdown.genesisAllowlist}</span>
+                    </div>
+                  )}
+                  {votingPower.breakdown.xLinked > 0 && (
+                    <div className="flex justify-between">
+                      <span>X Account Linked</span>
+                      <span>+{votingPower.breakdown.xLinked}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

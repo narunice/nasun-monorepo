@@ -1,25 +1,27 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { FC, useEffect, useRef, useState } from "react";
+import { FC, useState } from "react";
 import { EcText } from "@/components/ui/Shared";
-import { SuiObjectData } from "@mysten/sui/client";
-import { Proposal, VoteNft, ProposalFields, ProposalType } from "../types/voting";
+import { VoteNft } from "../types/voting";
 import { VoteModal } from "./VoteModal";
 import { useProposalType } from "../hooks/useProposalType";
-import { toast } from "react-toastify";
 import { OuterBox, Button } from "@/components/ui";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { parseProposal, isUnixTimeExpired, formatTimeRemaining, getStatusBadge } from "../utils/proposalHelpers";
+
+const DESC_TRUNCATE_LENGTH = 300;
 
 interface ProposalItemsProps {
   id: string;
+  filter?: "all" | "active" | "expired";
   voteNft: VoteNft | undefined;
   onVoteTxSuccess: () => void | Promise<void>;
 }
 
-export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSuccess }) => {
+export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteNft, onVoteTxSuccess }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isClamped, setIsClamped] = useState(false);
-  const descRef = useRef<HTMLDivElement>(null);
+  const [isDescModalOpen, setIsDescModalOpen] = useState(false);
+  const navigate = useNavigate();
   const {
     data: dataResponse,
     refetch: refetchProposal,
@@ -35,23 +37,6 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
   // Get proposal type from registry
   const { proposalType, isLoading: isTypeLoading } = useProposalType(id);
 
-  useEffect(() => {
-    const el = descRef.current;
-    if (!el) return;
-    const raf = requestAnimationFrame(() => {
-      // Temporarily remove clamp to measure full content height
-      const origClamp = el.style.webkitLineClamp;
-      const origOverflow = el.style.overflow;
-      el.style.webkitLineClamp = "unset";
-      el.style.overflow = "visible";
-      const fullHeight = el.scrollHeight;
-      el.style.webkitLineClamp = origClamp;
-      el.style.overflow = origOverflow;
-      setIsClamped(fullHeight > el.clientHeight + 1);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [dataResponse]);
-
   if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
   if (error) return <EcText isError text={`Error: ${error.message}`} />;
   if (!dataResponse.data) return null;
@@ -64,32 +49,39 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
   const isDelisted = proposal.status.variant === "Delisted";
   const isExpired = isUnixTimeExpired(expiration) || isDelisted;
 
-  // Determine styling based on state
-  const bgClass = isExpired ? "bg-nasun-c6/30" : ""; // Additional dimming for expired
+  // Apply filter
+  if (filter === "active" && isExpired) return null;
+  if (filter === "expired" && !isExpired) return null;
+
+  // Determine pass/fail for expired proposals
+  const yesCount = Number(proposal.yesVotes) || 0;
+  const noCount = Number(proposal.noVotes) || 0;
+  const totalVotes = yesCount + noCount;
+  const yesPercent = totalVotes > 0 ? (yesCount / totalVotes) * 100 : 50;
+  const hasPassed = yesCount > noCount;
+
+  const bgClass = isExpired ? "bg-nasun-c6/30" : "";
 
   const handleCardClick = () => {
-    if (isExpired) {
-      toast.info(isDelisted ? "This proposal has been delisted" : "Voting period has ended", {
-        autoClose: 2000,
-      });
-    } else {
-      setIsModalOpen(true);
-    }
+    navigate(`/network/governance/proposal/${id}`);
   };
+
+  const statusBadge = getStatusBadge(isDelisted, isExpired, hasPassed);
+  const isLongDescription = proposal.description.length > DESC_TRUNCATE_LENGTH;
 
   return (
     <>
       <OuterBox
         color="w2"
         padding="md"
-        className={`flex flex-col relative h-full min-h-[320px] transition-all duration-200 ${bgClass} ${!isExpired ? "cursor-pointer hover:border-nasun-c4" : "cursor-not-allowed border-nasun-white/10"}`}
+        className={`flex flex-col relative h-full min-h-[320px] transition-all duration-200 ${bgClass} cursor-pointer ${!isExpired ? "hover:border-nasun-c4" : "hover:border-nasun-white/20"}`}
         onClick={handleCardClick}
       >
         {/* Header: Badges + Title */}
         <div className="mb-3">
-          {/* Badges row: Type (left) + NFT (right) */}
+          {/* Badges row: Type (left) + Status + NFT (right) */}
           <div className="flex justify-between items-center mb-2 -mt-2 -mx-2">
-            <div>
+            <div className="flex items-center gap-2">
               {proposal.proposalType === "Poll" ? (
                 <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30">
                   Poll
@@ -99,6 +91,9 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
                   Governance
                 </span>
               )}
+              <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}>
+                {statusBadge.label}
+              </span>
             </div>
             {!!voteNft && (
               <div title="You have voted">
@@ -115,54 +110,50 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
           </h6>
         </div>
 
-        {/* Description with Expand/Collapse */}
-        <div className="flex-1 mb-4 relative" onClick={(e) => e.stopPropagation()}>
-          <div
-            ref={descRef}
-            className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} ${isExpanded ? "" : "line-clamp-6"}`}
-          >
-            <p>{proposal.description}</p>
-          </div>
-          {(isClamped || isExpanded) && (
+        {/* Description */}
+        <div className="flex-1 mb-4">
+          <p className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-6`}>
+            {proposal.description}
+          </p>
+          {isLongDescription && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setIsExpanded(!isExpanded);
+                setIsDescModalOpen(true);
               }}
               className="mt-1 text-xs text-nasun-c4 hover:text-nasun-c5 flex items-center gap-1"
             >
-              {isExpanded ? (
-                <>
-                  Show Less <ChevronUp className="w-3 h-3" />
-                </>
-              ) : (
-                <>
-                  Read More <ChevronDown className="w-3 h-3" />
-                </>
-              )}
+              Read More <ChevronDown className="w-3 h-3" />
             </button>
           )}
         </div>
 
-        {/* Footer: Votes and Date */}
-        <div className="mt-auto pt-3 border-t border-nasun-white/5 flex items-center justify-between">
-          <div className="flex space-x-4 text-sm font-medium">
-            <div
-              className={`flex items-center gap-1.5 ${isExpired ? "text-nasun-white/30" : "text-green-400"}`}
-            >
-              <span>👍</span>
-              <span>{proposal.yesVotes}</span>
+        {/* Footer: Progress Bar + Time */}
+        <div className="mt-auto pt-3 border-t border-nasun-white/5 space-y-2">
+          {/* Vote Progress Bar */}
+          <div>
+            <div className={`w-full h-2 rounded-full overflow-hidden ${isExpired ? "bg-red-500/15" : "bg-red-500/30"}`}>
+              <div
+                className={`h-full transition-all ${isExpired ? "bg-green-500/60" : "bg-green-500"}`}
+                style={{ width: `${yesPercent}%` }}
+              />
             </div>
-            <div
-              className={`flex items-center gap-1.5 ${isExpired ? "text-nasun-white/30" : "text-red-400"}`}
-            >
-              <span>👎</span>
-              <span>{proposal.noVotes}</span>
+            <div className="flex justify-between text-xs mt-1">
+              <span className={isExpired ? "text-nasun-white/30" : "text-green-400"}>
+                Yes {yesPercent.toFixed(0)}% ({proposal.yesVotes})
+              </span>
+              <span className={isExpired ? "text-nasun-white/30" : "text-red-400"}>
+                No {(100 - yesPercent).toFixed(0)}% ({proposal.noVotes})
+              </span>
             </div>
           </div>
-          <p className={`text-xs ${isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}`}>
-            {isDelisted ? "Delisted" : formatUnixTime(expiration)}
-          </p>
+
+          {/* Countdown / Date */}
+          <div className="flex items-center justify-between">
+            <p className={`text-xs ${isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}`}>
+              {isDelisted ? "Delisted" : formatTimeRemaining(expiration)}
+            </p>
+          </div>
         </div>
 
         {/* Vote Button */}
@@ -181,13 +172,40 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
         )}
       </OuterBox>
 
+      {/* Description Modal */}
+      {isDescModalOpen && (
+        <div
+          className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setIsDescModalOpen(false)}
+        >
+          <div
+            className="bg-nasun-c6/90 border border-nasun-c5/30 p-6 md:p-8 rounded-sm max-w-2xl w-full shadow-lg max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+              <h6 className="text-nasun-white font-semibold">{proposal.title}</h6>
+              <button
+                onClick={() => setIsDescModalOpen(false)}
+                className="text-nasun-white/50 hover:text-nasun-white flex-shrink-0 text-lg leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+              <p className="text-nasun-white/85 whitespace-pre-wrap leading-relaxed">
+                {proposal.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <VoteModal
         proposal={proposal}
         hasVoted={!!voteNft}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onVote={async () => {
-          // Wait for blockchain to reflect the vote, then refetch proposal
           await new Promise((resolve) => setTimeout(resolve, 1500));
           await refetchProposal();
           await onVoteTxSuccess();
@@ -197,48 +215,3 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, voteNft, onVoteTxSucc
     </>
   );
 };
-
-function parseProposal(data: SuiObjectData, proposalType: ProposalType): Proposal | null {
-  if (data.content?.dataType !== "moveObject") return null;
-
-  const fields = data.content.fields as ProposalFields;
-
-  // Required field validation (using Move contract field names)
-  if (!fields.title || !fields.description || !fields.status || !fields.creator || !fields.voters) {
-    console.error("Missing required proposal fields", fields);
-    return null;
-  }
-
-  return {
-    id: { id: data.objectId }, // Use objectId from SuiObjectData
-    title: fields.title,
-    description: fields.description,
-    status: fields.status,
-    proposalType,
-    // Use total voting power instead of vote count
-    yesVotes: (Number(fields.total_power_yes) || 0).toString(),
-    noVotes: (Number(fields.total_power_no) || 0).toString(),
-    expiration: Number(fields.expiration),
-    creator: fields.creator,
-    voters: fields.voters?.fields?.id?.id || "",
-  };
-}
-
-function isUnixTimeExpired(unixTimeMs: number) {
-  return new Date(unixTimeMs) < new Date();
-}
-
-function formatUnixTime(timestampMs: number) {
-  if (isUnixTimeExpired(timestampMs)) {
-    return "Expired";
-  }
-
-  return new Date(timestampMs).toLocaleString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
