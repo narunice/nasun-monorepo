@@ -2,6 +2,7 @@ export interface ChatMessage {
   id: number;
   roomId: number;
   sender: string;
+  senderNickname?: string;
   content: string;
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;

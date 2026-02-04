@@ -14,6 +14,15 @@ export interface UseChatResult {
   onlineCount: number;
   hasMore: boolean;
   error: string | null;
+  nickname: string | null;
+  needsNickname: boolean;
+  setNickname: (name: string) => void;
+  checkNickname: (name: string) => void;
+}
+
+/** Derive HTTP base URL from WebSocket URL (ws:// → http://, wss:// → https://) */
+function wsToHttpUrl(wsUrl: string): string {
+  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://');
 }
 
 export function useChat(roomId: number = 0): UseChatResult {
@@ -24,6 +33,7 @@ export function useChat(roomId: number = 0): UseChatResult {
   const [onlineCount, setOnlineCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nickname, setNicknameState] = useState<string | null>(null);
 
   // Keep a stable ref to the signer so async callbacks always read the latest
   const signerRef = useRef(signer);
@@ -88,6 +98,39 @@ export function useChat(roomId: number = 0): UseChatResult {
     };
   }, []);
 
+  // Poll chat history via HTTP when not authenticated (e.g. wallet locked)
+  // so users can still read messages without a WebSocket connection.
+  useEffect(() => {
+    const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
+    if (!wsUrl || signerAddress) return;
+
+    const httpBase = wsToHttpUrl(wsUrl);
+    const url = `${httpBase}/api/messages?roomId=${roomId}&limit=50`;
+
+    const fetchMessages = () => {
+      fetch(url)
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then((data: { messages: ChatMessage[]; hasMore: boolean }) => {
+          setMessages(data.messages);
+          setHasMore(data.hasMore);
+        })
+        .catch(() => {
+          // Silent fail — chat is non-critical
+        });
+    };
+
+    // Initial fetch immediately
+    fetchMessages();
+
+    // Poll every 10 seconds for new messages
+    const intervalId = setInterval(fetchMessages, 10_000);
+
+    return () => clearInterval(intervalId);
+  }, [signerAddress, roomId]);
+
   // Subscribe to events
   useEffect(() => {
     const chatService = getChatService();
@@ -119,12 +162,19 @@ export function useChat(roomId: number = 0): UseChatResult {
       }
     });
 
+    const unsubNickname = chatService.on('nickname', (data) => {
+      if (data.ok && data.nickname !== undefined) {
+        setNicknameState(data.nickname ?? null);
+      }
+    });
+
     return () => {
       unsubMessage();
       unsubHistory();
       unsubStatus();
       unsubOnline();
       unsubError();
+      unsubNickname();
     };
   }, []);
 
@@ -140,6 +190,16 @@ export function useChat(roomId: number = 0): UseChatResult {
     getChatService().loadHistory(roomId, oldestId);
   }, [roomId, hasMore, messages]);
 
+  const setNickname = useCallback((name: string) => {
+    getChatService().setNickname(name);
+  }, []);
+
+  const checkNickname = useCallback((name: string) => {
+    getChatService().checkNickname(name);
+  }, []);
+
+  const needsNickname = status === 'connected' && nickname === null;
+
   return {
     messages,
     sendMessage,
@@ -149,5 +209,9 @@ export function useChat(roomId: number = 0): UseChatResult {
     onlineCount,
     hasMore,
     error,
+    nickname,
+    needsNickname,
+    setNickname,
+    checkNickname,
   };
 }

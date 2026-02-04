@@ -1,7 +1,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature } from './auth.js';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore } from './store.js';
+import {
+  initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore,
+  getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
+} from './store.js';
 import { roomExists } from './rooms.js';
 import type {
   AuthenticatedClient,
@@ -104,11 +107,14 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
     timestamp: now,
   });
 
+  const senderNickname = getNickname(client.address);
+
   const chatMsg: ChatMessagePayload = {
     type: 'chat_message',
     id: stored.id,
     roomId: stored.roomId,
     sender: stored.sender,
+    senderNickname,
     content: stored.content,
     messageType: stored.messageType,
     replyToId: stored.replyToId,
@@ -143,6 +149,10 @@ function handleLoadHistory(ws: WebSocket, msg: ClientMessage & { type: 'load_his
   const hasMore = messages.length > limit;
   const result = hasMore ? messages.slice(1) : messages; // Remove oldest if we got extra
 
+  // Batch-fetch nicknames for all senders in this history page
+  const uniqueSenders = [...new Set(result.map((m) => m.sender))];
+  const nicknames = getNicknamesBatch(uniqueSenders);
+
   send(ws, {
     type: 'history',
     messages: result.map((m) => ({
@@ -150,6 +160,7 @@ function handleLoadHistory(ws: WebSocket, msg: ClientMessage & { type: 'load_his
       id: m.id,
       roomId: m.roomId,
       sender: m.sender,
+      senderNickname: nicknames.get(m.sender) ?? null,
       content: m.content,
       messageType: m.messageType,
       replyToId: m.replyToId,
@@ -243,7 +254,8 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       };
       authenticatedClients.set(ws, client);
 
-      send(ws, { type: 'auth_success', address: verifiedAddress });
+      const existingNickname = getNickname(verifiedAddress);
+      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname });
 
       // Send recent messages as initial history
       handleLoadHistory(ws, { type: 'load_history', roomId: 0, limit: 50 });
@@ -265,6 +277,32 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       case 'load_history':
         handleLoadHistory(ws, msg, client);
         break;
+      case 'set_nickname': {
+        const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
+        const validation = validateNickname(nickname);
+        if (!validation.ok) {
+          send(ws, { type: 'nickname_result', ok: false, error: validation.error });
+          break;
+        }
+        const result = setNickname(client.address, nickname);
+        if (result.ok) {
+          send(ws, { type: 'nickname_result', ok: true, nickname });
+        } else {
+          send(ws, { type: 'nickname_result', ok: false, error: result.error });
+        }
+        break;
+      }
+      case 'check_nickname': {
+        const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
+        const validation = validateNickname(nickname);
+        if (!validation.ok) {
+          send(ws, { type: 'nickname_check', available: false, nickname });
+          break;
+        }
+        const available = isNicknameAvailable(nickname);
+        send(ws, { type: 'nickname_check', available, nickname });
+        break;
+      }
       default:
         send(ws, { type: 'error', code: 'UNKNOWN_TYPE', message: `Unknown message type: ${(msg as { type: string }).type}` });
     }
