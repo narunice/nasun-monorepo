@@ -1,0 +1,698 @@
+================================================================================
+               PADO TECH INTRODUCTION - PAGE CONTENT
+================================================================================
+
+LANGUAGE: ENGLISH (EN) | KOREAN (KO)
+Last updated: 2026-02-04
+
+================================================================================
+ENGLISH VERSION (EN)
+================================================================================
+
+========== HERO SECTION ==========
+
+[Tagline]
+Architecture for Social Finance
+
+[SubTagline]
+Real-time social infrastructure on an object-oriented financial chain.
+
+[Button]
+Try Pado Alpha
+
+========== WHY A NEW CHAIN ==========
+
+[Title]
+Why a New Chain
+
+[Intro]
+Pado runs on Nasun, a high-performance blockchain forked from Sui. The choice
+to build a dedicated L1 is architectural, not ideological.
+
+[Feature 1 - Object-Based State Model]
+Every asset, position, and market exists as an independent on-chain object with
+its own ownership and access rules. Objects can be composed, transferred, and
+modified without touching global state.
+
+[Feature 2 - Parallel Execution]
+Transactions that touch independent objects execute simultaneously. A spot trade
+and a lending deposit process in the same block without contention, enabling
+throughput that scales with object diversity.
+
+[Feature 3 - DAG-Based Consensus]
+Narwhal-Bullshark consensus provides deterministic ordering with minimal
+latency. The DAG structure significantly reduces the surface area for MEV
+extraction and front-running.
+
+[Feature 4 - Programmable Transactions]
+Multiple market actions compose into a single atomic transaction. Supply
+collateral, open a derivatives position, and set a stop-loss — all in one
+block, all or nothing.
+
+========== SOCIAL INFRASTRUCTURE ==========
+
+[Title]
+Social Infrastructure
+
+[Intro]
+The social layer is not an add-on. It is core infrastructure built with the
+same rigor as the trading engine — real-time, authenticated, and integrated
+into every surface.
+
+[Chat Server Subsection]
+
+  [Title]
+  Chat Server
+
+  [Description]
+  WebSocket-based real-time messaging with cryptographic signature
+  authentication. Every message is tied to a verified on-chain identity.
+  SQLite persistence ensures message history survives reconnections. Rate
+  limiting and DoS prevention protect the service at scale.
+
+  Specs:
+    • Signature Auth
+    • SQLite Persistence
+    • Rate Limiting
+    • DoS Prevention
+
+[Room Architecture Subsection]
+
+  [Title]
+  Room Architecture
+
+  [Description]
+  Multi-room system supporting market-specific channels, general discussion,
+  and structured conversations. Reply threading enables focused discussion
+  within active rooms. Nicknames provide readable identity without sacrificing
+  wallet-level verification.
+
+  Specs:
+    • Multi-Room
+    • Reply Threading
+    • Nickname System
+    • REST API
+
+[Leaderboard Engine Subsection]
+
+  [Title]
+  Leaderboard Engine
+
+  [Description]
+  Rankings computed from on-chain trading data processed by the Rust event
+  indexer. No self-reported metrics, no off-chain manipulation. Every position,
+  every PnL, every rank is verifiable against the chain.
+
+  Specs:
+    • On-chain Data
+    • Rust Indexer
+    • Verifiable Rankings
+
+[Auth Bridge Subsection]
+
+  [Title]
+  Auth Bridge
+
+  [Description]
+  Trading and social use the same keypair. Sign a trade and sign a message
+  with the same identity. zkLogin users authenticate to the chat server with
+  the same ephemeral key used for transactions — no separate login, no
+  additional friction.
+
+  Specs:
+    • Unified Identity
+    • zkLogin Support
+    • No Separate Login
+
+========== SMART ACCOUNT ARCHITECTURE ==========
+
+[Title]
+Smart Account Architecture
+
+[Intro]
+Users interact through a non-custodial smart account that replaces seed phrases
+with modern authentication while preserving full key control.
+
+[Feature 1 - zkLogin]
+Users authenticate via Google OAuth. An ephemeral keypair is generated locally,
+linked to the OAuth identity through a zero-knowledge proof, and used to sign
+transactions. The OAuth provider never sees the private key. The ZK proof
+verifies identity without revealing it.
+
+[Feature 2 - Multi-Signer & Social Recovery]
+Accounts support multiple signers with configurable thresholds. Guardian-based
+social recovery allows account restoration without seed phrases or centralized
+intermediaries.
+
+[Feature 3 - Session Permissions]
+For high-frequency trading, users can delegate constrained authority to session
+keys. These keys have limited scope (specific markets, max amounts) and
+time-bound validity, reducing authentication friction without compromising
+security.
+
+[Feature 4 - Key Encryption]
+Private keys are encrypted at rest using AES-256-GCM with PBKDF2 key derivation
+(100,000 iterations). Keys are cleared from memory after use. Rate limiting
+prevents brute-force attacks with progressive lockout thresholds.
+
+========== MARKET INFRASTRUCTURE ==========
+
+[Title]
+Market Infrastructure
+
+[Intro]
+All markets execute natively on-chain through Move smart contracts. No off-chain
+matching, no centralized sequencer.
+
+[DeepBook V3 - Central Limit Order Book Subsection]
+
+  [Title]
+  DeepBook V3 — Central Limit Order Book
+
+  [Description]
+  Fully on-chain CLOB with price-time priority matching. Supports limit orders,
+  market orders, and fill-or-kill semantics. A Rust-based indexer processes
+  DeepBook events in real-time for the trading UI.
+
+  Specs:
+    • On-chain matching engine
+    • Rust event indexer
+    • Level 2 orderbook depth
+    • Real-time trade streaming
+
+[Prediction Markets Subsection]
+
+  [Title]
+  Prediction Markets
+
+  [Description]
+  Binary YES/NO outcome markets with dedicated orderbooks per outcome.
+  NUSDC-collateralized. Markets resolve on-chain via admin oracle or automated
+  resolution.
+
+  Specs:
+    • Binary outcome orderbooks
+    • NUSDC collateral
+    • On-chain resolution
+    • Admin market creation
+
+[On-Chain Lottery Subsection]
+
+  [Title]
+  On-Chain Lottery
+
+  [Description]
+  Weekly draws using Sui Random (VRF) for provable fairness. Users pick 5
+  numbers from 1-32 (201,376 combinations). Three-tier prize distribution: 60%
+  jackpot, 25% second, 15% third.
+
+  Specs:
+    • Sui Random VRF
+    • 5-number selection (1-32)
+    • Multi-tier prizes
+    • Max 100 tickets per address
+
+[DevOracle — Price Feeds Subsection]
+
+  [Title]
+  DevOracle — Price Feeds
+
+  [Description]
+  Admin-controlled price oracle providing BTC, ETH, and NASUN feeds. Feeds
+  update every 30 seconds via CoinGecko/Binance polling. Powers margin
+  calculations, liquidations, and perpetual funding rates.
+
+  Specs:
+    • 30-second update interval
+    • Multi-source polling
+    • Liquidation trigger
+    • Funding rate computation
+
+========== CAPITAL INFRASTRUCTURE ==========
+
+[Title]
+Capital Infrastructure
+
+[Intro]
+A portfolio-level risk engine evaluates all positions under a single margin
+framework. Risk is computed per account, not per protocol. This is the
+infrastructure that keeps capital flowing — and keeps users from needing to
+leave.
+
+[Multi-Collateral System Subsection]
+
+  [Title]
+  Multi-Collateral System
+
+  Items:
+    • NUSDC: 100% collateral value (0% haircut)
+    • NBTC: 90% collateral value (10% haircut)
+    • Collateral objects transition between states: idle, margin, lending
+
+[4-Tier Risk Thresholds Subsection]
+
+  [Title]
+  4-Tier Risk Thresholds
+
+  Items:
+    • Initial Margin (IM): 10% — Required to open new positions
+    • Warning Level: 8% — Alert threshold, no new positions
+    • Maintenance Margin (MM): 5% — Liquidation trigger point
+    • Forced Close (FC): 3% — Full position closure
+
+[Liquidation Mechanics Subsection]
+
+  [Title]
+  Liquidation Mechanics
+
+  Items:
+    • Partial liquidation: max 50% of position per event
+    • Liquidation bonus: 5% incentive for keepers
+    • Deterministic execution — no discretionary decisions
+    • 10-second keeper monitoring interval
+
+[Perpetual Futures Subsection]
+
+  [Title]
+  Perpetual Futures
+
+  Items:
+    • Up to 20x leverage
+    • 8-hour funding rate cycle
+    • Oracle-driven mark price
+    • Integrated with unified margin (shared collateral)
+
+========== TECH STACK & DEPLOYED CONTRACTS ==========
+
+[Title]
+Tech Stack & Deployed Contracts
+
+[Frontend Subsection]
+
+  [Title]
+  Frontend
+
+  Items:
+    • React 19
+    • Vite 7
+    • TypeScript 5.9
+    • TailwindCSS 3.4
+    • Zustand (state)
+    • TanStack Query (server state)
+    • Lightweight Charts (trading)
+
+[Backend & Infrastructure Subsection]
+
+  [Title]
+  Backend & Infrastructure
+
+  Items:
+    • Node.js WebSocket chat server
+    • Move smart contracts (Sui/Nasun)
+    • Rust indexer (DeepBook V3)
+    • SQLite message persistence
+    • EC2 + nginx deployment
+
+[Deployed Contracts Subsection]
+
+  [Title]
+  Deployed Contracts (Nasun Devnet V7)
+
+  Items:
+    • Chat Server (WebSocket) — Live
+    • Tokens (NBTC, NUSDC, Faucet) — Live
+    • DeepBook V3 CLOB — Live
+    • Prediction Markets — Live
+    • Lottery — Live
+    • DevOracle — Live
+    • Lending Pool — Live
+    • Unified Margin — Live
+    • Perpetuals — Pending deployment
+    • Smart Account (NSA) — Live
+
+[Network Subsection]
+
+  [Title]
+  Network
+
+  Items:
+    • Chain ID: 272218f1
+    • RPC: rpc.devnet.nasun.io
+    • Explorer: explorer.nasun.io/devnet
+    • Native Token: NASUN (unit: SOE)
+
+========== CALL TO ACTION ==========
+
+[Title]
+Dive Deeper
+
+[Body]
+Explore the architecture in detail or try Pado on devnet.
+
+[Primary Button]
+Try Pado Alpha
+
+[Secondary Button]
+Read the Technical Paper
+
+
+================================================================================
+KOREAN VERSION (KO)
+================================================================================
+
+========== HERO SECTION ==========
+
+[Tagline]
+Architecture for Social Finance
+
+[SubTagline]
+객체 지향 금융 체인 위의 실시간 소셜 인프라.
+
+[Button]
+Pado Open Alpha
+
+========== WHY A NEW CHAIN ==========
+
+[Title]
+Why a New Chain
+
+[Intro]
+Pado는 Sui에서 포크된 고성능 블록체인 Nasun 위에서 동작합니다. 전용 L1을
+구축한 것은 이념이 아닌 아키텍처적 선택입니다.
+
+[Feature 1 - Object-Based State Model]
+모든 자산, 포지션, 마켓이 독립적인 온체인 객체로 존재하며, 각각 고유한
+소유권과 접근 규칙을 가집니다. 객체는 글로벌 상태를 건드리지 않고 조합,
+전송, 수정할 수 있습니다.
+
+[Feature 2 - Parallel Execution]
+독립적인 객체를 다루는 트랜잭션은 동시에 실행됩니다. 현물 거래와 렌딩
+입금이 같은 블록에서 경합 없이 처리되어, 객체 다양성에 비례하여 처리량이
+확장됩니다.
+
+[Feature 3 - DAG-Based Consensus]
+Narwhal-Bullshark 합의 메커니즘이 최소 지연시간으로 결정론적 순서를
+제공합니다. DAG 구조는 MEV 추출과 프론트러닝의 공격 표면을 크게 줄입니다.
+
+[Feature 4 - Programmable Transactions]
+여러 마켓 액션이 하나의 원자적 트랜잭션으로 합성됩니다. 담보 제공, 파생상품
+포지션 오픈, 스톱로스 설정을 한 블록에서 올오어낫싱으로 처리합니다.
+
+========== SOCIAL INFRASTRUCTURE ==========
+
+[Title]
+Social Infrastructure
+
+[Intro]
+소셜 레이어는 부가 기능이 아닙니다. 트레이딩 엔진과 동일한 엄밀함으로
+구축된 코어 인프라입니다 — 실시간, 인증 기반, 모든 화면에 통합.
+
+[Chat Server Subsection]
+
+  [Title]
+  Chat Server
+
+  [Description]
+  암호화 서명 인증 기반의 WebSocket 실시간 메시징. 모든 메시지는 검증된
+  온체인 아이덴티티에 연결됩니다. SQLite 영속성으로 재접속 시에도 메시지
+  히스토리가 유지됩니다. 레이트 리미팅과 DoS 방지로 대규모에서도 서비스를
+  보호합니다.
+
+  Specs:
+    • Signature Auth
+    • SQLite Persistence
+    • Rate Limiting
+    • DoS Prevention
+
+[Room Architecture Subsection]
+
+  [Title]
+  Room Architecture
+
+  [Description]
+  마켓별 채널, 일반 토론, 구조화된 대화를 지원하는 멀티룸 시스템. 답글
+  스레딩으로 활성 채팅방 내에서 집중적인 토론이 가능합니다. 닉네임은 지갑
+  수준의 검증을 포기하지 않으면서 가독성 있는 아이덴티티를 제공합니다.
+
+  Specs:
+    • Multi-Room
+    • Reply Threading
+    • Nickname System
+    • REST API
+
+[Leaderboard Engine Subsection]
+
+  [Title]
+  Leaderboard Engine
+
+  [Description]
+  Rust 이벤트 인덱서가 처리한 온체인 트레이딩 데이터에서 랭킹을 산출합니다.
+  자가 보고 지표도, 오프체인 조작도 없습니다. 모든 포지션, 모든 PnL, 모든
+  순위가 체인에서 검증 가능합니다.
+
+  Specs:
+    • On-chain Data
+    • Rust Indexer
+    • Verifiable Rankings
+
+[Auth Bridge Subsection]
+
+  [Title]
+  Auth Bridge
+
+  [Description]
+  트레이딩과 소셜이 같은 키페어를 사용합니다. 거래 서명과 메시지 서명이
+  같은 아이덴티티로. zkLogin 유저는 트랜잭션에 사용하는 것과 같은 임시 키로
+  채팅 서버에 인증합니다 — 별도 로그인 없음, 추가 마찰 없음.
+
+  Specs:
+    • Unified Identity
+    • zkLogin Support
+    • No Separate Login
+
+========== SMART ACCOUNT ARCHITECTURE ==========
+
+[Title]
+Smart Account Architecture
+
+[Intro]
+사용자는 시드 구문을 현대적 인증으로 대체하면서도 완전한 키 제어를
+유지하는 비수탁형 스마트 계정을 통해 상호작용합니다.
+
+[Feature 1 - zkLogin]
+사용자는 Google OAuth로 인증합니다. 임시 키페어가 로컬에서 생성되고,
+영지식 증명을 통해 OAuth 아이덴티티에 연결되어 트랜잭션 서명에 사용됩니다.
+OAuth 제공자는 개인키를 볼 수 없습니다. ZK 증명은 아이덴티티를 드러내지
+않고 검증합니다.
+
+[Feature 2 - Multi-Signer & Social Recovery]
+계정은 설정 가능한 임계값으로 복수 서명자를 지원합니다. Guardian 기반
+소셜 리커버리를 통해 시드 구문이나 중앙화된 중개자 없이 계정을 복구할 수
+있습니다.
+
+[Feature 3 - Session Permissions]
+고빈도 트레이딩을 위해 세션 키에 제한된 권한을 위임할 수 있습니다. 세션
+키는 제한된 범위(특정 마켓, 최대 금액)와 시간 제한 유효성을 가지며, 보안을
+타협하지 않으면서 인증 마찰을 줄입니다.
+
+[Feature 4 - Key Encryption]
+개인키는 AES-256-GCM과 PBKDF2 키 파생(100,000 반복)을 사용하여 저장 시
+암호화됩니다. 사용 후 키는 메모리에서 제거됩니다. 점진적 잠금 임계값으로
+무차별 대입 공격을 방지합니다.
+
+========== MARKET INFRASTRUCTURE ==========
+
+[Title]
+Market Infrastructure
+
+[Intro]
+모든 시장은 Move 스마트 컨트랙트를 통해 네이티브 온체인으로 실행됩니다.
+오프체인 매칭도, 중앙화된 시퀀서도 없습니다.
+
+[DeepBook V3 - Central Limit Order Book Subsection]
+
+  [Title]
+  DeepBook V3 — Central Limit Order Book
+
+  [Description]
+  가격-시간 우선순위 매칭을 갖춘 완전한 온체인 CLOB. 지정가 주문, 시장가
+  주문, Fill-or-Kill 의미론을 지원합니다. Rust 기반 인덱서가 트레이딩 UI를
+  위해 DeepBook 이벤트를 실시간 처리합니다.
+
+  Specs:
+    • 온체인 매칭 엔진
+    • Rust 이벤트 인덱서
+    • Level 2 호가창 깊이
+    • 실시간 체결 스트리밍
+
+[Prediction Markets Subsection]
+
+  [Title]
+  Prediction Markets
+
+  [Description]
+  결과별 전용 오더북을 가진 이진 YES/NO 결과 시장. NUSDC 담보. 관리자
+  오라클 또는 자동 정산을 통해 온체인에서 마켓이 결정됩니다.
+
+  Specs:
+    • 이진 결과 오더북
+    • NUSDC 담보
+    • 온체인 정산
+    • 관리자 마켓 생성
+
+[On-Chain Lottery Subsection]
+
+  [Title]
+  On-Chain Lottery
+
+  [Description]
+  Sui Random(VRF)을 사용한 검증 가능한 공정 추첨의 주간 복권. 1-32에서 5개
+  번호 선택(201,376 조합). 3단계 상금 분배: 잭팟 60%, 2등 25%, 3등 15%.
+
+  Specs:
+    • Sui Random VRF
+    • 5개 번호 선택 (1-32)
+    • 다단계 상금
+    • 주소당 최대 100장
+
+[DevOracle — Price Feeds Subsection]
+
+  [Title]
+  DevOracle — Price Feeds
+
+  [Description]
+  BTC, ETH, NASUN 피드를 제공하는 관리자 제어 가격 오라클. CoinGecko/Binance
+  폴링을 통해 30초마다 갱신. 마진 계산, 청산, 무기한 선물 펀딩 레이트를
+  구동합니다.
+
+  Specs:
+    • 30초 갱신 주기
+    • 다중 소스 폴링
+    • 청산 트리거
+    • 펀딩 레이트 계산
+
+========== CAPITAL INFRASTRUCTURE ==========
+
+[Title]
+Capital Infrastructure
+
+[Intro]
+포트폴리오 레벨 리스크 엔진이 단일 마진 프레임워크 하에서 모든 포지션을
+평가합니다. 리스크는 프로토콜별이 아닌 계정별로 계산됩니다. 이것은 자본이
+계속 흐르게 하고 — 유저가 떠날 필요 없게 하는 인프라입니다.
+
+[Multi-Collateral System Subsection]
+
+  [Title]
+  Multi-Collateral System
+
+  Items:
+    • NUSDC: 담보 가치 100% (헤어컷 0%)
+    • NBTC: 담보 가치 90% (헤어컷 10%)
+    • 담보 객체는 상태 간 전환: idle, margin, lending
+
+[4-Tier Risk Thresholds Subsection]
+
+  [Title]
+  4-Tier Risk Thresholds
+
+  Items:
+    • Initial Margin (IM): 10% — 신규 포지션 오픈에 필요
+    • Warning Level: 8% — 경고 임계값, 신규 포지션 불가
+    • Maintenance Margin (MM): 5% — 청산 트리거 포인트
+    • Forced Close (FC): 3% — 전체 포지션 강제 청산
+
+[Liquidation Mechanics Subsection]
+
+  [Title]
+  Liquidation Mechanics
+
+  Items:
+    • 부분 청산: 이벤트당 최대 50%
+    • 청산 보너스: 키퍼를 위한 5% 인센티브
+    • 결정론적 실행 — 재량적 결정 없음
+    • 10초 키퍼 모니터링 주기
+
+[Perpetual Futures Subsection]
+
+  [Title]
+  Perpetual Futures
+
+  Items:
+    • 최대 20배 레버리지
+    • 8시간 펀딩 레이트 사이클
+    • 오라클 기반 마크 프라이스
+    • 통합 마진 연동 (공유 담보)
+
+========== TECH STACK & DEPLOYED CONTRACTS ==========
+
+[Title]
+Tech Stack & Deployed Contracts
+
+[Frontend Subsection]
+
+  [Title]
+  Frontend
+
+  Items:
+    • React 19
+    • Vite 7
+    • TypeScript 5.9
+    • TailwindCSS 3.4
+    • Zustand (state)
+    • TanStack Query (server state)
+    • Lightweight Charts (trading)
+
+[Backend & Infrastructure Subsection]
+
+  [Title]
+  Backend & Infrastructure
+
+  Items:
+    • Node.js WebSocket 채팅 서버
+    • Move 스마트 컨트랙트 (Sui/Nasun)
+    • Rust 인덱서 (DeepBook V3)
+    • SQLite 메시지 저장
+    • EC2 + nginx 배포
+
+[Deployed Contracts Subsection]
+
+  [Title]
+  Deployed Contracts (Nasun Devnet V7)
+
+  Items:
+    • Chat Server (WebSocket) — Live
+    • Tokens (NBTC, NUSDC, Faucet) — Live
+    • DeepBook V3 CLOB — Live
+    • Prediction Markets — Live
+    • Lottery — Live
+    • DevOracle — Live
+    • Lending Pool — Live
+    • Unified Margin — Live
+    • Perpetuals — 배포 대기
+    • Smart Account (NSA) — Live
+
+[Network Subsection]
+
+  [Title]
+  Network
+
+  Items:
+    • Chain ID: 272218f1
+    • RPC: rpc.devnet.nasun.io
+    • Explorer: explorer.nasun.io/devnet
+    • Native Token: NASUN (unit: SOE)
+
+========== CALL TO ACTION ==========
+
+[Title]
+Dive Deeper
+
+[Body]
+아키텍처를 더 자세히 살펴보거나 데브넷에서 Pado를 체험하세요.
+
+[Primary Button]
+Try Pado Alpha
+
+[Secondary Button]
+Read the Technical Paper

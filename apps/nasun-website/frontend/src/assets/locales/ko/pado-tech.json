@@ -1,0 +1,174 @@
+{
+  "hero": {
+    "tagline": "Architecture for Social Finance",
+    "subTagline": "객체 지향 금융 체인 위의 실시간 소셜 인프라.",
+    "button": "Pado Open Alpha"
+  },
+  "chain": {
+    "title": "Why a New Chain",
+    "intro": "Pado는 Sui에서 포크된 고성능 블록체인 Nasun 위에서 동작합니다. 전용 L1을 구축한 것은 이념이 아닌 아키텍처적 선택입니다.",
+    "features": [
+      {
+        "title": "Object-Based State Model",
+        "description": "모든 자산, 포지션, 마켓이 독립적인 온체인 객체로 존재하며, 각각 고유한 소유권과 접근 규칙을 가집니다. 객체는 글로벌 상태를 건드리지 않고 조합, 전송, 수정할 수 있습니다."
+      },
+      {
+        "title": "Parallel Execution",
+        "description": "독립적인 객체를 다루는 트랜잭션은 동시에 실행됩니다. 현물 거래와 렌딩 입금이 같은 블록에서 경합 없이 처리되어, 객체 다양성에 비례하여 처리량이 확장됩니다."
+      },
+      {
+        "title": "DAG-Based Consensus",
+        "description": "Narwhal-Bullshark 합의 메커니즘이 최소 지연시간으로 결정론적 순서를 제공합니다. DAG 구조는 MEV 추출과 프론트러닝의 공격 표면을 크게 줄입니다."
+      },
+      {
+        "title": "Programmable Transactions",
+        "description": "여러 마켓 액션이 하나의 원자적 트랜잭션으로 합성됩니다. 담보 제공, 파생상품 포지션 오픈, 스톱로스 설정을 한 블록에서 올오어낫싱으로 처리합니다."
+      }
+    ]
+  },
+  "social": {
+    "title": "Social Infrastructure",
+    "intro": "소셜 레이어는 부가 기능이 아닙니다. 트레이딩 엔진과 동일한 엄밀함으로 구축된 코어 인프라입니다 — 실시간, 인증 기반, 모든 화면에 통합.",
+    "chat": {
+      "title": "Chat Server",
+      "description": "암호화 서명 인증 기반의 WebSocket 실시간 메시징. 모든 메시지는 검증된 온체인 아이덴티티에 연결됩니다. SQLite 영속성으로 재접속 시에도 메시지 히스토리가 유지됩니다. 레이트 리미팅과 DoS 방지로 대규모에서도 서비스를 보호합니다.",
+      "specs": ["Signature Auth", "SQLite Persistence", "Rate Limiting", "DoS Prevention"]
+    },
+    "rooms": {
+      "title": "Room Architecture",
+      "description": "마켓별 채널, 일반 토론, 구조화된 대화를 지원하는 멀티룸 시스템. 답글 스레딩으로 활성 채팅방 내에서 집중적인 토론이 가능합니다. 닉네임은 지갑 수준의 검증을 포기하지 않으면서 가독성 있는 아이덴티티를 제공합니다.",
+      "specs": ["Multi-Room", "Reply Threading", "Nickname System", "REST API"]
+    },
+    "leaderboard": {
+      "title": "Leaderboard Engine",
+      "description": "Rust 이벤트 인덱서가 처리한 온체인 트레이딩 데이터에서 랭킹을 산출합니다. 자가 보고 지표도, 오프체인 조작도 없습니다. 모든 포지션, 모든 PnL, 모든 순위가 체인에서 검증 가능합니다.",
+      "specs": ["On-chain Data", "Rust Indexer", "Verifiable Rankings"]
+    },
+    "auth": {
+      "title": "Auth Bridge",
+      "description": "트레이딩과 소셜이 같은 키페어를 사용합니다. 거래 서명과 메시지 서명이 같은 아이덴티티로. zkLogin 유저는 트랜잭션에 사용하는 것과 같은 임시 키로 채팅 서버에 인증합니다 — 별도 로그인 없음, 추가 마찰 없음.",
+      "specs": ["Unified Identity", "zkLogin Support", "No Separate Login"]
+    }
+  },
+  "account": {
+    "title": "Smart Account Architecture",
+    "intro": "사용자는 시드 구문을 현대적 인증으로 대체하면서도 완전한 키 제어를 유지하는 비수탁형 스마트 계정을 통해 상호작용합니다.",
+    "features": [
+      {
+        "title": "zkLogin",
+        "description": "사용자는 Google OAuth로 인증합니다. 임시 키페어가 로컬에서 생성되고, 영지식 증명을 통해 OAuth 아이덴티티에 연결되어 트랜잭션 서명에 사용됩니다. OAuth 제공자는 개인키를 볼 수 없습니다. ZK 증명은 아이덴티티를 드러내지 않고 검증합니다."
+      },
+      {
+        "title": "Multi-Signer & Social Recovery",
+        "description": "계정은 설정 가능한 임계값으로 복수 서명자를 지원합니다. Guardian 기반 소셜 리커버리를 통해 시드 구문이나 중앙화된 중개자 없이 계정을 복구할 수 있습니다."
+      },
+      {
+        "title": "Session Permissions",
+        "description": "고빈도 트레이딩을 위해 세션 키에 제한된 권한을 위임할 수 있습니다. 세션 키는 제한된 범위(특정 마켓, 최대 금액)와 시간 제한 유효성을 가지며, 보안을 타협하지 않으면서 인증 마찰을 줄입니다."
+      },
+      {
+        "title": "Key Encryption",
+        "description": "개인키는 AES-256-GCM과 PBKDF2 키 파생(100,000 반복)을 사용하여 저장 시 암호화됩니다. 사용 후 키는 메모리에서 제거됩니다. 점진적 잠금 임계값으로 무차별 대입 공격을 방지합니다."
+      }
+    ]
+  },
+  "markets": {
+    "title": "Market Infrastructure",
+    "intro": "모든 시장은 Move 스마트 컨트랙트를 통해 네이티브 온체인으로 실행됩니다. 오프체인 매칭도, 중앙화된 시퀀서도 없습니다.",
+    "deepbook": {
+      "title": "DeepBook V3 — Central Limit Order Book",
+      "description": "가격-시간 우선순위 매칭을 갖춘 완전한 온체인 CLOB. 지정가 주문, 시장가 주문, Fill-or-Kill 의미론을 지원합니다. Rust 기반 인덱서가 트레이딩 UI를 위해 DeepBook 이벤트를 실시간 처리합니다.",
+      "specs": ["온체인 매칭 엔진", "Rust 이벤트 인덱서", "Level 2 호가창 깊이", "실시간 체결 스트리밍"]
+    },
+    "prediction": {
+      "title": "Prediction Markets",
+      "description": "결과별 전용 오더북을 가진 이진 YES/NO 결과 시장. NUSDC 담보. 관리자 오라클 또는 자동 정산을 통해 온체인에서 마켓이 결정됩니다.",
+      "specs": ["이진 결과 오더북", "NUSDC 담보", "온체인 정산", "관리자 마켓 생성"]
+    },
+    "lottery": {
+      "title": "On-Chain Lottery",
+      "description": "Sui Random(VRF)을 사용한 검증 가능한 공정 추첨의 주간 복권. 1-32에서 5개 번호 선택(201,376 조합). 3단계 상금 분배: 잭팟 60%, 2등 25%, 3등 15%.",
+      "specs": ["Sui Random VRF", "5개 번호 선택 (1-32)", "다단계 상금", "주소당 최대 100장"]
+    },
+    "oracle": {
+      "title": "DevOracle — Price Feeds",
+      "description": "BTC, ETH, NASUN 피드를 제공하는 관리자 제어 가격 오라클. CoinGecko/Binance 폴링을 통해 30초마다 갱신. 마진 계산, 청산, 무기한 선물 펀딩 레이트를 구동합니다.",
+      "specs": ["30초 갱신 주기", "다중 소스 폴링", "청산 트리거", "펀딩 레이트 계산"]
+    }
+  },
+  "margin": {
+    "title": "Capital Infrastructure",
+    "intro": "포트폴리오 레벨 리스크 엔진이 단일 마진 프레임워크 하에서 모든 포지션을 평가합니다. 리스크는 프로토콜별이 아닌 계정별로 계산됩니다. 이것은 자본이 계속 흐르게 하고 — 유저가 떠날 필요 없게 하는 인프라입니다.",
+    "collateral": {
+      "title": "Multi-Collateral System",
+      "items": [
+        "NUSDC: 담보 가치 100% (헤어컷 0%)",
+        "NBTC: 담보 가치 90% (헤어컷 10%)",
+        "담보 객체는 상태 간 전환: idle, margin, lending"
+      ]
+    },
+    "thresholds": {
+      "title": "4-Tier Risk Thresholds",
+      "items": [
+        { "label": "Initial Margin (IM)", "value": "10%", "description": "신규 포지션 오픈에 필요" },
+        { "label": "Warning Level", "value": "8%", "description": "경고 임계값, 신규 포지션 불가" },
+        { "label": "Maintenance Margin (MM)", "value": "5%", "description": "청산 트리거 포인트" },
+        { "label": "Forced Close (FC)", "value": "3%", "description": "전체 포지션 강제 청산" }
+      ]
+    },
+    "liquidation": {
+      "title": "Liquidation Mechanics",
+      "items": [
+        "부분 청산: 이벤트당 최대 50%",
+        "청산 보너스: 키퍼를 위한 5% 인센티브",
+        "결정론적 실행 — 재량적 결정 없음",
+        "10초 키퍼 모니터링 주기"
+      ]
+    },
+    "perp": {
+      "title": "Perpetual Futures",
+      "items": [
+        "최대 20배 레버리지",
+        "8시간 펀딩 레이트 사이클",
+        "오라클 기반 마크 프라이스",
+        "통합 마진 연동 (공유 담보)"
+      ]
+    }
+  },
+  "stack": {
+    "title": "Tech Stack & Deployed Contracts",
+    "frontend": {
+      "title": "Frontend",
+      "items": ["React 19", "Vite 7", "TypeScript 5.9", "TailwindCSS 3.4", "Zustand (state)", "TanStack Query (server state)", "Lightweight Charts (trading)"]
+    },
+    "backend": {
+      "title": "Backend & Infrastructure",
+      "items": ["Node.js WebSocket 채팅 서버", "Move 스마트 컨트랙트 (Sui/Nasun)", "Rust 인덱서 (DeepBook V3)", "SQLite 메시지 저장", "EC2 + nginx 배포"]
+    },
+    "contracts": {
+      "title": "Deployed Contracts (Nasun Devnet V7)",
+      "items": [
+        { "name": "Chat Server (WebSocket)", "status": "Live" },
+        { "name": "Tokens (NBTC, NUSDC, Faucet)", "status": "Live" },
+        { "name": "DeepBook V3 CLOB", "status": "Live" },
+        { "name": "Prediction Markets", "status": "Live" },
+        { "name": "Lottery", "status": "Live" },
+        { "name": "DevOracle", "status": "Live" },
+        { "name": "Lending Pool", "status": "Live" },
+        { "name": "Unified Margin", "status": "Live" },
+        { "name": "Perpetuals", "status": "배포 대기" },
+        { "name": "Smart Account (NSA)", "status": "Live" }
+      ]
+    },
+    "network": {
+      "title": "Network",
+      "items": ["Chain ID: 272218f1", "RPC: rpc.devnet.nasun.io", "Explorer: explorer.nasun.io/devnet", "Native Token: NASUN (unit: SOE)"]
+    }
+  },
+  "cta": {
+    "title": "Dive Deeper",
+    "body": "아키텍처를 더 자세히 살펴보거나 데브넷에서 Pado를 체험하세요.",
+    "primary": "Try Pado Alpha",
+    "secondary": "Read the Technical Paper"
+  }
+}
