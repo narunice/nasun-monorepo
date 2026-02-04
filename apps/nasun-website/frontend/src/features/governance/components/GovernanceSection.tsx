@@ -14,9 +14,10 @@ import { SectionLoading, InlineLoading, PageTitle, Button, OuterBox } from "@/co
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { VotingPowerSummary } from "./VotingPowerSummary";
-import { DelegationPanel } from "./DelegationPanel";
 import { GovernanceStats } from "./GovernanceStats";
 import { ChevronDown, ChevronUp } from "lucide-react";
+
+type ProposalFilter = "all" | "active" | "expired";
 
 /**
  * GovernanceSection
@@ -59,9 +60,8 @@ const GovernanceSection = () => {
             <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <VotingPowerSummary />
-                <DelegationPanel />
+                <GovernanceStats />
               </div>
-              <GovernanceStats />
             </div>
           )}
         </div>
@@ -103,12 +103,12 @@ const ProposalList = () => {
   const dashboardId = useNetworkVariable("dashboardId");
   const { account } = useWallet();
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
+  const [filter, setFilter] = useState<ProposalFilter>("all");
 
-  // Fetch hidden proposal IDs from API
   const { data: hiddenIdsArray = [] } = useQuery({
     queryKey: ["hiddenProposals"],
     queryFn: fetchHiddenProposalIds,
-    staleTime: 30 * 1000, // Cache for 30 seconds
+    staleTime: 30 * 1000,
   });
   const hiddenIds = new Set(hiddenIdsArray);
 
@@ -123,12 +123,10 @@ const ProposalList = () => {
     },
   });
 
-  // Only wait for Dashboard loading (Vote NFTs only load when wallet is connected)
   if (isDashboardPending) {
     return <SectionLoading showLayout={false} />;
   }
 
-  // Error handling (Vote NFTs errors only when wallet is connected)
   if (dashboardError || (account && nftsError)) {
     const error = dashboardError || nftsError;
     return (
@@ -144,8 +142,6 @@ const ProposalList = () => {
 
   const voteNfts = extractVoteNfts(voteNftsRes);
   const proposalIds = getDashboardFields(dataResponse.data)?.proposals_ids || [];
-
-  // Filter out hidden proposals
   const visibleProposalIds = proposalIds.filter((id) => !hiddenIds.has(id));
 
   if (visibleProposalIds.length === 0) {
@@ -157,26 +153,50 @@ const ProposalList = () => {
     );
   }
 
+  const filterButtons: { value: ProposalFilter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "active", label: "Active" },
+    { value: "expired", label: "Expired" },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {visibleProposalIds.map((id) => (
-        <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
-          <Suspense fallback={<InlineLoading size="sm" />}>
-            <ProposalItem
-              id={id}
-              onVoteTxSuccess={async () => {
-                // Poll for NFT with retry (up to 5 attempts, 2s interval)
-                // NFT mint happens on-chain and may take a few seconds
-                for (let i = 0; i < 5; i++) {
-                  await new Promise((resolve) => setTimeout(resolve, 2000));
-                  await refetchNfts();
-                }
-              }}
-              voteNft={voteNfts.find((nft) => nft.proposalId === id)}
-            />
-          </Suspense>
-        </ErrorBoundary>
-      ))}
+    <div>
+      {/* Filter Buttons */}
+      <div className="flex gap-2 mb-4">
+        {filterButtons.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => setFilter(value)}
+            className={`px-4 py-1.5 text-sm rounded-sm border transition-colors ${
+              filter === value
+                ? "bg-nasun-c4/20 text-nasun-c4 border-nasun-c4/40"
+                : "bg-transparent text-nasun-white/50 border-nasun-white/10 hover:text-nasun-white/80 hover:border-nasun-white/20"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {visibleProposalIds.map((id) => (
+          <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
+            <Suspense fallback={<InlineLoading size="sm" />}>
+              <ProposalItem
+                id={id}
+                filter={filter}
+                onVoteTxSuccess={async () => {
+                  for (let i = 0; i < 5; i++) {
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                    await refetchNfts();
+                  }
+                }}
+                voteNft={voteNfts.find((nft) => nft.proposalId === id)}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        ))}
+      </div>
     </div>
   );
 };

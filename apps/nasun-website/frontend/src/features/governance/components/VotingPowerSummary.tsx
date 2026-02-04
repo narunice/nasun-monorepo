@@ -1,16 +1,14 @@
 /**
- * VotingPowerSummary Component
+ * VotingPowerSummary Component (V2)
  *
- * Displays user's voting power breakdown in a card format.
- * Shows base power, NFT bonus, and delegated power.
- * Includes tooltips for explanations and CTA buttons for actions.
+ * Displays user's voting power breakdown:
+ * Base + Leaderboard + On-Chain Activity + Allowlist + X Linked
  */
 
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
-import { useDelegation } from "../hooks/useDelegation";
 import { useAuth } from "@/features/auth";
 import { OuterBox, DividerBox } from "@/components/ui";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -20,7 +18,6 @@ interface VotingPowerSummaryProps {
   className?: string;
 }
 
-// Tooltip wrapper component for consistent styling
 const InfoTooltip: FC<{ content: string }> = ({ content }) => (
   <Tooltip.Root>
     <Tooltip.Trigger asChild>
@@ -44,35 +41,29 @@ const InfoTooltip: FC<{ content: string }> = ({ content }) => (
 
 export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = "" }) => {
   const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
 
-  const { votingPower, nftVerification, isLoading: isLoadingPower } = useVotingPower();
-  const { delegationState, isLoading: isLoadingDelegation } = useDelegation();
+  const { votingPower, isLoading, fetchVotingPower } = useVotingPower();
   const { user, isAuthenticated, signInWithTwitter } = useAuth();
 
   const [showHowItWorks, setShowHowItWorks] = useState(false);
 
-  const isLoading = isLoadingPower || isLoadingDelegation;
-
-  // Check if user has linked X account (provider is stored as "Twitter" with capital T)
   const hasLinkedX = isAuthenticated && user?.provider === "Twitter";
+  const walletAddress = isZkConnected ? zkState?.address : account?.address;
 
-  // Calculate voting power components
-  const basePower = votingPower?.leaderboardScore || 1;
-  const nftBonus = nftVerification?.nftBonus || 0;
-  const delegatedPower = delegationState?.delegatorCount
-    ? delegationState.delegatorCount * 100 // Placeholder: 100 power per delegator
-    : 0;
-  const totalPower = basePower + nftBonus + delegatedPower;
+  // Fetch voting power when connected
+  useEffect(() => {
+    if (isConnected && walletAddress) {
+      fetchVotingPower(user?.twitterHandle, walletAddress);
+    }
+  }, [isConnected, walletAddress, user?.twitterHandle, fetchVotingPower]);
 
-  // Check if MetaMask is available
-  const hasMetaMask = typeof window !== "undefined" && !!window.ethereum?.isMetaMask;
+  const totalPower = votingPower?.totalVotingPower || 1;
+  const breakdown = votingPower?.breakdown;
 
-  // Handle Link X button click
   const handleLinkX = async () => {
     try {
-      // Save current page to return after OAuth
       localStorage.setItem("auth_return_url", window.location.pathname);
       await signInWithTwitter();
     } catch (error) {
@@ -86,7 +77,6 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
         Your Voting Power
       </h3>
 
-      {/* Not Connected */}
       {!isConnected ? (
         <div className="text-center py-6">
           <p className="text-nasun-white/70 mb-4">
@@ -119,71 +109,72 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 <InfoTooltip content="Base voting power for connecting your Nasun wallet." />
                 <CheckCircledIcon className="w-4 h-4 text-green-400" />
               </div>
-              <span className="text-nasun-white font-medium">1</span>
+              <span className="text-nasun-white font-medium">{breakdown?.base ?? 1}</span>
             </div>
 
             {/* Leaderboard Bonus */}
             <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
-                <span className="text-nasun-white/80">Leaderboard Bonus</span>
+                <span className="text-nasun-white/80">Leaderboard</span>
                 <InfoTooltip content="Verify your X account to earn bonus voting power from community engagement on the leaderboard." />
                 {!hasLinkedX ? (
                   <button
                     onClick={handleLinkX}
                     className="text-xs text-nasun-c4 hover:text-nasun-c5 hover:underline transition-colors"
                   >
-                    Verify X Account →
+                    Verify X Account
                   </button>
                 ) : (
                   <CheckCircledIcon className="w-4 h-4 text-green-400" />
                 )}
               </div>
-              <span className={`font-medium ${hasLinkedX && basePower > 1 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
-                {hasLinkedX ? (basePower > 1 ? `+${(basePower - 1).toLocaleString()}` : "No Bonus") : "—"}
+              <span className={`font-medium ${(breakdown?.leaderboard ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+                {(breakdown?.leaderboard ?? 0) > 0 ? `+${breakdown!.leaderboard}` : "\u2014"}
               </span>
             </div>
 
-            {/* NFT Bonus */}
+            {/* On-Chain Activity */}
             <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
-                <span className="text-nasun-white/80">NFT Bonus</span>
-                <InfoTooltip content="Verify Battalion NFT ownership with MetaMask to receive +2 voting power bonus." />
-                {nftBonus > 0 ? (
-                  <CheckCircledIcon className="w-4 h-4 text-green-400" />
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (hasMetaMask) {
-                        // NFT verification is done in vote modal
-                      } else {
-                        // Open MetaMask install page
-                        window.open("https://metamask.io/download/", "_blank");
-                      }
-                    }}
-                    className="text-xs text-nasun-c4 hover:text-nasun-c5 hover:underline transition-colors"
-                  >
-                    Verify Ownership →
-                  </button>
-                )}
+                <span className="text-nasun-white/80">On-Chain Activity</span>
+                <InfoTooltip content="Trade, bet, lend, and use AI on Nasun Devnet to earn more voting power." />
               </div>
-              <span className={`font-medium ${nftBonus > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
-                {nftBonus > 0 ? `+${nftBonus.toLocaleString()}` : "—"}
+              <span className={`font-medium ${(breakdown?.onChain ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+                {(breakdown?.onChain ?? 0) > 0 ? `+${breakdown!.onChain}` : "\u2014"}
               </span>
             </div>
 
-            {/* Delegated Power */}
+            {/* Battalion Allowlist Bonus */}
+            <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
+              <div className="flex items-center gap-2">
+                <span className="text-nasun-white/80">Battalion Allowlist</span>
+                <InfoTooltip content="Battalion NFT allowlist registrants receive +20 bonus voting power." />
+              </div>
+              <span className={`font-medium ${(breakdown?.battalionAllowlist ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+                {(breakdown?.battalionAllowlist ?? 0) > 0 ? `+${breakdown!.battalionAllowlist}` : "\u2014"}
+              </span>
+            </div>
+
+            {/* Genesis Whitelist Bonus */}
+            <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
+              <div className="flex items-center gap-2">
+                <span className="text-nasun-white/80">Genesis Whitelist</span>
+                <InfoTooltip content="Genesis NFT whitelist registrants receive +20 bonus voting power." />
+              </div>
+              <span className={`font-medium ${(breakdown?.genesisAllowlist ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+                {(breakdown?.genesisAllowlist ?? 0) > 0 ? `+${breakdown!.genesisAllowlist}` : "\u2014"}
+              </span>
+            </div>
+
+            {/* X Account Linked */}
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
-                <span className="text-nasun-white/80">Delegated to you</span>
-                <InfoTooltip content="Other users can delegate their voting power to you. You'll vote on their behalf." />
-                {delegationState && delegationState.delegatorCount > 0 && (
-                  <span className="text-xs text-nasun-white/50">
-                    ({delegationState.delegatorCount} {delegationState.delegatorCount === 1 ? "user" : "users"})
-                  </span>
-                )}
+                <span className="text-nasun-white/80">X Account</span>
+                <InfoTooltip content="Link your X (Twitter) account to receive +10 bonus voting power." />
+                {hasLinkedX && <CheckCircledIcon className="w-4 h-4 text-green-400" />}
               </div>
-              <span className={`font-medium ${delegatedPower > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
-                {delegatedPower > 0 ? `+${delegatedPower.toLocaleString()}` : "—"}
+              <span className={`font-medium ${(breakdown?.xLinked ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+                {(breakdown?.xLinked ?? 0) > 0 ? `+${breakdown!.xLinked}` : "\u2014"}
               </span>
             </div>
           </div>
@@ -206,19 +197,23 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 <ul className="space-y-3">
                   <li>
                     <span className="text-nasun-white font-medium">Base (1 power)</span>
-                    <p className="mt-0.5 text-xs">Every wallet holder starts with 1 voting power just by connecting their Nasun wallet.</p>
+                    <p className="mt-0.5 text-xs">Every wallet holder starts with 1 voting power.</p>
                   </li>
                   <li>
                     <span className="text-nasun-white font-medium">Leaderboard Bonus</span>
-                    <p className="mt-0.5 text-xs">Higher rankers on the community leaderboard earn more voting power. Verify your X account and engage with the community to climb the ranks.</p>
+                    <p className="mt-0.5 text-xs">Higher rankers on the community leaderboard earn more voting power. Verify your X account and engage with the community.</p>
                   </li>
                   <li>
-                    <span className="text-nasun-white font-medium">NFT Bonus (+2 power)</span>
-                    <p className="mt-0.5 text-xs">Battalion NFT holders receive +2 bonus voting power. Verify ownership by signing with MetaMask when voting.</p>
+                    <span className="text-nasun-white font-medium">On-Chain Activity</span>
+                    <p className="mt-0.5 text-xs">Trade on DeepBook, participate in prediction markets, lottery, lending, and use Baram AI to earn activity-based voting power.</p>
                   </li>
                   <li>
-                    <span className="text-nasun-white font-medium">Delegation</span>
-                    <p className="mt-0.5 text-xs">Other community members can delegate their voting power to you. When they do, you vote on their behalf with combined power.</p>
+                    <span className="text-nasun-white font-medium">Allowlist Bonus (+30)</span>
+                    <p className="mt-0.5 text-xs">Battalion NFT allowlist registrants receive a significant bonus to their voting power.</p>
+                  </li>
+                  <li>
+                    <span className="text-nasun-white font-medium">X Account (+5)</span>
+                    <p className="mt-0.5 text-xs">Link your X (Twitter) account to receive a small participation bonus.</p>
                   </li>
                   <li className="pt-2 border-t border-nasun-white/10">
                     <span className="text-nasun-c1 font-medium flex items-center gap-1">
@@ -233,15 +228,6 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
               </div>
             )}
           </div>
-
-          {/* Delegation Warning */}
-          {delegationState?.hasDelegated && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm p-3 mt-4">
-              <p className="text-sm text-yellow-400">
-                Your voting power is delegated to another address. Revoke to vote directly.
-              </p>
-            </div>
-          )}
         </div>
       )}
     </OuterBox>

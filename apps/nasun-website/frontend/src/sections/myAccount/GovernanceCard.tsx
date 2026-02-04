@@ -5,12 +5,12 @@
  * Shows voting power and recent votes.
  */
 
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
-import { useDelegation } from "@/features/governance/hooks/useDelegation";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
+import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { StatCard } from "@/components/ui/StatCard";
 
@@ -20,18 +20,22 @@ interface GovernanceCardProps {
 
 export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
+  const { user } = useAuth();
 
-  const { votingPower, nftVerification } = useVotingPower();
-  const { delegationState } = useDelegation();
+  const { votingPower, fetchVotingPower } = useVotingPower();
   const { history, stats, isLoading } = useVoteHistory(3);
 
-  // Calculate voting power components
-  const basePower = votingPower?.leaderboardScore || 1;
-  const nftBonus = nftVerification?.nftBonus || 0;
-  const delegatedPower = delegationState?.delegatorCount ? delegationState.delegatorCount * 100 : 0;
-  const totalPower = basePower + nftBonus + delegatedPower;
+  const walletAddress = isZkConnected ? zkState?.address : account?.address;
+
+  useEffect(() => {
+    if (isConnected && walletAddress) {
+      fetchVotingPower(user?.twitterHandle, walletAddress);
+    }
+  }, [isConnected, walletAddress, user?.twitterHandle, fetchVotingPower]);
+
+  const totalPower = votingPower?.totalVotingPower || 1;
 
   if (!isConnected) {
     return (

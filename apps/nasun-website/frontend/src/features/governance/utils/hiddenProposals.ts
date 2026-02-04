@@ -27,7 +27,6 @@ export const fetchHiddenProposalIds = async (): Promise<string[]> => {
     }
 
     const data: HiddenProposalsResponse = await response.json();
-    console.log("[fetchHiddenProposalIds] Fetched IDs:", data.proposalIds);
     return data.proposalIds;
   } catch (error) {
     console.error("[fetchHiddenProposalIds] Failed to fetch:", error);

@@ -51,6 +51,9 @@ export interface GovernanceConfig {
   packageId: ObjectId;
   dashboard: ObjectId;
   adminCap: ObjectId;
+  votingPowerOracle: ObjectId;
+  certificateRegistry: ObjectId;
+  proposalTypeRegistry: ObjectId;
 }
 
 export interface BaramConfig {

@@ -49,6 +49,30 @@ export interface VoteNft {
   url: string;
 }
 
+// Certificate from Oracle API (used by both sponsored and direct vote)
+export interface VoteCertificate {
+  voter: string;
+  proposalId: string;
+  votingPower: number;
+  expiresAt: number;
+  signature: string;
+  breakdown: {
+    base: number;
+    leaderboard: number;
+    onChain: number;
+    allowlist: number;
+    xLinked: number;
+  };
+}
+
+// Result of a vote transaction
+export interface VoteResult {
+  success: boolean;
+  digest?: string;
+  votingPower?: number;
+  error?: string;
+}
+
 // Proposal field types (matching Move contract v2)
 export interface ProposalFields {
   // Vote counts (number of voters)

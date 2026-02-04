@@ -17,6 +17,8 @@ import { SuiClient } from "@mysten/sui/client";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { useAuth } from "@/features/auth";
+import { VoteCertificate, VoteResult } from "../types/voting";
+import { hexToBytes } from "../utils/proposalHelpers";
 
 const API_URL = import.meta.env.VITE_GOVERNANCE_API_URL;
 const PACKAGE_ID = import.meta.env.VITE_GOVERNANCE_PACKAGE_ID;
@@ -24,26 +26,6 @@ const ORACLE_ID = import.meta.env.VITE_VOTING_POWER_ORACLE_ID;
 const REGISTRY_ID = import.meta.env.VITE_CERTIFICATE_REGISTRY_ID;
 const SUI_RPC_URL = import.meta.env.VITE_SUI_RPC_URL || "https://rpc.devnet.nasun.io";
 const CLOCK_ID = "0x6";
-
-interface Certificate {
-  voter: string;
-  proposalId: string;
-  votingPower: number;
-  expiresAt: number;
-  signature: string;
-  breakdown: {
-    leaderboard: number;
-    nft: number;
-    token: number;
-  };
-}
-
-interface VoteResult {
-  success: boolean;
-  digest?: string;
-  votingPower?: number;
-  error?: string;
-}
 
 export function useSponsoredVote() {
   const [isPending, setIsPending] = useState(false);
@@ -53,22 +35,14 @@ export function useSponsoredVote() {
   const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const { user } = useAuth();
 
-  /**
-   * Execute a sponsored vote
-   * @param proposalId - The proposal ID to vote on
-   * @param voteYes - true for Yes, false for No
-   * @param ethSignature - Optional ETH signature for NFT bonus verification
-   */
   const vote = async (
     proposalId: string,
-    voteYes: boolean,
-    ethSignature?: { message: string; signature: string }
+    voteYes: boolean
   ): Promise<VoteResult> => {
     setIsPending(true);
     setError(null);
 
     try {
-      // Determine voter address
       const voterAddress = isZkConnected ? zkState?.address : account?.address;
       if (!voterAddress) {
         throw new Error("Wallet not connected");
@@ -82,7 +56,7 @@ export function useSponsoredVote() {
           voter: voterAddress,
           proposalId,
           twitterHandle: user?.twitterHandle,
-          ethSignature,
+          walletAddress: voterAddress,
         }),
       });
 
@@ -94,18 +68,12 @@ export function useSponsoredVote() {
         throw new Error(err.error || "Failed to get certificate");
       }
 
-      const cert: Certificate = await certResponse.json();
-      console.log("Certificate received:", { votingPower: cert.votingPower, expiresAt: cert.expiresAt });
+      const cert: VoteCertificate = await certResponse.json();
 
       // 2. Build Transaction (mint_certificate + vote)
       const tx = new Transaction();
+      const signatureBytes = hexToBytes(cert.signature);
 
-      // Convert signature from hex to bytes (browser-compatible)
-      const signatureBytes = Array.from(
-        Uint8Array.from(cert.signature.match(/.{2}/g)!, b => parseInt(b, 16))
-      );
-
-      // mint_certificate
       const [certificate] = tx.moveCall({
         target: `${PACKAGE_ID}::voting_power::mint_certificate`,
         arguments: [
@@ -120,7 +88,6 @@ export function useSponsoredVote() {
         ],
       });
 
-      // vote_with_certificate (upgraded from deprecated vote function)
       tx.moveCall({
         target: `${PACKAGE_ID}::proposal::vote_with_certificate`,
         arguments: [
@@ -156,11 +123,9 @@ export function useSponsoredVote() {
       let userSignature: string;
 
       if (isZkConnected && zkSignTransaction) {
-        // zkLogin signing
         const sig = await zkSignTransaction(txBytesArray);
         userSignature = typeof sig === "string" ? sig : sig.signature;
       } else if (status === "unlocked" && account) {
-        // Local wallet signing
         const keypair = getKeypair();
         if (!keypair) {
           throw new Error("Wallet unlocked but keypair not available");
@@ -178,15 +143,13 @@ export function useSponsoredVote() {
         options: { showEffects: true },
       });
 
-      console.log("Vote transaction successful:", result.digest);
-
       return {
         success: true,
         digest: result.digest,
         votingPower: cert.votingPower,
       };
-    } catch (err: any) {
-      const errorMessage = err.message || "Vote failed";
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Vote failed";
       console.error("Sponsored vote error:", err);
       setError(errorMessage);
       return { success: false, error: errorMessage };
