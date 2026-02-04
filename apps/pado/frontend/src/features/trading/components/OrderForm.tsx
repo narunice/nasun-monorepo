@@ -66,7 +66,7 @@ export function OrderForm({
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const [orderMode, setOrderMode] = useState<OrderModeType>('limit');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
 
   const isMarket = orderMode === 'market';
   const isBuy = side === 'buy';
@@ -125,7 +125,7 @@ export function OrderForm({
     : disabled || isLoading || isAutoDepositing || hasValidationError;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 flex-1 flex flex-col">
       {/* A. Underline Tabs: Limit / Market */}
       <UnderlineTabs
         tabs={[
@@ -351,7 +351,7 @@ export function OrderForm({
       {/* H. Single Action Button */}
       <button
         onClick={handleSubmit}
-        className={`w-full py-2 font-semibold rounded transition-colors text-white disabled:opacity-50 ${
+        className={`mt-auto w-full py-2 font-semibold rounded transition-colors text-white disabled:opacity-50 ${
           isBuy
             ? 'bg-green-600 hover:bg-green-700'
             : 'bg-red-600 hover:bg-red-700'

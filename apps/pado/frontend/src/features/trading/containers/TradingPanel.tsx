@@ -11,7 +11,7 @@ import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '..
 import { useOrderForm, useMarket } from '../context';
 import { OrderForm, OrderConfirmModal, SimpleOrderForm, TradingBalanceBar } from '../components';
 
-function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) {
+export function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -42,7 +42,7 @@ function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) 
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-theme-bg-secondary border border-theme-border rounded-lg p-4 shadow-lg z-50 text-left">
+        <div className="absolute left-0 bottom-full mb-2 w-80 bg-theme-bg-secondary border border-theme-border rounded-lg p-4 shadow-lg z-50 text-left">
           {variant === 'simple' ? (
             <>
               <p className="text-xs xl:text-sm font-semibold text-theme-text-primary mb-2">
@@ -92,6 +92,33 @@ function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) 
         </div>
       )}
     </span>
+  );
+}
+
+/** Standalone Enable Pado card for use outside TradingPanel (e.g. Chat column) */
+export function EnablePadoCard() {
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const { isLoading, balanceManagerId, handleCreateBalanceManager } = useOrderActions();
+
+  if (!isConnected || balanceManagerId) return null;
+
+  return (
+    <div className="shrink-0 bg-theme-bg-secondary rounded-lg p-4">
+      <h3 className="text-sm xl:text-base font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
+      <div className="text-xs xl:text-sm text-theme-text-muted mb-3">
+        Enable Pado to start trading. Funds will be automatically deposited when needed.
+        <EnablePadoInfo variant="pro" />
+      </div>
+      <button
+        onClick={handleCreateBalanceManager}
+        disabled={isLoading}
+        className="w-full py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
+      >
+        {isLoading ? 'Enabling...' : 'Enable Pado'}
+      </button>
+    </div>
   );
 }
 
@@ -280,27 +307,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
   // Pro Mode UI (with auto deposit)
   return (
-    <div className="space-y-4">
-      {/* Enable Pado prompt (when no BalanceManager) */}
-      {isConnected && !balanceManagerId && (
-        <div className="bg-theme-bg-secondary rounded-lg p-4">
-          <h3 className="text-sm xl:text-base font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
-          <div className="text-xs xl:text-sm text-theme-text-muted mb-3">
-            Enable Pado to start trading. Funds will be automatically deposited when needed.
-            <EnablePadoInfo variant="pro" />
-          </div>
-          <button
-            onClick={handleCreateBalanceManager}
-            disabled={isLoading}
-            className="w-full py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
-          >
-            {isLoading ? 'Enabling...' : 'Enable Pado'}
-          </button>
-        </div>
-      )}
-
+    <div className="h-full flex flex-col gap-4">
       {/* Order Form Card */}
-      <div className="bg-theme-bg-secondary rounded-lg p-3">
+      <div className="bg-theme-bg-secondary rounded-lg p-3 flex-1 min-h-0 flex flex-col">
         {/* Connect wallet banner when not connected */}
         {!isConnected && (
           <div className="mb-4 p-3 rounded text-sm xl:text-base bg-pd5 dark:bg-pd0/30 text-pd1 dark:text-pd3 border border-pd4 dark:border-pd2 text-center">
