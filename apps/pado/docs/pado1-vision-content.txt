@@ -1,0 +1,775 @@
+Last updated: 2026-02-04
+
+================================================================================
+PADO VISION PAGE - TEXT CONTENT (EN)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────
+
+HERO SECTION
+
+  [Tagline]
+  Trade Together
+
+  [Sub-Tagline]
+  The financial platform where community lives inside.
+
+  [Button]
+  Try Pado Alpha
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 1: THE LONELY TRADER PROBLEM
+
+  [Title]
+  The Lonely Trader Problem
+
+  [Paragraph 1]
+  Decentralized finance solved custody. It did not solve isolation.
+
+  [Paragraph 2]
+  Five wallets. Three bridges. Seven protocols. Twelve token approvals. And at
+  the end of all that, you sit alone in front of a chart.
+
+  [Paragraph 3]
+  The real context — who is trading, what others are watching, where conviction
+  is forming — lives in Discord, Telegram, and X. Three apps open next to the
+  DEX, none of them talking to each other.
+
+  [Paragraph 4]
+  Centralized exchanges understood this. Binance has chat rooms. Bybit has copy
+  trading. But CEX social is surveillance social — your data, your patterns,
+  your positions, all visible to the house.
+
+  [Closing Statement]
+  The problem is not just fragmentation of capital. It is fragmentation of
+  context.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 2: THE THESIS - THE INVERSION
+
+  [Section Title]
+  The Inversion
+
+  [Introduction]
+  Pado does not bolt social features onto a financial product. It builds
+  financial infrastructure where community is native to every action.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2A: Why SocialFi Failed]
+
+    [Title]
+    Why SocialFi Failed
+
+    [Content]
+    Friend.tech attracted speculators who left the moment returns declined.
+    InfoFi forced ROI calculations onto every conversation. The pattern is
+    clear: injecting financial incentives into social environments creates
+    friction, not engagement. When the social layer becomes the product, only
+    mercenary capital shows up.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2B: The Inversion]
+
+    [Title]
+    The Inversion
+
+    [Content]
+    Pado starts with finance — real trading, real markets, real capital at
+    risk. The social layer surfaces a shared context that already exists: people
+    watching the same chart, taking the same risk, forming the same conviction.
+    Finance is the reason to come. Community is the reason to stay.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2C: What Finance-First Social Means]
+
+    [Title]
+    What Finance-First Social Means
+
+    [Content]
+    Chat embedded directly in trading pairs. Leaderboards that create shared
+    context and friendly competition. Prediction markets that turn conviction
+    into conversation. Every financial action has a social surface — not because
+    engagement is the goal, but because trading alone is harder than trading
+    together. No feed. No followers. No likes. Just markets and the people in
+    them.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2D: The Visitor Journey]
+
+    [Title]
+    The Visitor Journey
+
+    [Content]
+    Without social: a user tries the demo, clicks around, leaves. With social:
+    a user opens a trade, notices the chat, sees someone call the same setup,
+    checks the leaderboard, comes back tomorrow. The difference is not a
+    feature — it is the difference between a tool and a place.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2E: One App, Not Many Protocols]
+
+    [Title]
+    One App, Not Many Protocols
+
+    [Content]
+    Spot trading, perpetual futures, lending and borrowing, prediction markets,
+    lottery, staking, and payments — all under one account, one margin system,
+    one risk engine. This is not the differentiator. This is the foundation that
+    makes the differentiator possible. When capital flows freely and collateral
+    works everywhere, the social layer has something real to gather around.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 3: BUILT, NOT PROMISED - PROOF
+
+  [Section Title]
+  Built, Not Promised
+
+  [Subtitle]
+  Everything below is live on Nasun Devnet today.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 1]
+
+    [Title]
+    Live Chat
+
+    [Description]
+    WebSocket-powered chat embedded directly in the trading interface.
+    Signature-based authentication — your trading identity is your chat
+    identity.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 2]
+
+    [Title]
+    Testnet Leaderboard
+
+    [Description]
+    On-chain trading data, real rankings. See who is performing and what
+    markets they are active in.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 3]
+
+    [Title]
+    Spot Trading
+
+    [Description]
+    Full central limit order book powered by DeepBook V3. Real orders, real
+    execution, real-time depth.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 4]
+
+    [Title]
+    Prediction Markets
+
+    [Description]
+    Binary YES/NO markets with on-chain resolution. Put conviction behind your
+    forecast.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 5]
+
+    [Title]
+    Weekly Lottery
+
+    [Description]
+    On-chain lottery with Sui Random for provably fair draws. Pick your numbers,
+    verify the result.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 6]
+
+    [Title]
+    Smart Account
+
+    [Description]
+    One-click onboarding via zkLogin. No seed phrase, no browser extension.
+    Create an account in 30 seconds.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Statistics Line]
+  7 financial products. Live chat. Leaderboard. 0 seed phrases. All under one
+  margin system.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 4: WHERE PADO IS HEADED - BLUEPRINT
+
+  [Section Title]
+  Where Pado Is Headed
+
+  [Introduction]
+  Pado grows in three deliberate phases. Each layer builds on the one before it.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [PHASE 1: COMMUNITY]
+
+    [Phase Title]
+    Phase 1 — Community
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.1]
+
+      [Title]
+      Chat Categories
+
+      [Description]
+      Market-specific rooms, general discussion, and announcement channels —
+      all inside the trading interface.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.2]
+
+      [Title]
+      Leaderboard Competitions
+
+      [Description]
+      Testnet trading campaigns with verifiable on-chain rankings. Compete
+      openly, win transparently.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.3]
+
+      [Title]
+      NFT Whitelist
+
+      [Description]
+      Genesis NFT collection for early community members. Priority access
+      through demonstrated participation.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.4]
+
+      [Title]
+      Testnet Campaign
+
+      [Description]
+      Structured onboarding program to build the initial community of active
+      traders.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [PHASE 2: DEPTH]
+
+    [Phase Title]
+    Phase 2 — Depth
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 2.1]
+
+      [Title]
+      Perpetual Futures
+
+      [Description]
+      Up to 20x leverage with real-time funding rates. The smart contracts are
+      written and tested.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 2.2]
+
+      [Title]
+      Lending & Borrowing
+
+      [Description]
+      Supply assets to earn yield. Borrow against your portfolio. The protocol
+      is deployed and the interface is ready.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 2.3]
+
+      [Title]
+      Copy Trading
+
+      [Description]
+      Follow top performers on the leaderboard with one click. Transparent
+      track records, no hidden mechanics.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [PHASE 3: INTELLIGENCE & SCALE]
+
+    [Phase Title]
+    Phase 3 — Intelligence & Scale
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 3.1]
+
+      [Title]
+      AI Agents
+
+      [Description]
+      Risk Sentinel monitors portfolio health. Market Narrator translates
+      movements into plain language. Strategy Simulator tests scenarios before
+      committing capital.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 3.2]
+
+      [Title]
+      Cross-Chain Vaults
+
+      [Description]
+      Bring BTC and ETH into Pado through auditable, programmable vaults. Trade
+      external assets with native performance.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 3.3]
+
+      [Title]
+      Governance
+
+      [Description]
+      Progressive decentralization toward full DAO-controlled protocol
+      parameters.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Closing Phrase]
+  Community first. Depth second. Scale third.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 5: COMMUNITY IS THE PRODUCT
+
+  [Section Title]
+  Community Is the Product
+
+  [Content]
+  In web3, community forms around vision and early participation — not finished
+  products. A prototype with a chat room where 50 believers are talking is more
+  valuable than a polished DEX with zero community. Pado is designed for this
+  sequence: vision and prototype attract the community. The community funds the
+  next phase through NFT sales. NFT funding enables liquidity bootstrapping.
+  Liquidity enables mainnet. Every step requires the previous one. The community
+  is not a marketing channel — it is the funding mechanism, the feedback loop,
+  and the reason the product works.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 6: CALL TO ACTION
+
+  [Section Title]
+  Join the Next Wave
+
+  [Body Text]
+  Pado is live on Nasun Devnet. Open the app, make a trade, and say hello in
+  the chat.
+
+  [Primary Button]
+  Try Pado Alpha
+
+  [Secondary Button]
+  Read the Technical Paper
+
+────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+PADO VISION PAGE - TEXT CONTENT (KO)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────
+
+HERO SECTION
+
+  [Tagline]
+  Trade Together
+
+  [Sub-Tagline]
+  커뮤니티가 살아 숨쉬는 금융 플랫폼.
+
+  [Button]
+  Pado Open Alpha
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 1: 고립된 트레이더 문제
+
+  [Title]
+  고립된 트레이더 문제
+
+  [Paragraph 1]
+  탈중앙 금융은 자기 수탁을 해결했습니다. 고립은 해결하지 못했습니다.
+
+  [Paragraph 2]
+  지갑 5개. 브릿지 3개. 프로토콜 7개. 토큰 승인 12번. 그 모든 과정의 끝에서,
+  당신은 차트 앞에 혼자 앉아 있습니다.
+
+  [Paragraph 3]
+  진짜 맥락 — 누가 거래하고 있는지, 다른 사람들은 무엇을 보고 있는지, 어디서
+  확신이 형성되고 있는지 — 은 디스코드, 텔레그램, X에 있습니다. DEX 옆에
+  3개의 앱이 열려 있지만, 서로 대화하지 않습니다.
+
+  [Paragraph 4]
+  중앙화 거래소는 이것을 이해했습니다. 바이낸스에는 채팅방이 있고, 바이빗에는
+  카피 트레이딩이 있습니다. 하지만 CEX 소셜은 감시 소셜입니다 — 당신의
+  데이터, 패턴, 포지션이 모두 하우스에게 보입니다.
+
+  [Closing Statement]
+  문제는 자본의 파편화만이 아닙니다. 맥락의 파편화입니다.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 2: THE THESIS - THE INVERSION
+
+  [Section Title]
+  The Inversion
+
+  [Introduction]
+  Pado는 금융 제품에 소셜 기능을 덧붙이지 않습니다. 커뮤니티가 모든 행동에
+  자연스럽게 녹아든 금융 인프라를 구축합니다.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2A: Why SocialFi Failed]
+
+    [Title]
+    Why SocialFi Failed
+
+    [Content]
+    Friend.tech는 수익이 줄자마자 떠난 투기꾼들을 끌어들였습니다. InfoFi는
+    모든 대화에 ROI 계산을 강요했습니다. 패턴은 명확합니다: 소셜 환경에 금융
+    인센티브를 주입하면 참여가 아닌 마찰이 생깁니다. 소셜 레이어가 제품이
+    되면, 용병 자본만 나타납니다.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2B: The Inversion]
+
+    [Title]
+    The Inversion
+
+    [Content]
+    Pado는 금융에서 시작합니다 — 실제 트레이딩, 실제 마켓, 실제 리스크.
+    소셜 레이어는 이미 존재하는 공유 맥락을 표면화합니다: 같은 차트를 보고,
+    같은 리스크를 감수하고, 같은 확신을 형성하는 사람들. 금융은 오는 이유.
+    커뮤니티는 머무는 이유.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2C: What Finance-First Social Means]
+
+    [Title]
+    What Finance-First Social Means
+
+    [Content]
+    트레이딩 페어에 직접 내장된 채팅. 공유된 맥락과 선의의 경쟁을 만드는
+    리더보드. 확신을 대화로 바꾸는 예측 시장. 모든 금융 행동에는 소셜 표면이
+    있습니다 — 참여 유도가 목적이 아니라, 혼자 트레이딩하는 것보다 함께하는
+    것이 더 낫기 때문입니다. 피드 없음. 팔로워 없음. 좋아요 없음. 마켓과 그
+    안의 사람들만 있습니다.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2D: The Visitor Journey]
+
+    [Title]
+    The Visitor Journey
+
+    [Content]
+    소셜 없이: 유저가 데모를 시도하고, 클릭하고, 떠남. 소셜 있으면: 유저가
+    거래를 열고, 채팅을 발견하고, 누군가 같은 셋업을 콜하는 것을 보고,
+    리더보드를 확인하고, 내일 다시 옴. 차이는 기능이 아닙니다 — 도구와 장소의
+    차이입니다.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Subsection 2E: One App, Not Many Protocols]
+
+    [Title]
+    One App, Not Many Protocols
+
+    [Content]
+    현물 거래, 무기한 선물, 대출과 차입, 예측 시장, 복권, 스테이킹, 결제 —
+    모두 하나의 계정, 하나의 마진 시스템, 하나의 리스크 엔진 아래에 있습니다.
+    이것은 차별화 포인트가 아닙니다. 차별화를 가능하게 하는 기반입니다. 자본이
+    자유롭게 흐르고 담보가 어디서든 작동할 때, 소셜 레이어는 모일 수 있는
+    실체를 갖게 됩니다.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 3: BUILT, NOT PROMISED - PROOF
+
+  [Section Title]
+  Built, Not Promised
+
+  [Subtitle]
+  아래의 모든 것이 오늘 Nasun Devnet에서 작동하고 있습니다.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 1]
+
+    [Title]
+    Live Chat
+
+    [Description]
+    트레이딩 인터페이스에 직접 내장된 WebSocket 채팅. 서명 기반 인증 —
+    트레이딩 아이덴티티가 곧 채팅 아이덴티티.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 2]
+
+    [Title]
+    Testnet Leaderboard
+
+    [Description]
+    온체인 트레이딩 데이터 기반 실제 랭킹. 누가 잘하고 있는지, 어떤 마켓에서
+    활동하는지 확인하세요.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 3]
+
+    [Title]
+    Spot Trading
+
+    [Description]
+    DeepBook V3 기반 중앙지정가 주문장. 실제 주문, 실제 체결, 실시간 호가창.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 4]
+
+    [Title]
+    Prediction Markets
+
+    [Description]
+    온체인 정산 방식의 이진 YES/NO 마켓. 당신의 예측에 확신을 걸어보세요.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 5]
+
+    [Title]
+    Weekly Lottery
+
+    [Description]
+    Sui Random 기반 검증 가능한 공정 추첨 온체인 복권. 번호를 고르고, 결과를
+    직접 검증하세요.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Feature 6]
+
+    [Title]
+    Smart Account
+
+    [Description]
+    zkLogin을 통한 원클릭 온보딩. 시드 구문 없음, 브라우저 확장 없음. 30초
+    만에 계정 생성.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Statistics Line]
+  7개 금융 상품. 라이브 채팅. 리더보드. 시드 구문 0개. 모두 하나의 마진
+  시스템 하에서.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 4: WHERE PADO IS HEADED - BLUEPRINT
+
+  [Section Title]
+  Where Pado Is Headed
+
+  [Introduction]
+  Pado는 세 단계로 성장합니다. 각 단계는 이전 단계 위에 쌓입니다.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [PHASE 1: COMMUNITY]
+
+    [Phase Title]
+    Phase 1 — Community
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.1]
+
+      [Title]
+      채팅 카테고리
+
+      [Description]
+      마켓별 채널, 일반 토론, 공지 채널 — 모두 트레이딩 인터페이스 안에서.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.2]
+
+      [Title]
+      리더보드 경쟁
+
+      [Description]
+      검증 가능한 온체인 랭킹의 테스트넷 트레이딩 캠페인. 공개적으로 경쟁하고,
+      투명하게 승리하세요.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.3]
+
+      [Title]
+      NFT 화이트리스트
+
+      [Description]
+      초기 커뮤니티 멤버를 위한 제네시스 NFT 컬렉션. 입증된 참여를 통한 우선
+      접근.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 1.4]
+
+      [Title]
+      테스트넷 캠페인
+
+      [Description]
+      활성 트레이더 초기 커뮤니티를 구축하기 위한 구조화된 온보딩 프로그램.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [PHASE 2: DEPTH]
+
+    [Phase Title]
+    Phase 2 — Depth
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 2.1]
+
+      [Title]
+      Perpetual Futures
+
+      [Description]
+      최대 20배 레버리지와 실시간 펀딩 레이트. 스마트 컨트랙트는 작성 및
+      테스트 완료.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 2.2]
+
+      [Title]
+      Lending & Borrowing
+
+      [Description]
+      자산을 공급하여 수익을 올리세요. 포트폴리오를 담보로 차입하세요.
+      프로토콜은 배포되었고 인터페이스도 준비되어 있습니다.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 2.3]
+
+      [Title]
+      Copy Trading
+
+      [Description]
+      리더보드의 상위 트레이더를 원클릭으로 팔로우하세요. 투명한 트랙 레코드,
+      숨겨진 메커니즘 없음.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [PHASE 3: INTELLIGENCE & SCALE]
+
+    [Phase Title]
+    Phase 3 — Intelligence & Scale
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 3.1]
+
+      [Title]
+      AI Agents
+
+      [Description]
+      Risk Sentinel이 포트폴리오 건전성을 모니터링합니다. Market Narrator가
+      시장 움직임을 이해하기 쉬운 언어로 번역합니다. Strategy Simulator로
+      자본을 투입하기 전 시나리오를 테스트하세요.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 3.2]
+
+      [Title]
+      Cross-Chain Vaults
+
+      [Description]
+      감사 가능하고 프로그래밍 가능한 볼트를 통해 BTC와 ETH를 Pado로
+      가져오세요. 외부 자산을 네이티브 성능으로 거래하세요.
+
+    ──────────────────────────────────────────────────────────────────
+
+    [Item 3.3]
+
+      [Title]
+      Governance
+
+      [Description]
+      풀 DAO 기반 프로토콜 파라미터 관리를 향한 점진적 탈중앙화.
+
+  ──────────────────────────────────────────────────────────────────────
+
+  [Closing Phrase]
+  Community first. Depth second. Scale third.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 5: COMMUNITY IS THE PRODUCT
+
+  [Section Title]
+  Community Is the Product
+
+  [Content]
+  Web3에서 커뮤니티는 완성된 제품이 아니라 비전과 초기 참여를 중심으로
+  형성됩니다. 50명의 믿는 사람들이 대화하는 채팅방이 있는 프로토타입이
+  커뮤니티 없는 세련된 DEX보다 더 가치 있습니다. Pado는 이 순서를 위해
+  설계되었습니다: 비전과 프로토타입이 커뮤니티를 끌어들입니다. 커뮤니티가
+  NFT 판매를 통해 다음 단계에 자금을 댑니다. NFT 펀딩이 유동성
+  부트스트래핑을 가능하게 합니다. 유동성이 메인넷을 가능하게 합니다. 모든
+  단계는 이전 단계를 필요로 합니다. 커뮤니티는 마케팅 채널이 아닙니다 —
+  펀딩 메커니즘이자, 피드백 루프이자, 제품이 작동하는 이유입니다.
+
+────────────────────────────────────────────────────────────────────────────
+
+SECTION 6: CALL TO ACTION
+
+  [Section Title]
+  Join the Next Wave
+
+  [Body Text]
+  Pado is live on Nasun Devnet. 앱을 열고, 거래하고, 채팅에서 인사하세요.
+
+  [Primary Button]
+  Try Pado Alpha
+
+  [Secondary Button]
+  Read the Technical Paper
+
+────────────────────────────────────────────────────────────────────────────
+
+END OF DOCUMENT

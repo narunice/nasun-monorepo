@@ -1,0 +1,445 @@
+================================================================================
+                    PADO VC PITCH - PAGE CONTENT
+================================================================================
+Last updated: 2026-02-04
+File sources:
+  - apps/nasun-website/frontend/src/assets/locales/en/pado-pitch.json
+  - apps/nasun-website/frontend/src/assets/locales/ko/pado-pitch.json
+================================================================================
+
+
+================================================================================
+                              ENGLISH (EN)
+================================================================================
+
+
+========== HERO SECTION ==========
+[Tagline]
+The Opportunity
+
+[SubTagline]
+The only DEX where community forms inside the product.
+
+[Button]
+Try Pado Alpha
+
+
+========== THE MARKET SECTION ==========
+[Title]
+The Market
+
+[Intro]
+The unified DEX thesis is proven. The differentiation battle is just beginning.
+
+[Market Point 1]
+[Title] $100B+ in DeFi TVL
+[Description] Spread across 500+ protocols on dozens of chains. Users manage
+multiple wallets, bridge between networks, and accept fragmented risk exposure
+just to access basic financial services.
+
+[Market Point 2]
+[Title] Unified Finance Is Table Stakes
+[Description] Hyperliquid, dYdX v4, and Jupiter have already consolidated
+trading verticals. Unified margin is no longer a differentiator — it is a
+minimum requirement. The market has moved past whether to unify, to how to
+retain users after unifying.
+
+[Market Point 3]
+[Title] The Real Gap
+[Description] Every unified DEX solves capital fragmentation. None solves
+community fragmentation. Users trade on Hyperliquid and discuss on Discord.
+The social context lives outside the product. Pado is the first platform
+where community forms inside the trading interface.
+
+[Market Point 4]
+[Title] Own L1 = Full Stack Control
+[Description] By running on Nasun — a dedicated Sui-forked L1 — Pado controls
+consensus, execution, fee structure, and upgrade cadence. Zero dependency on
+external chain governance or congestion.
+
+
+========== THE PRODUCT SECTION ==========
+[Title]
+The Product
+
+[Intro]
+Pado is a non-custodial unified finance application live on Nasun Devnet.
+
+[Product Highlight 1]
+[Title] Finance-First Social
+[Description] The primary differentiator. Community gathers inside the product,
+not in a Discord server. Chat embedded in trading pairs, leaderboards that drive
+competition, prediction markets that turn conviction into conversation. No feed.
+No followers. No likes. Just markets and the people in them.
+
+[Product Highlight 2]
+[Title] 7 Products, 1 Account
+[Description] Spot trading, perpetual futures, lending, prediction markets,
+lottery, staking, and payments — all accessible from a single smart account
+with shared collateral.
+
+[Product Highlight 3]
+[Title] CEX-Grade UX, DEX-Level Transparency
+[Description] zkLogin enables 30-second onboarding with no seed phrase. All
+execution is fully on-chain and verifiable. Users get exchange-grade convenience
+without surrendering custody.
+
+[Product Highlight 4]
+[Title] Unified Capital Infrastructure
+[Description] Portfolio-level risk management across all products. Multi-collateral
+support with tiered risk weights. This is the infrastructure layer that keeps
+capital flowing — and keeps users from needing to leave.
+
+
+========== TRACTION & EXECUTION SECTION ==========
+[Title]
+Traction & Execution
+
+[Intro]
+Not a whitepaper. Not a roadmap. A working prototype.
+
+[Metric 1]
+[Label] Smart Contract Packages
+[Value] 9
+[Detail] Deployed on Nasun Devnet V7
+
+[Metric 2]
+[Label] Financial Products
+[Value] 7
+[Detail] Live and operational
+
+[Metric 3]
+[Label] Custom L1 Blockchain
+[Value] 1
+[Detail] Sui fork with own validator set
+
+[Metric 4]
+[Label] External Funding
+[Value] $0
+[Detail] Fully bootstrapped to date
+
+[Deployed Features]
+- WebSocket chat server with signature-based authentication
+- Testnet leaderboard with on-chain trading data
+- Full CLOB DEX (DeepBook V3) with real orderbook execution
+- Binary prediction markets with on-chain resolution
+- Weekly lottery with Sui Random verifiable fairness
+- Unified margin engine with multi-collateral risk thresholds
+- zkLogin smart accounts with social recovery
+- Rust-based event indexer for real-time trading data
+
+
+========== BUSINESS MODEL SECTION ==========
+[Title]
+Business Model
+
+[Intro]
+Multiple revenue streams that scale with platform adoption.
+
+[Revenue Stream 1]
+[Title] Trading Fees
+[Description] Maker/taker fees on spot and perpetual markets. Primary revenue
+driver that scales directly with trading volume.
+
+[Revenue Stream 2]
+[Title] Lending Spread
+[Description] Protocol takes a spread between lending and borrowing rates.
+Generates passive revenue proportional to lending pool utilization.
+
+[Revenue Stream 3]
+[Title] Lottery Treasury
+[Description] 10% of lottery ticket sales allocated to protocol treasury.
+Provides consistent revenue from a high-engagement product.
+
+[Revenue Stream 4]
+[Title] Premium Features (Future)
+[Description] Copy trading subscriptions, AI agent access, and strategy
+marketplace commissions. Second-order revenue enabled by platform network effects.
+
+[Revenue Stream 5]
+[Title] NFT Sales (Community Round)
+[Description] Genesis NFT collection as the first community funding mechanism.
+Provides early liquidity while aligning incentives between team and community.
+
+
+========== ROADMAP SECTION ==========
+[Title]
+Roadmap
+
+[Phase 1 - Now]
+[Title] Now
+[Subtitle] Community Formation
+[Item 1] Live prototype with embedded chat and leaderboard
+[Item 2] Community building and early contributor programs
+[Item 3] NFT collection launch preparation
+[Item 4] Testnet trading campaign
+
+[Phase 2 - Next]
+[Title] Next
+[Subtitle] Product Depth
+[Item 1] Chat categories and market-specific rooms
+[Item 2] Perpetual futures activation (contracts complete)
+[Item 3] Lending/borrowing UI launch (protocol deployed)
+[Item 4] Copy trading with leaderboard integration
+
+[Phase 3 - Then]
+[Title] Then
+[Subtitle] Intelligence & Scale
+[Item 1] AI agents (Risk Sentinel, Market Narrator, Strategy Simulator)
+[Item 2] Cross-chain asset vaults (BTC, ETH)
+[Item 3] Mainnet preparation and security audits
+[Item 4] DAO governance activation
+
+[Roadmap Sequence]
+NFT Funding → Community Growth → VC Raise → Mainnet
+
+
+========== THE ASK SECTION ==========
+[Title]
+The Ask
+
+[Intro]
+Pado is raising its first external round to accelerate from prototype to mainnet.
+
+[Ask Detail 1]
+[Title] Stage
+[Content] Pre-seed / Community Round
+
+[Ask Detail 2]
+[Title] Use of Funds
+[Content] Engineering team expansion (2 → 4), infrastructure scaling, liquidity
+bootstrapping for mainnet launch, and security audits.
+
+[Ask Detail 3]
+[Title] Why Now
+[Content] No existing platform combines real financial execution with embedded
+social infrastructure. The unified DEX category is consolidating fast — but
+differentiation through community is still unclaimed. This is a timing opportunity.
+
+[CTA Primary]
+Schedule a Call
+
+[CTA Secondary]
+Try Pado Alpha
+
+[CTA Tertiary]
+Read the Technical Paper
+
+
+================================================================================
+                              KOREAN (KO)
+================================================================================
+
+
+========== 히어로 섹션 ==========
+[Tagline]
+The Opportunity
+
+[SubTagline]
+커뮤니티가 제품 안에서 형성되는 유일한 DEX.
+
+[Button]
+Pado Open Alpha
+
+
+========== THE MARKET 섹션 ==========
+[Title]
+The Market
+
+[Intro]
+통합 DEX 테제는 검증되었습니다. 차별화 경쟁은 이제 막 시작되었습니다.
+
+[Market Point 1]
+[Title] DeFi TVL $1,000억+
+[Description] 수십 개 체인의 500개 이상 프로토콜에 분산되어 있습니다. 사용자들은
+기본적인 금융 서비스에 접근하기 위해 여러 지갑을 관리하고, 네트워크 간 브릿지하고,
+파편화된 리스크 노출을 감수합니다.
+
+[Market Point 2]
+[Title] Unified Finance Is Table Stakes
+[Description] Hyperliquid, dYdX v4, Jupiter가 이미 트레이딩 버티컬을 통합했습니다.
+통합 마진은 더 이상 차별화 요소가 아닙니다 — 최소 요건입니다. 시장은 통합 여부를
+넘어, 통합 후 어떻게 유저를 유지할 것인가로 이동했습니다.
+
+[Market Point 3]
+[Title] The Real Gap
+[Description] 모든 통합 DEX가 자본 파편화를 해결합니다. 커뮤니티 파편화를 해결하는
+곳은 없습니다. 유저들은 Hyperliquid에서 거래하고 Discord에서 토론합니다. 소셜
+컨텍스트가 제품 밖에 있습니다. Pado는 커뮤니티가 트레이딩 인터페이스 안에서 형성되는
+첫 번째 플랫폼입니다.
+
+[Market Point 4]
+[Title] Own L1 = Full Stack Control
+[Description] 전용 Sui 포크 L1인 Nasun 위에서 운영함으로써, Pado는 합의, 실행,
+수수료 구조, 업그레이드 주기를 통제합니다. 외부 체인 거버넌스나 혼잡에 대한
+의존성이 없습니다.
+
+
+========== THE PRODUCT 섹션 ==========
+[Title]
+The Product
+
+[Intro]
+Pado는 Nasun Devnet에서 라이브 중인 비수탁형 통합 금융 애플리케이션입니다.
+
+[Product Highlight 1]
+[Title] Finance-First Social
+[Description] 핵심 차별화 요소. 커뮤니티가 디스코드가 아닌 제품 안에서 모입니다.
+트레이딩 페어에 내장된 채팅, 경쟁을 유도하는 리더보드, 확신을 대화로 바꾸는 예측
+시장. 피드 없음. 팔로워 없음. 좋아요 없음. 마켓과 그 안의 사람들만 있습니다.
+
+[Product Highlight 2]
+[Title] 7개 상품, 1개 계정
+[Description] 현물 거래, 무기한 선물, 렌딩, 예측 시장, 복권, 스테이킹, 결제 —
+모두 공유 담보를 가진 단일 스마트 계정에서 접근 가능합니다.
+
+[Product Highlight 3]
+[Title] CEX급 UX, DEX급 투명성
+[Description] zkLogin으로 시드 구문 없이 30초 온보딩. 모든 실행은 완전한 온체인이며
+검증 가능합니다. 수탁권을 포기하지 않으면서 거래소급 편의성을 제공합니다.
+
+[Product Highlight 4]
+[Title] Unified Capital Infrastructure
+[Description] 모든 상품에 걸친 포트폴리오 레벨 리스크 관리. 계층형 리스크 가중치의
+멀티 담보 지원. 이것은 자본이 계속 흐르게 하고 — 유저가 떠날 필요 없게 하는 인프라
+레이어입니다.
+
+
+========== TRACTION & EXECUTION 섹션 ==========
+[Title]
+Traction & Execution
+
+[Intro]
+백서가 아닙니다. 로드맵이 아닙니다. 작동하는 프로토타입입니다.
+
+[Metric 1]
+[Label] 스마트 컨트랙트 패키지
+[Value] 9
+[Detail] Nasun Devnet V7에 배포
+
+[Metric 2]
+[Label] 금융 상품
+[Value] 7
+[Detail] 라이브 운영 중
+
+[Metric 3]
+[Label] 커스텀 L1 블록체인
+[Value] 1
+[Detail] 자체 밸리데이터 세트의 Sui 포크
+
+[Metric 4]
+[Label] 외부 자금
+[Value] $0
+[Detail] 현재까지 완전 부트스트랩
+
+[Deployed Features]
+- 서명 기반 인증의 WebSocket 채팅 서버
+- 온체인 트레이딩 데이터 기반 테스트넷 리더보드
+- 실제 오더북 체결의 풀 CLOB DEX (DeepBook V3)
+- 온체인 정산의 이진 예측 시장
+- Sui Random 검증 가능 공정성의 주간 복권
+- 멀티 담보 리스크 임계값의 통합 마진 엔진
+- 소셜 리커버리를 지원하는 zkLogin 스마트 계정
+- 실시간 트레이딩 데이터를 위한 Rust 기반 이벤트 인덱서
+
+
+========== BUSINESS MODEL 섹션 ==========
+[Title]
+Business Model
+
+[Intro]
+플랫폼 채택에 비례하여 확장되는 다중 수익원.
+
+[Revenue Stream 1]
+[Title] 거래 수수료
+[Description] 현물 및 무기한 선물 시장의 메이커/테이커 수수료. 거래량에 직접
+비례하는 주요 수익원.
+
+[Revenue Stream 2]
+[Title] 렌딩 스프레드
+[Description] 대출과 차입 금리 사이의 스프레드를 프로토콜이 취득. 렌딩 풀 활용도에
+비례하는 패시브 수익 생성.
+
+[Revenue Stream 3]
+[Title] 복권 트레저리
+[Description] 복권 티켓 판매의 10%가 프로토콜 트레저리에 할당. 높은 참여도 제품에서
+일관된 수익 제공.
+
+[Revenue Stream 4]
+[Title] 프리미엄 기능 (향후)
+[Description] 카피 트레이딩 구독, AI 에이전트 접근, 전략 마켓플레이스 수수료.
+플랫폼 네트워크 효과가 가능하게 하는 2차 수익원.
+
+[Revenue Stream 5]
+[Title] NFT 판매 (커뮤니티 라운드)
+[Description] 제네시스 NFT 컬렉션을 첫 커뮤니티 펀딩 메커니즘으로 활용. 팀과
+커뮤니티 간 인센티브를 정렬하면서 초기 유동성을 제공.
+
+
+========== ROADMAP 섹션 ==========
+[Title]
+Roadmap
+
+[Phase 1 - Now]
+[Title] Now
+[Subtitle] 커뮤니티 형성
+[Item 1] 내장 채팅과 리더보드를 갖춘 라이브 프로토타입
+[Item 2] 커뮤니티 구축 및 초기 기여자 프로그램
+[Item 3] NFT 컬렉션 런칭 준비
+[Item 4] 테스트넷 트레이딩 캠페인
+
+[Phase 2 - Next]
+[Title] Next
+[Subtitle] 제품 깊이
+[Item 1] 채팅 카테고리 및 마켓별 채널
+[Item 2] 무기한 선물 활성화 (컨트랙트 완성)
+[Item 3] 렌딩/차입 UI 런칭 (프로토콜 배포 완료)
+[Item 4] 리더보드 연동 카피 트레이딩
+
+[Phase 3 - Then]
+[Title] Then
+[Subtitle] 인텔리전스 & 스케일
+[Item 1] AI 에이전트 (Risk Sentinel, Market Narrator, Strategy Simulator)
+[Item 2] 크로스체인 자산 볼트 (BTC, ETH)
+[Item 3] 메인넷 준비 및 보안 감사
+[Item 4] DAO 거버넌스 활성화
+
+[Roadmap Sequence]
+NFT 펀딩 → 커뮤니티 성장 → VC 레이즈 → 메인넷
+
+
+========== THE ASK 섹션 ==========
+[Title]
+The Ask
+
+[Intro]
+Pado는 프로토타입에서 메인넷으로의 가속을 위해 첫 외부 라운드를 진행합니다.
+
+[Ask Detail 1]
+[Title] Stage
+[Content] Pre-seed / Community Round
+
+[Ask Detail 2]
+[Title] 자금 용도
+[Content] 엔지니어링 팀 확장 (2명 → 4명), 인프라 스케일링, 메인넷 런칭을 위한
+유동성 부트스트래핑, 보안 감사.
+
+[Ask Detail 3]
+[Title] Why Now
+[Content] 실제 금융 실행과 내장 소셜 인프라를 결합하는 플랫폼은 아직 없습니다.
+통합 DEX 카테고리는 빠르게 정리되고 있지만 — 커뮤니티를 통한 차별화는 아직 선점되지
+않았습니다. 이것은 타이밍 기회입니다.
+
+[CTA Primary]
+Schedule a Call
+
+[CTA Secondary]
+Try Pado Alpha
+
+[CTA Tertiary]
+Read the Technical Paper
+
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================
