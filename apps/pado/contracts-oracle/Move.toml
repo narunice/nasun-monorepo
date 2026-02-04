@@ -1,6 +1,7 @@
 [package]
 name = "pado_oracle"
 edition = "2024"
+published-at = "0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c"
 
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
@@ -9,5 +10,5 @@ Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework"
 pado_oracle = "0x0"
 
 [environments]
-devnet = "12bf3808"
-nasun-devnet = "12bf3808"
+devnet = "272218f1"
+nasun-devnet = "272218f1"

@@ -2,14 +2,14 @@
 name = "devnet_tokens"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
+published-at = "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731"
 
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-devnet_tokens = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
+devnet_tokens = "0x0"
 
 [environments]
-devnet = "12bf3808"
-nasun-devnet = "12bf3808"
+devnet = "272218f1"
+nasun-devnet = "272218f1"

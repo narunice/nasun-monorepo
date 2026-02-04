@@ -3,13 +3,13 @@
 # this file should not be committed to source control
 
 build-env = "devnet"
-chain-id = "12bf3808"
+chain-id = "272218f1"
 
 [[published]]
 source = { local = "<MONOREPO>/apps/pado/contracts-oracle" }
-published-at = "0x560788890e0d5f1fa757f6bd34e1d015c9f29061eea01ef9afe4635799cfab53"
-original-id = "0x560788890e0d5f1fa757f6bd34e1d015c9f29061eea01ef9afe4635799cfab53"
+published-at = "0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c"
+original-id = "0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x8e47be5875e163c41f967011c2d1e6b885db487320ec48d313dd0d66cf73ede8"
+upgrade-capability = "0x516826e27a2c9b48c2c337da8ef836e4f2fc89f87b4c257c8f903fd18e1770c4"
