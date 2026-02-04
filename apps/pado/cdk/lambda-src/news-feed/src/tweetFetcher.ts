@@ -15,7 +15,7 @@ const SECRET_NAME = process.env.X_API_SECRET_NAME || 'pado/x-api-bearer-token';
 
 // Tracked accounts (combined OR query to minimize API calls)
 const TRACKED_ACCOUNTS = ['CoinDesk', 'Cointelegraph', 'whale_alert'];
-const SEARCH_QUERY = TRACKED_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ' -is:retweet -is:reply';
+const SEARCH_QUERY = '(' + TRACKED_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
 
 // Secrets Manager client (reused across invocations)
 const secretsClient = new SecretsManagerClient({ region: 'ap-northeast-2' });
