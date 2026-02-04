@@ -6,6 +6,8 @@ export interface AuthResponseMessage {
   type: 'auth_response';
   signature: string;
   address: string;
+  authMethod?: 'personal_sign' | 'ephemeral';
+  ephemeralPubKey?: string;
 }
 
 export interface SendMessagePayload {

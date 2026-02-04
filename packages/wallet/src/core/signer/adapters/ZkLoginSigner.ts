@@ -9,6 +9,8 @@ import type { SignerAdapter, SignerCapabilities, SignatureResult } from '../type
 import type { ZkLoginState } from '../../../types/zklogin';
 import { signWithZkLogin } from '../../zklogin';
 import { DEFAULT_CAPABILITIES } from '../types';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 export class ZkLoginSigner implements SignerAdapter {
   readonly type = 'zklogin' as const;
@@ -18,6 +20,7 @@ export class ZkLoginSigner implements SignerAdapter {
   };
 
   private zkState: ZkLoginState;
+  private _ephemeralKeypair: Ed25519Keypair | null = null;
 
   /**
    * Create a ZkLoginSigner from zkLogin state
@@ -29,6 +32,14 @@ export class ZkLoginSigner implements SignerAdapter {
     }
     this.zkState = zkState;
     this.address = zkState.address;
+  }
+
+  private getEphemeralKeypair(): Ed25519Keypair {
+    if (!this._ephemeralKeypair) {
+      const { secretKey } = decodeSuiPrivateKey(this.zkState.ephemeralPrivateKey);
+      this._ephemeralKeypair = Ed25519Keypair.fromSecretKey(secretKey);
+    }
+    return this._ephemeralKeypair;
   }
 
   /**
@@ -93,5 +104,24 @@ export class ZkLoginSigner implements SignerAdapter {
    */
   isSessionValid(): boolean {
     return Date.now() < this.zkState.expiresAt;
+  }
+
+  /**
+   * Sign a message with the ephemeral Ed25519 key (not a zkLogin signature).
+   * Useful for non-financial authentication (e.g., chat challenge-response)
+   * where verifyPersonalMessageSignature against the zkLogin address is not applicable.
+   */
+  async signWithEphemeralKey(message: Uint8Array): Promise<SignatureResult> {
+    const keypair = this.getEphemeralKeypair();
+    const result = await keypair.signPersonalMessage(message);
+    return { signature: result.signature };
+  }
+
+  /**
+   * Get the base64-encoded ephemeral public key.
+   * Used for server-side verification of ephemeral signatures.
+   */
+  getEphemeralPublicKey(): string {
+    return this.getEphemeralKeypair().getPublicKey().toBase64();
   }
 }
