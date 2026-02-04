@@ -43,12 +43,9 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   return (
-    <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
-      <div className="p-3 border-b border-theme-border flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-sm xl:text-base">Recent Trades</h3>
-          <ConnectionStatusBadge mode={connectionMode} />
-        </div>
+    <div className={`overflow-hidden ${className}`}>
+      <div className="flex justify-between items-center mb-2">
+        <ConnectionStatusBadge mode={connectionMode} />
         {simCount > 0 && connectionMode !== "simulation" && (
           <span className="text-xs xl:text-sm text-yellow-600 dark:text-yellow-500">
             {realCount > 0 ? `${simCount}/${displayedTrades.length} sim` : "Simulated"}
