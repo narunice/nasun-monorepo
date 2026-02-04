@@ -33,7 +33,10 @@ export const PageLoadingProvider: React.FC<{ children: ReactNode }> = ({ childre
       location.pathname === "/home" ||
       location.pathname === "/network/nasun" ||
       location.pathname.startsWith("/ecosystem/finance") ||
-      location.pathname === "/wave1/battalion-nft";
+      location.pathname === "/wave1/battalion-nft" ||
+      location.pathname === "/pado-new" ||
+      location.pathname === "/pado-new2" ||
+      location.pathname === "/pado-new3";
 
     if (isPageWithVideoHero) {
       // 비디오 hero 페이지: 즉시 false로 설정, 타이머 중단

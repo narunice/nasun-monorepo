@@ -43,6 +43,9 @@ export const Pages = {
   About: lazyWithRetry(() => import("../pages/AboutPage")),
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
+  PadoVision: lazyWithRetry(() => import("../pages/ecosystem/PadoVisionPage")),
+  PadoTech: lazyWithRetry(() => import("../pages/ecosystem/PadoTechPage")),
+  PadoPitch: lazyWithRetry(() => import("../pages/ecosystem/PadoPitchPage")),
   Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
@@ -487,6 +490,48 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Post Detail - NASUN",
       description: "Award or Grant detail",
+    },
+  },
+
+  padoNew: {
+    path: "/pado-new",
+    component: Pages.PadoVision,
+    navItem: {
+      name: "navigation.padoNew",
+      path: "/pado-new",
+      hidden: true,
+    },
+    meta: {
+      title: "Pado - NASUN",
+      description: "Pado: Unified Onchain Finance",
+    },
+  },
+
+  padoNew2: {
+    path: "/pado-new2",
+    component: Pages.PadoTech,
+    navItem: {
+      name: "navigation.padoNew2",
+      path: "/pado-new2",
+      hidden: true,
+    },
+    meta: {
+      title: "Pado Tech - NASUN",
+      description: "Pado: Architecture That Composes",
+    },
+  },
+
+  padoNew3: {
+    path: "/pado-new3",
+    component: Pages.PadoPitch,
+    navItem: {
+      name: "navigation.padoNew3",
+      path: "/pado-new3",
+      hidden: true,
+    },
+    meta: {
+      title: "Pado Pitch - NASUN",
+      description: "Pado: The Opportunity",
     },
   },
 

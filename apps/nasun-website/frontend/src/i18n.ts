@@ -51,6 +51,12 @@ import enProposals from "./assets/locales/en/proposals.json";
 import koProposals from "./assets/locales/ko/proposals.json";
 import enBaram from "./assets/locales/en/baram.json";
 import koBaram from "./assets/locales/ko/baram.json";
+import enPadoVision from "./assets/locales/en/pado-vision.json";
+import koPadoVision from "./assets/locales/ko/pado-vision.json";
+import enPadoTech from "./assets/locales/en/pado-tech.json";
+import koPadoTech from "./assets/locales/ko/pado-tech.json";
+import enPadoPitch from "./assets/locales/en/pado-pitch.json";
+import koPadoPitch from "./assets/locales/ko/pado-pitch.json";
 
 i18n
   .use(Backend) // JSON 파일 동적 로딩
@@ -83,6 +89,9 @@ i18n
         news: enNews,
         proposals: enProposals,
         baram: enBaram,
+        "pado-vision": enPadoVision,
+        "pado-tech": enPadoTech,
+        "pado-pitch": enPadoPitch,
       },
       ko: {
         common: koCommon,
@@ -109,6 +118,9 @@ i18n
         news: koNews,
         proposals: koProposals,
         baram: koBaram,
+        "pado-vision": koPadoVision,
+        "pado-tech": koPadoTech,
+        "pado-pitch": koPadoPitch,
       },
     },
     fallbackLng: "en",
@@ -144,6 +156,9 @@ i18n
       "pado",
       "news",
       "baram",
+      "pado-vision",
+      "pado-tech",
+      "pado-pitch",
     ], // 모든 네임스페이스 등록
     defaultNS: "home",
     backend: {
