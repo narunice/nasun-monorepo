@@ -7,6 +7,7 @@ import { SetNicknameModal } from './SetNicknameModal';
 
 interface Props {
   onMinimize?: () => void;
+  onPopOut?: () => void;
 }
 
 function StatusDot({ status }: { status: string }) {
@@ -17,7 +18,7 @@ function StatusDot({ status }: { status: string }) {
   return <span className={`inline-block w-1.5 h-1.5 rounded-full ${color}`} />;
 }
 
-export function ChatPanel({ onMinimize }: Props) {
+export function ChatPanel({ onMinimize, onPopOut }: Props) {
   const address = useSignerAddress();
   const {
     messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore,
@@ -68,6 +69,17 @@ export function ChatPanel({ onMinimize }: Props) {
             <span className="text-trading-xs text-theme-text-muted">
               {onlineCount} online
             </span>
+          )}
+          {onPopOut && (
+            <button
+              onClick={onPopOut}
+              className="p-0.5 text-theme-text-muted hover:text-theme-text-primary transition-colors"
+              title="Pop out chat"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 3h6v6M14 10l6.1-6.1M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" />
+              </svg>
+            </button>
           )}
           {onMinimize && (
             <button

@@ -228,10 +228,50 @@ export function getCollectionFromType(type: string): string {
   return 'Unknown Collection';
 }
 
+// Safe data: URI MIME type prefixes (SVG excluded — can contain embedded scripts)
+const SAFE_DATA_PREFIXES = [
+  'data:image/png',
+  'data:image/jpeg',
+  'data:image/gif',
+  'data:image/webp',
+  'data:image/avif',
+];
+
+/**
+ * Resolve a media URL to a safe, displayable URL.
+ * Converts ipfs:// to HTTPS gateway, validates data: URIs,
+ * and blocks dangerous schemes (javascript:, vbscript:, etc.)
+ */
+export function resolveMediaUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+
+  const lower = url.toLowerCase().trim();
+
+  if (lower.startsWith('data:')) {
+    if (SAFE_DATA_PREFIXES.some((prefix) => lower.startsWith(prefix))) {
+      return url;
+    }
+    return undefined;
+  }
+
+  if (lower.startsWith('ipfs://')) {
+    const hash = url.slice(7);
+    return `https://ipfs.io/ipfs/${hash}`;
+  }
+
+  if (lower.startsWith('https://') || lower.startsWith('http://')) {
+    return url;
+  }
+
+  return undefined;
+}
+
 /**
  * Get the image URL to display
- * Prefers thumbnail_url for performance, falls back to image_url
+ * Prefers thumbnail_url for performance, falls back to image_url.
+ * Resolves IPFS URLs and validates URL schemes for security.
  */
 export function getNFTImageUrl(display: NFTDisplay): string | undefined {
-  return display.thumbnail_url || display.image_url;
+  const raw = display.thumbnail_url || display.image_url;
+  return resolveMediaUrl(raw);
 }

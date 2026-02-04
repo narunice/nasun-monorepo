@@ -18,7 +18,8 @@ import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
 import { type TokenSymbol } from '../lib/prices';
 import { fetchBinance24hTicker, getBinanceSymbol } from '../lib/indicators';
-import { ChatPanel, MobileChatDrawer, useChatPanel } from '../features/social';
+import { useState } from 'react';
+import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from '../features/social';
 import { NewsCarousel } from '../features/news';
 
 // Fixed height for chart and orderbook to ensure consistent layout
@@ -54,6 +55,7 @@ function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
 function TradePageContent() {
   const { mode, toggleMode, isSimple } = useTradeMode();
   const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
+  const [chatFloating, setChatFloating] = useState(false);
   const { currentPool } = useMarket();
   const { data: orderbookData } = useOrderbook();
   const { setPrice } = useOrderForm();
@@ -172,24 +174,21 @@ function TradePageContent() {
       {isSimple ? (
         /* Simple mode: Chart (left) | OrderForm+Chat (right) — 2 columns */
         <div className="hidden xl:flex gap-3">
-          <div className="flex-1 min-w-0">
-            <div
-              className="bg-theme-bg-secondary rounded-lg p-4"
-              style={{ height: `${CHART_HEIGHT}px` }}
-            >
-              <PriceChart currentPrice={displayPrice} />
-            </div>
+          <div className="flex-1 min-w-0" style={{ height: `${CHART_HEIGHT}px` }}>
+            <PriceChart currentPrice={displayPrice} />
           </div>
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
             <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
               <TradingPanel mode={mode} />
             </div>
-            {chatVisible ? (
-              <div style={{ height: `${CHAT_HEIGHT}px` }}>
-                <ChatPanel onMinimize={toggleChat} />
-              </div>
-            ) : (
-              <ChatCollapsedBar onClick={toggleChat} />
+            {!chatFloating && (
+              chatVisible ? (
+                <div style={{ height: `${CHAT_HEIGHT}px` }}>
+                  <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
+                </div>
+              ) : (
+                <ChatCollapsedBar onClick={toggleChat} />
+              )
             )}
           </div>
         </div>
@@ -198,10 +197,7 @@ function TradePageContent() {
         <div className="hidden xl:flex gap-3">
           {/* Col 1 (flex): Chart + BottomTab */}
           <div className="flex-1 min-w-0 flex flex-col gap-3">
-            <div
-              className="bg-theme-bg-secondary rounded-lg p-3"
-              style={{ height: `${CHART_HEIGHT}px` }}
-            >
+            <div style={{ height: `${CHART_HEIGHT}px` }}>
               <PriceChart currentPrice={displayPrice} />
             </div>
             <div style={{ height: `${CHAT_HEIGHT}px` }}>
@@ -230,12 +226,14 @@ function TradePageContent() {
             <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
               <TradingPanel mode={mode} />
             </div>
-            {chatVisible ? (
-              <div style={{ height: `${CHAT_HEIGHT}px` }}>
-                <ChatPanel onMinimize={toggleChat} />
-              </div>
-            ) : (
-              <ChatCollapsedBar onClick={toggleChat} />
+            {!chatFloating && (
+              chatVisible ? (
+                <div style={{ height: `${CHAT_HEIGHT}px` }}>
+                  <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
+                </div>
+              ) : (
+                <ChatCollapsedBar onClick={toggleChat} />
+              )
             )}
           </div>
         </div>
@@ -245,20 +243,14 @@ function TradePageContent() {
       <div className="hidden lg:block xl:hidden space-y-3">
         {isSimple ? (
           <>
-            <div
-              className="bg-theme-bg-secondary rounded-lg p-4"
-              style={{ height: `${CHART_HEIGHT}px` }}
-            >
+            <div style={{ height: `${CHART_HEIGHT}px` }}>
               <PriceChart currentPrice={displayPrice} />
             </div>
             <TradingPanel mode={mode} />
           </>
         ) : (
           <>
-            <div
-              className="bg-theme-bg-secondary rounded-lg p-3"
-              style={{ height: `${CHART_HEIGHT}px` }}
-            >
+            <div style={{ height: `${CHART_HEIGHT}px` }}>
               <PriceChart currentPrice={displayPrice} />
             </div>
             <div className="flex gap-3">
@@ -282,15 +274,12 @@ function TradePageContent() {
       {/* Mobile: stacked panels (below lg) */}
       <div className="lg:hidden space-y-3">
         {isSimple ? (
-          <div className="bg-theme-bg-secondary rounded-lg p-4">
+          <div style={{ height: `${CHART_HEIGHT}px` }}>
             <PriceChart currentPrice={displayPrice} />
           </div>
         ) : (
           <>
-            <div
-              className="bg-theme-bg-secondary rounded-lg p-3"
-              style={{ height: `${CHART_HEIGHT}px` }}
-            >
+            <div style={{ height: `${CHART_HEIGHT}px` }}>
               <PriceChart currentPrice={displayPrice} />
             </div>
             <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: '400px' }}>
@@ -304,6 +293,13 @@ function TradePageContent() {
         )}
         <TradingPanel mode={mode} />
       </div>
+
+      {/* Floating chat popup (xl+ only, when popped out) */}
+      {chatFloating && (
+        <div className="hidden xl:block">
+          <FloatingChatPopup onDock={() => setChatFloating(false)} />
+        </div>
+      )}
 
       {/* Chat drawer (below xl) — available at both lg-xl and mobile */}
       <MobileChatDrawer />
