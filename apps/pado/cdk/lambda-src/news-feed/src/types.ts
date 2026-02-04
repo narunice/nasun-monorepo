@@ -36,12 +36,19 @@ export interface TwitterSearchResult {
     text: string;
     created_at: string;
     author_id: string;
+    attachments?: { media_keys?: string[] };
   }>;
   includes?: {
     users?: Array<{
       id: string;
       username: string;
       name: string;
+    }>;
+    media?: Array<{
+      media_key: string;
+      type: 'photo' | 'video' | 'animated_gif';
+      url?: string;
+      preview_image_url?: string;
     }>;
   };
 }
