@@ -56,8 +56,10 @@ async function getNewsItems(limit: number): Promise<NewsFeedResponse> {
   if (!twitterItems) {
     if (canFetchTwitter()) {
       twitterItems = await fetchTweets();
-      setTwitterCache(twitterItems);
-      recordTwitterFetch(twitterItems.length);
+      if (twitterItems.length > 0) {
+        setTwitterCache(twitterItems);
+        recordTwitterFetch(twitterItems.length);
+      }
       sources.twitter = true;
       console.log(`Twitter: fetched ${twitterItems.length} tweets`);
     } else {
