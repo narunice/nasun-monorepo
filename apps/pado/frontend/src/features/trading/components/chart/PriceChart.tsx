@@ -49,6 +49,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const { effectiveCandleData, binanceSymbol, intervalMs } = useChartData(baseSymbol, interval, currentPrice);
 
   // Chart refs
+  const mainChartWrapperRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const volumeContainerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
@@ -73,13 +74,16 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
 
   // === Initialize main chart + volume chart ===
   useEffect(() => {
-    if (!chartContainerRef.current || !volumeContainerRef.current) return;
+    if (!chartContainerRef.current || !volumeContainerRef.current || !mainChartWrapperRef.current) return;
+
+    // Use wrapper's measured height (flex-1 fills remaining space)
+    const initialHeight = mainChartWrapperRef.current.clientHeight || CHART_HEIGHT;
 
     const chart = createChart(chartContainerRef.current, {
       layout: { background: { color: colors.background }, textColor: colors.text },
       grid: { vertLines: { color: colors.grid }, horzLines: { color: colors.grid } },
       width: chartContainerRef.current.clientWidth,
-      height: CHART_HEIGHT,
+      height: initialHeight,
       timeScale: { timeVisible: true, secondsVisible: false, barSpacing: 4 },
       rightPriceScale: { borderColor: colors.border },
       crosshair: { mode: 1 },
@@ -142,16 +146,26 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       if (range) chart.timeScale().setVisibleLogicalRange(range);
     });
 
-    // Resize
+    // Resize: update width + main chart height from wrapper
     const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current)
+      if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
-      if (volumeContainerRef.current && volumeChartRef.current)
+      }
+      if (mainChartWrapperRef.current && chartRef.current) {
+        chartRef.current.applyOptions({ height: mainChartWrapperRef.current.clientHeight });
+      }
+      if (volumeContainerRef.current && volumeChartRef.current) {
         volumeChartRef.current.applyOptions({ width: volumeContainerRef.current.clientWidth });
+      }
     };
+
+    // ResizeObserver for dynamic height tracking (parent container changes)
+    const resizeObserver = new ResizeObserver(handleResize);
+    if (mainChartWrapperRef.current) resizeObserver.observe(mainChartWrapperRef.current);
     window.addEventListener('resize', handleResize);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       chart.remove();
       volumeChart.remove();
@@ -340,7 +354,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     : null);
 
   return (
-    <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden ${className}`}>
+    <div className={`bg-theme-bg-secondary rounded-lg overflow-hidden flex flex-col h-full pb-1 ${className}`}>
       <ChartHeader
         pairLabel={`${currentPool.baseToken.symbol}/${currentPool.quoteToken.symbol}`}
         lastPrice={lastPrice}
@@ -357,12 +371,14 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         indicators={indicators}
       />
 
-      {/* Candlestick Chart */}
-      <div ref={chartContainerRef} className="w-full" />
+      {/* Candlestick Chart — fills remaining height */}
+      <div ref={mainChartWrapperRef} className="flex-1 min-h-0">
+        <div ref={chartContainerRef} className="w-full" />
+      </div>
 
       {/* RSI Chart */}
       {indicators.rsi && (
-        <div className="border-t border-theme-border">
+        <div className="shrink-0 border-t border-theme-border">
           <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">RSI (14)</div>
           <div ref={rsiContainerRef} className="w-full" />
         </div>
@@ -370,14 +386,14 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
 
       {/* MACD Chart */}
       {indicators.macd && (
-        <div className="border-t border-theme-border">
+        <div className="shrink-0 border-t border-theme-border">
           <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">MACD (12, 26, 9)</div>
           <div ref={macdContainerRef} className="w-full" />
         </div>
       )}
 
       {/* Volume Chart */}
-      <div ref={volumeContainerRef} className="w-full border-t border-theme-border" />
+      <div ref={volumeContainerRef} className="w-full shrink-0 border-t border-theme-border" />
     </div>
   );
 }

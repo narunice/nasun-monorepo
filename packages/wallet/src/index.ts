@@ -221,6 +221,7 @@ export {
   buildNFTTransferTransaction,
   getCollectionFromType,
   getNFTImageUrl,
+  resolveMediaUrl,
   buildDisplayFromContent,
 } from './sui/nft';
 
