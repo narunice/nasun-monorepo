@@ -9,6 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '..', envFile) });
 
 import * as cdk from 'aws-cdk-lib';
 import { OracleStack } from '../lib/oracle-stack';
+import { NewsStack } from '../lib/news-stack';
 
 const app = new cdk.App();
 
@@ -39,4 +40,9 @@ new OracleStack(app, 'PadoOracleStack', {
   oracleRegistryId,
   adminCapId,
   suiRpcUrl,
+});
+
+// News Feed Stack (no contract dependencies)
+new NewsStack(app, 'PadoNewsStack', {
+  env: { region: 'ap-northeast-2' },
 });
