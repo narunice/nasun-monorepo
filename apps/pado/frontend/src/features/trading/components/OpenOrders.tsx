@@ -36,10 +36,7 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
   };
 
   return (
-    <div className="mt-6 pt-4 border-t border-theme-border">
-      <h4 className="text-sm xl:text-base font-medium text-theme-text-secondary mb-2">
-        Open Orders ({orders.length})
-      </h4>
+    <div>
       {orders.length === 0 ? (
         <p className="text-xs xl:text-sm text-theme-text-muted">No open orders</p>
       ) : (

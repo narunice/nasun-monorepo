@@ -36,16 +36,18 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   ];
 
   return (
-    <div className={`bg-theme-bg-secondary rounded-lg ${className}`}>
+    <div className={`bg-theme-bg-secondary rounded-lg flex flex-col ${className}`}>
       {/* Tab Headers */}
-      <UnderlineTabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <div className="shrink-0">
+        <UnderlineTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      </div>
 
       {/* Tab Content */}
-      <div className="p-3">
+      <div className="p-3 flex-1 min-h-0 overflow-y-auto">
         {activeTab === 'openOrders' && (
           <OpenOrdersTab
             orders={openOrdersData?.orders ?? []}
