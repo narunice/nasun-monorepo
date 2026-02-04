@@ -4,9 +4,10 @@ interface Props {
   onSend: (content: string) => void;
   disabled: boolean;
   maxLength?: number;
+  disabledPlaceholder?: string;
 }
 
-export function ChatInput({ onSend, disabled, maxLength = 500 }: Props) {
+export function ChatInput({ onSend, disabled, maxLength = 500, disabledPlaceholder }: Props) {
   const [text, setText] = useState('');
 
   const handleSubmit = useCallback((e: FormEvent) => {
@@ -34,7 +35,7 @@ export function ChatInput({ onSend, disabled, maxLength = 500 }: Props) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={disabled ? 'Connect wallet to chat' : 'Type a message...'}
+        placeholder={disabled ? (disabledPlaceholder || 'Connect wallet to chat') : 'Type a message...'}
         maxLength={maxLength}
         disabled={disabled}
         className="flex-1 min-w-0 px-2.5 py-1.5 text-trading-sm

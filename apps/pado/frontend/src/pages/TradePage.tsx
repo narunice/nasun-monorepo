@@ -166,7 +166,7 @@ function TradePageContent() {
           {/* Chat sidebar (xl+ only) */}
           <div className={`hidden xl:block shrink-0 transition-all duration-200 ${
             chatVisible ? 'w-[240px] 2xl:w-[280px]' : 'w-10'
-          }`} style={{ height: `${CHART_HEIGHT + 300}px` }}>
+          }`} style={{ height: `${CHART_HEIGHT}px` }}>
             {chatVisible ? (
               <ChatPanel onMinimize={toggleChat} />
             ) : (

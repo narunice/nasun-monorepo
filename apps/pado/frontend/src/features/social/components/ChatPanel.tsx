@@ -59,6 +59,7 @@ export function ChatPanel({ onMinimize }: Props) {
       <ChatInput
         onSend={sendMessage}
         disabled={!isConnected}
+        disabledPlaceholder={address ? 'Connecting...' : undefined}
       />
     </div>
   );
