@@ -271,19 +271,28 @@ export class CommonStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/governance-api/dist"),
       timeout: cdk.Duration.seconds(30),
       environment: {
-        // Leaderboard V3 tables (replaces V2 LEADERBOARD_TABLE)
+        // Leaderboard V3 tables
         LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
         LEADERBOARD_V3_SEASONS_TABLE: "leaderboard-v3-seasons",
         LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE: "leaderboard-v3-season-accounts",
-        ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY || "",
-        NASUN_NFT_CONTRACT_ADDRESS: process.env.NASUN_NFT_CONTRACT_ADDRESS || "",
-        NFT_BONUS: process.env.NFT_BONUS || "2",
-        LEADERBOARD_WEIGHT: process.env.LEADERBOARD_WEIGHT || "1",
-        TOKEN_WEIGHT: process.env.TOKEN_WEIGHT || "0",
-        // VotingPowerCertificate + Sponsored Transaction (V6 - 2026-01-28)
+        // V2 Voting Power weights
+        LEADERBOARD_WEIGHT: process.env.LEADERBOARD_WEIGHT || "8",
+        ONCHAIN_WEIGHT: process.env.ONCHAIN_WEIGHT || "8",
+        BATTALION_ALLOWLIST_BONUS: process.env.BATTALION_ALLOWLIST_BONUS || "20",
+        GENESIS_ALLOWLIST_BONUS: process.env.GENESIS_ALLOWLIST_BONUS || "20",
+        X_LINK_BONUS: process.env.X_LINK_BONUS || "10",
+        BATTALION_TABLE_NAME: "nasun-nft-whitelist",
+        GENESIS_TABLE_NAME: "GenesisNftWhitelist",
+        // On-chain activity Package IDs (V7)
+        DEEPBOOK_PACKAGE_ID: "0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134",
+        PREDICTION_PACKAGE_ID: "0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895",
+        LOTTERY_PACKAGE_ID: "0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900",
+        LENDING_PACKAGE_ID: "0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe",
+        BARAM_PACKAGE_ID: "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
+        // VotingPowerCertificate + Sponsored Transaction (V7 - 2026-02-04)
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x02daf1f825b3eaae3b2f0718e7cbab884dc58d1b740c594f505004607b04e516",
-        PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0x9df462224ec969f7f0234663865c5070c4ccf3dd739423ef9ef698dab3291c76",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
+        PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
@@ -298,6 +307,12 @@ export class CommonStack extends cdk.Stack {
     v3AccountsTable.grantReadData(governanceApiLambda);
     v3SeasonsTable.grantReadData(governanceApiLambda);
     v3SeasonAccountsTable.grantReadData(governanceApiLambda);
+
+    // Grant allowlist table read access for V2 voting power (Battalion + Genesis)
+    const battalionTableRef = dynamodb.Table.fromTableName(this, "BattalionTableRef", "nasun-nft-whitelist");
+    battalionTableRef.grantReadData(governanceApiLambda);
+    const genesisTableRef = dynamodb.Table.fromTableName(this, "GenesisTableRef", "GenesisNftWhitelist");
+    genesisTableRef.grantReadData(governanceApiLambda);
 
     // Grant Secrets Manager access for Oracle/Sponsor keypairs
     governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({

@@ -1,21 +1,21 @@
 /**
- * Governance API - Voting Power Calculator
+ * Governance API V2 - Voting Power Calculator
  *
  * Calculates voting power from multiple sources:
- * - Leaderboard Score (X/Twitter engagement)
- * - Ethereum NFT Bonus (verified via signature)
- * - NASUN Token Balance (post-TGE)
+ * - Leaderboard Score (X/Twitter engagement) — log2(1+x) compression
+ * - On-Chain Activity Score (DEX, prediction, lottery, lending, AI) — log2(1+x) compression
+ * - Battalion NFT Allowlist Bonus (nasun-nft-whitelist)
+ * - Genesis NFT Whitelist Bonus (GenesisNftWhitelist)
+ * - X Account Linkage Bonus
  */
 
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-import { ethers } from "ethers";
-import { Alchemy, Network } from "alchemy-sdk";
 import * as ed25519 from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha512";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiClient } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, toBase64 } from "@mysten/bcs";
@@ -26,7 +26,6 @@ ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
 
 /**
  * Mask sensitive data in objects before logging to CloudWatch
- * Prevents accidental exposure of secrets, signatures, and tokens
  */
 function maskSensitiveData<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
@@ -44,12 +43,10 @@ function maskSensitiveData<T>(obj: T): T {
     "secretKey",
   ];
 
-  // Handle arrays
   if (Array.isArray(obj)) {
     return obj.map((item) => maskSensitiveData(item)) as T;
   }
 
-  // Handle objects
   const masked = { ...obj } as Record<string, unknown>;
   for (const key of Object.keys(masked)) {
     const lowerKey = key.toLowerCase();
@@ -76,61 +73,57 @@ const V3_CONSISTENCY_BONUS_MULTIPLIER = 0.1;
 const V3_CONSISTENCY_BONUS_MAX = 1.5;
 const V3_REPLY_DECAY_EXPONENT = 0.7;
 
-// Voting Power weights
-const LEADERBOARD_WEIGHT = Number(process.env.LEADERBOARD_WEIGHT) || 1;
-const TOKEN_WEIGHT = Number(process.env.TOKEN_WEIGHT) || 0; // 0 until TGE
-const NFT_BONUS = Number(process.env.NFT_BONUS) || 2;
+// V2 Voting Power weights — log2(1+x) * WEIGHT
+const LEADERBOARD_WEIGHT = Number(process.env.LEADERBOARD_WEIGHT) || 8;
+const ONCHAIN_WEIGHT = Number(process.env.ONCHAIN_WEIGHT) || 8;
+const BATTALION_ALLOWLIST_BONUS = Number(process.env.BATTALION_ALLOWLIST_BONUS) || 20;
+const GENESIS_ALLOWLIST_BONUS = Number(process.env.GENESIS_ALLOWLIST_BONUS) || 20;
+const X_LINK_BONUS = Number(process.env.X_LINK_BONUS) || 10;
 
-// Ethereum NFT verification
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || "";
-const NASUN_NFT_CONTRACT_ADDRESS = process.env.NASUN_NFT_CONTRACT_ADDRESS || "";
+// Allowlist tables
+const BATTALION_TABLE_NAME = process.env.BATTALION_TABLE_NAME || "nasun-nft-whitelist";
+const GENESIS_TABLE_NAME = process.env.GENESIS_TABLE_NAME || "GenesisNftWhitelist";
+
+// On-chain activity Package IDs
+const DEEPBOOK_PACKAGE_ID = process.env.DEEPBOOK_PACKAGE_ID || "";
+const PREDICTION_PACKAGE_ID = process.env.PREDICTION_PACKAGE_ID || "";
+const LOTTERY_PACKAGE_ID = process.env.LOTTERY_PACKAGE_ID || "";
+const LENDING_PACKAGE_ID = process.env.LENDING_PACKAGE_ID || "";
+const BARAM_PACKAGE_ID = process.env.BARAM_PACKAGE_ID || "";
 
 // Oracle/Sponsor configuration
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
 const SUI_RPC_URL = process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io";
 
 // Certificate TTL Policy
-// - Devnet: Fixed 15 minutes (faster testing)
-// - Mainnet: Up to 30 minutes, capped by proposal expiration
 const DEFAULT_TTL_MS = 15 * 60 * 1000;  // 15 min (Devnet)
 const MAX_TTL_MS = 30 * 60 * 1000;      // 30 min (Mainnet)
 
-/**
- * Calculate certificate TTL based on network and proposal expiration
- * @param proposalExpiration - Optional proposal expiration timestamp (ms)
- * @returns TTL in milliseconds
- */
 function calculateCertificateTTL(proposalExpiration?: number): number {
   const isMainnet = process.env.NETWORK === "mainnet";
 
   if (!isMainnet) {
-    // Devnet: fixed TTL for faster testing
     return DEFAULT_TTL_MS;
   }
 
-  // Mainnet: respect proposal expiration
   if (proposalExpiration) {
     const untilExpiration = proposalExpiration - Date.now();
-    // Cap at MAX_TTL_MS, minimum 0 (already expired)
     return Math.min(MAX_TTL_MS, Math.max(0, untilExpiration));
   }
 
   return MAX_TTL_MS;
 }
+
 const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
 const PROPOSAL_TYPE_REGISTRY_ID = process.env.PROPOSAL_TYPE_REGISTRY_ID || "";
 
 // Domain Separation (MUST match Move contract's DOMAIN_SEPARATOR)
-// Format: "NASUN_GOVERNANCE_{NETWORK}_V{version}"
 const DOMAIN_SEPARATOR = "NASUN_GOVERNANCE_DEVNET_V1";
 
 // Cached keypairs
 let oraclePrivateKey: Uint8Array | null = null;
 let sponsorKeypair: Ed25519Keypair | null = null;
 
-/**
- * Get Oracle private key from Secrets Manager
- */
 async function getOraclePrivateKey(): Promise<Uint8Array> {
   if (oraclePrivateKey) return oraclePrivateKey;
 
@@ -142,9 +135,6 @@ async function getOraclePrivateKey(): Promise<Uint8Array> {
   return oraclePrivateKey;
 }
 
-/**
- * Get Sponsor keypair from Secrets Manager
- */
 async function getSponsorKeypair(): Promise<Ed25519Keypair> {
   if (sponsorKeypair) return sponsorKeypair;
 
@@ -152,7 +142,6 @@ async function getSponsorKeypair(): Promise<Ed25519Keypair> {
     new GetSecretValueCommand({ SecretId: "nasun/governance/sponsor" })
   );
   const { privateKey } = JSON.parse(secret.SecretString!);
-  // privateKey is hex-encoded 32-byte seed
   sponsorKeypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, "hex"));
   return sponsorKeypair;
 }
@@ -163,18 +152,10 @@ const ALLOWED_TARGETS = new Set([
   `${GOVERNANCE_PACKAGE_ID}::proposal::vote_with_certificate`,
 ]);
 
-/**
- * Validate transaction kind to prevent abuse
- * Rules:
- * 1. Must contain exactly 2 MoveCall commands
- * 2. Order: mint_certificate → vote
- * 3. All targets must be in whitelist
- */
 function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {
   const txData = tx.getData();
   const commands = txData.commands;
 
-  // Must have exactly 2 commands
   if (commands.length !== 2) {
     return { valid: false, error: `Expected 2 commands, got ${commands.length}` };
   }
@@ -184,7 +165,6 @@ function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {
   for (let i = 0; i < commands.length; i++) {
     const cmd = commands[i];
 
-    // All commands must be MoveCall
     if (cmd.$kind !== "MoveCall") {
       return { valid: false, error: `Command ${i} is not MoveCall: ${cmd.$kind}` };
     }
@@ -192,12 +172,10 @@ function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {
     const moveCall = cmd.MoveCall;
     const target = `${moveCall.package}::${moveCall.module}::${moveCall.function}`;
 
-    // Check whitelist
     if (!ALLOWED_TARGETS.has(target)) {
       return { valid: false, error: `Unauthorized target: ${target}` };
     }
 
-    // Check order
     if (moveCall.function !== expectedFunctions[i]) {
       return { valid: false, error: `Wrong order at ${i}: expected ${expectedFunctions[i]}, got ${moveCall.function}` };
     }
@@ -206,10 +184,6 @@ function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-/**
- * Extract proposal ID from vote transaction
- * Looks for vote_with_certificate call and extracts the first argument (proposal)
- */
 function extractProposalIdFromTx(tx: Transaction): string | null {
   const txData = tx.getData();
   const commands = txData.commands;
@@ -235,10 +209,6 @@ function extractProposalIdFromTx(tx: Transaction): string | null {
   return null;
 }
 
-/**
- * Get proposal type from ProposalTypeRegistry
- * Returns: 0 = Governance, 1 = Poll, -1 = error/not found (treated as Governance)
- */
 async function getProposalType(proposalId: string): Promise<number> {
   if (!PROPOSAL_TYPE_REGISTRY_ID) {
     console.warn("PROPOSAL_TYPE_REGISTRY_ID not configured, defaulting to Governance");
@@ -248,7 +218,6 @@ async function getProposalType(proposalId: string): Promise<number> {
   const suiClient = new SuiClient({ url: SUI_RPC_URL });
 
   try {
-    // Query the registry using dynamic field
     const registry = await suiClient.getObject({
       id: PROPOSAL_TYPE_REGISTRY_ID,
       options: { showContent: true },
@@ -259,7 +228,6 @@ async function getProposalType(proposalId: string): Promise<number> {
       return 0;
     }
 
-    // Get the types table ID
     const fields = registry.data.content.fields as Record<string, unknown>;
     const typesTable = fields.types as { fields: { id: { id: string } } } | undefined;
 
@@ -268,14 +236,12 @@ async function getProposalType(proposalId: string): Promise<number> {
       return 0;
     }
 
-    // Query dynamic field for proposal type
     const dynamicField = await suiClient.getDynamicFieldObject({
       parentId: typesTable.fields.id.id,
       name: { type: "0x2::object::ID", value: proposalId },
     });
 
     if (!dynamicField.data?.content || dynamicField.data.content.dataType !== "moveObject") {
-      // Proposal not in registry = Governance (default)
       console.log(`Proposal ${proposalId} not in registry, defaulting to Governance`);
       return 0;
     }
@@ -287,11 +253,10 @@ async function getProposalType(proposalId: string): Promise<number> {
       return 0;
     }
 
-    // Check enum variant
     return value.variant === "Poll" ? 1 : 0;
   } catch (error) {
     console.error("Failed to get proposal type:", error);
-    return 0; // Default to Governance on error
+    return 0;
   }
 }
 
@@ -329,9 +294,6 @@ interface V3SeasonAccountScore {
   replyTotalScore?: number;
 }
 
-/**
- * Get V3 account by twitterHandle (lowercase, no @)
- */
 async function getV3AccountByHandle(twitterHandle: string): Promise<V3Account | null> {
   try {
     const result = await docClient.send(
@@ -353,9 +315,6 @@ async function getV3AccountByHandle(twitterHandle: string): Promise<V3Account | 
   }
 }
 
-/**
- * Find the currently active season
- */
 async function getV3ActiveSeason(): Promise<V3Season | null> {
   try {
     const result = await docClient.send(
@@ -376,9 +335,6 @@ async function getV3ActiveSeason(): Promise<V3Season | null> {
   }
 }
 
-/**
- * Find the most recently ended season (by endDate DESC)
- */
 async function getV3MostRecentEndedSeason(): Promise<V3Season | null> {
   try {
     const result = await docClient.send(
@@ -403,9 +359,6 @@ async function getV3MostRecentEndedSeason(): Promise<V3Season | null> {
   }
 }
 
-/**
- * Get season-specific account score
- */
 async function getV3SeasonAccountScore(
   seasonId: string,
   accountId: string
@@ -425,14 +378,9 @@ async function getV3SeasonAccountScore(
   }
 }
 
-/**
- * Recalculate V3 UserScore at current time
- * Applies fresh FreshnessMultiplier based on current timestamp
- */
 function recalculateV3UserScore(score: V3SeasonAccountScore): number {
   let rawScore: number;
 
-  // Phase 9: Per-type RawScore calculation
   if (score.originalPostCount !== undefined &&
       score.quotePostCount !== undefined &&
       score.replyPostCount !== undefined) {
@@ -448,18 +396,15 @@ function recalculateV3UserScore(score: V3SeasonAccountScore): number {
       : 0;
     rawScore = originalRaw + quoteRaw + replyRaw;
   } else {
-    // Legacy: all posts treated as original
     const effectivePosts = Math.log2(score.postCount + 1);
     rawScore = score.postCount > 0 ? (score.totalPostScore * effectivePosts) / score.postCount : 0;
   }
 
-  // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1, capped at 1.5
   const consistencyBonus = Math.min(
     1 + Math.log2(score.uniqueActiveDays + 1) * V3_CONSISTENCY_BONUS_MULTIPLIER,
     V3_CONSISTENCY_BONUS_MAX
   );
 
-  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / 14), calculated NOW
   const daysSinceLast = Math.max(
     0,
     Math.floor((Date.now() - new Date(score.lastSeenAt).getTime()) / (1000 * 60 * 60 * 24))
@@ -469,18 +414,12 @@ function recalculateV3UserScore(score: V3SeasonAccountScore): number {
   return rawScore * consistencyBonus * freshnessMultiplier;
 }
 
-/**
- * Main V3 leaderboard score resolver
- * Priority: Active Season > Last Ended Season > 0
- */
 async function getV3LeaderboardScore(twitterHandle: string): Promise<number> {
   if (!twitterHandle) return 0;
 
-  // 1. Find V3 account by twitterHandle
   const account = await getV3AccountByHandle(twitterHandle);
   if (!account) return 0;
 
-  // 2. Check active season first
   const activeSeason = await getV3ActiveSeason();
   if (activeSeason) {
     const seasonScore = await getV3SeasonAccountScore(activeSeason.seasonId, account.accountId);
@@ -489,7 +428,6 @@ async function getV3LeaderboardScore(twitterHandle: string): Promise<number> {
     }
   }
 
-  // 3. Fallback: most recently ended season
   const lastEnded = await getV3MostRecentEndedSeason();
   if (lastEnded) {
     const seasonScore = await getV3SeasonAccountScore(lastEnded.seasonId, account.accountId);
@@ -498,20 +436,185 @@ async function getV3LeaderboardScore(twitterHandle: string): Promise<number> {
     }
   }
 
-  // 4. No season data available
   return 0;
 }
 
-// Initialize Alchemy SDK (lazy)
-let alchemyClient: Alchemy | null = null;
-function getAlchemyClient(): Alchemy {
-  if (!alchemyClient && ALCHEMY_API_KEY) {
-    alchemyClient = new Alchemy({
-      apiKey: ALCHEMY_API_KEY,
-      network: Network.ETH_MAINNET,
-    });
+async function getLeaderboardScore(twitterHandle?: string): Promise<number> {
+  if (!twitterHandle) return 0;
+  const v3Score = await getV3LeaderboardScore(twitterHandle);
+  return Math.floor(v3Score);
+}
+
+// ============================================
+// V2: On-Chain Activity Score
+// ============================================
+
+// In-memory cache for on-chain scores (survives warm Lambda invocations)
+const onChainCache = new Map<string, { score: number; timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+async function calculateOnChainScore(address: string): Promise<number> {
+  const suiClient = new SuiClient({ url: SUI_RPC_URL });
+
+  try {
+    const [txHistory, lotteryTickets, predictionPositions,
+           lendingPositions, baramReceipts, voteNfts] = await Promise.all([
+      suiClient.queryTransactionBlocks({ filter: { FromAddress: address }, limit: 50 }),
+      LOTTERY_PACKAGE_ID ? suiClient.getOwnedObjects({
+        owner: address,
+        filter: { StructType: `${LOTTERY_PACKAGE_ID}::lottery::Ticket` },
+      }) : Promise.resolve({ data: [] }),
+      PREDICTION_PACKAGE_ID ? suiClient.getOwnedObjects({
+        owner: address,
+        filter: { StructType: `${PREDICTION_PACKAGE_ID}::prediction_market::Position` },
+      }) : Promise.resolve({ data: [] }),
+      LENDING_PACKAGE_ID ? suiClient.getOwnedObjects({
+        owner: address,
+        filter: { StructType: `${LENDING_PACKAGE_ID}::lending_pool::DepositPosition` },
+      }) : Promise.resolve({ data: [] }),
+      BARAM_PACKAGE_ID ? suiClient.getOwnedObjects({
+        owner: address,
+        filter: { StructType: `${BARAM_PACKAGE_ID}::baram::RequestReceipt` },
+      }) : Promise.resolve({ data: [] }),
+      GOVERNANCE_PACKAGE_ID ? suiClient.getOwnedObjects({
+        owner: address,
+        filter: { StructType: `${GOVERNANCE_PACKAGE_ID}::proposal::VoteProofNFT` },
+      }) : Promise.resolve({ data: [] }),
+    ]);
+
+    // Raw composite score from individual activity types
+    const score =
+      Math.sqrt(txHistory.data.length) * 3           // TX frequency
+      + Math.sqrt(lotteryTickets.data.length) * 2    // Lottery participation
+      + Math.sqrt(predictionPositions.data.length) * 4  // Prediction market
+      + Math.sqrt(lendingPositions.data.length) * 3     // Lending
+      + Math.sqrt(baramReceipts.data.length) * 5        // AI service usage
+      + voteNfts.data.length * 8;                       // Prior voting (linear bonus)
+
+    return Math.floor(score);
+  } catch (error) {
+    console.error("Error calculating on-chain score:", error);
+    return 0;
   }
-  return alchemyClient!;
+}
+
+async function getOnChainScore(address: string): Promise<number> {
+  if (!address) return 0;
+
+  const cached = onChainCache.get(address);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.score;
+
+  const score = await calculateOnChainScore(address);
+  onChainCache.set(address, { score, timestamp: Date.now() });
+
+  // Evict oldest entry if cache exceeds 1000 entries
+  if (onChainCache.size > 1000) {
+    const oldest = [...onChainCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+    onChainCache.delete(oldest[0][0]);
+  }
+  return score;
+}
+
+// ============================================
+// V2: Allowlist Check (Battalion + Genesis)
+// ============================================
+
+async function checkBattalionAllowlist(walletAddress: string): Promise<boolean> {
+  if (!walletAddress) return false;
+
+  try {
+    const result = await docClient.send(new GetCommand({
+      TableName: BATTALION_TABLE_NAME,
+      Key: { walletAddress },
+    }));
+    return result.Item?.status === "ACTIVE";
+  } catch (error) {
+    console.error("Error checking battalion allowlist:", error);
+    return false;
+  }
+}
+
+async function checkGenesisWhitelist(walletAddress: string): Promise<boolean> {
+  if (!walletAddress) return false;
+
+  try {
+    const result = await docClient.send(new GetCommand({
+      TableName: GENESIS_TABLE_NAME,
+      Key: { walletAddress },
+    }));
+    return result.Item?.status === "ACTIVE";
+  } catch (error) {
+    console.error("Error checking genesis whitelist:", error);
+    return false;
+  }
+}
+
+// ============================================
+// V2: Voting Power Calculation
+// ============================================
+
+interface VotingPowerBreakdown {
+  base: number;
+  leaderboard: number;
+  onChain: number;
+  battalionAllowlist: number;
+  genesisAllowlist: number;
+  xLinked: number;
+}
+
+interface VotingPowerV2Response {
+  totalVotingPower: number;
+  breakdown: VotingPowerBreakdown;
+  rawScores: {
+    leaderboardScore: number;
+    onChainScore: number;
+  };
+  normalized: {
+    leaderboardNormalized: number;
+    onChainNormalized: number;
+  };
+}
+
+/**
+ * Log compression: floor(log2(1+x) * weight)
+ * Compresses large gaps while preserving proportionality
+ */
+function normalizeScore(rawScore: number, weight: number): number {
+  if (rawScore <= 0) return 0;
+  return Math.floor(Math.log2(1 + rawScore) * weight);
+}
+
+function calculateVotingPowerV2(
+  leaderboardScore: number,
+  onChainScore: number,
+  isOnBattalionAllowlist: boolean,
+  isOnGenesisWhitelist: boolean,
+  hasLinkedX: boolean
+): { total: number; breakdown: VotingPowerBreakdown; normalized: { leaderboardNormalized: number; onChainNormalized: number } } {
+  const base = 1;
+  const leaderboardNormalized = normalizeScore(leaderboardScore, LEADERBOARD_WEIGHT);
+  const onChainNormalized = normalizeScore(onChainScore, ONCHAIN_WEIGHT);
+  const battalionPower = isOnBattalionAllowlist ? BATTALION_ALLOWLIST_BONUS : 0;
+  const genesisPower = isOnGenesisWhitelist ? GENESIS_ALLOWLIST_BONUS : 0;
+  const xLinkedPower = hasLinkedX ? X_LINK_BONUS : 0;
+
+  const total = Math.max(1, Math.floor(base + leaderboardNormalized + onChainNormalized + battalionPower + genesisPower + xLinkedPower));
+
+  return {
+    total,
+    breakdown: {
+      base,
+      leaderboard: leaderboardNormalized,
+      onChain: onChainNormalized,
+      battalionAllowlist: battalionPower,
+      genesisAllowlist: genesisPower,
+      xLinked: xLinkedPower,
+    },
+    normalized: {
+      leaderboardNormalized,
+      onChainNormalized,
+    },
+  };
 }
 
 // CORS headers
@@ -530,114 +633,6 @@ function corsHeaders() {
   };
 }
 
-interface VotingPowerResponse {
-  address: string;
-  twitterHandle?: string;
-  leaderboardScore: number;
-  nftBonus: number;
-  tokenBalance: number;
-  totalVotingPower: number;
-  breakdown: {
-    leaderboard: number;
-    nft: number;
-    token: number;
-  };
-}
-
-/**
- * Get user's Twitter ID from Cognito Identity ID
- */
-/**
- * Get user's leaderboard score from V3 season system
- * Uses twitterHandle to lookup V3 account, then resolves season score
- */
-async function getLeaderboardScore(twitterHandle?: string): Promise<number> {
-  if (!twitterHandle) return 0;
-  const v3Score = await getV3LeaderboardScore(twitterHandle);
-  return Math.floor(v3Score);
-}
-
-/**
- * Verify Ethereum signature and recover address
- */
-function recoverAddressFromSignature(message: string, signature: string): string {
-  return ethers.verifyMessage(message, signature);
-}
-
-/**
- * Verify NFT ownership using Alchemy API
- */
-async function verifyNftOwnership(walletAddress: string): Promise<boolean> {
-  if (!ALCHEMY_API_KEY || !NASUN_NFT_CONTRACT_ADDRESS) {
-    console.warn("NFT verification not configured");
-    return false;
-  }
-
-  try {
-    const alchemy = getAlchemyClient();
-    const nfts = await alchemy.nft.getNftsForOwner(walletAddress, {
-      contractAddresses: [NASUN_NFT_CONTRACT_ADDRESS],
-    });
-
-    console.log(`NFT verification for ${walletAddress}: ${nfts.totalCount} NFTs found`);
-    return nfts.totalCount > 0;
-  } catch (error) {
-    console.error("Error verifying NFT ownership:", error);
-    return false;
-  }
-}
-
-/**
- * Validate message format for NFT verification
- * Message format: "Nasun Governance: Verify NFT ownership for Proposal #XXX\nTimestamp: YYY"
- */
-function validateNftVerificationMessage(message: string, proposalId: string): boolean {
-  // Check if message contains the proposal ID
-  if (!message.includes(`Proposal #${proposalId}`)) {
-    return false;
-  }
-
-  // Check if message has a timestamp (within last 5 minutes)
-  const timestampMatch = message.match(/Timestamp: (\d+)/);
-  if (!timestampMatch) {
-    return false;
-  }
-
-  const messageTimestamp = parseInt(timestampMatch[1], 10);
-  const now = Date.now();
-  const fiveMinutes = 5 * 60 * 1000;
-
-  if (now - messageTimestamp > fiveMinutes) {
-    console.warn("Message timestamp expired");
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Calculate total voting power
- */
-function calculateVotingPower(
-  leaderboardScore: number,
-  hasNft: boolean,
-  tokenBalance: number
-): VotingPowerResponse["breakdown"] & { total: number } {
-  const leaderboardPower = Math.floor(leaderboardScore * LEADERBOARD_WEIGHT);
-  const nftPower = hasNft ? NFT_BONUS : 0;
-  const tokenPower = Math.floor(tokenBalance * TOKEN_WEIGHT);
-
-  // Minimum voting power of 1 if user has any activity
-  const basePower = leaderboardScore > 0 || hasNft || tokenBalance > 0 ? 1 : 0;
-
-  return {
-    leaderboard: leaderboardPower,
-    nft: nftPower,
-    token: tokenPower,
-    total: Math.max(basePower, leaderboardPower + nftPower + tokenPower),
-  };
-}
-
 /**
  * Main handler
  */
@@ -649,7 +644,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     return { statusCode: 200, headers: corsHeaders(), body: "" };
   }
 
-  console.log("Governance API called:", {
+  console.log("Governance API V2 called:", {
     httpMethod: event.httpMethod,
     path: event.path,
     queryParams: event.queryStringParameters,
@@ -658,46 +653,31 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
   try {
     const path = event.path;
 
-    // GET /voting-power?identityId=xxx or GET /voting-power?twitterId=xxx
+    // GET /voting-power?twitterHandle=xxx&walletAddress=0x...
     if (path.endsWith("/voting-power") && event.httpMethod === "GET") {
-      const { identityId, twitterHandle: twitterHandleParam, nftBonus: nftBonusParam } = event.queryStringParameters || {};
+      const { twitterHandle: twitterHandleParam, walletAddress } = event.queryStringParameters || {};
 
       const twitterHandle = twitterHandleParam?.toLowerCase().replace(/^@/, "");
+      const hasLinkedX = !!twitterHandle;
 
-      if (!twitterHandle) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders(),
-          body: JSON.stringify({
-            error: "Missing twitterHandle parameter",
-          }),
-        };
-      }
+      // Parallel: leaderboard + on-chain + battalion allowlist + genesis whitelist
+      const [leaderboardScore, onChainScore, isOnBattalion, isOnGenesis] = await Promise.all([
+        getLeaderboardScore(twitterHandle),
+        getOnChainScore(walletAddress || ""),
+        checkBattalionAllowlist(walletAddress || ""),
+        checkGenesisWhitelist(walletAddress || ""),
+      ]);
 
-      // Get leaderboard score from V3
-      const leaderboardScore = await getLeaderboardScore(twitterHandle);
+      const power = calculateVotingPowerV2(leaderboardScore, onChainScore, isOnBattalion, isOnGenesis, hasLinkedX);
 
-      // NFT bonus (will be verified separately via signature)
-      const hasNft = nftBonusParam === "true";
-
-      // Token balance (0 until TGE)
-      const tokenBalance = 0;
-
-      // Calculate voting power
-      const power = calculateVotingPower(leaderboardScore, hasNft, tokenBalance);
-
-      const response: VotingPowerResponse = {
-        address: identityId || "",
-        twitterHandle,
-        leaderboardScore,
-        nftBonus: power.nft,
-        tokenBalance,
+      const response: VotingPowerV2Response = {
         totalVotingPower: power.total,
-        breakdown: {
-          leaderboard: power.leaderboard,
-          nft: power.nft,
-          token: power.token,
+        breakdown: power.breakdown,
+        rawScores: {
+          leaderboardScore,
+          onChainScore,
         },
+        normalized: power.normalized,
       };
 
       return {
@@ -707,84 +687,35 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // GET /config - Get current voting power configuration
+    // GET /config - Get current voting power V2 configuration
     if (path.endsWith("/config") && event.httpMethod === "GET") {
       return {
         statusCode: 200,
         headers: corsHeaders(),
         body: JSON.stringify({
+          version: 2,
           leaderboardWeight: LEADERBOARD_WEIGHT,
-          tokenWeight: TOKEN_WEIGHT,
-          nftBonus: NFT_BONUS,
-          tokenEnabled: TOKEN_WEIGHT > 0,
+          onChainWeight: ONCHAIN_WEIGHT,
+          battalionAllowlistBonus: BATTALION_ALLOWLIST_BONUS,
+          genesisAllowlistBonus: GENESIS_ALLOWLIST_BONUS,
+          xLinkBonus: X_LINK_BONUS,
+          normalization: "log2(1+x)",
         }),
       };
     }
 
-    // POST /verify-nft - Verify NFT ownership via MetaMask signature
+    // POST /verify-nft - Deprecated (V2)
     if (path.endsWith("/verify-nft") && event.httpMethod === "POST") {
-      if (!event.body) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders(),
-          body: JSON.stringify({ error: "Request body is required" }),
-        };
-      }
-
-      const { message, signature, proposalId } = JSON.parse(event.body);
-
-      if (!message || !signature || !proposalId) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders(),
-          body: JSON.stringify({
-            error: "Missing required fields: message, signature, proposalId",
-          }),
-        };
-      }
-
-      // Validate message format
-      if (!validateNftVerificationMessage(message, proposalId)) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders(),
-          body: JSON.stringify({
-            error: "Invalid or expired message format",
-          }),
-        };
-      }
-
-      try {
-        // Recover Ethereum address from signature
-        const ethAddress = recoverAddressFromSignature(message, signature);
-        console.log(`Recovered Ethereum address: ${ethAddress}`);
-
-        // Verify NFT ownership
-        const hasNft = await verifyNftOwnership(ethAddress);
-
-        return {
-          statusCode: 200,
-          headers: corsHeaders(),
-          body: JSON.stringify({
-            ethAddress,
-            hasNasunNft: hasNft,
-            nftBonus: hasNft ? NFT_BONUS : 0,
-          }),
-        };
-      } catch (error: any) {
-        console.error("NFT verification error:", maskSensitiveData({ message: error.message, stack: error.stack }));
-        return {
-          statusCode: 400,
-          headers: corsHeaders(),
-          body: JSON.stringify({
-            error: "Invalid signature",
-            message: error.message,
-          }),
-        };
-      }
+      return {
+        statusCode: 410,
+        headers: corsHeaders(),
+        body: JSON.stringify({
+          error: "This endpoint has been deprecated in Governance V2. NFT verification is no longer required.",
+        }),
+      };
     }
 
-    // POST /certificate - Issue Oracle-signed voting power certificate
+    // POST /certificate - Issue Oracle-signed voting power certificate (V2)
     if (path.endsWith("/certificate") && event.httpMethod === "POST") {
       if (!event.body) {
         return {
@@ -794,7 +725,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
-      const { voter, proposalId, twitterHandle: rawTwitterHandle, ethSignature } = JSON.parse(event.body);
+      const { voter, proposalId, twitterHandle: rawTwitterHandle, walletAddress } = JSON.parse(event.body);
 
       if (!voter || !proposalId) {
         return {
@@ -805,63 +736,47 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
 
       try {
-        // 1. Calculate voting power from V3 leaderboard
         const twitterHandle = rawTwitterHandle?.toLowerCase().replace(/^@/, "");
-        let leaderboardScore = 0;
-        if (twitterHandle) {
-          leaderboardScore = await getLeaderboardScore(twitterHandle);
-        }
+        const hasLinkedX = !!twitterHandle;
 
-        let hasNft = false;
-        if (ethSignature) {
-          try {
-            const ethAddress = recoverAddressFromSignature(ethSignature.message, ethSignature.signature);
-            hasNft = await verifyNftOwnership(ethAddress);
-          } catch (e: any) {
-            console.warn("ETH signature verification failed:", maskSensitiveData({ message: e?.message }));
-          }
-        }
+        // Parallel: leaderboard + on-chain + battalion allowlist + genesis whitelist
+        const [leaderboardScore, onChainScore, isOnBattalion, isOnGenesis] = await Promise.all([
+          getLeaderboardScore(twitterHandle),
+          getOnChainScore(walletAddress || voter),
+          checkBattalionAllowlist(walletAddress || voter),
+          checkGenesisWhitelist(walletAddress || voter),
+        ]);
 
-        const power = calculateVotingPower(leaderboardScore, hasNft, 0);
-        const votingPower = Math.max(1, power.total); // Minimum 1
+        const power = calculateVotingPowerV2(leaderboardScore, onChainScore, isOnBattalion, isOnGenesis, hasLinkedX);
+        const votingPower = power.total;
 
-        // 2. Build message for signature (MUST match Move's build_certificate_message)
+        // Build message for signature (MUST match Move's build_certificate_message)
         // Message format: domain_separator (26 bytes) || voter (32 bytes BCS) || proposal_id (32 bytes BCS)
         //                 || voting_power (8 bytes BE) || expires_at (8 bytes BE)
         // Total: 26 + 32 + 32 + 8 + 8 = 106 bytes
-        const ttlMs = calculateCertificateTTL(); // TODO: Pass proposal expiration when available
+        const ttlMs = calculateCertificateTTL();
         const expiresAt = Date.now() + ttlMs;
 
-        // 1. Domain separator (UTF-8 bytes)
         const domainBytes = Buffer.from(DOMAIN_SEPARATOR, "utf8");
-
-        // 2. Voter address (BCS - MUST match bcs::to_bytes(&address))
         const voterBytes = Buffer.from(bcs.Address.serialize(voter).toBytes());
-
-        // 3. Proposal ID (BCS - MUST match bcs::to_bytes(&ID))
-        // Note: Sui ID is same as Address (32 bytes)
         const proposalIdBytes = Buffer.from(bcs.Address.serialize(proposalId).toBytes());
 
-        // 4. Voting power (8 bytes big-endian)
         const votingPowerBytes = Buffer.alloc(8);
         votingPowerBytes.writeBigUInt64BE(BigInt(votingPower));
 
-        // 5. Expires at (8 bytes big-endian)
         const expiresAtBytes = Buffer.alloc(8);
         expiresAtBytes.writeBigUInt64BE(BigInt(expiresAt));
 
-        // Concatenate all fields
         const message = Buffer.concat([
-          domainBytes,        // "NASUN_GOVERNANCE_DEVNET_V1" (26 bytes)
-          voterBytes,         // voter (32 bytes BCS)
-          proposalIdBytes,    // proposal_id (32 bytes BCS)
-          votingPowerBytes,   // voting_power (8 bytes)
-          expiresAtBytes,     // expires_at (8 bytes)
+          domainBytes,
+          voterBytes,
+          proposalIdBytes,
+          votingPowerBytes,
+          expiresAtBytes,
         ]);
 
-        console.log("Certificate message length:", message.length, "bytes"); // Expected: 106
+        console.log("Certificate message length:", message.length, "bytes");
 
-        // 3. Sign with Oracle private key (Ed25519)
         const privateKey = await getOraclePrivateKey();
         const signature = await ed25519.signAsync(message, privateKey);
 
@@ -871,7 +786,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           votingPower,
           expiresAt,
           signature: Buffer.from(signature).toString("hex"),
-          breakdown: power,
+          breakdown: power.breakdown,
         };
 
         console.log(`Certificate issued for ${voter} on proposal ${proposalId}: power=${votingPower}`);
@@ -915,10 +830,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
 
       try {
-        // Reconstruct transaction from kind bytes
         const tx = Transaction.fromKind(fromBase64(txKindBytes));
 
-        // Validate transaction (prevent abuse)
         const validation = validateTxKind(tx);
         if (!validation.valid) {
           console.error("Transaction validation failed:", validation.error);
@@ -932,7 +845,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           };
         }
 
-        // Extract proposal ID and check type
         const proposalId = extractProposalIdFromTx(tx);
         if (!proposalId) {
           return {
@@ -942,10 +854,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           };
         }
 
-        // Check proposal type - only sponsor Poll proposals
         const proposalType = await getProposalType(proposalId);
         if (proposalType === 0) {
-          // Governance proposals require user to pay gas
           console.log(`Rejecting sponsor request for Governance proposal ${proposalId}`);
           return {
             statusCode: 400,
@@ -964,7 +874,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         const keypair = await getSponsorKeypair();
         const sponsorAddress = keypair.getPublicKey().toSuiAddress();
 
-        // Get sponsor's gas coins
         const coins = await suiClient.getCoins({
           owner: sponsorAddress,
           coinType: "0x2::sui::SUI",
@@ -978,7 +887,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           };
         }
 
-        // Set transaction parameters
         tx.setSender(sender);
         tx.setGasOwner(sponsorAddress);
         tx.setGasPayment([
@@ -989,7 +897,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           },
         ]);
 
-        // Build and sign as sponsor
         const txBytes = await tx.build({ client: suiClient });
         const sponsorSignature = await keypair.signTransaction(txBytes);
 

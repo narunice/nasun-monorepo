@@ -11,6 +11,7 @@ import {
   NASUN_DEVNET_DASHBOARD_ID,
   NASUN_DEVNET_ADMIN_CAP,
 } from "@/constants/suiPackageConstants";
+import { GOVERNANCE } from "@nasun/devnet-config";
 import { toast } from "react-toastify";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
@@ -99,9 +100,20 @@ export function CreateProposal() {
         arguments: [tx.object(dashboardId), tx.object(adminCapId), proposalId],
       });
 
-      // Step 3: If it's a Poll, set the proposal type (0 = Governance, 1 = Poll)
-      // Note: This requires ProposalTypeRegistry object ID
-      // For now, we skip this step as it requires additional setup
+      // Step 3: Set proposal type in registry (0 = Governance, 1 = Poll)
+      // proposal::create returns ID directly, which set_proposal_type accepts
+      if (GOVERNANCE.proposalTypeRegistry) {
+        const typeValue = formData.proposalType === "Poll" ? 1 : 0;
+        tx.moveCall({
+          target: `${packageId}::proposal::set_proposal_type`,
+          arguments: [
+            tx.object(GOVERNANCE.proposalTypeRegistry),
+            tx.object(adminCapId),
+            proposalId,
+            tx.pure.u8(typeValue),
+          ],
+        });
+      }
 
       // Sign and execute the transaction using local wallet keypair
       const result = await suiClient.signAndExecuteTransaction({

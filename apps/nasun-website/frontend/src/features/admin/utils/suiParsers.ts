@@ -44,7 +44,7 @@ export function parseProposalSummary(data: SuiObjectData | null | undefined): Pr
     expiration,
     isExpired,
     isDelisted,
-    proposalType: 'Governance', // TODO: Query ProposalTypeRegistry for accurate type
+    proposalType: 'Governance', // Overridden by useAdminProposals with registry lookup
     votersTableId: fields.voters?.fields?.id?.id || '',
     creator: fields.creator,
   };
