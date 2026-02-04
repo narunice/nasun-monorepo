@@ -2,14 +2,14 @@
 name = "pado_prediction"
 edition = "2024"
 version = "0.0.1"
+published-at = "0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895"
 
 [dependencies]
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
 
 [addresses]
 prediction = "0x0"
-devnet_tokens = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
 
 [environments]
-devnet = "12bf3808"
-nasun-devnet = "12bf3808"
+devnet = "272218f1"
+nasun-devnet = "272218f1"
