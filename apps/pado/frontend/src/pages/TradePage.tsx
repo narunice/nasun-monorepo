@@ -11,7 +11,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
-import { TradingPanel } from '../features/trading/containers';
+import { TradingPanel, EnablePadoCard } from '../features/trading/containers';
 import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles } from '../features/trading/components';
 import { useTradeMode, useOrderbook } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
@@ -218,13 +218,16 @@ function TradePageContent() {
             <TradingPanel mode={mode} />
           </div>
           <div className={`shrink-0 ${CARD_W}`}>
-            {chatVisible ? (
-              <div style={{ height: `${CHART_HEIGHT}px` }}>
-                <ChatPanel onMinimize={toggleChat} />
-              </div>
-            ) : (
-              <ChatCollapsedBar onClick={toggleChat} />
-            )}
+            <div className="flex flex-col gap-3" style={{ height: `${CHART_HEIGHT}px` }}>
+              <EnablePadoCard />
+              {chatVisible ? (
+                <div className="flex-1 min-h-0">
+                  <ChatPanel onMinimize={toggleChat} />
+                </div>
+              ) : (
+                <ChatCollapsedBar onClick={toggleChat} />
+              )}
+            </div>
           </div>
         </div>
       )}

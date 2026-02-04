@@ -28,11 +28,11 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const openOrderCount = openOrdersData?.orders?.length ?? 0;
 
   const tabs: TabConfig[] = [
+    { id: 'poolInfo', label: 'Pool Info' },
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
     { id: 'assets', label: 'Assets' },
-    { id: 'poolInfo', label: 'Pool Info' },
   ];
 
   return (
