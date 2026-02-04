@@ -209,7 +209,22 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
         return;
       }
 
-      const verifiedAddress = await verifySignature(pending.challenge, msg.signature, msg.address);
+      // Validate authMethod if present
+      if (msg.authMethod && msg.authMethod !== 'personal_sign' && msg.authMethod !== 'ephemeral') {
+        send(ws, { type: 'auth_error', reason: 'Invalid auth method' });
+        ws.close(4401, 'Invalid auth method');
+        return;
+      }
+      if (msg.authMethod === 'ephemeral' && (typeof msg.ephemeralPubKey !== 'string' || msg.ephemeralPubKey.length > 100)) {
+        send(ws, { type: 'auth_error', reason: 'Invalid ephemeral public key' });
+        ws.close(4401, 'Invalid ephemeral key');
+        return;
+      }
+
+      const verifiedAddress = await verifySignature(
+        pending.challenge, msg.signature, msg.address,
+        msg.authMethod, msg.ephemeralPubKey
+      );
       clearTimeout(pending.timeout);
       pendingAuth.delete(ws);
 
@@ -304,9 +319,9 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     corsHeaders['Access-Control-Allow-Origin'] = origin;
     corsHeaders['Vary'] = 'Origin';
   }
-  res.writeHead(200, corsHeaders);
 
   if (req.method === 'OPTIONS') {
+    res.writeHead(204, corsHeaders);
     res.end();
     return;
   }
@@ -321,7 +336,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       : undefined;
 
     if (!roomExists(roomId)) {
-      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.writeHead(404, corsHeaders);
       res.end(JSON.stringify({ error: 'Room not found' }));
       return;
     }
@@ -330,11 +345,13 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     const hasMore = messages.length > limit;
     const result = hasMore ? messages.slice(1) : messages;
 
+    res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ messages: result, hasMore }));
     return;
   }
 
   if (url.pathname === '/api/status' && req.method === 'GET') {
+    res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({
       online: authenticatedClients.size,
       uptime: process.uptime(),
@@ -342,7 +359,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
-  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.writeHead(404, corsHeaders);
   res.end(JSON.stringify({ error: 'Not found' }));
 }
 

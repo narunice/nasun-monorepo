@@ -48,9 +48,14 @@ type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
 
 // ===== Signer interface (injected from @nasun/wallet) =====
 
+export type ChatAuthMethod = 'personal_sign' | 'ephemeral';
+
 export interface ChatSigner {
   address: string;
   signPersonal(message: Uint8Array): Promise<{ signature: string }>;
+  authMethod?: ChatAuthMethod;
+  ephemeralPubKey?: string;
+  signWithEphemeralKey?(message: Uint8Array): Promise<{ signature: string }>;
 }
 
 // ===== ChatService =====
@@ -92,6 +97,13 @@ export class ChatService {
    * Connect to chat server with wallet signer for authentication
    */
   connect(wsUrl: string, signer: ChatSigner): void {
+    // Already connected/connecting with the same address — just update signer ref
+    if (this.signer?.address === signer.address &&
+        (this.status === 'connected' || this.status === 'connecting' || this.status === 'authenticating')) {
+      this.signer = signer;
+      return;
+    }
+
     this.wsUrl = wsUrl;
     this.signer = signer;
     this.reconnectAttempts = 0;
@@ -260,13 +272,27 @@ export class ChatService {
 
     try {
       const messageBytes = new TextEncoder().encode(challenge);
-      const { signature } = await this.signer.signPersonal(messageBytes);
+
+      let signature: string;
+      let authMethod: ChatAuthMethod = 'personal_sign';
+      let ephemeralPubKey: string | undefined;
+
+      if (this.signer.authMethod === 'ephemeral' && this.signer.signWithEphemeralKey) {
+        const result = await this.signer.signWithEphemeralKey(messageBytes);
+        signature = result.signature;
+        authMethod = 'ephemeral';
+        ephemeralPubKey = this.signer.ephemeralPubKey;
+      } else {
+        const result = await this.signer.signPersonal(messageBytes);
+        signature = result.signature;
+      }
 
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({
           type: 'auth_response',
           signature,
           address: this.signer.address,
+          ...(authMethod === 'ephemeral' && { authMethod, ephemeralPubKey }),
         }));
       }
     } catch (err) {
