@@ -1,10 +1,21 @@
 import { useMarket } from '../context/MarketContext';
 
-export function PoolInfo() {
+interface PoolInfoProps {
+  variant?: 'card' | 'inline';
+}
+
+export function PoolInfo({ variant = 'card' }: PoolInfoProps) {
   const { currentPool } = useMarket();
+
+  const wrapperClass = variant === 'card'
+    ? 'mt-6 pt-4 border-t border-theme-border'
+    : '';
+
   return (
-    <div className="mt-6 pt-4 border-t border-theme-border">
-      <h4 className="text-sm xl:text-base font-medium text-theme-text-secondary mb-2">Pool Info</h4>
+    <div className={wrapperClass}>
+      {variant === 'card' && (
+        <h4 className="text-sm xl:text-base font-medium text-theme-text-secondary mb-2">Pool Info</h4>
+      )}
       <div className="text-xs xl:text-sm space-y-1">
         <div className="flex justify-between">
           <span className="text-theme-text-muted">Tick Size:</span>

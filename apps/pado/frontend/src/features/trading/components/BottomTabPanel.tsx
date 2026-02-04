@@ -11,8 +11,9 @@ import { TradeHistory } from './TradeHistory';
 import { useOpenOrders, useOrderActions } from '../hooks';
 import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs, type TabItem } from '@/components/common';
+import { PoolInfo } from './PoolInfo';
 
-export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
+export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets' | 'poolInfo';
 
 type TabConfig = TabItem<TabType>;
 
@@ -31,6 +32,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
     { id: 'assets', label: 'Assets' },
+    { id: 'poolInfo', label: 'Pool Info' },
   ];
 
   return (
@@ -54,6 +56,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
         {activeTab === 'orderHistory' && <OrderHistoryTab />}
         {activeTab === 'tradeHistory' && <TradeHistoryTab />}
         {activeTab === 'assets' && <AssetsTab />}
+        {activeTab === 'poolInfo' && <PoolInfoTab />}
       </div>
     </div>
   );
@@ -214,6 +217,15 @@ function AssetsTab() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Pool Info Tab - shows pool parameters (moved from OrderForm card)
+function PoolInfoTab() {
+  return (
+    <div className="min-h-[180px]">
+      <PoolInfo variant="inline" />
     </div>
   );
 }

@@ -24,7 +24,22 @@ export interface LoadHistoryPayload {
   limit?: number;
 }
 
-export type ClientMessage = AuthResponseMessage | SendMessagePayload | LoadHistoryPayload;
+export interface SetNicknamePayload {
+  type: 'set_nickname';
+  nickname: string;
+}
+
+export interface CheckNicknamePayload {
+  type: 'check_nickname';
+  nickname: string;
+}
+
+export type ClientMessage =
+  | AuthResponseMessage
+  | SendMessagePayload
+  | LoadHistoryPayload
+  | SetNicknamePayload
+  | CheckNicknamePayload;
 
 // ===== Protocol Messages (Server -> Client) =====
 
@@ -36,6 +51,7 @@ export interface AuthChallengeMessage {
 export interface AuthSuccessMessage {
   type: 'auth_success';
   address: string;
+  nickname: string | null;
 }
 
 export interface AuthErrorMessage {
@@ -48,6 +64,7 @@ export interface ChatMessagePayload {
   id: number;
   roomId: number;
   sender: string;
+  senderNickname: string | null;
   content: string;
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
@@ -71,6 +88,19 @@ export interface ErrorPayload {
   message: string;
 }
 
+export interface NicknameResultMessage {
+  type: 'nickname_result';
+  ok: boolean;
+  nickname?: string;
+  error?: string;
+}
+
+export interface NicknameCheckMessage {
+  type: 'nickname_check';
+  available: boolean;
+  nickname: string;
+}
+
 export type ServerMessage =
   | AuthChallengeMessage
   | AuthSuccessMessage
@@ -78,7 +108,9 @@ export type ServerMessage =
   | ChatMessagePayload
   | HistoryPayload
   | OnlineCountPayload
-  | ErrorPayload;
+  | ErrorPayload
+  | NicknameResultMessage
+  | NicknameCheckMessage;
 
 // ===== Internal Types =====
 

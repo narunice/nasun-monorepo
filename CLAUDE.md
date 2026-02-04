@@ -142,7 +142,7 @@ Security expectations:
 - Assume deep familiarity with:
   - Sui / Move (object model, ownership, capabilities)
   - Sponsored transactions, gas abstraction, zkLogin
-  - Nasun Network (Sui fork with custom devnet — Chain ID: 12bf3808)
+  - Nasun Network (Sui fork with custom devnet — Chain ID: 272218f1)
   - Smart contract patterns: shared objects, AdminCap, UpgradeCap
 
 - On-chain code is security-critical by default
@@ -226,7 +226,7 @@ Nasun Devnet 블록 탐색기. EC2 + nginx로 배포됩니다.
 ```env
 VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
-VITE_CHAIN_ID=12bf3808
+VITE_CHAIN_ID=272218f1
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 VITE_GOOGLE_CLIENT_ID=<optional>
 ```
@@ -472,7 +472,7 @@ pnpm deploy:gensol-website:staging
 | RPC Endpoint   | https://rpc.devnet.nasun.io      |
 | Faucet         | https://faucet.devnet.nasun.io   |
 | Explorer       | https://explorer.nasun.io/devnet |
-| Chain ID       | `12bf3808`                       |
+| Chain ID       | `272218f1`                       |
 | Native Token   | NASUN (최소단위: SOE)            |
 
 ## 보안
@@ -547,7 +547,7 @@ cd apps/pado/contracts
 
 ### 배포된 컨트랙트 (Devnet V6)
 
-> **Chain ID**: `12bf3808` (V6 리셋, 2026-01-27)
+> **Chain ID**: `272218f1` (V7 리셋, 2026-02-04)
 >
 > 전체 컨트랙트 주소는 `packages/devnet-config/devnet-ids.json` 참조
 

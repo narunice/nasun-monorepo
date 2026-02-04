@@ -1,7 +1,7 @@
 /**
  * Pado Oracle Price Updater Lambda
  *
- * Fetches BTC/ETH prices from CoinGecko/Binance and pushes them
+ * Fetches BTC price from CoinGecko/Binance and pushes it
  * to the DevOracle contract on Nasun Devnet via batch_update.
  *
  * Triggered by EventBridge every 1 minute.
@@ -31,7 +31,6 @@ const DECIMALS = 8;
 
 // Symbol IDs (must match dev_oracle.move)
 const BTCUSD = 1;
-const ETHUSD = 2;
 const NASUSD = 3;
 
 // ========================================
@@ -78,16 +77,16 @@ function toConfidence(usd: number): bigint {
 // Price Fetching
 // ========================================
 
-async function fetchPrices(): Promise<{ BTC: number; ETH: number }> {
+async function fetchPrices(): Promise<{ BTC: number }> {
   // Primary: CoinGecko
   try {
     const response = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd',
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
       { signal: AbortSignal.timeout(5000) }
     );
     const data = await response.json();
-    if (data.bitcoin?.usd && data.ethereum?.usd) {
-      return { BTC: data.bitcoin.usd, ETH: data.ethereum.usd };
+    if (data.bitcoin?.usd) {
+      return { BTC: data.bitcoin.usd };
     }
     throw new Error('Invalid CoinGecko response');
   } catch (error) {
@@ -95,20 +94,11 @@ async function fetchPrices(): Promise<{ BTC: number; ETH: number }> {
   }
 
   // Backup: Binance
-  const [btcRes, ethRes] = await Promise.all([
-    fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', {
-      signal: AbortSignal.timeout(5000),
-    }),
-    fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', {
-      signal: AbortSignal.timeout(5000),
-    }),
-  ]);
+  const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', {
+    signal: AbortSignal.timeout(5000),
+  });
   const btcData = await btcRes.json();
-  const ethData = await ethRes.json();
-  return {
-    BTC: parseFloat(btcData.price),
-    ETH: parseFloat(ethData.price),
-  };
+  return { BTC: parseFloat(btcData.price) };
 }
 
 // ========================================
@@ -166,7 +156,6 @@ export const handler: Handler = async () => {
     // 3. Build price updates
     const prices: PriceUpdate[] = [
       { symbol: BTCUSD, price: toOraclePrice(apiPrices.BTC), confidence: toConfidence(apiPrices.BTC) },
-      { symbol: ETHUSD, price: toOraclePrice(apiPrices.ETH), confidence: toConfidence(apiPrices.ETH) },
       { symbol: NASUSD, price: toOraclePrice(1.0), confidence: toOraclePrice(0.001) },
     ];
 
@@ -178,11 +167,10 @@ export const handler: Handler = async () => {
       status: 'success',
       digest: digest.slice(0, 16),
       btc: apiPrices.BTC,
-      eth: apiPrices.ETH,
       elapsed_ms: elapsed,
     }));
 
-    return { statusCode: 200, body: JSON.stringify({ digest, btc: apiPrices.BTC, eth: apiPrices.ETH }) };
+    return { statusCode: 200, body: JSON.stringify({ digest, btc: apiPrices.BTC }) };
   } catch (error) {
     const elapsed = Date.now() - startTime;
     const message = error instanceof Error ? error.message : String(error);

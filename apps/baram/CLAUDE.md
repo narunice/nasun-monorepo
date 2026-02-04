@@ -187,7 +187,7 @@ cd apps/baram/executor-nitro
 
 ## Deployed Contracts (Devnet V6)
 
-> **Chain ID**: `12bf3808` (V6, 2026-01-27 리셋, executor v2 업그레이드 2026-01-31)
+> **Chain ID**: `272218f1` (V7, 2026-02-04 리셋)
 
 ### Baram Contract
 
@@ -260,7 +260,7 @@ cd apps/baram/executor-nitro
 ```env
 VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
-VITE_CHAIN_ID=12bf3808
+VITE_CHAIN_ID=272218f1
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 
 # Tokens

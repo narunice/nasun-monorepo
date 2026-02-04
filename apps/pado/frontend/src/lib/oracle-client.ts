@@ -25,7 +25,6 @@ let feedsTableId: string | null = null;
 // Symbol ID mapping (must match dev_oracle.move constants)
 export const SYMBOLS = {
   BTCUSD: 1,
-  ETHUSD: 2,
   NASUSD: 3,
 } as const;
 
@@ -188,7 +187,6 @@ export async function getAllPrices(
   const symbols = Object.keys(SYMBOLS) as SymbolKey[];
   const results: Record<SymbolKey, PriceData | null> = {
     BTCUSD: null,
-    ETHUSD: null,
     NASUSD: null,
   };
 
@@ -238,7 +236,7 @@ interface BinanceTickerResponse {
 }
 
 /**
- * Fetch prices from external APIs (fallback for bot/testing)
+ * Fetch BTC price from external APIs (fallback for bot/testing)
  *
  * Note: Not used in frontend - only for price-updater bot.
  * Throws on failure to prevent stale/hardcoded prices from being
@@ -246,46 +244,39 @@ interface BinanceTickerResponse {
  */
 export async function fetchBinancePrices(): Promise<{
   BTC: number;
-  ETH: number;
 }> {
   const errors: string[] = [];
 
   // Try CoinGecko first
   try {
     const response = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd'
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
     );
     if (!response.ok) {
       throw new Error(`CoinGecko HTTP ${response.status}`);
     }
     const data = await response.json();
     const btc = data.bitcoin?.usd;
-    const eth = data.ethereum?.usd;
-    if (typeof btc !== 'number' || typeof eth !== 'number' || btc <= 0 || eth <= 0) {
-      throw new Error(`CoinGecko returned invalid data: BTC=${btc}, ETH=${eth}`);
+    if (typeof btc !== 'number' || btc <= 0) {
+      throw new Error(`CoinGecko returned invalid data: BTC=${btc}`);
     }
-    return { BTC: btc, ETH: eth };
+    return { BTC: btc };
   } catch (e) {
     errors.push(`CoinGecko: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // Fallback to Binance
   try {
-    const [btcRes, ethRes] = await Promise.all([
-      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
-      fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'),
-    ]);
-    if (!btcRes.ok || !ethRes.ok) {
-      throw new Error(`Binance HTTP BTC=${btcRes.status} ETH=${ethRes.status}`);
+    const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+    if (!btcRes.ok) {
+      throw new Error(`Binance HTTP BTC=${btcRes.status}`);
     }
     const btcData: BinanceTickerResponse = await btcRes.json();
-    const ethData: BinanceTickerResponse = await ethRes.json();
     const btc = parseFloat(btcData.price);
-    const eth = parseFloat(ethData.price);
-    if (isNaN(btc) || isNaN(eth) || btc <= 0 || eth <= 0) {
-      throw new Error(`Binance returned invalid prices: BTC=${btcData.price}, ETH=${ethData.price}`);
+    if (isNaN(btc) || btc <= 0) {
+      throw new Error(`Binance returned invalid price: BTC=${btcData.price}`);
     }
-    return { BTC: btc, ETH: eth };
+    return { BTC: btc };
   } catch (e) {
     errors.push(`Binance: ${e instanceof Error ? e.message : String(e)}`);
   }
