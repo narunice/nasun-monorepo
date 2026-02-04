@@ -3,13 +3,13 @@
 # this file should not be committed to source control
 
 build-env = "devnet"
-chain-id = "12bf3808"
+chain-id = "272218f1"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts-attestation" }
-published-at = "0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3"
-original-id = "0xc7ede9327e51942f9dadf8783e74b8e654b7639b05bd7bec5b3fad6b3bc1b0f3"
+published-at = "0x6ab728f371455e7db3530794a1c02426f673ec5d2292835bdf365dd248519b9a"
+original-id = "0x6ab728f371455e7db3530794a1c02426f673ec5d2292835bdf365dd248519b9a"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x84602bc64e766da6637e765984e51fedbd0672f772a4f71ed893832f0ec56e23"
+upgrade-capability = "0x5b8076bc7f8a8777549ff4772ec8e2f3a8c729fa4ebc1537e2338db839223492"

@@ -1,11 +1,10 @@
 [package]
 name = "baram_executor"
 edition = "2024"
-published-at = "0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff"
-
+published-at = "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd"
 [dependencies]
 # Sui and std are implicit system dependencies in the new package system
 
 [environments]
-devnet = "12bf3808"
-nasun-devnet = "12bf3808"
+devnet = "272218f1"
+nasun-devnet = "272218f1"

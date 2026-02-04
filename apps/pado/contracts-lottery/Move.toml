@@ -2,14 +2,14 @@
 name = "pado_lottery"
 edition = "2024"
 version = "0.0.1"
+published-at = "0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900"
 
 [dependencies]
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
 
 [addresses]
 lottery = "0x0"
-devnet_tokens = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
 
 [environments]
-devnet = "12bf3808"
-nasun-devnet = "12bf3808"
+devnet = "272218f1"
+nasun-devnet = "272218f1"

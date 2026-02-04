@@ -3,22 +3,13 @@
 # this file should not be committed to source control
 
 build-env = "devnet"
-chain-id = "12bf3808"
+chain-id = "272218f1"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tokens" }
-published-at = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
-original-id = "0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017"
+published-at = "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731"
+original-id = "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731"
 version = 1
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x2017d606c566ff13cbaf23bf18b5e413b95bb9bcd333c2f413878e7ddddf2a87"
-
-[[published]]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts" }
-published-at = "0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f"
-original-id = "0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f"
-version = 1
-toolchain-version = "1.63.3"
-build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xa9a6ee0412639af01e630ce23d38b246a88bdfd3ee8db5e3634ce45fa1eefe62"
+upgrade-capability = "0xef52338fb8b2f564938f830ae2822818dfce49491508d95bcc85c0e3e7ddf269"

@@ -2,6 +2,7 @@
 name = "baram"
 edition = "2024"
 version = "0.0.2"
+published-at = "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f"
 
 [dependencies]
 devnet_tokens = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tokens" }
@@ -10,5 +11,5 @@ devnet_tokens = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tok
 baram = "0x0"
 
 [environments]
-devnet = "12bf3808"
-nasun-devnet = "12bf3808"
+devnet = "272218f1"
+nasun-devnet = "272218f1"
