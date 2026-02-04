@@ -1,6 +1,7 @@
 packages:
   - 'apps/*'
   - 'apps/*/frontend'
+  - 'apps/*/chat-server'
   - 'apps/*/executor-nitro'
   - 'packages/*'
   # deepbookv3는 별도 관리 (외부 라이브러리)

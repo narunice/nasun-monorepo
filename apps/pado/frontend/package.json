@@ -16,6 +16,7 @@
     "@nasun/wallet-ui": "workspace:*",
     "@scure/bip39": "^2.0.1",
     "@tanstack/react-query": "^5.90.12",
+    "boring-avatars": "^2.0.4",
     "lightweight-charts": "^5.1.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",

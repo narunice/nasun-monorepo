@@ -24,10 +24,10 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 
-// Contract addresses (Devnet V6 - 2026-01-27)
-const ORACLE_PACKAGE_ID = '0x560788890e0d5f1fa757f6bd34e1d015c9f29061eea01ef9afe4635799cfab53';
-const ORACLE_REGISTRY_ID = '0x83b8a7bf66cfdb85f13670e833837d5c51b23f097bded20a740e6a397bc09e1e';
-const ADMIN_CAP_ID = '0x92dbfba1248d976a6c2d1befee6200b6fde9d691cccdd8e8cceeb040efc88584';
+// Contract addresses (Devnet V7 - 2026-02-04)
+const ORACLE_PACKAGE_ID = '0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c';
+const ORACLE_REGISTRY_ID = '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1';
+const ADMIN_CAP_ID = '0x335a8e50cca47f993cb2eee7221791bac67be0a9a71ac69708a28d174a746bec';
 const CLOCK_ID = '0x6';
 
 const DECIMALS = 8;
@@ -35,7 +35,6 @@ const UPDATE_INTERVAL_MS = 30_000; // 30 seconds
 
 // Symbol IDs (must match dev_oracle.move)
 const BTCUSD = 1;
-const ETHUSD = 2;
 const NASUSD = 3;
 
 // ========================================
@@ -61,19 +60,16 @@ function toConfidence(usd: number): bigint {
 // Price Fetching
 // ========================================
 
-async function fetchPrices(): Promise<{ BTC: number; ETH: number }> {
+async function fetchPrices(): Promise<{ BTC: number }> {
   // Primary: CoinGecko
   try {
     const response = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd',
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
       { signal: AbortSignal.timeout(5000) }
     );
     const data = await response.json();
-    if (data.bitcoin?.usd && data.ethereum?.usd) {
-      return {
-        BTC: data.bitcoin.usd,
-        ETH: data.ethereum.usd,
-      };
+    if (data.bitcoin?.usd) {
+      return { BTC: data.bitcoin.usd };
     }
     throw new Error('Invalid CoinGecko response');
   } catch (error) {
@@ -82,20 +78,11 @@ async function fetchPrices(): Promise<{ BTC: number; ETH: number }> {
 
   // Backup: Binance
   try {
-    const [btcRes, ethRes] = await Promise.all([
-      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', {
-        signal: AbortSignal.timeout(5000),
-      }),
-      fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', {
-        signal: AbortSignal.timeout(5000),
-      }),
-    ]);
+    const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', {
+      signal: AbortSignal.timeout(5000),
+    });
     const btcData = await btcRes.json();
-    const ethData = await ethRes.json();
-    return {
-      BTC: parseFloat(btcData.price),
-      ETH: parseFloat(ethData.price),
-    };
+    return { BTC: parseFloat(btcData.price) };
   } catch (error) {
     console.error('❌ Both APIs failed');
     throw error;
@@ -175,7 +162,6 @@ async function main() {
 
       const prices: PriceUpdate[] = [
         { symbol: BTCUSD, price: toOraclePrice(apiPrices.BTC), confidence: toConfidence(apiPrices.BTC) },
-        { symbol: ETHUSD, price: toOraclePrice(apiPrices.ETH), confidence: toConfidence(apiPrices.ETH) },
         { symbol: NASUSD, price: toOraclePrice(1.0), confidence: toOraclePrice(0.001) }, // NASUN = $1 (fixed)
       ];
 
@@ -184,7 +170,6 @@ async function main() {
       const now = new Date().toISOString().slice(11, 19);
       console.log(`[${now}] ✅ Updated prices (tx: ${digest.slice(0, 10)}...)`);
       console.log(`         BTC: $${apiPrices.BTC.toLocaleString()}`);
-      console.log(`         ETH: $${apiPrices.ETH.toLocaleString()}`);
     } catch (error) {
       console.error('❌ Update failed:', error instanceof Error ? error.message : error);
     }

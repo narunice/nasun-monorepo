@@ -3,7 +3,6 @@ import type { ExecutionOption } from '../context';
 import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs } from '@/components/common';
 import { SlippageSettings } from './SlippageSettings';
-import { PriceSuggestions } from './PriceSuggestions';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { validateQuantity, validatePrice, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
 
@@ -101,6 +100,13 @@ export function OrderForm({
     }
   };
 
+  // Price suggestion helpers
+  const handlePriceSelect = useCallback((p: number) => {
+    if (p > 0) {
+      onPriceChange((Math.round(p * 100) / 100).toString());
+    }
+  }, [onPriceChange]);
+
   // Percentage amount buttons
   const handlePercentAmount = useCallback((pct: number) => {
     if (isBuy) {
@@ -119,7 +125,7 @@ export function OrderForm({
     : disabled || isLoading || isAutoDepositing || hasValidationError;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* A. Underline Tabs: Limit / Market */}
       <UnderlineTabs
         tabs={[
@@ -141,7 +147,7 @@ export function OrderForm({
       <div className="grid grid-cols-2">
         <button
           onClick={() => onSideChange('buy')}
-          className={`py-2 text-sm xl:text-base font-semibold transition-colors rounded-l ${
+          className={`py-1.5 text-sm xl:text-base font-semibold transition-colors rounded-l ${
             isBuy
               ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
               : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
@@ -151,7 +157,7 @@ export function OrderForm({
         </button>
         <button
           onClick={() => onSideChange('sell')}
-          className={`py-2 text-sm xl:text-base font-semibold transition-colors rounded-r ${
+          className={`py-1.5 text-sm xl:text-base font-semibold transition-colors rounded-r ${
             !isBuy
               ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
               : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
@@ -176,14 +182,33 @@ export function OrderForm({
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Price ({quoteSymbol})</label>
-            <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Min ${minPrice}</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePriceSelect(midPrice || 0)}
+                disabled={!midPrice}
+                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Current mid price"
+              >
+                Mid
+              </button>
+              <button
+                onClick={() => handlePriceSelect(bestBid)}
+                disabled={!bestBid}
+                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-green-700/50 hover:bg-green-700 text-green-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Best bid price"
+              >
+                Bid
+              </button>
+              <button
+                onClick={() => handlePriceSelect(bestAsk)}
+                disabled={!bestAsk}
+                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-red-700/50 hover:bg-red-700 text-red-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Best ask price"
+              >
+                Ask
+              </button>
+            </div>
           </div>
-          <PriceSuggestions
-            midPrice={midPrice || 0}
-            bestBid={bestBid}
-            bestAsk={bestAsk}
-            onSelect={(p) => onPriceChange(p.toString())}
-          />
           <input
             type="number"
             placeholder="0.00"
@@ -326,7 +351,7 @@ export function OrderForm({
       {/* H. Single Action Button */}
       <button
         onClick={handleSubmit}
-        className={`w-full py-2.5 font-semibold rounded transition-colors text-white disabled:opacity-50 ${
+        className={`w-full py-2 font-semibold rounded transition-colors text-white disabled:opacity-50 ${
           isBuy
             ? 'bg-green-600 hover:bg-green-700'
             : 'bg-red-600 hover:bg-red-700'

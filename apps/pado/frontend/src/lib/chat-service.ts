@@ -10,13 +10,14 @@ import type { ChatMessage, ChatConnectionStatus } from '../features/social/types
 // ===== Protocol types (mirror server types) =====
 
 interface AuthChallengeMsg { type: 'auth_challenge'; challenge: string }
-interface AuthSuccessMsg { type: 'auth_success'; address: string }
+interface AuthSuccessMsg { type: 'auth_success'; address: string; nickname: string | null }
 interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
   id: number;
   roomId: number;
   sender: string;
+  senderNickname: string | null;
   content: string;
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
@@ -29,12 +30,17 @@ interface HistoryMsg {
 }
 interface OnlineCountMsg { type: 'online_count'; count: number }
 interface ErrorMsg { type: 'error'; code: string; message: string }
+interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string }
+interface NicknameCheckMsg { type: 'nickname_check'; available: boolean; nickname: string }
 
-type ServerMessage = AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg | ChatMessageMsg | HistoryMsg | OnlineCountMsg | ErrorMsg;
+type ServerMessage =
+  | AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg
+  | ChatMessageMsg | HistoryMsg | OnlineCountMsg | ErrorMsg
+  | NicknameResultMsg | NicknameCheckMsg;
 
 // ===== Listener types =====
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -42,6 +48,8 @@ export interface ChatEventMap {
   status: ChatConnectionStatus;
   online_count: number;
   error: { code: string; message: string };
+  nickname: { ok: boolean; nickname?: string; error?: string };
+  nickname_check: { available: boolean; nickname: string };
 }
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
@@ -88,7 +96,7 @@ export class ChatService {
   private seenMessageIds = new Set<number>();
 
   constructor() {
-    for (const type of ['message', 'history', 'status', 'online_count', 'error'] as ChatEventType[]) {
+    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
     }
   }
@@ -156,6 +164,22 @@ export class ChatService {
       before: beforeId,
       limit,
     }));
+  }
+
+  /**
+   * Request nickname change
+   */
+  setNickname(nickname: string): void {
+    if (!this.ws || this.status !== 'connected') return;
+    this.ws.send(JSON.stringify({ type: 'set_nickname', nickname }));
+  }
+
+  /**
+   * Check nickname availability
+   */
+  checkNickname(nickname: string): void {
+    if (!this.ws || this.status !== 'connected') return;
+    this.ws.send(JSON.stringify({ type: 'check_nickname', nickname }));
   }
 
   /**
@@ -239,6 +263,8 @@ export class ChatService {
           this.connectionTimer = null;
         }
         this.setStatus('connected');
+        // Emit nickname info from auth_success
+        this.emit('nickname', { ok: true, nickname: msg.nickname ?? undefined });
         break;
 
       case 'auth_error':
@@ -261,6 +287,14 @@ export class ChatService {
 
       case 'error':
         this.emit('error', { code: msg.code, message: msg.message });
+        break;
+
+      case 'nickname_result':
+        this.emit('nickname', { ok: msg.ok, nickname: msg.nickname, error: msg.error });
+        break;
+
+      case 'nickname_check':
+        this.emit('nickname_check', { available: msg.available, nickname: msg.nickname });
         break;
     }
   }
@@ -318,6 +352,7 @@ export class ChatService {
       id: msg.id,
       roomId: msg.roomId,
       sender: msg.sender,
+      senderNickname: msg.senderNickname ?? undefined,
       content: msg.content,
       messageType: msg.messageType,
       replyToId: msg.replyToId,
@@ -334,6 +369,7 @@ export class ChatService {
         id: m.id,
         roomId: m.roomId,
         sender: m.sender,
+        senderNickname: m.senderNickname ?? undefined,
         content: m.content,
         messageType: m.messageType,
         replyToId: m.replyToId,

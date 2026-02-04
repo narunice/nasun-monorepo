@@ -1,8 +1,12 @@
 /**
  * TradePage
  * DEX Trading Page - Full width layout for professional trading
- * Pro mode: Horizontal layout (Chart | Orderbook | Order Form)
- * Simple mode: 2-column mobile-friendly layout
+ * Pro mode: Chart (left) + OrderBook | OrderForm | Chat (side by side, equal width)
+ * Simple mode: Chart (left) + OrderForm | Chat (side by side, equal width)
+ *
+ * Each right-side card shares the same fixed width (CARD_W).
+ * Header toggle bars (Interface, TradingToggles) also use CARD_W
+ * and are right-aligned to match the rightmost card.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -14,10 +18,35 @@ import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
 import { type TokenSymbol } from '../lib/prices';
 import { fetchBinance24hTicker, getBinanceSymbol } from '../lib/indicators';
-import { ChatPanel, ChatToggleButton, MobileChatDrawer, useChatPanel } from '../features/social';
+import { ChatPanel, MobileChatDrawer, useChatPanel } from '../features/social';
 
 // Fixed height for chart and orderbook to ensure consistent layout
 const CHART_HEIGHT = 480;
+
+// Per-card width — shared by each right-side card and header toggles
+const CARD_W = 'w-[250px] 2xl:w-[280px]';
+
+function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full bg-theme-bg-secondary rounded-lg px-3 py-2
+        flex items-center justify-between
+        border border-theme-border
+        text-theme-text-muted hover:text-theme-text-primary transition-colors"
+    >
+      <div className="flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        <span className="text-trading-sm font-medium">Chat</span>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+  );
+}
 
 function TradePageContent() {
   const { mode, toggleMode, isSimple } = useTradeMode();
@@ -62,23 +91,14 @@ function TradePageContent() {
 
   return (
     <div className="space-y-3">
-      {/* Header: Market Selector + Info + Toggles
-          Desktop (lg+): Row 1 = MarketSelector | Interface toggle
-                         Row 2 = MarketInfoBar  | TradingToggles
-          Tablet (md-lg): Row 1 = MarketSelector (full)
-                          Row 2 = MarketInfoBar (full)
-                          Row 3 = Interface toggle | TradingToggles (side by side)
-          Mobile (<md):   All stacked vertically */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3">
-        {/* MarketSelector — full width on mobile/tablet, left on desktop */}
-        <div className="md:col-span-2 lg:col-span-9 xl:col-span-10 order-1">
+      {/* Header Row 1: MarketSelector | Interface toggle (1 card width, right-aligned) */}
+      <div className="flex gap-3">
+        <div className="flex-1 min-w-0">
           <MarketSelector />
         </div>
-
-        {/* Interface Toggle — mobile: row 3 left (or full if Simple), desktop: row 1 right */}
-        <div className={`order-3 lg:order-2 lg:col-span-3 xl:col-span-2 ${isSimple ? 'md:col-span-2' : ''}`}>
+        <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
           <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 h-full flex items-center justify-between">
-            <span className="text-xs xl:text-sm text-theme-text-muted whitespace-nowrap">Interface</span>
+            <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
             <div className="flex items-center gap-2">
               <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
                 Simple
@@ -102,82 +122,179 @@ function TradePageContent() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* MarketInfoBar — full width on mobile row 2, left on desktop row 2 */}
-        <div className="md:col-span-2 lg:col-span-9 xl:col-span-10 order-2 lg:order-3">
+      {/* Header Row 2: MarketInfoBar | TradingToggles (1 card width, right-aligned) */}
+      <div className="flex gap-3">
+        <div className="flex-1 min-w-0">
           <MarketInfoBar {...marketInfo} />
         </div>
-
-        {/* TradingToggles (Pro only) — mobile: row 3 right, desktop: row 2 right */}
         {!isSimple && (
-          <div className="order-4 lg:col-span-3 xl:col-span-2">
+          <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
             <TradingToggles />
           </div>
         )}
       </div>
 
-      {/* Main Trading Grid */}
-      {isSimple ? (
-        /* Simple Mode: Chart + Trading Panel (2 columns) */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
-          <div className="bg-theme-bg-secondary rounded-lg p-4">
-            <PriceChart currentPrice={displayPrice} />
+      {/* Mobile-only: Interface toggle (visible below xl) */}
+      <div className="xl:hidden">
+        <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
+          <span className="text-xs text-theme-text-muted">Interface</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+              Simple
+            </span>
+            <button
+              onClick={toggleMode}
+              className={`w-7 h-3.5 rounded-full transition-colors ${
+                isSimple ? 'bg-theme-toggle-off' : 'bg-purple-500'
+              }`}
+              aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
+            >
+              <span
+                className={`block w-3 h-3 rounded-full bg-white transition-transform ${
+                  isSimple ? 'translate-x-0.5' : 'translate-x-3.5'
+                }`}
+              />
+            </button>
+            <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+              Pro
+            </span>
           </div>
-          <TradingPanel mode={mode} />
         </div>
-      ) : (
-        /* Pro Mode: 2-row grid with Order Form spanning both rows + Chat sidebar */
-        <div className="flex gap-3">
-          {/* Main trading grid */}
+        {!isSimple && <div className="mt-3"><TradingToggles /></div>}
+      </div>
+
+      {/* Main Trading Area (xl+): Chart + cards side by side */}
+      {isSimple ? (
+        /* Simple mode: Chart | OrderForm | Chat */
+        <div className="hidden xl:flex gap-3">
           <div className="flex-1 min-w-0">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-              {/* Row 1 Left: Chart */}
-              <div
-                className="lg:col-span-7 xl:col-span-8 bg-theme-bg-secondary rounded-lg p-3"
-                style={{ height: `${CHART_HEIGHT}px` }}
-              >
-                <PriceChart currentPrice={displayPrice} />
-              </div>
-
-              {/* Row 1 Middle: Orderbook */}
-              <div
-                className="lg:col-span-2 xl:col-span-2 bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
-                style={{ height: `${CHART_HEIGHT}px` }}
-              >
-                <Orderbook
-                  orderbook={orderbook}
-                  onPriceClick={handlePriceClick}
-                  compact
-                />
-              </div>
-
-              {/* Right: Order Form — spans row 1 + row 2 */}
-              <div className="lg:col-span-3 xl:col-span-2 lg:row-span-2 rounded-lg">
-                <TradingPanel mode={mode} />
-              </div>
-
-              {/* Row 2 Left: Bottom Tab Panel */}
-              <div className="lg:col-span-9 xl:col-span-10">
-                <BottomTabPanel />
-              </div>
+            <div
+              className="bg-theme-bg-secondary rounded-lg p-4"
+              style={{ height: `${CHART_HEIGHT}px` }}
+            >
+              <PriceChart currentPrice={displayPrice} />
             </div>
           </div>
-
-          {/* Chat sidebar (xl+ only) */}
-          <div className={`hidden xl:block shrink-0 transition-all duration-200 ${
-            chatVisible ? 'w-[240px] 2xl:w-[280px]' : 'w-10'
-          }`} style={{ height: `${CHART_HEIGHT}px` }}>
+          <div className={`shrink-0 ${CARD_W} overflow-y-auto`} style={{ height: `${CHART_HEIGHT}px` }}>
+            <TradingPanel mode={mode} />
+          </div>
+          <div className={`shrink-0 ${CARD_W}`}>
             {chatVisible ? (
-              <ChatPanel onMinimize={toggleChat} />
+              <div style={{ height: `${CHART_HEIGHT}px` }}>
+                <ChatPanel onMinimize={toggleChat} />
+              </div>
             ) : (
-              <ChatToggleButton onClick={toggleChat} />
+              <ChatCollapsedBar onClick={toggleChat} />
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Pro mode: Chart + BottomTab | OrderBook | OrderForm | Chat */
+        <div className="hidden xl:flex gap-3">
+          <div className="flex-1 min-w-0 space-y-3">
+            <div
+              className="bg-theme-bg-secondary rounded-lg p-3"
+              style={{ height: `${CHART_HEIGHT}px` }}
+            >
+              <PriceChart currentPrice={displayPrice} />
+            </div>
+            <BottomTabPanel />
+          </div>
+          <div className={`shrink-0 ${CARD_W}`}>
+            <div
+              className="bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
+              style={{ height: `${CHART_HEIGHT}px` }}
+            >
+              <Orderbook
+                orderbook={orderbook}
+                onPriceClick={handlePriceClick}
+                compact
+              />
+            </div>
+          </div>
+          <div className={`shrink-0 ${CARD_W} overflow-y-auto`} style={{ height: `${CHART_HEIGHT}px` }}>
+            <TradingPanel mode={mode} />
+          </div>
+          <div className={`shrink-0 ${CARD_W}`}>
+            {chatVisible ? (
+              <div style={{ height: `${CHART_HEIGHT}px` }}>
+                <ChatPanel onMinimize={toggleChat} />
+              </div>
+            ) : (
+              <ChatCollapsedBar onClick={toggleChat} />
             )}
           </div>
         </div>
       )}
 
-      {/* Mobile chat drawer (below xl) */}
-      {!isSimple && <MobileChatDrawer />}
+      {/* Medium layout (lg to xl): Chart full width + OrderBook|OrderForm side by side */}
+      <div className="hidden lg:block xl:hidden space-y-3">
+        {isSimple ? (
+          <>
+            <div
+              className="bg-theme-bg-secondary rounded-lg p-4"
+              style={{ height: `${CHART_HEIGHT}px` }}
+            >
+              <PriceChart currentPrice={displayPrice} />
+            </div>
+            <TradingPanel mode={mode} />
+          </>
+        ) : (
+          <>
+            <div
+              className="bg-theme-bg-secondary rounded-lg p-3"
+              style={{ height: `${CHART_HEIGHT}px` }}
+            >
+              <PriceChart currentPrice={displayPrice} />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: '400px' }}>
+                  <Orderbook
+                    orderbook={orderbook}
+                    onPriceClick={handlePriceClick}
+                  />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <TradingPanel mode={mode} />
+              </div>
+            </div>
+            <BottomTabPanel />
+          </>
+        )}
+      </div>
+
+      {/* Mobile: stacked panels (below lg) */}
+      <div className="lg:hidden space-y-3">
+        {isSimple ? (
+          <div className="bg-theme-bg-secondary rounded-lg p-4">
+            <PriceChart currentPrice={displayPrice} />
+          </div>
+        ) : (
+          <>
+            <div
+              className="bg-theme-bg-secondary rounded-lg p-3"
+              style={{ height: `${CHART_HEIGHT}px` }}
+            >
+              <PriceChart currentPrice={displayPrice} />
+            </div>
+            <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: '400px' }}>
+              <Orderbook
+                orderbook={orderbook}
+                onPriceClick={handlePriceClick}
+              />
+            </div>
+            <BottomTabPanel />
+          </>
+        )}
+        <TradingPanel mode={mode} />
+      </div>
+
+      {/* Chat drawer (below xl) — available at both lg-xl and mobile */}
+      <MobileChatDrawer />
     </div>
   );
 }

@@ -1,7 +1,9 @@
+import { useState, useCallback, useRef } from 'react';
 import { useSignerAddress } from '@nasun/wallet';
 import { useChat } from '../hooks/useChat';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
+import { SetNicknameModal } from './SetNicknameModal';
 
 interface Props {
   onMinimize?: () => void;
@@ -17,7 +19,36 @@ function StatusDot({ status }: { status: string }) {
 
 export function ChatPanel({ onMinimize }: Props) {
   const address = useSignerAddress();
-  const { messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore } = useChat();
+  const {
+    messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore,
+    nickname, needsNickname,
+  } = useChat();
+
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const pendingMessageRef = useRef<string | null>(null);
+
+  // Wrap sendMessage to prompt nickname modal on first attempt if needed
+  const handleSend = useCallback((content: string) => {
+    if (needsNickname) {
+      pendingMessageRef.current = content;
+      setShowNicknameModal(true);
+      return;
+    }
+    sendMessage(content);
+  }, [needsNickname, sendMessage]);
+
+  const handleNicknameSuccess = useCallback((name: string) => {
+    setShowNicknameModal(false);
+    // Send the pending message that triggered the modal
+    const pending = pendingMessageRef.current;
+    pendingMessageRef.current = null;
+    if (pending) {
+      // Small delay to let the nickname state propagate
+      setTimeout(() => sendMessage(pending), 100);
+    }
+  }, [sendMessage]);
+
+  const addressSuffix = address ? address.slice(-4) : '0000';
 
   return (
     <div className="flex flex-col h-full bg-theme-bg-secondary rounded-lg overflow-hidden border border-theme-border">
@@ -28,6 +59,11 @@ export function ChatPanel({ onMinimize }: Props) {
           <StatusDot status={status} />
         </div>
         <div className="flex items-center gap-2">
+          {isConnected && nickname && (
+            <span className="text-trading-xs text-theme-text-muted truncate max-w-[80px]" title={`${nickname}#${addressSuffix}`}>
+              {nickname}#{addressSuffix}
+            </span>
+          )}
           {isConnected && (
             <span className="text-trading-xs text-theme-text-muted">
               {onlineCount} online
@@ -57,10 +93,22 @@ export function ChatPanel({ onMinimize }: Props) {
 
       {/* Input */}
       <ChatInput
-        onSend={sendMessage}
+        onSend={handleSend}
         disabled={!isConnected}
         disabledPlaceholder={address ? 'Connecting...' : undefined}
       />
+
+      {/* Nickname modal */}
+      {showNicknameModal && (
+        <SetNicknameModal
+          addressSuffix={addressSuffix}
+          onSuccess={handleNicknameSuccess}
+          onClose={() => {
+            setShowNicknameModal(false);
+            pendingMessageRef.current = null;
+          }}
+        />
+      )}
     </div>
   );
 }
