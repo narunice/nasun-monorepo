@@ -1,5 +1,5 @@
 /**
- * Portfolio Dashboard Hook
+ * Portfolio Hook
  *
  * Aggregates balances across all chains with USD valuation.
  * TanStack Query based multi-chain portfolio management.

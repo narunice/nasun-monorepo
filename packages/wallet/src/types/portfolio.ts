@@ -1,5 +1,5 @@
 /**
- * Portfolio Dashboard Types
+ * Portfolio Types
  *
  * Types for multi-chain asset tracking and portfolio management.
  */
