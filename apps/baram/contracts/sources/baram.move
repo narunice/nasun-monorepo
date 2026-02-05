@@ -429,6 +429,101 @@ module baram::baram {
         table::contains(&registry.requests, request_id)
     }
 
+    /// Get next request ID (for use with Budget spending)
+    public fun get_next_request_id(registry: &BaramRegistry): u64 {
+        registry.next_request_id
+    }
+
+    // ========== Budget Integration ==========
+
+    /// Create a request using Budget delegation (for AI agents)
+    /// The agent must be authorized by the Budget owner
+    public entry fun create_request_with_budget(
+        registry: &mut BaramRegistry,
+        budget: &mut baram::budget::Budget,
+        prompt_hash: vector<u8>,
+        model: String,
+        executor: address,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        // Validations
+        assert!(vector::length(&prompt_hash) == PROMPT_HASH_LENGTH, E_INVALID_PROMPT_HASH);
+
+        let now = clock.timestamp_ms();
+        let request_id = registry.next_request_id;
+
+        // Get price from Budget's max_per_request or use min price
+        // In production, this would be determined by model pricing
+        let budget_max = baram::budget::get_max_per_request(budget);
+        let price = if (budget_max < MIN_PRICE) { MIN_PRICE } else { budget_max };
+
+        // Spend from budget (validates agent authorization, limits, allowlists)
+        let payment_balance = baram::budget::spend_from_budget(
+            budget,
+            price,
+            model,
+            executor,
+            request_id,
+            clock,
+            ctx
+        );
+
+        // Increment counters
+        registry.next_request_id = request_id + 1;
+        registry.total_requests = registry.total_requests + 1;
+        registry.total_volume = registry.total_volume + price;
+
+        // Create request with budget owner as requester (not the agent)
+        let requester = baram::budget::get_owner(budget);
+
+        let request = ComputeRequest {
+            request_id,
+            requester,
+            executor,
+            escrow: payment_balance,
+            price,
+            prompt_hash,
+            model,
+            created_at: now,
+            timeout_at: now + DEFAULT_TIMEOUT_MS,
+            completed_at: 0,
+            status: STATUS_PENDING,
+            result_hash: vector::empty(),
+            execution_time_ms: 0,
+        };
+
+        // Store request
+        table::add(&mut registry.requests, request_id, request);
+
+        // Create receipt NFT for requester (budget owner)
+        let receipt = RequestReceipt {
+            id: object::new(ctx),
+            request_id,
+            requester,
+            executor,
+            price,
+            prompt_hash,
+            model,
+            created_at: now,
+            timeout_at: now + DEFAULT_TIMEOUT_MS,
+        };
+
+        // Emit event
+        event::emit(RequestCreated {
+            request_id,
+            requester,
+            executor,
+            price,
+            prompt_hash,
+            model,
+            timeout_at: now + DEFAULT_TIMEOUT_MS,
+        });
+
+        // Transfer receipt to requester (budget owner)
+        transfer::transfer(receipt, requester);
+    }
+
     // ========== Test Functions ==========
 
     #[test_only]
