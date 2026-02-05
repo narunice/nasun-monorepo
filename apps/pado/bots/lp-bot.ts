@@ -34,10 +34,16 @@ import {
   rawToQuantity,
   timestamp,
 } from './lib/config.js';
-import { fetchBtcPrice, validatePrice, priceChangeBps } from './lib/price-source.js';
+import { fetchBtcPrice, validatePrice } from './lib/price-source.js';
 import { calculateOrders, validateOrders } from './lib/strategy.js';
-import { syncOrders, buildCancelAllOrders, executeTransaction } from './lib/order-manager.js';
-import { getOrderbookState } from './lib/orderbook.js';
+import { syncOrders, buildCancelAllOrders, executeTransaction, buildPlaceOrders } from './lib/order-manager.js';
+import { getOrderbookState, getFullOrderbookState } from './lib/orderbook.js';
+import {
+  findArbitrageOpportunities,
+  buildArbitrageTrades,
+  logArbitrageOpportunities,
+  type ArbitrageConfig,
+} from './lib/arbitrage.js';
 import {
   findBalanceManager,
   createBalanceManager,
@@ -69,14 +75,8 @@ async function runBot(
     return;
   }
 
-  // Step 3: Check if we need to re-quote
-  const priceChange = priceChangeBps(state.lastQuotedPrice, btcPrice);
-  const needsRequote = state.lastQuotedPrice === 0 || priceChange >= config.requoteThresholdBps;
-
-  if (!needsRequote) {
-    console.log(`[${timestamp()}] Price stable at $${btcPrice.toLocaleString()} (change: ${priceChange.toFixed(1)}bps)`);
-    return;
-  }
+  // Log current price (always refresh orders every cycle)
+  console.log(`[${timestamp()}] BTC price: $${btcPrice.toLocaleString()}`);
 
   // Step 4: Ensure BalanceManager exists
   if (!state.balanceManagerId) {
@@ -127,15 +127,64 @@ async function runBot(
     }
   }
 
-  // Step 6: Query orderbook state to avoid crossing with POST_ONLY orders
+  // Step 6: Cancel all existing orders first (separate transaction)
+  // This allows us to see only user orders in the orderbook for arbitrage
+  console.log(`[${timestamp()}] Canceling existing orders...`);
+  const cancelTx = buildCancelAllOrders(state.balanceManagerId);
+  const cancelResult = await executeTransaction(client, keypair, cancelTx);
+  if (!cancelResult.success) {
+    console.error(`[${timestamp()}] Failed to cancel orders: ${cancelResult.error}`);
+    // Continue anyway - might have no orders to cancel
+  }
+
+  // Step 7: Query full orderbook for arbitrage detection
+  // After canceling bot orders, only user orders remain
+  const fullOrderbook = await getFullOrderbookState(client);
+  if (fullOrderbook.hasBids || fullOrderbook.hasAsks) {
+    console.log(`[${timestamp()}] Orderbook (user orders): ${fullOrderbook.bids.length} bids, ${fullOrderbook.asks.length} asks`);
+  }
+
+  // Step 8: Find and execute arbitrage opportunities
+  if (config.enableArbitrage) {
+    const arbConfig: ArbitrageConfig = {
+      enabled: config.enableArbitrage,
+      minProfitBps: config.minArbitrageProfitBps,
+      maxQuantityNbtc: config.maxArbitrageQuantityNbtc,
+    };
+
+    const opportunities = findArbitrageOpportunities(
+      fullOrderbook.bids,
+      fullOrderbook.asks,
+      btcPrice,
+      arbConfig,
+    );
+
+    if (opportunities.length > 0) {
+      logArbitrageOpportunities(opportunities, btcPrice);
+
+      // Execute arbitrage trades
+      const arbTx = buildArbitrageTrades(state.balanceManagerId, opportunities, state);
+      const arbResult = await executeTransaction(client, keypair, arbTx);
+
+      if (arbResult.success) {
+        console.log(`[${timestamp()}] Arbitrage executed: ${opportunities.length} trades (tx: ${arbResult.digest?.slice(0, 10)}...)`);
+
+        // Re-fetch inventory after arbitrage
+        inventory = await getBalanceManagerBalances(client, state.balanceManagerId);
+        console.log(`[${timestamp()}] Inventory after arb: ${inventory.nbtc.toFixed(4)} NBTC, ${inventory.nusdc.toLocaleString()} NUSDC`);
+      } else {
+        console.error(`[${timestamp()}] Arbitrage failed: ${arbResult.error}`);
+      }
+    }
+  }
+
+  // Step 9: Re-query orderbook state for order placement
   const orderbook = await getOrderbookState(client);
   if (orderbook.hasBids || orderbook.hasAsks) {
     console.log(`[${timestamp()}] Orderbook: bestBid=$${orderbook.bestBid.toLocaleString()}, bestAsk=$${orderbook.bestAsk.toLocaleString()}`);
-  } else {
-    console.log(`[${timestamp()}] Orderbook: empty (no existing orders)`);
   }
 
-  // Step 7: Calculate orders (adjusted to avoid crossing)
+  // Step 10: Calculate and place new grid orders
   const orders = calculateOrders(btcPrice, config, inventory, orderbook);
   const validOrders = validateOrders(orders, config, btcPrice);
 
@@ -150,8 +199,9 @@ async function runBot(
   const asks = validOrders.filter((o) => !o.isBid);
   console.log(`[${timestamp()}] Generating ${bids.length} bids + ${asks.length} asks around $${btcPrice.toLocaleString()}`);
 
-  // Step 8: Place orders
-  const result = await syncOrders(client, keypair, state.balanceManagerId, validOrders, state);
+  // Place new orders (orders already canceled, so use buildPlaceOrders)
+  const placeTx = buildPlaceOrders(state.balanceManagerId, validOrders, state);
+  const result = await executeTransaction(client, keypair, placeTx);
 
   if (result.success) {
     state.lastQuotedPrice = btcPrice;
@@ -254,7 +304,11 @@ async function main() {
   console.log(`   Levels: ${config.orderLevels} per side`);
   console.log(`   Order size: ${config.orderSizeNbtc} BTC`);
   console.log(`   Interval: ${config.updateIntervalMs / 1000}s`);
-  console.log(`   Re-quote threshold: ${config.requoteThresholdBps}bps`);
+  console.log(`   Arbitrage: ${config.enableArbitrage ? 'enabled' : 'disabled'}`);
+  if (config.enableArbitrage) {
+    console.log(`   Min arb profit: ${config.minArbitrageProfitBps}bps`);
+    console.log(`   Max arb size: ${config.maxArbitrageQuantityNbtc} BTC`);
+  }
   console.log('');
 
   // Load and validate private key
