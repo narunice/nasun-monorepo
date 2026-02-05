@@ -46,6 +46,7 @@ export const Pages = {
   PadoVision: lazyWithRetry(() => import("../pages/ecosystem/PadoVisionPage")),
   PadoTech: lazyWithRetry(() => import("../pages/ecosystem/PadoTechPage")),
   PadoPitch: lazyWithRetry(() => import("../pages/ecosystem/PadoPitchPage")),
+  PadoRevised: lazyWithRetry(() => import("../pages/ecosystem/PadoRevisedPage")),
   Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
@@ -532,6 +533,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Pado Pitch - NASUN",
       description: "Pado: The Opportunity",
+    },
+  },
+
+  padoRevised: {
+    path: "/pado-revised",
+    component: Pages.PadoRevised,
+    navItem: {
+      name: "navigation.padoRevised",
+      path: "/pado-revised",
+      hidden: true,
+    },
+    meta: {
+      title: "Pado - NASUN",
+      description: "Pado: Unified Onchain Finance",
     },
   },
 
