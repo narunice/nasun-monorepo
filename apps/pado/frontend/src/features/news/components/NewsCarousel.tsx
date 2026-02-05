@@ -32,41 +32,36 @@ function NewsSlide({ item }: { item: NewsItem }) {
   const isTweet = item.source === 'twitter';
 
   return (
-    <a
-      href={item.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="w-full shrink-0 h-full relative block"
-    >
-      {/* Background */}
+    <div className="w-full shrink-0 h-full relative">
+      {/* Background (not clickable) */}
       {item.imageUrl ? (
         <img
           src={item.imageUrl}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           loading="lazy"
         />
       ) : (
-        <div className={`absolute inset-0 ${
+        <div className={`absolute inset-0 pointer-events-none ${
           isTweet
             ? 'bg-gradient-to-br from-slate-900 to-slate-800'
             : 'bg-gradient-to-br from-blue-900/80 to-purple-900/80'
         }`} />
       )}
 
-      {/* Dark gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
+      {/* Dark gradient overlay (not clickable) */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10 pointer-events-none" />
 
       {/* Tweet: X logo watermark (top-right) */}
       {isTweet && (
-        <div className="absolute top-2.5 right-2.5 z-10">
+        <div className="absolute top-2.5 right-2.5 z-10 pointer-events-none">
           <XIcon className="w-4 h-4 text-white/30" />
         </div>
       )}
 
       {/* Content */}
       <div className="absolute bottom-0 left-0 right-0 p-3">
-        <div className="flex items-center gap-1.5 mb-1.5">
+        <div className="flex items-center gap-1.5 mb-1.5 pointer-events-none">
           {isTweet ? (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/15 text-white/90 font-medium flex items-center gap-1">
               <XIcon className="w-2.5 h-2.5" />
@@ -81,11 +76,17 @@ function NewsSlide({ item }: { item: NewsItem }) {
             {formatTimeAgo(item.publishedAt)}
           </span>
         </div>
-        <h3 className="text-sm font-medium text-white line-clamp-3 leading-snug">
+        {/* Title: clickable with hover effect */}
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-white line-clamp-3 leading-snug hover:text-pd3 transition-colors cursor-pointer"
+        >
           {item.title}
-        </h3>
+        </a>
       </div>
-    </a>
+    </div>
   );
 }
 
