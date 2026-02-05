@@ -71,7 +71,8 @@ export async function fetchBudget(
 }
 
 /**
- * Fetch all Budgets owned by an address
+ * Fetch all Budgets owned by an address.
+ * Budget is a shared object, so we fetch BudgetReceipt (owned) to find budget IDs.
  */
 export async function fetchBudgetsByOwner(
   client: SuiClient,
@@ -82,11 +83,12 @@ export async function fetchBudgetsByOwner(
     throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
   }
 
-  const budgetType = `${config.budget.packageId}::budget::Budget`;
+  // Budget is shared, so we query BudgetReceipt (owned by user) instead
+  const receiptType = `${config.budget.packageId}::budget::BudgetReceipt`;
 
   const response = await client.getOwnedObjects({
     owner,
-    filter: { StructType: budgetType },
+    filter: { StructType: receiptType },
     options: { showContent: true },
   });
 
@@ -95,25 +97,13 @@ export async function fetchBudgetsByOwner(
   for (const obj of response.data) {
     if (obj.data?.content && obj.data.content.dataType === 'moveObject') {
       const fields = obj.data.content.fields as Record<string, unknown>;
-      const now = Date.now();
-      const expiresAt = Number(fields.expires_at || 0);
+      const budgetId = fields.budget_id as string;
 
-      budgets.push({
-        id: obj.data.objectId,
-        owner: fields.owner as string,
-        agent: fields.agent as string,
-        balance: Number(fields.balance || 0),
-        totalDeposited: Number(fields.total_deposited || 0),
-        totalSpent: Number(fields.total_spent || 0),
-        maxPerRequest: Number(fields.max_per_request || 0),
-        allowedModels: (fields.allowed_models as string[]) || [],
-        allowedExecutors: (fields.allowed_executors as string[]) || [],
-        createdAt: Number(fields.created_at || 0),
-        expiresAt,
-        requestCount: Number(fields.request_count || 0),
-        isActive: fields.is_active as boolean,
-        isExpired: expiresAt > 0 && now >= expiresAt,
-      });
+      // Fetch the actual Budget object
+      const budget = await fetchBudget(client, config, budgetId);
+      if (budget) {
+        budgets.push(budget);
+      }
     }
   }
 
