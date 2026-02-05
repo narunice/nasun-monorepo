@@ -89,6 +89,9 @@ export interface BaramConfig {
     packageId: string;
     registryId: string;
   };
+  budget?: {
+    packageId: string;
+  };
   tokens: {
     nusdcType: string;
   };
@@ -164,3 +167,95 @@ export const MODEL_PRICING: Record<string, ModelInfo> = {
     provider: 'tee',
   },
 };
+
+// ========== Budget Types (for AI Agent delegation) ==========
+
+/**
+ * Budget info from on-chain Budget object
+ * Allows users to delegate compute spending to AI agents with constraints
+ */
+export interface BudgetInfo {
+  id: string;
+  owner: string;
+  agent: string;
+  balance: number;
+  totalDeposited: number;
+  totalSpent: number;
+  maxPerRequest: number;
+  allowedModels: string[];
+  allowedExecutors: string[];
+  createdAt: number;
+  expiresAt: number;
+  requestCount: number;
+  isActive: boolean;
+  isExpired: boolean;
+}
+
+/**
+ * Parameters for creating a new Budget
+ */
+export interface CreateBudgetParams {
+  /** Agent address that will be authorized to spend from this budget */
+  agent: string;
+  /** Initial deposit amount in NUSDC (smallest unit) */
+  deposit: number;
+  /** Maximum amount per request (0 = use default 10 NUSDC) */
+  maxPerRequest?: number;
+  /** Whitelist of allowed models (empty = all allowed) */
+  allowedModels?: string[];
+  /** Whitelist of allowed executors (empty = all allowed) */
+  allowedExecutors?: string[];
+  /** Expiration timestamp in ms (0 = no expiration) */
+  expiresAt?: number;
+}
+
+/**
+ * Parameters for executing with Budget delegation
+ */
+export interface ExecuteWithBudgetParams {
+  /** Budget object ID */
+  budgetId: string;
+  /** AI prompt */
+  prompt: string;
+  /** Model identifier */
+  model: string;
+  /** Minimum executor tier filter */
+  minTier?: TierLevel;
+  /** Force TEE executor */
+  teeRequired?: boolean;
+}
+
+/**
+ * Parameters for updating Budget constraints
+ */
+export interface UpdateBudgetConstraintsParams {
+  budgetId: string;
+  maxPerRequest?: number;
+  allowedModels?: string[];
+  allowedExecutors?: string[];
+  expiresAt?: number;
+}
+
+/**
+ * Budget event types for tracking
+ */
+export type BudgetEventType =
+  | 'BudgetCreated'
+  | 'BudgetDeposited'
+  | 'BudgetSpent'
+  | 'BudgetWithdrawn'
+  | 'BudgetDeactivated'
+  | 'BudgetConstraintsUpdated';
+
+/**
+ * Budget spend event data
+ */
+export interface BudgetSpentEvent {
+  budgetId: string;
+  agent: string;
+  amount: number;
+  requestId: number;
+  model: string;
+  executor: string;
+  remainingBalance: number;
+}

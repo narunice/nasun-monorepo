@@ -64,6 +64,16 @@ new BaramClient({
 | `getECR(requestId)` | `Promise<ECRData \| null>` | Fetch compliance record by request ID |
 | `getBalance()` | `Promise<number>` | Get NUSDC balance (smallest units, 1e6 = 1 NUSDC) |
 | `getAddress()` | `string` | Get signer wallet address |
+| `hasBudgetSupport()` | `boolean` | Check if Budget delegation is available |
+| `getBudget(id)` | `Promise<BudgetInfo \| null>` | Get Budget info by object ID |
+| `getOwnedBudgets()` | `Promise<BudgetInfo[]>` | List Budgets owned by signer |
+| `getAgentBudgets()` | `Promise<BudgetInfo[]>` | List Budgets where signer is agent |
+| `createBudget(params)` | `Promise<{txDigest, budgetId}>` | Create a new Budget |
+| `depositToBudget(id, amount)` | `Promise<string>` | Deposit NUSDC to Budget |
+| `withdrawFromBudget(id, amount)` | `Promise<string>` | Withdraw NUSDC from Budget |
+| `deactivateBudget(id)` | `Promise<string>` | Deactivate Budget |
+| `updateBudgetConstraints(params)` | `Promise<string>` | Update Budget constraints |
+| `executeWithBudget(params)` | `Promise<ExecuteResult>` | Execute AI request using Budget delegation |
 
 #### `ExecuteParams`
 
@@ -99,6 +109,94 @@ const config: BaramConfig = {
 | `llama-3.1-8b-instant` | Llama 3.1 8B | 0.1 NUSDC | Groq Cloud |
 | `llama-3.3-70b-versatile` | Llama 3.3 70B | 0.1 NUSDC | Groq Cloud |
 | `llama-3.2-3b-local` | Llama 3.2 3B | 0.1 NUSDC | TEE Enclave |
+
+## Budget Delegation (AI Agent)
+
+Budget allows users to delegate compute spending to AI agents with constraints. This enables autonomous AI agents to execute inferences on behalf of users without direct wallet access.
+
+### Creating a Budget (User)
+
+```typescript
+// User creates a Budget for an AI agent
+const { budgetId } = await client.createBudget({
+  agent: '0x...agent_address...',  // AI agent's wallet address
+  deposit: 50_000_000,              // 50 NUSDC (6 decimals)
+  maxPerRequest: 1_000_000,         // Max 1 NUSDC per request
+  allowedModels: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
+  allowedExecutors: [],             // Empty = all executors allowed
+  expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+});
+
+console.log(`Budget created: ${budgetId}`);
+```
+
+### Using a Budget (AI Agent)
+
+```typescript
+// AI agent executes using the delegated Budget
+const agentClient = new BaramClient({
+  config: createDevnetConfig(),
+  signer: agentKeypair,
+});
+
+const result = await agentClient.executeWithBudget({
+  budgetId: '0x...budget_id...',
+  prompt: 'Analyze market conditions',
+  model: 'llama-3.1-8b-instant',
+});
+
+console.log(result.response);
+```
+
+### Managing Budgets
+
+```typescript
+// Deposit more funds
+await client.depositToBudget(budgetId, 10_000_000); // +10 NUSDC
+
+// Update constraints
+await client.updateBudgetConstraints({
+  budgetId,
+  maxPerRequest: 2_000_000,  // Increase to 2 NUSDC/request
+  expiresAt: Date.now() + 60 * 24 * 60 * 60 * 1000, // Extend to 60 days
+});
+
+// Withdraw funds (owner only)
+await client.withdrawFromBudget(budgetId, 5_000_000); // -5 NUSDC
+
+// Deactivate and withdraw all remaining funds
+await client.deactivateBudget(budgetId);
+```
+
+### Budget Types
+
+```typescript
+interface BudgetInfo {
+  id: string;
+  owner: string;           // Budget creator
+  agent: string;           // Authorized AI agent
+  balance: number;         // Current balance (NUSDC smallest units)
+  totalDeposited: number;
+  totalSpent: number;
+  maxPerRequest: number;   // Spending limit per request
+  allowedModels: string[]; // Whitelist (empty = all)
+  allowedExecutors: string[]; // Whitelist (empty = all)
+  createdAt: number;
+  expiresAt: number;       // 0 = no expiration
+  requestCount: number;
+  isActive: boolean;
+  isExpired: boolean;
+}
+
+interface CreateBudgetParams {
+  agent: string;
+  deposit: number;
+  maxPerRequest?: number;      // Default: 10 NUSDC
+  allowedModels?: string[];
+  allowedExecutors?: string[];
+  expiresAt?: number;          // 0 = no expiration
+}
+```
 
 ## Error Handling
 
@@ -136,6 +234,14 @@ try {
 | `ExecutorApiError` | `EXECUTOR_API_ERROR` | Executor HTTP error |
 | `TransactionError` | `TRANSACTION_ERROR` | On-chain TX failure |
 | `TimeoutError` | `TIMEOUT` | Executor API timeout |
+| `BaramError` | `BUDGET_NOT_CONFIGURED` | Budget contract not deployed |
+| `BaramError` | `BUDGET_NOT_FOUND` | Budget object not found |
+| `BaramError` | `BUDGET_NOT_AUTHORIZED` | Caller is not the authorized agent |
+| `BaramError` | `BUDGET_INACTIVE` | Budget is deactivated |
+| `BaramError` | `BUDGET_EXPIRED` | Budget has expired |
+| `BaramError` | `INSUFFICIENT_BUDGET` | Not enough budget balance |
+| `BaramError` | `MODEL_NOT_ALLOWED` | Model not in allowlist |
+| `BaramError` | `EXECUTOR_NOT_ALLOWED` | Executor not in allowlist |
 
 ## Low-Level API
 
@@ -166,9 +272,9 @@ import {
 
 | Spec | Value |
 |------|-------|
-| Network | Nasun Devnet |
+| Network | Nasun Devnet (V7) |
 | RPC | https://rpc.devnet.nasun.io |
-| Chain ID | `12bf3808` |
+| Chain ID | `272218f1` |
 | Explorer | https://explorer.nasun.io/devnet |
 | Faucet | https://faucet.devnet.nasun.io |
 

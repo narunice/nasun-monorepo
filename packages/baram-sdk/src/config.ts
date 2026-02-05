@@ -1,25 +1,27 @@
 /**
  * SDK configuration with devnet preset.
  *
- * Addresses are inlined from @nasun/devnet-config (Devnet V6, Chain ID: 12bf3808).
+ * Addresses are inlined from @nasun/devnet-config (Devnet V7, Chain ID: 272218f1).
  * Run `scripts/sync-devnet-ids.ts` after a devnet reset to update these values.
  */
 
 import type { BaramConfig } from './types';
 
-// Nasun Devnet V6 contract addresses (synced from devnet-ids.json)
+// Nasun Devnet V7 contract addresses (synced from devnet-ids.json)
 const DEVNET_RPC_URL = 'https://rpc.devnet.nasun.io';
 
 const DEVNET_BARAM = {
-  packageId: '0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f',
-  registryId: '0x52427e24315a444e9aa07ecb93df5a3392e1cb5d5bec8aba90c4c9eecaf77d3f',
-  executorPackageId: '0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc',
-  executorRegistryId: '0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c',
-  processedRequestsId: '0xc68e22ca8cc7851695c2a5466cc148221f31a94e02f4a65b1676c33ab8855404',
-  tierRegistryId: '0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c',
-  compliancePackageId: '0x2c0e9e907bb33392b980e06b2758cf5ca9d7cd8e50f8f29b6ace2adbc65228b9',
-  complianceRegistryId: '0x345048f83dd3566da939164bd784abfd47c9c0a754341064737f5554546d4773',
-  nusdcType: '0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017::nusdc::NUSDC',
+  packageId: '0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7',
+  registryId: '0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833',
+  executorPackageId: '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd',
+  executorRegistryId: '0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656',
+  processedRequestsId: '0x1d88bb96c90d9bde3a2c10fa4e26f3180e948dae908cb09ef4d6a79e905d7e48',
+  tierRegistryId: '0xda37bee40cdc5e9a6188ddf021fe78d3328ff6384e84dc36014479c07e4300f1',
+  compliancePackageId: '0x601d879d176f5f22f1c3f267bb8895c6b18f1020878ac38a5f88f27ffeed55c3',
+  complianceRegistryId: '0x884af83cb0b9d5dc1f584a29018e812e777fb36ea99b8b0d96a8645188a4bec0',
+  // Budget module is now part of baram package (same packageId)
+  budgetPackageId: '0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7',
+  nusdcType: '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC',
 } as const;
 
 /**
@@ -42,6 +44,12 @@ export function createDevnetConfig(): BaramConfig {
       packageId: DEVNET_BARAM.compliancePackageId,
       registryId: DEVNET_BARAM.complianceRegistryId,
     },
+    // Budget is optional - only included if deployed
+    ...(DEVNET_BARAM.budgetPackageId && {
+      budget: {
+        packageId: DEVNET_BARAM.budgetPackageId,
+      },
+    }),
     tokens: {
       nusdcType: DEVNET_BARAM.nusdcType,
     },
