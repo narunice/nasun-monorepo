@@ -36,3 +36,9 @@ coverage/
 .cache/
 .turbo/
 *.key
+
+# Temporary files
+_tmp/
+
+# Chat server data (contains plaintext messages)
+apps/pado/chat-server/data/
