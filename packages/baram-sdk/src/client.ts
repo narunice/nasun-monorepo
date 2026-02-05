@@ -241,13 +241,13 @@ export class BaramClient {
       options: { showEvents: true, showObjectChanges: true },
     });
 
-    // Extract Budget ID from created objects
+    // Extract Budget ID from created objects (not BudgetReceipt)
     let budgetId = '';
     if (result.objectChanges) {
       for (const change of result.objectChanges) {
         if (
           change.type === 'created' &&
-          change.objectType?.includes('::budget::Budget')
+          change.objectType?.endsWith('::budget::Budget')
         ) {
           budgetId = change.objectId;
           break;
