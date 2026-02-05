@@ -39,11 +39,14 @@ export function SimpleOrderForm({
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
 
   // Calculate base token amount from USD (rounded to lot size)
+  // Uses toFixed to eliminate floating-point precision errors
   const baseAmount = useMemo(() => {
     if (!usdAmount || !midPrice || midPrice <= 0) return 0;
     const rawAmount = usdAmount / midPrice;
     const lotSizeDecimal = currentPool.lotSize / Math.pow(10, currentPool.baseToken.decimals);
-    return Math.floor(rawAmount / lotSizeDecimal) * lotSizeDecimal;
+    const numLots = Math.floor(rawAmount / lotSizeDecimal);
+    // toFixed prevents floating-point errors like 0.0001 * 123 = 0.012300000000000001
+    return parseFloat((numLots * lotSizeDecimal).toFixed(currentPool.baseToken.decimals));
   }, [usdAmount, midPrice, currentPool]);
 
   // Max values
