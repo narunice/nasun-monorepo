@@ -2,6 +2,7 @@
  * Market Making Strategy Module
  *
  * Calculates grid orders around the mid price.
+ * Ensures POST_ONLY orders don't cross existing orderbook.
  */
 
 import {
@@ -13,6 +14,7 @@ import {
   roundToTickSize,
   roundToLotSize,
 } from './config.js';
+import type { OrderbookState } from './orderbook.js';
 
 // ========================================
 // Strategy: Grid Order Generation
@@ -32,11 +34,16 @@ import {
  * - Ask 0: $100,300 (0.3% above)
  * - Ask 1: $100,400 (0.4% above)
  * - Ask 2: $100,500 (0.5% above)
+ *
+ * IMPORTANT: Orders are adjusted to avoid crossing existing orderbook.
+ * - Bids must be below best ask (to avoid immediate execution)
+ * - Asks must be above best bid (to avoid immediate execution)
  */
 export function calculateOrders(
   midPrice: number,
   config: LPConfig,
   inventory: Inventory,
+  orderbook?: OrderbookState,
 ): OrderSpec[] {
   const orders: OrderSpec[] = [];
 
@@ -55,10 +62,26 @@ export function calculateOrders(
     return orders;
   }
 
+  // Calculate price boundaries to avoid crossing the orderbook
+  // For POST_ONLY orders:
+  // - Bids must be strictly BELOW best ask (bid < bestAsk)
+  // - Asks must be strictly ABOVE best bid (ask > bestBid)
+  const maxBidPrice = orderbook?.hasAsks && orderbook.bestAsk > 0
+    ? orderbook.bestAsk * 0.9999 // Just below best ask (0.01% buffer)
+    : Infinity;
+  const minAskPrice = orderbook?.hasBids && orderbook.bestBid > 0
+    ? orderbook.bestBid * 1.0001 // Just above best bid (0.01% buffer)
+    : 0;
+
   // Generate bid orders (buy orders below mid price)
   for (let i = 0; i < config.orderLevels; i++) {
     const offset = baseSpread + i * levelSpacing + skewAdjustment.bidAdjustment;
-    const bidPrice = midPrice * (1 - offset);
+    let bidPrice = midPrice * (1 - offset);
+
+    // Clamp bid price to avoid crossing
+    if (bidPrice >= maxBidPrice) {
+      bidPrice = maxBidPrice * (1 - i * levelSpacing); // Stack below the cap
+    }
 
     // Skip invalid prices
     if (bidPrice <= 0) continue;
@@ -75,7 +98,12 @@ export function calculateOrders(
   // Generate ask orders (sell orders above mid price)
   for (let i = 0; i < config.orderLevels; i++) {
     const offset = baseSpread + i * levelSpacing + skewAdjustment.askAdjustment;
-    const askPrice = midPrice * (1 + offset);
+    let askPrice = midPrice * (1 + offset);
+
+    // Clamp ask price to avoid crossing
+    if (askPrice <= minAskPrice) {
+      askPrice = minAskPrice * (1 + i * levelSpacing); // Stack above the floor
+    }
 
     const askPriceRaw = roundToTickSize(priceToRaw(askPrice));
 
