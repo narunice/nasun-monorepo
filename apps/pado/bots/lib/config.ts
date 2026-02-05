@@ -75,6 +75,11 @@ export interface LPConfig {
   maxConsecutiveFailures: number; // Circuit breaker threshold
   minPriceUsd: number;         // Minimum acceptable BTC price
   maxPriceUsd: number;         // Maximum acceptable BTC price
+
+  // Arbitrage settings
+  enableArbitrage: boolean;         // Enable/disable arbitrage
+  minArbitrageProfitBps: number;    // Minimum profit threshold (default: 10 = 0.1%)
+  maxArbitrageQuantityNbtc: number; // Max quantity per arbitrage trade
 }
 
 export function loadConfig(): LPConfig {
@@ -101,6 +106,11 @@ export function loadConfig(): LPConfig {
     maxConsecutiveFailures: parseInt(process.env.LP_MAX_FAILURES || '5', 10),
     minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || '50000'),
     maxPriceUsd: parseFloat(process.env.LP_MAX_PRICE || '200000'),
+
+    // Arbitrage settings
+    enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false', // Enabled by default
+    minArbitrageProfitBps: parseInt(process.env.LP_MIN_ARB_PROFIT_BPS || '10', 10),
+    maxArbitrageQuantityNbtc: parseFloat(process.env.LP_MAX_ARB_QUANTITY || '0.5'),
   };
 
   // Validate configuration bounds
