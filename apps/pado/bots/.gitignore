@@ -1,0 +1,10 @@
+# Bot state (contains BalanceManager IDs per address)
+.lp-bot-state.json
+
+# Logs
+logs/
+*.log
+
+# Environment files (may contain private keys)
+.env
+.env.local

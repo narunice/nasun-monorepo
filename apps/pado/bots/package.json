@@ -7,7 +7,9 @@
     "price-updater": "tsx price-updater.ts",
     "price-updater:once": "tsx price-updater.ts --once",
     "liquidation-keeper": "tsx liquidation-keeper.ts",
-    "liquidation-keeper:once": "tsx liquidation-keeper.ts --once"
+    "liquidation-keeper:once": "tsx liquidation-keeper.ts --once",
+    "lp-bot": "node --env-file=.env --import tsx lp-bot.ts",
+    "lp-bot:once": "node --env-file=.env --import tsx lp-bot.ts --once"
   },
   "dependencies": {
     "@mysten/sui": "^1.21.1"

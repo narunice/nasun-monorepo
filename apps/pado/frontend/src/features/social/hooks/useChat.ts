@@ -42,13 +42,16 @@ export function useChat(roomId: number = 0): UseChatResult {
   // Track which address we're currently connected with
   const connectedAddressRef = useRef<string | null>(null);
 
-  // Connect/disconnect — runs every render but only acts on state changes
+  // Memoize signer type to avoid re-triggering on object identity changes
+  const signerType = signer?.type ?? null;
+
+  // Connect/disconnect — only run when signerAddress or signer type changes
   useEffect(() => {
     const chatService = getChatService();
     const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
 
     // Should disconnect: no signer or no wsUrl
-    if (!wsUrl || !signerAddress || !signer) {
+    if (!wsUrl || !signerAddress || !signerType) {
       if (connectedAddressRef.current) {
         chatService.disconnect();
         connectedAddressRef.current = null;
@@ -64,13 +67,17 @@ export function useChat(roomId: number = 0): UseChatResult {
       chatService.disconnect();
     }
 
+    // Get signer from ref (guaranteed to be current due to effect dependencies)
+    const currentSigner = signerRef.current;
+    if (!currentSigner) return;
+
     // Build ChatSigner based on signer type
-    const chatSigner: ChatSigner = signer.type === 'zklogin'
+    const chatSigner: ChatSigner = currentSigner.type === 'zklogin'
       ? {
           address: signerAddress,
           signPersonal: async () => { throw new Error('zkLogin: use ephemeral key'); },
           authMethod: 'ephemeral',
-          ephemeralPubKey: (signer as ZkLoginSigner).getEphemeralPublicKey(),
+          ephemeralPubKey: (currentSigner as ZkLoginSigner).getEphemeralPublicKey(),
           signWithEphemeralKey: async (msg: Uint8Array) => {
             const s = signerRef.current;
             if (!s || s.type !== 'zklogin') throw new Error('Signer unavailable');
@@ -88,7 +95,7 @@ export function useChat(roomId: number = 0): UseChatResult {
 
     chatService.connect(wsUrl, chatSigner);
     connectedAddressRef.current = signerAddress;
-  });
+  }, [signerAddress, signerType]);
 
   // Disconnect on unmount
   useEffect(() => {
