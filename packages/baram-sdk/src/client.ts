@@ -14,6 +14,10 @@ import type {
   ExecutorInfo,
   ECRData,
   TierLevel,
+  BudgetInfo,
+  CreateBudgetParams,
+  ExecuteWithBudgetParams,
+  UpdateBudgetConstraintsParams,
 } from './types';
 import { MODEL_PRICING, EXECUTOR_SELECTION } from './types';
 import {
@@ -28,6 +32,17 @@ import { getNusdcCoins } from './services/coin';
 import { fetchExecutors, selectExecutorWeightedRandom } from './services/executor';
 import { buildCreateRequestTransaction, buildCancelRequestTransaction } from './services/transaction';
 import { fetchECRByRequestId } from './services/ecr';
+import {
+  fetchBudget,
+  fetchBudgetsByOwner,
+  fetchBudgetsByAgent,
+  buildCreateBudgetTransaction,
+  buildDepositToBudgetTransaction,
+  buildWithdrawFromBudgetTransaction,
+  buildDeactivateBudgetTransaction,
+  buildUpdateConstraintsTransaction,
+  buildCreateRequestWithBudgetTransaction,
+} from './services/budget';
 
 export interface BaramClientOptions {
   config: BaramConfig;
@@ -167,6 +182,309 @@ export class BaramClient {
       options: { showEvents: true },
     });
     return result.digest;
+  }
+
+  // ========== Budget Methods (AI Agent Delegation) ==========
+
+  /**
+   * Check if Budget functionality is available (contract deployed).
+   */
+  hasBudgetSupport(): boolean {
+    return !!this.config.budget?.packageId;
+  }
+
+  /**
+   * Get Budget info by object ID.
+   */
+  async getBudget(budgetId: string): Promise<BudgetInfo | null> {
+    return fetchBudget(this.client, this.config, budgetId);
+  }
+
+  /**
+   * Get all Budgets owned by the signer.
+   */
+  async getOwnedBudgets(): Promise<BudgetInfo[]> {
+    return fetchBudgetsByOwner(this.client, this.config, this.address);
+  }
+
+  /**
+   * Get all Budgets where the signer is the authorized agent.
+   */
+  async getAgentBudgets(): Promise<BudgetInfo[]> {
+    return fetchBudgetsByAgent(this.client, this.config, this.address);
+  }
+
+  /**
+   * Create a new Budget for delegating compute spending to an AI agent.
+   *
+   * @param params - Budget creation parameters
+   * @returns Transaction digest and Budget ID
+   */
+  async createBudget(
+    params: CreateBudgetParams
+  ): Promise<{ txDigest: string; budgetId: string }> {
+    if (!this.config.budget) {
+      throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
+    }
+
+    const coins = await getNusdcCoins(
+      this.client,
+      this.address,
+      params.deposit,
+      this.config.tokens.nusdcType
+    );
+
+    const tx = buildCreateBudgetTransaction(this.config, params, coins);
+    const result = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+      options: { showEvents: true, showObjectChanges: true },
+    });
+
+    // Extract Budget ID from created objects
+    let budgetId = '';
+    if (result.objectChanges) {
+      for (const change of result.objectChanges) {
+        if (
+          change.type === 'created' &&
+          change.objectType?.includes('::budget::Budget')
+        ) {
+          budgetId = change.objectId;
+          break;
+        }
+      }
+    }
+
+    return { txDigest: result.digest, budgetId };
+  }
+
+  /**
+   * Deposit additional NUSDC to an existing Budget.
+   */
+  async depositToBudget(budgetId: string, amount: number): Promise<string> {
+    if (!this.config.budget) {
+      throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
+    }
+
+    const coins = await getNusdcCoins(
+      this.client,
+      this.address,
+      amount,
+      this.config.tokens.nusdcType
+    );
+
+    const tx = buildDepositToBudgetTransaction(this.config, budgetId, amount, coins);
+    const result = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+    });
+
+    return result.digest;
+  }
+
+  /**
+   * Withdraw NUSDC from a Budget (owner only).
+   */
+  async withdrawFromBudget(budgetId: string, amount: number): Promise<string> {
+    if (!this.config.budget) {
+      throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
+    }
+
+    const tx = buildWithdrawFromBudgetTransaction(this.config, budgetId, amount);
+    const result = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+    });
+
+    return result.digest;
+  }
+
+  /**
+   * Deactivate a Budget and withdraw all remaining funds (owner only).
+   */
+  async deactivateBudget(budgetId: string): Promise<string> {
+    if (!this.config.budget) {
+      throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
+    }
+
+    const tx = buildDeactivateBudgetTransaction(this.config, budgetId);
+    const result = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+    });
+
+    return result.digest;
+  }
+
+  /**
+   * Update Budget constraints (owner only).
+   */
+  async updateBudgetConstraints(params: UpdateBudgetConstraintsParams): Promise<string> {
+    if (!this.config.budget) {
+      throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
+    }
+
+    const tx = buildUpdateConstraintsTransaction(this.config, params);
+    const result = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+    });
+
+    return result.digest;
+  }
+
+  /**
+   * Execute an AI inference request using Budget delegation.
+   *
+   * This is for AI agents that have been granted a Budget by a user.
+   * The agent calls this method to spend from the delegated Budget.
+   *
+   * @throws {BaramError} if Budget not found, expired, or constraints violated
+   */
+  async executeWithBudget(params: ExecuteWithBudgetParams): Promise<ExecuteResult> {
+    if (!this.config.budget) {
+      throw new BaramError('Budget contract not configured', 'BUDGET_NOT_CONFIGURED');
+    }
+
+    const { budgetId, prompt, model, minTier, teeRequired } = params;
+
+    // Verify budget exists and agent is authorized
+    const budget = await this.getBudget(budgetId);
+    if (!budget) {
+      throw new BaramError(`Budget not found: ${budgetId}`, 'BUDGET_NOT_FOUND');
+    }
+    if (budget.agent !== this.address) {
+      throw new BaramError('Not authorized agent for this budget', 'BUDGET_NOT_AUTHORIZED');
+    }
+    if (!budget.isActive) {
+      throw new BaramError('Budget is deactivated', 'BUDGET_INACTIVE');
+    }
+    if (budget.isExpired) {
+      throw new BaramError('Budget is expired', 'BUDGET_EXPIRED');
+    }
+
+    // Check model allowlist
+    if (budget.allowedModels.length > 0 && !budget.allowedModels.includes(model)) {
+      throw new BaramError(`Model ${model} not allowed by budget`, 'MODEL_NOT_ALLOWED');
+    }
+
+    // Resolve model pricing
+    const modelInfo = MODEL_PRICING[model];
+    if (!modelInfo) {
+      throw new BaramError(`Unknown model: ${model}`, 'UNKNOWN_MODEL');
+    }
+    const price = modelInfo.price;
+
+    // Check balance
+    if (budget.balance < price) {
+      throw new BaramError(
+        `Insufficient budget balance: ${budget.balance} < ${price}`,
+        'INSUFFICIENT_BUDGET'
+      );
+    }
+
+    // Fetch executors and select one
+    const executors = await this.getExecutors();
+    const effectiveMinTier: TierLevel = minTier ?? (teeRequired ? 1 : EXECUTOR_SELECTION.MIN_TIER);
+
+    // Filter by budget's allowed executors if specified
+    let filteredExecutors = executors;
+    if (budget.allowedExecutors.length > 0) {
+      filteredExecutors = executors.filter(e =>
+        budget.allowedExecutors.includes(e.operator)
+      );
+    }
+
+    const selectedExecutor = selectExecutorWeightedRandom(
+      filteredExecutors,
+      new Set(),
+      effectiveMinTier,
+      model
+    );
+
+    if (!selectedExecutor) {
+      throw new NoExecutorError(model, effectiveMinTier);
+    }
+
+    // Check executor allowlist
+    if (
+      budget.allowedExecutors.length > 0 &&
+      !budget.allowedExecutors.includes(selectedExecutor.operator)
+    ) {
+      throw new BaramError(
+        `Executor ${selectedExecutor.operator} not allowed by budget`,
+        'EXECUTOR_NOT_ALLOWED'
+      );
+    }
+
+    // Hash the prompt
+    const promptHashHex = await sha256(prompt);
+    const promptHashBytes = hexToBytes(promptHashHex);
+
+    // Build and submit create_request_with_budget transaction
+    const tx = buildCreateRequestWithBudgetTransaction(
+      this.config,
+      budgetId,
+      promptHashBytes,
+      model,
+      selectedExecutor.operator
+    );
+
+    const txResult = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+      options: { showEvents: true },
+    });
+
+    // Extract requestId from event
+    const requestId = this.extractRequestId(txResult);
+    if (requestId === null) {
+      throw new TransactionError(
+        'Failed to extract requestId from transaction events',
+        txResult.digest
+      );
+    }
+
+    // Call executor API
+    let response: string;
+    let resultHash: string;
+    let executionTimeMs: number;
+    let txDigest: string;
+
+    try {
+      const execResult = await this.callExecutor(
+        selectedExecutor,
+        requestId,
+        prompt,
+        model
+      );
+      response = execResult.response;
+      resultHash = execResult.resultHash;
+      executionTimeMs = execResult.executionTimeMs;
+      txDigest = execResult.txDigest;
+    } catch (err) {
+      // Note: Budget requests cannot be cancelled by agent
+      // The Budget owner can cancel or funds will timeout
+      throw err;
+    }
+
+    // Fetch ECR
+    let ecr: ECRData | null = null;
+    for (let i = 0; i < this.ecrPollRetries; i++) {
+      ecr = await this.getECR(requestId);
+      if (ecr) break;
+      await new Promise(resolve => setTimeout(resolve, this.ecrPollIntervalMs));
+    }
+
+    return {
+      requestId,
+      response,
+      resultHash,
+      txDigest,
+      executionTimeMs,
+      ecr,
+      executor: selectedExecutor,
+    };
   }
 
   // --- Private helpers ---

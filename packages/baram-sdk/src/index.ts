@@ -53,6 +53,13 @@ export type {
   TierLevel,
   TierName,
   TeeType,
+  // Budget types
+  BudgetInfo,
+  CreateBudgetParams,
+  ExecuteWithBudgetParams,
+  UpdateBudgetConstraintsParams,
+  BudgetEventType,
+  BudgetSpentEvent,
 } from './types';
 
 export {
@@ -69,3 +76,16 @@ export { getNusdcCoins } from './services/coin';
 export { fetchExecutors, selectExecutorWeightedRandom, calculateTierClient } from './services/executor';
 export { buildCreateRequestTransaction, buildCancelRequestTransaction } from './services/transaction';
 export { fetchECRByRequestId } from './services/ecr';
+
+// Budget services
+export {
+  fetchBudget,
+  fetchBudgetsByOwner,
+  fetchBudgetsByAgent,
+  buildCreateBudgetTransaction,
+  buildDepositToBudgetTransaction,
+  buildWithdrawFromBudgetTransaction,
+  buildDeactivateBudgetTransaction,
+  buildUpdateConstraintsTransaction,
+  buildCreateRequestWithBudgetTransaction,
+} from './services/budget';

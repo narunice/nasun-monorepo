@@ -41,9 +41,11 @@
     "proposalTypeRegistry": "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b"
   },
   "baram": {
-    "packageId": "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
+    "packageId": "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7",
+    "originalPackageId": "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
     "registry": "0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833",
     "upgradeCap": "0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291",
+    "budgetPackageId": "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7",
     "executorPackageId": "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd",
     "executorRegistry": "0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656",
     "executorAdminCap": "0x5e3dca938ff22ec2445a9de84029924b37a5bc5e2fc815c9547c547235d8c522",
