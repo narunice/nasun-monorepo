@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPackageModules } from '../lib/sui-client';
@@ -7,15 +7,28 @@ import { SectionBox } from '../components/ui/SectionBox';
 import CopyableId from '../components/CopyableId';
 import ModuleItem from '../components/package/ModuleItem';
 
+const MODULES_PER_PAGE = 20;
+
 export default function Package() {
   const { id } = useParams<{ id: string }>();
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  useEffect(() => {
+    setCurrentPage(0);
+    setExpandedModule(null);
+  }, [id]);
 
   const { data: modules, isLoading, error } = useQuery({
     queryKey: ['package', id],
     queryFn: () => getPackageModules(id!),
     enabled: !!id,
   });
+
+  const sortedModuleNames = useMemo(
+    () => (modules ? Object.keys(modules).sort() : []),
+    [modules]
+  );
 
   if (isLoading) {
     return <div className="text-muted-foreground">Loading package...</div>;
@@ -41,16 +54,20 @@ export default function Package() {
       </>
     );
   }
-
-  const moduleNames = Object.keys(modules);
-  const totalFunctions = moduleNames.reduce(
+  const totalFunctions = sortedModuleNames.reduce(
     (sum, name) => sum + Object.keys(modules[name].exposedFunctions).length,
     0
   );
-  const totalStructs = moduleNames.reduce(
+  const totalStructs = sortedModuleNames.reduce(
     (sum, name) => sum + Object.keys(modules[name].structs).length,
     0
   );
+
+  const totalPages = Math.ceil(sortedModuleNames.length / MODULES_PER_PAGE);
+  const startIndex = currentPage * MODULES_PER_PAGE;
+  const endIndex = Math.min(startIndex + MODULES_PER_PAGE, sortedModuleNames.length);
+  const pagedModuleNames = sortedModuleNames.slice(startIndex, endIndex);
+  const showPagination = sortedModuleNames.length > MODULES_PER_PAGE;
 
   return (
     <>
@@ -70,7 +87,7 @@ export default function Package() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card variant="default" className="p-4">
           <div className="text-muted-foreground text-sm uppercase tracking-wider">Modules</div>
-          <div className="text-2xl font-mono text-foreground">{moduleNames.length}</div>
+          <div className="text-2xl font-mono text-foreground">{sortedModuleNames.length}</div>
         </Card>
         <Card variant="default" className="p-4">
           <div className="text-muted-foreground text-sm uppercase tracking-wider">Functions</div>
@@ -83,9 +100,15 @@ export default function Package() {
       </div>
 
       {/* Modules List */}
-      <SectionBox title="Modules" rightTitle={`${moduleNames.length} modules`} color="c4">
+      <SectionBox
+        title="Modules"
+        rightTitle={showPagination
+          ? `${startIndex + 1}-${endIndex} of ${sortedModuleNames.length} modules`
+          : `${sortedModuleNames.length} modules`}
+        color="c4"
+      >
         <div className="space-y-2">
-          {moduleNames.sort().map((name) => (
+          {pagedModuleNames.map((name) => (
             <ModuleItem
               key={name}
               name={name}
@@ -95,6 +118,27 @@ export default function Package() {
             />
           ))}
         </div>
+        {showPagination && (
+          <div className="flex items-center justify-between mt-4">
+            <button
+              onClick={() => { setCurrentPage((p) => p - 1); setExpandedModule(null); }}
+              disabled={currentPage === 0}
+              className="px-4 py-2 bg-card border border-border hover:bg-primary/10 disabled:bg-muted disabled:text-muted-foreground disabled:border-border/50 rounded-xl transition-all active:scale-[0.97] text-foreground"
+            >
+              &larr; Previous
+            </button>
+            <span className="text-muted-foreground">
+              Page {currentPage + 1} of {totalPages}
+            </span>
+            <button
+              onClick={() => { setCurrentPage((p) => p + 1); setExpandedModule(null); }}
+              disabled={currentPage >= totalPages - 1}
+              className="px-4 py-2 bg-card border border-border hover:bg-primary/10 disabled:bg-muted disabled:text-muted-foreground disabled:border-border/50 rounded-xl transition-all active:scale-[0.97] text-foreground"
+            >
+              Next &rarr;
+            </button>
+          </div>
+        )}
       </SectionBox>
     </>
   );

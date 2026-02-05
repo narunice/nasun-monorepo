@@ -1,7 +1,7 @@
 /**
  * TradePage
  * DEX Trading Page - Full width layout for professional trading
- * Pro mode: Chart+BottomTab | Orderbook+News | OrderForm+Chat (3 columns)
+ * Pro mode: Chart+BottomTab | Orderbook+Chat | OrderForm+News (3 columns)
  * Simple mode: Chart | OrderForm+Chat (2 columns)
  *
  * Right-side cards share fixed width (CARD_W).
@@ -193,7 +193,7 @@ function TradePageContent() {
           </div>
         </div>
       ) : (
-        /* Pro mode: Chart+BottomTab | Orderbook+News | OrderForm+Chat — 3 columns */
+        /* Pro mode: Chart+BottomTab | Orderbook+Chat | OrderForm+News — 3 columns */
         <div className="hidden xl:flex gap-3">
           {/* Col 1 (flex): Chart + BottomTab */}
           <div className="flex-1 min-w-0 flex flex-col gap-3">
@@ -204,7 +204,7 @@ function TradePageContent() {
               <BottomTabPanel className="h-full" />
             </div>
           </div>
-          {/* Col 2 (CARD_W): Orderbook + News */}
+          {/* Col 2 (CARD_W): Orderbook + Chat */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
             <div
               className="bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
@@ -216,16 +216,6 @@ function TradePageContent() {
                 compact
               />
             </div>
-            <div style={{ height: `${CHAT_HEIGHT}px` }}>
-              <NewsCarousel />
-            </div>
-          </div>
-          {/* Col 3 (CARD_W): EnablePado + OrderForm + Chat */}
-          <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
-            <EnablePadoCard />
-            <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
-              <TradingPanel mode={mode} />
-            </div>
             {!chatFloating && (
               chatVisible ? (
                 <div style={{ height: `${CHAT_HEIGHT}px` }}>
@@ -235,6 +225,16 @@ function TradePageContent() {
                 <ChatCollapsedBar onClick={toggleChat} />
               )
             )}
+          </div>
+          {/* Col 3 (CARD_W): EnablePado + OrderForm + News */}
+          <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
+            <EnablePadoCard />
+            <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
+              <TradingPanel mode={mode} />
+            </div>
+            <div style={{ height: `${CHAT_HEIGHT}px` }}>
+              <NewsCarousel />
+            </div>
           </div>
         </div>
       )}
