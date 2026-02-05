@@ -1,7 +1,7 @@
 # Pado Implementation Plan
 
 **Created**: 2025-12-25
-**Last Updated**: 2026-01-31
+**Last Updated**: 2026-02-05
 **Status**: Prototype launch preparation
 **Strategic Reference**: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
@@ -38,6 +38,7 @@ All phases below are implemented and functional on Nasun Devnet.
 | 16 | Unified Margin v1 | MarginAccount (multi-collateral), Risk Engine (4-tier), Liquidation Engine |
 | 17 | Lottery v2 | Lottery contract (Sui Random), Ticket purchase UI, Multi-tier prizes |
 | 11.1-11.4 | Perpetuals DEX | PerpMarket, Position, Leverage (20x), Funding, Trading UI, Liquidation + Keeper |
+| 22 | LP Bot | Liquidity Provider Bot for NBTC/NUSDC orderbook (Binance price feed, 20-level grid) |
 
 ---
 
@@ -137,6 +138,7 @@ These features are implemented or partially implemented but are **not required f
 
 | Date | Change |
 |------|--------|
+| 2026-02-05 | Phase 22: LP Bot implementation complete (Binance price, 20-level grid, PM2 deploy) |
 | 2026-01-31 | Full rewrite: prototype launch strategy aligned with social layer discussion |
 | 2026-01-17 | Phase 16 v1, 11.1-11.4, 17 completion status update |
 | 2026-01-10 | Phase 16 v1, 11.1-11.2 completion status update |

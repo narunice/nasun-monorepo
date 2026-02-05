@@ -1,6 +1,6 @@
 # Pado Next Steps: Prototype Launch
 
-> Last Updated: 2026-01-31
+> Last Updated: 2026-02-05
 > Vision: **Finance-first social -- a financial platform where community forms around execution, not hype.**
 > Strategic Reference: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
@@ -45,7 +45,14 @@ Walk through the full visitor journey and fix every friction point:
 - Faucet claim flow (ClaimRecord shared object contention under load)
 - DeepBook balance manager deposit/withdraw reliability
 - Orderbook real-time sync (WebSocket vs polling)
-- Chart data population (needs active trading data)
+- ~~Chart data population (needs active trading data)~~ **Resolved: LP Bot provides liquidity**
+
+**LP Bot (Implemented 2026-02-05)**:
+- Location: `apps/pado/bots/`
+- Provides 20 bid + 20 ask orders on NBTC/NUSDC orderbook
+- Binance API price feed with 0.3% spread
+- Auto-refill from faucet when balance is low
+- PM2 deployment for staging/production
 
 ### 18.2 Onboarding UX
 
@@ -160,6 +167,7 @@ These are explicitly deferred. Do not work on them until after community formati
 
 | Need | Solution | Cost |
 |------|----------|------|
+| LP Bot | PM2 process on existing EC2 (staging/production) | $0 additional |
 | WebSocket server (chat) | Run on existing EC2 alongside RPC/Faucet | $0 additional |
 | Message storage | SQLite file on EC2 | $0 |
 | Leaderboard indexer | Node.js process on EC2, polling RPC for trade events | $0 |
@@ -183,6 +191,7 @@ No new AWS resources required for prototype launch.
 
 | Date | Change |
 |------|--------|
+| 2026-02-05 | LP Bot implementation complete -- orderbook now has 40 levels of liquidity |
 | 2026-01-31 | Full rewrite: prototype launch priorities aligned with social layer strategy |
 | 2026-01-17 | Phase 11.4, 16 v1, 17 completion. Package IDs updated |
 | 2026-01-10 | Phase 16 v1, 11.1-11.2 completion |

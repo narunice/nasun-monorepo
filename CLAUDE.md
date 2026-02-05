@@ -173,7 +173,7 @@ Security expectations:
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2026-01-28)
+### 현재 상태 (2026-02-05)
 
 | 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
 | ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
@@ -181,7 +181,7 @@ Security expectations:
 | `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
 | `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`          | @nasun/gensol-website   | ✅ 완료   | EC2 스크립트 | GenSol 웹사이트                                       |
-| `apps/pado`                    | @nasun/pado             | ✅ 완료   | -            | Pado 앱                                               |
+| `apps/pado`                    | @nasun/pado             | ✅ 완료   | EC2 스크립트 | Pado 앱 (DEX + Prediction + Lottery + LP Bot)         |
 | `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard    | ⏸️ Legacy | -            | Legacy Leaderboard V2 (Extracted)                     |
 
 ---
@@ -255,7 +255,9 @@ nasun-monorepo/
 │   ├── gensol-website/            # @nasun/gensol-website - GenSol 웹사이트
 │   │   └── frontend/              # Vite React 앱
 │   └── pado/                      # @nasun/pado - Pado 앱
-│       └── frontend/              # Vite React 앱
+│       ├── frontend/              # Vite React 앱
+│       ├── bots/                  # LP Bot (Market Maker)
+│       └── chat-server/           # Global Chat WebSocket 서버
 ├── packages/
 │   ├── wallet/                    # @nasun/wallet - 지갑 핵심 로직 + hooks
 │   ├── wallet-ui/                 # @nasun/wallet-ui - React UI 컴포넌트
@@ -398,6 +400,7 @@ pnpm dev:network-explorer    # 포트 5175
 pnpm dev:nasun-website       # 포트 5174
 pnpm dev:gensol-website      # 포트 5173
 pnpm dev:pado                # 포트 5176
+pnpm dev:pado:with-bot       # 포트 5176 + LP Bot + Chat Server
 
 # 전체 빌드
 pnpm build
@@ -412,6 +415,8 @@ pnpm build:pado
 pnpm deploy:nasun-website:staging
 pnpm deploy:nasun-website:prod
 pnpm deploy:gensol-website:staging
+pnpm deploy:pado:bots:staging    # LP Bot to staging.pado.finance
+pnpm deploy:pado:bots:prod       # LP Bot to pado.finance
 ```
 
 ## 개발 환경 팁 (Junie/CLI)
@@ -429,7 +434,8 @@ pnpm deploy:gensol-website:staging
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
-| pado             | -            | -         | -                                |
+| pado             | EC2 스크립트 | 수동 실행 | https://pado.finance             |
+| pado LP Bot      | EC2 + PM2    | 수동 실행 | staging/prod EC2 인스턴스        |
 
 ## 기술 스택
 
