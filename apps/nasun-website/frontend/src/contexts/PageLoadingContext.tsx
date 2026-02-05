@@ -36,7 +36,8 @@ export const PageLoadingProvider: React.FC<{ children: ReactNode }> = ({ childre
       location.pathname === "/wave1/battalion-nft" ||
       location.pathname === "/pado-new" ||
       location.pathname === "/pado-new2" ||
-      location.pathname === "/pado-new3";
+      location.pathname === "/pado-new3" ||
+      location.pathname === "/pado-revised";
 
     if (isPageWithVideoHero) {
       // 비디오 hero 페이지: 즉시 false로 설정, 타이머 중단

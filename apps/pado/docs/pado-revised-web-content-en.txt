@@ -1,0 +1,319 @@
+
+
+================================================================================
+ CHANGELOG FROM ORIGINAL A- CONTENT
+================================================================================
+
+1. Tense corrections for unbuilt features:
+   - War Rooms, ZKP leaderboards, encrypted DMs → "designed to" / Roadmap badge
+   - Lending "automatically earn yield" → "designed to automatically earn yield"
+   - Risk Modes Pro/Institutional → "Planned" status badge
+   - Protocol-sponsored gas → "Designed for zero-gas" phrasing
+   - Asset Bridging → "designed to support" phrasing
+   - Intent-Based Execution → "introduces" kept (aspirational OK for roadmap)
+
+2. Launch Status accuracy:
+   - Live: zkLogin, Spot (DeepBook V3 CLOB), Prediction, Lottery, Chat, Portfolio
+   - Coming Soon: Perpetuals (contracts deployed, UI built), Lending (contracts deployed)
+   - Coming Soon: Cross-chain Bridge
+
+3. Text cleanup:
+   - All [notes-] markers removed
+   - Payments/Lending redundancy reduced
+   - "Why Pado Exists" refocused on protocol fragmentation (not just bridging)
+
+4. Preserved strengths:
+   - "Contextual Finance: Modes, Not Feeds" structure
+   - "One Account, One Risk Engine" core value prop
+   - "Finance-First Social" framing
+   - Risk Modes 3-tier user progression
+   - "Live today: global chat" acknowledgment in Contextual Finance section
+
+
+
+================================================================================
+
+
+
+
+
+
+
+
+--- Hero ---
+
+Unified Onchain Finance
+Performance without custody. Control without compromise.
+
+[Try Pado Alpha]
+
+
+--- 1. Introduction ---
+
+Pado is a high-performance, non-custodial financial platform that unifies
+trading, lending, payments, and contextual finance into a single onchain
+account. Built on Nasun — an object-oriented, Move-based Layer 1 optimized
+for parallel execution — Pado delivers exchange-grade performance while
+preserving full user control, transparency, and deterministic risk enforcement.
+
+Instead of forcing users to fragment capital and decision-making across
+multiple protocols, wallets, and external social channels, Pado introduces
+one smart account governed by a unified risk engine — where capital earns
+yield, backs trades, remains instantly usable across products, and operates
+within a shared financial context.
+
+
+--- 2. Why Pado Exists ---
+
+Modern DeFi is powerful — but fragmented.
+
+  * Fragmented Capital
+    Users manage multiple wallets and lock capital into isolated pools for
+    trading, lending, or payments — reducing capital efficiency and increasing
+    operational risk.
+
+  * Protocol Sprawl
+    Each DeFi vertical — DEXs, perpetuals, lending protocols, staking —
+    operates in isolation, forcing users to bridge liquidity and accept
+    inconsistent custody assumptions.
+
+  * Context Switching
+    Strategy discussion, market analysis, and coordination happen off-platform
+    — on X, Discord, and Telegram — far removed from execution. By the time
+    insight becomes action, the opportunity is often gone.
+
+  * No Shared Financial Context
+    Existing platforms separate execution from information. Users constantly
+    switch between trading interfaces and external channels to learn,
+    coordinate, and compete.
+
+Pado consolidates these functions into a single onchain financial system —
+allowing users to trade, lend, borrow, pay, and interact from one account
+with shared collateral, deterministic risk management, and embedded
+financial context.
+
+
+--- 3. The Core Innovation ---
+
+One Account, One Risk Engine
+
+At the center of Pado is a Smart Account Object that represents a user's
+complete financial state.
+
+  * Portfolio-Level Risk
+    All assets, positions, and liabilities are evaluated at the portfolio
+    level — not per protocol, not per product.
+
+  * Deterministic Enforcement
+    Risk is enforced deterministically onchain — no discretionary
+    liquidations, no hidden rules. The rules are the same for everyone.
+
+  * Yield on Collateral
+    Capital is designed to earn yield while simultaneously backing leveraged
+    positions — enabling capital efficiency previously only available in
+    centralized exchanges.
+
+This architecture delivers centralized-exchange capital efficiency —
+without custody, opaque controls, or fragmented workflows.
+
+
+--- 4. Built for Performance at Scale ---
+
+Pado leverages Nasun's object-oriented execution model to eliminate global
+state bottlenecks.
+
+  * Parallel Execution
+    Independent assets and accounts process simultaneously — high throughput
+    across multiple markets without network-wide contention.
+
+  * Atomic Transactions
+    Multi-step strategies execute as one guaranteed outcome. Supply collateral,
+    open positions, and transfer funds — all at once, all or nothing.
+
+  * Sub-Second Finality
+    Exchange-grade responsiveness for active trading.
+
+Assets, positions, and markets are modeled as programmable objects, allowing
+Pado to scale across products and users without sacrificing safety or
+composability.
+
+
+--- 5. A Unified Financial Experience ---
+
+  Trading [Live on Devnet]
+    - Spot and perpetual markets from the same account
+    - Portfolio-level margin for advanced users
+    - Deterministic, transparent liquidation rules
+
+  Prediction Markets [Live on Devnet]
+    - YES/NO outcome orderbooks with real-time settlement
+    - Create and trade on any verifiable event
+    - Transparent odds driven by market participants
+
+  Weekly Lottery [Live on Devnet]
+    - Verifiable randomness powered by Sui Random
+    - Transparent prize pools and draw mechanics
+    - Participate directly from your unified account
+
+  Lending & Borrowing [Coming Soon]
+    - Idle assets designed to automatically earn yield
+    - Instant borrowing against existing balances
+    - No separate deposits or protocol interactions
+
+  Payments [Live on Devnet]
+    - Stablecoins remain liquid and usable at all times
+    - Borrow or transfer directly from the same account
+    - Capital is never locked into silos — it remains continuously productive
+
+
+--- 6. Risk Modes for Every User ---
+
+Pado allows users to opt into sophistication at their own pace.
+
+  Safe Mode [Default] — Live
+    - Isolated margin — each trade stands alone
+    - No leverage
+    - Ideal for new users
+
+  Pro Mode [Opt-In] — Planned
+    - Cross-product collateral
+    - Portfolio margin
+    - Yield on collateral backing positions
+
+  Institutional Mode [Verified] — Planned
+    - Custom margin parameters
+    - API access
+    - Advanced asset support
+
+All modes are enforced by the same onchain risk engine, ensuring fairness,
+predictability, and transparency across participants.
+
+
+--- 7. Contextual Finance: The Social Layer for Serious Capital ---
+
+Finance is inherently social — traders compare performance, share strategies,
+learn from peers, and compete. Today, these interactions happen outside the
+execution layer, across disconnected social platforms with no shared context,
+no verification, and no safety rails.
+
+Pado inverts this model. Instead of injecting financial mechanics into social
+feeds, Pado embeds optional, high-signal social surfaces directly into the
+financial execution layer — eliminating context switching while preserving
+privacy and focus.
+
+Design Principle: Social features must make users better traders, better
+allocators, or better learners. If they don't, they don't ship.
+
+Modes, Not Feeds:
+
+  * War Rooms [Roadmap]
+    Position-gated discussion spaces (e.g. ETH longs, yield strategies)
+    designed to filter noise through skin-in-the-game participation.
+
+  * Privacy-First Leaderboards [Roadmap]
+    Risk-adjusted, ZKP-verified performance rankings — anonymous by default,
+    opt-in public exposure. Designed to reward discipline over speculation.
+
+  * Secure Messaging [Roadmap]
+    Encrypted, non-custodial DMs and strategy sharing with built-in risk
+    controls. No forced exposure, no open spam channels.
+
+  * AI Agents as Financial Tools [Roadmap]
+    Clearly labeled AI agents operate within strict permissions to add
+    context — not distraction:
+      - Risk alerts and margin health monitoring
+      - Market explanations and volatility summaries
+      - Strategy simulations before execution
+      - Guided onboarding for new users
+
+Live today: global chat with signature-based authentication, integrated
+directly into the trading interface.
+
+Social features scale with risk modes — educational in Safe Mode,
+performance-oriented in Pro Mode, and private, team-based in Institutional
+Mode. Pado becomes not just where capital is deployed — but where financial
+decisions are made.
+
+
+--- 8. Intent-Based & Agent-Ready ---
+
+Designed for the Agentic Future
+
+Pado introduces an intent-based execution layer that allows users (or
+autonomous agents) to express financial goals rather than manual transactions.
+
+Example: "Maintain a 5% yield on my stablecoins while keeping my ETH
+position above a 1.6x health factor."
+
+  * Solver Network
+    A decentralized solver network designed to compete to fulfill intents,
+    executing them atomically onchain.
+
+  * Atomic Settlement
+    If the outcome doesn't meet the user's signed intent, the transaction
+    fails — protecting users from partial execution and slippage.
+
+  * Scoped Permissions
+    Users can issue limited-power keys to autonomous agents — restricted by
+    risk guardrails, with no custody or unrestricted access.
+
+
+--- 9. Secure Asset Bridging ---
+
+Pado is designed to support external assets via Nasun's native bridge
+infrastructure:
+
+  - Assets locked on source chains via audited smart contracts
+  - 1:1 Nasun-native representations issued as onchain objects
+  - Secured by the same validator set that secures the network
+
+All bridge logic will be open-source and auditable, with balances and
+issuance verifiable onchain.
+
+
+--- 10. Economic Model ---
+
+  - Competitive trading fees with volume-based discounts
+  - Protocol-sponsored gas for core financial actions
+  - Sustainable fee structure designed to scale with usage
+
+An onchain insurance fund absorbs protocol-level risk during extreme market
+events — protecting users from systemic failures while preserving individual
+accountability.
+
+
+--- 11. Launch Status ---
+
+Pado Alpha is live on Nasun devnet.
+
+  Live:
+    - Unified Smart Account: Sign in with Google via zkLogin. No seed phrases.
+    - Spot Trading: DeepBook V3 CLOB with NBTC/NUSDC and NASUN/NUSDC pairs.
+    - Prediction Markets: YES/NO outcome orderbooks with real-time settlement.
+    - Weekly Lottery: Verifiable randomness via Sui Random.
+    - Live Chat: WebSocket-based chat integrated into the trading interface.
+    - Portfolio Dashboard: Unified view of all assets, positions, and activity.
+
+  Coming Soon:
+    - Perpetual Futures: Contracts deployed. UI built. Activation imminent.
+    - Lending Markets: Earn yield on idle assets. Contracts deployed.
+    - Cross-Chain Bridge: Bring assets from Ethereum and other major chains.
+    - Contextual Finance Features: War rooms, leaderboards, and social coordination tools.
+
+
+--- 12. The Opportunity ---
+
+As DeFi matures, users are migrating toward platforms that offer fewer
+accounts, shared collateral, transparent deterministic risk, and integrated
+execution and decision-making. Pado is built for this transition.
+
+One account. One margin system. One execution layer.
+
+A financial platform designed for scale, safety, capital efficiency —
+and context.
+
+Start simple. Grow sophisticated. Always in control.
+
+[Try Pado Alpha] [Read the Vision] [Read the Tech]
+
+

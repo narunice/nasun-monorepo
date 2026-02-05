@@ -57,6 +57,8 @@ import enPadoTech from "./assets/locales/en/pado-tech.json";
 import koPadoTech from "./assets/locales/ko/pado-tech.json";
 import enPadoPitch from "./assets/locales/en/pado-pitch.json";
 import koPadoPitch from "./assets/locales/ko/pado-pitch.json";
+import enPadoRevised from "./assets/locales/en/pado-revised.json";
+import koPadoRevised from "./assets/locales/ko/pado-revised.json";
 
 i18n
   .use(Backend) // JSON 파일 동적 로딩
@@ -92,6 +94,7 @@ i18n
         "pado-vision": enPadoVision,
         "pado-tech": enPadoTech,
         "pado-pitch": enPadoPitch,
+        "pado-revised": enPadoRevised,
       },
       ko: {
         common: koCommon,
@@ -121,6 +124,7 @@ i18n
         "pado-vision": koPadoVision,
         "pado-tech": koPadoTech,
         "pado-pitch": koPadoPitch,
+        "pado-revised": koPadoRevised,
       },
     },
     fallbackLng: "en",
@@ -159,6 +163,7 @@ i18n
       "pado-vision",
       "pado-tech",
       "pado-pitch",
+      "pado-revised",
     ], // 모든 네임스페이스 등록
     defaultNS: "home",
     backend: {
