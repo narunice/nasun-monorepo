@@ -4,6 +4,7 @@ import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs } from '@/components/common';
 import { SlippageSettings } from './SlippageSettings';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { validateQuantity, validatePrice, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
 
 export type OrderModeType = 'limit' | 'market';
@@ -209,15 +210,15 @@ export function OrderForm({
               </button>
             </div>
           </div>
-          <input
-            type="number"
+          <NumberInput
             placeholder="0.00"
             value={price}
             onChange={(e) => onPriceChange(e.target.value)}
-            className={`w-full px-3 py-2 text-sm xl:text-base bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
+            step={0.01}
+            className={`px-3 py-2 text-sm xl:text-base ${
               effectivePrice > 0 && !priceValidation.valid
                 ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
-                : 'focus:ring-pd2'
+                : ''
             }`}
           />
           {effectivePrice > 0 && !priceValidation.valid && (
@@ -246,15 +247,15 @@ export function OrderForm({
           <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Amount ({baseSymbol})</label>
           <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Min {minQuantity}</span>
         </div>
-        <input
-          type="number"
+        <NumberInput
           placeholder="0.0000"
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
-          className={`w-full px-3 py-2 text-sm xl:text-base bg-theme-bg-tertiary rounded focus:outline-none focus:ring-2 ${
+          step={0.0001}
+          className={`px-3 py-2 text-sm xl:text-base ${
             amountNum > 0 && !quantityValidation.valid
               ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
-              : 'focus:ring-pd2'
+              : ''
           }`}
         />
         {amountNum > 0 && !quantityValidation.valid && (

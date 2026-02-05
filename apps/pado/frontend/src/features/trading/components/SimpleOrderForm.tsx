@@ -8,6 +8,7 @@
 
 import { useState, useMemo } from 'react';
 import { useMarket } from '../context/MarketContext';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface SimpleOrderFormProps {
   midPrice?: number;
@@ -163,18 +164,15 @@ export function SimpleOrderForm({
           </button>
         </div>
         {/* Custom Amount Input */}
-        <div className="mt-2 relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-theme-text-muted">$</span>
-          <input
-            type="number"
+        <div className="mt-2">
+          <NumberInput
             value={customInput}
             onChange={(e) => handleCustomInputChange(e.target.value)}
             placeholder="Enter custom amount"
             disabled={disabled}
-            className="w-full h-[30px] pl-6 pr-2.5 text-xs bg-theme-bg-tertiary border border-theme-border rounded
-              text-theme-text-primary placeholder:text-theme-text-muted
-              focus:outline-none focus:border-pd1 focus:ring-1 focus:ring-pd1/30
-              disabled:opacity-40 disabled:cursor-not-allowed"
+            prefix="$"
+            step={10}
+            className="h-[30px] text-xs"
           />
         </div>
       </div>
