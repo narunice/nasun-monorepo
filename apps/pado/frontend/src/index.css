@@ -208,3 +208,69 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* Number Input Spinner Styling */
+/* Hide default spinners and show custom styled ones */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+/* Firefox: hide default spinners */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Custom spinner container - show on hover/focus */
+.number-input-wrapper {
+  position: relative;
+}
+
+.number-input-wrapper:hover .number-spinner,
+.number-input-wrapper:focus-within .number-spinner {
+  opacity: 1;
+}
+
+.number-spinner {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.number-spinner button {
+  width: 16px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-tertiary);
+  border: none;
+  border-radius: 2px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.number-spinner button:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.number-spinner button:active {
+  background: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.number-spinner button svg {
+  width: 8px;
+  height: 8px;
+}

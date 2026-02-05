@@ -247,59 +247,57 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     return result.success;
   };
 
-  // Simple Mode UI
+  // Simple Mode UI (clean, fixed-height layout)
   if (isSimple) {
     return (
-      <div className="space-y-4">
-        <div className="bg-theme-bg-secondary rounded-lg p-6">
-          <h3 className="text-lg xl:text-xl font-semibold mb-4 text-theme-text-primary">Quick Trade</h3>
+      <div className="h-full">
+        <div className="bg-theme-bg-secondary rounded-lg p-3 h-full flex flex-col">
+          {/* Header with title and balance */}
+          <div className="flex items-center justify-between mb-3 shrink-0">
+            <h3 className="text-sm font-semibold text-theme-text-primary">Quick Trade</h3>
+            {isConnected && (
+              <span className="text-xs text-theme-text-muted">
+                ${availableQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
 
           {/* Connect wallet banner when not connected */}
           {!isConnected && (
-            <div className="mb-4 p-3 rounded text-sm xl:text-base bg-pd5 dark:bg-pd0/30 text-pd1 dark:text-pd3 border border-pd4 dark:border-pd2 text-center">
+            <div className="mb-3 p-3 rounded-lg text-xs bg-theme-bg-tertiary text-theme-text-secondary text-center shrink-0">
               Connect wallet to start trading
             </div>
           )}
 
-          {/* Trading Balance setup for Simple mode */}
+          {/* Enable Pado banner when connected but no BM */}
           {isConnected && !balanceManagerId && (
-            <div className="mb-4 p-4 bg-theme-bg-tertiary rounded-lg text-center">
-              <div className="text-sm xl:text-base text-theme-text-secondary mb-3">
-                Enable Pado to start placing orders
+            <div className="mb-3 p-3 bg-theme-bg-tertiary rounded-lg text-center shrink-0">
+              <div className="text-xs text-theme-text-secondary mb-2">
+                Enable Pado to start trading
                 <EnablePadoInfo />
               </div>
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
-                className="px-4 py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
+                className="px-4 py-1.5 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-xs font-medium transition-colors"
               >
                 {isLoading ? 'Enabling...' : 'Enable Pado'}
               </button>
             </div>
           )}
 
-          {/* Balance Bar + Faucet (shown when connected) */}
-          {isConnected && (
-            <div className="mb-4">
-              <TradingBalanceBar
-                baseSymbol={baseSymbol}
-                tradingBase={bmBalance.base}
-                tradingQuote={bmBalance.quote}
-                mode="simple"
-              />
-            </div>
-          )}
-
-          {/* Simple Order Form */}
-          <SimpleOrderForm
-            midPrice={midPrice}
-            onMarketBuy={handleSimpleMarketBuy}
-            onMarketSell={handleSimpleMarketSell}
-            disabled={!isConnected || !balanceManagerId}
-            isLoading={isLoading}
-            quoteBalance={availableQuote}
-            baseBalance={availableBase}
-          />
+          {/* Simple Order Form - fills remaining space */}
+          <div className="flex-1 min-h-0">
+            <SimpleOrderForm
+              midPrice={midPrice}
+              onMarketBuy={handleSimpleMarketBuy}
+              onMarketSell={handleSimpleMarketSell}
+              disabled={!isConnected || !balanceManagerId}
+              isLoading={isLoading}
+              quoteBalance={availableQuote}
+              baseBalance={availableBase}
+            />
+          </div>
         </div>
       </div>
     );

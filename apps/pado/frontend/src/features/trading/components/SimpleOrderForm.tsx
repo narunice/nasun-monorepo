@@ -1,15 +1,13 @@
 /**
  * SimpleOrderForm
  * Simplified order form for Simple trading mode
- * - USD-based amounts
- * - Market orders only
- * - Quick amount buttons
+ * - Fixed-height sections to prevent layout shifts
+ * - 2x2 amount grid
+ * - Always-visible preview section
  */
 
 import { useState, useMemo } from 'react';
 import { useMarket } from '../context/MarketContext';
-import { QuickAmountButtons } from './QuickAmountButtons';
-import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 
 interface SimpleOrderFormProps {
   midPrice?: number;
@@ -17,11 +15,11 @@ interface SimpleOrderFormProps {
   onMarketSell: (baseAmount: number) => void;
   disabled: boolean;
   isLoading: boolean;
-  /** Trading balance - quote token (for Max button calculation) */
   quoteBalance?: number;
-  /** Trading balance - base token (for Max button calculation) */
   baseBalance?: number;
 }
+
+const QUICK_AMOUNTS = [50, 100, 250];
 
 export function SimpleOrderForm({
   midPrice = 0,
@@ -34,9 +32,9 @@ export function SimpleOrderForm({
 }: SimpleOrderFormProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
-  const quoteSymbol = currentPool.quoteToken.symbol;
 
   const [usdAmount, setUsdAmount] = useState<number | null>(null);
+  const [customInput, setCustomInput] = useState('');
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
 
   // Calculate base token amount from USD (rounded to lot size)
@@ -50,51 +48,77 @@ export function SimpleOrderForm({
   // Max values
   const maxBuyUsd = quoteBalance;
   const maxSellUsd = baseBalance * midPrice;
+  const maxBalance = orderSide === 'buy' ? maxBuyUsd : maxSellUsd;
 
-  // Insufficient balance check (Phase 2)
-  const insufficientForBuy = orderSide === 'buy' && usdAmount !== null && usdAmount > maxBuyUsd;
-  const insufficientForSell = orderSide === 'sell' && usdAmount !== null && usdAmount > maxSellUsd;
-  const isInsufficientBalance = insufficientForBuy || insufficientForSell;
+  // Insufficient balance check
+  const isInsufficientBalance = usdAmount !== null && usdAmount > maxBalance;
 
-  const handleQuickAmount = (amount: number) => {
+  // Track if amount was set via quick buttons (for highlighting)
+  const isQuickAmount = QUICK_AMOUNTS.includes(usdAmount ?? 0) || usdAmount === Math.floor(maxBalance);
+
+  // Handle custom input change
+  const handleCustomInputChange = (value: string) => {
+    setCustomInput(value);
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed) && parsed > 0) {
+      setUsdAmount(parsed);
+    } else if (value === '') {
+      setUsdAmount(null);
+    }
+  };
+
+  // Handle quick amount button click
+  const handleQuickAmountClick = (amount: number) => {
     setUsdAmount(amount);
+    setCustomInput(''); // Clear custom input when quick amount is selected
   };
 
-  const handleBuy = () => {
-    if (baseAmount > 0) {
-      onMarketBuy(baseAmount);
+  // Button state
+  const getButtonState = () => {
+    if (isLoading) return { text: 'Processing...', disabled: true };
+    if (midPrice <= 0) return { text: 'No Market Liquidity', disabled: true };
+    if (!usdAmount) return { text: `Select Amount to ${orderSide === 'buy' ? 'Buy' : 'Sell'}`, disabled: true };
+    if (isInsufficientBalance) return { text: 'Insufficient Balance', disabled: true };
+    if (baseAmount <= 0) return { text: 'Amount too small', disabled: true };
+    return {
+      text: `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${baseAmount.toFixed(4)} ${baseSymbol}`,
+      disabled: disabled,
+    };
+  };
+
+  const buttonState = getButtonState();
+
+  const handleExecute = () => {
+    if (baseAmount > 0 && !buttonState.disabled) {
+      if (orderSide === 'buy') {
+        onMarketBuy(baseAmount);
+      } else {
+        onMarketSell(baseAmount);
+      }
       setUsdAmount(null);
+      setCustomInput('');
     }
   };
-
-  const handleSell = () => {
-    if (baseAmount > 0) {
-      onMarketSell(baseAmount);
-      setUsdAmount(null);
-    }
-  };
-
-  const isButtonDisabled = disabled || isLoading || midPrice <= 0 || !usdAmount || baseAmount <= 0 || isInsufficientBalance;
 
   return (
-    <div className="space-y-4">
-      {/* Buy/Sell Toggle */}
-      <div className="flex bg-theme-bg-tertiary rounded-lg p-1">
+    <div className="h-full flex flex-col">
+      {/* Buy/Sell Toggle - h-9 (36px) */}
+      <div className="h-9 flex bg-theme-bg-tertiary rounded-lg p-1 shrink-0">
         <button
-          onClick={() => setOrderSide('buy')}
-          className={`flex-1 py-2.5 text-sm xl:text-base font-semibold rounded-md transition-colors ${
+          onClick={() => { setOrderSide('buy'); setUsdAmount(null); setCustomInput(''); }}
+          className={`flex-1 text-xs font-semibold rounded-md transition-colors ${
             orderSide === 'buy'
-              ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
+              ? 'bg-green-600/20 text-green-600 dark:text-green-400'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
           Buy
         </button>
         <button
-          onClick={() => setOrderSide('sell')}
-          className={`flex-1 py-2.5 text-sm xl:text-base font-semibold rounded-md transition-colors ${
+          onClick={() => { setOrderSide('sell'); setUsdAmount(null); setCustomInput(''); }}
+          className={`flex-1 text-xs font-semibold rounded-md transition-colors ${
             orderSide === 'sell'
-              ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
+              ? 'bg-red-600/20 text-red-600 dark:text-red-400'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
           }`}
         >
@@ -102,124 +126,99 @@ export function SimpleOrderForm({
         </button>
       </div>
 
-      {/* Market Price Display */}
-      {midPrice > 0 && (
-        <div className="p-3 bg-theme-bg-tertiary/50 rounded text-center">
-          <div className="text-xs xl:text-sm text-theme-text-muted mb-1">Market Price</div>
-          <div className="text-lg xl:text-xl font-bold text-theme-text-primary">
-            ${midPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
+      {/* Amount Selection - 2x2 grid + custom input */}
+      <div className="mt-3 shrink-0">
+        <div className="text-xs text-theme-text-secondary mb-1.5">
+          {orderSide === 'buy' ? 'Buy' : 'Sell'} Amount (NUSDC)
         </div>
-      )}
-
-      {/* No Liquidity Warning */}
-      {midPrice <= 0 && (
-        <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
-          <div className="flex items-start gap-2">
-            <svg className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <p className="text-sm xl:text-base font-medium text-yellow-400">No market liquidity</p>
-              <p className="text-xs xl:text-sm text-theme-text-muted mt-1">
-                No market liquidity yet. Switch to Pro mode to place limit orders.
-              </p>
-            </div>
-          </div>
+        <div className="h-[64px] grid grid-cols-2 gap-1.5">
+          {QUICK_AMOUNTS.map((amount) => {
+            const isDisabled = disabled || amount > maxBalance;
+            const isSelected = usdAmount === amount && isQuickAmount;
+            return (
+              <button
+                key={amount}
+                onClick={() => handleQuickAmountClick(amount)}
+                disabled={isDisabled}
+                className={`h-[30px] text-xs font-medium rounded transition-colors ${
+                  isSelected
+                    ? 'bg-pd1 text-white'
+                    : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                ${amount}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => maxBalance > 0 && handleQuickAmountClick(Math.floor(maxBalance))}
+            disabled={disabled || maxBalance <= 0}
+            className={`h-[30px] text-xs font-medium rounded transition-colors ${
+              usdAmount === Math.floor(maxBalance) && maxBalance > 0 && isQuickAmount
+                ? 'bg-pd1 text-white'
+                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
+            } disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            Max
+          </button>
         </div>
-      )}
-
-      {/* Quick Amount Buttons */}
-      <div>
-        <div className="text-sm xl:text-base text-theme-text-secondary mb-2">
-          {orderSide === 'buy' ? 'Buy Amount' : 'Sell Amount'} ({quoteSymbol})
+        {/* Custom Amount Input */}
+        <div className="mt-2 relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-theme-text-muted">$</span>
+          <input
+            type="number"
+            value={customInput}
+            onChange={(e) => handleCustomInputChange(e.target.value)}
+            placeholder="Enter custom amount"
+            disabled={disabled}
+            className="w-full h-[30px] pl-6 pr-2.5 text-xs bg-theme-bg-tertiary border border-theme-border rounded
+              text-theme-text-primary placeholder:text-theme-text-muted
+              focus:outline-none focus:border-pd1 focus:ring-1 focus:ring-pd1/30
+              disabled:opacity-40 disabled:cursor-not-allowed"
+          />
         </div>
-        <QuickAmountButtons
-          onSelect={handleQuickAmount}
-          maxBalance={orderSide === 'buy' ? maxBuyUsd : maxSellUsd}
-          disabled={disabled}
-          selectedAmount={usdAmount ?? undefined}
-        />
       </div>
 
-      {/* Zero Balance Warning */}
-      {orderSide === 'buy' && quoteBalance <= 0 && (
-        <InsufficientBalancePrompt
-          tokenSymbol={quoteSymbol}
-          requiredAmount={50}
-          availableAmount={quoteBalance}
-          message={`Get ${quoteSymbol} from Faucet in your wallet to start`}
-        />
-      )}
-      {orderSide === 'sell' && baseBalance <= 0 && (
-        <InsufficientBalancePrompt
-          tokenSymbol={baseSymbol}
-          requiredAmount={0.001}
-          availableAmount={baseBalance}
-          message={`Get ${baseSymbol} from Faucet in your wallet to sell`}
-        />
-      )}
-
-      {/* Amount Summary */}
-      {usdAmount && usdAmount > 0 && (
-        <div className="p-3 bg-theme-bg-tertiary/50 rounded space-y-2">
-          <div className="flex justify-between text-sm xl:text-base">
-            <span className="text-theme-text-secondary">You {orderSide === 'buy' ? 'pay' : 'receive'}</span>
-            <span className="font-mono text-theme-text-primary">
-              ${usdAmount.toFixed(2)} {quoteSymbol}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm xl:text-base">
-            <span className="text-theme-text-secondary">You {orderSide === 'buy' ? 'receive' : 'sell'}</span>
-            <span className="font-mono text-theme-text-primary">
-              ~{baseAmount.toFixed(4)} {baseSymbol}
-            </span>
-          </div>
-          {/* Insufficient Balance Warning */}
-          {insufficientForBuy && (
-            <div className="pt-2 border-t border-theme-border/30">
-              <InsufficientBalancePrompt
-                tokenSymbol={quoteSymbol}
-                requiredAmount={usdAmount}
-                availableAmount={quoteBalance}
-              />
+      {/* Order Preview - ALWAYS visible, h-[72px] */}
+      <div className="mt-3 h-[72px] bg-theme-bg-tertiary/50 rounded-lg p-2.5 flex flex-col justify-center shrink-0">
+        {usdAmount && usdAmount > 0 ? (
+          <>
+            <div className="flex justify-between text-xs">
+              <span className="text-theme-text-muted">You {orderSide === 'buy' ? 'pay' : 'receive'}</span>
+              <span className="font-mono text-theme-text-primary">${usdAmount.toFixed(2)}</span>
             </div>
-          )}
-          {insufficientForSell && (
-            <div className="pt-2 border-t border-theme-border/30">
-              <InsufficientBalancePrompt
-                tokenSymbol={baseSymbol}
-                requiredAmount={usdAmount / midPrice}
-                availableAmount={baseBalance}
-              />
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-theme-text-muted">You {orderSide === 'buy' ? 'receive' : 'sell'}</span>
+              <span className="font-mono text-theme-text-primary">~{baseAmount.toFixed(4)} {baseSymbol}</span>
             </div>
-          )}
-        </div>
-      )}
+            {isInsufficientBalance && (
+              <div className="text-[10px] text-red-400 mt-1.5 text-center">
+                Insufficient balance (have ${maxBalance.toFixed(2)})
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-xs text-theme-text-muted text-center">
+            Select an amount or enter custom value
+          </div>
+        )}
+      </div>
 
-      {/* Execute Button */}
+      {/* Spacer */}
+      <div className="flex-1 min-h-2" />
+
+      {/* Execute Button - h-10 (40px) */}
       <button
-        onClick={orderSide === 'buy' ? handleBuy : handleSell}
-        disabled={isButtonDisabled}
-        className={`w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 ${
+        onClick={handleExecute}
+        disabled={buttonState.disabled}
+        className={`h-10 w-full rounded-lg text-xs font-semibold text-white transition-colors shrink-0 ${
           orderSide === 'buy'
-            ? 'bg-green-600 hover:bg-green-700'
-            : 'bg-red-600 hover:bg-red-700'
+            ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-600/50'
+            : 'bg-red-600 hover:bg-red-700 disabled:bg-red-600/50'
         }`}
       >
-        {isLoading
-          ? 'Processing...'
-          : midPrice <= 0
-            ? 'No Market Liquidity'
-            : usdAmount
-              ? `${orderSide === 'buy' ? 'Buy' : 'Sell'} ${baseAmount.toFixed(4)} ${baseSymbol}`
-              : `Select Amount to ${orderSide === 'buy' ? 'Buy' : 'Sell'}`}
+        {buttonState.text}
       </button>
-
-      {/* Info Text */}
-      <p className="text-xs xl:text-sm text-theme-text-muted text-center">
-        Fills at best available price
-      </p>
     </div>
   );
 }
