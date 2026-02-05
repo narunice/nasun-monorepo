@@ -89,8 +89,8 @@ function NewsSlide({ item }: { item: NewsItem }) {
   );
 }
 
-const MAX_DISPLAY = 10;
-const MIN_TWEETS = 3;
+const MAX_DISPLAY = 20;
+const MIN_TWEETS = 5;
 
 function balancedSlice(items: NewsItem[]): NewsItem[] {
   const rss = items.filter(i => i.source === 'rss');
@@ -109,7 +109,7 @@ function balancedSlice(items: NewsItem[]): NewsItem[] {
 }
 
 export function NewsCarousel() {
-  const { data, isLoading } = useNewsFeed(20);
+  const { data, isLoading } = useNewsFeed(35);
   const items = data?.items ?? [];
   const displayItems = balancedSlice(items);
   const { currentIndex, goTo, setPaused } = useCarousel(displayItems.length, 5000);

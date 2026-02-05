@@ -2,7 +2,7 @@
  * TradePage
  * DEX Trading Page - Full width layout for professional trading
  * Pro mode: Chart+BottomTab | Orderbook+Chat | OrderForm+News (3 columns)
- * Simple mode: Chart | OrderForm+Chat (2 columns)
+ * Simple mode: Chart | OrderForm | Chat (3 columns)
  *
  * Right-side cards share fixed width (CARD_W).
  * Header toggle bars (Interface, TradingToggles) also use CARD_W
@@ -29,6 +29,10 @@ const CHAT_HEIGHT = 280;
 
 // Per-card width — shared by each right-side card and header toggles
 const CARD_W = 'w-[250px] 2xl:w-[280px]';
+
+// Simple mode max width: Chart + 2 cards + gaps, centered
+// Calculation: ~600px chart + 2*250px cards + 2*12px gaps = ~1124px
+const SIMPLE_MAX_W = 'xl:max-w-[1124px] 2xl:max-w-[1184px] xl:mx-auto';
 
 function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
   return (
@@ -97,7 +101,7 @@ function TradePageContent() {
   return (
     <div className="space-y-3">
       {/* Header Row 1: MarketSelector | Interface toggle (1 card width, right-aligned) */}
-      <div className="flex gap-3">
+      <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ''}`}>
         <div className="flex-1 min-w-0">
           <MarketSelector />
         </div>
@@ -130,7 +134,7 @@ function TradePageContent() {
       </div>
 
       {/* Header Row 2: MarketInfoBar | TradingToggles (1 card width, right-aligned) */}
-      <div className="flex gap-3">
+      <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ''}`}>
         <div className="flex-1 min-w-0">
           <MarketInfoBar {...marketInfo} />
         </div>
@@ -172,18 +176,21 @@ function TradePageContent() {
 
       {/* Main Trading Area (xl+): Chart + cards side by side */}
       {isSimple ? (
-        /* Simple mode: Chart (left) | OrderForm+Chat (right) — 2 columns */
-        <div className="hidden xl:flex gap-3">
+        /* Simple mode: Chart | OrderForm | Chat — 3 columns, centered */
+        <div className={`hidden xl:flex gap-3 ${SIMPLE_MAX_W}`}>
+          {/* Col 1: Chart (flexible, fills remaining space) */}
           <div className="flex-1 min-w-0" style={{ height: `${CHART_HEIGHT}px` }}>
             <PriceChart currentPrice={displayPrice} />
           </div>
-          <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
-            <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
-              <TradingPanel mode={mode} />
-            </div>
+          {/* Col 2: Quick Trade */}
+          <div className={`shrink-0 ${CARD_W}`} style={{ height: `${CHART_HEIGHT}px` }}>
+            <TradingPanel mode={mode} />
+          </div>
+          {/* Col 3: Chat (same height as Quick Trade) */}
+          <div className={`shrink-0 ${CARD_W}`}>
             {!chatFloating && (
               chatVisible ? (
-                <div style={{ height: `${CHAT_HEIGHT}px` }}>
+                <div style={{ height: `${CHART_HEIGHT}px` }}>
                   <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
                 </div>
               ) : (
