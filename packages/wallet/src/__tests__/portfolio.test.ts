@@ -1,5 +1,5 @@
 /**
- * Portfolio Dashboard Tests
+ * Portfolio Tests
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -12,7 +12,7 @@ import type {
   ERC20TokenConfig,
 } from '../types/portfolio';
 
-describe('Portfolio Dashboard', () => {
+describe('Portfolio', () => {
   describe('DefaultPriceProvider', () => {
     let provider: DefaultPriceProvider;
 

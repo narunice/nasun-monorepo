@@ -1125,7 +1125,7 @@ export type {
 } from './types';
 
 // ============================================
-// Portfolio Dashboard (P3)
+// Portfolio (P3)
 // ============================================
 
 // Portfolio Hooks
