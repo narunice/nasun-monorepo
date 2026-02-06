@@ -38,6 +38,7 @@ import {
   type OpenAIProxyResponse,
 } from '../shared/protocol.js';
 import { createVsockClient, VsockClientSocket, isVsockMode, getEnclaveCid } from '../shared/vsock.js';
+import { getProviderForModel } from '../enclave/inference.js';
 
 /**
  * Connection configuration
@@ -48,6 +49,7 @@ interface VsockClientConfig {
   cid?: number;
   timeout?: number; // Request timeout in ms
   openaiApiKey?: string; // For proxy mode
+  groqApiKey?: string; // For proxy mode (Groq)
 }
 
 const DEFAULT_CONFIG: VsockClientConfig = {
@@ -72,21 +74,30 @@ export class VsockClient {
   > = new Map();
   private buffer = '';
   private connected = false;
-  private openaiClient: OpenAI | null = null;
+  private aiClients: Record<string, OpenAI> = {};
   private useProxy: boolean;
 
   constructor(config: Partial<VsockClientConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.useProxy = useOpenAIProxy();
 
-    // Initialize OpenAI client for proxy mode
+    // Initialize AI provider clients for proxy mode
     if (this.useProxy) {
-      const apiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        console.warn('[Host/Vsock] OpenAI API key not provided for proxy mode');
-      } else {
-        this.openaiClient = new OpenAI({ apiKey });
+      const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+      if (openaiKey) {
+        this.aiClients['openai'] = new OpenAI({ apiKey: openaiKey });
         console.log('[Host/Vsock] OpenAI client initialized for proxy mode');
+      }
+      const groqKey = config.groqApiKey || process.env.GROQ_API_KEY;
+      if (groqKey) {
+        this.aiClients['groq'] = new OpenAI({
+          apiKey: groqKey,
+          baseURL: 'https://api.groq.com/openai/v1',
+        });
+        console.log('[Host/Vsock] Groq client initialized for proxy mode');
+      }
+      if (Object.keys(this.aiClients).length === 0) {
+        console.warn('[Host/Vsock] No AI provider keys provided for proxy mode');
       }
     }
   }
@@ -216,21 +227,25 @@ export class VsockClient {
 
     let response: OpenAIProxyResponse;
 
-    if (!this.openaiClient) {
+    // Route to the correct AI provider based on model
+    const providerName = getProviderForModel(model) || 'openai';
+    const client = this.aiClients[providerName];
+
+    if (!client) {
       response = {
         type: 'OPENAI_PROXY_RESPONSE',
         requestId: proxyRequestId,
         payload: {
           proxyRequestId,
           success: false,
-          error: 'OpenAI client not initialized on Host',
+          error: `AI provider not initialized: ${providerName}. Available: ${Object.keys(this.aiClients).join(', ')}`,
         },
       };
     } else {
       try {
-        console.log(`[Host/Vsock] Calling OpenAI API...`);
+        console.log(`[Host/Vsock] Calling ${providerName} API...`);
 
-        const completion = await this.openaiClient.chat.completions.create({
+        const completion = await client.chat.completions.create({
           model,
           messages: [{ role: 'user', content: prompt }],
           max_tokens: maxTokens || 1024,
@@ -240,7 +255,7 @@ export class VsockClient {
         const result = completion.choices[0]?.message?.content || '';
         const usage = completion.usage;
 
-        console.log(`[Host/Vsock] OpenAI response received (${result.length} chars)`);
+        console.log(`[Host/Vsock] ${providerName} response received (${result.length} chars)`);
 
         response = {
           type: 'OPENAI_PROXY_RESPONSE',
@@ -259,14 +274,14 @@ export class VsockClient {
           },
         };
       } catch (error) {
-        console.error('[Host/Vsock] OpenAI API call failed:', error);
+        console.error(`[Host/Vsock] ${providerName} API call failed:`, error);
         response = {
           type: 'OPENAI_PROXY_RESPONSE',
           requestId: proxyRequestId,
           payload: {
             proxyRequestId,
             success: false,
-            error: error instanceof Error ? error.message : 'OpenAI API call failed',
+            error: error instanceof Error ? error.message : `${providerName} API call failed`,
           },
         };
       }

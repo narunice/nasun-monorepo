@@ -39,22 +39,42 @@ interface ExecuteResponse {
 }
 
 /**
- * Encrypt prompt with RSA-OAEP
+ * Hybrid encrypt prompt with RSA-OAEP + AES-256-GCM
+ *
+ * Format: Base64( RSA_ciphertext(256B) || AES_GCM_ciphertext )
+ * RSA envelope contains: AES key (32B) + IV (12B) = 44 bytes
  */
 function encryptPrompt(prompt: string, publicKeyBase64: string): string {
   // Convert Base64 public key to PEM format
   const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64}\n-----END PUBLIC KEY-----`;
 
-  const encrypted = crypto.publicEncrypt(
+  // Generate random AES-256 key and IV
+  const aesKey = crypto.randomBytes(32);
+  const iv = crypto.randomBytes(12);
+
+  // 1. RSA-OAEP encrypt the envelope (aesKey + iv)
+  const envelope = Buffer.concat([aesKey, iv]);
+  const rsaCiphertext = crypto.publicEncrypt(
     {
       key: publicKeyPem,
       padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
       oaepHash: 'sha256',
     },
-    Buffer.from(prompt, 'utf-8')
+    envelope
   );
 
-  return encrypted.toString('base64');
+  // 2. AES-256-GCM encrypt the prompt
+  const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(Buffer.from(prompt, 'utf-8')),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  // Combine: RSA_ciphertext || AES_ciphertext || authTag
+  const combined = Buffer.concat([rsaCiphertext, encrypted, authTag]);
+
+  return combined.toString('base64');
 }
 
 async function runTest(): Promise<void> {
@@ -90,11 +110,11 @@ async function runTest(): Promise<void> {
 
     // Step 3: Encrypt test prompt
     const testPrompt = 'What is 2 + 2? Answer with just the number.';
-    console.log(`\n[Test] Step 3: Encrypting prompt...`);
+    console.log(`\n[Test] Step 3: Encrypting prompt (hybrid RSA+AES)...`);
     console.log(`[Test] Plaintext: "${testPrompt}"`);
 
     const encryptedPrompt = encryptPrompt(testPrompt, pkData.publicKey);
-    console.log(`[Test] Encrypted (${encryptedPrompt.length} chars)`);
+    console.log(`[Test] Encrypted (${encryptedPrompt.length} chars, hybrid RSA-OAEP + AES-256-GCM)`);
 
     // Verify Host cannot decrypt
     console.log('[Test] Note: Host cannot see the plaintext prompt - only Enclave can decrypt');

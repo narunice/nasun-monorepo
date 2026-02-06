@@ -28,11 +28,36 @@ import {
 } from './local-llm.js';
 
 /**
+ * AI provider type
+ */
+type AIProvider = 'openai' | 'groq';
+
+/**
+ * Model configuration with provider routing
+ */
+interface ModelConfig {
+  provider: AIProvider;
+  maxTokens: number;
+  systemPrompt: string;
+}
+
+/**
  * Supported models and their configurations
  */
-const MODEL_CONFIG: Record<string, { maxTokens: number; systemPrompt: string }> = {
+const MODEL_CONFIG: Record<string, ModelConfig> = {
   'gpt-4o': {
+    provider: 'openai',
     maxTokens: 2048,
+    systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',
+  },
+  'llama-3.1-8b-instant': {
+    provider: 'groq',
+    maxTokens: 2048,
+    systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',
+  },
+  'llama-3.3-70b-versatile': {
+    provider: 'groq',
+    maxTokens: 8192,
     systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',
   },
 };
@@ -70,8 +95,8 @@ export interface OpenAIProxyFunction {
   }>;
 }
 
-// OpenAI client - initialized lazily (direct mode only)
-let openaiClient: OpenAI | null = null;
+// AI provider clients - initialized lazily (direct mode only)
+const aiClients: Record<string, OpenAI> = {};
 
 // Proxy function - set when in proxy mode
 let proxyFunction: OpenAIProxyFunction | null = null;
@@ -86,20 +111,33 @@ let isProxyMode: boolean = false;
 /**
  * Initialize the inference module for direct mode (local simulation)
  *
- * @param apiKey - OpenAI API key
+ * Supports multiple AI providers (OpenAI, Groq).
+ * At least one provider key is required.
  */
-export function initializeInference(apiKey: string): void {
-  if (!apiKey) {
-    throw new Error('OpenAI API key is required');
+export function initializeInference(config: {
+  openaiKey?: string;
+  groqKey?: string;
+}): void {
+  if (config.openaiKey) {
+    aiClients['openai'] = new OpenAI({ apiKey: config.openaiKey });
+    console.log('[Enclave/Inference] OpenAI client initialized');
+  }
+  if (config.groqKey) {
+    aiClients['groq'] = new OpenAI({
+      apiKey: config.groqKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+    });
+    console.log('[Enclave/Inference] Groq client initialized');
   }
 
-  openaiClient = new OpenAI({
-    apiKey,
-  });
+  if (Object.keys(aiClients).length === 0) {
+    throw new Error('At least one AI provider key is required (OPENAI_API_KEY or GROQ_API_KEY)');
+  }
+
   isProxyMode = false;
   inferenceMode = 'direct';
 
-  console.log('[Enclave/Inference] OpenAI client initialized (direct mode)');
+  console.log(`[Enclave/Inference] Direct mode initialized (providers: ${Object.keys(aiClients).join(', ')})`);
 }
 
 /**
@@ -167,20 +205,21 @@ export async function executeInference(
 }
 
 /**
- * Execute inference directly via OpenAI API (local simulation)
+ * Execute inference directly via AI provider API (local simulation)
  */
 async function executeDirect(
   prompt: string,
   model: string,
-  config: { maxTokens: number; systemPrompt: string },
+  config: ModelConfig,
   startTime: number
 ): Promise<InferenceResult> {
-  if (!openaiClient) {
-    throw new Error('Inference module not initialized (direct mode requires initializeInference)');
+  const client = aiClients[config.provider];
+  if (!client) {
+    throw new Error(`Provider not initialized: ${config.provider}. Available: ${Object.keys(aiClients).join(', ')}`);
   }
 
   try {
-    const response = await openaiClient.chat.completions.create({
+    const response = await client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: config.systemPrompt },
@@ -195,7 +234,7 @@ async function executeDirect(
     const resultHash = sha256(result);
     const tokensUsed = response.usage?.total_tokens || 0;
 
-    console.log(`[Enclave/Inference] Direct inference completed in ${executionTimeMs}ms`);
+    console.log(`[Enclave/Inference] Direct inference completed in ${executionTimeMs}ms (provider: ${config.provider})`);
 
     return {
       result,
@@ -205,10 +244,10 @@ async function executeDirect(
       tokensUsed,
     };
   } catch (error) {
-    console.error('[Enclave/Inference] Direct inference failed:', error);
+    console.error(`[Enclave/Inference] Direct inference failed (provider: ${config.provider}):`, error);
 
     if (error instanceof OpenAI.APIError) {
-      throw new Error(`OpenAI API error: ${error.message}`);
+      throw new Error(`${config.provider} API error: ${error.message}`);
     }
 
     throw error;
@@ -223,7 +262,7 @@ async function executeDirect(
 async function executeViaProxy(
   prompt: string,
   model: string,
-  config: { maxTokens: number; systemPrompt: string },
+  config: ModelConfig,
   startTime: number
 ): Promise<InferenceResult> {
   if (!proxyFunction) {
@@ -312,7 +351,7 @@ export function isInferenceReady(): boolean {
       return proxyFunction !== null;
     case 'direct':
     default:
-      return openaiClient !== null;
+      return Object.keys(aiClients).length > 0;
   }
 }
 
@@ -342,6 +381,13 @@ export function getInferenceMode(): InferenceMode {
  */
 export function getSupportedModels(): string[] {
   return Object.keys(MODEL_CONFIG);
+}
+
+/**
+ * Get the provider for a given model
+ */
+export function getProviderForModel(model: string): AIProvider | null {
+  return MODEL_CONFIG[model]?.provider ?? null;
 }
 
 // Re-export types and functions for convenience

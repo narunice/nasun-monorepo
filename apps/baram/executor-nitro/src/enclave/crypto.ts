@@ -25,6 +25,19 @@ interface EnclaveKeyPair {
 // Singleton key pair - generated once on Enclave startup
 let keyPair: EnclaveKeyPair | null = null;
 
+// When true, always require hybrid RSA+AES encryption (Nitro TEE mode).
+// When false, fall back to Base64 plaintext if decryption fails (simulation/non-TEE mode).
+let requireEncryption = true;
+
+/**
+ * Configure whether hybrid encryption is mandatory.
+ * Set to false for non-TEE (simulation) mode to accept plaintext prompts from SDK.
+ */
+export function setRequireEncryption(required: boolean): void {
+  requireEncryption = required;
+  console.log(`[Enclave/Crypto] Encryption requirement: ${required ? 'mandatory (Nitro)' : 'optional (simulation)'}`);
+}
+
 /**
  * Initialize the Enclave crypto module
  * Generates a new RSA keypair
@@ -145,10 +158,22 @@ export function decrypt(encryptedBase64: string): DecryptResult {
 
     return { plaintext: decrypted.toString('utf-8'), aesKey };
   } catch (error) {
-    // No plaintext fallback — always require proper hybrid encryption.
-    // Accepting unencrypted data would break E2E guarantee and leak responses.
-    console.error('[Enclave/Crypto] Decryption failed');
-    throw new Error('Decryption failed - invalid encrypted data or wrong key');
+    if (requireEncryption) {
+      // Nitro TEE mode: always require hybrid encryption. No exceptions.
+      console.error('[Enclave/Crypto] Decryption failed (encryption required)');
+      throw new Error('Decryption failed - invalid encrypted data or wrong key');
+    }
+
+    // Simulation mode: fall back to Base64 plaintext for non-TEE executors.
+    // This is safe because there is no TEE boundary to protect.
+    try {
+      const plaintext = Buffer.from(encryptedBase64, 'base64').toString('utf-8');
+      console.warn('[Enclave/Crypto] Hybrid decryption failed, using Base64 plaintext fallback (non-TEE mode)');
+      return { plaintext, aesKey: Buffer.alloc(0) };
+    } catch {
+      console.error('[Enclave/Crypto] Both hybrid decryption and Base64 fallback failed');
+      throw new Error('Decryption failed - invalid encrypted data');
+    }
   }
 }
 

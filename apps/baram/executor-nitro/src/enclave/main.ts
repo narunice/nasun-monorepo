@@ -38,7 +38,7 @@ import {
   type OpenAIProxyResponse,
 } from '../shared/protocol.js';
 import { createVsockServer, isVsockMode } from '../shared/vsock.js';
-import { initializeCrypto, getPublicKey, decrypt, encryptResponse, destroyKeyPair } from './crypto.js';
+import { initializeCrypto, getPublicKey, decrypt, encryptResponse, destroyKeyPair, setRequireEncryption } from './crypto.js';
 import {
   initializeInference,
   initializeInferenceProxy,
@@ -328,7 +328,11 @@ async function startEnclave(): Promise<void> {
   } else if (useProxy) {
     inferenceDesc = 'Proxy (via Host)';
   } else {
-    inferenceDesc = 'Direct OpenAI';
+    const providers = [
+      process.env.OPENAI_API_KEY ? 'OpenAI' : null,
+      process.env.GROQ_API_KEY ? 'Groq' : null,
+    ].filter(Boolean).join(', ');
+    inferenceDesc = `Direct (${providers || 'no key set'})`;
   }
 
   console.log('========================================');
@@ -342,6 +346,8 @@ async function startEnclave(): Promise<void> {
 
   // Initialize crypto
   const publicKey = await initializeCrypto();
+  // In simulation (non-TEE) mode, allow Base64 plaintext prompts from SDK
+  setRequireEncryption(isNitroMode());
   console.log(`[Enclave] Public key ready (${publicKey.substring(0, 20)}...)`);
 
   // Initialize inference based on mode
@@ -356,14 +362,15 @@ async function startEnclave(): Promise<void> {
     // Proxy mode: Host will call OpenAI for us
     initializeInferenceProxy(createProxyFunction());
   } else {
-    // Direct mode: Enclave calls OpenAI directly
+    // Direct mode: Enclave calls AI provider directly
     const openaiKey = process.env.OPENAI_API_KEY;
-    if (!openaiKey) {
-      console.error('[Enclave] ERROR: OPENAI_API_KEY environment variable not set');
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!openaiKey && !groqKey) {
+      console.error('[Enclave] ERROR: OPENAI_API_KEY or GROQ_API_KEY environment variable required');
       console.error('[Enclave] In Nitro mode, use USE_LOCAL_LLM=true or USE_OPENAI_PROXY=true');
       process.exit(1);
     }
-    initializeInference(openaiKey);
+    initializeInference({ openaiKey, groqKey });
   }
 
   // Start server
