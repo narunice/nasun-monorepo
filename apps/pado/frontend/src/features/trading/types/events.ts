@@ -5,19 +5,22 @@
 // Order filled event (trade execution)
 export interface OrderFilledEvent {
   poolId: string;
-  orderId: string;
+  makerOrderId: string;
+  takerOrderId: string;
   price: bigint;
   quantity: bigint;
   takerIsBid: boolean;
+  makerBalanceManagerId: string;
+  takerBalanceManagerId: string;
   timestamp: number;
   txDigest: string;
 }
 
 // Order placed event
 export interface OrderPlacedEvent {
+  balanceManagerId: string;
   poolId: string;
   orderId: string;
-  owner: string;
   price: bigint;
   quantity: bigint;
   isBid: boolean;
@@ -27,8 +30,12 @@ export interface OrderPlacedEvent {
 
 // Order canceled event
 export interface OrderCanceledEvent {
+  balanceManagerId: string;
   poolId: string;
   orderId: string;
+  price: bigint;
+  quantity: bigint;
+  isBid: boolean;
   timestamp: number;
   txDigest: string;
 }

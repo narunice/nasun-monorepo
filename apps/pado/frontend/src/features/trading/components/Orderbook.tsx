@@ -1,18 +1,20 @@
 /**
  * Orderbook Component
  * Vertical layout: Asks (top, reversed) → Spread → Bids (bottom)
- * With Book/Trades tab toggle (benchmark: Lighter, Hyperliquid, dYdX)
+ * With Book/Trades/Info tab toggle (benchmark: Lighter, Hyperliquid, dYdX)
  */
 
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import type { Orderbook as OrderbookType } from '../../../lib/deepbook';
-import { useMarket } from '../context/MarketContext';
-import { fetchBinanceRecentTrades, getBinanceSymbol } from '@/lib/indicators';
 import { UnderlineTabs } from '@/components/common';
+import { ConnectionStatusDot } from '@/components/common/ConnectionStatus';
+import { PoolInfo } from './PoolInfo';
+import { useTradeEvents } from '../hooks/useTradeEvents';
+import type { Trade } from '../types/trade';
+import type { ConnectionMode } from '../types/events';
 
 type DepthLevel = 5 | 10 | 20;
-type OrderbookTab = 'book' | 'trades';
+type OrderbookTab = 'book' | 'trades' | 'info';
 
 interface OrderbookProps {
   orderbook: OrderbookType;
@@ -26,26 +28,15 @@ function formatTradeTime(timestamp: number): string {
   return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function TradesPanel({ compact }: { compact: boolean }) {
-  const { currentPool } = useMarket();
-  const baseSymbol = currentPool.baseToken.symbol;
-  const binanceSymbol = getBinanceSymbol(baseSymbol);
+interface TradesPanelProps {
+  compact: boolean;
+  trades: Trade[];
+  connectionMode: ConnectionMode;
+}
 
-  const { data: trades } = useQuery({
-    queryKey: ['recentTrades', binanceSymbol],
-    queryFn: () => fetchBinanceRecentTrades(binanceSymbol, 50),
-    enabled: !!binanceSymbol,
-    refetchInterval: 5000,
-    staleTime: 3000,
-  });
-
+function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
   const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
   const rowHeight = compact ? 'py-px' : 'py-0.5';
-
-  const displayTrades = useMemo(() => {
-    if (!trades) return [];
-    return [...trades].reverse();
-  }, [trades]);
 
   return (
     <>
@@ -53,33 +44,35 @@ function TradesPanel({ compact }: { compact: boolean }) {
       <div className={`grid grid-cols-3 gap-1 ${fontSize} text-theme-text-muted mb-1 pb-1 border-b border-theme-border`}>
         <span>Price</span>
         <span className="text-right">Size</span>
-        <span className="text-right">Time</span>
+        <span className="text-right flex items-center justify-end gap-1">
+          Time <ConnectionStatusDot mode={connectionMode} />
+        </span>
       </div>
 
       {/* Trades List */}
       <div className="flex-1 overflow-y-auto">
-        {displayTrades.length > 0 ? (
+        {trades.length > 0 ? (
           <div className="space-y-px">
-            {displayTrades.map((trade) => (
+            {trades.map((trade) => (
               <div
                 key={trade.id}
                 className={`grid grid-cols-3 gap-1 ${fontSize} ${rowHeight}`}
               >
-                <span className={`font-mono ${trade.isBuyerMaker ? 'text-trading-ask' : 'text-trading-bid'}`}>
+                <span className={`font-mono ${trade.isBuy ? 'text-trading-bid' : 'text-trading-ask'}`}>
                   {trade.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 <span className="font-mono text-right text-theme-text-secondary">
-                  {trade.qty.toFixed(5)}
+                  {trade.quantity.toFixed(5)}
                 </span>
                 <span className="font-mono text-right text-theme-text-muted">
-                  {formatTradeTime(trade.time)}
+                  {formatTradeTime(trade.timestamp)}
                 </span>
               </div>
             ))}
           </div>
         ) : (
           <div className={`text-center text-theme-text-muted ${fontSize} py-8`}>
-            {binanceSymbol ? 'Loading...' : 'No trade data'}
+            No trades yet
           </div>
         )}
       </div>
@@ -90,6 +83,9 @@ function TradesPanel({ compact }: { compact: boolean }) {
 export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact = false }: OrderbookProps) {
   const [depthLevel, setDepthLevel] = useState<DepthLevel>(10);
   const [activeTab, setActiveTab] = useState<OrderbookTab>('book');
+
+  // On-chain market tape — lifted to Orderbook level to persist across tab switches
+  const { trades: marketTrades, connectionMode } = useTradeEvents();
 
   const handlePriceClick = (price: number) => {
     if (onPriceClick) {
@@ -155,6 +151,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
         tabs={[
           { id: 'book' as const, label: 'Order Book' },
           { id: 'trades' as const, label: 'Trades' },
+          { id: 'info' as const, label: 'Info' },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -180,7 +177,16 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
       />
 
       {/* Trades Tab */}
-      {activeTab === 'trades' && <TradesPanel compact={compact} />}
+      {activeTab === 'trades' && (
+        <TradesPanel compact={compact} trades={marketTrades} connectionMode={connectionMode} />
+      )}
+
+      {/* Info Tab */}
+      {activeTab === 'info' && (
+        <div className="p-3">
+          <PoolInfo variant="inline" />
+        </div>
+      )}
 
       {/* Book Tab */}
       {activeTab === 'book' && (

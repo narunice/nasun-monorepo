@@ -38,7 +38,7 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
     sendMessage(content);
   }, [needsNickname, sendMessage]);
 
-  const handleNicknameSuccess = useCallback((name: string) => {
+  const handleNicknameSuccess = useCallback((_name: string) => {
     setShowNicknameModal(false);
     // Send the pending message that triggered the modal
     const pending = pendingMessageRef.current;
