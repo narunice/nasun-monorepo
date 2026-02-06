@@ -37,7 +37,7 @@ import { ZkLoginError } from '../types/zklogin';
 // Configuration
 // ============================================
 
-/** Default prover URL (Mysten Labs development prover) */
+/** Default prover URL (Mysten Labs development prover - production prover requires audience registration) */
 const DEFAULT_PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
 
 /** Session storage key for zkLogin session */
