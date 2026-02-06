@@ -1,20 +1,19 @@
 /**
  * Orderbook Component
  * Vertical layout: Asks (top, reversed) → Spread → Bids (bottom)
- * With Book/Trades/Info tab toggle (benchmark: Lighter, Hyperliquid, dYdX)
+ * With Book/Trades tab toggle (benchmark: Lighter, Hyperliquid, dYdX)
  */
 
 import { useState, useMemo } from 'react';
 import type { Orderbook as OrderbookType } from '../../../lib/deepbook';
 import { UnderlineTabs } from '@/components/common';
 import { ConnectionStatusDot } from '@/components/common/ConnectionStatus';
-import { PoolInfo } from './PoolInfo';
 import { useTradeEvents } from '../hooks/useTradeEvents';
 import type { Trade } from '../types/trade';
 import type { ConnectionMode } from '../types/events';
 
 type DepthLevel = 5 | 10 | 20;
-type OrderbookTab = 'book' | 'trades' | 'info';
+type OrderbookTab = 'book' | 'trades';
 
 interface OrderbookProps {
   orderbook: OrderbookType;
@@ -151,7 +150,6 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
         tabs={[
           { id: 'book' as const, label: 'Order Book' },
           { id: 'trades' as const, label: 'Trades' },
-          { id: 'info' as const, label: 'Info' },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -179,13 +177,6 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
       {/* Trades Tab */}
       {activeTab === 'trades' && (
         <TradesPanel compact={compact} trades={marketTrades} connectionMode={connectionMode} />
-      )}
-
-      {/* Info Tab */}
-      {activeTab === 'info' && (
-        <div className="p-3">
-          <PoolInfo variant="inline" />
-        </div>
       )}
 
       {/* Book Tab */}

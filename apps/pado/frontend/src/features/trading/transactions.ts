@@ -4,7 +4,7 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../../config/network';
-import { ORDER_TYPE, SELF_MATCHING, CLOCK_ID } from './constants';
+import { ORDER_TYPE, SELF_MATCHING, CLOCK_ID, NATIVE_TOKEN_TYPE, GAS_RESERVE_RAW } from './constants';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';
 import { getSuiClient } from '../../lib/sui-client';
 
@@ -167,6 +167,10 @@ export function buildWithdraw(
   coinType: string,
   recipientAddress: string,
 ): Transaction {
+  if (amount <= 0n) {
+    throw new Error('Withdraw amount must be positive');
+  }
+
   const tx = new Transaction();
 
   const coin = tx.moveCall({
@@ -476,10 +480,61 @@ export function buildWithdrawAll(
   return tx;
 }
 
-// 네이티브 토큰 (NASUN/SUI) 타입
-const NATIVE_TOKEN_TYPE = '0x2::sui::SUI';
-// 가스비를 위해 남겨둘 최소 NASUN 금액 (0.1 NASUN = 100,000,000 SOE)
-const MIN_GAS_RESERVE = 100_000_000n;
+/**
+ * Deposit exact amount of a single token into BalanceManager
+ * Extracted from useAutoDeposit pattern for reuse in transfer modal.
+ * Handles: coin fetching, merge if multiple, split to exact amount, deposit
+ * For native tokens (NASUN/SUI), uses tx.gas to avoid gas coin conflicts
+ */
+export async function buildDepositExact(
+  balanceManagerId: string,
+  rawAmount: bigint,
+  coinType: string,
+  ownerAddress: string,
+): Promise<Transaction> {
+  if (rawAmount <= 0n) {
+    throw new Error('Deposit amount must be positive');
+  }
+
+  const client = getSuiClient();
+  const tx = new Transaction();
+  const isNativeToken = coinType === NATIVE_TOKEN_TYPE;
+
+  // Helper: add deposit moveCall to transaction
+  const addDeposit = (coin: ReturnType<typeof tx.splitCoins>[0]) => {
+    tx.moveCall({
+      target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
+      typeArguments: [coinType],
+      arguments: [tx.object(balanceManagerId), coin],
+    });
+  };
+
+  if (isNativeToken) {
+    const [depositCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(rawAmount)]);
+    addDeposit(depositCoin);
+  } else {
+    const coins = await client.getCoins({ owner: ownerAddress, coinType });
+    if (coins.data.length === 0) {
+      throw new Error('No coins available for deposit');
+    }
+
+    const coinIds = coins.data.map(c => c.coinObjectId);
+    if (coinIds.length === 1) {
+      const [depositCoin] = tx.splitCoins(tx.object(coinIds[0]), [tx.pure.u64(rawAmount)]);
+      addDeposit(depositCoin);
+    } else {
+      const [primary, ...rest] = coinIds;
+      tx.mergeCoins(tx.object(primary), rest.map(id => tx.object(id)));
+      const [depositCoin] = tx.splitCoins(tx.object(primary), [tx.pure.u64(rawAmount)]);
+      addDeposit(depositCoin);
+    }
+  }
+
+  return tx;
+}
+
+// Alias for readability in depositAll logic
+const MIN_GAS_RESERVE = GAS_RESERVE_RAW;
 
 /**
  * 특정 토큰 타입의 코인을 BalanceManager에 입금하는 헬퍼 함수

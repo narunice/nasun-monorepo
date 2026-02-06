@@ -13,6 +13,7 @@ import { TradeHistory } from './TradeHistory';
 import { useOpenOrders, useOrderActions } from '../hooks';
 import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs, type TabItem } from '@/components/common';
+import { TransferModal } from './TransferModal';
 
 export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
 
@@ -105,13 +106,22 @@ function AssetsTab() {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
 
-  const { balanceManagerId, isLoading, handleDeposit, handleWithdraw, lastAutoDepositError } = useOrderActions();
+  const { balanceManagerId, isLoading, handleDepositToken, handleWithdrawToken, lastAutoDepositError } = useOrderActions();
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
 
   const { data: multiBalance } = useMultiBalance();
   const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
   const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
+
+  // Must be called before any conditional returns (Rules of Hooks)
+  const [modalState, setModalState] = useState<{
+    action: 'deposit' | 'withdraw';
+    tokenSymbol: string;
+    tokenType: string;
+    tokenDecimals: number;
+    availableBalance: number;
+  } | null>(null);
 
   if (!isConnected) {
     return (
@@ -137,12 +147,16 @@ function AssetsTab() {
       wallet: walletBase,
       trading: bmBalance.base,
       decimals: 4,
+      tokenType: currentPool.baseToken.type!,
+      tokenDecimals: currentPool.baseToken.decimals,
     },
     {
       symbol: 'NUSDC',
       wallet: walletQuote,
       trading: bmBalance.quote,
       decimals: 2,
+      tokenType: currentPool.quoteToken.type!,
+      tokenDecimals: currentPool.quoteToken.decimals,
     },
   ];
 
@@ -174,14 +188,26 @@ function AssetsTab() {
             {balanceManagerId && (
               <>
                 <button
-                  onClick={handleDeposit}
+                  onClick={() => setModalState({
+                    action: 'deposit',
+                    tokenSymbol: asset.symbol,
+                    tokenType: asset.tokenType,
+                    tokenDecimals: asset.tokenDecimals,
+                    availableBalance: asset.wallet,
+                  })}
                   disabled={isLoading}
                   className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm font-medium rounded bg-pd1/20 text-pd3 hover:bg-pd1/30 disabled:opacity-50 transition-colors"
                 >
                   Deposit
                 </button>
                 <button
-                  onClick={handleWithdraw}
+                  onClick={() => setModalState({
+                    action: 'withdraw',
+                    tokenSymbol: asset.symbol,
+                    tokenType: asset.tokenType,
+                    tokenDecimals: asset.tokenDecimals,
+                    availableBalance: asset.trading,
+                  })}
                   disabled={isLoading}
                   className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm font-medium rounded bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 disabled:opacity-50 transition-colors"
                 >
@@ -207,6 +233,20 @@ function AssetsTab() {
             Enable Pado from the order form to deposit funds for trading
           </p>
         </div>
+      )}
+
+      {/* Per-token Transfer Modal */}
+      {modalState && (
+        <TransferModal
+          onClose={() => setModalState(null)}
+          action={modalState.action}
+          tokenSymbol={modalState.tokenSymbol}
+          tokenType={modalState.tokenType}
+          tokenDecimals={modalState.tokenDecimals}
+          availableBalance={modalState.availableBalance}
+          isLoading={isLoading}
+          onConfirm={modalState.action === 'deposit' ? handleDepositToken : handleWithdrawToken}
+        />
       )}
     </div>
   );
