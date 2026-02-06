@@ -16,6 +16,8 @@ import {
   buildRequestNusdc,
   buildDepositAll,
   buildWithdrawAll,
+  buildDepositExact,
+  buildWithdraw,
 } from './transactions';
 import {
   getStoredBalanceManagerId,
@@ -29,6 +31,24 @@ import { RPC_SYNC_DELAY_MS } from '../../lib/constants';
 import { useTransactionExecutor } from './hooks/useTransactionExecutor';
 import { validateBalanceManagerExists } from './lib/balanceManagerValidation';
 import { parseExecutionInfo } from './lib/parseExecutionInfo';
+
+/**
+ * Convert a human-readable amount to raw bigint using string manipulation.
+ * Avoids float multiplication precision loss (e.g., 0.1 * 10^8 = 10000000.000000001).
+ */
+function amountToRawBigint(amount: number, decimals: number): bigint {
+  if (amount <= 0 || !Number.isFinite(amount)) {
+    throw new Error('Amount must be a positive finite number');
+  }
+  const str = amount.toFixed(decimals);
+  const [intPart, fracPart = ''] = str.split('.');
+  const paddedFrac = fracPart.padEnd(decimals, '0').slice(0, decimals);
+  const raw = BigInt(intPart + paddedFrac);
+  if (raw <= 0n) {
+    throw new Error('Amount too small for this token');
+  }
+  return raw;
+}
 
 interface UseTrading {
   // State
@@ -56,6 +76,8 @@ interface UseTrading {
   // Deposit / Withdraw
   depositAllTokens: () => Promise<TradeResult>;
   withdrawAllTokens: () => Promise<TradeResult>;
+  depositToken: (amount: number, coinType: string, decimals: number) => Promise<TradeResult>;
+  withdrawToken: (amount: number, coinType: string, decimals: number) => Promise<TradeResult>;
 }
 
 export function useTrading(): UseTrading {
@@ -276,6 +298,52 @@ export function useTrading(): UseTrading {
     return executeTransaction(tx);
   }, [executeTransaction]);
 
+  // --- Per-Token Deposit/Withdraw ---
+
+  const depositToken = useCallback(async (
+    amount: number,
+    coinType: string,
+    decimals: number,
+  ): Promise<TradeResult> => {
+    if (!balanceManagerId) {
+      return { success: false, error: 'BalanceManager not created.' };
+    }
+    if (!walletAddress) {
+      return { success: false, error: 'Wallet not connected' };
+    }
+
+    const rawAmount = amountToRawBigint(amount, decimals);
+    try {
+      const tx = await buildDepositExact(balanceManagerId, rawAmount, coinType, walletAddress);
+      return executeTransaction(tx);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Deposit failed';
+      return { success: false, error: message };
+    }
+  }, [balanceManagerId, walletAddress, executeTransaction]);
+
+  const withdrawToken = useCallback(async (
+    amount: number,
+    coinType: string,
+    decimals: number,
+  ): Promise<TradeResult> => {
+    if (!balanceManagerId) {
+      return { success: false, error: 'BalanceManager not created.' };
+    }
+    if (!walletAddress) {
+      return { success: false, error: 'Wallet not connected' };
+    }
+
+    const rawAmount = amountToRawBigint(amount, decimals);
+    try {
+      const tx = buildWithdraw(balanceManagerId, rawAmount, coinType, walletAddress);
+      return executeTransaction(tx);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Withdraw failed';
+      return { success: false, error: message };
+    }
+  }, [balanceManagerId, walletAddress, executeTransaction]);
+
   return {
     isLoading,
     error,
@@ -283,6 +351,8 @@ export function useTrading(): UseTrading {
     isValidatingBalanceManager,
     createBalanceManager,
     depositToBalanceManager,
+    depositToken,
+    withdrawToken,
     placeLimitOrder,
     placeMarketOrder,
     cancelOrder,

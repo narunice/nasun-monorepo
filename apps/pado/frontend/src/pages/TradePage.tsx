@@ -12,7 +12,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
 import { TradingPanel, EnablePadoCard } from '../features/trading/containers';
-import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles } from '../features/trading/components';
+import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles, PoolInfo } from '../features/trading/components';
 import { useTradeMode, useOrderbook } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
@@ -28,11 +28,11 @@ const CHART_HEIGHT = 480;
 const CHAT_HEIGHT = 280;
 
 // Per-card width — shared by each right-side card and header toggles
-const CARD_W = 'w-[250px] 2xl:w-[280px]';
+const CARD_W = 'w-[300px] 2xl:w-[340px]';
 
 // Simple mode max width: Chart + 2 cards + gaps, centered
-// Calculation: ~600px chart + 2*250px cards + 2*12px gaps = ~1124px
-const SIMPLE_MAX_W = 'xl:max-w-[1124px] 2xl:max-w-[1184px] xl:mx-auto';
+// Calculation: ~600px chart + 2*300px cards + 2*12px gaps = ~1224px
+const SIMPLE_MAX_W = 'xl:max-w-[1224px] 2xl:max-w-[1304px] xl:mx-auto';
 
 function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
   return (
@@ -100,47 +100,47 @@ function TradePageContent() {
 
   return (
     <div className="space-y-3">
-      {/* Header Row 1: MarketSelector | Interface toggle (1 card width, right-aligned) */}
+      {/* Header: MarketSelector+InfoBar | Interface+Toggles (Col2) | PoolInfo box (Col3, Pro only) */}
       <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ''}`}>
-        <div className="flex-1 min-w-0">
+        {/* Col 1: MarketSelector + MarketInfoBar stacked */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
           <MarketSelector />
-        </div>
-        <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
-          <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 h-full flex items-center justify-between">
-            <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
-            <div className="flex items-center gap-2">
-              <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
-                Simple
-              </span>
-              <button
-                onClick={toggleMode}
-                className={`w-7 h-3.5 rounded-full transition-colors ${
-                  isSimple ? 'bg-theme-toggle-off' : 'bg-purple-500'
-                }`}
-                aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
-              >
-                <span
-                  className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                    isSimple ? 'translate-x-0.5' : 'translate-x-3.5'
-                  }`}
-                />
-              </button>
-              <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
-                Pro
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Header Row 2: MarketInfoBar | TradingToggles (1 card width, right-aligned) */}
-      <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ''}`}>
-        <div className="flex-1 min-w-0">
           <MarketInfoBar {...marketInfo} />
         </div>
+        {/* Col 2: Interface toggle + TradingToggles stacked */}
+        <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
+          <div className="flex flex-col gap-3">
+            <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
+              <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+                  Simple
+                </span>
+                <button
+                  onClick={toggleMode}
+                  className={`w-7 h-3.5 rounded-full transition-colors ${
+                    isSimple ? 'bg-theme-toggle-off' : 'bg-purple-500'
+                  }`}
+                  aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
+                >
+                  <span
+                    className={`block w-3 h-3 rounded-full bg-white transition-transform ${
+                      isSimple ? 'translate-x-0.5' : 'translate-x-3.5'
+                    }`}
+                  />
+                </button>
+                <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+                  Pro
+                </span>
+              </div>
+            </div>
+            {!isSimple && <TradingToggles />}
+          </div>
+        </div>
+        {/* Col 3: PoolInfo box (Pro only, full height matching Col 2) */}
         {!isSimple && (
           <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
-            <TradingToggles />
+            <PoolInfo variant="header" />
           </div>
         )}
       </div>

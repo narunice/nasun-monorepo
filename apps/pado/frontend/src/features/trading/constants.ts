@@ -34,3 +34,10 @@ export const PRICE = {
 
 // Clock object ID
 export const CLOCK_ID = '0x6';
+
+// Native token (NASUN/SUI) type identifier
+export const NATIVE_TOKEN_TYPE = '0x2::sui::SUI';
+
+// Gas reserve: keep 0.1 NASUN (100_000_000 SOE at 9 decimals) for TX fees
+export const GAS_RESERVE_RAW = 100_000_000n;
+export const GAS_RESERVE_HUMAN = 0.1;

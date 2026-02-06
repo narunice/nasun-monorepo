@@ -627,11 +627,11 @@ export function validateQuantity(amount: number, pool: PoolConfig): ValidationRe
     return { valid: false, message: 'Enter quantity to continue' };
   }
 
-  const minQty = getMinQuantity(pool);
-  const remainder = amount % minQty;
-
-  // Allow floating point tolerance (less than 0.1% of minQty is OK)
-  if (remainder > minQty * 0.001 && remainder < minQty * 0.999) {
+  // Integer arithmetic to avoid floating-point modulo errors
+  // e.g. 0.00100 % 0.00001 in JS can produce non-zero due to IEEE 754
+  const amountRaw = Math.round(amount * Math.pow(10, pool.baseToken.decimals));
+  if (amountRaw % pool.lotSize !== 0) {
+    const minQty = getMinQuantity(pool);
     return {
       valid: false,
       message: `Quantity: min ${minQty}, increments of ${minQty} ${pool.baseToken.symbol}`,
@@ -651,11 +651,11 @@ export function validatePrice(price: number, pool: PoolConfig): ValidationResult
     return { valid: false, message: 'Enter price to continue' };
   }
 
-  const minPrice = getMinPrice(pool);
-  const remainder = price % minPrice;
-
-  // Allow floating point tolerance (less than 0.1% of minPrice is OK)
-  if (remainder > minPrice * 0.001 && remainder < minPrice * 0.999) {
+  // Integer arithmetic to avoid floating-point modulo errors
+  // e.g. 64900.0 % 0.1 in JS produces 0.0999... instead of 0
+  const priceRaw = Math.round(price * Math.pow(10, pool.quoteToken.decimals));
+  if (priceRaw % pool.tickSize !== 0) {
+    const minPrice = getMinPrice(pool);
     return {
       valid: false,
       message: `Price: min $${minPrice}, increments of $${minPrice}`,

@@ -95,6 +95,9 @@ export class ChatService {
   // Message dedup: track seen message IDs
   private seenMessageIds = new Set<number>();
 
+  // Cache nickname so new subscribers can read it without waiting for events
+  private currentNickname: string | null = null;
+
   constructor() {
     for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
@@ -135,6 +138,7 @@ export class ChatService {
       this.ws.close(1000, 'User disconnect');
       this.ws = null;
     }
+    this.currentNickname = null;
     this.setStatus('disconnected');
   }
 
@@ -197,6 +201,10 @@ export class ChatService {
 
   getStatus(): ChatConnectionStatus {
     return this.status;
+  }
+
+  getNickname(): string | null {
+    return this.currentNickname;
   }
 
   // ===== Internal =====
@@ -262,6 +270,7 @@ export class ChatService {
           clearTimeout(this.connectionTimer);
           this.connectionTimer = null;
         }
+        this.currentNickname = msg.nickname ?? null;
         this.setStatus('connected');
         // Emit nickname info from auth_success
         this.emit('nickname', { ok: true, nickname: msg.nickname ?? undefined });
@@ -290,6 +299,9 @@ export class ChatService {
         break;
 
       case 'nickname_result':
+        if (msg.ok && msg.nickname !== undefined) {
+          this.currentNickname = msg.nickname ?? null;
+        }
         this.emit('nickname', { ok: msg.ok, nickname: msg.nickname, error: msg.error });
         break;
 
