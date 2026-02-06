@@ -45,8 +45,8 @@ export const NUSDC_DECIMALS = 6;
 
 // Pool configuration (from on-chain PoolInner)
 export const TICK_SIZE = 100000n; // 0.1 USDC
-export const LOT_SIZE = 100000n;  // 0.001 BTC
-export const MIN_SIZE = 100000n;  // 0.001 BTC minimum order
+export const LOT_SIZE = 1000n;    // 0.00001 BTC
+export const MIN_SIZE = 1000n;    // 0.00001 BTC minimum order
 
 // ========================================
 // LP Bot Configuration

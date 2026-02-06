@@ -90,8 +90,8 @@ export const POOLS = {
     id: NETWORK_CONFIG.poolNbtcNusdc,
     baseToken: TOKENS.NBTC,
     quoteToken: TOKENS.NUSDC,
-    tickSize: 10000,    // $0.01 (on-chain verified)
-    lotSize: 100000,    // 0.001 BTC (on-chain verified)
+    tickSize: 100000,   // $0.10 (on-chain verified)
+    lotSize: 1000,      // 0.00001 BTC (on-chain verified)
   },
   NASUN_NUSDC: {
     id: NETWORK_CONFIG.poolNasunNusdc,
