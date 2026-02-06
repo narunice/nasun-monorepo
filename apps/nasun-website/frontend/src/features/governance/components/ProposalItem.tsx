@@ -1,11 +1,11 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { FC, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
 import { VoteModal } from "./VoteModal";
 import { useProposalType } from "../hooks/useProposalType";
 import { OuterBox, Button } from "@/components/ui";
-import { ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { parseProposal, isUnixTimeExpired, formatTimeRemaining, getStatusBadge } from "../utils/proposalHelpers";
 
@@ -20,7 +20,6 @@ interface ProposalItemsProps {
 
 export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteNft, onVoteTxSuccess }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDescModalOpen, setIsDescModalOpen] = useState(false);
   const navigate = useNavigate();
   const {
     data: dataResponse,
@@ -119,11 +118,11 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setIsDescModalOpen(true);
+                navigate(`/network/governance/proposal/${id}`);
               }}
               className="mt-1 text-xs text-nasun-c4 hover:text-nasun-c5 flex items-center gap-1"
             >
-              Read More <ChevronDown className="w-3 h-3" />
+              Read More <ArrowRight className="w-3 h-3" />
             </button>
           )}
         </div>
@@ -171,34 +170,6 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
           </Button>
         )}
       </OuterBox>
-
-      {/* Description Modal */}
-      {isDescModalOpen && (
-        <div
-          className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setIsDescModalOpen(false)}
-        >
-          <div
-            className="bg-nasun-c6/90 border border-nasun-c5/30 p-6 md:p-8 rounded-sm max-w-2xl w-full shadow-lg max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
-              <h6 className="text-nasun-white font-semibold">{proposal.title}</h6>
-              <button
-                onClick={() => setIsDescModalOpen(false)}
-                className="text-nasun-white/50 hover:text-nasun-white flex-shrink-0 text-lg leading-none"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-              <p className="text-nasun-white/85 whitespace-pre-wrap leading-relaxed">
-                {proposal.description}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <VoteModal
         proposal={proposal}
