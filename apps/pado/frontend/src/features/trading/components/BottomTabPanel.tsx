@@ -1,19 +1,20 @@
 /**
  * BottomTabPanel Component
- * Tab-based panel for Positions, Open Orders, Order History, Trade History, Assets
- * Benchmark: Lighter, Asterdex, Hyperliquid common pattern
+ * Tab-based panel for Open Orders, Order History, Trade History, Assets
+ * All tabs show personal data (wallet required)
+ * Benchmark: Lighter, Hyperliquid, Binance common pattern
  */
 
 import { useState } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
+import { OrderHistory } from './OrderHistory';
 import { TradeHistory } from './TradeHistory';
 import { useOpenOrders, useOrderActions } from '../hooks';
 import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs, type TabItem } from '@/components/common';
-import { PoolInfo } from './PoolInfo';
 
-export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets' | 'poolInfo';
+export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
 
 type TabConfig = TabItem<TabType>;
 
@@ -28,7 +29,6 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const openOrderCount = openOrdersData?.orders?.length ?? 0;
 
   const tabs: TabConfig[] = [
-    { id: 'poolInfo', label: 'Pool Info' },
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
@@ -58,7 +58,6 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
         {activeTab === 'orderHistory' && <OrderHistoryTab />}
         {activeTab === 'tradeHistory' && <TradeHistoryTab />}
         {activeTab === 'assets' && <AssetsTab />}
-        {activeTab === 'poolInfo' && <PoolInfoTab />}
       </div>
     </div>
   );
@@ -79,21 +78,16 @@ function OpenOrdersTab({ orders, isLoading, onCancel }: OpenOrdersTabProps) {
   );
 }
 
-// Order History Tab - shows completed/cancelled orders
+// Order History Tab - shows personal order lifecycle (limit + market)
 function OrderHistoryTab() {
   return (
     <div className="min-h-[180px]">
-      <div className="text-center text-theme-text-muted py-6">
-        <p className="text-trading-sm xl:text-trading-lg">Coming Soon</p>
-        <p className="text-trading-xs xl:text-trading-sm mt-1">
-          Order history will be available in a future update
-        </p>
-      </div>
+      <OrderHistory />
     </div>
   );
 }
 
-// Trade History Tab - shows executed fills
+// Trade History Tab - shows personal trade fills (1 fill = 1 row)
 function TradeHistoryTab() {
   return (
     <div className="min-h-[180px]">
@@ -214,15 +208,6 @@ function AssetsTab() {
           </p>
         </div>
       )}
-    </div>
-  );
-}
-
-// Pool Info Tab - shows pool parameters (moved from OrderForm card)
-function PoolInfoTab() {
-  return (
-    <div className="min-h-[180px]">
-      <PoolInfo variant="inline" />
     </div>
   );
 }

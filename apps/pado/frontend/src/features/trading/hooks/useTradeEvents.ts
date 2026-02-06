@@ -6,7 +6,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getEventService } from '../../../lib/event-service';
 import { useMarket } from '../context/MarketContext';
-import type { Trade } from '../components/TradeHistory';
+import type { Trade } from '../types/trade';
 import type { ConnectionMode, DeepBookEvent, OrderFilledEvent } from '../types/events';
 
 interface UseTradeEventsOptions {
@@ -42,7 +42,7 @@ export function useTradeEvents(
   const parseOrderFilledToTrade = useCallback(
     (event: OrderFilledEvent): Trade => {
       return {
-        id: event.txDigest + event.orderId,
+        id: event.txDigest + event.makerOrderId,
         price: Number(event.price) / Math.pow(10, currentPool.quoteToken.decimals),
         quantity: Number(event.quantity) / Math.pow(10, currentPool.baseToken.decimals),
         isBuy: event.takerIsBid,
