@@ -22,6 +22,8 @@ export interface PoolConfig {
   quoteToken: TokenConfig;
   tickSize: number;
   lotSize: number;
+  makerFeeBps: number;
+  takerFeeBps: number;
 }
 
 export interface PlaceLimitOrderParams {
