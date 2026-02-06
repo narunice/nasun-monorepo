@@ -19,7 +19,7 @@ export default function ModuleItem({ name, module, isExpanded, onToggle }: Modul
         className="w-full px-4 py-3 flex items-center justify-between bg-card hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-primary font-mono font-medium">{name}</span>
+          <span className="text-foreground font-mono font-medium">{name}</span>
           <span className="text-xs text-muted-foreground">
             {functionCount} functions, {structCount} structs
           </span>

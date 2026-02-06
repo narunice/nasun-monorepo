@@ -110,23 +110,23 @@ export default function Validators() {
                   <td className="px-4 py-3">
                     <Link
                       to={`/validator/${validator.address}`}
-                      className="font-mono text-sm text-muted-foreground hover:text-foreground hover:underline"
+                      className="font-mono text-sm text-foreground hover:text-primary hover:underline"
                     >
                       {truncateAddress(validator.address)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-muted-foreground">
+                  <td className="px-4 py-3 text-right text-sm font-mono text-foreground">
                     {formatBalance(validator.stakingPoolSuiBalance)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right text-sm">
                     <span className="text-green-600 dark:text-green-400 font-medium">
                       {formatPercentage(validator.apy)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
+                  <td className="px-4 py-3 text-right text-sm text-foreground">
                     {validator.commissionRate}%
                   </td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
+                  <td className="px-4 py-3 text-right text-sm text-foreground">
                     {validator.votingPower}
                   </td>
                 </tr>

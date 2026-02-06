@@ -62,7 +62,7 @@ export default function Transactions() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/tx/${tx.digest}`}
-                        className="font-mono text-sm text-muted-foreground hover:text-primary hover:underline"
+                        className="font-mono text-sm text-foreground hover:text-primary hover:underline"
                       >
                         {truncateDigest(tx.digest)}
                       </Link>
@@ -76,10 +76,10 @@ export default function Transactions() {
                         {tx.effects?.status?.status || 'unknown'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                    <td className="px-4 py-3 text-foreground text-sm">
                       {formatTimestamp(tx.timestampMs)}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-sm font-mono">
+                    <td className="px-4 py-3 text-foreground text-sm font-mono">
                       {tx.checkpoint || '-'}
                     </td>
                   </tr>
