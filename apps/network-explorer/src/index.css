@@ -117,6 +117,17 @@
   }
 }
 
+/* Responsive root font-size: scales all rem-based sizes globally */
+html {
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  html { font-size: 17px; }
+}
+@media (min-width: 1280px) {
+  html { font-size: 18px; }
+}
+
 @layer base {
   * {
     @apply border-border;
