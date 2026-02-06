@@ -14,7 +14,7 @@ export const NETWORK_CONFIG = {
 export const ZKLOGIN_CONFIG = {
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
   saltApiUrl: import.meta.env.VITE_ZKLOGIN_SALT_API_URL || '',
-  proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL || 'https://prover-dev.mystenlabs.com/v1',
+  proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL || 'https://rpc.devnet.nasun.io/zkprover/v1',
 } as const;
 
 // Baram Contract Configuration

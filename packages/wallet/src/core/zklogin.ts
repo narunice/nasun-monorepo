@@ -37,8 +37,8 @@ import { ZkLoginError } from '../types/zklogin';
 // Configuration
 // ============================================
 
-/** Default prover URL (Mysten Labs development prover - production prover requires audience registration) */
-const DEFAULT_PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
+/** Default prover URL (self-hosted on nasun-node-1) */
+const DEFAULT_PROVER_URL = 'https://rpc.devnet.nasun.io/zkprover/v1';
 
 /** Session storage key for zkLogin session */
 const ZKLOGIN_SESSION_KEY = 'nasun:zklogin:session';
