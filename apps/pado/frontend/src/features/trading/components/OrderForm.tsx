@@ -214,7 +214,7 @@ export function OrderForm({
             placeholder="0.00"
             value={price}
             onChange={(e) => onPriceChange(e.target.value)}
-            step={0.01}
+            step={minPrice}
             className={`px-3 py-2 text-sm xl:text-base ${
               effectivePrice > 0 && !priceValidation.valid
                 ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
@@ -251,7 +251,7 @@ export function OrderForm({
           placeholder="0.0000"
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
-          step={0.0001}
+          step={minQuantity}
           className={`px-3 py-2 text-sm xl:text-base ${
             amountNum > 0 && !quantityValidation.valid
               ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'

@@ -35,9 +35,9 @@ export function NumberInput({
   const handleIncrement = () => {
     if (disabled || !inputRef.current) return;
     const currentValue = parseFloat(inputRef.current.value) || 0;
-    const newValue = currentValue + step;
+    const decimalPlaces = String(step).split('.')[1]?.length || 0;
+    const newValue = parseFloat((currentValue + step).toFixed(decimalPlaces));
     inputRef.current.value = String(newValue);
-    // Trigger onChange
     const event = new Event('input', { bubbles: true });
     inputRef.current.dispatchEvent(event);
   };
@@ -45,9 +45,9 @@ export function NumberInput({
   const handleDecrement = () => {
     if (disabled || !inputRef.current) return;
     const currentValue = parseFloat(inputRef.current.value) || 0;
-    const newValue = Math.max(0, currentValue - step);
+    const decimalPlaces = String(step).split('.')[1]?.length || 0;
+    const newValue = parseFloat(Math.max(0, currentValue - step).toFixed(decimalPlaces));
     inputRef.current.value = String(newValue);
-    // Trigger onChange
     const event = new Event('input', { bubbles: true });
     inputRef.current.dispatchEvent(event);
   };
