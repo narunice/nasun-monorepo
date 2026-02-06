@@ -5,12 +5,12 @@
   "description": "TEE Executor for Baram - Local simulation with Nitro Enclave architecture",
   "type": "module",
   "scripts": {
-    "dev:enclave": "tsx watch src/enclave/main.ts",
-    "dev:host": "tsx watch src/host/main.ts",
+    "dev:enclave": "tsx watch --env-file=.env src/enclave/main.ts",
+    "dev:host": "tsx watch --env-file=.env src/host/main.ts",
     "build": "tsc",
     "start:enclave": "node dist/enclave/main.js",
     "start:host": "node dist/host/main.js",
-    "test:client": "tsx src/test-client.ts",
+    "test:client": "tsx --env-file=.env src/test-client.ts",
     "docker:build": "docker-compose -f docker/docker-compose.yml build",
     "docker:up": "docker-compose -f docker/docker-compose.yml up",
     "docker:down": "docker-compose -f docker/docker-compose.yml down"
