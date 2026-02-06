@@ -25,7 +25,7 @@ Invalid signature was given to the function
 |-----------|-------|
 | Network | Nasun Devnet |
 | RPC | `https://rpc.devnet.nasun.io` |
-| Prover | `https://prover-dev.mystenlabs.com/v1` |
+| Prover | `https://rpc.devnet.nasun.io/zkprover/v1` (self-hosted) |
 | OAuth | Google |
 | SDK | `@mysten/sui` v1.45.2 |
 
