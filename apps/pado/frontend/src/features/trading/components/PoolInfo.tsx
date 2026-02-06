@@ -10,6 +10,8 @@ export function PoolInfo({ variant = 'card' }: PoolInfoProps) {
   const tickSize = (currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals)).toFixed(4);
   const lotSize = (currentPool.lotSize / Math.pow(10, currentPool.baseToken.decimals)).toFixed(6);
   const baseSymbol = currentPool.baseToken.symbol;
+  const makerFee = (currentPool.makerFeeBps / 100).toFixed(2);
+  const takerFee = (currentPool.takerFeeBps / 100).toFixed(2);
 
   // Header box: full-height card with 4 info rows, aligned with Interface + Toggles column
   if (variant === 'header') {
@@ -25,11 +27,11 @@ export function PoolInfo({ variant = 'card' }: PoolInfoProps) {
         </div>
         <div className="flex justify-between">
           <span className="text-[10px] xl:text-xs text-theme-text-muted">Maker Fee</span>
-          <span className="text-[10px] xl:text-xs text-theme-text-primary font-mono">0.05%</span>
+          <span className="text-[10px] xl:text-xs text-theme-text-primary font-mono">{makerFee}%</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[10px] xl:text-xs text-theme-text-muted">Taker Fee</span>
-          <span className="text-[10px] xl:text-xs text-theme-text-primary font-mono">0.10%</span>
+          <span className="text-[10px] xl:text-xs text-theme-text-primary font-mono">{takerFee}%</span>
         </div>
       </div>
     );
@@ -56,11 +58,11 @@ export function PoolInfo({ variant = 'card' }: PoolInfoProps) {
         </div>
         <div className="flex justify-between">
           <span className="text-theme-text-muted">Maker Fee:</span>
-          <span className="text-theme-text-primary">0.05%</span>
+          <span className="text-theme-text-primary">{makerFee}%</span>
         </div>
         <div className="flex justify-between">
           <span className="text-theme-text-muted">Taker Fee:</span>
-          <span className="text-theme-text-primary">0.1%</span>
+          <span className="text-theme-text-primary">{takerFee}%</span>
         </div>
       </div>
     </div>
