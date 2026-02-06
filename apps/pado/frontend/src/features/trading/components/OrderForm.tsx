@@ -5,7 +5,7 @@ import { UnderlineTabs } from '@/components/common';
 import { SlippageSettings } from './SlippageSettings';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { NumberInput } from '@/components/ui/NumberInput';
-import { validateQuantity, validatePrice, getMinQuantity, getMinPrice } from '../../../lib/deepbook';
+import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick } from '../../../lib/deepbook';
 
 export type OrderModeType = 'limit' | 'market';
 
@@ -104,9 +104,12 @@ export function OrderForm({
   // Price suggestion helpers
   const handlePriceSelect = useCallback((p: number) => {
     if (p > 0) {
-      onPriceChange((Math.round(p * 100) / 100).toString());
+      const snapped = snapToTick(p, currentPool);
+      if (snapped > 0) {
+        onPriceChange(snapped.toString());
+      }
     }
-  }, [onPriceChange]);
+  }, [onPriceChange, currentPool]);
 
   // Percentage amount buttons
   const handlePercentAmount = useCallback((pct: number) => {

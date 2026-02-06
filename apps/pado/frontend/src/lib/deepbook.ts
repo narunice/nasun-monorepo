@@ -599,6 +599,18 @@ export function getMinPrice(pool: PoolConfig): number {
   return pool.tickSize / Math.pow(10, pool.quoteToken.decimals);
 }
 
+/** Snap price down to nearest tick multiple (integer arithmetic to avoid float errors) */
+export function snapToTick(price: number, pool: PoolConfig): number {
+  if (price <= 0) return 0;
+  const decimals = pool.quoteToken.decimals;
+  const priceRaw = Math.round(price * Math.pow(10, decimals));
+  const snapped = priceRaw - (priceRaw % pool.tickSize);
+  if (snapped === 0 && priceRaw > 0) {
+    return pool.tickSize / Math.pow(10, decimals);
+  }
+  return snapped / Math.pow(10, decimals);
+}
+
 /**
  * 최소 수량을 사람이 읽기 좋은 형태로 포맷
  * @example "0.01 NASUN"

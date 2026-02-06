@@ -92,6 +92,8 @@ export const POOLS = {
     quoteToken: TOKENS.NUSDC,
     tickSize: 100000,   // $0.10 (on-chain verified)
     lotSize: 1000,      // 0.00001 BTC (on-chain verified)
+    makerFeeBps: 5,     // 5 bps = 0.05% (on-chain verified)
+    takerFeeBps: 10,    // 10 bps = 0.10% (on-chain verified)
   },
   NASUN_NUSDC: {
     id: NETWORK_CONFIG.poolNasunNusdc,
@@ -99,5 +101,7 @@ export const POOLS = {
     quoteToken: TOKENS.NUSDC,
     tickSize: 10000,    // $0.01 (on-chain verified)
     lotSize: 1000000000, // 1.0 NASUN (on-chain verified)
+    makerFeeBps: 5,     // 5 bps = 0.05% (on-chain verified)
+    takerFeeBps: 10,    // 10 bps = 0.10% (on-chain verified)
   },
 } as const;

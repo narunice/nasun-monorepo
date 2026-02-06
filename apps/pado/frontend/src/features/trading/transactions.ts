@@ -11,6 +11,31 @@ import { getSuiClient } from '../../lib/sui-client';
 // 기본 Pool (하위 호환)
 const DEFAULT_POOL = POOLS.NBTC_NUSDC;
 
+/** Fetch all coins with pagination (Sui getCoins returns max ~50 per page) */
+async function getAllCoins(
+  owner: string,
+  coinType: string,
+): Promise<{ coinObjectId: string; balance: string }[]> {
+  const client = getSuiClient();
+  const allCoins: { coinObjectId: string; balance: string }[] = [];
+  let cursor: string | null | undefined = undefined;
+  let hasNext = true;
+  let pageCount = 0;
+  const MAX_PAGES = 100;
+
+  while (hasNext && pageCount < MAX_PAGES) {
+    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
+    allCoins.push(...page.data);
+    hasNext = page.hasNextPage;
+    const newCursor = page.nextCursor;
+    if (newCursor === cursor) break;
+    cursor = newCursor;
+    pageCount++;
+  }
+
+  return allCoins;
+}
+
 // ============================================
 // Security: Constants & Validation Functions
 // ============================================
@@ -496,7 +521,6 @@ export async function buildDepositExact(
     throw new Error('Deposit amount must be positive');
   }
 
-  const client = getSuiClient();
   const tx = new Transaction();
   const isNativeToken = coinType === NATIVE_TOKEN_TYPE;
 
@@ -513,12 +537,12 @@ export async function buildDepositExact(
     const [depositCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(rawAmount)]);
     addDeposit(depositCoin);
   } else {
-    const coins = await client.getCoins({ owner: ownerAddress, coinType });
-    if (coins.data.length === 0) {
+    const coins = await getAllCoins(ownerAddress, coinType);
+    if (coins.length === 0) {
       throw new Error('No coins available for deposit');
     }
 
-    const coinIds = coins.data.map(c => c.coinObjectId);
+    const coinIds = coins.map(c => c.coinObjectId);
     if (coinIds.length === 1) {
       const [depositCoin] = tx.splitCoins(tx.object(coinIds[0]), [tx.pure.u64(rawAmount)]);
       addDeposit(depositCoin);
@@ -612,33 +636,27 @@ export async function buildDepositAll(
   address: string,
   pool: PoolConfig = DEFAULT_POOL,
 ): Promise<{ tx: Transaction; baseAmount: bigint; quoteAmount: bigint }> {
-  const client = getSuiClient();
   const tx = new Transaction();
 
-  // Base 토큰 조회 및 입금
-  const baseCoins = await client.getCoins({
-    owner: address,
-    coinType: pool.baseToken.type!,
-  });
+  // Fetch base and quote coins in parallel
+  const [baseCoins, quoteCoins] = await Promise.all([
+    getAllCoins(address, pool.baseToken.type!),
+    getAllCoins(address, pool.quoteToken.type!),
+  ]);
+
   const isBaseNative = pool.baseToken.type === NATIVE_TOKEN_TYPE;
   const baseAmount = depositCoinsToBalanceManager(
     tx,
     balanceManagerId,
-    baseCoins.data,
+    baseCoins,
     pool.baseToken.type!,
     isBaseNative,
   );
-
-  // Quote 토큰 조회 및 입금
-  const quoteCoins = await client.getCoins({
-    owner: address,
-    coinType: pool.quoteToken.type!,
-  });
   const isQuoteNative = pool.quoteToken.type === NATIVE_TOKEN_TYPE;
   const quoteAmount = depositCoinsToBalanceManager(
     tx,
     balanceManagerId,
-    quoteCoins.data,
+    quoteCoins,
     pool.quoteToken.type!,
     isQuoteNative,
   );
