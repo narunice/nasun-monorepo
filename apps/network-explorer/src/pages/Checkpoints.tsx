@@ -64,7 +64,7 @@ export default function Checkpoints() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/checkpoint/${checkpoint.sequenceNumber}`}
-                        className="font-mono text-primary hover:underline"
+                        className="font-mono text-sm text-muted-foreground hover:text-primary hover:underline"
                       >
                         #{checkpoint.sequenceNumber}
                       </Link>
@@ -72,7 +72,7 @@ export default function Checkpoints() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/checkpoint/${checkpoint.sequenceNumber}`}
-                        className="font-mono text-sm text-muted-foreground hover:text-foreground hover:underline"
+                        className="font-mono text-sm text-muted-foreground hover:text-primary hover:underline"
                       >
                         {truncateDigest(checkpoint.digest)}
                       </Link>
@@ -80,13 +80,13 @@ export default function Checkpoints() {
                     <td className="px-4 py-3 text-muted-foreground text-sm">
                       {formatTimestamp(checkpoint.timestampMs)}
                     </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground font-mono">
+                    <td className="px-4 py-3 text-right text-muted-foreground text-sm font-mono">
                       {checkpoint.epoch}
                     </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground font-mono">
+                    <td className="px-4 py-3 text-right text-muted-foreground text-sm font-mono">
                       {checkpoint.transactions?.length || 0}
                     </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground font-mono text-sm">
+                    <td className="px-4 py-3 text-right text-muted-foreground text-sm font-mono">
                       {formatSoe(checkpoint.epochRollingGasCostSummary?.computationCost)}
                     </td>
                   </tr>

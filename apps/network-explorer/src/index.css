@@ -58,7 +58,7 @@
 
     /* Muted */
     --muted: 215 25% 20%;
-    --muted-foreground: 210 20% 60%;
+    --muted-foreground: 210 25% 75%;
 
     /* Accent */
     --accent: 215 25% 20%;
@@ -100,7 +100,7 @@
 
     /* Muted - ne4 */
     --muted: 194 33% 86%;
-    --muted-foreground: 215 20% 45%;
+    --muted-foreground: 215 30% 35%;
 
     /* Accent - ne4 */
     --accent: 194 33% 86%;
