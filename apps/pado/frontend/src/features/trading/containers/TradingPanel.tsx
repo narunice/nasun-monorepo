@@ -9,7 +9,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm, useMarket } from '../context';
-import { OrderForm, OrderConfirmModal, SimpleOrderForm, TradingBalanceBar } from '../components';
+import { OrderForm, OrderConfirmModal, SimpleOrderForm } from '../components';
 
 export function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) {
   const [open, setOpen] = useState(false);

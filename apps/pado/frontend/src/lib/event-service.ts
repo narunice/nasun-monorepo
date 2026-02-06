@@ -298,10 +298,13 @@ export class EventService {
         case 'OrderFilled': {
           const data: OrderFilledEvent = {
             poolId: String(json.pool_id || ''),
-            orderId: String(json.order_id || ''),
+            makerOrderId: String(json.maker_order_id || ''),
+            takerOrderId: String(json.taker_order_id || ''),
             price: BigInt(String(json.price || 0)),
             quantity: BigInt(String(json.quantity || json.base_quantity || 0)),
             takerIsBid: Boolean(json.taker_is_bid ?? json.is_bid),
+            makerBalanceManagerId: String(json.maker_balance_manager_id || ''),
+            takerBalanceManagerId: String(json.taker_balance_manager_id || ''),
             timestamp,
             txDigest,
           };
@@ -310,11 +313,11 @@ export class EventService {
 
         case 'OrderPlaced': {
           const data: OrderPlacedEvent = {
+            balanceManagerId: String(json.balance_manager_id || ''),
             poolId: String(json.pool_id || ''),
             orderId: String(json.order_id || ''),
-            owner: String(json.owner || ''),
             price: BigInt(String(json.price || 0)),
-            quantity: BigInt(String(json.quantity || 0)),
+            quantity: BigInt(String(json.placed_quantity || json.quantity || 0)),
             isBid: Boolean(json.is_bid),
             timestamp,
             txDigest,
@@ -324,8 +327,12 @@ export class EventService {
 
         case 'OrderCanceled': {
           const data: OrderCanceledEvent = {
+            balanceManagerId: String(json.balance_manager_id || ''),
             poolId: String(json.pool_id || ''),
             orderId: String(json.order_id || ''),
+            price: BigInt(String(json.price || 0)),
+            quantity: BigInt(String(json.original_quantity || 0)),
+            isBid: Boolean(json.is_bid),
             timestamp,
             txDigest,
           };

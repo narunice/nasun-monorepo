@@ -6,6 +6,7 @@ export { OpenOrders } from './OpenOrders';
 export { PoolInfo } from './PoolInfo';
 export { PriceChart } from './PriceChart';
 export { TradeHistory } from './TradeHistory';
+export { OrderHistory } from './OrderHistory';
 export { SlippageSettings } from './SlippageSettings';
 export { MarketSelector } from './MarketSelector';
 export { SimpleOrderForm } from './SimpleOrderForm';
