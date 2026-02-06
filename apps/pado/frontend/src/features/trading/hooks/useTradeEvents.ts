@@ -62,8 +62,6 @@ export function useTradeEvents(
       // If simulation mode returned, treat as polling (no simulation data)
       const actualMode = mode === 'simulation' ? 'polling' : mode;
       setConnectionMode(actualMode);
-
-      console.log(`[useTradeEvents] Connection mode: ${actualMode}`);
     };
 
     // Subscribe to OrderFilled events

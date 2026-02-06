@@ -40,6 +40,10 @@ export interface UseOrderActionsResult {
   handleCreateBalanceManager: () => Promise<TradeResult>;
   handleDeposit: () => Promise<TradeResult>;
   handleWithdraw: () => Promise<TradeResult>;
+
+  // Per-token deposit/withdraw
+  handleDepositToken: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<TradeResult>;
+  handleWithdrawToken: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<TradeResult>;
 }
 
 /**
@@ -77,6 +81,8 @@ export function useOrderActions(): UseOrderActionsResult {
     createBalanceManager,
     depositAllTokens,
     withdrawAllTokens,
+    depositToken,
+    withdrawToken,
   } = useTrading();
 
   // Auto deposit setting from context
@@ -412,6 +418,46 @@ export function useOrderActions(): UseOrderActionsResult {
     return result;
   }, [withdrawAllTokens, showToast, refreshData]);
 
+  // Per-token deposit
+  const handleDepositToken = useCallback(async (
+    amount: number,
+    coinType: string,
+    decimals: number,
+    symbol: string,
+  ): Promise<TradeResult> => {
+    const result = await depositToken(amount, coinType, decimals);
+
+    if (result.success) {
+      const formatted = decimals > 6 ? amount.toFixed(4) : amount.toFixed(2);
+      showToast(`Deposited ${formatted} ${symbol} to trading`, "success");
+      refreshData();
+    } else {
+      showToast(formatUserFriendlyError(result.error), "error");
+    }
+
+    return result;
+  }, [depositToken, showToast, refreshData, formatUserFriendlyError]);
+
+  // Per-token withdraw
+  const handleWithdrawToken = useCallback(async (
+    amount: number,
+    coinType: string,
+    decimals: number,
+    symbol: string,
+  ): Promise<TradeResult> => {
+    const result = await withdrawToken(amount, coinType, decimals);
+
+    if (result.success) {
+      const formatted = decimals > 6 ? amount.toFixed(4) : amount.toFixed(2);
+      showToast(`Withdrew ${formatted} ${symbol} to wallet`, "success");
+      refreshData();
+    } else {
+      showToast(formatUserFriendlyError(result.error), "error");
+    }
+
+    return result;
+  }, [withdrawToken, showToast, refreshData, formatUserFriendlyError]);
+
   return {
     isLoading,
     balanceManagerId,
@@ -423,5 +469,7 @@ export function useOrderActions(): UseOrderActionsResult {
     handleCreateBalanceManager,
     handleDeposit,
     handleWithdraw,
+    handleDepositToken,
+    handleWithdrawToken,
   };
 }

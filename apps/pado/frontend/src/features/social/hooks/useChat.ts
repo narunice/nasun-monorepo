@@ -5,6 +5,14 @@ import { useSigner, ZkLoginSigner } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../../../config/network';
 import type { ChatMessage, ChatConnectionStatus } from '../types';
 
+// Module-level: shared across all useChat instances so mode switching
+// (docked ↔ floating) doesn't trigger disconnect/reconnect cycles.
+let connectedAddress: string | null = null;
+
+// Reference count of active useChat instances.
+// Only disconnect when the last instance unmounts (e.g. page navigation).
+let activeChatInstances = 0;
+
 export interface UseChatResult {
   messages: ChatMessage[];
   sendMessage: (content: string) => void;
@@ -29,41 +37,45 @@ export function useChat(roomId: number = 0): UseChatResult {
   const { signer, address: signerAddress } = useSigner();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [status, setStatus] = useState<ChatConnectionStatus>('disconnected');
+  // Initialize status and nickname from ChatService so re-mounts see current state
+  const [status, setStatus] = useState<ChatConnectionStatus>(
+    () => getChatService().getStatus()
+  );
   const [onlineCount, setOnlineCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nickname, setNicknameState] = useState<string | null>(null);
+  const [nickname, setNicknameState] = useState<string | null>(
+    () => getChatService().getNickname()
+  );
 
   // Keep a stable ref to the signer so async callbacks always read the latest
   const signerRef = useRef(signer);
   signerRef.current = signer;
 
-  // Track which address we're currently connected with
-  const connectedAddressRef = useRef<string | null>(null);
-
   // Memoize signer type to avoid re-triggering on object identity changes
   const signerType = signer?.type ?? null;
 
-  // Connect/disconnect — only run when signerAddress or signer type changes
+  // Connect/disconnect — only run when signerAddress or signer type changes.
+  // Uses module-level connectedAddress so docked↔floating transitions
+  // don't trigger disconnect/reconnect.
   useEffect(() => {
     const chatService = getChatService();
     const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
 
     // Should disconnect: no signer or no wsUrl
     if (!wsUrl || !signerAddress || !signerType) {
-      if (connectedAddressRef.current) {
+      if (connectedAddress) {
         chatService.disconnect();
-        connectedAddressRef.current = null;
+        connectedAddress = null;
       }
       return;
     }
 
     // Already connected with this address — nothing to do
-    if (connectedAddressRef.current === signerAddress) return;
+    if (connectedAddress === signerAddress) return;
 
     // Different address or first connect — disconnect old, connect new
-    if (connectedAddressRef.current) {
+    if (connectedAddress) {
       chatService.disconnect();
     }
 
@@ -94,14 +106,18 @@ export function useChat(roomId: number = 0): UseChatResult {
         };
 
     chatService.connect(wsUrl, chatSigner);
-    connectedAddressRef.current = signerAddress;
+    connectedAddress = signerAddress;
   }, [signerAddress, signerType]);
 
-  // Disconnect on unmount
+  // Track active instances — disconnect only when the last one unmounts
   useEffect(() => {
+    activeChatInstances++;
     return () => {
-      getChatService().disconnect();
-      connectedAddressRef.current = null;
+      activeChatInstances--;
+      if (activeChatInstances === 0) {
+        getChatService().disconnect();
+        connectedAddress = null;
+      }
     };
   }, []);
 
@@ -138,7 +154,9 @@ export function useChat(roomId: number = 0): UseChatResult {
     return () => clearInterval(intervalId);
   }, [signerAddress, roomId]);
 
-  // Subscribe to events
+  // Subscribe to events.
+  // When re-mounting (e.g. docked↔floating switch), request history
+  // to populate messages since local state starts empty.
   useEffect(() => {
     const chatService = getChatService();
 
@@ -175,6 +193,12 @@ export function useChat(roomId: number = 0): UseChatResult {
       }
     });
 
+    // If already connected (e.g. re-mount after docked↔floating switch),
+    // request history to populate the fresh empty messages state.
+    if (chatService.getStatus() === 'connected') {
+      chatService.loadHistory(roomId);
+    }
+
     return () => {
       unsubMessage();
       unsubHistory();
@@ -183,7 +207,7 @@ export function useChat(roomId: number = 0): UseChatResult {
       unsubError();
       unsubNickname();
     };
-  }, []);
+  }, [roomId]);
 
   const sendMessage = useCallback((content: string) => {
     const trimmed = content.trim();
