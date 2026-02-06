@@ -3,6 +3,7 @@
  * Shows clickable chain selector in advanced mode, read-only badge otherwise.
  */
 
+import { useState, useRef, useEffect } from "react";
 import { AdvancedToggle } from "../../advanced/AdvancedToggle";
 
 export function NetworkSelector({
@@ -14,6 +15,21 @@ export function NetworkSelector({
   chain: { name: string; type: string };
   onOpenModal: () => void;
 }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Close tooltip on outside click
+  useEffect(() => {
+    if (!showTooltip) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showTooltip]);
+
   return (
     <div className="flex-shrink-0 flex flex-col items-center gap-2">
       {isAdvancedMode ? (
@@ -44,17 +60,18 @@ export function NetworkSelector({
           </svg>
         </button>
       ) : (
-        <div className="group relative">
+        <div className="relative" ref={tooltipRef}>
           <div
             className="flex items-center gap-1.5 px-2 py-1 text-xs xl:text-sm font-medium rounded-md
             bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 cursor-default shadow-sm"
           >
             <span className="max-w-[100px] truncate">{chain.name}</span>
             <svg
-              className="w-3 h-3 text-gray-400"
+              className="w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              onClick={(e) => { e.stopPropagation(); setShowTooltip(!showTooltip); }}
             >
               <path
                 strokeLinecap="round"
@@ -64,14 +81,14 @@ export function NetworkSelector({
               />
             </svg>
           </div>
-          {/* Tooltip */}
-          <div
-            className="absolute right-0 top-full mt-1 w-48 p-2 text-xs xl:text-sm text-gray-600 dark:text-zinc-300
-            bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg
-            opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50"
-          >
-            Enable Pro Mode in Settings to change network
-          </div>
+          {showTooltip && (
+            <div
+              className="absolute right-0 top-full mt-1 w-48 p-2 text-xs xl:text-sm text-gray-600 dark:text-zinc-300
+              bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-50"
+            >
+              Enable Pro Mode in Settings to change network
+            </div>
+          )}
         </div>
       )}
       <AdvancedToggle compact showDescription={false} />
