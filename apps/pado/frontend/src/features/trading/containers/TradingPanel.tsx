@@ -42,7 +42,7 @@ export function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'p
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 w-80 bg-theme-bg-secondary border border-theme-border rounded-lg p-4 shadow-lg z-50 text-left">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-theme-bg-secondary border border-theme-border rounded-lg p-4 shadow-lg z-50 text-left">
           {variant === 'simple' ? (
             <>
               <p className="text-xs xl:text-sm font-semibold text-theme-text-primary mb-2">
