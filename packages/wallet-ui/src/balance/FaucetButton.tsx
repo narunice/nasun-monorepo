@@ -22,9 +22,10 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
 
   const handleRequest = useCallback(async () => {
-    if (!account?.address) return;
+    if (!account?.address || cooldown) return;
 
     setIsLoading(true);
     setError(null);
@@ -38,6 +39,10 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
       await refreshBalance();
 
       onSuccess?.();
+
+      // Start cooldown to prevent rapid re-clicks
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 5000);
 
       // Hide success message after 3 seconds
       setTimeout(() => {
@@ -54,7 +59,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
     } finally {
       setIsLoading(false);
     }
-  }, [account?.address, refreshBalance, onSuccess]);
+  }, [account?.address, refreshBalance, onSuccess, cooldown]);
 
   // Wallet not connected
   if (status !== 'unlocked' || !account) {
@@ -66,7 +71,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
     return (
       <button
         onClick={handleRequest}
-        disabled={isLoading}
+        disabled={isLoading || cooldown}
         className={`px-3 py-1.5 text-xs xl:text-sm font-medium rounded transition-colors ${
           success
             ? 'bg-green-500/20 text-green-400 cursor-default'
@@ -88,6 +93,8 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
             </svg>
             Requesting
           </span>
+        ) : cooldown ? (
+          'Wait...'
         ) : success ? (
           'Received!'
         ) : error ? (
@@ -104,7 +111,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
     <div className={`${className}`}>
       <button
         onClick={handleRequest}
-        disabled={isLoading}
+        disabled={isLoading || cooldown}
         className={`w-full px-4 py-2 font-medium rounded transition-colors ${
           success
             ? 'bg-green-500/20 text-green-400 cursor-default'

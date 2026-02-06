@@ -27,18 +27,21 @@ export function TokenFaucetButton({
   onError,
 }: TokenFaucetButtonProps) {
   const { isDevnet, isTestnet } = useNetwork();
-  const { requestFaucet, isLoading, canUseFaucet } = useTokenFaucet();
+  const { requestFaucet, isLoading, isCooldown, canUseFaucet } = useTokenFaucet();
   const { data: balances } = useMultiBalance({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loading = isLoading(symbol);
+  const cooldown = isCooldown(symbol);
 
   // Check if NSN is needed for gas fee (for non-NSN tokens)
   const nsnBalance = balances?.native?.balance ?? 0n;
   const needsNsnFirst = symbol !== 'NSN' && nsnBalance === 0n;
 
+  const disabled = loading || cooldown || !canUseFaucet || needsNsnFirst;
+
   const handleClick = useCallback(async () => {
-    if (loading || !canUseFaucet || needsNsnFirst) return;
+    if (disabled) return;
 
     setMessage(null);
 
@@ -58,7 +61,7 @@ export function TokenFaucetButton({
 
     // Auto-hide message
     setTimeout(() => setMessage(null), 3000);
-  }, [loading, canUseFaucet, needsNsnFirst, requestFaucet, symbol, onSuccess, onError]);
+  }, [disabled, requestFaucet, symbol, onSuccess, onError]);
 
   // Tooltip message for when NSN is needed
   const nsnRequiredMessage = `NSN tokens are required for gas fees. Please get NSN first before requesting ${symbol}.`;
@@ -73,7 +76,7 @@ export function TokenFaucetButton({
     return (
       <button
         onClick={handleClick}
-        disabled={loading || !canUseFaucet || needsNsnFirst}
+        disabled={disabled}
         className={`px-2 py-0.5 text-xs xl:text-sm font-medium rounded transition-colors
           ${message?.type === 'success'
             ? 'bg-green-500/20 text-green-400'
@@ -94,6 +97,8 @@ export function TokenFaucetButton({
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
           </span>
+        ) : cooldown ? (
+          'Wait...'
         ) : message ? (
           message.text
         ) : (
@@ -107,7 +112,7 @@ export function TokenFaucetButton({
     <div className="inline-flex flex-col">
       <button
         onClick={handleClick}
-        disabled={loading || !canUseFaucet || needsNsnFirst}
+        disabled={disabled}
         className={`px-3 py-1.5 text-sm xl:text-base font-medium rounded-lg transition-colors
           ${message?.type === 'success'
             ? 'bg-green-500/20 text-green-400'
@@ -130,6 +135,8 @@ export function TokenFaucetButton({
           </svg>
           <span>Requesting...</span>
         </>
+      ) : cooldown ? (
+        <span>Wait...</span>
       ) : message ? (
         <span>{message.text}</span>
       ) : (

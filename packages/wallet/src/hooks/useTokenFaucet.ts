@@ -20,6 +20,8 @@ export interface UseTokenFaucetResult {
   requestFaucet: (symbol: string) => Promise<boolean>;
   /** Check if a specific token is currently loading */
   isLoading: (symbol: string) => boolean;
+  /** Check if a specific token is in cooldown after successful request */
+  isCooldown: (symbol: string) => boolean;
   /** Set of tokens currently loading */
   loadingTokens: Set<string>;
   /** Whether faucet can be used (devnet/testnet + wallet connected) */
@@ -36,6 +38,9 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   const refreshBalance = useRefreshMultiBalance();
 
   const [loadingTokens, setLoadingTokens] = useState<Set<string>>(new Set());
+  const [cooldownTokens, setCooldownTokens] = useState<Set<string>>(new Set());
+
+  const COOLDOWN_MS = 5000;
 
   const address = account?.address || zkState?.address;
   const canUseFaucet = (isDevnet || isTestnet) && !!address;
@@ -52,6 +57,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
       try {
         let result = false;
+        const suiClient = getSuiClient();
 
         // Mode 1: HTTP API faucet (NASUN)
         if (handler.request) {
@@ -60,7 +66,6 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         // Mode 2: Move contract faucet (NBTC/NUSDC)
         else if (handler.buildTransaction) {
           const tx = handler.buildTransaction();
-          const suiClient = getSuiClient();
 
           // Try regular wallet first, then zkLogin
           const keypair = getKeypair?.();
@@ -73,9 +78,13 @@ export function useTokenFaucet(): UseTokenFaucetResult {
               options: { showEffects: true },
             });
             result = txResult.effects?.status?.status === 'success';
+
+            // Wait for RPC indexing before refreshing balance
+            if (result && txResult.digest) {
+              await suiClient.waitForTransaction({ digest: txResult.digest });
+            }
           } else if (zkState && zkSignTransaction) {
             // Sign with zkLogin
-            // Build transaction bytes first
             tx.setSender(zkState.address);
             const bytes = await tx.build({ client: suiClient });
             const signature = await zkSignTransaction(bytes);
@@ -87,12 +96,26 @@ export function useTokenFaucet(): UseTokenFaucetResult {
               options: { showEffects: true },
             });
             result = txResult.effects?.status?.status === 'success';
+
+            // Wait for RPC indexing before refreshing balance
+            if (result && txResult.digest) {
+              await suiClient.waitForTransaction({ digest: txResult.digest });
+            }
           }
         }
 
         if (result) {
-          // Wait for RPC to reflect the new balance
-          setTimeout(() => refreshBalance(), 2000);
+          await refreshBalance();
+
+          // Start cooldown to prevent rapid re-clicks
+          setCooldownTokens((prev) => new Set(prev).add(symbol));
+          setTimeout(() => {
+            setCooldownTokens((prev) => {
+              const next = new Set(prev);
+              next.delete(symbol);
+              return next;
+            });
+          }, COOLDOWN_MS);
         }
         return result;
       } catch (err) {
@@ -116,5 +139,12 @@ export function useTokenFaucet(): UseTokenFaucetResult {
     [loadingTokens]
   );
 
-  return { requestFaucet, isLoading, loadingTokens, canUseFaucet };
+  const isCooldown = useCallback(
+    (symbol: string) => {
+      return cooldownTokens.has(symbol);
+    },
+    [cooldownTokens]
+  );
+
+  return { requestFaucet, isLoading, isCooldown, loadingTokens, canUseFaucet };
 }
