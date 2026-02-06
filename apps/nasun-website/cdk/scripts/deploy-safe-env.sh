@@ -284,9 +284,9 @@ echo ""
 echo "🔍 Step 5/6: CDK Synth (검증) 중..."
 echo "================================================"
 if [ "$ENVIRONMENT" = "production" ]; then
-  pnpm cdk synth --profile nasun-prod > /dev/null
+  NODE_ENV=production pnpm cdk synth --profile nasun-prod > /dev/null
 else
-  pnpm cdk synth > /dev/null
+  NODE_ENV=development pnpm cdk synth > /dev/null
 fi
 echo "✅ CDK Synth 성공"
 echo ""
@@ -297,9 +297,9 @@ echo ""
 echo "📊 CDK Diff (변경사항 확인)..."
 echo "================================================"
 if [ "$ENVIRONMENT" = "production" ]; then
-  pnpm cdk diff --all --profile nasun-prod || true
+  NODE_ENV=production pnpm cdk diff --all --profile nasun-prod || true
 else
-  pnpm cdk diff --all || true
+  NODE_ENV=development pnpm cdk diff --all || true
 fi
 echo ""
 
@@ -330,9 +330,9 @@ echo "================================================"
 # 프로덕션 환경일 때 AWS Profile 지정
 if [ "$ENVIRONMENT" = "production" ]; then
   echo "📍 AWS Profile: nasun-prod"
-  pnpm cdk deploy --all --profile nasun-prod --require-approval never
+  NODE_ENV=production pnpm cdk deploy --all --profile nasun-prod --require-approval never
 else
-  pnpm cdk deploy --all --require-approval never
+  NODE_ENV=development pnpm cdk deploy --all --require-approval never
 fi
 
 echo ""
