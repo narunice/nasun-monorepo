@@ -60,9 +60,9 @@ describe('Baram Execute E2E', () => {
       if (fetchedExecutors.length > 0) {
         const executor = fetchedExecutors[0];
         logTest(`First executor: ${executor.name} (tier ${executor.tier})`);
-        expect(executor).toHaveProperty('address');
+        expect(executor).toHaveProperty('operator');
         expect(executor).toHaveProperty('name');
-        expect(executor).toHaveProperty('endpoint');
+        expect(executor).toHaveProperty('endpointUrl');
         expect(executor).toHaveProperty('tier');
         expect(executor).toHaveProperty('isActive');
       } else {
@@ -86,6 +86,7 @@ describe('Baram Execute E2E', () => {
       const result = await userClient.execute({
         prompt: 'What is 2 + 2? Answer with just the number.',
         model: 'llama-3.1-8b-instant',
+        minTier: 0,
       });
 
       logTest(`Execute completed!`);
@@ -133,6 +134,7 @@ describe('Baram Execute E2E', () => {
       const result = await userClient.execute({
         prompt: 'Say hello',
         model: 'llama-3.1-8b-instant',
+        minTier: 0,
       });
 
       logTest(`Fetching ECR for request: ${result.requestId}`);
