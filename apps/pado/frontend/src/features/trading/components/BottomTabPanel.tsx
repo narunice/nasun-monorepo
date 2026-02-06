@@ -83,16 +83,11 @@ function OpenOrdersTab({ orders, isLoading, onCancel }: OpenOrdersTabProps) {
 function OrderHistoryTab() {
   return (
     <div className="min-h-[180px]">
-      <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
-        <span>Time</span>
-        <span>Type</span>
-        <span className="text-right">Price</span>
-        <span className="text-right">Amount</span>
-        <span className="text-right">Status</span>
-      </div>
       <div className="text-center text-theme-text-muted py-6">
-        <p className="text-trading-sm xl:text-trading-lg">No order history available</p>
-        <p className="text-trading-xs xl:text-trading-sm mt-1">Your completed and cancelled orders will appear here</p>
+        <p className="text-trading-sm xl:text-trading-lg">Coming Soon</p>
+        <p className="text-trading-xs xl:text-trading-sm mt-1">
+          Order history will be available in a future update
+        </p>
       </div>
     </div>
   );

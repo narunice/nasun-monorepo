@@ -8,7 +8,6 @@ export interface Trade {
   quantity: number;
   isBuy: boolean;
   timestamp: number;
-  isSimulated?: boolean; // true if this trade is simulated data
 }
 
 interface TradeHistoryProps {
@@ -32,12 +31,7 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
 
   // Use external trades if provided, otherwise use event trades
   const trades = externalTrades && externalTrades.length > 0 ? externalTrades : eventTrades;
-  const isLoading = trades.length === 0;
-
-  // Count real vs simulated trades
   const displayedTrades = trades.slice(0, 12);
-  const realCount = displayedTrades.filter((t) => !t.isSimulated).length;
-  const simCount = displayedTrades.filter((t) => t.isSimulated).length;
 
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
@@ -46,17 +40,10 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
     <div className={`overflow-hidden ${className}`}>
       <div className="flex justify-between items-center mb-2">
         <ConnectionStatusBadge mode={connectionMode} />
-        {simCount > 0 && connectionMode !== "simulation" && (
-          <span className="text-xs xl:text-sm text-yellow-600 dark:text-yellow-500">
-            {realCount > 0 ? `${simCount}/${displayedTrades.length} sim` : "Simulated"}
-          </span>
-        )}
       </div>
 
       <div>
-        {isLoading ? (
-          <div className="p-4 text-center text-theme-text-muted text-sm xl:text-base">Loading...</div>
-        ) : trades.length === 0 ? (
+        {trades.length === 0 ? (
           <div className="p-4 text-center text-theme-text-muted text-sm xl:text-base">No trades yet</div>
         ) : (
           <table className="w-full text-xs xl:text-sm">
@@ -69,10 +56,7 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
             </thead>
             <tbody className="divide-y divide-theme-border">
               {displayedTrades.map((trade) => (
-                <tr
-                  key={trade.id}
-                  className={`hover:bg-theme-bg-tertiary/30 transition-colors ${trade.isSimulated ? "opacity-60" : ""}`}
-                >
+                <tr key={trade.id} className="hover:bg-theme-bg-tertiary/30 transition-colors">
                   <td
                     className={`py-1.5 px-3 font-mono ${trade.isBuy ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                   >
@@ -85,11 +69,8 @@ export function TradeHistory({ trades: externalTrades, className = "" }: TradeHi
                   <td className="py-1.5 px-3 text-right font-mono text-theme-text-primary">
                     {trade.quantity.toFixed(4)}
                   </td>
-                  <td className="py-1.5 px-3 text-right text-theme-text-muted flex items-center justify-end gap-1">
+                  <td className="py-1.5 px-3 text-right text-theme-text-muted">
                     {formatTime(trade.timestamp)}
-                    {trade.isSimulated && realCount > 0 && (
-                      <span className="text-yellow-600 dark:text-yellow-500 text-[10px] xl:text-xs">•</span>
-                    )}
                   </td>
                 </tr>
               ))}
