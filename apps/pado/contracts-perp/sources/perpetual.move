@@ -8,8 +8,10 @@
 /// - Long/Short positions
 /// - Cross margin with Unified Margin integration
 /// - 8-hour funding rate settlement
+/// - AdminCap-gated market creation
+/// - Taker fee collection into fee_pool
 ///
-/// @version 1.0.0 (Phase 11.1)
+/// @version 1.1.0 (SEC hardening: AdminCap, fee collection, notional guard)
 module pado_perp::perpetual {
     use sui::event;
     use sui::balance::{Self, Balance};
@@ -31,6 +33,8 @@ module pado_perp::perpetual {
     const EMarketPaused: u64 = 109;
     const EOracleStale: u64 = 110;
     const EOraclePriceOverflow: u64 = 111;
+    const ENotionalOverflow: u64 = 112;
+    const EFeeTooHigh: u64 = 113;
 
     // ===== Constants =====
 
@@ -68,7 +72,19 @@ module pado_perp::perpetual {
     /// Maintenance margin requirement (2.5%)
     const MAINTENANCE_MARGIN_BPS: u64 = 250;
 
+    /// Maximum notional value per position (guards u128->u64 overflow)
+    const MAX_NOTIONAL: u64 = 1_000_000_000_000_000;
+
+    /// Maximum allowed fee in basis points (10%)
+    const MAX_FEE_BPS: u64 = 1000;
+
     // ===== Structs =====
+
+    /// Admin capability — only holder can create markets.
+    /// Created once during package publish and transferred to deployer.
+    public struct AdminCap has key, store {
+        id: UID,
+    }
 
     /// Perpetual market configuration (shared object)
     public struct PerpMarket has key {
@@ -173,6 +189,7 @@ module pado_perp::perpetual {
         entry_price: u64,
         collateral: u64,
         leverage: u64,
+        fee: u64,
         timestamp: u64,
     }
 
@@ -184,6 +201,7 @@ module pado_perp::perpetual {
         exit_price: u64,
         realized_pnl_value: u64,
         realized_pnl_negative: bool,
+        fee: u64,
         timestamp: u64,
     }
 
@@ -225,6 +243,30 @@ module pado_perp::perpetual {
         timestamp: u64,
     }
 
+    public struct FeesWithdrawn has copy, drop {
+        market_id: ID,
+        admin: address,
+        amount: u64,
+    }
+
+    // ===== Init =====
+
+    fun init(ctx: &mut TxContext) {
+        transfer::transfer(
+            AdminCap { id: object::new(ctx) },
+            tx_context::sender(ctx),
+        );
+    }
+
+    // ===== Internal Helpers =====
+
+    /// Calculate notional value with u128->u64 overflow guard.
+    fun calculate_notional(size: u64, price: u64): u64 {
+        let n = (size as u128) * (price as u128) / (PRICE_DECIMALS as u128);
+        assert!(n <= (MAX_NOTIONAL as u128), ENotionalOverflow);
+        (n as u64)
+    }
+
     // ===== Oracle =====
 
     /// Read and validate oracle price. Shared by all trading and liquidation functions.
@@ -243,8 +285,9 @@ module pado_perp::perpetual {
 
     // ===== Admin Functions =====
 
-    /// Create a new perpetual market
+    /// Create a new perpetual market (AdminCap required)
     public fun create_market(
+        _admin: &AdminCap,
         base_symbol: u64,
         name: vector<u8>,
         max_open_interest: u64,
@@ -297,7 +340,7 @@ module pado_perp::perpetual {
         market.is_active = is_active;
     }
 
-    /// Update market fees
+    /// Update market fees (capped at MAX_FEE_BPS = 10%)
     public fun set_market_fees(
         market: &mut PerpMarket,
         maker_fee_bps: u64,
@@ -305,14 +348,34 @@ module pado_perp::perpetual {
         ctx: &TxContext,
     ) {
         assert!(tx_context::sender(ctx) == market.admin, ENotAdmin);
+        assert!(maker_fee_bps <= MAX_FEE_BPS, EFeeTooHigh);
+        assert!(taker_fee_bps <= MAX_FEE_BPS, EFeeTooHigh);
         market.maker_fee_bps = maker_fee_bps;
         market.taker_fee_bps = taker_fee_bps;
+    }
+
+    /// Withdraw accumulated trading fees (admin only)
+    public fun withdraw_fees(
+        market: &mut PerpMarket,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        assert!(tx_context::sender(ctx) == market.admin, ENotAdmin);
+        let amount = balance::value(&market.fee_pool);
+
+        event::emit(FeesWithdrawn {
+            market_id: object::id(market),
+            admin: tx_context::sender(ctx),
+            amount,
+        });
+
+        coin::from_balance(balance::split(&mut market.fee_pool, amount), ctx)
     }
 
     // ===== Trading Functions =====
 
     /// Open a new position
     /// Price is read from the on-chain OracleRegistry to prevent manipulation.
+    /// Taker fee is deducted from collateral and sent to the market fee_pool.
     public fun open_position(
         market: &mut PerpMarket,
         is_long: bool,
@@ -332,12 +395,11 @@ module pado_perp::perpetual {
         let now = sui::clock::timestamp_ms(clock);
         let collateral_amount = coin::value(&collateral);
 
-        // Validate margin requirements
-        // notional = size * price / PRICE_DECIMALS
-        // required_margin = notional / leverage
-        let notional = ((size as u128) * (current_price as u128) / (PRICE_DECIMALS as u128)) as u64;
+        // Calculate notional with overflow guard
+        let notional = calculate_notional(size, current_price);
+        let fee_amount = (notional * market.taker_fee_bps) / BPS;
         let required_margin = notional / leverage;
-        assert!(collateral_amount >= required_margin, EInsufficientMargin);
+        assert!(collateral_amount >= required_margin + fee_amount, EInsufficientMargin);
 
         // Check open interest limits
         if (is_long) {
@@ -354,10 +416,11 @@ module pado_perp::perpetual {
             market.open_interest_short = market.open_interest_short + size;
         };
 
-        // Collect trading fee
-        let fee_amount = (notional * market.taker_fee_bps) / BPS;
-        // Fee is deducted from collateral in production
-        // For simplicity, we skip fee deduction here
+        // Deduct taker fee from collateral
+        let mut collateral_balance = coin::into_balance(collateral);
+        if (fee_amount > 0) {
+            balance::join(&mut market.fee_pool, balance::split(&mut collateral_balance, fee_amount));
+        };
 
         let position = PerpPosition {
             id: object::new(ctx),
@@ -366,7 +429,7 @@ module pado_perp::perpetual {
             is_long,
             size,
             entry_price: current_price,
-            collateral: coin::into_balance(collateral),
+            collateral: collateral_balance,
             leverage,
             entry_funding_value: market.cumulative_funding_value,
             entry_funding_negative: market.cumulative_funding_negative,
@@ -383,8 +446,9 @@ module pado_perp::perpetual {
             is_long,
             size,
             entry_price: current_price,
-            collateral: collateral_amount,
+            collateral: collateral_amount - fee_amount,
             leverage,
+            fee: fee_amount,
             timestamp: now,
         });
 
@@ -393,6 +457,7 @@ module pado_perp::perpetual {
 
     /// Close a position entirely
     /// Price is read from the on-chain OracleRegistry to prevent manipulation.
+    /// Taker fee is deducted from the return amount.
     public fun close_position(
         market: &mut PerpMarket,
         position: PerpPosition,
@@ -405,6 +470,7 @@ module pado_perp::perpetual {
         assert!(position.market_id == object::id(market), EPositionNotFound);
 
         let now = sui::clock::timestamp_ms(clock);
+        let position_size = position.size;
 
         // Calculate P&L
         let (pnl_value, pnl_negative) = calculate_position_pnl(
@@ -412,33 +478,26 @@ module pado_perp::perpetual {
             current_price,
         );
 
+        // Calculate close fee
+        let close_notional = calculate_notional(position_size, current_price);
+        let close_fee = (close_notional * market.taker_fee_bps) / BPS;
+
         // Update open interest
         if (position.is_long) {
-            market.open_interest_long = market.open_interest_long - position.size;
+            market.open_interest_long = market.open_interest_long - position_size;
         } else {
-            market.open_interest_short = market.open_interest_short - position.size;
-        };
-
-        // Calculate return amount
-        let collateral_value = balance::value(&position.collateral);
-        let return_amount = if (pnl_negative) {
-            if (pnl_value >= collateral_value) {
-                0 // All collateral lost
-            } else {
-                collateral_value - pnl_value
-            }
-        } else {
-            collateral_value + pnl_value
+            market.open_interest_short = market.open_interest_short - position_size;
         };
 
         event::emit(PositionClosed {
             position_id: object::id(&position),
             market_id: object::id(market),
             owner: position.owner,
-            size: position.size,
+            size: position_size,
             exit_price: current_price,
             realized_pnl_value: pnl_value,
             realized_pnl_negative: pnl_negative,
+            fee: close_fee,
             timestamp: now,
         });
 
@@ -482,6 +541,15 @@ module pado_perp::perpetual {
             }
         };
 
+        // Deduct taker fee from return (partial if insufficient)
+        if (close_fee > 0) {
+            let available = balance::value(&collateral);
+            let actual_fee = if (available >= close_fee) { close_fee } else { available };
+            if (actual_fee > 0) {
+                balance::join(&mut market.fee_pool, balance::split(&mut collateral, actual_fee));
+            };
+        };
+
         coin::from_balance(collateral, ctx)
     }
 
@@ -503,7 +571,7 @@ module pado_perp::perpetual {
 
         // Recalculate effective leverage
         let collateral_value = balance::value(&position.collateral);
-        let notional = ((position.size as u128) * (current_price as u128) / (PRICE_DECIMALS as u128)) as u64;
+        let notional = calculate_notional(position.size, current_price);
         let new_leverage = if (collateral_value > 0) {
             notional / collateral_value
         } else {
@@ -540,7 +608,7 @@ module pado_perp::perpetual {
 
         // Check that remaining collateral meets margin requirements
         let remaining = collateral_value - amount;
-        let notional = ((position.size as u128) * (current_price as u128) / (PRICE_DECIMALS as u128)) as u64;
+        let notional = calculate_notional(position.size, current_price);
         let new_leverage = notional / remaining;
         assert!(new_leverage <= market.max_leverage, EInvalidLeverage);
 
@@ -634,7 +702,7 @@ module pado_perp::perpetual {
             collateral + pnl_value
         };
 
-        let notional = ((position.size as u128) * (current_price as u128) / (PRICE_DECIMALS as u128)) as u64;
+        let notional = calculate_notional(position.size, current_price);
 
         if (notional == 0) {
             return BPS * 100 // Max ratio
@@ -787,13 +855,19 @@ module pado_perp::perpetual {
     // ===== Test Functions =====
 
     #[test_only]
+    public fun test_create_admin_cap(ctx: &mut TxContext): AdminCap {
+        AdminCap { id: object::new(ctx) }
+    }
+
+    #[test_only]
     public fun test_create_market(
+        admin: &AdminCap,
         base_symbol: u64,
         name: vector<u8>,
         max_open_interest: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ) {
-        create_market(base_symbol, name, max_open_interest, clock, ctx);
+        create_market(admin, base_symbol, name, max_open_interest, clock, ctx);
     }
 }

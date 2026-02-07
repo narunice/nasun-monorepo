@@ -36,6 +36,10 @@ export const ORACLE_SYMBOL = {
 export const ORACLE_REGISTRY_ID =
   import.meta.env.VITE_ORACLE_REGISTRY_ID || '';
 
+/** Admin capability object ID (created on package publish) */
+export const PERP_ADMIN_CAP_ID =
+  import.meta.env.VITE_PERP_ADMIN_CAP_ID || '';
+
 // ===== Contract Constants (mirrored from perpetual.move) =====
 
 /** Maximum leverage allowed */
