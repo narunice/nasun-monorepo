@@ -64,9 +64,9 @@
   --color-bg-secondary: #e1e5ea;    /* pd5 */
   --color-bg-tertiary: #d0d6de;
   --color-text-primary: #0e1a2d;
-  --color-text-secondary: #3a5f78;  /* pd2 */
-  --color-text-muted: #7d9dbf;      /* pd3 */
-  --color-border: #aac9d5;          /* pd4 */
+  --color-text-secondary: #2d4d6c;  /* pd1→pd2 midpoint (darker for readability) */
+  --color-text-muted: #5b7e9c;      /* pd2→pd3 midpoint (darker for readability) */
+  --color-border: #94b3ca;          /* pd3→pd4 midpoint (stronger for readability) */
   --color-accent: #1f3a61;          /* pd1 */
   --color-success: #22c55e;
   --color-error: #ef4444;
@@ -97,16 +97,16 @@
   --color-bg-secondary: #0d141e;    /* pd0s -30% lightness */
   --color-bg-tertiary: #121a26;
   --color-text-primary: #e1e5ea;    /* pd5 */
-  --color-text-secondary: #aac9d5;  /* pd4 */
-  --color-text-muted: #7d9dbf;      /* pd3 */
-  --color-border: #1f3a61;          /* pd1 */
-  --color-accent: #7d9dbf;          /* pd3 */
+  --color-text-secondary: #c6d7e0;  /* pd4→pd5 midpoint (brighter for readability) */
+  --color-text-muted: #94b3ca;      /* pd3→pd4 midpoint (brighter for readability) */
+  --color-border: #2d4d6c;          /* pd1→pd2 midpoint (more visible) */
+  --color-accent: #94b3ca;          /* pd3→pd4 midpoint (brighter for readability) */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
   /* Toggle switch OFF background */
-  --color-toggle-off: #3a5f78;     /* pd2 */
+  --color-toggle-off: #5b7e9c;     /* pd2→pd3 midpoint (more visible) */
 
   /* Trading-specific colors (subtle) */
   --color-bid: #16a34a;

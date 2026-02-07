@@ -39,7 +39,7 @@ export function ChatMessage({ message, isOwnMessage }: Props) {
         <Avatar name={message.sender} variant="beam" size={16} />
         <span
           className={`text-trading-xs font-medium shrink-0 ${
-            isOwnMessage ? 'text-pd3' : 'text-theme-accent'
+            isOwnMessage ? 'text-theme-text-secondary' : 'text-theme-accent'
           }`}
         >
           {formatSender(message)}
