@@ -25,12 +25,20 @@ export const CHART_COLORS = {
     text: '#d1d4dc',
     grid: '#1a2332',
     border: '#1f3a61',
+    candleUp: '#26a69a',
+    candleDown: '#ef5350',
+    volumeUp: 'rgba(38, 166, 154, 0.45)',
+    volumeDown: 'rgba(239, 83, 80, 0.45)',
   },
   light: {
     background: '#e1e5ea',
     text: '#191615',
     grid: '#cdd3db',
     border: '#aac9d5',
+    candleUp: '#22c55e',
+    candleDown: '#ef4444',
+    volumeUp: 'rgba(34, 197, 94, 0.5)',
+    volumeDown: 'rgba(239, 68, 68, 0.5)',
   },
 } as const;
 
