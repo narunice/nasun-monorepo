@@ -243,6 +243,7 @@ export interface PositionOpenedEvent {
   entryPrice: bigint;
   collateral: bigint;
   leverage: number;
+  fee: bigint;
   timestamp: number;
 }
 
@@ -257,6 +258,7 @@ export interface PositionClosedEvent {
   exitPrice: bigint;
   realizedPnlValue: bigint;
   realizedPnlNegative: boolean;
+  fee: bigint;
   timestamp: number;
 }
 

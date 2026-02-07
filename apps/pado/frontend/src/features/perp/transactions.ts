@@ -8,6 +8,7 @@ import {
   PERP_PACKAGE_ID,
   PERP_MODULE,
   ORACLE_REGISTRY_ID,
+  PERP_ADMIN_CAP_ID,
   MAX_LEVERAGE,
   MIN_LEVERAGE,
   MIN_POSITION_SIZE,
@@ -305,6 +306,7 @@ export function buildCreateMarket(
   baseSymbol: number,
   name: string,
   maxOpenInterest: bigint,
+  adminCapId?: string,
 ): Transaction {
   if (!Number.isInteger(baseSymbol) || baseSymbol < 1 || baseSymbol > 100) {
     throw new Error(`[Security] Invalid oracle symbol ID: ${baseSymbol}`);
@@ -316,11 +318,17 @@ export function buildCreateMarket(
     throw new Error('[Security] Max open interest must be positive');
   }
 
+  const capId = adminCapId || PERP_ADMIN_CAP_ID;
+  if (!capId) {
+    throw new Error('[Security] AdminCap ID required to create a market');
+  }
+
   const tx = new Transaction();
 
   tx.moveCall({
     target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::create_market`,
     arguments: [
+      tx.object(capId),
       tx.pure.u64(baseSymbol),
       tx.pure.vector('u8', Array.from(new TextEncoder().encode(name))),
       tx.pure.u64(maxOpenInterest),
