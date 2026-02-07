@@ -49,12 +49,18 @@ export function SimpleOrderForm({
     return parseFloat((numLots * lotSizeDecimal).toFixed(currentPool.baseToken.decimals));
   }, [usdAmount, midPrice, currentPool]);
 
-  // Max values
-  const maxBuyUsd = quoteBalance;
+  // Fee calculation (Simple mode always uses market order = taker fee)
+  const feeBps = currentPool.takerFeeBps;
+  const feeRate = feeBps / 10000;
+  const fee = (usdAmount ?? 0) * feeRate;
+  const feePercent = `${(feeBps / 100).toFixed(2)}%`;
+
+  // Max values (buy side reserves fee from available balance)
+  const maxBuyUsd = quoteBalance / (1 + feeRate);
   const maxSellUsd = baseBalance * midPrice;
   const maxBalance = orderSide === 'buy' ? maxBuyUsd : maxSellUsd;
 
-  // Insufficient balance check
+  // Insufficient balance check (buy side: usdAmount * (1 + feeRate) > quoteBalance)
   const isInsufficientBalance = usdAmount !== null && usdAmount > maxBalance;
 
   // Track if amount was set via quick buttons (for highlighting)
@@ -180,17 +186,28 @@ export function SimpleOrderForm({
         </div>
       </div>
 
-      {/* Order Preview - ALWAYS visible, h-[72px] */}
-      <div className="mt-3 h-[72px] bg-theme-bg-tertiary/50 rounded-lg p-2.5 flex flex-col justify-center shrink-0">
+      {/* Order Preview - ALWAYS visible */}
+      <div className="mt-3 min-h-[72px] bg-theme-bg-tertiary/50 rounded-lg p-2.5 flex flex-col justify-center shrink-0">
         {usdAmount && usdAmount > 0 ? (
           <>
             <div className="flex justify-between text-xs">
-              <span className="text-theme-text-muted">You {orderSide === 'buy' ? 'pay' : 'receive'}</span>
-              <span className="font-mono text-theme-text-primary">${usdAmount.toFixed(2)}</span>
+              <span className="text-theme-text-muted">You {orderSide === 'buy' ? 'pay' : 'sell'}</span>
+              <span className="font-mono text-theme-text-primary">
+                {orderSide === 'buy' ? `$${usdAmount.toFixed(2)}` : `~${baseAmount.toFixed(4)} ${baseSymbol}`}
+              </span>
             </div>
             <div className="flex justify-between text-xs mt-1">
-              <span className="text-theme-text-muted">You {orderSide === 'buy' ? 'receive' : 'sell'}</span>
-              <span className="font-mono text-theme-text-primary">~{baseAmount.toFixed(4)} {baseSymbol}</span>
+              <span className="text-theme-text-muted">Est. Fee ({feePercent})</span>
+              <span className="font-mono text-theme-text-muted">~${fee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-xs mt-1 pt-1 border-t border-theme-border/30">
+              <span className="text-theme-text-secondary font-medium">You {orderSide === 'buy' ? 'receive' : 'receive'}</span>
+              <span className={`font-mono font-medium ${orderSide === 'buy' ? 'text-theme-text-primary' : 'text-green-400'}`}>
+                {orderSide === 'buy'
+                  ? `~${baseAmount.toFixed(4)} ${baseSymbol}`
+                  : `~$${(usdAmount - fee).toFixed(2)}`
+                }
+              </span>
             </div>
             {isInsufficientBalance && (
               <div className="text-[10px] text-red-400 mt-1.5 text-center">

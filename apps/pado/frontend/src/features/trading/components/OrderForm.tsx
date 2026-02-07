@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { ExecutionOption } from '../context';
 import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs } from '@/components/common';
@@ -68,16 +68,29 @@ export function OrderForm({
 
   const [orderMode, setOrderMode] = useState<OrderModeType>('limit');
   const [showAdvanced, setShowAdvanced] = useState(true);
+  const [totalInput, setTotalInput] = useState('');
+  const [activeField, setActiveField] = useState<'amount' | 'total'>('amount');
 
   const isMarket = orderMode === 'market';
   const isBuy = side === 'buy';
 
-  const effectivePrice = isMarket ? (midPrice || 0) : parseFloat(price) || 0;
+  const effectivePrice = useMemo(
+    () => isMarket ? (midPrice || 0) : parseFloat(price) || 0,
+    [isMarket, midPrice, price]
+  );
   const amountNum = parseFloat(amount) || 0;
   const total = effectivePrice * amountNum;
 
-  // Balance check for the active side only
-  const insufficientForBuy = total > 0 && total > availableQuote;
+  // Fee calculation based on execution option
+  const isMakerFee = executionOption === 'POST_ONLY';
+  const feeBps = isMakerFee ? currentPool.makerFeeBps : currentPool.takerFeeBps;
+  const feeRate = feeBps / 10000;
+  const fee = total * feeRate;
+  const feeLabel = isMakerFee ? 'Maker' : 'Taker';
+  const feePercent = `${(feeBps / 100).toFixed(2)}%`;
+
+  // Balance check for the active side (includes fee for buy side)
+  const insufficientForBuy = total > 0 && (total + fee) > availableQuote;
   const insufficientForSell = amountNum > 0 && amountNum > availableBase;
   const isInsufficient = isBuy ? insufficientForBuy : insufficientForSell;
 
@@ -111,17 +124,73 @@ export function OrderForm({
     }
   }, [onPriceChange, currentPool]);
 
-  // Percentage amount buttons
+  // Amount change handler with total sync
+  const handleAmountChange = useCallback((value: string) => {
+    setActiveField('amount');
+    onAmountChange(value);
+    const amt = parseFloat(value) || 0;
+    if (amt > 0 && effectivePrice > 0) {
+      setTotalInput((amt * effectivePrice).toFixed(2));
+    } else {
+      setTotalInput('');
+    }
+  }, [onAmountChange, effectivePrice]);
+
+  // Total change handler with amount reverse-calc
+  const handleTotalChange = useCallback((value: string) => {
+    setActiveField('total');
+    setTotalInput(value);
+    const tot = parseFloat(value) || 0;
+    if (tot > 0 && effectivePrice > 0) {
+      const amt = tot / effectivePrice;
+      // Guard against astronomical values from tiny prices
+      if (Number.isFinite(amt) && amt < 1e12) {
+        onAmountChange(amt.toFixed(4));
+      }
+    } else {
+      onAmountChange('');
+    }
+  }, [onAmountChange, effectivePrice]);
+
+  // Sync total↔amount when price changes (useEffect, not useMemo)
+  const prevPriceRef = useRef(effectivePrice);
+  useEffect(() => {
+    // Only run when effectivePrice actually changes
+    if (prevPriceRef.current === effectivePrice) return;
+    prevPriceRef.current = effectivePrice;
+
+    if (activeField === 'amount' && amountNum > 0 && effectivePrice > 0) {
+      setTotalInput((amountNum * effectivePrice).toFixed(2));
+    } else if (activeField === 'total') {
+      const tot = parseFloat(totalInput) || 0;
+      if (tot > 0 && effectivePrice > 0) {
+        const amt = tot / effectivePrice;
+        if (Number.isFinite(amt) && amt < 1e12) {
+          onAmountChange(amt.toFixed(4));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectivePrice]);
+
+  // Percentage amount buttons (buy side reserves fee from available balance)
   const handlePercentAmount = useCallback((pct: number) => {
+    setActiveField('amount');
     if (isBuy) {
       if (effectivePrice <= 0) return;
-      const baseAmount = (availableQuote * pct / 100) / effectivePrice;
-      onAmountChange(baseAmount > 0 ? baseAmount.toFixed(4) : '');
+      // Reserve fee: usable = balance / (1 + feeRate) so total + fee <= balance
+      const usableQuote = availableQuote / (1 + feeRate);
+      const baseAmount = (usableQuote * pct / 100) / effectivePrice;
+      const newAmount = baseAmount > 0 ? baseAmount.toFixed(4) : '';
+      onAmountChange(newAmount);
+      if (baseAmount > 0) setTotalInput((baseAmount * effectivePrice).toFixed(2));
     } else {
       const baseAmount = availableBase * pct / 100;
-      onAmountChange(baseAmount > 0 ? baseAmount.toFixed(4) : '');
+      const newAmount = baseAmount > 0 ? baseAmount.toFixed(4) : '';
+      onAmountChange(newAmount);
+      if (baseAmount > 0 && effectivePrice > 0) setTotalInput((baseAmount * effectivePrice).toFixed(2));
     }
-  }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange]);
+  }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate]);
 
   const hasValidationError = !quantityValidation.valid || (!isMarket && !priceValidation.valid);
   const isButtonDisabled = isMarket
@@ -150,7 +219,7 @@ export function OrderForm({
       {/* B. Buy/Sell Side Toggle */}
       <div className="grid grid-cols-2">
         <button
-          onClick={() => onSideChange('buy')}
+          onClick={() => { onSideChange('buy'); setActiveField('amount'); setTotalInput(''); }}
           className={`py-1.5 text-sm xl:text-base font-semibold transition-colors rounded-l ${
             isBuy
               ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
@@ -160,7 +229,7 @@ export function OrderForm({
           Buy
         </button>
         <button
-          onClick={() => onSideChange('sell')}
+          onClick={() => { onSideChange('sell'); setActiveField('amount'); setTotalInput(''); }}
           className={`py-1.5 text-sm xl:text-base font-semibold transition-colors rounded-r ${
             !isBuy
               ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
@@ -253,7 +322,7 @@ export function OrderForm({
         <NumberInput
           placeholder="0.0000"
           value={amount}
-          onChange={(e) => onAmountChange(e.target.value)}
+          onChange={(e) => handleAmountChange(e.target.value)}
           step={minQuantity}
           className={`px-3 py-2 text-sm xl:text-base ${
             amountNum > 0 && !quantityValidation.valid
@@ -278,13 +347,31 @@ export function OrderForm({
         </div>
       </div>
 
+      {/* E2. Total Input (bidirectional with Amount) */}
+      <div>
+        <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Total ({quoteSymbol})</label>
+        <NumberInput
+          placeholder="0.00"
+          value={totalInput}
+          onChange={(e) => handleTotalChange(e.target.value)}
+          step={0.01}
+          className="px-3 py-2 text-sm xl:text-base mt-1"
+        />
+      </div>
+
       {/* F. Info Rows */}
       <div className="space-y-1 pt-1 border-t border-theme-border">
         {total > 0 && (
-          <div className="flex justify-between text-trading-xs xl:text-trading-sm">
-            <span className="text-theme-text-muted">{isMarket ? 'Est. Value' : 'Order Value'}</span>
-            <span className="font-mono text-theme-text-secondary">{total.toFixed(2)} {quoteSymbol}</span>
-          </div>
+          <>
+            <div className="flex justify-between text-trading-xs xl:text-trading-sm">
+              <span className="text-theme-text-muted">{isMarket ? 'Est. Value' : 'Order Value'}</span>
+              <span className="font-mono text-theme-text-secondary">{total.toFixed(2)} {quoteSymbol}</span>
+            </div>
+            <div className="flex justify-between text-trading-xs xl:text-trading-sm">
+              <span className="text-theme-text-muted">Est. Fee ({feeLabel} {feePercent})</span>
+              <span className="font-mono text-theme-text-secondary">~{fee.toFixed(4)} {quoteSymbol}</span>
+            </div>
+          </>
         )}
         {isMarket && (
           <div className="flex justify-between text-trading-xs xl:text-trading-sm">
@@ -292,12 +379,21 @@ export function OrderForm({
             <span className="font-mono text-theme-text-secondary">{slippage}%</span>
           </div>
         )}
+        {total > 0 && (
+          <div className="flex justify-between text-sm xl:text-base font-semibold pt-1 border-t border-theme-border/50">
+            <span className="text-theme-text-secondary">{isBuy ? 'You Pay' : 'You Receive'}</span>
+            <span className={`font-mono ${isBuy ? 'text-theme-text-primary' : 'text-green-400'}`}>
+              ~{isBuy ? (total + fee).toFixed(2) : (total - fee).toFixed(2)} {quoteSymbol}
+            </span>
+          </div>
+        )}
         {/* Insufficient balance warning for active side only */}
         {isInsufficient && (
           <InsufficientBalancePrompt
             tokenSymbol={isBuy ? quoteSymbol : baseSymbol}
-            requiredAmount={isBuy ? total : amountNum}
+            requiredAmount={isBuy ? total + fee : amountNum}
             availableAmount={isBuy ? availableQuote : availableBase}
+            decimals={isBuy ? currentPool.quoteToken.decimals : currentPool.baseToken.decimals}
           />
         )}
       </div>
