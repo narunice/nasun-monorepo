@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { LeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
@@ -26,11 +27,13 @@ function formatVolume(volumeUsd: string): string {
 }
 
 export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
+  const navigate = useNavigate();
   const displayName = trader.nickname || shortenAddress(trader.address);
 
   return (
     <tr
-      className={`transition-colors ${
+      onClick={() => navigate(`/leaderboard/trader/${trader.address}`)}
+      className={`transition-colors cursor-pointer ${
         isCurrentUser
           ? 'bg-pd3/5 hover:bg-pd3/10'
           : 'hover:bg-theme-bg-tertiary/30'

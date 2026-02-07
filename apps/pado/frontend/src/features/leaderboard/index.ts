@@ -1,9 +1,12 @@
 export { useLeaderboard } from './hooks/useLeaderboard';
 export { useTraderStats } from './hooks/useTraderStats';
+export { useTraderFills } from './hooks/useTraderFills';
 export { LeaderboardTable } from './components/LeaderboardTable';
 export { TraderRow } from './components/TraderRow';
 export { RankBadge } from './components/RankBadge';
 export { RankChangeIndicator } from './components/RankChangeIndicator';
 export { PeriodSelector } from './components/PeriodSelector';
 export { MyRankCard } from './components/MyRankCard';
-export type { Period, LeaderboardTrader, LeaderboardResponse, TraderStatsResponse } from './types';
+export { TraderProfileHeader } from './components/TraderProfileHeader';
+export { TraderFillsTable } from './components/TraderFillsTable';
+export type { Period, LeaderboardTrader, LeaderboardResponse, TraderStatsResponse, TraderFill, TraderFillsResponse } from './types';

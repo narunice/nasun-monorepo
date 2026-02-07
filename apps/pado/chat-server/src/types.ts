@@ -171,6 +171,8 @@ export interface ChatServerConfig {
   indexerPollIntervalMs: number;
   aggregationIntervalMs: number;
   excludedAddresses: string[];
+  // Competitions
+  competitionAdminKey: string;
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -192,4 +194,6 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   indexerPollIntervalMs: parseInt(process.env.INDEXER_POLL_INTERVAL_MS || '5000', 10),
   aggregationIntervalMs: parseInt(process.env.AGGREGATION_INTERVAL_MS || '60000', 10),
   excludedAddresses: (process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
+  // Competitions
+  competitionAdminKey: process.env.COMPETITION_ADMIN_KEY || '',
 };
