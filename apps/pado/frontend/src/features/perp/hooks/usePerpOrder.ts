@@ -20,6 +20,7 @@ import {
   MAX_LEVERAGE,
   MIN_LEVERAGE,
   BPS,
+  DEFAULT_TAKER_FEE_BPS,
   toContractPrice,
   toContractAmount,
 } from '../constants';
@@ -173,7 +174,10 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
       throw new Error(`Leverage must be between ${MIN_LEVERAGE}x and ${MAX_LEVERAGE}x`);
     }
 
-    const requiredCollateral = size / leverage;
+    // Include taker fee in collateral (on-chain requires collateral >= margin + fee)
+    const requiredMargin = size / leverage;
+    const fee = (size * DEFAULT_TAKER_FEE_BPS) / BPS;
+    const requiredCollateral = requiredMargin + fee;
     const collateralUnits = toContractAmount(requiredCollateral);
 
     const nusdcCoinId = await getNusdcCoin(collateralUnits);
@@ -383,7 +387,8 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
         liquidationPrice = currentPrice * (1 + (1 - 0.025) / leverage);
       }
 
-      const maxSize = (availableBalance - fee) * leverage;
+      // maxSize = availableBalance / (1/leverage + takerFeeBps/BPS)
+      const maxSize = (availableBalance * leverage * BPS) / (BPS + leverage * takerFeeBps);
 
       const minSizeUsd = (MIN_POSITION_SIZE / 100_000_000) * currentPrice;
       if (size < minSizeUsd && size > 0) {
