@@ -9,30 +9,39 @@
  * and are right-aligned to match the rightmost card.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
-import { TradingPanel, EnablePadoCard } from '../features/trading/containers';
-import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles, PoolInfo, ShortcutHelpTooltip } from '../features/trading/components';
-import { useTradeMode, useOrderbook, useKeyboardShortcuts } from '../features/trading/hooks';
-import { useOrderForm } from '../features/trading/context';
-import { usePrices } from '../features/core/usePrices';
-import { type TokenSymbol } from '../lib/prices';
-import { fetchBinance24hTicker, getBinanceSymbol } from '../lib/indicators';
-import { useState } from 'react';
-import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from '../features/social';
-import { NewsCarousel } from '../features/news';
+import { useQuery } from "@tanstack/react-query";
+import { OrderFormProvider, MarketProvider, useMarket } from "../features/trading/context";
+import { TradingPanel, EnablePadoCard } from "../features/trading/containers";
+import {
+  MarketSelector,
+  BottomTabPanel,
+  MarketInfoBar,
+  PriceChart,
+  Orderbook,
+  TradingToggles,
+  PoolInfo,
+  ShortcutHelpTooltip,
+} from "../features/trading/components";
+import { useTradeMode, useOrderbook, useKeyboardShortcuts } from "../features/trading/hooks";
+import { useOrderForm } from "../features/trading/context";
+import { usePrices } from "../features/core/usePrices";
+import { type TokenSymbol } from "../lib/prices";
+import { fetchBinance24hTicker, getBinanceSymbol } from "../lib/indicators";
+import { useState } from "react";
+import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from "../features/social";
+import { NewsCarousel } from "../features/news";
 
 // Fixed height for chart and orderbook to ensure consistent layout
-const CHART_HEIGHT = 580;
+const CHART_HEIGHT = 606;
 // Chat panel height when expanded (below chart area)
-const CHAT_HEIGHT = 280;
+const CHAT_HEIGHT = 350;
 
 // Per-card width — shared by each right-side card and header toggles
-const CARD_W = 'w-[300px] 2xl:w-[340px]';
+const CARD_W = "w-[300px] 2xl:w-[340px]";
 
 // Simple mode max width: Chart + 2 cards + gaps, centered
 // Calculation: ~600px chart + 2*300px cards + 2*12px gaps = ~1224px
-const SIMPLE_MAX_W = 'xl:max-w-[1224px] 2xl:max-w-[1304px] xl:mx-auto';
+const SIMPLE_MAX_W = "xl:max-w-[1224px] 2xl:max-w-[1304px] xl:mx-auto";
 
 function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
   return (
@@ -44,12 +53,26 @@ function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
         text-theme-text-muted hover:text-theme-text-primary transition-colors"
     >
       <div className="flex items-center gap-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
         <span className="text-trading-sm font-medium">Chat</span>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M6 9l6 6 6-6" />
       </svg>
     </button>
@@ -77,7 +100,7 @@ function TradePageContent() {
   // Fetch real 24h market data from Binance
   const binanceSymbol = getBinanceSymbol(baseSymbol);
   const { data: ticker24h } = useQuery({
-    queryKey: ['ticker24h', binanceSymbol],
+    queryKey: ["ticker24h", binanceSymbol],
     queryFn: () => fetchBinance24hTicker(binanceSymbol),
     enabled: !!binanceSymbol,
     refetchInterval: 30_000,
@@ -102,7 +125,7 @@ function TradePageContent() {
   return (
     <div className="space-y-3">
       {/* Header: MarketSelector+InfoBar | Interface+Toggles (Col2) | PoolInfo box (Col3, Pro only) */}
-      <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ''}`}>
+      <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ""}`}>
         {/* Col 1: MarketSelector + MarketInfoBar stacked */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           <MarketSelector />
@@ -114,23 +137,27 @@ function TradePageContent() {
             <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
               <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
               <div className="flex items-center gap-2">
-                <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+                <span
+                  className={`text-trading-sm ${isSimple ? "text-theme-text-primary font-medium" : "text-theme-text-muted"}`}
+                >
                   Simple
                 </span>
                 <button
                   onClick={toggleMode}
                   className={`w-7 h-3.5 rounded-full transition-colors ${
-                    isSimple ? 'bg-theme-toggle-off' : 'bg-purple-500'
+                    isSimple ? "bg-theme-toggle-off" : "bg-purple-500"
                   }`}
-                  aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
+                  aria-label={`Switch to ${isSimple ? "Pro" : "Simple"} mode`}
                 >
                   <span
                     className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                      isSimple ? 'translate-x-0.5' : 'translate-x-3.5'
+                      isSimple ? "translate-x-0.5" : "translate-x-3.5"
                     }`}
                   />
                 </button>
-                <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+                <span
+                  className={`text-trading-sm ${!isSimple ? "text-theme-text-primary font-medium" : "text-theme-text-muted"}`}
+                >
                   Pro
                 </span>
               </div>
@@ -151,28 +178,36 @@ function TradePageContent() {
         <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
           <span className="text-xs text-theme-text-muted">Interface</span>
           <div className="flex items-center gap-2">
-            <span className={`text-trading-sm ${isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+            <span
+              className={`text-trading-sm ${isSimple ? "text-theme-text-primary font-medium" : "text-theme-text-muted"}`}
+            >
               Simple
             </span>
             <button
               onClick={toggleMode}
               className={`w-7 h-3.5 rounded-full transition-colors ${
-                isSimple ? 'bg-theme-toggle-off' : 'bg-purple-500'
+                isSimple ? "bg-theme-toggle-off" : "bg-purple-500"
               }`}
-              aria-label={`Switch to ${isSimple ? 'Pro' : 'Simple'} mode`}
+              aria-label={`Switch to ${isSimple ? "Pro" : "Simple"} mode`}
             >
               <span
                 className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                  isSimple ? 'translate-x-0.5' : 'translate-x-3.5'
+                  isSimple ? "translate-x-0.5" : "translate-x-3.5"
                 }`}
               />
             </button>
-            <span className={`text-trading-sm ${!isSimple ? 'text-theme-text-primary font-medium' : 'text-theme-text-muted'}`}>
+            <span
+              className={`text-trading-sm ${!isSimple ? "text-theme-text-primary font-medium" : "text-theme-text-muted"}`}
+            >
               Pro
             </span>
           </div>
         </div>
-        {!isSimple && <div className="mt-3"><TradingToggles /></div>}
+        {!isSimple && (
+          <div className="mt-3">
+            <TradingToggles />
+          </div>
+        )}
       </div>
 
       {/* Main Trading Area (xl+): Chart + cards side by side */}
@@ -189,15 +224,14 @@ function TradePageContent() {
           </div>
           {/* Col 3: Chat (same height as Quick Trade) */}
           <div className={`shrink-0 ${CARD_W}`}>
-            {!chatFloating && (
-              chatVisible ? (
+            {!chatFloating &&
+              (chatVisible ? (
                 <div style={{ height: `${CHART_HEIGHT}px` }}>
                   <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
                 </div>
               ) : (
                 <ChatCollapsedBar onClick={toggleChat} />
-              )
-            )}
+              ))}
           </div>
         </div>
       ) : (
@@ -218,21 +252,16 @@ function TradePageContent() {
               className="bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
               style={{ height: `${CHART_HEIGHT}px` }}
             >
-              <Orderbook
-                orderbook={orderbook}
-                onPriceClick={handlePriceClick}
-                compact
-              />
+              <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} compact />
             </div>
-            {!chatFloating && (
-              chatVisible ? (
+            {!chatFloating &&
+              (chatVisible ? (
                 <div style={{ height: `${CHAT_HEIGHT}px` }}>
                   <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
                 </div>
               ) : (
                 <ChatCollapsedBar onClick={toggleChat} />
-              )
-            )}
+              ))}
           </div>
           {/* Col 3 (CARD_W): EnablePado + OrderForm + News + Shortcut Help */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
@@ -266,11 +295,8 @@ function TradePageContent() {
             </div>
             <div className="flex gap-3">
               <div className="flex-1 min-w-0">
-                <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: '400px' }}>
-                  <Orderbook
-                    orderbook={orderbook}
-                    onPriceClick={handlePriceClick}
-                  />
+                <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: "400px" }}>
+                  <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
@@ -293,11 +319,8 @@ function TradePageContent() {
             <div style={{ height: `${CHART_HEIGHT}px` }}>
               <PriceChart currentPrice={displayPrice} />
             </div>
-            <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: '400px' }}>
-              <Orderbook
-                orderbook={orderbook}
-                onPriceClick={handlePriceClick}
-              />
+            <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: "400px" }}>
+              <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
             </div>
             <BottomTabPanel />
           </>
