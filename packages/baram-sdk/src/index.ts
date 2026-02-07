@@ -70,6 +70,16 @@ export {
   DORMANT_THRESHOLD_MS,
 } from './types';
 
+// TEE encryption (low-level access)
+export {
+  encryptForTee,
+  decryptResponse,
+  importPublicKey,
+  encryptPrompt,
+  clearPublicKeyCache,
+} from './services/tee';
+export type { EncryptResult } from './services/tee';
+
 // Services (low-level access)
 export { sha256, hexToBytes } from './services/encoding';
 export { getNusdcCoins } from './services/coin';

@@ -123,6 +123,7 @@ export interface ExecuteResult {
   executionTimeMs: number;
   ecr: ECRData | null;
   executor: ExecutorInfo;
+  teeEncrypted: boolean;
 }
 
 // Model pricing info
