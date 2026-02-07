@@ -4,6 +4,7 @@ import { generateChallenge, verifySignature } from './auth.js';
 import {
   initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore,
   getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
+  getNicknameRateLimit,
 } from './store.js';
 import { roomExists } from './rooms.js';
 import type {
@@ -15,6 +16,15 @@ import type {
   DEFAULT_CONFIG,
 } from './types.js';
 import { DEFAULT_CONFIG as CONFIG } from './types.js';
+import {
+  initLeaderboardStore, closeLeaderboardStore,
+  getLeaderboard, getTraderAllPeriodStats, getTotalFillsCount, getTotalTradersCount,
+  getIndexerState,
+} from './leaderboard-store.js';
+import { startIndexer, stopIndexer } from './indexer.js';
+import { startAggregator, stopAggregator } from './aggregator.js';
+import { VALID_PERIODS } from './leaderboard-types.js';
+import type { LeaderboardConfig, Period } from './leaderboard-types.js';
 
 // ===== State =====
 
@@ -184,6 +194,10 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
   }
   connectionsPerIp.set(ip, currentCount + 1);
 
+  // Heartbeat: mark alive on connect and pong
+  (ws as any).isAlive = true;
+  ws.on('pong', () => { (ws as any).isAlive = true; });
+
   // Generate and send challenge
   const challenge = generateChallenge();
   const timeout = setTimeout(() => {
@@ -255,7 +269,8 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       authenticatedClients.set(ws, client);
 
       const existingNickname = getNickname(verifiedAddress);
-      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname });
+      const rateLimit = existingNickname ? getNicknameRateLimit(verifiedAddress) : undefined;
+      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname, rateLimit });
 
       // Send recent messages as initial history
       handleLoadHistory(ws, { type: 'load_history', roomId: 0, limit: 50 });
@@ -286,9 +301,9 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
         }
         const result = setNickname(client.address, nickname);
         if (result.ok) {
-          send(ws, { type: 'nickname_result', ok: true, nickname });
+          send(ws, { type: 'nickname_result', ok: true, nickname, rateLimit: result.rateLimit });
         } else {
-          send(ws, { type: 'nickname_result', ok: false, error: result.error });
+          send(ws, { type: 'nickname_result', ok: false, error: result.error, rateLimit: result.rateLimit });
         }
         break;
       }
@@ -340,6 +355,25 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
 }
 
 // ===== HTTP API (for history without WebSocket) =====
+
+// Per-IP rate limiter for REST API endpoints
+const apiRateMap = new Map<string, { count: number; resetAt: number }>();
+const API_RATE_MAX = 30; // max requests per window
+const API_RATE_WINDOW_MS = 60_000; // 1 minute window
+
+function checkApiRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = apiRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    apiRateMap.set(ip, { count: 1, resetAt: now + API_RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= API_RATE_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// Note: rate limit cleanup interval is started inside start() and cleared on shutdown.
 
 function getCorsOrigin(reqOrigin: string | undefined): string | null {
   if (!reqOrigin) return null;
@@ -397,16 +431,164 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
+  // ===== Leaderboard API =====
+
+  // Rate limit all leaderboard endpoints
+  if (url.pathname.startsWith('/api/leaderboard')) {
+    const clientIp = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      || 'unknown';
+    if (!checkApiRateLimit(clientIp)) {
+      res.writeHead(429, corsHeaders);
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+  }
+
+  if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
+    const period = url.searchParams.get('period') || '24h';
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
+
+    if (!VALID_PERIODS.has(period)) {
+      res.writeHead(400, corsHeaders);
+      res.end(JSON.stringify({ error: 'Invalid period. Use: 24h, 7d, 30d, all' }));
+      return;
+    }
+
+    try {
+      const rows = getLeaderboard(period, limit);
+      const addresses = rows.map((r) => r.address);
+      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+
+      // Convert raw quote volume to USD-formatted string
+      const traders = rows.map((r) => ({
+        rank: r.rank,
+        address: r.address,
+        nickname: nicknames.get(r.address) ?? null,
+        volumeUsd: formatQuoteVolume(r.volume_quote),
+        tradeCount: r.trade_count,
+        uniquePools: r.unique_pools,
+        rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
+        lastTradeAt: r.last_trade_at,
+      }));
+
+      const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
+      const totalTraders = getTotalTradersCount();
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ period, traders, updatedAt, totalTraders }));
+    } catch (err) {
+      console.error('[Leaderboard] API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // Match /api/leaderboard/trader/:address (validated Sui address format)
+  const traderMatch = url.pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})$/);
+  if (traderMatch && req.method === 'GET') {
+    const address = traderMatch[1];
+
+    try {
+      const rows = getTraderAllPeriodStats(address);
+      const nickname = getNickname(address);
+
+      const stats: Record<string, { rank: number; volume: string; tradeCount: number; uniquePools: number; rankChange: number } | null> = {
+        '24h': null, '7d': null, '30d': null, 'all': null,
+      };
+
+      for (const row of rows) {
+        stats[row.period] = {
+          rank: row.rank,
+          volume: formatQuoteVolume(row.volume_quote),
+          tradeCount: row.trade_count,
+          uniquePools: row.unique_pools,
+          rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
+        };
+      }
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ address, nickname, stats }));
+    } catch (err) {
+      console.error('[Leaderboard] Trader API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/leaderboard/status' && req.method === 'GET') {
+    try {
+      const lastIndexedAt = getIndexerState('last_indexed_at');
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        indexerRunning: !!CONFIG.deepbookPackage,
+        lastIndexedAt: lastIndexedAt ? parseInt(lastIndexedAt, 10) : 0,
+        totalFillsIndexed: getTotalFillsCount(),
+        totalTradersTracked: getTotalTradersCount(),
+      }));
+    } catch (err) {
+      console.error('[Leaderboard] Status API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
   res.writeHead(404, corsHeaders);
   res.end(JSON.stringify({ error: 'Not found' }));
+}
+
+/**
+ * Convert raw quote volume (NUSDC with 6 decimals) to USD-formatted string.
+ */
+function formatQuoteVolume(rawVolume: string): string {
+  try {
+    const raw = BigInt(rawVolume || '0');
+    if (raw < 0n) return '0.00';
+    const whole = raw / 1_000_000n;
+    const frac = raw % 1_000_000n;
+    const fracStr = frac.toString().padStart(6, '0').slice(0, 2);
+    return `${whole}.${fracStr}`;
+  } catch {
+    return '0.00';
+  }
 }
 
 // ===== Startup =====
 
 function start(): void {
-  // Initialize SQLite store
+  // Initialize SQLite store (chat)
   initStore(CONFIG);
   console.log(`[Chat] SQLite store initialized at ${CONFIG.dbPath}`);
+
+  // Initialize leaderboard store (separate DB)
+  initLeaderboardStore({
+    leaderboardDbPath: CONFIG.leaderboardDbPath,
+    deepbookPackage: CONFIG.deepbookPackage,
+    rpcUrl: CONFIG.rpcUrl,
+    indexerPollIntervalMs: CONFIG.indexerPollIntervalMs,
+    aggregationIntervalMs: CONFIG.aggregationIntervalMs,
+    excludedAddresses: new Set(CONFIG.excludedAddresses),
+  });
+  console.log(`[Leaderboard] Store initialized at ${CONFIG.leaderboardDbPath}`);
+
+  // Start indexer + aggregator if DeepBook package is configured
+  const leaderboardEnabled = !!CONFIG.deepbookPackage;
+  if (leaderboardEnabled) {
+    const lbConfig: LeaderboardConfig = {
+      leaderboardDbPath: CONFIG.leaderboardDbPath,
+      deepbookPackage: CONFIG.deepbookPackage,
+      rpcUrl: CONFIG.rpcUrl,
+      indexerPollIntervalMs: CONFIG.indexerPollIntervalMs,
+      aggregationIntervalMs: CONFIG.aggregationIntervalMs,
+      excludedAddresses: new Set(CONFIG.excludedAddresses),
+    };
+    startIndexer(lbConfig);
+    startAggregator(lbConfig);
+  } else {
+    console.log('[Leaderboard] Indexer disabled (DEEPBOOK_PACKAGE not set)');
+  }
 
   // Create HTTP server (for REST API + WebSocket upgrade)
   const httpServer = createServer(handleHttpRequest);
@@ -418,11 +600,50 @@ function start(): void {
   });
   wss.on('connection', handleConnection);
 
+  // Heartbeat: detect dead connections every 30 seconds
+  // WS-level ping keeps the connection alive through proxies.
+  // Data-level heartbeat message triggers browser onmessage so client
+  // keepalive timer can detect dead connections (browser WS API does NOT
+  // expose ping frames to onmessage).
+  const HEARTBEAT_INTERVAL_MS = 30_000;
+  const heartbeatTimer = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if ((ws as any).isAlive === false) {
+        ws.terminate();
+        return;
+      }
+      (ws as any).isAlive = false;
+      ws.ping();
+      // Send data-level heartbeat only to authenticated clients
+      if (authenticatedClients.has(ws)) {
+        send(ws, { type: 'heartbeat' });
+      }
+    });
+  }, HEARTBEAT_INTERVAL_MS);
+
   httpServer.listen(CONFIG.port, () => {
     console.log(`[Chat] Server running on port ${CONFIG.port}`);
     console.log(`[Chat] WebSocket: ws://localhost:${CONFIG.port}`);
     console.log(`[Chat] REST API: http://localhost:${CONFIG.port}/api/messages`);
+    if (leaderboardEnabled) {
+      console.log(`[Leaderboard] API: http://localhost:${CONFIG.port}/api/leaderboard`);
+    }
   });
+
+  // Cleanup stale rate limit entries every 5 minutes
+  const rateLimitCleanupTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of apiRateMap) {
+      if (now > entry.resetAt) apiRateMap.delete(ip);
+    }
+    const staleThreshold = 5 * 60_000;
+    for (const [addr, ts] of lastMessageTime) {
+      if (now - ts > staleThreshold) lastMessageTime.delete(addr);
+    }
+    for (const [addr, ts] of lastHistoryTime) {
+      if (now - ts > staleThreshold) lastHistoryTime.delete(addr);
+    }
+  }, 5 * 60_000);
 
   // Periodic message retention cleanup
   const retentionTimer = setInterval(() => {
@@ -435,10 +656,17 @@ function start(): void {
   // Graceful shutdown
   const shutdown = () => {
     console.log('\n[Chat] Shutting down...');
+    clearInterval(heartbeatTimer);
+    clearInterval(rateLimitCleanupTimer);
     clearInterval(retentionTimer);
+    if (leaderboardEnabled) {
+      stopIndexer();
+      stopAggregator();
+    }
     wss.clients.forEach((ws) => ws.close(1001, 'Server shutting down'));
     wss.close();
     httpServer.close();
+    closeLeaderboardStore();
     closeStore();
     process.exit(0);
   };

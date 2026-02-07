@@ -44,12 +44,15 @@ export function MobileChatDrawer() {
                 </svg>
               </button>
             </div>
-            <div className="h-[calc(100%-52px)]">
-              <ChatPanel />
-            </div>
           </div>
         </div>
       )}
+
+      {/* ChatPanel always mounted to maintain WebSocket connection;
+          hidden when drawer is closed to avoid disconnect/reconnect cycles */}
+      <div className={isOpen ? 'fixed right-0 top-[52px] bottom-0 z-50 w-full max-w-sm xl:hidden' : 'hidden'}>
+        <ChatPanel />
+      </div>
     </>
   );
 }

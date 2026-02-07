@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getChatService } from '../../../lib/chat-service';
-import type { ChatSigner } from '../../../lib/chat-service';
+import type { ChatSigner, NicknameRateLimit } from '../../../lib/chat-service';
 import { useSigner, ZkLoginSigner } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../../../config/network';
 import type { ChatMessage, ChatConnectionStatus } from '../types';
@@ -24,6 +24,7 @@ export interface UseChatResult {
   error: string | null;
   nickname: string | null;
   needsNickname: boolean;
+  nicknameRateLimit: NicknameRateLimit | null;
   setNickname: (name: string) => void;
   checkNickname: (name: string) => void;
 }
@@ -47,6 +48,7 @@ export function useChat(roomId: number = 0): UseChatResult {
   const [nickname, setNicknameState] = useState<string | null>(
     () => getChatService().getNickname()
   );
+  const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
 
   // Keep a stable ref to the signer so async callbacks always read the latest
   const signerRef = useRef(signer);
@@ -179,6 +181,9 @@ export function useChat(roomId: number = 0): UseChatResult {
     const unsubStatus = chatService.on('status', (s) => {
       setStatus(s);
       if (s === 'connected') setError(null);
+      if (s === 'disconnected') {
+        setNicknameRateLimit(null);
+      }
     });
     const unsubOnline = chatService.on('online_count', setOnlineCount);
     const unsubError = chatService.on('error', (err) => {
@@ -188,8 +193,11 @@ export function useChat(roomId: number = 0): UseChatResult {
     });
 
     const unsubNickname = chatService.on('nickname', (data) => {
-      if (data.ok && data.nickname !== undefined) {
+      if (data.ok) {
         setNicknameState(data.nickname ?? null);
+      }
+      if (data.rateLimit) {
+        setNicknameRateLimit(data.rateLimit);
       }
     });
 
@@ -242,6 +250,7 @@ export function useChat(roomId: number = 0): UseChatResult {
     error,
     nickname,
     needsNickname,
+    nicknameRateLimit,
     setNickname,
     checkNickname,
   };
