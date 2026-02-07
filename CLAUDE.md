@@ -181,7 +181,7 @@ Security expectations:
 | `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
 | `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`          | @nasun/gensol-website   | ✅ 완료   | EC2 스크립트 | GenSol 웹사이트                                       |
-| `apps/pado`                    | @nasun/pado             | ✅ 완료   | EC2 스크립트 | Pado 앱 (DEX + Prediction + Lottery + LP Bot)         |
+| `apps/pado`                    | @nasun/pado             | ✅ 완료   | EC2 스크립트 | Pado 앱 (DEX + Prediction + Lottery + Leaderboard + Chat + LP Bot) |
 | `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard    | ⏸️ Legacy | -            | Legacy Leaderboard V2 (Extracted)                     |
 
 ---
@@ -530,6 +530,7 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 | `apps/pado/contracts-lottery/`    | Lottery 컨트랙트 (Sui Random)        |
 | `apps/pado/contracts-margin/`     | Unified Margin v1 (Multi-collateral) |
 | `apps/pado/contracts-perp/`       | Perpetuals DEX                       |
+| `apps/pado/contracts-nsa/`        | Nasun Smart Account (Multi-signer + Recovery) |
 | `packages/devnet-tokens/`         | 공유 토큰 컨트랙트 (NBTC, NUSDC)     |
 
 ### Move 빌드/배포 명령어
@@ -568,9 +569,10 @@ cd apps/pado/contracts
 | DeepBook   | DeepBook V3 (CLOB)                            | ✅ V7          |
 | Baram      | baram (BaramRegistry + Budget + BetaAccess)   | ✅ V7 (v3)     |
 | Baram      | executor (ExecutorRegistry + Staking + Tier)  | ✅ V7          |
-| Oracle     | pado_oracle                                   | V7 재배포 대기 |
-| Margin     | unified_margin                                | V7 재배포 대기 |
-| Perpetuals | pado_perp                                     | V7 재배포 대기 |
+| Oracle     | pado_oracle                                   | ✅ V7          |
+| Lending    | pado_lending                                  | ✅ V7          |
+| Margin     | unified_margin                                | ✅ V7          |
+| Perpetuals | pado_perp                                     | ✅ V7          |
 
 ## 향후 계획
 

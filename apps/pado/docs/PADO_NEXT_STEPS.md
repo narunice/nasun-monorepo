@@ -8,21 +8,22 @@
 
 ## Current State Summary
 
-Pado has **17 completed development phases** covering spot trading, perpetuals, prediction markets, lottery, payments, unified margin, and zkLogin. The core financial engine works.
+Pado has **22 completed development phases** covering spot trading, perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, social layer (chat + leaderboard + competitions), and LP bot. The core financial engine and community infrastructure are functional.
 
-What's missing for prototype launch is not more features -- it's **polish, reliability, and community infrastructure**.
-
-### Devnet V6 Deployment Status
+### Devnet V7 Deployment Status (2026-02-04)
 
 | Category | Status |
 |----------|--------|
-| Tokens (NBTC, NUSDC, Faucet) | Deployed |
-| DeepBook V3 (Spot CLOB) | Deployed |
-| Prediction Markets | Deployed |
-| Lottery | Deployed |
-| Governance | Deployed |
-| Baram (Escrow + Executor) | Deployed |
-| Oracle, Margin, Perp | **Not yet deployed on V6** (not blocking prototype) |
+| Tokens (NBTC, NUSDC, Faucet) | ✅ V7 |
+| DeepBook V3 (Spot CLOB) | ✅ V7 |
+| Prediction Markets | ✅ V7 |
+| Lottery | ✅ V7 |
+| Governance | ✅ V7 |
+| Baram (Escrow + Executor) | ✅ V7 |
+| Oracle (pado_oracle) | ✅ V7 |
+| Lending (pado_lending) | ✅ V7 |
+| Margin (unified_margin) | ✅ V7 |
+| Perpetuals (pado_perp) | ✅ V7 |
 
 ---
 
@@ -69,57 +70,34 @@ Walk through the full visitor journey and fix every friction point:
 
 ---
 
-## Priority 2: Social Layer MVP (Phase 19)
+## Priority 2: Social Layer MVP (Phase 19) -- ✅ Complete
 
-The community infrastructure that converts a demo into a gathering place.
+All social layer features are implemented and deployed.
 
-### 19.1 Global Chat
+### 19.1 Global Chat -- ✅ Done
+- WebSocket server with signature-based authentication (`apps/pado/chat-server/`)
+- Nicknames (wallet-signed verification), SQLite storage (90-day retention)
+- Floating chat popup, mobile drawer, collapsible sidebar on trading page
 
-**Scope**: Single chat room, visible in the trading page sidebar.
+### 19.2 Leaderboard -- ✅ Done
+- DeepBook OrderFilled event indexer → SQLite aggregation
+- Volume rankings by period (24h, 7d, 30d, all-time)
+- Dedicated `/leaderboard` page + MyRankCard widget
 
-**Technical approach**:
-- WebSocket server running on existing EC2 instance
-- Backend: Node.js WebSocket server (ws or Socket.IO)
-- Storage: SQLite file on EC2 (simple, zero cost, 90-day message retention)
-- Frontend: Collapsible sidebar panel on the trading page
-- Identity: Connected wallet address (truncated), optional display name
+### 19.3 Trader Profiles -- ✅ Done
+- Per-address stats page (`/leaderboard/trader/:address`)
+- Fill history table, volume breakdown
 
-**What it needs to do**:
-- Send/receive messages in real-time
-- Show wallet address (linked to explorer) per message
-- Show online user count
-- Basic moderation (admin can delete messages)
-- Rate limiting (prevent spam)
+### 19.4 Trading Competitions -- ✅ Done
+- Admin CRUD API with Bearer token auth
+- Time-limited competitions with dedicated leaderboards
+- `/competitions` and `/competitions/:id` pages
 
-**What it does NOT need**:
-- User authentication beyond wallet connection
-- Message encryption
-- File/image uploads
-- Multiple channels
-- Message reactions or threading
+### 19.5 Chat-Trading Integration -- ✅ Done
+- FloatingChatPopup, MobileChatDrawer, ChatToggleButton
+- Chat lives alongside trading UI, collapsible
 
-### 19.2 Testnet Leaderboard
-
-**Scope**: Public leaderboard ranked by testnet trading activity.
-
-**Technical approach**:
-- Data source: Index DeepBook trade events from RPC (or maintain a simple server-side event listener)
-- Metrics: Total volume traded, number of trades, P&L (if computable from fills)
-- Display: Dedicated leaderboard page + compact widget on trading page
-- Identity: Wallet address + optional nickname
-
-**Key design decisions**:
-- Opt-in vs auto-included: Start with auto-included (all traders visible), add opt-out later if requested
-- Update frequency: Every few minutes (not real-time, to reduce load)
-- Timeframe: Rolling 7-day and all-time
-
-**NFT whitelist connection**: Leaderboard ranking should be designed so it can later be used as a factor in NFT whitelist allocation. This creates the incentive loop: trade on testnet → climb leaderboard → earn whitelist priority.
-
-### 19.3 Chat-Trading Integration
-
-- Chat panel lives in the trading page layout (sidebar or bottom panel)
-- Collapsible so it doesn't interfere with trading
-- Optionally show trade notifications in chat ("User 0x1234... bought 0.5 BTC")
+**NFT whitelist connection**: Leaderboard ranking can be used as a factor in NFT whitelist allocation (trade → climb leaderboard → earn whitelist priority).
 
 ---
 
@@ -151,9 +129,9 @@ Ensure the vision-differentiating features are live at launch.
 
 These are explicitly deferred. Do not work on them until after community formation and funding.
 
-- Perpetuals UI activation (contracts need V6 redeploy first)
-- Unified Margin v2 (Spot-Perp integration)
-- Lending & Borrowing UI
+- Perpetuals UI activation (contracts V7 deployed, .env integration pending)
+- Unified Margin v2 (Spot-Perp integration, contracts V7 deployed)
+- Lending & Borrowing UI (contract V7 deployed)
 - Encrypted DMs
 - AI Agents
 - Copy Trading
@@ -179,7 +157,7 @@ No new AWS resources required for prototype launch.
 
 ## Open Questions
 
-1. Should the chat and leaderboard backend be a single Node.js service or separate processes?
+1. ~~Should the chat and leaderboard backend be a single Node.js service or separate processes?~~ **Resolved**: Single service (`apps/pado/chat-server/`) handles chat, leaderboard, and competitions.
 2. What testnet campaign (leaderboard competition, faucet event) will drive initial activity at launch?
 3. Should leaderboard rankings carry weight in NFT whitelist allocation?
 4. Landing page: should visitors land on a dedicated landing page or go directly to the trading view?
@@ -191,6 +169,7 @@ No new AWS resources required for prototype launch.
 
 | Date | Change |
 |------|--------|
+| 2026-02-07 | Phase 19 (Social Layer) marked complete. V7 deployment status updated for all contracts |
 | 2026-02-05 | LP Bot implementation complete -- orderbook now has 40 levels of liquidity |
 | 2026-01-31 | Full rewrite: prototype launch priorities aligned with social layer strategy |
 | 2026-01-17 | Phase 11.4, 16 v1, 17 completion. Package IDs updated |

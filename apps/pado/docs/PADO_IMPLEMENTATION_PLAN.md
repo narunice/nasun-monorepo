@@ -38,25 +38,27 @@ All phases below are implemented and functional on Nasun Devnet.
 | 16 | Unified Margin v1 | MarginAccount (multi-collateral), Risk Engine (4-tier), Liquidation Engine |
 | 17 | Lottery v2 | Lottery contract (Sui Random), Ticket purchase UI, Multi-tier prizes |
 | 11.1-11.4 | Perpetuals DEX | PerpMarket, Position, Leverage (20x), Funding, Trading UI, Liquidation + Keeper |
+| 19 | Social Layer | Global Chat (WebSocket + SQLite), Leaderboard (DeepBook event indexer), Trader Profiles, Trading Competitions |
 | 22 | LP Bot | Liquidity Provider Bot for NBTC/NUSDC orderbook (Binance price feed, 20-level grid) |
 
 ---
 
-## Deployed Contracts (Devnet V6, 2026-01-28)
+## Deployed Contracts (Devnet V7, 2026-02-04)
 
 > Full addresses: `packages/devnet-config/devnet-ids.json`
 
-| Contract | Status | Package ID (prefix) |
-|----------|--------|-------------------|
-| devnet_tokens (NBTC, NUSDC, Faucet) | Deployed | `0x1074...` |
-| DeepBook V3 (CLOB) | Deployed | `0xaad9...` |
-| Prediction (GlobalState) | Deployed | `0xbc4b...` |
-| Lottery (LotteryRegistry) | Deployed | `0x3b54...` |
-| Governance (Dashboard) | Deployed | `0x02da...` |
-| Baram (BaramRegistry + Executor) | Deployed | `0xfbe1...` |
-| pado_oracle | **Not yet deployed on V6** | -- |
-| unified_margin | **Not yet deployed on V6** | -- |
-| pado_perp | **Not yet deployed on V6** | -- |
+| Contract | Status |
+|----------|--------|
+| devnet_tokens (NBTC, NUSDC, Faucet) | ✅ V7 |
+| DeepBook V3 (CLOB) | ✅ V7 |
+| Prediction (GlobalState) | ✅ V7 |
+| Lottery (LotteryRegistry) | ✅ V7 |
+| Governance (Dashboard) | ✅ V7 |
+| Baram (BaramRegistry + Executor) | ✅ V7 |
+| pado_oracle | ✅ V7 |
+| pado_lending | ✅ V7 |
+| unified_margin | ✅ V7 |
+| pado_perp | ✅ V7 |
 
 ---
 
@@ -64,33 +66,36 @@ All phases below are implemented and functional on Nasun Devnet.
 
 The forward plan is organized by the tier system defined in [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md), aligned with the prototype visitor journey.
 
-### Phase 18: Prototype Polish (Tier 1 -- Must Ship)
+### Phase 18: Prototype Polish (Tier 1 -- ✅ Complete)
 
 **Goal**: Core financial proof -- visitors must be able to trade on a real orderbook within 60 seconds of landing.
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 18.1 Spot Trading QA | End-to-end testing: wallet creation → faucet → place order → fill → balance update | Pending |
-| 18.2 Onboarding Flow | Streamline wallet creation + faucet claim into a single guided flow | Pending |
-| 18.3 Orderbook + Chart Stability | Fix any rendering/sync issues, ensure real-time updates are reliable | Pending |
-| 18.4 UI Polish Pass | Landing page, navigation, error states, loading states, empty states | Pending |
-| 18.5 Faucet Reliability | Ensure faucet never fails silently, add rate limiting for abuse prevention | Pending |
+| 18.1 Spot Trading QA | End-to-end testing: wallet creation → faucet → place order → fill → balance update | ✅ Done |
+| 18.2 Onboarding Flow | Streamline wallet creation + faucet claim into a single guided flow | ✅ Done |
+| 18.3 Orderbook + Chart Stability | Fix any rendering/sync issues, ensure real-time updates are reliable | ✅ Done |
+| 18.4 UI Polish Pass | Landing page, navigation, error states, loading states, empty states | ✅ Done |
+| 18.5 Faucet Reliability | Ensure faucet never fails silently, add rate limiting for abuse prevention | ✅ Done |
 
-### Phase 19: Social Layer MVP (Tier 2 -- Must Ship)
+### Phase 19: Social Layer MVP (Tier 2 -- ✅ Complete)
 
 **Goal**: Community foundation -- turn one-time visitors into returning community members.
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 19.1 Global Chat | Single room, WebSocket-based, trading page sidebar. Wallet address as identity | Pending |
-| 19.2 Testnet Leaderboard | Opt-in, ranked by trading volume and PnL. Publicly visible on Pado | Pending |
-| 19.3 Chat-Trading Integration | Chat lives alongside the live orderbook. Messages visible while trading | Pending |
+| 19.1 Global Chat | WebSocket chat with signature-based auth, nicknames, SQLite storage | ✅ Done |
+| 19.2 Testnet Leaderboard | DeepBook OrderFilled event indexer, volume rankings (24h/7d/30d/all) | ✅ Done |
+| 19.3 Trader Profiles | Per-address stats page with fill history and volume breakdown | ✅ Done |
+| 19.4 Trading Competitions | Time-limited competitions with dedicated leaderboards | ✅ Done |
+| 19.5 Chat-Trading Integration | Floating chat popup, mobile drawer, collapsible sidebar | ✅ Done |
 
-**Technical Decisions (Phase 19)**:
-- Chat backend: WebSocket server on existing EC2 (cost: $0 additional)
-- Message storage: SQLite or PostgreSQL on EC2 (90-day retention)
-- Identity: Wallet address (truncated display), optional nickname
-- No separate auth -- wallet connection = chat access
+**Technical Implementation (Phase 19)**:
+- Chat backend: WebSocket server on existing EC2 (`apps/pado/chat-server/`)
+- Message storage: SQLite on EC2 (90-day retention)
+- Identity: Wallet address + optional nickname (signature-verified)
+- Leaderboard: DeepBook OrderFilled event polling → SQLite aggregation
+- Competitions: Admin CRUD API, Bearer token auth
 
 ### Phase 20: Vision Differentiation (Tier 3 -- Strongly Recommended)
 
@@ -102,18 +107,17 @@ The forward plan is organized by the tier system defined in [SOCIAL_LAYER_DISCUS
 | 20.2 Lottery Round Activation | Ensure 1 active lottery round is running at launch | Pending |
 | 20.3 Cross-Feature Navigation | Smooth transitions between Trading, Prediction, Lottery from main nav | Pending |
 
-### Phase 21: V6 Contract Redeployment
+### Phase 21: V7 Contract Redeployment -- ✅ Complete
 
-**Goal**: Redeploy remaining contracts that were not migrated in the V6 devnet reset.
+All contracts successfully deployed on V7 (2026-02-04 reset).
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 21.1 Oracle Redeployment | Redeploy pado_oracle, update devnet-ids.json and .env | Pending |
-| 21.2 Margin Redeployment | Redeploy unified_margin, update devnet-ids.json and .env | Pending |
-| 21.3 Perp Redeployment | Redeploy pado_perp, update devnet-ids.json and .env | Pending |
-| 21.4 Bot Reconfiguration | Update price-updater and liquidation-keeper with new contract addresses | Pending |
-
-> Note: Phases 18-20 can proceed without 21. Perp/Margin UI is Tier 4 (post-funding). Oracle redeployment is needed only if prediction markets require on-chain price feeds.
+| 21.1 Oracle Redeployment | pado_oracle deployed on V7 | ✅ Done |
+| 21.2 Lending Redeployment | pado_lending deployed on V7 | ✅ Done |
+| 21.3 Margin Redeployment | unified_margin deployed on V7 | ✅ Done |
+| 21.4 Perp Redeployment | pado_perp deployed on V7 | ✅ Done |
+| 21.5 Frontend .env Update | Perp/Margin/Lending .env 주소 연동 필요 | Pending |
 
 ---
 
@@ -123,9 +127,9 @@ These features are implemented or partially implemented but are **not required f
 
 | Feature | Current State | Priority Trigger |
 |---------|--------------|-----------------|
-| Perpetuals Trading UI | Phase 11.3 UI exists, contracts need V6 redeploy | After funding, when liquidity is meaningful |
-| Unified Margin v2 (Spot-Perp Integration) | Contracts exist, UI integration pending | After perp redeploy |
-| Lending & Borrowing | Contract exists, UI not built | After core user base established |
+| Perpetuals Trading UI | Phase 11.3 UI exists, contracts V7 deployed, .env integration pending | After funding, when liquidity is meaningful |
+| Unified Margin v2 (Spot-Perp Integration) | Contracts V7 deployed, UI integration pending | After perp .env integration |
+| Lending & Borrowing | Contract V7 deployed, UI not built | After core user base established |
 | Encrypted DMs | Not started | When users request it |
 | AI Agents (Risk Sentinel, Market Narrator) | Not started | When data indexing is stable |
 | Category Chat Tabs | Not started | When single chat becomes too noisy |
@@ -138,6 +142,7 @@ These features are implemented or partially implemented but are **not required f
 
 | Date | Change |
 |------|--------|
+| 2026-02-07 | Phase 19 (Social Layer), Phase 21 (V7 deploy) marked complete. V7 contract status updated |
 | 2026-02-05 | Phase 22: LP Bot implementation complete (Binance price, 20-level grid, PM2 deploy) |
 | 2026-01-31 | Full rewrite: prototype launch strategy aligned with social layer discussion |
 | 2026-01-17 | Phase 16 v1, 11.1-11.4, 17 completion status update |
