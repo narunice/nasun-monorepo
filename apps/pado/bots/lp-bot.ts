@@ -36,8 +36,8 @@ import {
 } from './lib/config.js';
 import { fetchBtcPrice, validatePrice } from './lib/price-source.js';
 import { calculateOrders, validateOrders } from './lib/strategy.js';
-import { syncOrders, buildCancelAllOrders, executeTransaction, buildPlaceOrders } from './lib/order-manager.js';
-import { getOrderbookState, getFullOrderbookState } from './lib/orderbook.js';
+import { syncOrders, buildCancelAllOrders, executeTransaction } from './lib/order-manager.js';
+import { getFullOrderbookState } from './lib/orderbook.js';
 import {
   findArbitrageOpportunities,
   buildArbitrageTrades,
@@ -127,24 +127,14 @@ async function runBot(
     }
   }
 
-  // Step 6: Cancel all existing orders first (separate transaction)
-  // This allows us to see only user orders in the orderbook for arbitrage
-  console.log(`[${timestamp()}] Canceling existing orders...`);
-  const cancelTx = buildCancelAllOrders(state.balanceManagerId);
-  const cancelResult = await executeTransaction(client, keypair, cancelTx);
-  if (!cancelResult.success) {
-    console.error(`[${timestamp()}] Failed to cancel orders: ${cancelResult.error}`);
-    // Continue anyway - might have no orders to cancel
-  }
-
-  // Step 7: Query full orderbook for arbitrage detection
-  // After canceling bot orders, only user orders remain
+  // Step 6: Query orderbook (with bot orders still present)
   const fullOrderbook = await getFullOrderbookState(client);
   if (fullOrderbook.hasBids || fullOrderbook.hasAsks) {
-    console.log(`[${timestamp()}] Orderbook (user orders): ${fullOrderbook.bids.length} bids, ${fullOrderbook.asks.length} asks`);
+    console.log(`[${timestamp()}] Orderbook: ${fullOrderbook.bids.length} bids, ${fullOrderbook.asks.length} asks`);
   }
 
-  // Step 8: Find and execute arbitrage opportunities
+  // Step 7: Find and execute arbitrage opportunities
+  // Bot orders remain on book; IOC + CANCEL_TAKER prevents self-matching
   if (config.enableArbitrage) {
     const arbConfig: ArbitrageConfig = {
       enabled: config.enableArbitrage,
@@ -162,7 +152,6 @@ async function runBot(
     if (opportunities.length > 0) {
       logArbitrageOpportunities(opportunities, btcPrice);
 
-      // Execute arbitrage trades
       const arbTx = buildArbitrageTrades(state.balanceManagerId, opportunities, state);
       const arbResult = await executeTransaction(client, keypair, arbTx);
 
@@ -178,14 +167,8 @@ async function runBot(
     }
   }
 
-  // Step 9: Re-query orderbook state for order placement
-  const orderbook = await getOrderbookState(client);
-  if (orderbook.hasBids || orderbook.hasAsks) {
-    console.log(`[${timestamp()}] Orderbook: bestBid=$${orderbook.bestBid.toLocaleString()}, bestAsk=$${orderbook.bestAsk.toLocaleString()}`);
-  }
-
-  // Step 10: Calculate and place new grid orders
-  const orders = calculateOrders(btcPrice, config, inventory, orderbook);
+  // Step 8: Calculate new grid orders (reuse fullOrderbook for bestBid/bestAsk)
+  const orders = calculateOrders(btcPrice, config, inventory, fullOrderbook);
   const validOrders = validateOrders(orders, config, btcPrice);
 
   if (validOrders.length === 0) {
@@ -199,21 +182,19 @@ async function runBot(
   const asks = validOrders.filter((o) => !o.isBid);
   console.log(`[${timestamp()}] Generating ${bids.length} bids + ${asks.length} asks around $${btcPrice.toLocaleString()}`);
 
-  // Place new orders (orders already canceled, so use buildPlaceOrders)
-  const placeTx = buildPlaceOrders(state.balanceManagerId, validOrders, state);
-  const result = await executeTransaction(client, keypair, placeTx);
+  // Step 9: Atomic cancel+place (single PTB — no empty orderbook window)
+  const result = await syncOrders(client, keypair, state.balanceManagerId, validOrders, state);
 
   if (result.success) {
     state.lastQuotedPrice = btcPrice;
     state.consecutiveFailures = 0;
 
-    // Log best bid/ask
     const bestBid = bids.length > 0 ? rawToPrice(bids[0].price) : 0;
     const bestAsk = asks.length > 0 ? rawToPrice(asks[0].price) : 0;
     const spread = bestAsk > 0 && bestBid > 0 ? ((bestAsk - bestBid) / btcPrice) * 100 : 0;
     console.log(`[${timestamp()}] Best bid: $${bestBid.toLocaleString()}, Best ask: $${bestAsk.toLocaleString()}, Spread: ${spread.toFixed(2)}%`);
   } else {
-    console.error(`[${timestamp()}] Failed to place orders: ${result.error}`);
+    console.error(`[${timestamp()}] Failed to sync orders: ${result.error}`);
     state.consecutiveFailures++;
   }
 }
