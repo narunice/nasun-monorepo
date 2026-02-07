@@ -82,6 +82,9 @@ export interface BaramConfig {
   complianceRegistry: ObjectId;
   complianceAdminCap: ObjectId;
   complianceUpgradeCap: ObjectId;
+  // Beta Access NFT
+  betaAccessRegistry: ObjectId | '';
+  betaAccessAdmin: ObjectId | '';
   nusdcType: CoinType;
 }
 
