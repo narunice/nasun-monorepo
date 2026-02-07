@@ -32,28 +32,24 @@ export function useIdleTimeout(
   onIdleRef.current = onIdle;
 
   const resetTimer = useCallback(() => {
-    const now = Date.now();
-
-    // Throttle: skip if last activity was within THROTTLE_MS
-    if (now - lastActivityRef.current < THROTTLE_MS) {
-      return;
-    }
-    lastActivityRef.current = now;
-
+    // Always reset the timer on any activity — prevents false lockout
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-
     timerRef.current = setTimeout(() => {
-      console.log('[IdleTimeout] User idle, triggering timeout');
       onIdleRef.current();
     }, timeoutMs);
+
+    // Throttle the timestamp update only (performance optimization)
+    const now = Date.now();
+    if (now - lastActivityRef.current >= THROTTLE_MS) {
+      lastActivityRef.current = now;
+    }
   }, [timeoutMs]);
 
   useEffect(() => {
     // Start initial timer
     timerRef.current = setTimeout(() => {
-      console.log('[IdleTimeout] User idle, triggering timeout');
       onIdleRef.current();
     }, timeoutMs);
 

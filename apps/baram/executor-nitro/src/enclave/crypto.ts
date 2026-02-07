@@ -15,11 +15,13 @@
 import * as crypto from 'crypto';
 
 /**
- * RSA Key pair for encryption/decryption
+ * RSA Key pair for encryption/decryption.
+ * Private key is stored as a KeyObject (OpenSSL-managed, outside V8 heap)
+ * for more reliable memory cleanup on destruction.
  */
 interface EnclaveKeyPair {
-  publicKey: string; // PEM format
-  privateKey: string; // PEM format (NEVER exported)
+  publicKey: string; // PEM format (shareable)
+  privateKeyObj: crypto.KeyObject; // Opaque handle — not a JS string
 }
 
 // Singleton key pair - generated once on Enclave startup
@@ -48,7 +50,7 @@ export async function initializeCrypto(): Promise<string> {
   console.log('[Enclave/Crypto] Generating RSA keypair...');
 
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
+    modulusLength: 3072,
     publicKeyEncoding: {
       type: 'spki',
       format: 'pem',
@@ -59,7 +61,9 @@ export async function initializeCrypto(): Promise<string> {
     },
   });
 
-  keyPair = { publicKey, privateKey };
+  // Store private key as KeyObject (OpenSSL-managed, outside V8 heap)
+  const privateKeyObj = crypto.createPrivateKey(privateKey);
+  keyPair = { publicKey, privateKeyObj };
 
   // Export public key as Base64 (remove PEM headers)
   const publicKeyBase64 = publicKey
@@ -115,8 +119,8 @@ export function decrypt(encryptedBase64: string): DecryptResult {
   try {
     const combined = Buffer.from(encryptedBase64, 'base64');
 
-    // RSA-2048 produces 256-byte ciphertext
-    const RSA_CIPHERTEXT_LEN = 256;
+    // RSA-3072 produces 384-byte ciphertext (3072 / 8)
+    const RSA_CIPHERTEXT_LEN = 384;
 
     if (combined.length <= RSA_CIPHERTEXT_LEN) {
       throw new Error(`Encrypted data too short: ${combined.length} bytes`);
@@ -129,7 +133,7 @@ export function decrypt(encryptedBase64: string): DecryptResult {
     // 2. RSA-OAEP decrypt the envelope → aesKey (32B) + iv (12B)
     const envelope = crypto.privateDecrypt(
       {
-        key: keyPair.privateKey,
+        key: keyPair.privateKeyObj,
         padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: 'sha256',
       },
@@ -219,10 +223,8 @@ export function sha256(content: string): string {
  */
 export function destroyKeyPair(): void {
   if (keyPair) {
-    // Overwrite memory with zeros before nullifying
-    // Note: In JS this is best-effort due to GC
-    keyPair.privateKey = '0'.repeat(keyPair.privateKey.length);
-    keyPair.publicKey = '0'.repeat(keyPair.publicKey.length);
+    // KeyObject stores key material in OpenSSL (outside V8 heap).
+    // Dereferencing allows the C++ destructor to securely clear memory.
     keyPair = null;
     console.log('[Enclave/Crypto] Keypair destroyed');
   }

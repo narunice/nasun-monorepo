@@ -256,6 +256,9 @@ async function handleRequest(request: EnclaveRequest): Promise<EnclaveResponse |
   }
 }
 
+// Max receive buffer: 2MB protects against OOM from oversized messages
+const MAX_BUFFER_SIZE = 2 * 1024 * 1024;
+
 /**
  * Handle socket connection from Host
  */
@@ -267,6 +270,12 @@ function handleConnection(socket: net.Socket): void {
 
   socket.on('data', async (data) => {
     buffer += data.toString();
+
+    if (buffer.length > MAX_BUFFER_SIZE) {
+      console.error('[Enclave] Buffer overflow — dropping connection');
+      socket.destroy();
+      return;
+    }
 
     // Check for complete message (newline-delimited JSON)
     const lines = buffer.split('\n');

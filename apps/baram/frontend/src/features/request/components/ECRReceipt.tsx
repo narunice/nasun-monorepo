@@ -6,22 +6,11 @@ import { useEffect, useCallback } from 'react';
 import { useECR } from '../hooks/useECR';
 import { LocalReceiptContent } from '@/components/receipt/LocalReceiptContent';
 import { OnChainReceiptContent } from '@/components/receipt/OnChainReceiptContent';
-
-// Local metadata fallback when on-chain ECR is unavailable
-interface LocalMetadata {
-  requestId?: number;
-  executionTimeMs?: number;
-  teeVerified?: boolean;
-  txDigest?: string;
-  resultHash?: string;
-  teeType?: number;
-  pcr0?: string;
-  attestationVerified?: boolean;
-}
+import type { MessageMetadata } from '@/types/chat';
 
 interface ECRReceiptProps {
   requestId: number;
-  metadata?: LocalMetadata;
+  metadata?: MessageMetadata;
   onClose: () => void;
 }
 

@@ -276,8 +276,8 @@ export function createSimulatedAttestation(moduleId: string): AttestationDocumen
 }
 
 /**
- * Generate unique request ID
+ * Generate unique request ID using CSPRNG
  */
 export function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `req_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
 }

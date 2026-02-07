@@ -28,13 +28,57 @@ let executorPrivateKey: string | null = null;
 let groqEnabled = false;
 let initialized = false;
 
-// CORS headers — restricted to configured origin (fail-secure: no header if unset)
-const CORS_ALLOWED_ORIGIN = process.env.CORS_ALLOWED_ORIGIN;
-const corsHeaders: Record<string, string> = {
-  ...(CORS_ALLOWED_ORIGIN ? { 'Access-Control-Allow-Origin': CORS_ALLOWED_ORIGIN } : {}),
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
+/**
+ * Safely parse JSON without throwing — returns null on failure.
+ */
+function safeJsonParse(input: string): unknown {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate that a value is a non-negative safe integer.
+ */
+function isSafeRequestId(value: unknown): value is number {
+  return typeof value === 'number'
+    && Number.isInteger(value)
+    && value >= 0
+    && value <= Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Extract SecretString with explicit null check.
+ */
+function requireSecretString(secret: { SecretString?: string }, name: string): string {
+  if (!secret.SecretString) {
+    throw new Error(`Secret '${name}' is missing SecretString`);
+  }
+  return secret.SecretString;
+}
+
+// CORS — multi-origin support. Fail-secure: no header if unset.
+const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+/**
+ * Build CORS headers matching the request Origin against the allowlist.
+ * Returns a static header set if the origin matches, empty otherwise.
+ */
+function buildCorsHeaders(requestOrigin?: string): Record<string, string> {
+  const base: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  };
+  if (requestOrigin && CORS_ALLOWED_ORIGINS.includes(requestOrigin)) {
+    base['Access-Control-Allow-Origin'] = requestOrigin;
+  }
+  return base;
+}
 
 /**
  * Mask sensitive data before logging
@@ -71,7 +115,7 @@ async function loadSecrets(): Promise<void> {
   const openaiSecret = await secretsClient.send(
     new GetSecretValueCommand({ SecretId: process.env.OPENAI_SECRET_NAME || 'baram/openai' })
   );
-  const openaiData = JSON.parse(openaiSecret.SecretString!);
+  const openaiData = JSON.parse(requireSecretString(openaiSecret, 'baram/openai'));
   openaiApiKey = openaiData.apiKey;
 
   // Load Groq API key (optional - for fallback)
@@ -79,7 +123,7 @@ async function loadSecrets(): Promise<void> {
     const groqSecret = await secretsClient.send(
       new GetSecretValueCommand({ SecretId: process.env.GROQ_SECRET_NAME || 'baram/groq' })
     );
-    const groqData = JSON.parse(groqSecret.SecretString!);
+    const groqData = JSON.parse(requireSecretString(groqSecret, 'baram/groq'));
     groqApiKey = groqData.apiKey;
     console.log('[Secrets] Groq API key loaded');
   } catch (error) {
@@ -90,7 +134,7 @@ async function loadSecrets(): Promise<void> {
   const executorSecret = await secretsClient.send(
     new GetSecretValueCommand({ SecretId: process.env.EXECUTOR_SECRET_NAME || 'baram/executor' })
   );
-  const executorData = JSON.parse(executorSecret.SecretString!);
+  const executorData = JSON.parse(requireSecretString(executorSecret, 'baram/executor'));
   executorPrivateKey = executorData.privateKey;
 
   console.log('[Secrets] Loaded successfully');
@@ -220,24 +264,28 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
  * Lambda handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
+  const origin = event.headers?.['origin'] || event.headers?.['Origin'];
+  const corsHeaders = buildCorsHeaders(origin);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
 
-  console.log('[Request]', {
-    method: event.httpMethod,
-    path: event.path,
-    body: event.body ? maskSensitive(JSON.parse(event.body)) : null,
-  });
-
   try {
+    // Log request safely (inside try/catch to handle malformed bodies)
+    console.log('[Request]', {
+      method: event.httpMethod,
+      path: event.path,
+      body: event.body ? maskSensitive(safeJsonParse(event.body)) : null,
+    });
+
     // Initialize services
     await initialize();
 
     const path = event.path;
 
-    // GET /health - Health check
+    // GET /health
     if (path.endsWith('/health') && event.httpMethod === 'GET') {
       return {
         statusCode: 200,
@@ -250,7 +298,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // GET /info - Executor info
+    // GET /info
     if (path.endsWith('/info') && event.httpMethod === 'GET') {
       return {
         statusCode: 200,
@@ -266,7 +314,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // POST /execute - Execute AI request
+    // POST /execute
     if (path.endsWith('/execute') && event.httpMethod === 'POST') {
       if (!event.body) {
         return {
@@ -276,15 +324,40 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
-      const body: ExecuteRequest = JSON.parse(event.body);
-
-      if (!body.requestId || !body.encryptedPrompt) {
+      const parsed = safeJsonParse(event.body);
+      if (!parsed || typeof parsed !== 'object') {
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({
-            error: 'Missing required fields: requestId, encryptedPrompt',
-          }),
+          body: JSON.stringify({ error: 'Invalid JSON body' }),
+        };
+      }
+
+      const body = parsed as ExecuteRequest;
+
+      if (!isSafeRequestId(body.requestId)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'requestId must be a non-negative integer' }),
+        };
+      }
+
+      if (!body.encryptedPrompt || typeof body.encryptedPrompt !== 'string') {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Missing or invalid encryptedPrompt' }),
+        };
+      }
+
+      // Reject oversized prompts (1MB Base64 ~ 750KB raw)
+      const MAX_PROMPT_SIZE = 1 * 1024 * 1024;
+      if (body.encryptedPrompt.length > MAX_PROMPT_SIZE) {
+        return {
+          statusCode: 413,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Encrypted prompt too large' }),
         };
       }
 
@@ -297,7 +370,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // 404 for unknown routes
+    // 404
     return {
       statusCode: 404,
       headers: corsHeaders,
@@ -310,9 +383,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({
-        error: 'Internal server error',
-      }),
+      body: JSON.stringify({ error: 'Internal server error' }),
     };
   }
 };

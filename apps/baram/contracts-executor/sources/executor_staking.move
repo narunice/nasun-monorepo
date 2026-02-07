@@ -391,6 +391,12 @@ module baram_executor::executor_staking {
         let slashed = balance::split(&mut stake.staked_amount, slash_amount);
         balance::join(&mut config.treasury, slashed);
 
+        // Cap unbonding_amount at remaining balance to prevent withdraw abort
+        let remaining = balance::value(&stake.staked_amount);
+        if (stake.unbonding_amount > remaining) {
+            stake.unbonding_amount = remaining;
+        };
+
         // Update stats
         stake.slash_count = stake.slash_count + 1;
         stake.total_slashed = stake.total_slashed + slash_amount;

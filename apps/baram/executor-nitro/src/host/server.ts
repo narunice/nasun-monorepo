@@ -83,7 +83,32 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   }
 
   // Middleware
-  app.use(express.json({ limit: '5mb' }));
+  app.use(express.json({ limit: '1mb' }));
+
+  // In-memory rate limiter for /execute (no external dependency)
+  const rateLimitWindow = 60_000; // 1 minute
+  const rateLimitMax = 15; // max requests per window per IP
+  const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+  function rateLimit(req: Request, res: Response, next: NextFunction): void {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const entry = requestCounts.get(ip);
+
+    if (!entry || now >= entry.resetAt) {
+      requestCounts.set(ip, { count: 1, resetAt: now + rateLimitWindow });
+      next();
+      return;
+    }
+
+    if (entry.count >= rateLimitMax) {
+      res.status(429).json({ success: false, error: 'Too many requests' });
+      return;
+    }
+
+    entry.count++;
+    next();
+  }
 
   // CORS — fail-secure: no CORS headers unless explicitly configured
   const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN;
@@ -183,14 +208,14 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
    *   model: string             // Model ID (e.g., "llama-3.1-8b-instant")
    * }
    */
-  app.post('/execute', async (req: Request, res: Response) => {
+  app.post('/execute', rateLimit, async (req: Request, res: Response) => {
     const { requestId, encryptedPrompt, model } = req.body;
 
     // Validate request
-    if (typeof requestId !== 'number') {
+    if (typeof requestId !== 'number' || !Number.isInteger(requestId) || requestId < 0 || requestId > Number.MAX_SAFE_INTEGER) {
       res.status(400).json({
         success: false,
-        error: 'Missing or invalid requestId',
+        error: 'Missing or invalid requestId (must be a non-negative integer)',
       });
       return;
     }

@@ -50,6 +50,31 @@ export interface UseExecutorsReturn {
 }
 
 /**
+ * Fetch ALL pages of dynamic fields from a Sui Table/Bag.
+ * getDynamicFields is paginated; this drains the cursor until hasNextPage is false.
+ */
+async function fetchAllDynamicFields(
+  client: SuiClient,
+  parentId: string,
+): Promise<{ name: { type: string; value: unknown }; objectType: string; objectId: string }[]> {
+  const all: { name: { type: string; value: unknown }; objectType: string; objectId: string }[] = [];
+  let cursor: string | null | undefined = undefined;
+  let hasNext = true;
+
+  while (hasNext) {
+    const page = await client.getDynamicFields({
+      parentId,
+      ...(cursor ? { cursor } : {}),
+    });
+    all.push(...(page.data as typeof all));
+    cursor = page.nextCursor;
+    hasNext = page.hasNextPage;
+  }
+
+  return all;
+}
+
+/**
  * Calculate effectiveScore for UI sorting (non-deterministic, off-chain only).
  * effectiveScore = sqrt(staked_amount / 1e9) * (reputation / 1000)
  */
@@ -146,11 +171,11 @@ async function fetchTierMap(client: SuiClient): Promise<Map<string, number>> {
 
     if (!tableId) return tierMap;
 
-    const dynamicFields = await client.getDynamicFields({ parentId: tableId });
+    const dynamicFields = await fetchAllDynamicFields(client, tableId);
 
     // Parallel fetch all tier entries
     const results = await Promise.allSettled(
-      dynamicFields.data.map(field =>
+      dynamicFields.map(field =>
         client.getDynamicFieldObject({ parentId: tableId, name: field.name })
           .then(fieldData => ({ field, fieldData }))
       )
@@ -272,14 +297,12 @@ export function useExecutors(): UseExecutorsReturn {
         return;
       }
 
-      // Fetch all dynamic fields (executor entries)
-      const dynamicFields = await client.getDynamicFields({
-        parentId: tableId,
-      });
+      // Fetch all dynamic fields (executor entries) — cursor-paginated
+      const dynamicFields = await fetchAllDynamicFields(client, tableId);
 
       // Parallel fetch all executor entries
       const results = await Promise.allSettled(
-        dynamicFields.data.map(field =>
+        dynamicFields.map(field =>
           client.getDynamicFieldObject({ parentId: tableId, name: field.name })
             .then(fieldData => ({ field, fieldData }))
         )
