@@ -6,6 +6,9 @@ import type {
   TradeFillRow,
   TraderStatsRow,
   BalanceManagerRow,
+  CompetitionRow,
+  CompetitionResultRow,
+  CompetitionStatus,
   Period,
   VALID_PERIODS,
 } from './leaderboard-types.js';
@@ -74,6 +77,38 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
 
     CREATE INDEX IF NOT EXISTS idx_stats_period_rank
       ON trader_stats(period, rank ASC);
+
+    CREATE TABLE IF NOT EXISTS competitions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      start_ms INTEGER NOT NULL,
+      end_ms INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'upcoming',
+      prize_description TEXT NOT NULL DEFAULT '',
+      min_volume TEXT NOT NULL DEFAULT '0',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_comp_status
+      ON competitions(status);
+    CREATE INDEX IF NOT EXISTS idx_comp_dates
+      ON competitions(start_ms, end_ms);
+
+    CREATE TABLE IF NOT EXISTS competition_results (
+      competition_id TEXT NOT NULL,
+      address TEXT NOT NULL,
+      volume_quote TEXT NOT NULL,
+      trade_count INTEGER NOT NULL,
+      rank INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (competition_id, address),
+      FOREIGN KEY (competition_id) REFERENCES competitions(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_cr_rank
+      ON competition_results(competition_id, rank ASC);
   `);
 }
 
@@ -307,9 +342,196 @@ export function getTraderAllPeriodStats(address: string): TraderStatsRow[] {
     .all(address) as TraderStatsRow[];
 }
 
+export function getTraderFills(
+  address: string,
+  limit: number = 50,
+): TradeFillRow[] {
+  // Use UNION to leverage per-column indexes instead of OR (which causes full table scan)
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT * FROM (
+         SELECT tx_digest, event_seq, pool_id, maker_address, taker_address,
+                price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
+         FROM trade_fills WHERE maker_address = ?
+         UNION
+         SELECT tx_digest, event_seq, pool_id, maker_address, taker_address,
+                price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
+         FROM trade_fills WHERE taker_address = ?
+       ) ORDER BY timestamp_ms DESC LIMIT ?`
+    )
+    .all(address, address, limit + 1) as TradeFillRow[];
+}
+
 export function getTotalTradersCount(): number {
   const row = getLeaderboardDb()
     .prepare("SELECT COUNT(DISTINCT address) as count FROM trader_stats WHERE period = 'all'")
     .get() as { count: number } | undefined;
   return row?.count ?? 0;
+}
+
+// ===== Competition CRUD =====
+
+export function createCompetition(comp: Omit<CompetitionRow, 'created_at' | 'updated_at'>): void {
+  const now = Date.now();
+  getLeaderboardDb()
+    .prepare(
+      `INSERT INTO competitions (id, title, description, start_ms, end_ms, status, prize_description, min_volume, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(comp.id, comp.title, comp.description, comp.start_ms, comp.end_ms, comp.status, comp.prize_description, comp.min_volume, now, now);
+}
+
+export function updateCompetition(
+  id: string,
+  updates: Partial<Pick<CompetitionRow, 'title' | 'description' | 'start_ms' | 'end_ms' | 'status' | 'prize_description' | 'min_volume'>>,
+): boolean {
+  const ldb = getLeaderboardDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  const ALLOWED_COLUMNS = new Set([
+    'title', 'description', 'start_ms', 'end_ms',
+    'status', 'prize_description', 'min_volume',
+  ]);
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined && ALLOWED_COLUMNS.has(key)) {
+      fields.push(`${key} = ?`);
+      values.push(value);
+    }
+  }
+
+  if (fields.length === 0) return false;
+
+  fields.push('updated_at = ?');
+  values.push(Date.now());
+  values.push(id);
+
+  const result = ldb
+    .prepare(`UPDATE competitions SET ${fields.join(', ')} WHERE id = ?`)
+    .run(...values);
+
+  return result.changes > 0;
+}
+
+export function getCompetition(id: string): CompetitionRow | null {
+  return (getLeaderboardDb()
+    .prepare('SELECT * FROM competitions WHERE id = ?')
+    .get(id) as CompetitionRow | undefined) ?? null;
+}
+
+export function listCompetitions(status?: CompetitionStatus): CompetitionRow[] {
+  if (status) {
+    return getLeaderboardDb()
+      .prepare('SELECT * FROM competitions WHERE status = ? ORDER BY start_ms DESC')
+      .all(status) as CompetitionRow[];
+  }
+  return getLeaderboardDb()
+    .prepare('SELECT * FROM competitions ORDER BY start_ms DESC')
+    .all() as CompetitionRow[];
+}
+
+export function getActiveCompetitions(): CompetitionRow[] {
+  return getLeaderboardDb()
+    .prepare("SELECT * FROM competitions WHERE status IN ('upcoming', 'active') ORDER BY start_ms ASC")
+    .all() as CompetitionRow[];
+}
+
+// ===== Competition Aggregation =====
+
+interface AggregatedCompetitionTrader {
+  address: string;
+  volume_quote: string;
+  trade_count: number;
+}
+
+export function aggregateCompetitionVolume(
+  startMs: number,
+  endMs: number,
+  excludedAddresses: Set<string>,
+  limit: number = 100,
+): AggregatedCompetitionTrader[] {
+  const ldb = getLeaderboardDb();
+
+  const excludeList = [...excludedAddresses];
+  const excludePlaceholders = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+
+  const query = `
+    SELECT
+      address,
+      CAST(SUM(CAST(quote_volume AS INTEGER)) AS TEXT) as volume_quote,
+      COUNT(*) as trade_count
+    FROM (
+      SELECT maker_address as address, quote_quantity as quote_volume, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ? AND timestamp_ms <= ?
+      UNION ALL
+      SELECT taker_address as address, quote_quantity as quote_volume, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ? AND timestamp_ms <= ?
+    )
+    WHERE 1=1 ${excludePlaceholders}
+    GROUP BY address
+    ORDER BY SUM(CAST(quote_volume AS INTEGER)) DESC
+    LIMIT ?
+  `;
+
+  const params = [startMs, endMs, startMs, endMs, ...excludeList, limit];
+  return ldb.prepare(query).all(...params) as AggregatedCompetitionTrader[];
+}
+
+export function replaceCompetitionResults(
+  competitionId: string,
+  traders: Array<{
+    address: string;
+    volumeQuote: string;
+    tradeCount: number;
+    rank: number;
+  }>,
+): void {
+  const ldb = getLeaderboardDb();
+  const now = Date.now();
+
+  const replaceStmt = ldb.prepare(
+    `INSERT INTO competition_results (competition_id, address, volume_quote, trade_count, rank, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(competition_id, address) DO UPDATE SET
+       volume_quote = excluded.volume_quote,
+       trade_count = excluded.trade_count,
+       rank = excluded.rank,
+       updated_at = excluded.updated_at`
+  );
+
+  const tx = ldb.transaction(() => {
+    const addresses = traders.map((t) => t.address);
+    if (addresses.length > 0) {
+      const placeholders = addresses.map(() => '?').join(',');
+      ldb.prepare(
+        `DELETE FROM competition_results WHERE competition_id = ? AND address NOT IN (${placeholders})`
+      ).run(competitionId, ...addresses);
+    } else {
+      ldb.prepare('DELETE FROM competition_results WHERE competition_id = ?').run(competitionId);
+    }
+
+    for (const t of traders) {
+      replaceStmt.run(competitionId, t.address, t.volumeQuote, t.tradeCount, t.rank, now);
+    }
+  });
+
+  tx();
+}
+
+export function getCompetitionResults(
+  competitionId: string,
+  limit: number = 100,
+): CompetitionResultRow[] {
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT competition_id, address, volume_quote, trade_count, rank, updated_at
+       FROM competition_results
+       WHERE competition_id = ?
+       ORDER BY rank ASC
+       LIMIT ?`
+    )
+    .all(competitionId, limit) as CompetitionResultRow[];
 }

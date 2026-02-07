@@ -4,6 +4,10 @@ import {
   aggregateTraderVolume,
   getCurrentRanks,
   replaceTraderStats,
+  getActiveCompetitions,
+  aggregateCompetitionVolume,
+  replaceCompetitionResults,
+  updateCompetition,
 } from './leaderboard-store.js';
 
 let config: LeaderboardConfig | null = null;
@@ -47,9 +51,56 @@ function runAggregation(): void {
     replaceTraderStats(period, ranked);
   }
 
+  // Aggregate active competitions
+  runCompetitionAggregation();
+
   const elapsed = Date.now() - start;
   if (elapsed > 1000) {
     console.log(`[Aggregator] Completed in ${elapsed}ms`);
+  }
+}
+
+/**
+ * Aggregate results for active competitions and auto-transition statuses.
+ */
+function runCompetitionAggregation(): void {
+  if (!config) return;
+
+  const now = Date.now();
+  const competitions = getActiveCompetitions();
+
+  for (const comp of competitions) {
+    // Auto-transition: upcoming -> active
+    if (comp.status === 'upcoming' && now >= comp.start_ms && now <= comp.end_ms) {
+      updateCompetition(comp.id, { status: 'active' });
+      comp.status = 'active';
+      console.log(`[Aggregator] Competition "${comp.title}" is now active`);
+    }
+
+    // Auto-transition: active -> ended
+    if (comp.status === 'active' && now > comp.end_ms) {
+      updateCompetition(comp.id, { status: 'ended' });
+      console.log(`[Aggregator] Competition "${comp.title}" has ended`);
+    }
+
+    // Aggregate results for active competitions
+    if (comp.status === 'active') {
+      const traders = aggregateCompetitionVolume(
+        comp.start_ms,
+        Math.min(now, comp.end_ms),
+        config.excludedAddresses,
+        100,
+      );
+
+      const ranked = traders.map((t, index) => ({
+        address: t.address,
+        volumeQuote: t.volume_quote,
+        tradeCount: t.trade_count,
+        rank: index + 1,
+      }));
+
+      replaceCompetitionResults(comp.id, ranked);
+    }
   }
 }
 

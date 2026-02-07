@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWallet, useZkLogin, useSignerAddress } from '@nasun/wallet';
 import { useLeaderboard, LeaderboardTable, PeriodSelector, MyRankCard } from '../features/leaderboard';
+import { CompetitionBanner } from '../features/competitions';
 import type { Period } from '../features/leaderboard';
 
 export function LeaderboardPage() {
@@ -25,6 +26,9 @@ export function LeaderboardPage() {
         </div>
         <PeriodSelector selected={period} onSelect={setPeriod} />
       </div>
+
+      {/* Active Competition Banner */}
+      <CompetitionBanner />
 
       {/* My Rank Card (only when connected) */}
       {isConnected && userAddress && (

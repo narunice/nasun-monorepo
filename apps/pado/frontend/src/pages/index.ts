@@ -17,6 +17,9 @@ export { AdminPage } from './AdminPage';
 export { PerpsComingSoonPage } from './PerpsComingSoonPage';
 export { PerpTradePage } from './PerpTradePage';
 export { LeaderboardPage } from './LeaderboardPage';
+export { TraderProfilePage } from './TraderProfilePage';
+export { CompetitionsPage } from './CompetitionsPage';
+export { CompetitionDetailPage } from './CompetitionDetailPage';
 
 // Legacy exports (for backward compatibility during migration)
 export { PortfolioPage } from './PortfolioPage';

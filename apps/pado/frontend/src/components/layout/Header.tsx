@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Lottery', path: '/lottery', enabled: true },
   { label: 'Earn', path: '/earn', enabled: true },
   { label: 'Leaderboard', path: '/leaderboard', enabled: true },
+  { label: 'Compete', path: '/competitions', enabled: true },
   { label: 'Wallet', path: '/wallet', enabled: true },
 ];
 

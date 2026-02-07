@@ -28,6 +28,9 @@ import {
   AdminPage,
   PerpTradePage,
   LeaderboardPage,
+  TraderProfilePage,
+  CompetitionsPage,
+  CompetitionDetailPage,
 } from '../pages';
 
 export function AppRoutes() {
@@ -57,6 +60,11 @@ export function AppRoutes() {
 
       {/* Leaderboard */}
       <Route path="/leaderboard" element={<LeaderboardPage />} />
+      <Route path="/leaderboard/trader/:address" element={<TraderProfilePage />} />
+
+      {/* Competitions */}
+      <Route path="/competitions" element={<CompetitionsPage />} />
+      <Route path="/competitions/:id" element={<CompetitionDetailPage />} />
 
       {/* Earn (Staking + Lending) */}
       <Route path="/earn" element={<EarnPage />} />
