@@ -69,7 +69,6 @@ export function OrderForm({
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [totalInput, setTotalInput] = useState('');
   const [activeField, setActiveField] = useState<'amount' | 'total'>('amount');
 
@@ -412,53 +411,29 @@ export function OrderForm({
         )}
       </div>
 
-      {/* G. Advanced Options (Limit only) */}
+      {/* G. Execution Options (Limit only) */}
       {!isMarket && onExecutionOptionChange && (
         <div>
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1 text-trading-xs xl:text-trading-sm text-theme-text-muted hover:text-theme-text-primary transition-colors"
-          >
-            <svg
-              className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-            Advanced
-            {executionOption !== 'GTC' && (
-              <span className="ml-1 px-1.5 py-0.5 bg-pd1/30 text-pd3 rounded text-[10px] xl:text-xs">
-                {executionOption}
-              </span>
-            )}
-          </button>
-
-          {showAdvanced && (
-            <div className="mt-2 p-2 bg-theme-bg-tertiary/50 rounded">
-              <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted mb-1.5">Execution</div>
-              <div className="grid grid-cols-4 gap-1">
-                {EXECUTION_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => onExecutionOptionChange(opt.value)}
-                    className={`py-1 px-1.5 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
-                      executionOption === opt.value
-                        ? 'bg-pd1 text-white'
-                        : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
-                    }`}
-                    title={opt.description}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1.5 text-[10px] xl:text-xs text-theme-text-muted">
-                {EXECUTION_OPTIONS.find((o) => o.value === executionOption)?.description}
-              </p>
-            </div>
-          )}
+          <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted mb-1.5">Execution</div>
+          <div className="grid grid-cols-4 gap-1">
+            {EXECUTION_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onExecutionOptionChange(opt.value)}
+                className={`py-1 px-1.5 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
+                  executionOption === opt.value
+                    ? 'bg-pd1 text-white'
+                    : 'bg-theme-bg-secondary text-theme-text-primary hover:bg-theme-bg-tertiary'
+                }`}
+                title={opt.description}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] xl:text-xs text-theme-text-muted">
+            {EXECUTION_OPTIONS.find((o) => o.value === executionOption)?.description}
+          </p>
         </div>
       )}
 
