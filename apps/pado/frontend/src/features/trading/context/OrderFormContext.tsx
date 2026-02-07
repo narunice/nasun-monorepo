@@ -18,6 +18,8 @@ export const EXECUTION_OPTION_MAP: Record<ExecutionOption, OrderType> = {
   POST_ONLY: ORDER_TYPE.POST_ONLY,
 };
 
+export type OrderModeType = 'limit' | 'market';
+
 export interface OrderFormContextType {
   // 주문 입력 상태
   price: string;
@@ -28,6 +30,10 @@ export interface OrderFormContextType {
   // Buy/Sell side
   side: 'buy' | 'sell';
   setSide: (side: 'buy' | 'sell') => void;
+
+  // Order mode (Limit / Market)
+  orderMode: OrderModeType;
+  setOrderMode: (mode: OrderModeType) => void;
 
   // 실행 옵션 (Limit)
   executionOption: ExecutionOption;
@@ -65,6 +71,9 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
 
   // Buy/Sell side
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
+
+  // Order mode (Limit / Market)
+  const [orderMode, setOrderMode] = useState<OrderModeType>('limit');
 
   // 실행 옵션 상태 (Limit)
   const [executionOption, setExecutionOption] = useState<ExecutionOption>('GTC');
@@ -141,6 +150,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         setAmount,
         side,
         setSide,
+        orderMode,
+        setOrderMode,
         executionOption,
         setExecutionOption,
         getOrderType,

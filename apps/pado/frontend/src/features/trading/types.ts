@@ -88,3 +88,14 @@ export interface TradeResult {
   depositInfo?: DepositInfo; // 입금 금액 정보
   executionInfo?: OrderExecutionInfo; // 체결 정보
 }
+
+// Locked amount calculation: buy orders lock quote token, sell orders lock base token
+export function calcLockedAmounts(orders: Array<{ price: number; quantity: number; isBid: boolean }>) {
+  const lockedQuote = orders
+    .filter((o) => o.isBid)
+    .reduce((sum, o) => sum + o.price * o.quantity, 0);
+  const lockedBase = orders
+    .filter((o) => !o.isBid)
+    .reduce((sum, o) => sum + o.quantity, 0);
+  return { lockedQuote, lockedBase };
+}

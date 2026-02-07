@@ -10,12 +10,14 @@ import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { OrderHistory } from './OrderHistory';
 import { TradeHistory } from './TradeHistory';
-import { useOpenOrders, useOrderActions } from '../hooks';
+import { DepthChart } from './chart';
+import { useOpenOrders, useOrderActions, useOrderbook } from '../hooks';
 import { useMarket } from '../context/MarketContext';
+import { calcLockedAmounts } from '../types';
 import { UnderlineTabs, type TabItem } from '@/components/common';
 import { TransferModal } from './TransferModal';
 
-export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
+export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'depth' | 'assets';
 
 type TabConfig = TabItem<TabType>;
 
@@ -25,14 +27,16 @@ interface BottomTabPanelProps {
 
 export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('openOrders');
-  const { balanceManagerId, isLoading, handleCancelOrder } = useOrderActions();
+  const { balanceManagerId, isLoading, handleCancelOrder, handleCancelAllOrders } = useOrderActions();
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
+  const { data: orderbookData } = useOrderbook();
   const openOrderCount = openOrdersData?.orders?.length ?? 0;
 
   const tabs: TabConfig[] = [
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
+    { id: 'depth', label: 'Depth' },
     { id: 'assets', label: 'Assets' },
   ];
 
@@ -54,10 +58,20 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
             orders={openOrdersData?.orders ?? []}
             isLoading={isLoading}
             onCancel={handleCancelOrder}
+            onCancelAll={handleCancelAllOrders}
           />
         )}
         {activeTab === 'orderHistory' && <OrderHistoryTab />}
         {activeTab === 'tradeHistory' && <TradeHistoryTab />}
+        {activeTab === 'depth' && (
+          <div className="min-h-[180px] h-full">
+            <DepthChart
+              bids={orderbookData?.orderbook?.bids ?? []}
+              asks={orderbookData?.orderbook?.asks ?? []}
+              midPrice={orderbookData?.midPrice ?? 0}
+            />
+          </div>
+        )}
         {activeTab === 'assets' && <AssetsTab />}
       </div>
     </div>
@@ -69,12 +83,13 @@ interface OpenOrdersTabProps {
   orders: Array<{ orderId: string; price: number; quantity: number; isBid: boolean; }>;
   isLoading: boolean;
   onCancel: (orderId: string) => void;
+  onCancelAll: (orderIds: string[]) => void;
 }
 
-function OpenOrdersTab({ orders, isLoading, onCancel }: OpenOrdersTabProps) {
+function OpenOrdersTab({ orders, isLoading, onCancel, onCancelAll }: OpenOrdersTabProps) {
   return (
     <div className="min-h-[180px]">
-      <OpenOrders orders={orders} isLoading={isLoading} onCancel={onCancel} />
+      <OpenOrders orders={orders} isLoading={isLoading} onCancel={onCancel} onCancelAll={onCancelAll} />
     </div>
   );
 }
@@ -109,6 +124,8 @@ function AssetsTab() {
   const { balanceManagerId, isLoading, handleDepositToken, handleWithdrawToken, lastAutoDepositError } = useOrderActions();
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
+  const assetOrders = openOrdersData?.orders ?? [];
+  const { lockedQuote, lockedBase } = calcLockedAmounts(assetOrders);
 
   const { data: multiBalance } = useMultiBalance();
   const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
@@ -126,10 +143,11 @@ function AssetsTab() {
   if (!isConnected) {
     return (
       <div className="min-h-[180px]">
-        <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
+        <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-6 gap-2 mb-2 pb-2 border-b border-theme-border">
           <span>Asset</span>
           <span className="text-right">Wallet</span>
           <span className="text-right">Trading</span>
+          <span className="text-right">In Orders</span>
           <span className="text-right">Total</span>
           <span className="text-right">Actions</span>
         </div>
@@ -146,6 +164,7 @@ function AssetsTab() {
       symbol: baseSymbol,
       wallet: walletBase,
       trading: bmBalance.base,
+      inOrders: lockedBase,
       decimals: 4,
       tokenType: currentPool.baseToken.type!,
       tokenDecimals: currentPool.baseToken.decimals,
@@ -154,6 +173,7 @@ function AssetsTab() {
       symbol: 'NUSDC',
       wallet: walletQuote,
       trading: bmBalance.quote,
+      inOrders: lockedQuote,
       decimals: 2,
       tokenType: currentPool.quoteToken.type!,
       tokenDecimals: currentPool.quoteToken.decimals,
@@ -163,23 +183,27 @@ function AssetsTab() {
   return (
     <div className="min-h-[180px]">
       {/* Column Headers */}
-      <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 mb-2 pb-2 border-b border-theme-border">
+      <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-6 gap-2 mb-2 pb-2 border-b border-theme-border">
         <span>Asset</span>
         <span className="text-right">Wallet</span>
         <span className="text-right">Trading</span>
+        <span className="text-right">In Orders</span>
         <span className="text-right">Total</span>
         <span className="text-right">Actions</span>
       </div>
 
       {/* Asset Rows */}
       {assets.map((asset) => (
-        <div key={asset.symbol} className="grid grid-cols-5 gap-2 py-1.5 text-trading-sm xl:text-trading-lg">
+        <div key={asset.symbol} className="grid grid-cols-6 gap-2 py-1.5 text-trading-sm xl:text-trading-lg">
           <span className="font-medium text-theme-text-primary">{asset.symbol}</span>
           <span className="text-right font-mono text-theme-text-secondary">
             {asset.wallet.toFixed(asset.decimals)}
           </span>
           <span className="text-right font-mono text-pd3">
             {asset.trading.toFixed(asset.decimals)}
+          </span>
+          <span className="text-right font-mono text-yellow-500">
+            {asset.inOrders > 0 ? asset.inOrders.toFixed(asset.decimals) : '-'}
           </span>
           <span className="text-right font-mono text-theme-text-primary">
             {(asset.wallet + asset.trading).toFixed(asset.decimals)}

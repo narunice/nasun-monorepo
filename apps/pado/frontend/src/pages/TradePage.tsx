@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
 import { TradingPanel, EnablePadoCard } from '../features/trading/containers';
 import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles, PoolInfo } from '../features/trading/components';
-import { useTradeMode, useOrderbook } from '../features/trading/hooks';
+import { useTradeMode, useOrderbook, useKeyboardShortcuts } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
 import { type TokenSymbol } from '../lib/prices';
@@ -23,7 +23,7 @@ import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from '..
 import { NewsCarousel } from '../features/news';
 
 // Fixed height for chart and orderbook to ensure consistent layout
-const CHART_HEIGHT = 480;
+const CHART_HEIGHT = 580;
 // Chat panel height when expanded (below chart area)
 const CHAT_HEIGHT = 280;
 
@@ -58,6 +58,7 @@ function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
 
 function TradePageContent() {
   const { mode, toggleMode, isSimple } = useTradeMode();
+  useKeyboardShortcuts(!isSimple); // Pro mode only
   const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
   const [chatFloating, setChatFloating] = useState(false);
   const { currentPool } = useMarket();

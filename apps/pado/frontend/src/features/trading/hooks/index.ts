@@ -11,6 +11,7 @@ export { useOrderHistory, type OrderHistoryItem, type OrderType, type OrderStatu
 export { useMyTrades, type MyTradeItem } from './useMyTrades';
 export { useTradeMode, type TradeMode } from './useTradeMode';
 export { useBalanceManagerBalance } from './useBalanceManagerBalance';
+export { useKeyboardShortcuts } from './useKeyboardShortcuts';
 export { useTransactionExecutor } from './useTransactionExecutor';
 export {
   useAutoDeposit,

@@ -39,9 +39,24 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const baseSymbol = currentPool.baseToken.symbol;
   const colors = CHART_COLORS[theme];
 
-  // State
-  const [interval, setInterval] = useState<TimeInterval>('15m');
-  const [indicators, setIndicators] = useState<IndicatorState>({ ma: true, rsi: false, macd: false });
+  // State (persisted to localStorage)
+  const [interval, setInterval] = useState<TimeInterval>(() => {
+    const stored = localStorage.getItem('pado:chart:interval');
+    return (stored && ['1m', '5m', '15m', '1h', '4h', '1d'].includes(stored)) ? stored as TimeInterval : '15m';
+  });
+  const [indicators, setIndicators] = useState<IndicatorState>(() => {
+    try {
+      const stored = localStorage.getItem('pado:chart:indicators');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (typeof parsed.ma === 'boolean' && typeof parsed.rsi === 'boolean' && typeof parsed.macd === 'boolean') {
+          // Only pick expected keys to prevent prototype pollution from tampered localStorage
+          return { ma: parsed.ma, rsi: parsed.rsi, macd: parsed.macd };
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+    return { ma: true, rsi: false, macd: false };
+  });
   const [lastPrice, setLastPrice] = useState<{ value: number; change: number } | null>(null);
   const [ohlcv, setOhlcv] = useState<OhlcvData | null>(null);
 
@@ -67,6 +82,10 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const signalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdHistSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
+
+  // Persist interval and indicators to localStorage
+  useEffect(() => { localStorage.setItem('pado:chart:interval', interval); }, [interval]);
+  useEffect(() => { localStorage.setItem('pado:chart:indicators', JSON.stringify(indicators)); }, [indicators]);
 
   const handleToggleIndicator = useCallback((key: keyof IndicatorState) => {
     setIndicators((prev) => ({ ...prev, [key]: !prev[key] }));

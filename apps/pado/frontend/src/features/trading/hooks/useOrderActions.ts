@@ -35,6 +35,7 @@ export interface UseOrderActionsResult {
   ) => Promise<TradeResult>;
   handleMarketOrder: (type: "buy" | "sell", amount: number) => Promise<TradeResult>;
   handleCancelOrder: (orderId: string) => Promise<TradeResult>;
+  handleCancelAllOrders: (orderIds: string[]) => Promise<TradeResult>;
 
   // BalanceManager 관리
   handleCreateBalanceManager: () => Promise<TradeResult>;
@@ -383,6 +384,46 @@ export function useOrderActions(): UseOrderActionsResult {
     [cancelOrder, showToast, refreshData]
   );
 
+  // Cancel all open orders sequentially (capped to prevent UI freeze / gas drain)
+  const MAX_CANCEL_BATCH = 50;
+  const handleCancelAllOrders = useCallback(
+    async (orderIds: string[]): Promise<TradeResult> => {
+      if (orderIds.length === 0) return { success: true };
+
+      const cappedIds = orderIds.slice(0, MAX_CANCEL_BATCH);
+      let cancelled = 0;
+      let lastError: string | undefined;
+
+      for (const orderId of cappedIds) {
+        const result = await cancelOrder(orderId);
+        if (result.success) {
+          cancelled++;
+        } else {
+          // Skip already-filled orders
+          if (result.error?.includes("leaf_remove") || result.error?.includes("big_vector")) {
+            cancelled++;
+          } else {
+            lastError = result.error;
+          }
+        }
+      }
+
+      if (cancelled === cappedIds.length) {
+        showToast(`Cancelled ${cancelled} order${cancelled > 1 ? 's' : ''}`, "success");
+        refreshData();
+        return { success: true };
+      } else if (cancelled > 0) {
+        showToast(`Cancelled ${cancelled}/${cappedIds.length} orders`, "warning");
+        refreshData();
+        return { success: true };
+      }
+
+      showToast(`Failed to cancel orders: ${formatUserFriendlyError(lastError)}`, "error");
+      return { success: false, error: lastError };
+    },
+    [cancelOrder, showToast, refreshData]
+  );
+
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
   const handleCreateBalanceManager = useCallback(async (): Promise<TradeResult> => {
     // Step 1: Create BalanceManager
@@ -494,6 +535,7 @@ export function useOrderActions(): UseOrderActionsResult {
     handleLimitOrder,
     handleMarketOrder,
     handleCancelOrder,
+    handleCancelAllOrders,
     handleCreateBalanceManager,
     handleDeposit,
     handleWithdraw,
