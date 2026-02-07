@@ -276,7 +276,7 @@
   /* Typography - 기본 스타일 (다크 모드 기본, 컴포넌트에서 쉽게 덮어쓸 수 있도록 !important 제거) */
 
   h1 {
-    @apply text-4xl/tight md:text-5xl/tight lg:text-6xl/tight tracking-wide text-nasun-white;
+    @apply text-4xl/tight md:text-5xl/tight lg:text-6xl/tight xl:text-7xl/tight tracking-wide text-nasun-white;
   }
 
   h2 {
@@ -311,19 +311,37 @@
 @layer components {
   /* Baram cloud drift animations */
   @keyframes cloud-drift-1 {
-    0% { transform: translateX(-20%) translateY(0); }
-    50% { transform: translateX(60%) translateY(-10px); }
-    100% { transform: translateX(120%) translateY(0); }
+    0% {
+      transform: translateX(-20%) translateY(0);
+    }
+    50% {
+      transform: translateX(60%) translateY(-10px);
+    }
+    100% {
+      transform: translateX(120%) translateY(0);
+    }
   }
   @keyframes cloud-drift-2 {
-    0% { transform: translateX(80%) translateY(0); }
-    50% { transform: translateX(10%) translateY(8px); }
-    100% { transform: translateX(-30%) translateY(0); }
+    0% {
+      transform: translateX(80%) translateY(0);
+    }
+    50% {
+      transform: translateX(10%) translateY(8px);
+    }
+    100% {
+      transform: translateX(-30%) translateY(0);
+    }
   }
   @keyframes cloud-drift-3 {
-    0% { transform: translateX(10%) translateY(0); }
-    50% { transform: translateX(70%) translateY(-6px); }
-    100% { transform: translateX(110%) translateY(0); }
+    0% {
+      transform: translateX(10%) translateY(0);
+    }
+    50% {
+      transform: translateX(70%) translateY(-6px);
+    }
+    100% {
+      transform: translateX(110%) translateY(0);
+    }
   }
 
   .baram-cloud-1 {
@@ -554,4 +572,3 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 225, 211, 0.4) rgba(0, 0, 0, 0.2);
 }
-

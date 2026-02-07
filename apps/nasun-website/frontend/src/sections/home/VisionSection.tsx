@@ -5,6 +5,8 @@ import visionVideoMobileMP4 from "../../assets/videos/home-vision-wave-light-mob
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SignUpModal } from "@/components/auth/SignUpModal";
+import { ButtonV2 } from "@/components/ui/button-v2";
+import visionTriangle from "../../assets/images/home-vision-triangle.png";
 
 interface VisionSectionV2Props {
   shouldLoadVideo?: boolean;
@@ -111,72 +113,79 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
       </div>
 
       {/* Content */}
-      <div className="relative z-30 flex flex-col lg:flex-row items-center justify-center min-h-screen px-4 lg:px-8 gap-6 lg:gap-12 xl:gap-16">
-        {/* Left: Triangle Symbol */}
-        <div className="w-full lg:w-2/5 flex items-center justify-center lg:justify-end pt-16 lg:pt-0">
-          <FadeInUp delay="0.1s">
-            <img
-              src="/nasun_symbol_black.svg"
-              alt="Nasun"
-              className="w-40 md:w-56 lg:w-64 xl:w-80 opacity-50"
-            />
-          </FadeInUp>
+      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 lg:px-8">
+        {/* Main row: Triangle + Text */}
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 xl:gap-28">
+          {/* Left: Triangle Symbol */}
+          <div className="flex items-center justify-center lg:justify-end pt-16 lg:pt-0">
+            <FadeInUp delay="0.1s">
+              <img
+                src={visionTriangle}
+                alt="Nasun"
+                className="w-56 md:w-64 lg:w-80 xl:w-96  brightness-110"
+              />
+            </FadeInUp>
+          </div>
+
+          {/* Right: Text Content */}
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:gap-3">
+            {/* NASUN Wordmark */}
+            <FadeInUp delay="0.2s">
+              <h1 className="!font-changeling font-bold tracking-wider text-nasun-black/80 -mt-4 text-5xl/tight md:text-6xl/tight lg:text-7xl/tight">
+                NASUN
+              </h1>
+            </FadeInUp>
+
+            {/* COORDINATED CREATION */}
+            <FadeInUp delay="0.3s">
+              <h4 className="font-medium text-nasun-black/80 -mt-4 !tracking-normal">
+                COORDINATED CREATION
+              </h4>
+            </FadeInUp>
+
+            {/* Categories */}
+            <FadeInUp delay="0.4s">
+              <h6 className="font-medium text-nasun-black/60 mt-4">
+                Finance &bull; AI &bull; Games &bull; Film
+              </h6>
+            </FadeInUp>
+
+            {/* Description */}
+            <FadeInUp delay="0.5s">
+              <h6 className="font-medium text-nasun-black/60 -mt-2">
+                Communities build, own, and grow valuable IP together
+              </h6>
+            </FadeInUp>
+
+            {/* CTA Buttons */}
+            <FadeInUp delay="0.6s">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-3 lg:mt-4">
+                <ButtonV2
+                  variant="red"
+                  size="lg"
+                  onClick={() => setIsSignUpModalOpen(true)}
+                  className="w-[280px]"
+                >
+                  SIGN UP
+                </ButtonV2>
+                <ButtonV2
+                  variant="blue"
+                  size="lg"
+                  asChild
+                  className="w-[280px]"
+                >
+                  <Link to="/about/strategy">
+                    A UNIFIED VISION
+                  </Link>
+                </ButtonV2>
+              </div>
+            </FadeInUp>
+          </div>
         </div>
 
-        {/* Right: Text Content */}
-        <div className="w-full lg:w-3/5 flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:gap-3">
-          {/* NASUN Wordmark */}
-          <FadeInUp delay="0.2s">
-            <img
-              src="/nasun-wordmark-black.svg"
-              alt="NASUN"
-              className="h-14 md:h-16 lg:h-20 xl:h-24 w-auto opacity-80 "
-            />
-          </FadeInUp>
-
-          {/* COORDINATED CREATION */}
-          <FadeInUp delay="0.3s">
-            <h4 className="font-medium !text-nasun-black/85 -mt-4">COORDINATED CREATION</h4>
-          </FadeInUp>
-
-          {/* Categories */}
-          <FadeInUp delay="0.4s">
-            <p className="text-lg md:text-xl lg:text-2xl text-nasun-black/60 font-medium mt-4">
-              Finance &bull; AI &bull; Games &bull; Film
-            </p>
-          </FadeInUp>
-
-          {/* Description */}
-          <FadeInUp delay="0.5s">
-            <p className="text-base md:text-lg text-nasun-black/70 max-w-xl mt-2">
-              Communities build, own, and grow valuable IP together
-            </p>
-          </FadeInUp>
-
-          {/* CTA Buttons */}
-          <FadeInUp delay="0.6s">
-            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-6 lg:mt-8">
-              <button
-                onClick={() => setIsSignUpModalOpen(true)}
-                className="inline-flex items-center justify-center rounded-full px-12 py-2.5 text-base lg:text-lg font-medium text-white bg-gradient-to-r from-[#E8956A] to-[#D4736C] hover:from-[#D4836A] hover:to-[#C46862] active:scale-[0.97] transition-all cursor-pointer min-w-[180px]"
-              >
-                SIGN UP
-              </button>
-              <Link
-                to="/about/strategy"
-                className="inline-flex items-center justify-center rounded-full px-12 py-2.5 text-base lg:text-lg font-medium text-nasun-black/80 bg-[#A8C8E0] hover:bg-[#96BAD4] active:scale-[0.97] transition-all min-w-[180px]"
-              >
-                A UNIFIED VISION
-              </Link>
-            </div>
-          </FadeInUp>
-        </div>
-      </div>
-
-      {/* Bottom Tagline */}
-      <div className="absolute bottom-6 lg:bottom-10 left-0 right-0 z-30 px-4">
+        {/* Tagline */}
         <FadeInUp delay="0.7s">
-          <p className="font-medium text-lg/snug md:text-xl/snug xl:text-2xl/snug text-nasun-black/80 text-center max-w-4xl mx-auto">
+          <p className="font-medium text-lg/snug md:text-xl/snug xl:text-2xl/snug text-nasun-black/80 text-center max-w-4xl mx-auto mt-16 lg:mt-20">
             Building the next generation of global IP through coordinated creation.
           </p>
         </FadeInUp>
