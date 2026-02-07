@@ -63,6 +63,13 @@ const TOKEN_TO_ORACLE_SYMBOL: Partial<Record<TokenSymbol, SymbolKey>> = {
   // NUSDC: No oracle needed (always $1.00)
 };
 
+// Reverse mapping: on-chain oracle numeric symbol ID → TokenSymbol
+// (matches dev_oracle.move: 1=BTC, 2=ETH, 3=NASUN)
+const ORACLE_ID_TO_TOKEN: Record<number, TokenSymbol> = {
+  1: 'NBTC',
+  3: 'NASUN',
+};
+
 // ========================================
 // Oracle Integration
 // ========================================
@@ -176,6 +183,41 @@ export function getPriceSource(symbol: TokenSymbol): 'oracle' | 'simulated' | 'u
     return cached.source;
   }
   return 'unknown';
+}
+
+/**
+ * Resolve oracle numeric symbol ID to TokenSymbol.
+ * Returns null for unknown IDs (e.g., ETH=2 has no token mapping yet).
+ */
+export function getTokenByOracleId(symbolId: number): TokenSymbol | null {
+  return ORACLE_ID_TO_TOKEN[symbolId] ?? null;
+}
+
+/**
+ * Get price with freshness metadata (used by perp and other modules).
+ * Returns cached oracle data if available, otherwise simulated fallback.
+ */
+export function getPriceWithFreshness(symbol: TokenSymbol): {
+  price: number;
+  timestamp: number;
+  isFresh: boolean;
+  source: 'oracle' | 'simulated' | 'unknown';
+} {
+  const cached = priceCache.get(symbol);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return {
+      price: cached.price,
+      timestamp: cached.timestamp,
+      isFresh: cached.source === 'oracle',
+      source: cached.source,
+    };
+  }
+  return {
+    price: SIMULATED_PRICES[symbol] ?? 0,
+    timestamp: 0,
+    isFresh: false,
+    source: 'unknown',
+  };
 }
 
 /**

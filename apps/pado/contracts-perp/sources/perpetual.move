@@ -15,6 +15,7 @@ module pado_perp::perpetual {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use devnet_tokens::nusdc::NUSDC;
+    use pado_oracle::dev_oracle::{Self, OracleRegistry};
 
     // ===== Error Codes =====
 
@@ -28,6 +29,8 @@ module pado_perp::perpetual {
     const EMaxOpenInterestReached: u64 = 107;
     const ENotAdmin: u64 = 108;
     const EMarketPaused: u64 = 109;
+    const EOracleStale: u64 = 110;
+    const EOraclePriceOverflow: u64 = 111;
 
     // ===== Constants =====
 
@@ -42,6 +45,13 @@ module pado_perp::perpetual {
 
     /// Price precision (8 decimals)
     const PRICE_DECIMALS: u64 = 100_000_000;
+
+    /// Maximum oracle staleness (120 seconds)
+    const MAX_ORACLE_AGE_MS: u64 = 120_000;
+
+    /// Maximum reasonable price in oracle units (8 decimals).
+    /// $10,000,000 = 1_000_000_000_000_000. Guards against oracle misconfiguration.
+    const MAX_ORACLE_PRICE: u128 = 1_000_000_000_000_000;
 
     /// Minimum position size in USD (10 NUSDC)
     const MIN_POSITION_SIZE: u64 = 10_000_000;
@@ -215,6 +225,22 @@ module pado_perp::perpetual {
         timestamp: u64,
     }
 
+    // ===== Oracle =====
+
+    /// Read and validate oracle price. Shared by all trading and liquidation functions.
+    public(package) fun read_oracle_price(
+        market: &PerpMarket,
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
+    ): u64 {
+        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
+            oracle_registry, market.base_symbol, MAX_ORACLE_AGE_MS, clock
+        );
+        assert!(is_fresh, EOracleStale);
+        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
+        (price_u128 as u64)
+    }
+
     // ===== Admin Functions =====
 
     /// Create a new perpetual market
@@ -286,16 +312,18 @@ module pado_perp::perpetual {
     // ===== Trading Functions =====
 
     /// Open a new position
+    /// Price is read from the on-chain OracleRegistry to prevent manipulation.
     public fun open_position(
         market: &mut PerpMarket,
         is_long: bool,
         size: u64,
         leverage: u64,
         collateral: Coin<NUSDC>,
-        current_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): PerpPosition {
+        let current_price = read_oracle_price(market, oracle_registry, clock);
         assert!(market.is_active, EMarketPaused);
         assert!(leverage >= 1 && leverage <= market.max_leverage, EInvalidLeverage);
         assert!(size >= MIN_POSITION_SIZE, EInvalidSize);
@@ -364,13 +392,15 @@ module pado_perp::perpetual {
     }
 
     /// Close a position entirely
+    /// Price is read from the on-chain OracleRegistry to prevent manipulation.
     public fun close_position(
         market: &mut PerpMarket,
         position: PerpPosition,
-        current_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<NUSDC> {
+        let current_price = read_oracle_price(market, oracle_registry, clock);
         assert!(position.owner == tx_context::sender(ctx), ENotOwner);
         assert!(position.market_id == object::id(market), EPositionNotFound);
 
@@ -456,13 +486,16 @@ module pado_perp::perpetual {
     }
 
     /// Add collateral to an existing position (reduce leverage)
+    /// Price is read from the on-chain OracleRegistry for accurate leverage calculation.
     public fun add_collateral(
+        market: &PerpMarket,
         position: &mut PerpPosition,
         additional: Coin<NUSDC>,
-        current_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
         ctx: &TxContext,
     ) {
+        let current_price = read_oracle_price(market, oracle_registry, clock);
         assert!(position.owner == tx_context::sender(ctx), ENotOwner);
 
         let amount = coin::value(&additional);
@@ -489,14 +522,16 @@ module pado_perp::perpetual {
     }
 
     /// Remove collateral from a position (increase leverage)
+    /// Price is read from the on-chain OracleRegistry for accurate margin validation.
     public fun remove_collateral(
-        position: &mut PerpPosition,
         market: &PerpMarket,
+        position: &mut PerpPosition,
         amount: u64,
-        current_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<NUSDC> {
+        let current_price = read_oracle_price(market, oracle_registry, clock);
         assert!(position.owner == tx_context::sender(ctx), ENotOwner);
         assert!(position.market_id == object::id(market), EPositionNotFound);
 

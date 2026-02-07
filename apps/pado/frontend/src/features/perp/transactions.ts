@@ -68,11 +68,6 @@ function validateOpenPositionParams(params: OpenPositionParams): void {
   if (params.collateralAmount > MAX_COLLATERAL) {
     throw new Error('[Security] Collateral amount exceeds maximum allowed value');
   }
-
-  // Price: must be positive
-  if (params.currentPrice <= 0n) {
-    throw new Error('[Security] Current price must be positive');
-  }
 }
 
 /**
@@ -125,7 +120,7 @@ export function buildOpenPosition(
       tx.pure.u64(params.size),
       tx.pure.u64(params.leverage),
       tx.object(nusdcCoinId),
-      tx.pure.u64(params.currentPrice),
+      tx.object(ORACLE_REGISTRY_ID),
       tx.object(CLOCK_ID),
     ],
   });
@@ -167,7 +162,7 @@ export function buildOpenPositionWithAmount(
       tx.pure.u64(params.size),
       tx.pure.u64(params.leverage),
       collateralCoin,
-      tx.pure.u64(params.currentPrice),
+      tx.object(ORACLE_REGISTRY_ID),
       tx.object(CLOCK_ID),
     ],
   });
@@ -182,19 +177,16 @@ export function buildOpenPositionWithAmount(
  * @returns Transaction object
  */
 export function buildClosePosition(params: ClosePositionParams): Transaction {
-  if (params.currentPrice <= 0n) {
-    throw new Error('[Security] Current price must be positive');
-  }
-
   const tx = new Transaction();
 
   // close_position returns Coin<NUSDC> (collateral + P&L)
+  // Price is read from on-chain Oracle, not supplied by caller
   tx.moveCall({
     target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::close_position`,
     arguments: [
       tx.object(params.marketId),
       tx.object(params.positionId),
-      tx.pure.u64(params.currentPrice),
+      tx.object(ORACLE_REGISTRY_ID),
       tx.object(CLOCK_ID),
     ],
   });
@@ -221,9 +213,10 @@ export function buildAddCollateral(
   tx.moveCall({
     target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::add_collateral`,
     arguments: [
+      tx.object(params.marketId),
       tx.object(params.positionId),
       tx.object(nusdcCoinId),
-      tx.pure.u64(params.currentPrice),
+      tx.object(ORACLE_REGISTRY_ID),
       tx.object(CLOCK_ID),
     ],
   });
@@ -254,9 +247,10 @@ export function buildAddCollateralWithAmount(
   tx.moveCall({
     target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::add_collateral`,
     arguments: [
+      tx.object(params.marketId),
       tx.object(params.positionId),
       additionalCoin,
-      tx.pure.u64(params.currentPrice),
+      tx.object(ORACLE_REGISTRY_ID),
       tx.object(CLOCK_ID),
     ],
   });
@@ -279,13 +273,14 @@ export function buildRemoveCollateral(
   const tx = new Transaction();
 
   // remove_collateral returns Coin<NUSDC>
+  // On-chain signature: (market, position, amount, oracle_registry, clock, ctx)
   tx.moveCall({
     target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::remove_collateral`,
     arguments: [
-      tx.object(params.positionId),
       tx.object(params.marketId),
+      tx.object(params.positionId),
       tx.pure.u64(params.amount),
-      tx.pure.u64(params.currentPrice),
+      tx.object(ORACLE_REGISTRY_ID),
       tx.object(CLOCK_ID),
     ],
   });

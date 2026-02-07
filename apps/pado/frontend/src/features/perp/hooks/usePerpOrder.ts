@@ -182,7 +182,6 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     }
 
     const sizeUnits = toContractPrice(size / currentPrice);
-    const priceUnits = toContractPrice(currentPrice);
 
     if (sizeUnits < BigInt(MIN_POSITION_SIZE)) {
       throw new Error('Position size below minimum');
@@ -194,7 +193,6 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
       size: sizeUnits,
       leverage,
       collateralAmount: collateralUnits,
-      currentPrice: priceUnits,
     };
 
     setIsOpening(true);
@@ -232,13 +230,11 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
       throw new Error('Wallet not connected');
     }
 
-    const { positionId, currentPrice } = params;
-    const priceUnits = toContractPrice(currentPrice);
+    const { positionId } = params;
 
     const closeParams: ClosePositionParams = {
       marketId,
       positionId,
-      currentPrice: priceUnits,
     };
 
     setIsClosing(true);
@@ -277,7 +273,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
       throw new Error('Wallet not connected');
     }
 
-    const { positionId, amount, currentPrice } = params;
+    const { positionId, amount } = params;
     const amountUnits = toContractAmount(amount);
 
     const nusdcCoinId = await getNusdcCoin(amountUnits);
@@ -286,9 +282,9 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     }
 
     const addParams: AddCollateralParams = {
+      marketId,
       positionId,
       amount: amountUnits,
-      currentPrice: toContractPrice(currentPrice),
     };
 
     setIsAddingCollateral(true);
@@ -324,13 +320,12 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
       throw new Error('Wallet not connected');
     }
 
-    const { positionId, amount, currentPrice } = params;
+    const { positionId, amount } = params;
 
     const removeParams: RemoveCollateralParams = {
       marketId,
       positionId,
       amount: toContractAmount(amount),
-      currentPrice: toContractPrice(currentPrice),
     };
 
     setIsRemovingCollateral(true);

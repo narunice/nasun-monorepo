@@ -15,6 +15,7 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Transaction } from '@mysten/sui/transactions';
+import type { CoinStruct } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useMarket } from '../context/MarketContext';
 import { useOpenOrders } from './useOpenOrders';
@@ -68,6 +69,92 @@ export interface UseAutoDepositResult {
   isDepositing: boolean;
   lastDepositError: string | null;
 }
+
+// ========================================
+// Transaction Builder (standalone, no React dependency)
+// ========================================
+
+/**
+ * Add a coin deposit to a transaction.
+ * Handles coin merging, splitting, and the DeepBook balance_manager::deposit call.
+ */
+function addCoinDeposit(
+  tx: Transaction,
+  coins: CoinStruct[],
+  rawAmount: bigint,
+  coinType: string,
+  bmId: string,
+  useGas: boolean,
+): void {
+  const depositTarget = `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`;
+
+  if (useGas) {
+    const [depositCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(rawAmount)]);
+    tx.moveCall({
+      target: depositTarget,
+      typeArguments: [coinType],
+      arguments: [tx.object(bmId), depositCoin],
+    });
+    return;
+  }
+
+  if (coins.length === 0) {
+    throw new Error(`No ${coinType} coins available for deposit`);
+  }
+
+  const coinIds = coins.map(c => c.coinObjectId);
+  const [primary, ...rest] = coinIds;
+  if (rest.length > 0) {
+    tx.mergeCoins(tx.object(primary), rest.map(id => tx.object(id)));
+  }
+  const [depositCoin] = tx.splitCoins(tx.object(primary), [tx.pure.u64(rawAmount)]);
+  tx.moveCall({
+    target: depositTarget,
+    typeArguments: [coinType],
+    arguments: [tx.object(bmId), depositCoin],
+  });
+}
+
+/**
+ * Build a deposit transaction for the exact amounts needed.
+ * Pure function — no React hooks, can be tested independently.
+ */
+async function buildDepositTransaction(
+  walletAddress: string,
+  bmId: string,
+  quoteAmount: number,
+  baseAmount: number,
+  pool: PoolConfig,
+): Promise<Transaction | null> {
+  const client = getSuiClient();
+  const tx = new Transaction();
+
+  if (quoteAmount > 0) {
+    const rawAmount = BigInt(Math.ceil(quoteAmount * Math.pow(10, pool.quoteToken.decimals)));
+    const quoteCoins = await client.getCoins({ owner: walletAddress, coinType: pool.quoteToken.type! });
+    if (quoteCoins.data.length === 0) return null;
+    addCoinDeposit(tx, quoteCoins.data, rawAmount, pool.quoteToken.type!, bmId, false);
+  }
+
+  if (baseAmount > 0) {
+    const rawAmount = BigInt(Math.ceil(baseAmount * Math.pow(10, pool.baseToken.decimals)));
+    const isNativeToken = pool.baseToken.type === '0x2::sui::SUI';
+
+    if (isNativeToken) {
+      addCoinDeposit(tx, [], rawAmount, pool.baseToken.type!, bmId, true);
+    } else {
+      const baseCoins = await client.getCoins({ owner: walletAddress, coinType: pool.baseToken.type! });
+      if (baseCoins.data.length === 0) return null;
+      addCoinDeposit(tx, baseCoins.data, rawAmount, pool.baseToken.type!, bmId, false);
+    }
+  }
+
+  return tx;
+}
+
+// ========================================
+// React Hook
+// ========================================
 
 /**
  * Hook for automatic deposit management
@@ -183,101 +270,13 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
   );
 
   /**
-   * Build deposit transaction for exact amount needed
+   * Build deposit transaction (thin wrapper around standalone builder)
    */
   const buildDepositExactAmount = useCallback(
-    async (
-      bmId: string,
-      quoteAmount: number,
-      baseAmount: number = 0,
-      pool: PoolConfig
-    ): Promise<Transaction | null> => {
-      if (!walletAddress) return null;
-
-      const client = getSuiClient();
-      const tx = new Transaction();
-
-      // Deposit quote token (NUSDC) if needed
-      if (quoteAmount > 0) {
-        const rawQuoteAmount = BigInt(Math.ceil(quoteAmount * Math.pow(10, pool.quoteToken.decimals)));
-
-        const quoteCoins = await client.getCoins({
-          owner: walletAddress,
-          coinType: pool.quoteToken.type!,
-        });
-
-        if (quoteCoins.data.length === 0) {
-          return null; // No coins available
-        }
-
-        // Merge all quote coins and split exact amount
-        const coinIds = quoteCoins.data.map(c => c.coinObjectId);
-        if (coinIds.length === 1) {
-          const [depositCoin] = tx.splitCoins(tx.object(coinIds[0]), [tx.pure.u64(rawQuoteAmount)]);
-          tx.moveCall({
-            target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
-            typeArguments: [pool.quoteToken.type!],
-            arguments: [tx.object(bmId), depositCoin],
-          });
-        } else {
-          // Merge all coins first
-          const [primary, ...rest] = coinIds;
-          tx.mergeCoins(tx.object(primary), rest.map(id => tx.object(id)));
-          const [depositCoin] = tx.splitCoins(tx.object(primary), [tx.pure.u64(rawQuoteAmount)]);
-          tx.moveCall({
-            target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
-            typeArguments: [pool.quoteToken.type!],
-            arguments: [tx.object(bmId), depositCoin],
-          });
-        }
-      }
-
-      // Deposit base token (NBTC) if needed
-      if (baseAmount > 0) {
-        const rawBaseAmount = BigInt(Math.ceil(baseAmount * Math.pow(10, pool.baseToken.decimals)));
-        const isNativeToken = pool.baseToken.type === '0x2::sui::SUI';
-
-        if (isNativeToken) {
-          // For native token, use tx.gas and reserve for gas
-          const [depositCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(rawBaseAmount)]);
-          tx.moveCall({
-            target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
-            typeArguments: [pool.baseToken.type!],
-            arguments: [tx.object(bmId), depositCoin],
-          });
-        } else {
-          const baseCoins = await client.getCoins({
-            owner: walletAddress,
-            coinType: pool.baseToken.type!,
-          });
-
-          if (baseCoins.data.length === 0) {
-            return null;
-          }
-
-          const coinIds = baseCoins.data.map(c => c.coinObjectId);
-          if (coinIds.length === 1) {
-            const [depositCoin] = tx.splitCoins(tx.object(coinIds[0]), [tx.pure.u64(rawBaseAmount)]);
-            tx.moveCall({
-              target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
-              typeArguments: [pool.baseToken.type!],
-              arguments: [tx.object(bmId), depositCoin],
-            });
-          } else {
-            const [primary, ...rest] = coinIds;
-            tx.mergeCoins(tx.object(primary), rest.map(id => tx.object(id)));
-            const [depositCoin] = tx.splitCoins(tx.object(primary), [tx.pure.u64(rawBaseAmount)]);
-            tx.moveCall({
-              target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
-              typeArguments: [pool.baseToken.type!],
-              arguments: [tx.object(bmId), depositCoin],
-            });
-          }
-        }
-      }
-
-      return tx;
-    },
+    (bmId: string, quoteAmount: number, baseAmount: number = 0, pool: PoolConfig) =>
+      walletAddress
+        ? buildDepositTransaction(walletAddress, bmId, quoteAmount, baseAmount, pool)
+        : Promise.resolve(null),
     [walletAddress]
   );
 
