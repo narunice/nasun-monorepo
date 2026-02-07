@@ -113,7 +113,19 @@ export function NewsCarousel() {
   const { data, isLoading } = useNewsFeed(35);
   const items = data?.items ?? [];
   const displayItems = balancedSlice(items);
-  const { currentIndex, goTo, setPaused } = useCarousel(displayItems.length, 5000);
+  const { currentIndex, goTo, snapTo, setPaused, skipTransition } = useCarousel(displayItems.length, 5000);
+  const displayIndex = currentIndex >= displayItems.length ? 0 : currentIndex;
+
+  // Clone first slide at end for seamless infinite loop
+  const slides = displayItems.length > 0
+    ? [...displayItems, displayItems[0]]
+    : [];
+
+  const handleTransitionEnd = (e: React.TransitionEvent) => {
+    if (e.propertyName === 'transform' && currentIndex >= displayItems.length) {
+      snapTo(0);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -141,18 +153,19 @@ export function NewsCarousel() {
       <div className="px-3 py-2 border-b border-theme-border flex items-center justify-between shrink-0 z-10">
         <span className="text-xs font-medium text-theme-text-secondary">News</span>
         <span className="text-[10px] text-theme-text-tertiary">
-          {currentIndex + 1} / {displayItems.length}
+          {displayIndex + 1} / {displayItems.length}
         </span>
       </div>
 
       {/* Carousel track */}
       <div className="flex-1 relative overflow-hidden">
         <div
-          className="flex h-full transition-transform duration-500 ease-in-out"
+          className={`flex h-full ${skipTransition ? '' : 'transition-transform duration-500 ease-in-out'}`}
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          onTransitionEnd={handleTransitionEnd}
         >
-          {displayItems.map(item => (
-            <NewsSlide key={item.id} item={item} />
+          {slides.map((item, i) => (
+            <NewsSlide key={i < displayItems.length ? item.id : `${item.id}-clone`} item={item} />
           ))}
         </div>
       </div>
@@ -177,7 +190,7 @@ export function NewsCarousel() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              goTo((currentIndex + 1) % displayItems.length);
+              goTo(currentIndex + 1);
             }}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors"
             aria-label="Next news"
