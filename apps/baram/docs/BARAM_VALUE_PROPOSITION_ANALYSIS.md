@@ -124,7 +124,7 @@ ExecutionComplianceRecord:
 ### 5. Developers / dApp Builders
 
 **Current stack available:**
-- Blockchain: Nasun Network (Sui fork, Chain ID `12bf3808`)
+- Blockchain: Nasun Network (Sui fork, Chain ID `272218f1`)
 - Escrow: `baram.move` (NUSDC lock → proof → payment)
 - Registry: `executor.move` (registration/reputation/tier)
 - Compliance: `compliance.move` (immutable audit trail)

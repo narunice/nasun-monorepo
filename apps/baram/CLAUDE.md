@@ -35,12 +35,18 @@ apps/baram/
 │       │   ├── input/           # ChatInput, InputFooter
 │       │   ├── badges/          # TierBadge, DormantBadge
 │       │   ├── sidebar/         # SidebarSettings
+│       │   ├── empty/           # LandingScreen, WelcomeScreen, NFTGateScreen
 │       │   └── theme/           # ThemeProvider, ThemeToggle
-│       ├── config/network.ts    # Tier 상수, MODEL_PRICING, TEE_TYPES, EXECUTOR_SELECTION
+│       ├── hooks/               # useNFTGate.ts (BetaAccessNFT 게이팅), useIdleTimeout.ts
+│       ├── config/network.ts    # Tier 상수, MODEL_PRICING, TEE_TYPES, EXECUTOR_SELECTION, nftGateEnabled
 │       ├── services/            # chatCrypto.ts (AES-256-GCM), chatStorage.ts (IndexedDB)
 │       └── utils/crypto.ts      # RSA-OAEP 암호화
 │
-├── contracts/                   # baram.move (에스크로 + 정산)
+├── contracts/                   # baram 패키지 (에스크로 + Budget + BetaAccess)
+│   └── sources/
+│       ├── baram.move           # 에스크로 + 정산
+│       ├── budget.move          # Budget delegation (에이전트 예산 위임)
+│       └── beta_access.move     # BetaAccessNFT (베타 테스터 게이팅)
 │
 ├── contracts-executor/          # Executor 패키지
 │   └── sources/
@@ -66,6 +72,7 @@ apps/baram/
 │
 ├── cdk/                         # AWS CDK 인프라
 │   └── lambda-src/executor/     # Lambda executor (Groq/OpenAI cloud models)
+├── scripts/                     # mint-beta-access.sh (BetaAccessNFT 민팅)
 └── docs/                        # BARAM_IMPLEMENTATION_PLAN.md, SPOT_INSTANCE_GUIDE.md
 ```
 
@@ -119,6 +126,35 @@ cd apps/baram/executor-nitro
 | `create_request` | User | NUSDC 에스크로 + 요청 생성 |
 | `cancel_request` | User | 타임아웃 전 취소 + 환불 (Frontend auto-cancel on execution failure) |
 | `submit_proof` | Executor | 결과 해시 제출 + 지급 |
+
+### budget.move (Budget Delegation)
+
+> 에이전트에게 제한된 예산을 위임하여 자율적 AI 실행을 가능하게 함.
+
+| 함수 | 호출자 | 설명 |
+|------|--------|------|
+| `create_budget` | User | Budget 생성 (에이전트 주소, 모델/Executor 화이트리스트, 만료, 최대 건당 금액) |
+| `deposit_to_budget` | User (Owner) | Budget에 NUSDC 입금 |
+| `withdraw_from_budget` | User (Owner) | Budget에서 NUSDC 출금 |
+| `deactivate_budget` | User (Owner) | Budget 비활성화 + 잔액 반환 |
+| `update_constraints` | User (Owner) | 모델/Executor 화이트리스트, 최대 건당 금액 업데이트 |
+| `spend_from_budget` | Agent | Budget에서 NUSDC 차감 (모델/Executor/금액 제약 검증) |
+| `get_balance` / `get_stats` | View | Budget 잔액/통계 조회 |
+| `is_model_allowed` / `is_executor_allowed` | View | 화이트리스트 확인 |
+
+### beta_access.move (BetaAccessNFT)
+
+> 베타 테스터에게 NFT를 발급하여 채팅 접근을 게이팅함. 프론트엔드 UX 게이트 (보안 경계 아님).
+
+| 함수 | 호출자 | 설명 |
+|------|--------|------|
+| `initialize` | UpgradeCap 보유자 | AdminCap + Registry 생성 (업그레이드 후 1회 호출) |
+| `mint` | Admin | NFT 민팅 후 recipient에게 전송 (expires_at, remaining_uses 설정) |
+| `batch_mint` | Admin | 다수 주소에 일괄 민팅 (MAX_BATCH_SIZE=100) |
+| `use_access` | NFT 보유자 | 사용 횟수 차감 (original_uses=0이면 무제한) |
+| `is_valid` | View | 만료/사용횟수 확인 |
+| `get_remaining_uses` / `get_expires_at` | View | NFT 상태 조회 |
+| `get_total_minted` | View | Registry 총 민팅 수 조회 |
 
 ### executor.move (Registry + Self-Service)
 
@@ -185,61 +221,61 @@ cd apps/baram/executor-nitro
 
 ---
 
-## Deployed Contracts (Devnet V6)
+## Deployed Contracts (Devnet V7)
 
-> **Chain ID**: `272218f1` (V7, 2026-02-04 리셋)
+> **Chain ID**: `272218f1` (V7 리셋, 2026-02-04)
+> 전체 주소: `packages/devnet-config/devnet-ids.json` 참조
 
-### Baram Contract
+### Baram Contract (v3 — baram + budget + beta_access)
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0xfbe120e1847ca3ce7968bc7d85504a202639666755d581cfe642df3e57b2bc2f` |
-| BaramRegistry | `0x52427e24315a444e9aa07ecb93df5a3392e1cb5d5bec8aba90c4c9eecaf77d3f` |
-| UpgradeCap | `0xa9a6ee0412639af01e630ce23d38b246a88bdfd3ee8db5e3634ce45fa1eefe62` |
+| Package ID (v3) | `0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6` |
+| Original Package ID | `0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f` |
+| BaramRegistry | `0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833` |
+| UpgradeCap | `0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291` |
+| BetaAccessRegistry | `0xaf2fd2a1ccfd1f41afe51071981047860b81f9cfaa775fc12acadf099577e4f7` |
+| BetaAccessAdmin | `0x7daa09decafcfa78b712308a13e8c8204eb89de8434df806df51f4cec076d6c2` |
 
 ### Executor Registry + Staking + Tier
 
-> Frontend와 Settlement 모두 단일 registry를 사용합니다 (Dual Registry 통합 완료, 2026-01-31).
-
 | 항목 | 주소 |
 |------|------|
-| Package ID (v2) | `0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc` |
-| Original Package ID | `0xac09c1d6540e29454ee98bc18a5fa8f29b1c343153c8edf7dd92edd296f2d1ff` |
-| ExecutorRegistry | `0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c` |
-| AdminCap | `0xd4e4576a072f7aba56100b40cb4663539532fcc8cfd2b2802ff1f52490b89089` |
-| UpgradeCap | `0x43b301a9056440281da42c41340ed0e0ae47bdf885e92dbbd315df55bb7a53ce` |
-| ProcessedRequests | `0xc68e22ca8cc7851695c2a5466cc148221f31a94e02f4a65b1676c33ab8855404` |
-| StakingConfig | `0x6256077ab777e10061960e5d9243d8d4c71bf76531d3fff52c4257697f48830c` |
-| StakingRegistry | `0xf3a62a7f26f0deecbec14ae26b8c620df9e07bcc3a4a11e1632b27b37332f228` |
-| StakingAdminCap | `0x9ce33344d01578a8e121016af13caa11e773073d4e37e739b0c494a8ad9e5a35` |
-| TierRegistry | `0x21c2344fc2d86c173fb8f8826493e96a93edd7155f3142b4be81be7775cee23c` |
+| Package ID | `0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd` |
+| ExecutorRegistry | `0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656` |
+| AdminCap | `0x5e3dca938ff22ec2445a9de84029924b37a5bc5e2fc815c9547c547235d8c522` |
+| UpgradeCap | `0x0efe0d05fc4a3fb9e50a101853faebc3dc9e22e7c6aca2b71bb7643bed8c87d0` |
+| ProcessedRequests | `0x1d88bb96c90d9bde3a2c10fa4e26f3180e948dae908cb09ef4d6a79e905d7e48` |
+| StakingConfig | `0x187d4cc955e0784dde27133ab9d475ecbbd319a25ee7343f2f179c2760fe4a7f` |
+| StakingRegistry | `0xcdfc460a93376e7d33d293b2777e1699f31dfc48d85c79e8a503a9f8e792e136` |
+| StakingAdminCap | `0x5d9b577611d6d241fcfef011681e688e3ae3709023f518d9158e6d3189c5c554` |
+| TierRegistry | `0xda37bee40cdc5e9a6188ddf021fe78d3328ff6384e84dc36014479c07e4300f1` |
 
 ### Attestation Registry
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0xc7ede9327e5179ed17f16eb2aa4efeee2e8b8c3dba7d34f3c1dcf3a5daad7ed0` |
-| AttestationRegistry | `0xf05cffcd59ac97f3f4220dc956f1f0edc2b78e5c82e0ca19b62daacaa1e4f403` |
-| AdminCap | `0x3bedf33f6c35bd2f4e32822e94f8b2f14ab5b5b4c117e6beed02a74f2e1a1e27` |
-| UpgradeCap | `0x84602bc64e766da6637e765984e51fedbd0672f772a4f71ed893832f0ec56e23` |
-| Active PCR0 (v5) | `35f21cd4697bfa48...d1b7bb` |
+| Package ID | `0x6ab728f371455e7db3530794a1c02426f673ec5d2292835bdf365dd248519b9a` |
+| AttestationRegistry | `0x120434fe3c76f084b13e9a294bec0c42e95ac408cdeb7327ea5d46e822c3c290` |
+| AdminCap | `0xd83e429f303284ae7a0f9e27d31cfa92f3fc186a0736930edf6bdddaab152c9c` |
+| UpgradeCap | `0x5b8076bc7f8a8777549ff4772ec8e2f3a8c729fa4ebc1537e2338db839223492` |
 
 ### Compliance Registry
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0x2c0e9e907bb33392b980e06b2758cf5ca9d7cd8e50f8f29b6ace2adbc65228b9` |
-| ComplianceRegistry | `0x345048f83dd3566da939164bd784abfd47c9c0a754341064737f5554546d4773` |
-| AdminCap | `0x69ff8f26c0e6116907f75bcd29bff8e6d1d7cd0f75fa25e5dc308afd02223586` |
-| UpgradeCap | `0xdfb25919d387fdfa154b4e640c78c90feb66aa3a7dc8644b5c5acee98f776395` |
+| Package ID | `0x601d879d176f5f22f1c3f267bb8895c6b18f1020878ac38a5f88f27ffeed55c3` |
+| ComplianceRegistry | `0x884af83cb0b9d5dc1f584a29018e812e777fb36ea99b8b0d96a8645188a4bec0` |
+| AdminCap | `0xd0ea98aa3eac954c0edb4218ceab9c9d3c1c8d4f8082efcbdd54ac1347253cbe` |
+| UpgradeCap | `0x57af57b0be77ddb9a85fafb7cab68b2387e80785874fa1198cf73d12638804a5` |
 
 ### Unified Tokens (devnet_tokens)
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017` |
-| TokenFaucet | `0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14` |
-| ClaimRecord | `0x8b9e854509c950d01ccd37190ba967e2de2197908f5c164f7cc193714faac4a8` |
+| Package ID | `0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731` |
+| TokenFaucet | `0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92` |
+| ClaimRecord | `0x6416304b56cd61238fe552ddb3d07ecc4c12c749fc7038b04d20de3e52953fe1` |
 
 ### Lambda Backend (Cloud Models)
 
@@ -264,14 +300,17 @@ VITE_CHAIN_ID=272218f1
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 
 # Tokens
-VITE_NUSDC_TYPE=0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017::nusdc::NUSDC
-VITE_TOKENS_PACKAGE_ID=0x10748ed4f5063ca4a564fdfecc289954d14efa1a209e7292dcc18d65b2cb4017
-VITE_TOKEN_FAUCET_ID=0x04aa41442a9b812d29bb578aa82358d2b9e678240814368e32d82efa79669e14
+VITE_NUSDC_TYPE=0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC
+VITE_TOKENS_PACKAGE_ID=0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731
+VITE_TOKEN_FAUCET_ID=0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92
 
 # Contracts (falls back to @nasun/devnet-config)
 VITE_BARAM_PACKAGE_ID=...
 VITE_EXECUTOR_PACKAGE_ID=...
 VITE_TIER_REGISTRY_ID=...
+
+# Beta Access NFT Gate (set to 'true' to enable)
+VITE_NFT_GATE_ENABLED=false
 ```
 
 ### executor-nitro (.env)
@@ -335,6 +374,8 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | 파일 | 설명 |
 |------|------|
 | [baram.move](contracts/sources/baram.move) | 에스크로 + 정산 |
+| [budget.move](contracts/sources/budget.move) | Budget delegation (에이전트 예산 위임) |
+| [beta_access.move](contracts/sources/beta_access.move) | BetaAccessNFT (베타 게이팅) |
 | [executor.move](contracts-executor/sources/executor.move) | Registry + reputation + decay |
 | [executor_staking.move](contracts-executor/sources/executor_staking.move) | Staking/Slashing |
 | [executor_tier.move](contracts-executor/sources/executor_tier.move) | TierRegistry (Phase E-1) |
@@ -353,6 +394,9 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | [decay-reputation.ts](executor-nitro/scripts/decay-reputation.ts) | Permissionless decay cron 스크립트 |
 | [protocol.ts](executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 (v1.3.0) |
 | [ECRReceipt.tsx](frontend/src/features/request/components/ECRReceipt.tsx) | Compliance Record 모달 |
+| [useNFTGate.ts](frontend/src/hooks/useNFTGate.ts) | BetaAccessNFT 게이팅 hook |
+| [NFTGateScreen.tsx](frontend/src/components/empty/NFTGateScreen.tsx) | NFT 게이트 화면 |
+| [mint-beta-access.sh](scripts/mint-beta-access.sh) | BetaAccessNFT 민팅 스크립트 |
 | [SPOT_INSTANCE_GUIDE.md](docs/SPOT_INSTANCE_GUIDE.md) | Spot 인스턴스 운영 가이드 |
 
 ---
@@ -375,6 +419,9 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | **F-7** | **Chat Encryption with Password (디스크 공격 방어)** | **✅ 완료** |
 | **F-7.1** | **zkLogin 호환 Dual-Mode 암호화 + Idle Timeout** | **✅ 완료** |
 | **F-2** | **Admin 의존도 제거 (Self-service 5함수 + ProcessedRequests dedup)** | **✅ 완료** |
+| **F-10** | **@nasun/baram-sdk (Node.js SDK, v0.1.0)** | **✅ 완료** |
+| **F-11** | **Budget Delegation (에이전트 예산 위임, budget.move)** | **✅ 완료** |
+| **F-12** | **BetaAccessNFT Gate (베타 테스터 NFT 게이팅, beta_access.move)** | **✅ 완료** |
 | G | Model Marketplace | 계획 |
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 
