@@ -125,9 +125,9 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#22c55e', downColor: '#ef4444',
-      borderDownColor: '#ef4444', borderUpColor: '#22c55e',
-      wickDownColor: '#ef4444', wickUpColor: '#22c55e',
+      upColor: colors.candleUp, downColor: colors.candleDown,
+      borderDownColor: colors.candleDown, borderUpColor: colors.candleUp,
+      wickDownColor: colors.candleDown, wickUpColor: colors.candleUp,
     });
 
     const ma5Series = chart.addSeries(LineSeries, {
@@ -202,7 +202,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       ma20SeriesRef.current.setData(calculateMA(effectiveCandleData, 20));
     }
 
-    volumeSeriesRef.current.setData(generateVolumeData(effectiveCandleData));
+    volumeSeriesRef.current.setData(generateVolumeData(effectiveCandleData, colors.volumeUp, colors.volumeDown));
 
     if (effectiveCandleData.length > 1) {
       const last = effectiveCandleData[effectiveCandleData.length - 1];
@@ -278,7 +278,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     const macdSeries = macdChart.addSeries(LineSeries, { color: '#22d3ee', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
     const signalSeries = macdChart.addSeries(LineSeries, { color: '#fb923c', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
 
-    const macdData = calculateMACD(effectiveCandleData);
+    const macdData = calculateMACD(effectiveCandleData, colors.candleUp, colors.candleDown);
     macdHistSeries.setData(macdData.histogram);
     macdSeries.setData(macdData.macd);
     signalSeries.setData(macdData.signal);
@@ -310,6 +310,14 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       grid: { vertLines: { color: c.grid } },
       rightPriceScale: { borderColor: c.border },
     });
+    candleSeriesRef.current?.applyOptions({
+      upColor: c.candleUp, downColor: c.candleDown,
+      borderDownColor: c.candleDown, borderUpColor: c.candleUp,
+      wickDownColor: c.candleDown, wickUpColor: c.candleUp,
+    });
+    if (volumeSeriesRef.current && effectiveCandleData.length > 0) {
+      volumeSeriesRef.current.setData(generateVolumeData(effectiveCandleData, c.volumeUp, c.volumeDown));
+    }
   }, [theme]);
 
   // === Real-time update ===
@@ -357,7 +365,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         candleSeriesRef.current!.update({ time: candle.time as Time, open: candle.open, high: candle.high, low: candle.low, close: candle.close });
         volumeSeriesRef.current!.update({
           time: candle.time as Time, value: candle.volume,
-          color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+          color: candle.close >= candle.open ? colors.volumeUp : colors.volumeDown,
         });
       }, 3000);
       return () => clearInterval(updateTimer);

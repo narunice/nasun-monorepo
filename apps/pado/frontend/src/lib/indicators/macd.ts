@@ -8,7 +8,11 @@ import type { MACDResult } from './types';
  * @param data - Array of candlestick data
  * @returns MACD line, Signal line, and Histogram data
  */
-export function calculateMACD(data: CandlestickData[]): MACDResult {
+export function calculateMACD(
+  data: CandlestickData[],
+  upColor = '#22c55e',
+  downColor = '#ef4444',
+): MACDResult {
   if (data.length < 26) {
     return { macd: [], signal: [], histogram: [] };
   }
@@ -41,7 +45,7 @@ export function calculateMACD(data: CandlestickData[]): MACDResult {
     result.histogram.push({
       time,
       value: histVal,
-      color: histVal >= 0 ? '#22c55e' : '#ef4444',
+      color: histVal >= 0 ? upColor : downColor,
     });
   }
 
