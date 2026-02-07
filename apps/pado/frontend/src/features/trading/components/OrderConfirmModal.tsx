@@ -1,3 +1,4 @@
+import type { ExecutionOption } from '../context';
 import { useMarket } from '../context/MarketContext';
 
 interface OrderConfirmModalProps {
@@ -8,6 +9,7 @@ interface OrderConfirmModalProps {
   price: string;
   amount: string;
   isLoading: boolean;
+  executionOption?: ExecutionOption;
 }
 
 export function OrderConfirmModal({
@@ -18,6 +20,7 @@ export function OrderConfirmModal({
   price,
   amount,
   isLoading,
+  executionOption = 'GTC',
 }: OrderConfirmModalProps) {
   const { currentPool } = useMarket();
 
@@ -31,9 +34,12 @@ export function OrderConfirmModal({
   const baseToken = currentPool.baseToken.symbol;
   const quoteToken = currentPool.quoteToken.symbol;
 
-  // Fee calculation (taker fee: 0.1%)
-  const feeRate = 0.001;
+  // Dynamic fee from pool config (POST_ONLY = maker fee, others = taker fee)
+  const isMakerFee = executionOption === 'POST_ONLY';
+  const feeBps = isMakerFee ? currentPool.makerFeeBps : currentPool.takerFeeBps;
+  const feeRate = feeBps / 10000;
   const fee = total * feeRate;
+  const feeLabel = `${(feeBps / 100).toFixed(2)}%`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -81,7 +87,7 @@ export function OrderConfirmModal({
             </div>
 
             <div className="flex justify-between text-sm xl:text-base">
-              <span className="text-theme-text-muted">Est. Fee (0.1%)</span>
+              <span className="text-theme-text-muted">Est. Fee ({feeLabel})</span>
               <span className="text-theme-text-muted font-mono">~{fee.toFixed(2)} {quoteToken}</span>
             </div>
 
