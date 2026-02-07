@@ -4,8 +4,9 @@
  * With Book/Trades tab toggle (benchmark: Lighter, Hyperliquid, dYdX)
  */
 
-import { useState, useMemo } from 'react';
-import type { Orderbook as OrderbookType } from '../../../lib/deepbook';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import type { Orderbook as OrderbookType, PriceLevel } from '../../../lib/deepbook';
+import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs } from '@/components/common';
 import { ConnectionStatusDot } from '@/components/common/ConnectionStatus';
 import { useTradeEvents } from '../hooks/useTradeEvents';
@@ -14,6 +15,39 @@ import type { ConnectionMode } from '../types/events';
 
 type DepthLevel = 5 | 10 | 20;
 type OrderbookTab = 'book' | 'trades';
+
+/** Available grouping sizes per pool based on tick size */
+function getGroupOptions(tickSizeUsd: number): number[] {
+  if (tickSizeUsd >= 0.1) return [0.1, 1, 10, 100];       // NBTC: tick=$0.10
+  if (tickSizeUsd >= 0.01) return [0.01, 0.1, 1, 10];      // NASUN: tick=$0.01
+  return [0.001, 0.01, 0.1, 1];
+}
+
+/** Group price levels by rounding to nearest groupSize bucket */
+function groupLevels(levels: PriceLevel[], groupSize: number, isAsk: boolean): PriceLevel[] {
+  const grouped = new Map<number, PriceLevel>();
+  for (const level of levels) {
+    // Asks round up, bids round down
+    const key = isAsk
+      ? Math.ceil(level.price / groupSize) * groupSize
+      : Math.floor(level.price / groupSize) * groupSize;
+    // Use toFixed to avoid floating point drift, then parse back
+    const roundedKey = parseFloat(key.toFixed(8));
+    const existing = grouped.get(roundedKey);
+    if (existing) {
+      existing.quantity += level.quantity;
+    } else {
+      grouped.set(roundedKey, { price: roundedKey, quantity: level.quantity, total: 0 });
+    }
+  }
+  return Array.from(grouped.values());
+}
+
+/** Format group size for display */
+function formatGroupLabel(size: number): string {
+  if (size >= 1) return size.toString();
+  return size.toFixed(size >= 0.1 ? 1 : size >= 0.01 ? 2 : 3);
+}
 
 interface OrderbookProps {
   orderbook: OrderbookType;
@@ -80,8 +114,36 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
 }
 
 export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact = false }: OrderbookProps) {
-  const [depthLevel, setDepthLevel] = useState<DepthLevel>(10);
+  const { currentPool } = useMarket();
+  const tickSizeUsd = currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals);
+  const groupOptions = useMemo(() => getGroupOptions(tickSizeUsd), [tickSizeUsd]);
+
+  const [depthLevel, setDepthLevel] = useState<DepthLevel>(() => {
+    const stored = parseInt(localStorage.getItem('pado:orderbook:depth') || '');
+    return ([5, 10, 20] as DepthLevel[]).includes(stored as DepthLevel) ? stored as DepthLevel : 10;
+  });
+  const [groupSize, setGroupSize] = useState<number>(() => {
+    const stored = parseFloat(localStorage.getItem('pado:orderbook:group') || '');
+    return stored > 0 ? stored : tickSizeUsd;
+  });
   const [activeTab, setActiveTab] = useState<OrderbookTab>('book');
+
+  useEffect(() => { localStorage.setItem('pado:orderbook:depth', String(depthLevel)); }, [depthLevel]);
+  useEffect(() => { localStorage.setItem('pado:orderbook:group', String(groupSize)); }, [groupSize]);
+
+  // Reset groupSize when pool changes and stored value is not in the new options
+  useEffect(() => {
+    if (!groupOptions.includes(groupSize)) {
+      setGroupSize(groupOptions[0]);
+    }
+  }, [groupOptions, groupSize]);
+
+  // Cycle through group options on click
+  const cycleGroupSize = useCallback(() => {
+    const idx = groupOptions.indexOf(groupSize);
+    const next = groupOptions[(idx + 1) % groupOptions.length];
+    setGroupSize(next);
+  }, [groupOptions, groupSize]);
 
   // On-chain market tape — lifted to Orderbook level to persist across tab switches
   const { trades: marketTrades, connectionMode } = useTradeEvents();
@@ -92,9 +154,16 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
     }
   };
 
-  // Limit display depth
-  const displayedBids = orderbook.bids.slice(0, depthLevel);
-  const displayedAsks = orderbook.asks.slice(0, depthLevel);
+  // Apply grouping then limit display depth
+  const isGrouped = groupSize > tickSizeUsd;
+  const displayedBids = useMemo(() => {
+    const levels = isGrouped ? groupLevels(orderbook.bids, groupSize, false) : orderbook.bids;
+    return levels.slice(0, depthLevel);
+  }, [orderbook.bids, groupSize, isGrouped, depthLevel]);
+  const displayedAsks = useMemo(() => {
+    const levels = isGrouped ? groupLevels(orderbook.asks, groupSize, true) : orderbook.asks;
+    return levels.slice(0, depthLevel);
+  }, [orderbook.asks, groupSize, isGrouped, depthLevel]);
 
   // Reverse asks for vertical display (best ask at bottom, near spread)
   const reversedAsks = useMemo(() => [...displayedAsks].reverse(), [displayedAsks]);
@@ -140,6 +209,14 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   // Reversed ask cumulatives for display
   const reversedAskCumulatives = useMemo(() => [...askCumulatives].reverse(), [askCumulatives]);
 
+  // Determine price decimal places from groupSize
+  const priceDecimals = useMemo(() => {
+    if (groupSize >= 1) return 0;
+    if (groupSize >= 0.1) return 1;
+    if (groupSize >= 0.01) return 2;
+    return 3;
+  }, [groupSize]);
+
   const rowHeight = compact ? 'py-px' : 'py-0.5';
   const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
 
@@ -155,20 +232,31 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
         onTabChange={setActiveTab}
         rightContent={
           activeTab === 'book' ? (
-            <div className="flex gap-1">
-              {([5, 10, 20] as DepthLevel[]).map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setDepthLevel(level)}
-                  className={`px-1.5 py-0.5 text-trading-xs xl:text-trading-sm rounded transition-colors ${
-                    depthLevel === level
-                      ? 'bg-theme-accent text-white'
-                      : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
-                  }`}
-                >
-                  {level}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              {/* Group size (click to cycle) */}
+              <button
+                onClick={cycleGroupSize}
+                className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+                title={`Price grouping: ${formatGroupLabel(groupSize)}`}
+              >
+                {formatGroupLabel(groupSize)}
+              </button>
+              {/* Depth level */}
+              <div className="flex gap-0.5">
+                {([5, 10, 20] as DepthLevel[]).map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setDepthLevel(level)}
+                    className={`px-1.5 py-0.5 text-trading-xs xl:text-trading-sm rounded transition-colors ${
+                      depthLevel === level
+                        ? 'bg-theme-accent text-white'
+                        : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : undefined
         }
@@ -211,7 +299,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                         style={{ width: `${depthPercent}%` }}
                       />
                       {/* Content */}
-                      <span className="relative z-10 font-mono text-trading-ask">{level.price.toFixed(2)}</span>
+                      <span className="relative z-10 font-mono text-trading-ask">{level.price.toFixed(priceDecimals)}</span>
                       <span className="relative z-10 font-mono text-right text-theme-text-secondary">{level.quantity.toFixed(4)}</span>
                       <span className="relative z-10 font-mono text-right text-theme-text-muted">{cumulative.toFixed(4)}</span>
                     </div>
@@ -257,7 +345,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                         style={{ width: `${depthPercent}%` }}
                       />
                       {/* Content */}
-                      <span className="relative z-10 font-mono text-trading-bid">{level.price.toFixed(2)}</span>
+                      <span className="relative z-10 font-mono text-trading-bid">{level.price.toFixed(priceDecimals)}</span>
                       <span className="relative z-10 font-mono text-right text-theme-text-secondary">{level.quantity.toFixed(4)}</span>
                       <span className="relative z-10 font-mono text-right text-theme-text-muted">{cumulative.toFixed(4)}</span>
                     </div>
