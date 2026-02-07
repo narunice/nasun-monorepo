@@ -1,13 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { ExecutionOption } from '../context';
-import { useMarket } from '../context/MarketContext';
+import { useMarket, useOrderForm } from '../context';
 import { UnderlineTabs } from '@/components/common';
 import { SlippageSettings } from './SlippageSettings';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick } from '../../../lib/deepbook';
-
-export type OrderModeType = 'limit' | 'market';
 
 // Execution Option descriptions
 const EXECUTION_OPTIONS: { value: ExecutionOption; label: string; description: string }[] = [
@@ -36,6 +34,8 @@ interface OrderFormProps {
   onSlippageChange?: (value: number) => void;
   availableQuote?: number;
   availableBase?: number;
+  lockedQuote?: number;
+  lockedBase?: number;
   side: 'buy' | 'sell';
   onSideChange: (side: 'buy' | 'sell') => void;
 }
@@ -59,14 +59,16 @@ export function OrderForm({
   onSlippageChange,
   availableQuote = 0,
   availableBase = 0,
+  lockedQuote = 0,
+  lockedBase = 0,
   side,
   onSideChange,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
+  const { orderMode, setOrderMode } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
-  const [orderMode, setOrderMode] = useState<OrderModeType>('limit');
   const [showAdvanced, setShowAdvanced] = useState(true);
   const [totalInput, setTotalInput] = useState('');
   const [activeField, setActiveField] = useState<'amount' | 'total'>('amount');
@@ -240,14 +242,26 @@ export function OrderForm({
         </button>
       </div>
 
-      {/* C. Available Balance */}
-      <div className="flex items-center justify-between text-trading-xs xl:text-trading-sm">
-        <span className="text-theme-text-muted">Available</span>
-        <span className="font-mono text-theme-text-secondary">
-          {isBuy
-            ? `${availableQuote.toFixed(2)} ${quoteSymbol}`
-            : `${availableBase.toFixed(4)} ${baseSymbol}`}
-        </span>
+      {/* C. Available Balance + In Orders */}
+      <div className="text-trading-xs xl:text-trading-sm space-y-0.5">
+        <div className="flex items-center justify-between">
+          <span className="text-theme-text-muted">Available</span>
+          <span className="font-mono text-theme-text-secondary">
+            {isBuy
+              ? `${availableQuote.toFixed(2)} ${quoteSymbol}`
+              : `${availableBase.toFixed(4)} ${baseSymbol}`}
+          </span>
+        </div>
+        {((isBuy && lockedQuote > 0) || (!isBuy && lockedBase > 0)) && (
+          <div className="flex items-center justify-between">
+            <span className="text-theme-text-muted">In Orders</span>
+            <span className="font-mono text-theme-text-muted">
+              {isBuy
+                ? `${lockedQuote.toFixed(2)} ${quoteSymbol}`
+                : `${lockedBase.toFixed(4)} ${baseSymbol}`}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* D. Price Input (Limit) or Market Price Info */}

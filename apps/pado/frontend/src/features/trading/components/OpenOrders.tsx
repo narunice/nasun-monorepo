@@ -8,12 +8,14 @@ interface OpenOrdersProps {
   orders: OpenOrder[];
   isLoading: boolean;
   onCancel: (orderId: string) => void;
+  onCancelAll?: (orderIds: string[]) => void;
 }
 
-export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
+export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrdersProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [confirmCancelAll, setConfirmCancelAll] = useState<string[] | null>(null);
 
   // Sort orders by orderId descending (newest first)
   const sortedOrders = [...orders].sort((a, b) => {
@@ -35,12 +37,54 @@ export function OpenOrders({ orders, isLoading, onCancel }: OpenOrdersProps) {
     setVisibleCount(PAGE_SIZE);
   };
 
+  // Capture order IDs at confirmation time, not at execution time
+  const handleCancelAll = () => {
+    if (!confirmCancelAll) {
+      setConfirmCancelAll(orders.map((o) => o.orderId));
+      return;
+    }
+    const ids = confirmCancelAll;
+    setConfirmCancelAll(null);
+    onCancelAll?.(ids);
+  };
+
   return (
     <div>
       {orders.length === 0 ? (
         <p className="text-xs xl:text-sm text-theme-text-muted">No open orders</p>
       ) : (
         <div className="space-y-2">
+          {/* Cancel All row */}
+          {onCancelAll && orders.length > 1 && (
+            <div className="flex justify-end items-center gap-2 mb-1">
+              {confirmCancelAll ? (
+                <>
+                  <span className="text-xs text-theme-text-muted">Cancel all {confirmCancelAll.length} orders?</span>
+                  <button
+                    onClick={handleCancelAll}
+                    disabled={isLoading}
+                    className="px-2 py-0.5 text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setConfirmCancelAll(null)}
+                    className="px-2 py-0.5 text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+                  >
+                    No
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleCancelAll}
+                  disabled={isLoading}
+                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
+                >
+                  Cancel All ({orders.length})
+                </button>
+              )}
+            </div>
+          )}
           {visibleOrders.map((order) => (
             <div
               key={order.orderId}

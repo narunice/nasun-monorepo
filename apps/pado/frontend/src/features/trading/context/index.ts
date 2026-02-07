@@ -7,6 +7,7 @@ export {
   useOrderForm,
   type OrderFormContextType,
   type ExecutionOption,
+  type OrderModeType,
   EXECUTION_OPTION_MAP,
 } from './OrderFormContext';
 

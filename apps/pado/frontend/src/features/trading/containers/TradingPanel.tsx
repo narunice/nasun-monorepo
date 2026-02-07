@@ -9,6 +9,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
 import { useOrderForm, useMarket } from '../context';
+import { calcLockedAmounts } from '../types';
 import { OrderForm, OrderConfirmModal, SimpleOrderForm } from '../components';
 
 export function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) {
@@ -155,6 +156,10 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // BM balance data
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
+  const openOrders = openOrdersData?.orders ?? [];
+
+  // In-orders locked amounts (buy orders lock quote, sell orders lock base)
+  const { lockedQuote, lockedBase } = calcLockedAmounts(openOrders);
 
   // Wallet balances for unified available balance
   const { data: multiBalance } = useMultiBalance();
@@ -335,6 +340,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onSlippageChange={setSlippage}
           availableQuote={availableQuote}
           availableBase={availableBase}
+          lockedQuote={lockedQuote}
+          lockedBase={lockedBase}
           side={side}
           onSideChange={setSide}
         />
