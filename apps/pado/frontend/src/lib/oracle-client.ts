@@ -46,6 +46,43 @@ function getMoveFields(
   return content.fields as Record<string, unknown>;
 }
 
+/**
+ * Walk a dot-separated path through nested Sui MoveObject fields.
+ * Each segment navigates into `.fields` of the current object.
+ * Returns the leaf value, or undefined if any segment is missing.
+ *
+ * Example: getNestedField(fields, 'feeds.id.id')
+ *   → fields.feeds?.fields?.id?.fields?.id  (Sui Table wraps each level in { fields: ... })
+ */
+function getNestedField(fields: Record<string, unknown>, path: string): unknown {
+  const segments = path.split('.');
+  let current: unknown = fields;
+  for (const key of segments) {
+    if (current == null || typeof current !== 'object') return undefined;
+    const obj = current as Record<string, unknown>;
+    const next = obj[key];
+    if (next == null) return undefined;
+    // Unwrap Sui's { fields: { ... } } wrapper if present
+    if (typeof next === 'object' && !Array.isArray(next) && 'fields' in (next as object)) {
+      current = (next as Record<string, unknown>).fields;
+    } else {
+      current = next;
+    }
+  }
+  return current;
+}
+
+/**
+ * Safely parse a value to BigInt. Returns null on failure.
+ */
+function safeBigInt(value: unknown): bigint | null {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    try { return BigInt(value); } catch { return null; }
+  }
+  return null;
+}
+
 // ========================================
 // Types
 // ========================================
@@ -87,8 +124,7 @@ async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
     const fields = getMoveFields(registry.data?.content);
     if (!fields) return null;
 
-    const feeds = fields.feeds as { fields?: { id?: { id?: string } } } | undefined;
-    const tableId = feeds?.fields?.id?.id;
+    const tableId = getNestedField(fields, 'feeds.id.id') as string | undefined;
     if (tableId) {
       feedsTableId = tableId;
       console.log(`[Oracle] Resolved feeds table: ${tableId.slice(0, 16)}...`);
@@ -132,21 +168,21 @@ export async function getPrice(
       return null;
     }
 
-    const valueObj = outerFields.value as { fields?: Record<string, unknown> } | undefined;
-    const fields = valueObj?.fields;
-    if (!fields) {
-      console.warn(`[Oracle] Invalid feed structure for ${symbol}`);
+    const rawPrice = safeBigInt(getNestedField(outerFields, 'value.price'));
+    const rawConfidence = safeBigInt(getNestedField(outerFields, 'value.confidence'));
+    const timestamp = getNestedField(outerFields, 'value.timestamp');
+
+    if (rawPrice === null || rawConfidence === null || timestamp == null) {
+      console.warn(`[Oracle] Invalid feed data for ${symbol}`);
       return null;
     }
 
-    const rawPrice = BigInt(fields.price);
-    const rawConfidence = BigInt(fields.confidence);
     const divisor = Math.pow(10, DECIMALS);
 
     return {
       price: Number(rawPrice) / divisor,
       confidence: Number(rawConfidence) / divisor,
-      timestamp: Number(fields.timestamp),
+      timestamp: Number(timestamp),
       symbol,
       raw: {
         price: rawPrice,
