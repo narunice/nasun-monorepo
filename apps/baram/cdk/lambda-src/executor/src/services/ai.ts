@@ -22,14 +22,13 @@ interface AIProvider {
 const providers: Record<string, AIProvider> = {};
 
 // Model → Provider mapping
+// Kept in sync with MODEL_PRICING in types.ts — every model here must have a price entry.
 const MODEL_PROVIDER_MAP: Record<string, string> = {
   // OpenAI models
   'gpt-4o': 'openai',
   'gpt-4-turbo': 'openai',
-  'gpt-3.5-turbo': 'openai',
   // Groq models (OpenAI-compatible API)
   'llama-3.1-8b-instant': 'groq',
-  'llama-3.1-70b-versatile': 'groq',
   'llama-3.3-70b-versatile': 'groq',
 };
 

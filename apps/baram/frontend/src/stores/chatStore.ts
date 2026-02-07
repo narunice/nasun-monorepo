@@ -94,7 +94,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
     // Persist to IndexedDB (async, fire and forget — uses cached CryptoKey)
     const { currentWalletAddress } = get();
     if (currentWalletAddress) {
-      console.log(`[ChatStore] Saving new session ${sessionId.slice(0, 8)} to IndexedDB`);
       saveSession(currentWalletAddress, undefined, newSession).catch((err) =>
         console.warn('[ChatStore] Failed to save new session:', err)
       );
@@ -118,11 +117,9 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
     }
 
     const { currentWalletAddress, activeSessionId, messages: currentMessages } = state;
-    console.log('[ChatStore] switchSession:', { from: activeSessionId, to: sessionId, walletAddress: currentWalletAddress?.slice(0, 8) });
 
     // Save current session's messages before switching (uses cached CryptoKey)
     if (currentWalletAddress && activeSessionId && currentMessages.length > 0) {
-      console.log(`[ChatStore] Saving ${currentMessages.length} messages for session ${activeSessionId.slice(0, 8)}...`);
       for (const msg of currentMessages) {
         await saveMessage(currentWalletAddress, undefined, activeSessionId, msg).catch((err) =>
           console.warn('[ChatStore] Failed to save message:', err)
@@ -135,7 +132,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
     if (currentWalletAddress) {
       try {
         messages = await loadMessages(currentWalletAddress, undefined, sessionId);
-        console.log(`[ChatStore] Loaded ${messages.length} messages for session ${sessionId.slice(0, 8)}`);
       } catch (err) {
         console.warn('[ChatStore] Failed to load messages:', err);
       }
@@ -253,7 +249,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
     // Persist to IndexedDB (uses cached CryptoKey)
     const { currentWalletAddress, activeSessionId } = get();
     if (currentWalletAddress && activeSessionId) {
-      console.log(`[ChatStore] Saving message ${newMessage.id.slice(0, 8)} to session ${activeSessionId.slice(0, 8)}`);
       saveMessage(currentWalletAddress, undefined, activeSessionId, newMessage).catch((err) =>
         console.warn('[ChatStore] Failed to save message:', err)
       );
@@ -337,7 +332,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
         isLoading: false,
       });
 
-      console.log(`[ChatStore] Loaded ${sessions.length} sessions for wallet ${walletAddress.slice(0, 8)}...`);
     } catch (error) {
       console.error('[ChatStore] Failed to load from storage:', error);
       set({ isLoading: false, currentWalletAddress: null });
@@ -362,7 +356,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
         await saveSession(currentWalletAddress, undefined, currentSession);
       }
 
-      console.log('[ChatStore] Saved to encrypted storage');
     } catch (error) {
       console.error('[ChatStore] Failed to save to storage:', error);
     } finally {
@@ -389,7 +382,6 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
       // Keep settings (selectedExecutorId, selectedModel)
     });
 
-    console.log('[ChatStore] Cleared on logout (encrypted data preserved)');
   },
 
   // ============================================

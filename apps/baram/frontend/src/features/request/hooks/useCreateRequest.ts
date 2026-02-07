@@ -91,7 +91,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
         // Build context with previous messages
         const context = buildContextWithPrompt(previousMessages, prompt);
         textToSend = formatContextForTee(context);
-        console.log('Built context with', context.messages.length, 'messages');
       } else {
         textToSend = prompt;
       }
@@ -100,14 +99,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
       const promptHash = await sha256(textToSend);
       const promptHashBytes = hexToBytes(promptHash);
       const price = modelConfig.price;
-
-      console.log('Creating request:', {
-        model,
-        price: price / 1e6,
-        promptHash,
-        executor: executor.name,
-        executorAddress: executor.operator,
-      });
 
       // 3. Get NUSDC coins for payment
       const client = suiClient;
@@ -144,8 +135,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
         throw new Error('Transaction failed: ' + (txResult.effects?.status?.error || 'Unknown error'));
       }
 
-      console.log('Request created:', txResult.digest);
-
       // 5. Extract request ID from events
       const createEvent = txResult.events?.find(
         e => e.type.includes('::baram::RequestCreated')
@@ -156,7 +145,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
       }
 
       const requestId = Number((createEvent.parsedJson as { request_id: string }).request_id);
-      console.log('Request ID:', requestId);
 
       // 6. Call executor's backend to execute
       setStatus('executing');
@@ -169,8 +157,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
       const promptPayload = needsTeeEncryption
         ? await encryptPromptForTEE(textToSend, executorUrl, requestId)
         : encodePrompt(textToSend);
-
-      console.log('Calling executor:', executorUrl, needsTeeEncryption ? '(TEE encrypted)' : '(plaintext)');
 
       let executeResult;
       try {
@@ -224,7 +210,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
               signature: cancelSig,
             });
             cancelSucceeded = true;
-            console.log(`[useCreateRequest] Auto-cancelled request #${requestId}, escrow released`);
             break;
           } catch (cancelError) {
             console.warn(`[useCreateRequest] Cancel attempt ${attempt}/2 failed:`, cancelError);
@@ -246,7 +231,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
       let resultText = executeResult.result;
       if (executeResult.encrypted) {
         resultText = await decryptResponseFromTEE(executeResult.result, requestId);
-        console.log('[E2E] Response decrypted successfully');
       }
 
       // 8. Set result (include TEE attestation data if available)
@@ -261,8 +245,6 @@ export function useCreateRequest(): UseCreateRequestReturn {
         attestationVerified: executeResult.attestationVerification?.valid,
       });
       setStatus('completed');
-
-      console.log('Request completed:', executeResult);
     } catch (err) {
       console.error('Request failed:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

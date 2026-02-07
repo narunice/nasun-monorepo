@@ -93,7 +93,7 @@ export async function encryptWithRSA(
     envelope
   );
 
-  // 5. Concatenate: RSA_ciphertext (256B) || AES_ciphertext (includes GCM auth tag)
+  // 5. Concatenate: RSA_ciphertext (key-size dependent, e.g. 384B for RSA-3072) || AES_ciphertext (includes GCM auth tag)
   const rsaBytes = new Uint8Array(rsaCiphertext);
   const aesBytes = new Uint8Array(aesCiphertext);
   const combined = new Uint8Array(rsaBytes.length + aesBytes.length);

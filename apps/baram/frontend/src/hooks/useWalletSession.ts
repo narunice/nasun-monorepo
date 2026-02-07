@@ -30,7 +30,7 @@ export interface UseWalletSessionReturn {
 
 export function useWalletSession(): UseWalletSessionReturn {
   const isConnected = useIsConnected();
-  const { lockWallet } = useWallet();
+  const { status, lockWallet } = useWallet();
   const { isConnected: isZkLoggedIn, logout: zkLogout } = useZkLogin();
   const { address: signerAddress } = useSigner();
 

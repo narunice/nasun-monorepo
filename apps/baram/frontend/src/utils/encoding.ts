@@ -26,9 +26,14 @@ export function hexToBytes(hex: string): number[] {
 }
 
 /**
- * Encode prompt as Base64 (for non-TEE executors)
+ * Encode prompt as Base64 (for non-TEE executors).
+ * Uses chunked conversion to avoid stack overflow on large payloads.
  */
 export function encodePrompt(prompt: string): string {
   const bytes = new TextEncoder().encode(prompt);
-  return btoa(String.fromCharCode(...bytes));
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }

@@ -13,28 +13,28 @@ interface Suggestion {
 
 const SUGGESTIONS: Suggestion[] = [
   {
-    icon: '🔒',
-    title: 'Confidential analysis',
-    description: 'review a sensitive document',
+    icon: '\u{1F512}',
+    title: 'Private analysis',
+    description: 'encrypted end-to-end, processed in TEE',
     prompt: 'Analyze the following confidential business strategy and highlight potential risks: ...',
   },
   {
-    icon: '🏥',
-    title: 'Private health question',
-    description: 'ask without a trace',
-    prompt: 'What are possible causes of persistent lower back pain, and when should I see a specialist?',
+    icon: '\u{1F6E1}',
+    title: 'Verifiable AI output',
+    description: 'every response gets on-chain proof',
+    prompt: 'Summarize the key risks of smart contract upgrades and explain how on-chain audit trails improve accountability.',
   },
   {
-    icon: '💼',
-    title: 'Financial planning',
-    description: 'numbers no one else sees',
-    prompt: 'Help me create a monthly budget plan for someone earning $5,000 with the following expenses...',
+    icon: '\u{1F916}',
+    title: 'Agent-ready inference',
+    description: 'trustless execution for AI agents',
+    prompt: 'How can autonomous AI agents use on-chain compliance records to prove their actions were legitimate?',
   },
   {
-    icon: '🧠',
-    title: 'Brainstorm freely',
-    description: 'unfiltered creative thinking',
-    prompt: 'Brainstorm 10 unconventional startup ideas at the intersection of AI and privacy.',
+    icon: '\u{1F4CB}',
+    title: 'Compliance records',
+    description: 'tamper-proof execution history',
+    prompt: 'What are the regulatory benefits of recording AI inference metadata on a public blockchain?',
   },
 ];
 
@@ -59,10 +59,11 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
 
       {/* Welcome Text */}
       <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2 text-center">
-        Your Private AI Session is Ready
+        AI Inference with Cryptographic Proof
       </h2>
       <p className="text-[var(--color-text-secondary)] text-center max-w-md mb-8">
-        Everything you type is encrypted end-to-end and processed in hardware isolation.
+        Every request is processed in hardware isolation.
+        Every response gets a tamper-proof audit trail on-chain.
       </p>
 
       {/* Suggestion Cards */}
@@ -81,12 +82,13 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
       {/* Why Private? callout */}
       <div className="mt-6 p-4 bg-br-1/5 border border-br-1/20 rounded-xl max-w-lg mx-auto">
         <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
-          Why does privacy matter for AI?
+          Why does this matter?
         </p>
         <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
           Regular AI providers can read, store, and train on your prompts.
-          Baram runs inference inside a Trusted Execution Environment —
-          your data is encrypted in transit and invisible even to the server operator.
+          Baram processes inference inside a Trusted Execution Environment
+          and records every execution as an on-chain Compliance Record —
+          a verifiable audit trail that no party can tamper with.
         </p>
       </div>
     </div>

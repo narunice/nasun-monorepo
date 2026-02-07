@@ -61,15 +61,7 @@ if (ZKLOGIN_CONFIG.googleClientId && ZKLOGIN_CONFIG.saltApiUrl) {
       },
     },
   });
-  console.log('zkLogin initialized');
 }
-
-console.log('Baram Config:', {
-  network: NETWORK_CONFIG.networkName,
-  rpcUrl: NETWORK_CONFIG.rpcUrl,
-});
-
-console.log('Faucet Config:', FAUCET_CONFIG);
 
 // React Query client
 const queryClient = new QueryClient({

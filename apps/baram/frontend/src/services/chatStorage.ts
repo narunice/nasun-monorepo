@@ -290,7 +290,7 @@ export async function loadMessages(
 }
 
 /**
- * Save multiple messages (batch operation)
+ * Save multiple messages in a single IndexedDB transaction (batch operation).
  */
 export async function saveMessages(
   walletAddress: string,
@@ -298,7 +298,27 @@ export async function saveMessages(
   sessionId: string,
   messages: Message[]
 ): Promise<void> {
-  for (const message of messages) {
-    await saveMessage(walletAddress, password, sessionId, message);
-  }
+  if (messages.length === 0) return;
+
+  const database = await openDatabase(walletAddress);
+  const key = await getKey(walletAddress, password);
+
+  // Encrypt all messages first (async crypto, outside the transaction)
+  const encrypted = await Promise.all(
+    messages.map(async (message) => {
+      const { encrypted: data, iv } = await encryptObject(key, message);
+      return { id: message.id, sessionId, encrypted: data, iv, timestamp: message.timestamp } as EncryptedMessage;
+    })
+  );
+
+  // Write all in a single transaction (atomic, one IDB commit)
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(MESSAGES_STORE, 'readwrite');
+    const store = tx.objectStore(MESSAGES_STORE);
+    for (const entry of encrypted) {
+      store.put(entry);
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }

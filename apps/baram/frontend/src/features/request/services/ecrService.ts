@@ -118,7 +118,6 @@ export async function fetchECRByRequestId(requestId: number): Promise<ECRData | 
     });
 
     if (!matchingEvent) {
-      console.log(`[ECR] No ECR found for request #${requestId}`);
       return null;
     }
 

@@ -70,7 +70,7 @@ export class BaramStack extends cdk.Stack {
         OPENAI_SECRET_NAME: 'baram/openai',
         EXECUTOR_SECRET_NAME: 'baram/executor',
         GROQ_SECRET_NAME: 'baram/groq',
-        CORS_ALLOWED_ORIGIN: corsAllowedOrigins[0] || '',
+        CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),
       },
       description: 'Baram AI Executor - Processes AI requests and submits proofs on-chain',
     });
@@ -87,7 +87,7 @@ export class BaramStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: corsAllowedOrigins,
         allowMethods: ['GET', 'POST', 'OPTIONS'],
-        allowHeaders: ['Content-Type'],
+        allowHeaders: ['Content-Type', 'x-api-key'],
       },
       deployOptions: {
         stageName: 'prod',
@@ -104,18 +104,34 @@ export class BaramStack extends cdk.Stack {
       }
     );
 
+    // API Key + Usage Plan — protects /execute from unauthorized usage
+    const apiKey = this.apiGateway.addApiKey('BaramApiKey', {
+      apiKeyName: 'baram-executor-key',
+      description: 'API key for Baram executor /execute endpoint',
+    });
+
+    const usagePlan = this.apiGateway.addUsagePlan('BaramUsagePlan', {
+      name: 'baram-executor-plan',
+      throttle: { rateLimit: 10, burstLimit: 20 },
+      quota: { limit: 5000, period: apigateway.Period.DAY },
+    });
+    usagePlan.addApiKey(apiKey);
+    usagePlan.addApiStage({ stage: this.apiGateway.deploymentStage });
+
     // API routes
-    // GET /health
+    // GET /health — public
     const healthResource = this.apiGateway.root.addResource('health');
     healthResource.addMethod('GET', lambdaIntegration);
 
-    // GET /info
+    // GET /info — public
     const infoResource = this.apiGateway.root.addResource('info');
     infoResource.addMethod('GET', lambdaIntegration);
 
-    // POST /execute
+    // POST /execute — requires API key
     const executeResource = this.apiGateway.root.addResource('execute');
-    executeResource.addMethod('POST', lambdaIntegration);
+    executeResource.addMethod('POST', lambdaIntegration, {
+      apiKeyRequired: true,
+    });
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiEndpoint', {
@@ -126,6 +142,11 @@ export class BaramStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ExecutorLambdaArn', {
       value: this.executorLambda.functionArn,
       description: 'Executor Lambda ARN',
+    });
+
+    new cdk.CfnOutput(this, 'ApiKeyId', {
+      value: apiKey.keyId,
+      description: 'API Key ID (retrieve value via AWS Console or CLI)',
     });
   }
 }

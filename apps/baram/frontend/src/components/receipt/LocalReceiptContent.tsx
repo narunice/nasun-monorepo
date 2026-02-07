@@ -2,26 +2,15 @@
  * LocalReceiptContent - Renders local execution metadata when on-chain ECR is unavailable
  */
 
-import { TEE_TYPES, type TeeType } from '@/config/network';
+import { TEE_TYPES, NETWORK_CONFIG, type TeeType } from '@/config/network';
+import type { MessageMetadata } from '@/types/chat';
 import { Section } from './Section';
 import { Row } from './Row';
 import { CopyableHash } from './CopyableHash';
 import { ReceiptFooter } from './ReceiptFooter';
-import { NETWORK_CONFIG } from '@/config/network';
-
-interface LocalMetadata {
-  requestId?: number;
-  executionTimeMs?: number;
-  teeVerified?: boolean;
-  txDigest?: string;
-  resultHash?: string;
-  teeType?: number;
-  pcr0?: string;
-  attestationVerified?: boolean;
-}
 
 interface LocalReceiptContentProps {
-  metadata: LocalMetadata;
+  metadata: MessageMetadata;
   onClose: () => void;
 }
 

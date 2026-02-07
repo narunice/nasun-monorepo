@@ -2,7 +2,7 @@
  * AssistantMessage - AI response with Gemini-style layout (no bubble)
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NETWORK_CONFIG } from '@/config/network';
 import { ECRReceipt } from '@/features/request/components/ECRReceipt';
 import type { MessageMetadata } from '@/types/chat';
@@ -13,6 +13,7 @@ interface AssistantMessageProps {
   metadata?: MessageMetadata;
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
+  autoShowAuditTrail?: boolean;
 }
 
 export function AssistantMessage({
@@ -21,8 +22,20 @@ export function AssistantMessage({
   metadata,
   isProcessing = false,
   isTeeExecutor = false,
+  autoShowAuditTrail = false,
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
+  const autoShownRef = useRef(false);
+
+  // Auto-open Audit Trail modal on first TEE response (once per component lifetime)
+  useEffect(() => {
+    if (!autoShowAuditTrail || autoShownRef.current) return;
+    if (!metadata?.teeVerified || metadata.requestId === undefined) return;
+
+    autoShownRef.current = true;
+    const timer = setTimeout(() => setShowReceipt(true), 800);
+    return () => clearTimeout(timer);
+  }, [autoShowAuditTrail, metadata]);
 
   const timeString = timestamp
     ? new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })

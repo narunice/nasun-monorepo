@@ -44,7 +44,6 @@ export async function encryptPromptForTEE(
 ): Promise<string> {
   // Fetch and cache public key
   if (!cachedPublicKey || cachedPublicKey.url !== executorUrl) {
-    console.log('[TEE] Fetching public key from', executorUrl);
     const response = await fetch(`${executorUrl}/public-key`);
     if (!response.ok) {
       throw new Error('Failed to fetch TEE public key');
@@ -55,7 +54,6 @@ export async function encryptPromptForTEE(
     }
     const key = await importPublicKey(data.publicKey);
     cachedPublicKey = { url: executorUrl, key };
-    console.log('[TEE] Public key cached');
   }
 
   const { encrypted, aesKeyBytes } = await encryptWithRSA(cachedPublicKey.key, prompt);
@@ -98,7 +96,6 @@ export async function decryptResponseFromTEE(
       const stored = sessionStorage.getItem(`baram_aes_${requestId}`);
       if (stored) {
         keyToUse = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
-        console.log('[TEE] AES key recovered from sessionStorage');
       }
     } catch { /* ignore */ }
   }
