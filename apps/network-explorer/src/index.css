@@ -58,7 +58,7 @@
 
     /* Muted */
     --muted: 215 25% 20%;
-    --muted-foreground: 210 25% 75%;
+    --muted-foreground: 210 25% 77%;
 
     /* Accent */
     --accent: 215 25% 20%;
@@ -69,8 +69,8 @@
     --destructive-foreground: 0 0% 96%;
 
     /* Border */
-    --border: 215 20% 25%;
-    --input: 215 25% 20%;
+    --border: 215 20% 27%;
+    --input: 215 25% 22%;
     --ring: 201 38% 74%;
 
     /* Radius */
@@ -80,15 +80,15 @@
   .light {
     /* Base - ne5 background */
     --background: 0 0% 96%;
-    --foreground: 215 36% 25%;
+    --foreground: 215 36% 22%;
 
     /* Card */
     --card: 0 0% 100%;
-    --card-foreground: 215 36% 25%;
+    --card-foreground: 215 36% 22%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 215 36% 25%;
+    --popover-foreground: 215 36% 22%;
 
     /* Primary - darkened ne1 for AA contrast */
     --primary: 215 36% 38%;
@@ -100,7 +100,7 @@
 
     /* Muted - ne4 */
     --muted: 194 33% 86%;
-    --muted-foreground: 215 30% 35%;
+    --muted-foreground: 215 30% 30%;
 
     /* Accent - ne4 */
     --accent: 194 33% 86%;
@@ -111,8 +111,8 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Border */
-    --border: 194 20% 82%;
-    --input: 194 20% 82%;
+    --border: 194 20% 75%;
+    --input: 194 20% 75%;
     --ring: 215 36% 45%;
   }
 }
