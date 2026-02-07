@@ -9,6 +9,8 @@ export const buttonV2Variants = cva(
       variant: {
         red: "from-[#C4634A] to-[#E8A58A] hover:from-[#B85A42] hover:to-[#D4947A]",
         blue: "from-[#6898B8] to-[#9CC0D8] hover:from-[#5C8AAA] hover:to-[#8EB4CE]",
+        white: "from-[#F5F0E8] to-[#FFFFFF] !text-nasun-black hover:from-[#E8E3DB] hover:to-[#F5F0E8]",
+        purple: "from-[#7B68AE] to-[#A594D0] hover:from-[#6E5CA0] hover:to-[#9786C2]",
       },
       size: {
         xs: "text-xs px-6 py-1.5",
