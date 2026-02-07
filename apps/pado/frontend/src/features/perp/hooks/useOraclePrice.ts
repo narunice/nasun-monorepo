@@ -1,13 +1,21 @@
 /**
- * Hook for fetching oracle prices
+ * Perp Oracle Price Hook
+ *
+ * Delegates to the unified price source (lib/prices.ts) instead of
+ * maintaining a separate oracle RPC client. This ensures all modules
+ * see the same price at the same time.
+ *
  * @module features/perp/hooks/useOraclePrice
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchOraclePrice } from '../lib/perp-client';
+import {
+  refreshPrice,
+  getPriceWithFreshness,
+  getTokenByOracleId,
+} from '../../../lib/prices';
 import { ORACLE_SYMBOL } from '../constants';
 
-const ORACLE_QUERY_KEY = 'oracle-price';
 const REFETCH_INTERVAL = 10_000; // 10 seconds
 
 interface OraclePriceData {
@@ -17,15 +25,23 @@ interface OraclePriceData {
 }
 
 /**
- * Fetch oracle price for a symbol
- * @param symbolId - 1=BTC, 2=ETH, 3=NASUN
+ * Fetch oracle price for a symbol via the unified price cache.
+ * @param symbolId - On-chain oracle symbol ID (1=BTC, 2=ETH, 3=NASUN)
  */
 export function useOraclePrice(symbolId: number) {
+  const token = getTokenByOracleId(symbolId);
+
   return useQuery<OraclePriceData | null>({
-    queryKey: [ORACLE_QUERY_KEY, symbolId],
-    queryFn: () => fetchOraclePrice(symbolId),
+    queryKey: ['oracle-price', symbolId],
+    queryFn: async (): Promise<OraclePriceData | null> => {
+      if (!token) return null;
+      await refreshPrice(token);
+      const { price, timestamp, isFresh } = getPriceWithFreshness(token);
+      return { price, timestamp, isFresh };
+    },
     refetchInterval: REFETCH_INTERVAL,
     staleTime: 5_000,
+    enabled: !!token,
   });
 }
 
@@ -86,28 +102,20 @@ export function useMarketPrice(baseSymbol: number) {
  */
 export function useIsOracleStale(symbolId: number) {
   const { data } = useOraclePrice(symbolId);
-
   if (!data) return true;
-
-  const now = Date.now();
-  const age = now - data.timestamp;
-  const isStale = age > 2 * 60 * 1000; // 2 minutes
-
-  return isStale || !data.isFresh;
+  return !data.isFresh;
 }
 
 /**
- * Format price with appropriate decimals
+ * Format price with appropriate decimals based on symbol
  */
 export function formatPrice(price: number, symbol: number): string {
   if (symbol === ORACLE_SYMBOL.BTC || symbol === ORACLE_SYMBOL.ETH) {
-    // High value assets: 2 decimals
     return price.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   }
-  // Low value assets: 4 decimals
   return price.toLocaleString('en-US', {
     minimumFractionDigits: 4,
     maximumFractionDigits: 4,

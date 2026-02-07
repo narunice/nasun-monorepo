@@ -165,60 +165,6 @@ export async function fetchUserPositionsWithMetrics(
   });
 }
 
-// ===== Oracle Queries =====
-
-// Table ID within OracleRegistry (TODO: Update after V6 oracle redeployment)
-const ORACLE_FEEDS_TABLE_ID =
-  import.meta.env.VITE_ORACLE_FEEDS_TABLE_ID || '';
-
-/**
- * Fetch oracle price for a symbol using dynamic field access
- * @param symbolId - 1=BTC, 2=ETH, 3=NASUN
- */
-export async function fetchOraclePrice(symbolId: number): Promise<{
-  price: number;
-  timestamp: number;
-  isFresh: boolean;
-} | null> {
-  const client = getSuiClient();
-
-  try {
-    // Access Table entries via dynamic fields
-    const response = await client.getDynamicFieldObject({
-      parentId: ORACLE_FEEDS_TABLE_ID,
-      name: {
-        type: 'u64',
-        value: symbolId.toString(),
-      },
-    });
-
-    if (response.data?.content?.dataType !== 'moveObject') {
-      return null;
-    }
-
-    const fields = response.data.content.fields as {
-      value: {
-        fields: {
-          price: string;
-          timestamp: string;
-          decimals: string;
-        };
-      };
-    };
-
-    const priceData = fields.value.fields;
-    const price = Number(priceData.price) / PRICE_DECIMALS;
-    const timestamp = Number(priceData.timestamp);
-    const now = Date.now();
-    const isFresh = now - timestamp < 2 * 60 * 1000; // 2 minute staleness
-
-    return { price, timestamp, isFresh };
-  } catch (error) {
-    console.error('Error fetching oracle price:', error);
-    return null;
-  }
-}
-
 // ===== Parsing Functions =====
 
 /**
