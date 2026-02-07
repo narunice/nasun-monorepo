@@ -16,7 +16,7 @@ import { useToast } from "@/components/common";
 import { quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepbook";
 import { isMarginError } from "../../../lib/risk-engine";
 import { parseError } from "../utils/errorParser";
-import { RPC_SYNC_DELAY_MS } from "../../../lib/constants";
+import { RPC_SYNC_DELAY_MS, MARKET_ORDER_SLIPPAGE_BUFFER } from "../../../lib/constants";
 import { getUnifiedPrice } from "../../../lib/prices";
 import type { AutoDepositResult } from "./useAutoDeposit";
 
@@ -287,7 +287,7 @@ export function useOrderActions(): UseOrderActionsResult {
       // Auto deposit if enabled (use oracle price with slippage buffer for market orders)
       if (autoDepositEnabled && balanceManagerId) {
         const oraclePrice = getUnifiedPrice('NBTC');
-        const estimatedPrice = oraclePrice > 0 ? oraclePrice * 1.10 : 100000;
+        const estimatedPrice = oraclePrice > 0 ? oraclePrice * MARKET_ORDER_SLIPPAGE_BUFFER : 100000;
         const requiredQuote = type === "buy" ? estimatedPrice * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
         const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast);

@@ -89,108 +89,45 @@ function parseMoveAbort(error: string): { module: string; code: number } | null 
   return null;
 }
 
+// Module-to-error-map mapping (created once, reused on every call)
+const ERROR_MAPS: Record<string, { errors: Record<number, string>; prefix: string }> = {
+  balance_manager: { errors: BALANCE_MANAGER_ERRORS, prefix: 'BM' },
+  pool: { errors: POOL_ERRORS, prefix: 'POOL' },
+  order_info: { errors: ORDER_INFO_ERRORS, prefix: 'ORDER_INFO' },
+};
+
+/**
+ * Resolve a MoveAbort into a user-friendly ParsedError.
+ * Shared by both direct MoveAbort and Dry run wrapped errors.
+ */
+function resolveMoveAbort(parsed: { module: string; code: number }): ParsedError {
+
+  const mapping = ERROR_MAPS[parsed.module];
+  if (mapping) {
+    const message = mapping.errors[parsed.code];
+    if (message) {
+      return { message, code: `${mapping.prefix}-${parsed.code}`, isKnown: true };
+    }
+  }
+
+  return {
+    message: `Transaction failed (${parsed.module}:${parsed.code})`,
+    code: `${parsed.module.toUpperCase()}-${parsed.code}`,
+    isKnown: false,
+  };
+}
+
 /**
  * 에러 메시지를 사용자 친화적인 메시지로 변환
  */
 export function parseError(error: unknown): ParsedError {
   const errorStr = error instanceof Error ? error.message : String(error);
 
-  // MoveAbort 에러 파싱
+  // MoveAbort 에러 파싱 (both direct and Dry run wrapped)
   if (errorStr.includes('MoveAbort')) {
     const parsed = parseMoveAbort(errorStr);
-
     if (parsed) {
-      // balance_manager 에러
-      if (parsed.module === 'balance_manager') {
-        const message = BALANCE_MANAGER_ERRORS[parsed.code];
-        if (message) {
-          return {
-            message,
-            code: `BM-${parsed.code}`,
-            isKnown: true,
-          };
-        }
-      }
-
-      // pool 에러
-      if (parsed.module === 'pool') {
-        const message = POOL_ERRORS[parsed.code];
-        if (message) {
-          return {
-            message,
-            code: `POOL-${parsed.code}`,
-            isKnown: true,
-          };
-        }
-      }
-
-      // order_info 에러
-      if (parsed.module === 'order_info') {
-        const message = ORDER_INFO_ERRORS[parsed.code];
-        if (message) {
-          return {
-            message,
-            code: `ORDER_INFO-${parsed.code}`,
-            isKnown: true,
-          };
-        }
-      }
-
-      // 알 수 없는 Move 에러
-      return {
-        message: `Transaction failed (${parsed.module}:${parsed.code})`,
-        code: `${parsed.module.toUpperCase()}-${parsed.code}`,
-        isKnown: false,
-      };
-    }
-  }
-
-  // Dry run 에러 래핑 제거
-  if (errorStr.includes('Dry run failed')) {
-    // 내부 MoveAbort 추출
-    if (errorStr.includes('MoveAbort')) {
-      const innerParsed = parseMoveAbort(errorStr);
-      if (innerParsed) {
-        // balance_manager 에러
-        if (innerParsed.module === 'balance_manager') {
-          const message = BALANCE_MANAGER_ERRORS[innerParsed.code];
-          if (message) {
-            return {
-              message,
-              code: `BM-${innerParsed.code}`,
-              isKnown: true,
-            };
-          }
-        }
-        // pool 에러
-        if (innerParsed.module === 'pool') {
-          const message = POOL_ERRORS[innerParsed.code];
-          if (message) {
-            return {
-              message,
-              code: `POOL-${innerParsed.code}`,
-              isKnown: true,
-            };
-          }
-        }
-        // order_info 에러
-        if (innerParsed.module === 'order_info') {
-          const message = ORDER_INFO_ERRORS[innerParsed.code];
-          if (message) {
-            return {
-              message,
-              code: `ORDER_INFO-${innerParsed.code}`,
-              isKnown: true,
-            };
-          }
-        }
-        // 알 수 없는 Move 에러
-        return {
-          message: `Transaction failed (${innerParsed.module}:${innerParsed.code})`,
-          code: `${innerParsed.module.toUpperCase()}-${innerParsed.code}`,
-          isKnown: false,
-        };
-      }
+      return resolveMoveAbort(parsed);
     }
   }
 

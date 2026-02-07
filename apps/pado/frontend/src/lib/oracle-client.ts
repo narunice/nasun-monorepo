@@ -31,6 +31,22 @@ export const SYMBOLS = {
 export type SymbolKey = keyof typeof SYMBOLS;
 
 // ========================================
+// Helpers
+// ========================================
+
+/**
+ * Safely extract fields from a Sui MoveObject response.
+ * Returns null if content is missing or not a MoveObject.
+ */
+function getMoveFields(
+  content: { dataType: string; fields?: unknown } | null | undefined
+): Record<string, unknown> | null {
+  if (!content || content.dataType !== 'moveObject') return null;
+  if (!content.fields || typeof content.fields !== 'object' || Array.isArray(content.fields)) return null;
+  return content.fields as Record<string, unknown>;
+}
+
+// ========================================
 // Types
 // ========================================
 
@@ -68,11 +84,11 @@ async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
       options: { showContent: true },
     });
 
-    if (registry.data?.content?.dataType !== 'moveObject') return null;
+    const fields = getMoveFields(registry.data?.content);
+    if (!fields) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fields = (registry.data.content as any).fields;
-    const tableId = fields?.feeds?.fields?.id?.id;
+    const feeds = fields.feeds as { fields?: { id?: { id?: string } } } | undefined;
+    const tableId = feeds?.fields?.id?.id;
     if (tableId) {
       feedsTableId = tableId;
       console.log(`[Oracle] Resolved feeds table: ${tableId.slice(0, 16)}...`);
@@ -110,13 +126,14 @@ export async function getPrice(
       },
     });
 
-    if (!result.data?.content || result.data.content.dataType !== 'moveObject') {
+    const outerFields = getMoveFields(result.data?.content);
+    if (!outerFields) {
       console.warn(`[Oracle] Feed not found for ${symbol}`);
       return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fields = (result.data.content as any).fields?.value?.fields;
+    const valueObj = outerFields.value as { fields?: Record<string, unknown> } | undefined;
+    const fields = valueObj?.fields;
     if (!fields) {
       console.warn(`[Oracle] Invalid feed structure for ${symbol}`);
       return null;
