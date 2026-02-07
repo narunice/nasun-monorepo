@@ -17,3 +17,4 @@ export { MarketInfoBar } from './MarketInfoBar';
 export { BottomTabPanel } from './BottomTabPanel';
 export { TransferModal } from './TransferModal';
 export { TradingToggles } from './TradingToggles';
+export { ShortcutHelpTooltip } from './ShortcutHelpTooltip';

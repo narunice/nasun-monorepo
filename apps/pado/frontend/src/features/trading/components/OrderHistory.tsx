@@ -8,6 +8,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useMarket } from '../context/MarketContext';
 import { useOrderActions } from '../hooks';
 import { useOrderHistory } from '../hooks/useOrderHistory';
+import { SkeletonTable } from '@/components/common';
 
 const PAGE_SIZE = 10;
 
@@ -39,7 +40,6 @@ export function OrderHistory() {
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
 
   const { currentPool } = useMarket();
-  const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const { balanceManagerId } = useOrderActions();
@@ -65,8 +65,8 @@ export function OrderHistory() {
 
   if (isLoading) {
     return (
-      <div className="text-center text-theme-text-muted py-6">
-        <p className="text-trading-sm xl:text-trading-lg">Loading...</p>
+      <div className="py-4 px-2">
+        <SkeletonTable rows={5} cols={6} />
       </div>
     );
   }
@@ -74,7 +74,8 @@ export function OrderHistory() {
   if (!orders || orders.length === 0) {
     return (
       <div className="text-center text-theme-text-muted py-6">
-        <p className="text-trading-sm xl:text-trading-lg">No order history</p>
+        <p className="text-trading-sm xl:text-trading-lg">No orders yet</p>
+        <p className="text-[10px] xl:text-trading-xs mt-1">Your order history will appear here</p>
       </div>
     );
   }
@@ -92,7 +93,7 @@ export function OrderHistory() {
             <th className="py-2 px-2 text-left font-medium">Type</th>
             <th className="py-2 px-2 text-left font-medium">Side</th>
             <th className="py-2 px-2 text-right font-medium">Price ({quoteSymbol})</th>
-            <th className="py-2 px-2 text-right font-medium">Amount ({baseSymbol})</th>
+            <th className="py-2 px-2 text-right font-medium">Filled / Qty</th>
             <th className="py-2 px-2 text-center font-medium">Status</th>
             <th className="py-2 px-2 text-right font-medium">Time</th>
           </tr>
@@ -117,15 +118,23 @@ export function OrderHistory() {
                 })}
               </td>
               <td className="py-1.5 px-2 text-right font-mono text-theme-text-primary">
-                {order.quantity.toFixed(5)}
+                <span className="text-theme-text-secondary">{order.executedQuantity.toFixed(4)}</span>
+                <span className="text-theme-text-muted"> / {order.quantity.toFixed(4)}</span>
               </td>
               <td className="py-1.5 px-2 text-center">
                 <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] xl:text-xs font-medium ${
                   order.status === 'filled'
                     ? 'bg-green-600/20 text-green-400'
+                    : order.status === 'partial'
+                    ? 'bg-yellow-600/20 text-yellow-400'
+                    : order.status === 'placed'
+                    ? 'bg-blue-600/20 text-blue-400'
                     : 'bg-gray-600/20 text-gray-400'
                 }`}>
-                  {order.status === 'filled' ? 'Filled' : 'Canceled'}
+                  {order.status === 'filled' ? 'Filled'
+                    : order.status === 'partial' ? 'Partial'
+                    : order.status === 'placed' ? 'Placed'
+                    : 'Canceled'}
                 </span>
               </td>
               <td className="py-1.5 px-2 text-right text-theme-text-muted">

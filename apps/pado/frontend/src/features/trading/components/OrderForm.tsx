@@ -69,7 +69,7 @@ export function OrderForm({
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
-  const [showAdvanced, setShowAdvanced] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [totalInput, setTotalInput] = useState('');
   const [activeField, setActiveField] = useState<'amount' | 'total'>('amount');
 

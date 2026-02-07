@@ -51,7 +51,10 @@ export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrd
   return (
     <div>
       {orders.length === 0 ? (
-        <p className="text-xs xl:text-sm text-theme-text-muted">No open orders</p>
+        <div className="text-center py-2">
+          <p className="text-xs xl:text-sm text-theme-text-muted">No open orders</p>
+          <p className="text-[10px] text-theme-text-muted mt-0.5">Place an order to get started</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {/* Cancel All row */}

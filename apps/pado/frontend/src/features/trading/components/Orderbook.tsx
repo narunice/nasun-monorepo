@@ -4,7 +4,7 @@
  * With Book/Trades tab toggle (benchmark: Lighter, Hyperliquid, dYdX)
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Orderbook as OrderbookType, PriceLevel } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs } from '@/components/common';
@@ -71,6 +71,20 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
   const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
   const rowHeight = compact ? 'py-px' : 'py-0.5';
 
+  // Track seen trade IDs to only animate genuinely new trades
+  const seenIdsRef = useRef(new Set<string>());
+  const newTradeIds = useMemo(() => {
+    const newIds = new Set<string>();
+    for (const t of trades) {
+      if (!seenIdsRef.current.has(t.id)) newIds.add(t.id);
+    }
+    return newIds;
+  }, [trades]);
+
+  useEffect(() => {
+    for (const t of trades) seenIdsRef.current.add(t.id);
+  }, [trades]);
+
   return (
     <>
       {/* Column Headers */}
@@ -89,7 +103,11 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
             {trades.map((trade) => (
               <div
                 key={trade.id}
-                className={`grid grid-cols-3 gap-1 ${fontSize} ${rowHeight}`}
+                className={`grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${
+                  newTradeIds.has(trade.id)
+                    ? trade.isBuy ? 'animate-flash-buy' : 'animate-flash-sell'
+                    : ''
+                }`}
               >
                 <span className={`font-mono ${trade.isBuy ? 'text-trading-bid' : 'text-trading-ask'}`}>
                   {trade.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -105,7 +123,8 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
           </div>
         ) : (
           <div className={`text-center text-theme-text-muted ${fontSize} py-8`}>
-            No trades yet
+            <p>No trades yet</p>
+            <p className="text-[10px] mt-1">Recent market fills will appear here</p>
           </div>
         )}
       </div>
@@ -217,6 +236,47 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
     return 3;
   }, [groupSize]);
 
+  // Track previous level quantities for pulse animation
+  const prevLevelsRef = useRef<Map<number, number>>(new Map());
+  const prevGroupSizeRef = useRef(groupSize);
+  const [pulseKey, setPulseKey] = useState(0);
+
+  // Detect quantity changes for pulse animation (read-only from refs)
+  const changedPrices = useMemo(() => {
+    const changes = new Map<number, 'up' | 'down'>();
+    // Skip pulse when groupSize changed (all prices shift)
+    if (prevGroupSizeRef.current !== groupSize) return changes;
+    const prev = prevLevelsRef.current;
+    for (const level of displayedBids) {
+      const prevQty = prev.get(level.price);
+      if (prevQty !== undefined && prevQty !== level.quantity) {
+        changes.set(level.price, level.quantity > prevQty ? 'up' : 'down');
+      }
+    }
+    for (const level of displayedAsks) {
+      const prevQty = prev.get(level.price);
+      if (prevQty !== undefined && prevQty !== level.quantity) {
+        changes.set(level.price, level.quantity > prevQty ? 'up' : 'down');
+      }
+    }
+    return changes;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedBids, displayedAsks, groupSize]);
+
+  // Update refs and pulse key in useEffect (safe for concurrent mode)
+  useEffect(() => {
+    if (prevGroupSizeRef.current !== groupSize) {
+      prevGroupSizeRef.current = groupSize;
+      prevLevelsRef.current = new Map();
+      return;
+    }
+    const next = new Map<number, number>();
+    for (const l of displayedBids) next.set(l.price, l.quantity);
+    for (const l of displayedAsks) next.set(l.price, l.quantity);
+    prevLevelsRef.current = next;
+    if (changedPrices.size > 0) setPulseKey((k) => k + 1);
+  }, [displayedBids, displayedAsks, changedPrices, groupSize]);
+
   const rowHeight = compact ? 'py-px' : 'py-0.5';
   const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
 
@@ -278,17 +338,19 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           </div>
 
           {/* Asks (reversed - best ask at bottom) */}
-          <div className="flex-1 overflow-y-auto flex flex-col justify-end">
+          <div className="flex-1 overflow-y-auto flex flex-col">
             {reversedAsks.length > 0 ? (
-              <div className="space-y-px">
+              <div className="mt-auto space-y-px">
                 {reversedAsks.map((level, i) => {
                   const cumulative = reversedAskCumulatives[i];
                   const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
+                  const change = changedPrices.get(level.price);
+                  const pulseClass = change === 'up' ? 'animate-pulse-up' : change === 'down' ? 'animate-pulse-down' : '';
 
                   return (
                     <div
-                      key={i}
-                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${
+                      key={change ? `${i}-${pulseKey}` : i}
+                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${pulseClass} ${
                         onPriceClick ? 'cursor-pointer hover:bg-trading-ask-bg' : ''
                       }`}
                       onClick={() => handlePriceClick(level.price)}
@@ -330,11 +392,13 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                 {displayedBids.map((level, i) => {
                   const cumulative = bidCumulatives[i];
                   const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
+                  const change = changedPrices.get(level.price);
+                  const pulseClass = change === 'up' ? 'animate-pulse-up' : change === 'down' ? 'animate-pulse-down' : '';
 
                   return (
                     <div
-                      key={i}
-                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${
+                      key={change ? `${i}-${pulseKey}` : i}
+                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${pulseClass} ${
                         onPriceClick ? 'cursor-pointer hover:bg-trading-bid-bg' : ''
                       }`}
                       onClick={() => handlePriceClick(level.price)}
