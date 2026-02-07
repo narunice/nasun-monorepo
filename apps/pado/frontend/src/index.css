@@ -64,9 +64,9 @@
   --color-bg-secondary: #e1e5ea;    /* pd5 */
   --color-bg-tertiary: #d0d6de;
   --color-text-primary: #0e1a2d;
-  --color-text-secondary: #2d4d6c;  /* pd1→pd2 midpoint (darker for readability) */
-  --color-text-muted: #5b7e9c;      /* pd2→pd3 midpoint (darker for readability) */
-  --color-border: #94b3ca;          /* pd3→pd4 midpoint (stronger for readability) */
+  --color-text-secondary: #243f5c;  /* pd1→pd2 midpoint (darker for readability) */
+  --color-text-muted: #4d6e8c;      /* pd2→pd3 midpoint (darker for readability) */
+  --color-border: #84a3ba;          /* pd3→pd4 midpoint (stronger for readability) */
   --color-accent: #1f3a61;          /* pd1 */
   --color-success: #22c55e;
   --color-error: #ef4444;
@@ -96,10 +96,10 @@
   --color-bg-primary: #080c16;      /* pd0 -30% lightness */
   --color-bg-secondary: #0d141e;    /* pd0s -30% lightness */
   --color-bg-tertiary: #121a26;
-  --color-text-primary: #e1e5ea;    /* pd5 */
-  --color-text-secondary: #c6d7e0;  /* pd4→pd5 midpoint (brighter for readability) */
-  --color-text-muted: #94b3ca;      /* pd3→pd4 midpoint (brighter for readability) */
-  --color-border: #2d4d6c;          /* pd1→pd2 midpoint (more visible) */
+  --color-text-primary: #eaecf0;    /* pd5+ (brighter for readability) */
+  --color-text-secondary: #d4e2ea;  /* pd4→pd5 midpoint (brighter for readability) */
+  --color-text-muted: #a3bfd3;      /* pd3→pd4 midpoint (brighter for readability) */
+  --color-border: #3a5f7e;          /* pd1→pd2 midpoint (more visible) */
   --color-accent: #94b3ca;          /* pd3→pd4 midpoint (brighter for readability) */
   --color-success: #22c55e;
   --color-error: #ef4444;

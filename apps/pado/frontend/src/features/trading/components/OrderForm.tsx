@@ -280,7 +280,7 @@ export function OrderForm({
               <button
                 onClick={() => handlePriceSelect(bestBid)}
                 disabled={!bestBid}
-                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-green-700/50 hover:bg-green-700 text-green-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-bid font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 title="Best bid price"
               >
                 Bid
@@ -288,7 +288,7 @@ export function OrderForm({
               <button
                 onClick={() => handlePriceSelect(bestAsk)}
                 disabled={!bestAsk}
-                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-red-700/50 hover:bg-red-700 text-red-300 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-ask font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 title="Best ask price"
               >
                 Ask
