@@ -32,6 +32,7 @@ import { getNusdcCoins } from './services/coin';
 import { fetchExecutors, selectExecutorWeightedRandom } from './services/executor';
 import { buildCreateRequestTransaction, buildCancelRequestTransaction } from './services/transaction';
 import { fetchECRByRequestId } from './services/ecr';
+import { encryptForTee, decryptResponse } from './services/tee';
 import {
   fetchBudget,
   fetchBudgetsByOwner,
@@ -450,6 +451,7 @@ export class BaramClient {
     let resultHash: string;
     let executionTimeMs: number;
     let txDigest: string;
+    let teeEncrypted = false;
 
     try {
       const execResult = await this.callExecutor(
@@ -462,6 +464,7 @@ export class BaramClient {
       resultHash = execResult.resultHash;
       executionTimeMs = execResult.executionTimeMs;
       txDigest = execResult.txDigest;
+      teeEncrypted = execResult.teeEncrypted;
     } catch (err) {
       // Note: Budget requests cannot be cancelled by agent
       // The Budget owner can cancel or funds will timeout
@@ -484,6 +487,7 @@ export class BaramClient {
       executionTimeMs,
       ecr,
       executor: selectedExecutor,
+      teeEncrypted,
     };
   }
 
@@ -529,12 +533,14 @@ export class BaramClient {
     let executionTimeMs: number;
     let txDigest: string;
 
+    let teeEncrypted = false;
     try {
       const execResult = await this.callExecutor(executor, requestId, prompt, model);
       response = execResult.response;
       resultHash = execResult.resultHash;
       executionTimeMs = execResult.executionTimeMs;
       txDigest = execResult.txDigest;
+      teeEncrypted = execResult.teeEncrypted;
     } catch (err) {
       // Auto-cancel on executor failure to release escrow
       try {
@@ -561,6 +567,7 @@ export class BaramClient {
       executionTimeMs,
       ecr,
       executor,
+      teeEncrypted,
     };
   }
 
@@ -581,7 +588,7 @@ export class BaramClient {
     requestId: number,
     prompt: string,
     model: string,
-  ): Promise<{ response: string; resultHash: string; executionTimeMs: number; txDigest: string }> {
+  ): Promise<{ response: string; resultHash: string; executionTimeMs: number; txDigest: string; teeEncrypted: boolean }> {
     // Validate executor URL to prevent SSRF
     const rawUrl = executor.endpointUrl.replace(/\/$/, '');
     try {
@@ -595,8 +602,19 @@ export class BaramClient {
     }
     const url = rawUrl;
 
-    // Encode prompt as base64 for non-TEE executors
-    const encodedPrompt = Buffer.from(prompt, 'utf-8').toString('base64');
+    // TEE executors: RSA-OAEP + AES-256-GCM E2E encryption
+    // Non-TEE executors: Base64 encoding only
+    const needsTee = executor.teeType > 0;
+    let encodedPrompt: string;
+    let aesKeyBytes: Uint8Array | null = null;
+
+    if (needsTee) {
+      const result = await encryptForTee(prompt, url);
+      encodedPrompt = result.encrypted;
+      aesKeyBytes = result.aesKeyBytes;
+    } else {
+      encodedPrompt = Buffer.from(prompt, 'utf-8').toString('base64');
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.executorTimeoutMs);
@@ -629,6 +647,7 @@ export class BaramClient {
 
     const data = await res.json() as {
       result?: string;
+      encrypted?: boolean;
       resultHash?: string;
       executionTimeMs?: number;
       txDigest?: string;
@@ -638,11 +657,22 @@ export class BaramClient {
       throw new ExecutorApiError(200, 'Executor returned empty result');
     }
 
+    // Decrypt E2E-encrypted response from TEE executor
+    let response = data.result;
+    if (data.encrypted && aesKeyBytes) {
+      try {
+        response = await decryptResponse(response, aesKeyBytes);
+      } finally {
+        aesKeyBytes.fill(0);
+      }
+    }
+
     return {
-      response: data.result,
+      response,
       resultHash: data.resultHash ?? '',
       executionTimeMs: data.executionTimeMs ?? 0,
       txDigest: data.txDigest ?? '',
+      teeEncrypted: needsTee,
     };
   }
 }
