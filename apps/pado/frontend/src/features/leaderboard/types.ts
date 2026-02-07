@@ -45,3 +45,21 @@ export const PERIOD_LABELS: Record<Period, string> = {
   '30d': '30D',
   'all': 'All',
 };
+
+// ===== Trader Profile Types =====
+
+export interface TraderFill {
+  txDigest: string;
+  poolId: string;
+  side: 'buy' | 'sell';
+  price: string;
+  baseQuantity: string;
+  quoteQuantity: string;
+  timestamp: number;
+}
+
+export interface TraderFillsResponse {
+  address: string;
+  fills: TraderFill[];
+  hasMore: boolean;
+}

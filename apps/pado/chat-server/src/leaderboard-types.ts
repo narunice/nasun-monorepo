@@ -103,6 +103,32 @@ export interface LeaderboardConfig {
   excludedAddresses: Set<string>;
 }
 
+// ===== Competition Types =====
+
+export type CompetitionStatus = 'upcoming' | 'active' | 'ended';
+
+export interface CompetitionRow {
+  id: string;
+  title: string;
+  description: string;
+  start_ms: number;
+  end_ms: number;
+  status: CompetitionStatus;
+  prize_description: string;
+  min_volume: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CompetitionResultRow {
+  competition_id: string;
+  address: string;
+  volume_quote: string;
+  trade_count: number;
+  rank: number;
+  updated_at: number;
+}
+
 // ===== RPC Event Types =====
 
 export interface OrderFilledParsedJson {

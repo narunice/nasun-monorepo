@@ -18,13 +18,16 @@ import type {
 import { DEFAULT_CONFIG as CONFIG } from './types.js';
 import {
   initLeaderboardStore, closeLeaderboardStore,
-  getLeaderboard, getTraderAllPeriodStats, getTotalFillsCount, getTotalTradersCount,
+  getLeaderboard, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
   getIndexerState,
+  createCompetition, updateCompetition, getCompetition, listCompetitions,
+  getCompetitionResults,
 } from './leaderboard-store.js';
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
 import { VALID_PERIODS } from './leaderboard-types.js';
-import type { LeaderboardConfig, Period } from './leaderboard-types.js';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import type { LeaderboardConfig, Period, CompetitionStatus } from './leaderboard-types.js';
 
 // ===== State =====
 
@@ -384,8 +387,8 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
   const origin = getCorsOrigin(req.headers?.origin as string | undefined);
   const corsHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
   if (origin) {
     corsHeaders['Access-Control-Allow-Origin'] = origin;
@@ -517,6 +520,42 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
+  // Match /api/leaderboard/trader/:address/fills
+  const fillsMatch = url.pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/fills$/);
+  if (fillsMatch && req.method === 'GET') {
+    const address = fillsMatch[1];
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
+
+    try {
+      const rows = getTraderFills(address, limit);
+      const hasMore = rows.length > limit;
+      const fills = (hasMore ? rows.slice(0, limit) : rows).map((r) => {
+        // Determine trade side relative to the queried address
+        const isTaker = r.taker_address === address;
+        const isBid = !!r.taker_is_bid;
+        const side = isTaker ? (isBid ? 'buy' : 'sell') : (isBid ? 'sell' : 'buy');
+
+        return {
+          txDigest: r.tx_digest,
+          poolId: r.pool_id,
+          side,
+          price: formatQuoteVolume(r.price),
+          baseQuantity: r.base_quantity,
+          quoteQuantity: formatQuoteVolume(r.quote_quantity),
+          timestamp: r.timestamp_ms,
+        };
+      });
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ address, fills, hasMore }));
+    } catch (err) {
+      console.error('[Leaderboard] Fills API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
   if (url.pathname === '/api/leaderboard/status' && req.method === 'GET') {
     try {
       const lastIndexedAt = getIndexerState('last_indexed_at');
@@ -535,8 +574,278 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
+  // ===== Competition API =====
+
+  // Rate limit competition endpoints
+  if (url.pathname.startsWith('/api/competitions')) {
+    const clientIp = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      || 'unknown';
+    if (!checkApiRateLimit(clientIp)) {
+      res.writeHead(429, corsHeaders);
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+  }
+
+  // GET /api/competitions - list competitions
+  if (url.pathname === '/api/competitions' && req.method === 'GET') {
+    try {
+      const statusFilter = url.searchParams.get('status') as CompetitionStatus | null;
+      const validStatuses = new Set(['upcoming', 'active', 'ended']);
+      const competitions = (statusFilter && validStatuses.has(statusFilter))
+        ? listCompetitions(statusFilter)
+        : listCompetitions();
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ competitions }));
+    } catch (err) {
+      console.error('[Competition] List API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/competitions/:id/results
+  const compResultsMatch = url.pathname.match(/^\/api\/competitions\/([a-zA-Z0-9_-]+)\/results$/);
+  if (compResultsMatch && req.method === 'GET') {
+    const compId = compResultsMatch[1];
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '100', 10), 1), 200);
+
+    try {
+      const comp = getCompetition(compId);
+      if (!comp) {
+        res.writeHead(404, corsHeaders);
+        res.end(JSON.stringify({ error: 'Competition not found' }));
+        return;
+      }
+
+      const results = getCompetitionResults(compId, limit);
+      const addresses = results.map((r) => r.address);
+      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+
+      const traders = results.map((r) => ({
+        rank: r.rank,
+        address: r.address,
+        nickname: nicknames.get(r.address) ?? null,
+        volumeUsd: formatQuoteVolume(r.volume_quote),
+        tradeCount: r.trade_count,
+      }));
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ competitionId: compId, traders }));
+    } catch (err) {
+      console.error('[Competition] Results API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/competitions/:id
+  const compDetailMatch = url.pathname.match(/^\/api\/competitions\/([a-zA-Z0-9_-]+)$/);
+  if (compDetailMatch && req.method === 'GET') {
+    const compId = compDetailMatch[1];
+
+    try {
+      const comp = getCompetition(compId);
+      if (!comp) {
+        res.writeHead(404, corsHeaders);
+        res.end(JSON.stringify({ error: 'Competition not found' }));
+        return;
+      }
+
+      // Include top 10 results
+      const results = getCompetitionResults(compId, 10);
+      const addresses = results.map((r) => r.address);
+      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+
+      const topTraders = results.map((r) => ({
+        rank: r.rank,
+        address: r.address,
+        nickname: nicknames.get(r.address) ?? null,
+        volumeUsd: formatQuoteVolume(r.volume_quote),
+        tradeCount: r.trade_count,
+      }));
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ ...comp, topTraders }));
+    } catch (err) {
+      console.error('[Competition] Detail API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // POST /api/competitions (admin only)
+  if (url.pathname === '/api/competitions' && req.method === 'POST') {
+    if (!checkAdminAuth(req)) {
+      res.writeHead(401, corsHeaders);
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    collectBody(req as any).then((body) => {
+      try {
+        const data = JSON.parse(body);
+        const { title, description, startMs, endMs, prizeDescription, minVolume } = data;
+
+        const parsedStartMs = Number(startMs);
+        const parsedEndMs = Number(endMs);
+
+        if (!title || typeof title !== 'string' || title.trim().length === 0) {
+          res.writeHead(400, corsHeaders);
+          res.end(JSON.stringify({ error: 'Title is required' }));
+          return;
+        }
+
+        if (!Number.isFinite(parsedStartMs) || !Number.isFinite(parsedEndMs)
+            || parsedStartMs <= 0 || parsedEndMs <= parsedStartMs) {
+          res.writeHead(400, corsHeaders);
+          res.end(JSON.stringify({ error: 'Invalid start/end time' }));
+          return;
+        }
+
+        const id = randomBytes(12).toString('hex');
+        const now = Date.now();
+        const status = now >= parsedStartMs && now <= parsedEndMs ? 'active' : now < parsedStartMs ? 'upcoming' : 'ended';
+
+        createCompetition({
+          id,
+          title: String(title).slice(0, 100),
+          description: String(description || '').slice(0, 500),
+          start_ms: parsedStartMs,
+          end_ms: parsedEndMs,
+          status: status as CompetitionStatus,
+          prize_description: String(prizeDescription || '').slice(0, 200),
+          min_volume: String(minVolume || '0'),
+        });
+
+        res.writeHead(201, corsHeaders);
+        res.end(JSON.stringify({ id, status }));
+      } catch (err) {
+        console.error('[Competition] Create error:', (err as Error).message);
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid request body' }));
+      }
+    }).catch((err) => {
+      console.error('[Competition] Body collection error:', (err as Error).message);
+      res.writeHead(413, corsHeaders);
+      res.end(JSON.stringify({ error: 'Request body too large or malformed' }));
+    });
+    return;
+  }
+
+  // PATCH /api/competitions/:id (admin only)
+  const compPatchMatch = url.pathname.match(/^\/api\/competitions\/([a-zA-Z0-9_-]{1,64})$/);
+  if (compPatchMatch && req.method === 'PATCH') {
+    if (!checkAdminAuth(req)) {
+      res.writeHead(401, corsHeaders);
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    const compId = compPatchMatch[1];
+
+    collectBody(req as any).then((body) => {
+      try {
+        const data = JSON.parse(body);
+        const updates: Partial<Pick<import('./leaderboard-types.js').CompetitionRow, 'title' | 'description' | 'start_ms' | 'end_ms' | 'status' | 'prize_description' | 'min_volume'>> = {};
+
+        if (data.title !== undefined) updates.title = String(data.title).slice(0, 100);
+        if (data.description !== undefined) updates.description = String(data.description).slice(0, 500);
+        if (data.startMs !== undefined) {
+          const n = Number(data.startMs);
+          if (!Number.isFinite(n) || n <= 0) {
+            res.writeHead(400, corsHeaders);
+            res.end(JSON.stringify({ error: 'Invalid startMs' }));
+            return;
+          }
+          updates.start_ms = n;
+        }
+        if (data.endMs !== undefined) {
+          const n = Number(data.endMs);
+          if (!Number.isFinite(n) || n <= 0) {
+            res.writeHead(400, corsHeaders);
+            res.end(JSON.stringify({ error: 'Invalid endMs' }));
+            return;
+          }
+          updates.end_ms = n;
+        }
+        if (data.status !== undefined) {
+          const validStatuses = new Set(['upcoming', 'active', 'ended']);
+          if (!validStatuses.has(data.status)) {
+            res.writeHead(400, corsHeaders);
+            res.end(JSON.stringify({ error: 'Invalid status' }));
+            return;
+          }
+          updates.status = data.status;
+        }
+        if (data.prizeDescription !== undefined) updates.prize_description = String(data.prizeDescription).slice(0, 200);
+        if (data.minVolume !== undefined) updates.min_volume = String(data.minVolume);
+
+        const ok = updateCompetition(compId, updates);
+        if (!ok) {
+          res.writeHead(404, corsHeaders);
+          res.end(JSON.stringify({ error: 'Competition not found' }));
+          return;
+        }
+
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        console.error('[Competition] Update error:', (err as Error).message);
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid request body' }));
+      }
+    }).catch((err) => {
+      console.error('[Competition] Body collection error:', (err as Error).message);
+      res.writeHead(413, corsHeaders);
+      res.end(JSON.stringify({ error: 'Request body too large or malformed' }));
+    });
+    return;
+  }
+
   res.writeHead(404, corsHeaders);
   res.end(JSON.stringify({ error: 'Not found' }));
+}
+
+/**
+ * Check admin authorization via Bearer token.
+ */
+function checkAdminAuth(req: { headers?: Record<string, string | string[] | undefined> }): boolean {
+  if (!CONFIG.competitionAdminKey) return false;
+  const authHeader = req.headers?.authorization as string | undefined;
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  const token = authHeader.slice(7);
+  // Constant-time comparison to prevent timing attacks
+  const tokenBuf = Buffer.from(token);
+  const keyBuf = Buffer.from(CONFIG.competitionAdminKey);
+  if (tokenBuf.length !== keyBuf.length) return false;
+  return timingSafeEqual(tokenBuf, keyBuf);
+}
+
+/**
+ * Collect request body as string (for POST/PATCH).
+ */
+function collectBody(req: import('node:http').IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const MAX_BODY = 10 * 1024; // 10KB max
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        req.destroy();
+        reject(new Error('Body too large'));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()));
+    req.on('error', reject);
+  });
 }
 
 /**
