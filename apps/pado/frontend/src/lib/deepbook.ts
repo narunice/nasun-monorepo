@@ -103,6 +103,32 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
   }
 }
 
+// Maximum ULEB128 bytes for a u64 value (ceil(64/7) = 10)
+const MAX_ULEB128_BYTES = 10;
+
+/**
+ * Read a ULEB128-encoded unsigned integer with bounded loop.
+ * Returns the decoded value and number of bytes consumed.
+ */
+function readUleb128(bytes: number[], startOffset: number): { value: number; bytesRead: number } {
+  let value = 0;
+  let shift = 0;
+  let bytesRead = 0;
+  let offset = startOffset;
+
+  while (offset < bytes.length && bytesRead < MAX_ULEB128_BYTES) {
+    const byte = bytes[offset++];
+    bytesRead++;
+    value |= (byte & 0x7f) << shift;
+    if ((byte & 0x80) === 0) return { value, bytesRead };
+    shift += 7;
+  }
+
+  // Reached MAX_ULEB128_BYTES or end of buffer without termination
+  logOnce('uleb128-unterminated', 'warn', 'ULEB128 decoding: unterminated or oversized encoding');
+  return { value, bytesRead };
+}
+
 /**
  * Parse vector<u64> from BCS bytes
  * Vector format: [length as ULEB128] + [u64 values as little-endian]
@@ -111,17 +137,8 @@ function parseU64Vector(bytes: number[]): bigint[] {
   if (!bytes || bytes.length === 0) return [];
 
   const result: bigint[] = [];
-  let offset = 0;
-
-  // Read ULEB128 length
-  let length = 0;
-  let shift = 0;
-  while (offset < bytes.length) {
-    const byte = bytes[offset++];
-    length |= (byte & 0x7f) << shift;
-    if ((byte & 0x80) === 0) break;
-    shift += 7;
-  }
+  const { value: length, bytesRead } = readUleb128(bytes, 0);
+  let offset = bytesRead;
 
   // Read u64 values
   for (let i = 0; i < length && offset + 8 <= bytes.length; i++) {
@@ -423,17 +440,8 @@ function parseOrderVector(
   if (!bytes || bytes.length === 0) return [];
 
   const orders: OpenOrder[] = [];
-  let offset = 0;
-
-  // Read ULEB128 length
-  let length = 0;
-  let shift = 0;
-  while (offset < bytes.length) {
-    const byte = bytes[offset++];
-    length |= (byte & 0x7f) << shift;
-    if ((byte & 0x80) === 0) break;
-    shift += 7;
-  }
+  const { value: length, bytesRead } = readUleb128(bytes, 0);
+  let offset = bytesRead;
 
   // Parse each order (99 bytes each)
   for (let i = 0; i < length && offset + 99 <= bytes.length; i++) {

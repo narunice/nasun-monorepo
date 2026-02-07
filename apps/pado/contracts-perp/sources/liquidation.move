@@ -16,7 +16,7 @@ module pado_perp::liquidation {
     use sui::event;
     use sui::coin::Coin;
     use devnet_tokens::nusdc::NUSDC;
-    use pado_oracle::dev_oracle::{Self, OracleRegistry};
+    use pado_oracle::dev_oracle::OracleRegistry;
     use pado_perp::perpetual::{
         Self,
         PerpMarket,
@@ -27,8 +27,6 @@ module pado_perp::liquidation {
 
     const ENotLiquidatable: u64 = 200;
     const EMarketMismatch: u64 = 202;
-    const EOracleStale: u64 = 203;
-    const EOraclePriceOverflow: u64 = 204;
 
     // ===== Constants =====
 
@@ -40,13 +38,6 @@ module pado_perp::liquidation {
 
     /// Minimum liquidation bonus in NUSDC units (0.1 NUSDC)
     const MIN_LIQUIDATION_BONUS: u64 = 100_000;
-
-    /// Maximum oracle staleness for liquidation (120 seconds)
-    const MAX_ORACLE_AGE_MS: u64 = 120_000;
-
-    /// Maximum reasonable price in oracle units (8 decimals).
-    /// $10,000,000 = 1_000_000_000_000_000. Guards against oracle misconfiguration.
-    const MAX_ORACLE_PRICE: u128 = 1_000_000_000_000_000;
 
     // ===== Events =====
 
@@ -157,21 +148,6 @@ module pado_perp::liquidation {
 
     // ===== Public Functions =====
 
-    /// Read oracle price and return validated u64 value.
-    fun read_oracle_price(
-        market: &PerpMarket,
-        oracle_registry: &OracleRegistry,
-        clock: &sui::clock::Clock,
-    ): u64 {
-        let base_symbol = perpetual::get_market_base_symbol(market);
-        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
-            oracle_registry, base_symbol, MAX_ORACLE_AGE_MS, clock
-        );
-        assert!(is_fresh, EOracleStale);
-        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
-        (price_u128 as u64)
-    }
-
     /// Liquidate an underwater position using on-chain oracle price
     /// Anyone can call this function to liquidate positions below maintenance margin
     /// Liquidator receives a bonus (5% of remaining collateral)
@@ -185,7 +161,7 @@ module pado_perp::liquidation {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<NUSDC> {
-        let current_price = read_oracle_price(market, oracle_registry, clock);
+        let current_price = perpetual::read_oracle_price(market, oracle_registry, clock);
         liquidate_with_verified_price(market, position, current_price, clock, ctx)
     }
 
@@ -198,7 +174,7 @@ module pado_perp::liquidation {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): vector<Coin<NUSDC>> {
-        let current_price = read_oracle_price(market, oracle_registry, clock);
+        let current_price = perpetual::read_oracle_price(market, oracle_registry, clock);
 
         let mut results = vector::empty<Coin<NUSDC>>();
 

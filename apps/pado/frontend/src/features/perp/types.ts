@@ -153,8 +153,6 @@ export interface OpenPositionParams {
   leverage: number;
   /** Collateral amount in NUSDC */
   collateralAmount: bigint;
-  /** Current oracle price (8 decimals) */
-  currentPrice: bigint;
 }
 
 /**
@@ -165,20 +163,18 @@ export interface ClosePositionParams {
   marketId: string;
   /** Position object ID */
   positionId: string;
-  /** Current oracle price (8 decimals) */
-  currentPrice: bigint;
 }
 
 /**
  * Parameters for adding collateral
  */
 export interface AddCollateralParams {
+  /** Market object ID */
+  marketId: string;
   /** Position object ID */
   positionId: string;
   /** Amount to add in NUSDC */
   amount: bigint;
-  /** Current oracle price (8 decimals) */
-  currentPrice: bigint;
 }
 
 /**
@@ -191,8 +187,6 @@ export interface RemoveCollateralParams {
   positionId: string;
   /** Amount to remove in NUSDC */
   amount: bigint;
-  /** Current oracle price (8 decimals) */
-  currentPrice: bigint;
 }
 
 // ===== Form Types =====
