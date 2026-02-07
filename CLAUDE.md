@@ -521,7 +521,7 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 | 디렉토리                          | 설명                                 |
 | --------------------------------- | ------------------------------------ |
-| `apps/baram/contracts/`           | Baram 에스크로 + 정산                |
+| `apps/baram/contracts/`           | Baram 에스크로 + 정산 + Budget + BetaAccess |
 | `apps/baram/contracts-executor/`  | Executor 등록 시스템                 |
 | `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet            |
 | `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                   |
@@ -551,7 +551,7 @@ cd apps/pado/contracts
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client envs
 ```
 
-### 배포된 컨트랙트 (Devnet V6)
+### 배포된 컨트랙트 (Devnet V7)
 
 > **Chain ID**: `272218f1` (V7 리셋, 2026-02-04)
 >
@@ -559,18 +559,18 @@ cd apps/pado/contracts
 
 **배포 완료된 컨트랙트:**
 
-| 카테고리   | 컨트랙트                            | 상태           |
-| ---------- | ----------------------------------- | -------------- |
-| Tokens     | devnet_tokens (NBTC, NUSDC, Faucet) | ✅ V6          |
-| Prediction | prediction (GlobalState)            | ✅ V6          |
-| Lottery    | lottery (LotteryRegistry)           | ✅ V6          |
-| Governance | governance (Dashboard)              | ✅ V6          |
-| DeepBook   | DeepBook V3 (CLOB)                  | ✅ V6          |
-| Baram      | baram (BaramRegistry)               | ✅ V6          |
-| Baram      | executor (ExecutorRegistry)         | ✅ V6          |
-| Oracle     | pado_oracle                         | V6 재배포 대기 |
-| Margin     | unified_margin                      | V6 재배포 대기 |
-| Perpetuals | pado_perp                           | V6 재배포 대기 |
+| 카테고리   | 컨트랙트                                      | 상태           |
+| ---------- | --------------------------------------------- | -------------- |
+| Tokens     | devnet_tokens (NBTC, NUSDC, Faucet)           | ✅ V7          |
+| Prediction | prediction (GlobalState)                      | ✅ V7          |
+| Lottery    | lottery (LotteryRegistry)                     | ✅ V7          |
+| Governance | governance (Dashboard)                        | ✅ V7          |
+| DeepBook   | DeepBook V3 (CLOB)                            | ✅ V7          |
+| Baram      | baram (BaramRegistry + Budget + BetaAccess)   | ✅ V7 (v3)     |
+| Baram      | executor (ExecutorRegistry + Staking + Tier)  | ✅ V7          |
+| Oracle     | pado_oracle                                   | V7 재배포 대기 |
+| Margin     | unified_margin                                | V7 재배포 대기 |
+| Perpetuals | pado_perp                                     | V7 재배포 대기 |
 
 ## 향후 계획
 

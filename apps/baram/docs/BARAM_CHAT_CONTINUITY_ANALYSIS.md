@@ -130,7 +130,7 @@ The real value of Seal + Walrus is **chat portability and privacy governance**, 
 
 ### Nasun Devnet Compatibility Warning
 
-Both Walrus and Seal operate on **Sui Mainnet/Testnet**. Nasun Devnet (Chain ID: `12bf3808`) is a Sui fork, meaning:
+Both Walrus and Seal operate on **Sui Mainnet/Testnet**. Nasun Devnet (Chain ID: `272218f1`) is a Sui fork, meaning:
 - Seal's key servers do not recognize Nasun Devnet
 - Walrus storage nodes do not communicate with Nasun Devnet
 - **Self-hosted key servers + deploying Seal/Walrus packages to Nasun Devnet would be required** — significant infrastructure work

@@ -4,6 +4,8 @@ Spot instance launch, configuration, and on-chain update procedures for the Bara
 
 Last updated: 2026-01-31
 
+> **Note (2026-02-07)**: 이 가이드의 컨트랙트 주소 예시는 V6 기준입니다. V7 주소는 `packages/devnet-config/devnet-ids.json`을 참조하세요.
+
 ---
 
 ## Table of Contents
