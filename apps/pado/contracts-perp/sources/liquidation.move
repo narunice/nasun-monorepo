@@ -65,30 +65,18 @@ module pado_perp::liquidation {
         timestamp: u64,
     }
 
-    // ===== Liquidation Functions =====
+    // ===== Internal Helper =====
 
-    /// Liquidate an underwater position using on-chain oracle price
-    /// Anyone can call this function to liquidate positions below maintenance margin
-    /// Liquidator receives a bonus (5% of remaining collateral)
-    ///
-    /// Price is read from the on-chain OracleRegistry to prevent manipulation.
-    /// The caller cannot provide an arbitrary price.
-    public fun liquidate_position(
+    /// Core liquidation logic using a pre-verified oracle price.
+    /// Called by both liquidate_position (single) and batch_liquidate (batch).
+    /// The price MUST be read from the on-chain oracle before calling this.
+    fun liquidate_with_verified_price(
         market: &mut PerpMarket,
         position: PerpPosition,
-        oracle_registry: &OracleRegistry,
+        current_price: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<NUSDC> {
-        // Read verified price from on-chain oracle
-        let base_symbol = perpetual::get_market_base_symbol(market);
-        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
-            oracle_registry, base_symbol, MAX_ORACLE_AGE_MS, clock
-        );
-        assert!(is_fresh, EOracleStale);
-        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
-        let current_price = (price_u128 as u64);
-
         // Verify position belongs to this market
         let market_id = object::id(market);
         assert!(perpetual::get_position_market_id(&position) == market_id, EMarketMismatch);
@@ -167,8 +155,42 @@ module pado_perp::liquidation {
         )
     }
 
+    // ===== Public Functions =====
+
+    /// Read oracle price and return validated u64 value.
+    fun read_oracle_price(
+        market: &PerpMarket,
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
+    ): u64 {
+        let base_symbol = perpetual::get_market_base_symbol(market);
+        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
+            oracle_registry, base_symbol, MAX_ORACLE_AGE_MS, clock
+        );
+        assert!(is_fresh, EOracleStale);
+        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
+        (price_u128 as u64)
+    }
+
+    /// Liquidate an underwater position using on-chain oracle price
+    /// Anyone can call this function to liquidate positions below maintenance margin
+    /// Liquidator receives a bonus (5% of remaining collateral)
+    ///
+    /// Price is read from the on-chain OracleRegistry to prevent manipulation.
+    /// The caller cannot provide an arbitrary price.
+    public fun liquidate_position(
+        market: &mut PerpMarket,
+        position: PerpPosition,
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        let current_price = read_oracle_price(market, oracle_registry, clock);
+        liquidate_with_verified_price(market, position, current_price, clock, ctx)
+    }
+
     /// Batch liquidate multiple positions using on-chain oracle price
-    /// Gas-efficient way to liquidate multiple positions in one transaction
+    /// Gas-efficient: reads oracle once, applies to all positions
     public fun batch_liquidate(
         market: &mut PerpMarket,
         mut positions: vector<PerpPosition>,
@@ -176,36 +198,20 @@ module pado_perp::liquidation {
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): vector<Coin<NUSDC>> {
-        // Read verified price once for all positions (same oracle read)
-        let base_symbol = perpetual::get_market_base_symbol(market);
-        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
-            oracle_registry, base_symbol, MAX_ORACLE_AGE_MS, clock
-        );
-        assert!(is_fresh, EOracleStale);
-        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
-        let current_price = (price_u128 as u64);
+        let current_price = read_oracle_price(market, oracle_registry, clock);
 
         let mut results = vector::empty<Coin<NUSDC>>();
 
         while (!vector::is_empty(&positions)) {
             let position = vector::pop_back(&mut positions);
-
-            // Get owner before potentially moving position
             let owner = perpetual::get_position_owner(&position);
 
-            // Check if liquidatable, skip if not
             if (perpetual::is_liquidatable(&position, current_price)) {
-                // Call internal liquidation with already-verified price
-                let bonus_coin = liquidate_position(
-                    market,
-                    position,
-                    oracle_registry,
-                    clock,
-                    ctx,
+                let bonus_coin = liquidate_with_verified_price(
+                    market, position, current_price, clock, ctx,
                 );
                 vector::push_back(&mut results, bonus_coin);
             } else {
-                // Return position to owner if not liquidatable
                 transfer::public_transfer(position, owner);
             };
         };

@@ -43,7 +43,7 @@ export class EventService {
   private mode: ConnectionMode = 'simulation';
   private subscribers: Map<EventType, Set<EventCallback>> = new Map();
   private pollingCursor: { txDigest: string; eventSeq: string } | null = null;
-  private pollingInterval: ReturnType<typeof setInterval> | null = null;
+  private pollingInterval: ReturnType<typeof setTimeout> | null = null;
   private wsUnsubscribe: (() => void) | null = null;
   private isConnecting = false;
   private poolFilter: string | null = null;
