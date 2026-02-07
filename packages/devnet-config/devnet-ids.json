@@ -4,7 +4,7 @@
   "admin": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
   "network": {
     "chainId": "272218f1",
-    "rpcUrl": "http://3.38.127.23:9000",
+    "rpcUrl": "https://rpc.devnet.nasun.io",
     "faucetUrl": "https://faucet.devnet.nasun.io",
     "explorerUrl": "https://explorer.nasun.io/devnet"
   },
