@@ -19,6 +19,7 @@ import type {
 
 // Polling configuration
 const POLLING_INTERVAL = 2000; // 2 seconds
+const MAX_POLLING_INTERVAL = 30000; // 30 seconds max backoff
 const MAX_EVENTS_PER_POLL = 50;
 
 // Singleton instance
@@ -46,6 +47,7 @@ export class EventService {
   private wsUnsubscribe: (() => void) | null = null;
   private isConnecting = false;
   private poolFilter: string | null = null;
+  private consecutiveFailures = 0;
 
   constructor() {
     // Initialize subscriber maps
@@ -107,12 +109,13 @@ export class EventService {
     }
 
     if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
+      clearTimeout(this.pollingInterval);
       this.pollingInterval = null;
     }
 
     this.mode = 'simulation';
     this.pollingCursor = null;
+    this.consecutiveFailures = 0;
   }
 
   /**
@@ -212,13 +215,24 @@ export class EventService {
    * Start polling for events
    */
   private startPolling(): void {
+    this.scheduleNextPoll();
+  }
+
+  private scheduleNextPoll(): void {
     if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
+      clearTimeout(this.pollingInterval);
     }
 
-    this.pollingInterval = setInterval(async () => {
+    const exponent = Math.min(this.consecutiveFailures, 4); // cap at 2^4 = 16x
+    const delay = Math.min(
+      POLLING_INTERVAL * Math.pow(2, exponent),
+      MAX_POLLING_INTERVAL
+    );
+
+    this.pollingInterval = setTimeout(async () => {
       await this.pollEvents();
-    }, POLLING_INTERVAL);
+      this.scheduleNextPoll();
+    }, delay);
   }
 
   /**
@@ -245,12 +259,16 @@ export class EventService {
         this.pollingCursor = result.nextCursor as { txDigest: string; eventSeq: string };
       }
 
+      // Reset backoff on success
+      this.consecutiveFailures = 0;
+
       // Process events
       for (const event of result.data) {
         this.handlePolledEvent('OrderFilled', event);
       }
     } catch (error) {
-      console.warn('[EventService] Polling error:', error);
+      this.consecutiveFailures++;
+      console.warn(`[EventService] Polling error (attempt ${this.consecutiveFailures}):`, error);
     }
   }
 

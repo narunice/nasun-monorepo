@@ -5,6 +5,17 @@ import type { StoredMessage, ChatServerConfig, NicknameRateLimit } from './types
 
 let db: Database.Database | null = null;
 
+// HTML entity encoding to prevent stored XSS
+function sanitizeContent(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/`/g, '&#96;');
+}
+
 // Nickname validation
 const NICKNAME_REGEX = /^[a-zA-Z0-9_-]{2,16}$/;
 const RESERVED_NICKNAMES = new Set([
@@ -70,7 +81,7 @@ export function insertMessage(msg: Omit<StoredMessage, 'id'>): StoredMessage {
       `INSERT INTO messages (room_id, sender, content, message_type, reply_to_id, timestamp)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(msg.roomId, msg.sender, msg.content, msg.messageType, msg.replyToId, msg.timestamp);
+    .run(msg.roomId, msg.sender, sanitizeContent(msg.content), msg.messageType, msg.replyToId, msg.timestamp);
 
   return { ...msg, id: result.lastInsertRowid as number };
 }
