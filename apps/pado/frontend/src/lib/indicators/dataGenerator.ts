@@ -174,10 +174,14 @@ export async function fetchBinanceRecentTrades(
  * @param candleData - Array of candle data with volume
  * @returns Array of histogram data for volume chart
  */
-export function generateVolumeData(candleData: CandleWithVolume[]): HistogramData[] {
+export function generateVolumeData(
+  candleData: CandleWithVolume[],
+  upColor = 'rgba(34, 197, 94, 0.5)',
+  downColor = 'rgba(239, 68, 68, 0.5)',
+): HistogramData[] {
   return candleData.map((candle) => ({
     time: candle.time,
     value: candle.volume,
-    color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+    color: candle.close >= candle.open ? upColor : downColor,
   }));
 }
