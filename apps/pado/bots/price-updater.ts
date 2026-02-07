@@ -17,6 +17,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { withRetry } from './lib/retry';
 
 // ========================================
 // Configuration
@@ -158,20 +159,23 @@ async function main() {
 
   const update = async () => {
     try {
-      const apiPrices = await fetchPrices();
+      const apiPrices = await withRetry(() => fetchPrices(), { label: 'fetchPrices' });
 
       const prices: PriceUpdate[] = [
         { symbol: BTCUSD, price: toOraclePrice(apiPrices.BTC), confidence: toConfidence(apiPrices.BTC) },
         { symbol: NASUSD, price: toOraclePrice(1.0), confidence: toOraclePrice(0.001) }, // NASUN = $1 (fixed)
       ];
 
-      const digest = await updatePrices(client, keypair, prices);
+      const digest = await withRetry(
+        () => updatePrices(client, keypair, prices),
+        { label: 'updatePrices' }
+      );
 
       const now = new Date().toISOString().slice(11, 19);
       console.log(`[${now}] ✅ Updated prices (tx: ${digest.slice(0, 10)}...)`);
       console.log(`         BTC: $${apiPrices.BTC.toLocaleString()}`);
     } catch (error) {
-      console.error('❌ Update failed:', error instanceof Error ? error.message : error);
+      console.error('❌ Update failed after retries:', error instanceof Error ? error.message : error);
     }
   };
 

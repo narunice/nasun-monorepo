@@ -46,8 +46,14 @@ use_environment = "testnet"
 manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
 deps = { Sui = "Sui" }
 
+[pinned.testnet.pado_oracle]
+source = { local = "../contracts-oracle" }
+use_environment = "testnet"
+manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
+deps = { Sui = "Sui" }
+
 [pinned.testnet.pado_perp]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "F1BCDE0C16654B4FEC5D661CCCE6E427D98D05259239118782DA6935B3EB4EDB"
-deps = { Sui = "Sui", devnet_tokens = "devnet_tokens" }
+manifest_digest = "3BF10E10D41862B731BE5D46AD78F21A22E00207CE68C361D050A618987C5861"
+deps = { Sui = "Sui", devnet_tokens = "devnet_tokens", pado_oracle = "pado_oracle" }

@@ -134,47 +134,6 @@ module pado::faucet {
     }
 
     // =========================================
-    // Legacy functions (no rate limiting)
-    // Kept for backward compatibility
-    // =========================================
-
-    /// Request test tokens (anyone can call) - LEGACY, no rate limiting
-    public fun request_tokens(
-        faucet: &mut TokenFaucet,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-
-        // Mint NBTC
-        let nbtc_coin = coin::mint(&mut faucet.nbtc_cap, NBTC_FAUCET_AMOUNT, ctx);
-        transfer::public_transfer(nbtc_coin, sender);
-
-        // Mint NUSDC
-        let nusdc_coin = coin::mint(&mut faucet.nusdc_cap, NUSDC_FAUCET_AMOUNT, ctx);
-        transfer::public_transfer(nusdc_coin, sender);
-    }
-
-    /// Request only NBTC - LEGACY, no rate limiting
-    public fun request_nbtc(
-        faucet: &mut TokenFaucet,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        let coin = coin::mint(&mut faucet.nbtc_cap, NBTC_FAUCET_AMOUNT, ctx);
-        transfer::public_transfer(coin, sender);
-    }
-
-    /// Request only NUSDC - LEGACY, no rate limiting
-    public fun request_nusdc(
-        faucet: &mut TokenFaucet,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        let coin = coin::mint(&mut faucet.nusdc_cap, NUSDC_FAUCET_AMOUNT, ctx);
-        transfer::public_transfer(coin, sender);
-    }
-
-    // =========================================
     // Internal functions
     // =========================================
 

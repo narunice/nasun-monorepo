@@ -15,11 +15,12 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useMarket } from '../context/MarketContext';
 import { useOpenOrders } from './useOpenOrders';
+import { useTransactionExecutor } from './useTransactionExecutor';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { DEPOSIT_BUFFER_MULTIPLIER } from '../../../lib/constants';
 import type { PoolConfig } from '../types';
 
 export interface AutoDepositResult {
@@ -72,8 +73,7 @@ export interface UseAutoDepositResult {
  * Hook for automatic deposit management
  */
 export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositResult {
-  const { account, getKeypair, status } = useWallet();
-  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const { executeTransaction, walletAddress } = useTransactionExecutor();
   const { currentPool } = useMarket();
   const queryClient = useQueryClient();
 
@@ -83,10 +83,6 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
 
   const [isDepositing, setIsDepositing] = useState(false);
   const [lastDepositError, setLastDepositError] = useState<string | null>(null);
-
-  // Determine wallet address
-  const isLocalWalletActive = status === 'unlocked' && account?.address;
-  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
 
   /**
    * Check if deposit is needed for a trade
@@ -184,54 +180,6 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
       };
     },
     [walletAddress, currentPool, bmBalance]
-  );
-
-  /**
-   * Execute transaction helper
-   */
-  const executeTransaction = useCallback(
-    async (tx: Transaction): Promise<{ success: boolean; error?: string; digest?: string }> => {
-      const keypair = getKeypair();
-      if (!walletAddress) {
-        return { success: false, error: 'Wallet not connected' };
-      }
-      if (!isZkLoggedIn && !keypair) {
-        return { success: false, error: 'No signing method available' };
-      }
-
-      const client = getSuiClient();
-
-      try {
-        tx.setSender(walletAddress);
-        const bytes = await tx.build({ client });
-
-        let signature: string;
-        if (isZkLoggedIn && zkState) {
-          signature = await zkSignTransaction(bytes);
-        } else if (keypair) {
-          const signResult = await keypair.signTransaction(bytes);
-          signature = signResult.signature;
-        } else {
-          return { success: false, error: 'No signing method available' };
-        }
-
-        const result = await client.executeTransactionBlock({
-          transactionBlock: bytes,
-          signature,
-          options: { showEffects: true },
-        });
-
-        if (result.effects?.status.status === 'success') {
-          return { success: true, digest: result.digest };
-        } else {
-          return { success: false, error: result.effects?.status.error || 'Transaction failed' };
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        return { success: false, error: message };
-      }
-    },
-    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]
   );
 
   /**
@@ -373,9 +321,9 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
       setIsDepositing(true);
 
       try {
-        // Add 5% buffer to avoid rounding issues
-        const quoteToDeposit = check.quoteShortfall > 0 ? check.quoteShortfall * 1.05 : 0;
-        const baseToDeposit = check.baseShortfall > 0 ? check.baseShortfall * 1.05 : 0;
+        // Add buffer to avoid rounding issues
+        const quoteToDeposit = check.quoteShortfall > 0 ? check.quoteShortfall * DEPOSIT_BUFFER_MULTIPLIER : 0;
+        const baseToDeposit = check.baseShortfall > 0 ? check.baseShortfall * DEPOSIT_BUFFER_MULTIPLIER : 0;
 
         const tx = await buildDepositExactAmount(
           balanceManagerId,
@@ -421,7 +369,6 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
       buildDepositExactAmount,
       executeTransaction,
       currentPool,
-      bmBalance,
       queryClient,
     ]
   );

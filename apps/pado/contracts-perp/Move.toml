@@ -7,6 +7,7 @@ published-at = "0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d36
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
+pado_oracle = { local = "../contracts-oracle" }
 
 [addresses]
 pado_perp = "0x0"
