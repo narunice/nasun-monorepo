@@ -12,7 +12,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { OrderFormProvider, MarketProvider, useMarket } from '../features/trading/context';
 import { TradingPanel, EnablePadoCard } from '../features/trading/containers';
-import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles, PoolInfo } from '../features/trading/components';
+import { MarketSelector, BottomTabPanel, MarketInfoBar, PriceChart, Orderbook, TradingToggles, PoolInfo, ShortcutHelpTooltip } from '../features/trading/components';
 import { useTradeMode, useOrderbook, useKeyboardShortcuts } from '../features/trading/hooks';
 import { useOrderForm } from '../features/trading/context';
 import { usePrices } from '../features/core/usePrices';
@@ -234,14 +234,17 @@ function TradePageContent() {
               )
             )}
           </div>
-          {/* Col 3 (CARD_W): EnablePado + OrderForm + News */}
+          {/* Col 3 (CARD_W): EnablePado + OrderForm + News + Shortcut Help */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
             <EnablePadoCard />
             <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
               <TradingPanel mode={mode} />
             </div>
-            <div style={{ height: `${CHAT_HEIGHT}px` }}>
+            <div className="relative" style={{ height: `${CHAT_HEIGHT}px` }}>
               <NewsCarousel />
+              <div className="absolute bottom-2 right-2">
+                <ShortcutHelpTooltip />
+              </div>
             </div>
           </div>
         </div>

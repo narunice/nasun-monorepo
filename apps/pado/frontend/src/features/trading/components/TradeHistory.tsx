@@ -9,6 +9,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useMarket } from "../context/MarketContext";
 import { useMyTrades } from "../hooks/useMyTrades";
 import { useOrderActions } from "../hooks";
+import { SkeletonTable } from '@/components/common';
 
 // Re-export Trade type for external consumers (useTradeEvents compatibility)
 export type { Trade } from '../types/trade';
@@ -73,8 +74,8 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
 
   if (isLoading) {
     return (
-      <div className={`text-center text-theme-text-muted py-6 ${className}`}>
-        <p className="text-trading-sm xl:text-trading-lg">Loading...</p>
+      <div className={`py-4 px-2 ${className}`}>
+        <SkeletonTable rows={5} cols={5} />
       </div>
     );
   }
@@ -82,7 +83,8 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
   if (!trades || trades.length === 0) {
     return (
       <div className={`text-center text-theme-text-muted py-6 ${className}`}>
-        <p className="text-trading-sm xl:text-trading-lg">No trade history</p>
+        <p className="text-trading-sm xl:text-trading-lg">No trades yet</p>
+        <p className="text-[10px] xl:text-trading-xs mt-1">Your fills will appear here</p>
       </div>
     );
   }

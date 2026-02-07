@@ -24,6 +24,30 @@ module.exports = {
         'trading-lg': ['13px', { lineHeight: '18px' }],
         'trading-xl': ['16px', { lineHeight: '22px' }],
       },
+      keyframes: {
+        'flash-buy': {
+          '0%': { backgroundColor: 'rgba(34, 197, 94, 0.25)' },
+          '100%': { backgroundColor: 'transparent' },
+        },
+        'flash-sell': {
+          '0%': { backgroundColor: 'rgba(239, 68, 68, 0.25)' },
+          '100%': { backgroundColor: 'transparent' },
+        },
+        'pulse-up': {
+          '0%': { backgroundColor: 'rgba(34, 197, 94, 0.2)' },
+          '100%': { backgroundColor: 'transparent' },
+        },
+        'pulse-down': {
+          '0%': { backgroundColor: 'rgba(239, 68, 68, 0.2)' },
+          '100%': { backgroundColor: 'transparent' },
+        },
+      },
+      animation: {
+        'flash-buy': 'flash-buy 1s ease-out',
+        'flash-sell': 'flash-sell 1s ease-out',
+        'pulse-up': 'pulse-up 0.5s ease-out',
+        'pulse-down': 'pulse-down 0.5s ease-out',
+      },
       colors: {
         // Pado brand colors (Teal → Mint/Lime gradient)
         'pado': {

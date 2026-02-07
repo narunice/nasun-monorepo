@@ -61,7 +61,7 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
       ],
       arguments: [
         tx.object(pool.id),
-        tx.pure.u64(20), // ticks (number of price levels to fetch from mid)
+        tx.pure.u64(50), // ticks (number of price levels to fetch from mid)
         tx.object('0x6'), // Clock
       ],
     });
