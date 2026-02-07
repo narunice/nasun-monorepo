@@ -1,18 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getChatService } from '../../../lib/chat-service';
+import type { NicknameRateLimit } from '../../../lib/chat-service';
 
 const NICKNAME_REGEX = /^[a-zA-Z0-9_-]{2,16}$/;
 
 interface Props {
   addressSuffix: string;
+  currentNickname?: string; // Present in edit mode
+  rateLimit?: NicknameRateLimit;
   onSuccess: (nickname: string) => void;
   onClose: () => void;
 }
 
 type CheckState = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
 
-export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
-  const [value, setValue] = useState('');
+function formatLockedUntil(lockedUntil: number): string {
+  const now = Date.now();
+  const diff = lockedUntil - now;
+  if (diff <= 0) return 'now';
+  const days = Math.ceil(diff / (24 * 60 * 60 * 1000));
+  if (days > 1) return `${days} days`;
+  const hours = Math.ceil(diff / (60 * 60 * 1000));
+  if (hours > 1) return `${hours} hours`;
+  const minutes = Math.ceil(diff / (60 * 1000));
+  return `${minutes} min`;
+}
+
+export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, onSuccess, onClose }: Props) {
+  const isEditMode = !!currentNickname;
+  const [value, setValue] = useState(currentNickname ?? '');
   const [checkState, setCheckState] = useState<CheckState>('idle');
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -34,7 +50,7 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
       }
     });
 
-    const unsubResult = chatService.on('nickname', ({ ok, nickname, error }) => {
+    const unsubResult = chatService.on('nickname', ({ ok, nickname, error, rateLimit: rl }) => {
       setSubmitting(false);
       if (ok && nickname) {
         onSuccess(nickname);
@@ -43,7 +59,10 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
           error === 'already_taken' ? 'Nickname is already taken' :
           error === 'invalid_format' ? 'Invalid format (2-16 chars, letters/numbers/_/-)' :
           error === 'reserved' ? 'This nickname is reserved' :
-          error ?? 'Failed to set nickname'
+          error === 'rate_limited' && rl?.lockedUntil
+            ? `Nickname is locked for ${formatLockedUntil(rl.lockedUntil)}. You can change it again after the lock expires.`
+            : error === 'rate_limited' ? 'Too many changes. Try again later.'
+            : error ?? 'Failed to set nickname'
         );
       }
     });
@@ -72,6 +91,12 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
       return;
     }
 
+    // In edit mode, skip check if same as current (server reports own name as "taken")
+    if (currentNickname && trimmed.toLowerCase() === currentNickname.toLowerCase()) {
+      setCheckState('idle');
+      return;
+    }
+
     setCheckState('checking');
     debounceRef.current = setTimeout(() => {
       getChatService().checkNickname(trimmed);
@@ -80,7 +105,7 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
         setCheckState((prev) => (prev === 'checking' ? 'available' : prev));
       }, 3000);
     }, 400);
-  }, []);
+  }, [currentNickname]);
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
@@ -90,7 +115,8 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
     getChatService().setNickname(trimmed);
   }, [value, checkState]);
 
-  const canSubmit = checkState === 'available' && !submitting;
+  const isSameAsCurrentName = isEditMode && value.trim().toLowerCase() === currentNickname!.toLowerCase();
+  const canSubmit = checkState === 'available' && !submitting && !isSameAsCurrentName;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -99,7 +125,7 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold text-theme-text-primary mb-3">
-          Set your chat nickname
+          {isEditMode ? 'Change your nickname' : 'Set your chat nickname'}
         </h3>
 
         <input
@@ -129,6 +155,9 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
           {checkState === 'invalid' && (
             <span className="text-xs text-orange-500">2-16 chars, letters/numbers/_/- only</span>
           )}
+          {isSameAsCurrentName && (
+            <span className="text-xs text-theme-text-muted">Same as current nickname</span>
+          )}
           {serverError && (
             <span className="text-xs text-red-500">{serverError}</span>
           )}
@@ -144,6 +173,17 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
           </div>
         )}
 
+        {/* Rate limit info (edit mode only) */}
+        {isEditMode && rateLimit && (
+          <div className="mt-2 text-xs text-theme-text-muted">
+            {rateLimit.changesRemaining > 0
+              ? `You can change your nickname ${rateLimit.changesRemaining} more time${rateLimit.changesRemaining === 1 ? '' : 's'} within the first hour. After that, it will be locked for 30 days.`
+              : rateLimit.lockedUntil
+                ? `Nickname is locked for ${formatLockedUntil(rateLimit.lockedUntil)}.`
+                : 'No changes remaining.'}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2 mt-4">
           <button
@@ -152,7 +192,7 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
               bg-theme-bg-tertiary text-theme-text-secondary
               hover:text-theme-text-primary transition-colors"
           >
-            Later
+            {isEditMode ? 'Cancel' : 'Later'}
           </button>
           <button
             onClick={handleSubmit}
@@ -161,7 +201,7 @@ export function SetNicknameModal({ addressSuffix, onSuccess, onClose }: Props) {
               bg-purple-600 hover:bg-purple-700 text-white transition-colors
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Setting...' : 'Set Nickname'}
+            {submitting ? 'Saving...' : isEditMode ? 'Change' : 'Set Nickname'}
           </button>
         </div>
       </div>

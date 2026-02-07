@@ -10,7 +10,7 @@ import type { ChatMessage, ChatConnectionStatus } from '../features/social/types
 // ===== Protocol types (mirror server types) =====
 
 interface AuthChallengeMsg { type: 'auth_challenge'; challenge: string }
-interface AuthSuccessMsg { type: 'auth_success'; address: string; nickname: string | null }
+interface AuthSuccessMsg { type: 'auth_success'; address: string; nickname: string | null; rateLimit?: NicknameRateLimit }
 interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
@@ -30,13 +30,14 @@ interface HistoryMsg {
 }
 interface OnlineCountMsg { type: 'online_count'; count: number }
 interface ErrorMsg { type: 'error'; code: string; message: string }
-interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string }
+interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit }
 interface NicknameCheckMsg { type: 'nickname_check'; available: boolean; nickname: string }
+interface HeartbeatMsg { type: 'heartbeat' }
 
 type ServerMessage =
   | AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg
   | ChatMessageMsg | HistoryMsg | OnlineCountMsg | ErrorMsg
-  | NicknameResultMsg | NicknameCheckMsg;
+  | NicknameResultMsg | NicknameCheckMsg | HeartbeatMsg;
 
 // ===== Listener types =====
 
@@ -48,8 +49,14 @@ export interface ChatEventMap {
   status: ChatConnectionStatus;
   online_count: number;
   error: { code: string; message: string };
-  nickname: { ok: boolean; nickname?: string; error?: string };
+  nickname: { ok: boolean; nickname?: string | null; error?: string; rateLimit?: NicknameRateLimit };
   nickname_check: { available: boolean; nickname: string };
+}
+
+export interface NicknameRateLimit {
+  canChange: boolean;
+  changesRemaining: number;
+  lockedUntil: number | null; // epoch ms
 }
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
@@ -91,6 +98,8 @@ export class ChatService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private connectionTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Map<ChatEventType, Set<ChatListener<ChatEventType>>>();
+  private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+  private lastServerActivity = 0;
 
   // Message dedup: track seen message IDs
   private seenMessageIds = new Set<number>();
@@ -134,6 +143,7 @@ export class ChatService {
       clearTimeout(this.connectionTimer);
       this.connectionTimer = null;
     }
+    this.stopKeepalive();
     if (this.ws) {
       this.ws.close(1000, 'User disconnect');
       this.ws = null;
@@ -235,6 +245,7 @@ export class ChatService {
     };
 
     this.ws.onmessage = (event) => {
+      this.lastServerActivity = Date.now();
       let msg: ServerMessage;
       try {
         msg = JSON.parse(event.data as string);
@@ -246,6 +257,11 @@ export class ChatService {
 
     this.ws.onclose = (event) => {
       this.ws = null;
+      if (this.connectionTimer) {
+        clearTimeout(this.connectionTimer);
+        this.connectionTimer = null;
+      }
+      this.stopKeepalive();
       if (this.reconnectAttempts >= 0 && event.code !== 4401) {
         this.setStatus('disconnected');
         this.scheduleReconnect();
@@ -272,8 +288,9 @@ export class ChatService {
         }
         this.currentNickname = msg.nickname ?? null;
         this.setStatus('connected');
-        // Emit nickname info from auth_success
-        this.emit('nickname', { ok: true, nickname: msg.nickname ?? undefined });
+        this.startKeepalive();
+        // Emit nickname info from auth_success (preserve null for needsNickname detection)
+        this.emit('nickname', { ok: true, nickname: msg.nickname, rateLimit: msg.rateLimit });
         break;
 
       case 'auth_error':
@@ -302,11 +319,15 @@ export class ChatService {
         if (msg.ok && msg.nickname !== undefined) {
           this.currentNickname = msg.nickname ?? null;
         }
-        this.emit('nickname', { ok: msg.ok, nickname: msg.nickname, error: msg.error });
+        this.emit('nickname', { ok: msg.ok, nickname: msg.nickname, error: msg.error, rateLimit: msg.rateLimit });
         break;
 
       case 'nickname_check':
         this.emit('nickname_check', { available: msg.available, nickname: msg.nickname });
+        break;
+
+      case 'heartbeat':
+        // No-op: lastServerActivity already updated in onmessage handler
         break;
     }
   }
@@ -408,6 +429,25 @@ export class ChatService {
           console.error(`[ChatService] Listener error (${type}):`, err);
         }
       });
+    }
+  }
+
+  private startKeepalive(): void {
+    this.stopKeepalive();
+    this.lastServerActivity = Date.now();
+    // Server sends ping every 30s; if no activity for 90s, connection is likely dead
+    this.keepaliveTimer = setInterval(() => {
+      if (Date.now() - this.lastServerActivity > 90_000) {
+        console.warn('[ChatService] Server keepalive timeout');
+        this.ws?.close(4408, 'Keepalive timeout');
+      }
+    }, 30_000);
+  }
+
+  private stopKeepalive(): void {
+    if (this.keepaliveTimer) {
+      clearInterval(this.keepaliveTimer);
+      this.keepaliveTimer = null;
     }
   }
 
