@@ -1,14 +1,14 @@
 [package]
 name = "baram"
 edition = "2024"
-version = "0.0.2"
-published-at = "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7"
+version = "0.0.3"
+published-at = "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6"
 
 [dependencies]
 devnet_tokens = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tokens" }
 
 [addresses]
-baram = "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7"
+baram = "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6"
 
 [environments]
 devnet = "272218f1"
