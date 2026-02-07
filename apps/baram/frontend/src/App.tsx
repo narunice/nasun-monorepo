@@ -18,6 +18,8 @@ import { LandingScreen } from "./components/empty/LandingScreen";
 import { MessageList } from "./components/chat/MessageList";
 import { AttestationDisplay } from "./features/request/components/AttestationDisplay";
 import { useWalletSession } from "./hooks/useWalletSession";
+import { useNFTGate } from "./hooks/useNFTGate";
+import { NFTGateScreen } from "./components/empty/NFTGateScreen";
 import { useRequestWithRetry } from "./features/request/hooks/useRequestWithRetry";
 import { NETWORK_CONFIG, ModelId, DEFAULT_MODEL, MODEL_PRICING } from "./config/network";
 import { useChatStore } from "./stores/chatStore";
@@ -25,7 +27,8 @@ import AuthCallback from "./pages/AuthCallback";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 function AppContent() {
-  const { isConnected } = useWalletSession();
+  const { isConnected, walletAddress } = useWalletSession();
+  const { hasAccess, isLoading: nftLoading } = useNFTGate(walletAddress);
   const {
     submit,
     isProcessing,
@@ -85,7 +88,7 @@ function AppContent() {
     <div className="space-y-2">
       <ChatInput
         onSubmit={submit}
-        disabled={isProcessing || !isConnected || !selectedExecutor}
+        disabled={isProcessing || !isConnected || !selectedExecutor || !hasAccess}
         placeholder={
           !isConnected
             ? "Connect wallet to start..."
@@ -120,6 +123,12 @@ function AppContent() {
     <ChatLayout header={header} inputArea={inputArea}>
       {!isConnected ? (
         <LandingScreen />
+      ) : nftLoading ? (
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <span className="text-sm text-[var(--color-text-muted)]">Checking access...</span>
+        </div>
+      ) : !hasAccess ? (
+        <NFTGateScreen />
       ) : !hasMessages ? (
         <>
           <WelcomeScreen onSuggestionClick={submit} />

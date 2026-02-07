@@ -24,6 +24,7 @@ export const BARAM_CONFIG = {
   registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || BARAM.registry,
   executorAddress: import.meta.env.VITE_EXECUTOR_ADDRESS || '',
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
+  nftGateEnabled: import.meta.env.VITE_NFT_GATE_ENABLED === 'true',
 } as const;
 
 // Executor Registry Configuration — single source from @nasun/devnet-config
