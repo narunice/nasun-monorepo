@@ -115,32 +115,32 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
       {/* Content */}
       <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 lg:px-8">
         {/* Main row: Triangle + Text */}
-        <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 xl:gap-28">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 xl:gap-28 w-full">
           {/* Left: Triangle Symbol */}
-          <div className="flex items-center justify-center lg:justify-end pt-16 lg:pt-0">
+          <div className="flex items-center justify-center lg:justify-end pt-16 lg:pt-0 lg:flex-[2]">
             <FadeInUp delay="0.1s">
               <img
                 src={visionTriangle}
                 alt="Nasun"
-                className="w-56 md:w-64 lg:w-80 xl:w-96  brightness-110"
+                className="w-56 md:w-64 lg:w-full lg:max-w-96 brightness-110"
               />
             </FadeInUp>
           </div>
 
           {/* Right: Text Content */}
-          <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:gap-3">
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:gap-3 lg:flex-[3] min-w-0">
             {/* NASUN Wordmark */}
             <FadeInUp delay="0.2s">
-              <h1 className="!font-changeling font-bold tracking-wider text-nasun-black/80 -mt-4 text-5xl/tight md:text-6xl/tight lg:text-7xl/tight">
+              <h1 className="!font-changeling font-bold tracking-wider text-nasun-black/80 -mt-4 md:text-[54px] lg:text-[66px]">
                 NASUN
               </h1>
             </FadeInUp>
 
             {/* COORDINATED CREATION */}
             <FadeInUp delay="0.3s">
-              <h4 className="font-medium text-nasun-black/80 -mt-4 !tracking-normal">
+              <h5 className="font-medium text-nasun-black/80 -mt-4 !tracking-normal">
                 COORDINATED CREATION
-              </h4>
+              </h5>
             </FadeInUp>
 
             {/* Categories */}
@@ -152,19 +152,20 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
 
             {/* Description */}
             <FadeInUp delay="0.5s">
-              <h6 className="font-medium text-nasun-black/60 -mt-2">
+              <h6 className="font-medium text-nasun-black/60 -mt-2 xl:max-w-none">
                 Communities build, own, and grow valuable IP together
               </h6>
             </FadeInUp>
 
             {/* CTA Buttons */}
+            <div className="lg:self-stretch lg:w-full">
             <FadeInUp delay="0.6s">
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-3 lg:mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-3 lg:mt-4 max-w-xs lg:max-w-none mx-auto lg:mx-0 xl:w-auto xl:flex xl:flex-row">
                 <ButtonV2
                   variant="red"
                   size="lg"
                   onClick={() => setIsSignUpModalOpen(true)}
-                  className="w-[280px]"
+                  className="lg:px-4 xl:px-12 xl:w-[280px]"
                 >
                   SIGN UP
                 </ButtonV2>
@@ -172,21 +173,20 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
                   variant="blue"
                   size="lg"
                   asChild
-                  className="w-[280px]"
+                  className="lg:px-4 xl:px-12 xl:w-[280px]"
                 >
-                  <Link to="/about/strategy">
-                    A UNIFIED VISION
-                  </Link>
+                  <Link to="/about/strategy">A UNIFIED VISION</Link>
                 </ButtonV2>
               </div>
             </FadeInUp>
+            </div>
           </div>
         </div>
 
         {/* Tagline */}
         <FadeInUp delay="0.7s">
           <p className="font-medium text-lg/snug md:text-xl/snug xl:text-2xl/snug text-nasun-black/80 text-center max-w-4xl mx-auto mt-16 lg:mt-20">
-            Building the next generation of global IP through coordinated creation.
+            Building the next generation of global IP<br className="lg:hidden" />{" "}through coordinated creation.
           </p>
         </FadeInUp>
       </div>
