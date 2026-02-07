@@ -1,0 +1,289 @@
+
+================================================================================
+  NASUN LAUNCH CAMPAIGN PLAN
+  February 9 - March 15, 2026
+================================================================================
+
+
+STRATEGY SUMMARY
+--------------------------------------------------------------------------------
+
+Situation:    Zero brand awareness. Founders' combined personal following ~4,000.
+Strategy:     Lead with product reveals + use Allowlist as a viral engine
+              -> convert to NFT demand.
+Goal:         Build enough interest and community to fill the Battalion NFT
+              Allowlist ahead of the March 15-20 mint.
+
+
+AVAILABLE ASSETS
+--------------------------------------------------------------------------------
+
+Products (all working prototypes on live devnet):
+
+  - Nasun Network     Custom L1 blockchain (Sui fork), live devnet
+  - Explorer           Block explorer (TPS, validators, NFT gallery)
+  - Wallet + Faucet    Browser wallet, free devnet tokens
+  - Pado               DEX (CLOB orderbook), Prediction Market, Lottery, Governance
+  - Baram              TEE-based private AI inference + on-chain compliance records
+  - Spectra            3rd-person shooter game (concept/progress footage stage)
+  - Heist              Animation series Episode 1 script
+
+Websites (both fully public from Day 1):
+
+  - nasun.io           Project hub: L1 overview, product descriptions, founders
+                       bio, leaderboard, Battalion NFT Allowlist registration
+  - gensol.nasun.io    GenSol IP: Spectra game concept, Heist animation series
+
+Media:
+
+  - Nasun trailer (184 seconds)
+  - Battalion NFT rifle showcase video (Leeterbox)
+  - GenSol trailer (website hero)
+  - Product screenshots / screen recordings available
+  - Video editing and promotional material creation available
+
+NFT:
+
+  - Battalion NFT      ~$70-140 USD per unit, mainnet token allocation included
+                       Quantity TBD
+  - Genesis NFT        ~$700 USD per unit (June 2026)
+                       Mainnet token allocation included
+
+
+X ACCOUNTS (INITIAL REACH)
+--------------------------------------------------------------------------------
+
+  @Nasun_io     1,100 followers    Official account. EU/Americas IOTA community
+                                   (from GenSol soft launch 1 year ago). English.
+                                   Needs reactivation — dormant for 1 year.
+
+  @naru         2,300 followers    Founder. Korean crypto Twitter.
+                                   Korean quote RTs + personal commentary.
+
+  @overclocked    600 followers    Founder. English-speaking.
+                                   English quote RTs + tech/builder perspective.
+
+  Combined ~4,000 followers with minimal overlap across three different markets.
+
+  Account roles:
+    @Nasun_io      All official content origination (English, 3-5x/week)
+    @naru          Quote RT every official post in Korean + personal insights
+    @overclocked   Quote RT major posts in English + technical commentary
+
+
+EVENTS
+--------------------------------------------------------------------------------
+
+  Leaderboard    Separate community event, independent from Allowlist.
+                 X activity-based scoring system.
+
+  Allowlist      X task-based (Follow @Nasun_io + RT/Like).
+                 Always-on from Day 1 through mint.
+                 Functions as follower growth engine — every task drives reach.
+
+
+================================================================================
+  ALWAYS-ON LAYER: BATTALION NFT ALLOWLIST (Feb 9 - Mar 14)
+================================================================================
+
+Every post includes an Allowlist call-to-action.
+The tasks themselves (Follow / RT) serve as a viral amplifier for all content.
+
+  Day 1 (2/9)       NFT existence + registration method only.
+                     "Something is coming."
+
+  Week 3-4           Art, utility, token allocation — gradual reveal.
+
+  Week 5             Price and quantity confirmed. Deadline countdown.
+
+  Mar 15-20          Mint.
+
+
+================================================================================
+  PHASE 1: IMPACT (Week 1-2, Feb 9-22)
+================================================================================
+
+WEEK 1: LAUNCH — "THIS IS NASUN"
+--------------------------------------------------------------------------------
+
+  Mon 2/9    LAUNCH THREAD
+             "This is Nasun — a new L1 with a DEX, AI platform, prediction
+             markets, and more. All live on devnet."
+             Trailer video + full product overview.
+             No mention of team size — let the product speak.
+             Format: Thread + Video
+
+  Mon 2/9    ALLOWLIST OPEN
+             "Battalion NFT is coming. Get on the list now."
+             Registration link + task instructions.
+             Format: Single tweet + Image
+
+  Wed 2/11   PADO DEX TEASER
+             Orderbook + chart screen capture.
+             "A full CLOB DEX running on Nasun — orderbook, charts,
+             one-click trading."
+             Format: Video / Screenshot
+
+  Thu 2/13   BARAM AI TEASER
+             TEE privacy AI demo video.
+             "Your AI conversations, encrypted inside hardware.
+             No one can read them — not even us."
+             Format: Video
+
+  Fri 2/14   EXPLORER + WALLET
+             "Try it yourself."
+             Explorer link + Wallet demo + Faucet guide for free devnet tokens.
+             Format: Screenshot + Link
+
+  Founder accounts: Day 1 quote RT with personal commentary.
+  Subsequent major posts: RT from both founder accounts.
+
+
+WEEK 2: DEEP DIVES + LEADERBOARD LAUNCH
+--------------------------------------------------------------------------------
+
+  Mon 2/16   LEADERBOARD SEASON 1 LAUNCH
+             X activity-based scoring explained + how to participate.
+             Noted as separate from Allowlist.
+             Converts Week 1 momentum into sustained engagement.
+             Format: Image + Link
+
+  Tue 2/17   BARAM DEEP DIVE THREAD
+             What is TEE -> Why AI needs it -> How Baram solves it ->
+             ECR (on-chain audit records) -> Demo video.
+             Format: Thread + Video
+
+  Wed 2/19   PADO DEX DEEP DIVE
+             CLOB orderbook architecture, one-click trading, NBTC/NUSDC
+             markets, charts + technical indicators.
+             Format: Thread + Screenshot
+
+  Thu 2/20   PREDICTION + LOTTERY
+             "Bet on outcomes. Pick your lucky numbers. All on-chain."
+             Prediction Market UI + Lottery Quick Pick demo.
+             Format: Screenshot
+
+  Fri 2/21   GENSOL / SPECTRA TEASER
+             GenSol trailer + Spectra concept art +
+             "Escape from Kramok" game concept introduction.
+             Format: Video + Image
+
+
+================================================================================
+  PHASE 2: ENGAGE (Week 3-4, Feb 23 - Mar 8)
+================================================================================
+
+WEEK 3: TECHNICAL STORY + HEIST + NFT TEASER
+--------------------------------------------------------------------------------
+
+  Mon 2/23   "HOW WE BUILT NASUN" THREAD
+             Technical architecture + team story.
+             "A 2-person team forked Sui, built a custom L1, and shipped
+             a DEX + AI platform on top."
+             By this point people have already seen the products, so team
+             size becomes an impressive reveal. Developer/builder audience.
+             Format: Thread
+
+  Wed 2/25   HEIST TEASER
+             Animation series Heist Episode 1 — concept art and script
+             excerpt. GenSol IP world-building.
+             Format: Image + Text
+
+  Fri 2/27   BATTALION NFT FIRST TEASER
+             Rifle video showcase.
+             "The weapon of the first battalion."
+             First visual reveal of the NFT.
+             Format: Video
+
+
+WEEK 4: PADO OPEN TEST + NFT BUILDUP
+--------------------------------------------------------------------------------
+
+  Mon 3/2    PADO OPEN TEST ANNOUNCEMENT
+             "Pado DEX is now open for public testing. Get free tokens
+             from our Faucet and start trading."
+             Spot Trading + Lottery open to the public.
+             Anyone can get NBTC/NUSDC from the Faucet and trade.
+             Format: Tweet + Link
+
+  Wed 3/4    UTILITY REVEAL
+             "Battalion holders get mainnet token allocation."
+             Hint at future Genesis NFT relationship.
+             Format: Image / Infographic
+
+  Fri 3/6    LEADERBOARD MID-RANKINGS + TEST ACTIVITY
+             Leaderboard standings + Pado test participation stats +
+             Allowlist registration numbers.
+             "X traders active. X spots filled."
+             Format: Screenshot
+
+
+================================================================================
+  PHASE 3: CONVERT (Week 5, Mar 9-15)
+================================================================================
+
+  Mon 3/9    PRICE / QUANTITY ANNOUNCEMENT
+             "Battalion NFT — [price]. [quantity] available.
+             Mint date: [date]."
+             Mainnet token allocation details.
+             Format: Image / Infographic
+
+  Wed 3/11   ALLOWLIST CLOSING SOON
+             "Last days to get on the list."
+             5-week journey recap — highlight reel of everything revealed.
+             Format: Thread + Image
+
+  Fri 3/13   COUNTDOWN
+             "2 days."
+             Community metrics: registrations, follower growth, etc.
+             Format: Single tweet
+
+  Mar 15-20  MINT IS LIVE
+             "Mint is live." + Minting guide.
+             Format: Tweet + Link
+
+
+================================================================================
+  POSTING SUMMARY
+================================================================================
+
+  Week 1 (2/9-15)     5 posts    Launch, Allowlist, DEX teaser, AI teaser,
+                                  Explorer
+  Week 2 (2/16-22)    5 posts    Leaderboard, Baram deep dive, DEX deep dive,
+                                  Prediction+Lottery, GenSol
+  Week 3 (2/23-3/1)   3 posts    Tech+team story, Heist teaser, NFT art reveal
+  Week 4 (3/2-8)      3 posts    Pado open test, NFT utility, mid-campaign stats
+  Week 5 (3/9-15)     4 posts    Price, closing soon, countdown, mint
+
+  TOTAL: ~20 posts over 5 weeks (~3-5 per week)
+
+
+================================================================================
+  PRODUCT ACCESS STRATEGY (BATTALION vs GENESIS)
+================================================================================
+
+  BATTALION CAMPAIGN (Feb-Mar 2026)
+    Public access:    Explorer, Wallet, Faucet, Pado Spot Trading, Lottery
+    Held back:        Baram AI, Prediction Market, other advanced features
+
+  GENESIS CAMPAIGN (May-Jun 2026)
+    New access:       Baram AI live access, Prediction Market, additional features
+    Held back:        Mainnet features
+
+  Rationale: Save the strongest cards (live AI platform, prediction markets)
+  for the Genesis NFT campaign, where unit price is ~5-10x higher and the
+  "try it yourself" moment needs to justify $700 per NFT.
+
+
+================================================================================
+  OPEN ITEMS
+================================================================================
+
+  1. Battalion NFT quantity and final price — must be decided before Week 5.
+  2. Spectra playable build — is a demo possible during the campaign?
+  3. Allowlist Day 1 scope — NFT name + registration link only, or art teaser?
+
+
+================================================================================
+  Created 2026-02-06
+================================================================================
