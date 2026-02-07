@@ -4,17 +4,19 @@
 /// Anyone can call liquidate_position to close positions below maintenance margin
 ///
 /// Liquidation Mechanism:
-/// 1. Check if position margin ratio < MAINTENANCE_MARGIN_BPS (2.5%)
-/// 2. Calculate remaining equity after P&L
-/// 3. Pay liquidator bonus (5% of remaining collateral)
-/// 4. Send rest to insurance fund
-/// 5. Delete the position
+/// 1. Read verified price from on-chain Oracle (prevents price manipulation attacks)
+/// 2. Check if position margin ratio < MAINTENANCE_MARGIN_BPS (2.5%)
+/// 3. Calculate remaining equity after P&L
+/// 4. Pay liquidator bonus (5% of remaining collateral)
+/// 5. Send rest to insurance fund
+/// 6. Delete the position
 ///
-/// @version 1.0.0 (Phase 11.4)
+/// @version 1.1.0 (SEC-1 fix: Oracle integration)
 module pado_perp::liquidation {
     use sui::event;
     use sui::coin::Coin;
     use devnet_tokens::nusdc::NUSDC;
+    use pado_oracle::dev_oracle::{Self, OracleRegistry};
     use pado_perp::perpetual::{
         Self,
         PerpMarket,
@@ -25,6 +27,8 @@ module pado_perp::liquidation {
 
     const ENotLiquidatable: u64 = 200;
     const EMarketMismatch: u64 = 202;
+    const EOracleStale: u64 = 203;
+    const EOraclePriceOverflow: u64 = 204;
 
     // ===== Constants =====
 
@@ -36,6 +40,13 @@ module pado_perp::liquidation {
 
     /// Minimum liquidation bonus in NUSDC units (0.1 NUSDC)
     const MIN_LIQUIDATION_BONUS: u64 = 100_000;
+
+    /// Maximum oracle staleness for liquidation (120 seconds)
+    const MAX_ORACLE_AGE_MS: u64 = 120_000;
+
+    /// Maximum reasonable price in oracle units (8 decimals).
+    /// $10,000,000 = 1_000_000_000_000_000. Guards against oracle misconfiguration.
+    const MAX_ORACLE_PRICE: u128 = 1_000_000_000_000_000;
 
     // ===== Events =====
 
@@ -56,16 +67,28 @@ module pado_perp::liquidation {
 
     // ===== Liquidation Functions =====
 
-    /// Liquidate an underwater position
+    /// Liquidate an underwater position using on-chain oracle price
     /// Anyone can call this function to liquidate positions below maintenance margin
     /// Liquidator receives a bonus (5% of remaining collateral)
+    ///
+    /// Price is read from the on-chain OracleRegistry to prevent manipulation.
+    /// The caller cannot provide an arbitrary price.
     public fun liquidate_position(
         market: &mut PerpMarket,
         position: PerpPosition,
-        current_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): Coin<NUSDC> {
+        // Read verified price from on-chain oracle
+        let base_symbol = perpetual::get_market_base_symbol(market);
+        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
+            oracle_registry, base_symbol, MAX_ORACLE_AGE_MS, clock
+        );
+        assert!(is_fresh, EOracleStale);
+        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
+        let current_price = (price_u128 as u64);
+
         // Verify position belongs to this market
         let market_id = object::id(market);
         assert!(perpetual::get_position_market_id(&position) == market_id, EMarketMismatch);
@@ -144,15 +167,24 @@ module pado_perp::liquidation {
         )
     }
 
-    /// Batch liquidate multiple positions
+    /// Batch liquidate multiple positions using on-chain oracle price
     /// Gas-efficient way to liquidate multiple positions in one transaction
     public fun batch_liquidate(
         market: &mut PerpMarket,
         mut positions: vector<PerpPosition>,
-        current_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
     ): vector<Coin<NUSDC>> {
+        // Read verified price once for all positions (same oracle read)
+        let base_symbol = perpetual::get_market_base_symbol(market);
+        let (price_u128, _confidence, is_fresh) = dev_oracle::get_price_if_fresh(
+            oracle_registry, base_symbol, MAX_ORACLE_AGE_MS, clock
+        );
+        assert!(is_fresh, EOracleStale);
+        assert!(price_u128 <= MAX_ORACLE_PRICE, EOraclePriceOverflow);
+        let current_price = (price_u128 as u64);
+
         let mut results = vector::empty<Coin<NUSDC>>();
 
         while (!vector::is_empty(&positions)) {
@@ -163,10 +195,11 @@ module pado_perp::liquidation {
 
             // Check if liquidatable, skip if not
             if (perpetual::is_liquidatable(&position, current_price)) {
+                // Call internal liquidation with already-verified price
                 let bonus_coin = liquidate_position(
                     market,
                     position,
-                    current_price,
+                    oracle_registry,
                     clock,
                     ctx,
                 );
@@ -188,7 +221,7 @@ module pado_perp::liquidation {
         LIQUIDATION_BONUS_BPS
     }
 
-    /// Calculate expected liquidator bonus for a position
+    /// Calculate expected liquidator bonus for a position (view function, caller-provided price is acceptable)
     public fun calculate_liquidator_bonus(
         position: &PerpPosition,
         current_price: u64,
