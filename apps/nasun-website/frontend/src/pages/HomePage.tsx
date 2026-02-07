@@ -10,6 +10,7 @@ import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 // Lazy load all sections
 const HeroSection = lazy(() => import("../sections/home/HeroSection"));
 const VisionSection = lazy(() => import("../sections/home/VisionSection"));
+const WhatWeBuildingSection = lazy(() => import("../sections/home/WhatWeBuildingSection"));
 const Wave1Section = lazy(() => import("../sections/home/Wave1Section"));
 const NftSaleSection = lazy(() => import("../sections/home/NftSaleSection"));
 const AwardsGrantsSection = lazy(() => import("../sections/home/AwardsGrantsSection"));
@@ -84,6 +85,11 @@ export default function HomePage() {
             {/* Hero와 동시에 로딩 시작 */}
             <ScrollSnapSection>
               <VisionSection shouldLoadVideo={true} onVideoReady={handleVisionVideoReady} />
+            </ScrollSnapSection>
+
+            {/* WhatWeBuildingSection - 제품 캐러셀 */}
+            <ScrollSnapSection>
+              <WhatWeBuildingSection />
             </ScrollSnapSection>
 
             {/* NewsEventsSection - 긴 컨텐츠 허용 */}
