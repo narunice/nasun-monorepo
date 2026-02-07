@@ -5,6 +5,7 @@ export { BalanceManagerCard } from './BalanceManagerCard';
 export { OpenOrders } from './OpenOrders';
 export { PoolInfo } from './PoolInfo';
 export { PriceChart } from './PriceChart';
+export { DepthChart } from './chart';
 export { TradeHistory } from './TradeHistory';
 export { OrderHistory } from './OrderHistory';
 export { SlippageSettings } from './SlippageSettings';

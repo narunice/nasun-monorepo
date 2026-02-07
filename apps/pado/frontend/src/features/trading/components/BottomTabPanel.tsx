@@ -10,14 +10,13 @@ import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { OrderHistory } from './OrderHistory';
 import { TradeHistory } from './TradeHistory';
-import { DepthChart } from './chart';
-import { useOpenOrders, useOrderActions, useOrderbook } from '../hooks';
+import { useOpenOrders, useOrderActions } from '../hooks';
 import { useMarket } from '../context/MarketContext';
 import { calcLockedAmounts } from '../types';
 import { UnderlineTabs, type TabItem } from '@/components/common';
 import { TransferModal } from './TransferModal';
 
-export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'depth' | 'assets';
+export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
 
 type TabConfig = TabItem<TabType>;
 
@@ -29,14 +28,12 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('openOrders');
   const { balanceManagerId, isLoading, handleCancelOrder, handleCancelAllOrders } = useOrderActions();
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
-  const { data: orderbookData } = useOrderbook();
   const openOrderCount = openOrdersData?.orders?.length ?? 0;
 
   const tabs: TabConfig[] = [
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
-    { id: 'depth', label: 'Depth' },
     { id: 'assets', label: 'Assets' },
   ];
 
@@ -63,15 +60,6 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
         )}
         {activeTab === 'orderHistory' && <OrderHistoryTab />}
         {activeTab === 'tradeHistory' && <TradeHistoryTab />}
-        {activeTab === 'depth' && (
-          <div className="min-h-[180px] h-full">
-            <DepthChart
-              bids={orderbookData?.orderbook?.bids ?? []}
-              asks={orderbookData?.orderbook?.asks ?? []}
-              midPrice={orderbookData?.midPrice ?? 0}
-            />
-          </div>
-        )}
         {activeTab === 'assets' && <AssetsTab />}
       </div>
     </div>
