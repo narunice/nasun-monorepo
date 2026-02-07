@@ -49,22 +49,29 @@ export interface UseOrderActionsResult {
 /**
  * 체결 결과 메시지 포맷팅
  */
-function formatOrderResult(result: TradeResult, isBid: boolean): string {
+function formatOrderResult(result: TradeResult, isBid: boolean, feeBps?: number): string {
   const action = isBid ? "Buy" : "Sell";
   const exec = result.executionInfo;
 
   if (!exec) {
-    return `${action} order placed! Tx: ${result.digest?.slice(0, 16)}...`;
+    return `${action} Limit placed — Tx: ${result.digest?.slice(0, 10)}...`;
   }
+
+  const priceStr = exec.avgPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (exec.status === "filled") {
-    return `${action} FILLED! ${exec.executedQuantity.toFixed(4)} NBTC @ $${exec.avgPrice.toFixed(2)}`;
+    let msg = `${action} FILLED ${exec.executedQuantity.toFixed(4)} @ $${priceStr}`;
+    if (feeBps && exec.executedQuote > 0) {
+      const fee = exec.executedQuote * feeBps / 10000;
+      msg += ` — Fee: ~$${fee.toFixed(2)}`;
+    }
+    return msg;
   } else if (exec.status === "partial") {
-    const total = exec.executedQuantity + exec.remainingQuantity;
-    return `${action} PARTIAL: ${exec.executedQuantity.toFixed(4)}/${total.toFixed(4)} NBTC`;
+    const totalQty = exec.executedQuantity + exec.remainingQuantity;
+    return `${action} PARTIAL ${exec.executedQuantity.toFixed(4)}/${totalQty.toFixed(4)} @ $${priceStr}`;
   }
 
-  return `${action} order placed! Tx: ${result.digest?.slice(0, 16)}...`;
+  return `${action} Limit placed — Tx: ${result.digest?.slice(0, 10)}...`;
 }
 
 export function useOrderActions(): UseOrderActionsResult {
@@ -100,7 +107,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
   // Convert error message to user-friendly format
   const formatUserFriendlyError = useCallback(
-    (error: string | undefined): string => {
+    (error: string | undefined, context?: { side?: 'buy' | 'sell'; requiredAmount?: number; availableAmount?: number }): string => {
       if (!error) return "Unknown error";
 
       const minQty = getMinQuantity(currentPool);
@@ -147,6 +154,11 @@ export function useOrderActions(): UseOrderActionsResult {
 
         // Insufficient balance: BM-3
         if (parsed.code === "BM-3") {
+          if (context?.requiredAmount !== undefined && context?.availableAmount !== undefined) {
+            const tokenSymbol = context.side === 'sell' ? baseSymbol : currentPool.quoteToken.symbol;
+            const decimals = context.side === 'sell' ? 4 : 2;
+            return `Insufficient ${tokenSymbol}. Need ${context.requiredAmount.toFixed(decimals)}, have ${context.availableAmount.toFixed(decimals)}. Get tokens from Faucet.`;
+          }
           return "Not enough balance. Get tokens from Faucet in your wallet.";
         }
       }
@@ -237,11 +249,17 @@ export function useOrderActions(): UseOrderActionsResult {
           : await placeSellOrder(price, amount, orderType);
 
       if (result.success) {
-        const message = formatOrderResult(result, type === "buy");
+        const message = formatOrderResult(result, type === "buy", currentPool.takerFeeBps);
         showToast(message, "success");
         refreshData();
       } else {
-        const friendlyError = formatUserFriendlyError(result.error);
+        const requiredQuote = type === "buy" ? price * amount : 0;
+        const requiredBase = type === "sell" ? amount : 0;
+        const friendlyError = formatUserFriendlyError(result.error, {
+          side: type,
+          requiredAmount: type === "buy" ? requiredQuote : requiredBase,
+          availableAmount: 0, // Exact available is unknown at this point
+        });
         showToast(friendlyError, "error");
       }
 
@@ -256,6 +274,7 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast,
       refreshData,
       formatUserFriendlyError,
+      currentPool,
     ]
   );
 
@@ -313,10 +332,18 @@ export function useOrderActions(): UseOrderActionsResult {
       });
 
       if (result.success) {
-        showToast(`Market ${type} executed!`, "success");
+        const baseSymbol = currentPool.baseToken.symbol;
+        const msg = result.executionInfo
+          ? formatOrderResult(result, type === "buy", currentPool.takerFeeBps)
+          : `Market ${type === "buy" ? "Buy" : "Sell"} ${amount.toFixed(4)} ${baseSymbol} executed!`;
+        showToast(msg, "success");
         refreshData();
       } else {
-        const friendlyError = formatUserFriendlyError(result.error);
+        const friendlyError = formatUserFriendlyError(result.error, {
+          side: type,
+          requiredAmount: amount,
+          availableAmount: 0,
+        });
         showToast(friendlyError, "error");
       }
 
@@ -330,6 +357,7 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast,
       refreshData,
       formatUserFriendlyError,
+      currentPool,
     ]
   );
 

@@ -14,6 +14,8 @@ interface InsufficientBalancePromptProps {
   availableAmount: number;
   /** Custom message override */
   message?: string;
+  /** Token decimals for display precision (default: 2) */
+  decimals?: number;
 }
 
 export function InsufficientBalancePrompt({
@@ -21,13 +23,16 @@ export function InsufficientBalancePrompt({
   requiredAmount,
   availableAmount,
   message,
+  decimals,
 }: InsufficientBalancePromptProps) {
   const shortfall = requiredAmount - availableAmount;
 
   // Don't render if no shortfall
   if (shortfall <= 0) return null;
 
-  const defaultMessage = `Need ${shortfall.toFixed(2)} more ${tokenSymbol}`;
+  // Determine display precision based on token decimals
+  const displayDecimals = decimals !== undefined ? Math.min(decimals > 6 ? 4 : 2, decimals) : 2;
+  const defaultMessage = `Need ${shortfall.toFixed(displayDecimals)} more ${tokenSymbol}`;
   const displayMessage = message || defaultMessage;
 
   return (
@@ -49,7 +54,7 @@ export function InsufficientBalancePrompt({
         <div className="flex-1">
           <p className="text-sm xl:text-base text-red-400 font-medium">{displayMessage}</p>
           <p className="text-xs xl:text-sm text-theme-text-muted mt-0.5">
-            Available: {availableAmount.toFixed(2)} {tokenSymbol}
+            Available: {availableAmount.toFixed(displayDecimals)} {tokenSymbol}
           </p>
           <p className="text-xs xl:text-sm text-theme-text-muted mt-1">
             Get {tokenSymbol} from Faucet in your wallet.

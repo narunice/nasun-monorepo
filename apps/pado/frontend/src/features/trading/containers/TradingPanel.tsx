@@ -348,6 +348,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           price={price}
           amount={amount}
           isLoading={isLoading}
+          executionOption={executionOption}
         />
 
       </div>
