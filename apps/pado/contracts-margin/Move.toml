@@ -7,6 +7,7 @@ published-at = "0x5bdbf3aaa5999674bea412f2dd7dce417a188343f7213cb7105d9c1eaacce3
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
+pado_oracle = { local = "../contracts-oracle" }
 
 [addresses]
 unified_margin = "0x0"

@@ -15,6 +15,7 @@ module unified_margin::liquidation {
     use unified_margin::unified_margin::{Self, MarginAccount, MarginRegistry};
     use unified_margin::account_positions::{AccountPositions, PriceInfo};
     use unified_margin::risk_engine;
+    use pado_oracle::dev_oracle::{Self, OracleRegistry};
 
     // ===== Error Codes =====
 
@@ -23,6 +24,19 @@ module unified_margin::liquidation {
     const EExceedsMaxLiquidation: u64 = 302;
     const ESelfLiquidation: u64 = 303;
     const EInsufficientCollateral: u64 = 304;
+    const EOracleStale: u64 = 305;
+    const EOraclePriceOutOfRange: u64 = 306;
+
+    // ===== Oracle Configuration =====
+
+    /// Maximum acceptable Oracle staleness (2 minutes)
+    const ORACLE_MAX_STALENESS_MS: u64 = 120_000;
+
+    /// Maximum reasonable BTC price: $10,000,000 with 8 decimals
+    const MAX_REASONABLE_BTC_PRICE: u128 = 1_000_000_000_000_000;
+
+    /// Minimum reasonable BTC price: $100 with 8 decimals
+    const MIN_REASONABLE_BTC_PRICE: u128 = 10_000_000_000;
 
     // ===== Constants =====
 
@@ -78,12 +92,17 @@ module unified_margin::liquidation {
     ///
     /// Anyone can call this function to liquidate an account below maintenance margin.
     /// The liquidator receives the liquidated collateral plus a bonus.
+    /// NBTC price is read from on-chain Oracle (not caller-provided) to prevent
+    /// price manipulation attacks.
     ///
     /// @param account - The margin account to liquidate
     /// @param registry - The margin registry
     /// @param positions - The account's positions
     /// @param current_prices - Current market prices for position valuation
-    /// @param nbtc_price - Current NBTC price in USD (8 decimals)
+    ///   TODO(SEC): current_prices is still caller-provided. To fully close the
+    ///   price manipulation surface, position prices should also be read from
+    ///   Oracle (requires pool_id -> oracle_symbol mapping table).
+    /// @param oracle_registry - On-chain Oracle for verified BTC price
     /// @param liquidation_amount_usd - Amount to liquidate in USD (6 decimals)
     /// @param clock - Clock for timestamp
     /// @param ctx - Transaction context
@@ -92,7 +111,7 @@ module unified_margin::liquidation {
         registry: &mut MarginRegistry,
         positions: &AccountPositions,
         current_prices: vector<PriceInfo>,
-        nbtc_price: u64,
+        oracle_registry: &OracleRegistry,
         liquidation_amount_usd: u64,
         clock: &sui::clock::Clock,
         ctx: &mut TxContext,
@@ -102,6 +121,9 @@ module unified_margin::liquidation {
 
         // Prevent self-liquidation
         assert!(liquidator != account_owner, ESelfLiquidation);
+
+        // Read verified BTC price from on-chain Oracle
+        let nbtc_price = read_btc_price(oracle_registry, clock);
 
         // Calculate risk metrics
         let metrics = risk_engine::calculate_risk_metrics(
@@ -165,14 +187,17 @@ module unified_margin::liquidation {
     }
 
     /// Check if forced liquidation should be triggered (margin < 3%)
-    /// Returns true if the account is in critical state
+    /// Returns true if the account is in critical state.
+    /// Reads BTC price from on-chain Oracle.
     public fun should_force_liquidate(
         account: &MarginAccount,
         registry: &MarginRegistry,
         positions: &AccountPositions,
         current_prices: vector<PriceInfo>,
-        nbtc_price: u64,
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
     ): bool {
+        let nbtc_price = read_btc_price(oracle_registry, clock);
         let metrics = risk_engine::calculate_risk_metrics(
             account,
             registry,
@@ -183,15 +208,17 @@ module unified_margin::liquidation {
         risk_engine::get_metrics_risk_level(&metrics) >= 3 // RISK_LEVEL_CRITICAL
     }
 
-    /// Emit forced liquidation event (for keeper monitoring)
+    /// Emit forced liquidation event (for keeper monitoring).
+    /// Reads BTC price from on-chain Oracle.
     public fun emit_forced_liquidation_warning(
         account: &MarginAccount,
         registry: &MarginRegistry,
         positions: &AccountPositions,
         current_prices: vector<PriceInfo>,
-        nbtc_price: u64,
+        oracle_registry: &OracleRegistry,
         clock: &sui::clock::Clock,
     ) {
+        let nbtc_price = read_btc_price(oracle_registry, clock);
         let metrics = risk_engine::calculate_risk_metrics(
             account,
             registry,
@@ -212,14 +239,17 @@ module unified_margin::liquidation {
 
     // ===== View Functions =====
 
-    /// Calculate maximum liquidatable amount for an account
+    /// Calculate maximum liquidatable amount for an account.
+    /// Reads BTC price from on-chain Oracle.
     public fun get_max_liquidatable_amount(
         account: &MarginAccount,
         registry: &MarginRegistry,
         positions: &AccountPositions,
         current_prices: vector<PriceInfo>,
-        nbtc_price: u64,
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
     ): u64 {
+        let nbtc_price = read_btc_price(oracle_registry, clock);
         let metrics = risk_engine::calculate_risk_metrics(
             account,
             registry,
@@ -317,7 +347,7 @@ module unified_margin::liquidation {
         } else {
             0
         };
-        let bonus_nbtc = if (nbtc_transferred > 0) {
+        let bonus_nbtc = if (nbtc_transferred > 0 && total_transferred_usd > 0) {
             (nbtc_transferred * bonus_amount_usd) / total_transferred_usd
         } else {
             0
@@ -356,6 +386,28 @@ module unified_margin::liquidation {
 
         // Use package-level privileged withdraw
         unified_margin::liquidation_withdraw_nbtc(account, registry, amount, recipient, ctx);
+    }
+
+    // ===== Oracle Helper =====
+
+    /// Read verified BTC price from on-chain Oracle with staleness and range checks.
+    /// Returns price as u64 (8 decimals) for compatibility with existing calculations.
+    /// Aborts if Oracle feed is stale or price is outside reasonable bounds.
+    fun read_btc_price(
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
+    ): u64 {
+        assert!(
+            dev_oracle::is_fresh(oracle_registry, dev_oracle::btcusd(), ORACLE_MAX_STALENESS_MS, clock),
+            EOracleStale,
+        );
+        let (price_u128, _, _) = dev_oracle::get_price(oracle_registry, dev_oracle::btcusd());
+        // Sanity bounds: reject corrupted or manipulated Oracle values
+        assert!(
+            price_u128 >= MIN_REASONABLE_BTC_PRICE && price_u128 <= MAX_REASONABLE_BTC_PRICE,
+            EOraclePriceOutOfRange,
+        );
+        (price_u128 as u64)
     }
 
     // ===== Test Functions =====
