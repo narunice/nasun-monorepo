@@ -8,7 +8,10 @@
 
 import { useState, useMemo } from 'react';
 import { useMarket } from '../context/MarketContext';
+import { useOrderForm } from '../context/OrderFormContext';
 import { NumberInput } from '@/components/ui/NumberInput';
+
+const SLIPPAGE_PRESETS = [0.1, 0.5, 1.0];
 
 interface SimpleOrderFormProps {
   midPrice?: number;
@@ -32,6 +35,7 @@ export function SimpleOrderForm({
   baseBalance = 0,
 }: SimpleOrderFormProps) {
   const { currentPool } = useMarket();
+  const { slippage, setSlippage } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
 
   const [usdAmount, setUsdAmount] = useState<number | null>(null);
@@ -200,6 +204,10 @@ export function SimpleOrderForm({
               <span className="text-theme-text-muted">Est. Fee ({feePercent})</span>
               <span className="font-mono text-theme-text-muted">~${fee.toFixed(2)}</span>
             </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-theme-text-muted">Max Slippage</span>
+              <span className="font-mono text-theme-text-muted">{slippage}%</span>
+            </div>
             <div className="flex justify-between text-xs mt-1 pt-1 border-t border-theme-border/30">
               <span className="text-theme-text-secondary font-medium">You {orderSide === 'buy' ? 'receive' : 'receive'}</span>
               <span className={`font-mono font-medium ${orderSide === 'buy' ? 'text-theme-text-primary' : 'text-green-400'}`}>
@@ -220,6 +228,24 @@ export function SimpleOrderForm({
             Select an amount or enter custom value
           </div>
         )}
+      </div>
+
+      {/* Slippage Presets (compact) */}
+      <div className="mt-2 flex items-center gap-1.5 shrink-0">
+        <span className="text-[10px] text-theme-text-muted">Slippage:</span>
+        {SLIPPAGE_PRESETS.map((pct) => (
+          <button
+            key={pct}
+            onClick={() => setSlippage(pct)}
+            className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors ${
+              slippage === pct
+                ? 'bg-pd1 text-white'
+                : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+            }`}
+          >
+            {pct}%
+          </button>
+        ))}
       </div>
 
       {/* Spacer */}

@@ -87,7 +87,7 @@ export function loadConfig(): LPConfig {
     // Spread settings
     spreadBps: parseInt(process.env.LP_SPREAD_BPS || '30', 10),
     levelSpacingBps: parseInt(process.env.LP_LEVEL_SPACING_BPS || '10', 10),
-    orderLevels: parseInt(process.env.LP_ORDER_LEVELS || '20', 10),
+    orderLevels: parseInt(process.env.LP_ORDER_LEVELS || '30', 10),
 
     // Order sizing
     orderSizeNbtc: parseFloat(process.env.LP_ORDER_SIZE || '0.01'),

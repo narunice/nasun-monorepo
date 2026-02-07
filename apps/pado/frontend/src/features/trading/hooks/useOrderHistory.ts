@@ -9,7 +9,14 @@ import { getSuiClient } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
 
-export type OrderStatus = 'filled' | 'canceled';
+/** Safely convert unknown RPC value to BigInt, defaulting to 0n on invalid input */
+function safeBigInt(value: unknown): bigint {
+  const str = String(value || '0');
+  if (!/^\d+$/.test(str)) return 0n;
+  return BigInt(str);
+}
+
+export type OrderStatus = 'placed' | 'partial' | 'filled' | 'canceled';
 export type OrderType = 'limit' | 'market';
 
 export interface OrderHistoryItem {
@@ -17,6 +24,7 @@ export interface OrderHistoryItem {
   type: OrderType;
   price: number;
   quantity: number;
+  executedQuantity: number;
   isBid: boolean;
   status: OrderStatus;
   timestamp: number;
@@ -83,6 +91,19 @@ async function fetchOrderHistory(
     if (json.order_id) canceledOrderIds.add(String(json.order_id));
   }
 
+  // Collect maker fills: maker_order_id -> total executed qty (raw)
+  const makerFillQtyMap = new Map<string, bigint>();
+  for (const event of filledResult.data) {
+    const json = event.parsedJson as RawEventJson | undefined;
+    if (!json) continue;
+    if (json.maker_balance_manager_id !== balanceManagerId) continue;
+    if (json.pool_id !== poolId) continue;
+
+    const makerOrderId = String(json.maker_order_id || '');
+    const fillQty = safeBigInt(json.base_quantity || json.quantity);
+    makerFillQtyMap.set(makerOrderId, (makerFillQtyMap.get(makerOrderId) || 0n) + fillQty);
+  }
+
   // Track placed order IDs to avoid duplicating as market orders
   const placedOrderIds = new Set<string>();
 
@@ -96,13 +117,30 @@ async function fetchOrderHistory(
 
     const orderId = String(json.order_id || '');
     placedOrderIds.add(orderId);
-    const status: OrderStatus = canceledOrderIds.has(orderId) ? 'canceled' : 'filled';
+
+    const rawQuantity = safeBigInt(json.placed_quantity);
+    const quantity = Number(rawQuantity) / Math.pow(10, baseDecimals);
+    const rawExecuted = makerFillQtyMap.get(orderId) || 0n;
+    const executedQuantity = Number(rawExecuted) / Math.pow(10, baseDecimals);
+
+    // Determine status: canceled > filled > partial > placed
+    let status: OrderStatus;
+    if (canceledOrderIds.has(orderId)) {
+      status = 'canceled';
+    } else if (rawExecuted >= rawQuantity && rawQuantity > 0n) {
+      status = 'filled';
+    } else if (rawExecuted > 0n) {
+      status = 'partial';
+    } else {
+      status = 'placed';
+    }
 
     orders.push({
       orderId,
       type: 'limit',
-      price: Number(BigInt(String(json.price || 0))) / Math.pow(10, quoteDecimals),
-      quantity: Number(BigInt(String(json.placed_quantity || 0))) / Math.pow(10, baseDecimals),
+      price: Number(safeBigInt(json.price)) / Math.pow(10, quoteDecimals),
+      quantity,
+      executedQuantity,
       isBid: Boolean(json.is_bid),
       status,
       timestamp: Number(event.timestampMs) || Date.now(),
@@ -131,8 +169,8 @@ async function fetchOrderHistory(
     // Skip if this order was already captured via OrderPlaced (limit order that got filled)
     if (placedOrderIds.has(takerOrderId)) continue;
 
-    const fillQty = BigInt(String(json.base_quantity || json.quantity || 0));
-    const fillPrice = BigInt(String(json.price || 0));
+    const fillQty = safeBigInt(json.base_quantity || json.quantity);
+    const fillPrice = safeBigInt(json.price);
     const timestamp = Number(event.timestampMs) || Date.now();
 
     const existing = takerOrderMap.get(takerOrderId);
@@ -161,11 +199,13 @@ async function fetchOrderHistory(
       ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, quoteDecimals)
       : 0;
 
+    const qty = Number(data.totalQuantity) / Math.pow(10, baseDecimals);
     orders.push({
       orderId,
       type: 'market',
       price: avgPrice,
-      quantity: Number(data.totalQuantity) / Math.pow(10, baseDecimals),
+      quantity: qty,
+      executedQuantity: qty,
       isBid: data.isBid,
       status: 'filled',
       timestamp: data.timestamp,
