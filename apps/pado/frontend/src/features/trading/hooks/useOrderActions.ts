@@ -17,6 +17,42 @@ import { quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepboo
 import { isMarginError } from "../../../lib/risk-engine";
 import { parseError } from "../utils/errorParser";
 import { RPC_SYNC_DELAY_MS } from "../../../lib/constants";
+import { getUnifiedPrice } from "../../../lib/prices";
+import type { AutoDepositResult } from "./useAutoDeposit";
+
+/**
+ * Shared auto-deposit helper to avoid duplication between limit and market order handlers.
+ * Returns { success: true } if deposit succeeded or was not needed.
+ */
+async function performAutoDeposit(
+  depositIfNeeded: (q: number, b: number) => Promise<AutoDepositResult>,
+  requiredQuote: number,
+  requiredBase: number,
+  showToast: (msg: string, type: "info" | "error" | "success" | "warning") => void,
+): Promise<{ success: boolean; error?: string }> {
+  const result = await depositIfNeeded(requiredQuote, requiredBase);
+
+  if (!result.success) {
+    const error = result.error || "Auto deposit failed";
+    showToast(error, "error");
+    return { success: false, error };
+  }
+
+  const hasQuote = (result.depositedQuoteAmount ?? 0) > 0;
+  const hasBase = (result.depositedBaseAmount ?? 0) > 0;
+
+  if (hasQuote) {
+    showToast(`Auto-deposited ${result.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`, "info");
+  }
+  if (hasBase) {
+    showToast(`Auto-deposited ${result.depositedBaseAmount!.toFixed(4)} NBTC to trading`, "info");
+  }
+  if (hasQuote || hasBase) {
+    await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
+  }
+
+  return { success: true };
+}
 
 export interface UseOrderActionsResult {
   isLoading: boolean;
@@ -203,44 +239,10 @@ export function useOrderActions(): UseOrderActionsResult {
     ): Promise<TradeResult> => {
       // Auto deposit if enabled
       if (autoDepositEnabled && balanceManagerId) {
-        // Calculate required amounts
         const requiredQuote = type === "buy" ? price * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
-
-        const depositResult = await depositIfNeeded(requiredQuote, requiredBase);
-
-        if (!depositResult.success) {
-          const friendlyError = depositResult.error || "Auto deposit failed";
-          showToast(friendlyError, "error");
-          return {
-            success: false,
-            error: friendlyError,
-          };
-        }
-
-        // Show deposit notification if deposit occurred
-        const hasQuoteDeposit =
-          depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
-        const hasBaseDeposit =
-          depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
-
-        if (hasQuoteDeposit) {
-          showToast(
-            `Auto-deposited ${depositResult.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`,
-            "info"
-          );
-        }
-        if (hasBaseDeposit) {
-          showToast(
-            `Auto-deposited ${depositResult.depositedBaseAmount!.toFixed(4)} NBTC to trading`,
-            "info"
-          );
-        }
-
-        if (hasQuoteDeposit || hasBaseDeposit) {
-          // Wait for RPC to sync new object versions after deposit
-          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
-        }
+        const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast);
+        if (!deposit.success) return { success: false, error: deposit.error };
       }
 
       // Place the order
@@ -282,48 +284,14 @@ export function useOrderActions(): UseOrderActionsResult {
   // 시장가 주문 실행 (with auto deposit)
   const handleMarketOrder = useCallback(
     async (type: "buy" | "sell", amount: number): Promise<TradeResult> => {
-      // Auto deposit if enabled
-      // For market orders, estimate required quote based on orderbook (conservative estimate)
+      // Auto deposit if enabled (use oracle price with slippage buffer for market orders)
       if (autoDepositEnabled && balanceManagerId) {
-        // Conservative estimate: use a high price for buy orders
-        // Actual execution will use orderbook prices
-        const estimatedPrice = 100000; // Conservative max price for NBTC
+        const oraclePrice = getUnifiedPrice('NBTC');
+        const estimatedPrice = oraclePrice > 0 ? oraclePrice * 1.10 : 100000;
         const requiredQuote = type === "buy" ? estimatedPrice * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
-
-        const depositResult = await depositIfNeeded(requiredQuote, requiredBase);
-
-        if (!depositResult.success) {
-          const friendlyError = depositResult.error || "Auto deposit failed";
-          showToast(friendlyError, "error");
-          return {
-            success: false,
-            error: friendlyError,
-          };
-        }
-
-        const hasQuoteDeposit =
-          depositResult.depositedQuoteAmount && depositResult.depositedQuoteAmount > 0;
-        const hasBaseDeposit =
-          depositResult.depositedBaseAmount && depositResult.depositedBaseAmount > 0;
-
-        if (hasQuoteDeposit) {
-          showToast(
-            `Auto-deposited ${depositResult.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`,
-            "info"
-          );
-        }
-        if (hasBaseDeposit) {
-          showToast(
-            `Auto-deposited ${depositResult.depositedBaseAmount!.toFixed(4)} NBTC to trading`,
-            "info"
-          );
-        }
-
-        if (hasQuoteDeposit || hasBaseDeposit) {
-          // Wait for RPC to sync new object versions after deposit
-          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
-        }
+        const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast);
+        if (!deposit.success) return { success: false, error: deposit.error };
       }
 
       const rawQuantity = quantityToRaw(amount);

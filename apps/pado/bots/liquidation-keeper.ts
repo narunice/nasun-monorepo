@@ -18,6 +18,7 @@
 import { SuiClient, SuiObjectResponse } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { withRetry } from './lib/retry';
 
 // ========================================
 // Configuration
@@ -205,17 +206,16 @@ async function liquidatePosition(
   client: SuiClient,
   keypair: Ed25519Keypair,
   position: PerpPosition,
-  currentPrice: bigint
 ): Promise<LiquidationResult> {
   const tx = new Transaction();
 
-  // Call liquidate_position
+  // Call liquidate_position (reads price from on-chain oracle, not caller-provided)
   const bonusCoin = tx.moveCall({
     target: `${PERP_PACKAGE_ID}::liquidation::liquidate_position`,
     arguments: [
       tx.object(position.marketId), // market
       tx.object(position.id), // position (owned object)
-      tx.pure.u64(currentPrice), // current_price
+      tx.object(ORACLE_REGISTRY_ID), // oracle registry (on-chain price read)
       tx.object(CLOCK_ID), // clock
     ],
   });
@@ -264,12 +264,15 @@ async function checkAndLiquidate(
 ): Promise<void> {
   const now = new Date().toISOString().slice(11, 19);
 
-  // 1. Fetch current BTC price
+  // 1. Fetch current BTC price (with retry)
   let btcPrice: bigint;
   try {
-    btcPrice = await fetchOraclePrice(client, BTCUSD);
+    btcPrice = await withRetry(
+      () => fetchOraclePrice(client, BTCUSD),
+      { label: 'fetchOraclePrice' }
+    );
   } catch (error) {
-    console.log(`[${now}] ⚠️  Failed to fetch oracle price, skipping...`);
+    console.log(`[${now}] ⚠️  Failed to fetch oracle price after retries, skipping...`);
     return;
   }
 
@@ -306,7 +309,10 @@ async function checkAndLiquidate(
       console.log(`[${now}] 🔴 Liquidatable: ${positionId.slice(0, 10)}... (margin: ${(marginRatio / 100).toFixed(2)}%)`);
 
       try {
-        const result = await liquidatePosition(client, keypair, position, btcPrice);
+        const result = await withRetry(
+          () => liquidatePosition(client, keypair, position),
+          { label: 'liquidatePosition', maxRetries: 2 }
+        );
         const bonusFormatted = (Number(result.bonus) / 1_000_000).toFixed(2);
         console.log(`[${now}] ✅ Liquidated! Bonus: ${bonusFormatted} NUSDC (tx: ${result.txDigest.slice(0, 10)}...)`);
         closedPositions.push(positionId);

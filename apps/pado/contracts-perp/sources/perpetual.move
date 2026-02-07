@@ -662,6 +662,10 @@ module pado_perp::perpetual {
         position.market_id
     }
 
+    public fun get_market_base_symbol(market: &PerpMarket): u64 {
+        market.base_symbol
+    }
+
     // ===== Liquidation Support (package-only) =====
 
     /// Execute liquidation - can only be called by liquidation module
