@@ -22,32 +22,37 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
   const address = useSignerAddress();
   const {
     messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore,
-    nickname, needsNickname,
+    nickname, needsNickname, nicknameRateLimit,
   } = useChat();
 
-  const [showNicknameModal, setShowNicknameModal] = useState(false);
+  // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
+  const [nicknameModalMode, setNicknameModalMode] = useState<false | 'first' | 'edit'>(false);
   const pendingMessageRef = useRef<string | null>(null);
 
   // Wrap sendMessage to prompt nickname modal on first attempt if needed
   const handleSend = useCallback((content: string) => {
     if (needsNickname) {
       pendingMessageRef.current = content;
-      setShowNicknameModal(true);
+      setNicknameModalMode('first');
       return;
     }
     sendMessage(content);
   }, [needsNickname, sendMessage]);
 
   const handleNicknameSuccess = useCallback((_name: string) => {
-    setShowNicknameModal(false);
-    // Send the pending message that triggered the modal
-    const pending = pendingMessageRef.current;
-    pendingMessageRef.current = null;
-    if (pending) {
-      // Small delay to let the nickname state propagate
-      setTimeout(() => sendMessage(pending), 100);
+    const wasFirstTime = nicknameModalMode === 'first';
+    setNicknameModalMode(false);
+    // Send the pending message that triggered the modal (first-time only)
+    if (wasFirstTime) {
+      const pending = pendingMessageRef.current;
+      pendingMessageRef.current = null;
+      if (pending) {
+        setTimeout(() => sendMessage(pending), 100);
+      }
     }
-  }, [sendMessage]);
+  }, [sendMessage, nicknameModalMode]);
+
+  const canEditNickname = nicknameRateLimit?.canChange !== false;
 
   const addressSuffix = address ? address.slice(-4) : '0000';
 
@@ -61,9 +66,19 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
         </div>
         <div className="flex items-center gap-2">
           {isConnected && nickname && (
-            <span className="text-trading-xs text-theme-text-muted truncate max-w-[80px]" title={`${nickname}#${addressSuffix}`}>
+            <button
+              onClick={() => canEditNickname && setNicknameModalMode('edit')}
+              className={`text-trading-xs text-theme-text-muted truncate max-w-[100px] flex items-center gap-0.5
+                ${canEditNickname ? 'hover:text-theme-text-primary cursor-pointer' : 'cursor-default'}`}
+              title={canEditNickname ? `${nickname}#${addressSuffix} (click to change)` : `${nickname}#${addressSuffix}`}
+            >
               {nickname}#{addressSuffix}
-            </span>
+              {canEditNickname && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                  <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                </svg>
+              )}
+            </button>
           )}
           {isConnected && (
             <span className="text-trading-xs text-theme-text-muted">
@@ -111,12 +126,14 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
       />
 
       {/* Nickname modal */}
-      {showNicknameModal && (
+      {nicknameModalMode && (
         <SetNicknameModal
           addressSuffix={addressSuffix}
+          currentNickname={nicknameModalMode === 'edit' ? nickname ?? undefined : undefined}
+          rateLimit={nicknameRateLimit ?? undefined}
           onSuccess={handleNicknameSuccess}
           onClose={() => {
-            setShowNicknameModal(false);
+            setNicknameModalMode(false);
             pendingMessageRef.current = null;
           }}
         />

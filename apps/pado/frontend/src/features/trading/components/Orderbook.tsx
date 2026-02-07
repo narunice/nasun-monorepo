@@ -236,6 +236,13 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
     return 3;
   }, [groupSize]);
 
+  // Auto-scroll asks container to bottom so best ask is visible near spread
+  const asksContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = asksContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [reversedAsks]);
+
   // Track previous level quantities for pulse animation
   const prevLevelsRef = useRef<Map<number, number>>(new Map());
   const prevGroupSizeRef = useRef(groupSize);
@@ -338,7 +345,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           </div>
 
           {/* Asks (reversed - best ask at bottom) */}
-          <div className="flex-1 overflow-y-auto flex flex-col">
+          <div ref={asksContainerRef} className="flex-1 overflow-y-auto flex flex-col">
             {reversedAsks.length > 0 ? (
               <div className="mt-auto space-y-px">
                 {reversedAsks.map((level, i) => {

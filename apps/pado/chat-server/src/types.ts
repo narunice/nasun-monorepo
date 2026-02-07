@@ -48,10 +48,17 @@ export interface AuthChallengeMessage {
   challenge: string;
 }
 
+export interface NicknameRateLimit {
+  canChange: boolean;
+  changesRemaining: number;
+  lockedUntil: number | null; // epoch ms
+}
+
 export interface AuthSuccessMessage {
   type: 'auth_success';
   address: string;
   nickname: string | null;
+  rateLimit?: NicknameRateLimit;
 }
 
 export interface AuthErrorMessage {
@@ -93,12 +100,17 @@ export interface NicknameResultMessage {
   ok: boolean;
   nickname?: string;
   error?: string;
+  rateLimit?: NicknameRateLimit;
 }
 
 export interface NicknameCheckMessage {
   type: 'nickname_check';
   available: boolean;
   nickname: string;
+}
+
+export interface HeartbeatMessage {
+  type: 'heartbeat';
 }
 
 export type ServerMessage =
@@ -110,7 +122,8 @@ export type ServerMessage =
   | OnlineCountPayload
   | ErrorPayload
   | NicknameResultMessage
-  | NicknameCheckMessage;
+  | NicknameCheckMessage
+  | HeartbeatMessage;
 
 // ===== Internal Types =====
 
@@ -151,6 +164,13 @@ export interface ChatServerConfig {
   messageRetentionDays: number;
   retentionCleanupIntervalMs: number;
   allowedOrigins: string[];
+  // Leaderboard indexer
+  leaderboardDbPath: string;
+  deepbookPackage: string;
+  rpcUrl: string;
+  indexerPollIntervalMs: number;
+  aggregationIntervalMs: number;
+  excludedAddresses: string[];
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -165,4 +185,11 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   messageRetentionDays: 90,
   retentionCleanupIntervalMs: 24 * 60 * 60 * 1000, // Daily
   allowedOrigins: (process.env.CHAT_ALLOWED_ORIGINS || 'https://pado.nasun.io,http://localhost:5176').split(','),
+  // Leaderboard indexer
+  leaderboardDbPath: process.env.LEADERBOARD_DB_PATH || './data/leaderboard.db',
+  deepbookPackage: process.env.DEEPBOOK_PACKAGE || '',
+  rpcUrl: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
+  indexerPollIntervalMs: parseInt(process.env.INDEXER_POLL_INTERVAL_MS || '5000', 10),
+  aggregationIntervalMs: parseInt(process.env.AGGREGATION_INTERVAL_MS || '60000', 10),
+  excludedAddresses: (process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
 };

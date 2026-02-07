@@ -27,6 +27,7 @@ import {
   LotteryRoundPage,
   AdminPage,
   PerpTradePage,
+  LeaderboardPage,
 } from '../pages';
 
 export function AppRoutes() {
@@ -53,6 +54,9 @@ export function AppRoutes() {
 
       {/* Admin (Unified Dashboard) */}
       <Route path="/admin" element={<AdminPage />} />
+
+      {/* Leaderboard */}
+      <Route path="/leaderboard" element={<LeaderboardPage />} />
 
       {/* Earn (Staking + Lending) */}
       <Route path="/earn" element={<EarnPage />} />
