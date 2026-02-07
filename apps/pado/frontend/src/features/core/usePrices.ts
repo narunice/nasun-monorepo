@@ -1,18 +1,22 @@
 /**
- * usePrices Hook
+ * Unified Price Hooks
  *
- * React Query-based hook for fetching and caching oracle prices.
- * Automatically refreshes prices at configured intervals.
+ * Single source of truth for all Oracle price React Query hooks.
+ * Both the bulk `usePrices()` and per-symbol `useOraclePrice()` live here
+ * so every module sees the same cache with the same refresh timing.
  *
- * @version 1.0.0 (Phase 16.1)
+ * @version 2.0.0 (CODE-7: unified Oracle hooks)
  */
 
 import { useQuery } from '@tanstack/react-query';
 import {
   refreshAllPrices,
+  refreshPrice,
   getUnifiedPrice,
   getPriceSource,
   getPriceChange24h,
+  getPriceWithFreshness,
+  getTokenByOracleId,
   type TokenSymbol,
 } from '../../lib/prices';
 
@@ -97,6 +101,63 @@ export function usePrices(enabled: boolean = true): UsePricesResult {
     getPrice,
     getPriceInfo,
   };
+}
+
+// ========================================
+// Per-Symbol Hooks (moved from perp/hooks/useOraclePrice)
+// ========================================
+
+export interface OraclePriceData {
+  price: number;
+  timestamp: number;
+  isFresh: boolean;
+}
+
+/**
+ * Fetch oracle price for a single symbol by on-chain ID.
+ * @param symbolId - On-chain oracle symbol ID (1=BTC, 2=ETH, 3=NASUN)
+ */
+export function useOraclePrice(symbolId: number) {
+  const token = getTokenByOracleId(symbolId);
+
+  return useQuery<OraclePriceData | null>({
+    queryKey: ['oracle-price', symbolId],
+    queryFn: async (): Promise<OraclePriceData | null> => {
+      if (!token) return null;
+      await refreshPrice(token);
+      const { price, timestamp, isFresh } = getPriceWithFreshness(token);
+      return { price, timestamp, isFresh };
+    },
+    refetchInterval: REFRESH_INTERVAL_MS,
+    staleTime: STALE_TIME_MS,
+    enabled: !!token,
+  });
+}
+
+/**
+ * Check if oracle price is stale
+ */
+export function useIsOracleStale(symbolId: number) {
+  const { data } = useOraclePrice(symbolId);
+  if (!data) return true;
+  return !data.isFresh;
+}
+
+/**
+ * Format price with appropriate decimals based on oracle symbol
+ */
+export function formatOraclePrice(price: number, symbolId: number): string {
+  // BTC/ETH: 2 decimals, others: 4 decimals
+  if (symbolId <= 2) {
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  return price.toLocaleString('en-US', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  });
 }
 
 // ========================================
