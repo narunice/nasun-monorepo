@@ -19,3 +19,4 @@ export {
   type AutoDepositCheckResult,
   type UseAutoDepositResult,
 } from './useAutoDeposit';
+export { useTradeCap, type UseTradeCapResult, type TradeCapStatus } from './useTradeCap';

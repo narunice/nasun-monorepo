@@ -24,3 +24,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Bot runtime data
+bots/data/
