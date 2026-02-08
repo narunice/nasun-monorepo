@@ -17,7 +17,7 @@ import * as oracleClient from './oracle-client';
 import type { SymbolKey } from './oracle-client';
 import { logOnce, logThrottled } from './logger';
 
-export type TokenSymbol = 'NASUN' | 'NBTC' | 'NUSDC';
+export type TokenSymbol = 'NASUN' | 'NBTC' | 'NUSDC' | 'NETH' | 'NSOL';
 
 // ========================================
 // Price Cache (10s TTL)
@@ -43,14 +43,21 @@ const SIMULATED_PRICES: Record<TokenSymbol, number> = {
   NASUN: 0.10,    // $0.10 per NASUN
   NBTC: 97000,    // $97,000 per BTC
   NUSDC: 1.00,    // $1.00 per USDC (stablecoin)
+  NETH: 3500,     // $3,500 per ETH
+  NSOL: 200,      // $200 per SOL
 };
 
-// 24h price changes (simulated for MVP)
-const SIMULATED_CHANGES: Record<TokenSymbol, number> = {
-  NASUN: 2.5,     // +2.5%
-  NBTC: -0.8,     // -0.8%
-  NUSDC: 0.0,     // stablecoin - no change
+// Fallback 24h changes (used only when no real data is available)
+const FALLBACK_CHANGES: Record<TokenSymbol, number> = {
+  NASUN: 0,
+  NBTC: 0,
+  NUSDC: 0,
+  NETH: 0,
+  NSOL: 0,
 };
+
+// Real 24h price change cache (populated from Binance ticker)
+const changeCache: Map<TokenSymbol, { percent: number; timestamp: number }> = new Map();
 
 // ========================================
 // Symbol Mapping
@@ -60,14 +67,18 @@ const SIMULATED_CHANGES: Record<TokenSymbol, number> = {
 const TOKEN_TO_ORACLE_SYMBOL: Partial<Record<TokenSymbol, SymbolKey>> = {
   NBTC: 'BTCUSD',
   NASUN: 'NASUSD',
+  NETH: 'ETHUSD',
+  NSOL: 'SOLUSD',
   // NUSDC: No oracle needed (always $1.00)
 };
 
 // Reverse mapping: on-chain oracle numeric symbol ID → TokenSymbol
-// (matches dev_oracle.move: 1=BTC, 2=ETH, 3=NASUN)
+// (matches dev_oracle.move: 1=BTC, 2=ETH, 3=NASUN, 4=SOL)
 const ORACLE_ID_TO_TOKEN: Record<number, TokenSymbol> = {
   1: 'NBTC',
+  2: 'NETH',
   3: 'NASUN',
+  4: 'NSOL',
 };
 
 // ========================================
@@ -143,7 +154,7 @@ export async function refreshPrice(symbol: TokenSymbol): Promise<void> {
  * Refresh all prices in cache
  */
 export async function refreshAllPrices(): Promise<void> {
-  const symbols: TokenSymbol[] = ['NASUN', 'NBTC', 'NUSDC'];
+  const symbols: TokenSymbol[] = ['NASUN', 'NBTC', 'NUSDC', 'NETH', 'NSOL'];
   await Promise.all(symbols.map(refreshPrice));
 }
 
@@ -221,13 +232,33 @@ export function getPriceWithFreshness(symbol: TokenSymbol): {
 }
 
 /**
- * Get 24h price change percentage for a token
+ * Set real 24h price change from external source (e.g., Binance 24h ticker).
+ * Call this from TradePage when ticker data arrives.
+ *
+ * @param symbol - Token symbol
+ * @param percent - Change percentage (e.g., 2.5 means +2.5%)
+ */
+export function set24hChange(symbol: TokenSymbol, percent: number): void {
+  changeCache.set(symbol, { percent, timestamp: Date.now() });
+}
+
+/**
+ * Get 24h price change percentage for a token.
+ * Returns real Binance data if available, otherwise fallback (0%).
  *
  * @param symbol - Token symbol
  * @returns Change percentage (e.g., 2.5 means +2.5%)
  */
 export function getPriceChange24h(symbol: TokenSymbol): number {
-  return SIMULATED_CHANGES[symbol] ?? 0;
+  // NUSDC is always 0% (stablecoin)
+  if (symbol === 'NUSDC') return 0;
+
+  const cached = changeCache.get(symbol);
+  // Accept cached data up to 5 minutes old
+  if (cached && Date.now() - cached.timestamp < 300_000) {
+    return cached.percent;
+  }
+  return FALLBACK_CHANGES[symbol] ?? 0;
 }
 
 /**
@@ -236,7 +267,11 @@ export function getPriceChange24h(symbol: TokenSymbol): number {
  * @returns Record of all token prices
  */
 export function getAllPrices(): Record<TokenSymbol, number> {
-  return { ...SIMULATED_PRICES };
+  const result = { ...SIMULATED_PRICES };
+  for (const symbol of Object.keys(result) as TokenSymbol[]) {
+    result[symbol] = getUnifiedPrice(symbol);
+  }
+  return result;
 }
 
 /**

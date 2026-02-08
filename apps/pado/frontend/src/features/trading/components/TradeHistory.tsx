@@ -10,6 +10,8 @@ import { useMarket } from "../context/MarketContext";
 import { useMyTrades } from "../hooks/useMyTrades";
 import { useOrderActions } from "../hooks";
 import { SkeletonTable } from '@/components/common';
+import { type TokenSymbol, getUnifiedPrice } from '@/lib/prices';
+import { useCostBasis } from '@/features/portfolio/hooks/useCostBasis';
 
 // Re-export Trade type for external consumers (useTradeEvents compatibility)
 export type { Trade } from '../types/trade';
@@ -48,11 +50,13 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
 
   const { currentPool } = useMarket();
-  const baseSymbol = currentPool.baseToken.symbol;
+  const baseSymbol = currentPool.baseToken.symbol as TokenSymbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const { balanceManagerId } = useOrderActions();
   const { data: trades, isLoading } = useMyTrades(balanceManagerId);
+  const { entries: costBasis } = useCostBasis();
+  const avgBuyPrice = costBasis.find((e) => e.symbol === baseSymbol)?.avgBuyPrice ?? 0;
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -75,7 +79,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
   if (isLoading) {
     return (
       <div className={`py-4 px-2 ${className}`}>
-        <SkeletonTable rows={5} cols={5} />
+        <SkeletonTable rows={5} cols={6} />
       </div>
     );
   }
@@ -103,6 +107,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
             <th className="py-2 px-2 text-right font-medium">Price ({quoteSymbol})</th>
             <th className="py-2 px-2 text-right font-medium">Amount ({baseSymbol})</th>
             <th className="py-2 px-2 text-center font-medium">Role</th>
+            <th className="py-2 px-2 text-right font-medium">P&L</th>
             <th className="py-2 px-2 text-right font-medium">Time</th>
           </tr>
         </thead>
@@ -133,6 +138,29 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
                 }`}>
                   {trade.role === 'taker' ? 'Taker' : 'Maker'}
                 </span>
+              </td>
+              <td className="py-1.5 px-2 text-right font-mono">
+                {(() => {
+                  if (!avgBuyPrice) return <span className="text-theme-text-muted">--</span>;
+                  // Sell: realized PnL = (fillPrice - avgBuyPrice) * qty
+                  // Buy: unrealized PnL = (currentPrice - fillPrice) * qty
+                  const currentPrice = getUnifiedPrice(baseSymbol);
+                  const pnl = trade.isBid
+                    ? (currentPrice - trade.price) * trade.quantity
+                    : (trade.price - avgBuyPrice) * trade.quantity;
+                  const rounded = Math.round(pnl * 100) / 100;
+                  const color = rounded > 0
+                    ? 'text-green-700 dark:text-green-400'
+                    : rounded < 0
+                      ? 'text-red-700 dark:text-red-400'
+                      : 'text-theme-text-muted';
+                  const sign = rounded > 0 ? '+' : '';
+                  return (
+                    <span className={color}>
+                      {sign}${rounded.toFixed(2)}
+                    </span>
+                  );
+                })()}
               </td>
               <td className="py-1.5 px-2 text-right text-theme-text-muted">
                 {formatDate(trade.timestamp)}
