@@ -6,6 +6,7 @@ import { SlippageSettings } from './SlippageSettings';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick } from '../../../lib/deepbook';
+import { TPSLInputs } from './TPSLInputs';
 
 // Execution Option descriptions
 const EXECUTION_OPTIONS: { value: ExecutionOption; label: string; description: string }[] = [
@@ -65,7 +66,7 @@ export function OrderForm({
   onSideChange,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
-  const { orderMode, setOrderMode } = useOrderForm();
+  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
@@ -371,6 +372,19 @@ export function OrderForm({
           className="px-3 py-2 text-sm xl:text-base mt-1"
         />
       </div>
+
+      {/* E3. TP/SL Inputs */}
+      <TPSLInputs
+        enabled={tpslEnabled}
+        onToggle={setTpslEnabled}
+        tpPrice={tpPrice}
+        slPrice={slPriceValue}
+        onTPChange={setTpPrice}
+        onSLChange={setSlPrice}
+        midPrice={midPrice || 0}
+        side={side}
+        minPriceTick={minPrice}
+      />
 
       {/* F. Info Rows */}
       <div className="space-y-1 pt-1 border-t border-theme-border">

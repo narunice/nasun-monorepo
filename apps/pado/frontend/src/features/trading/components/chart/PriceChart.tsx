@@ -10,7 +10,9 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
-import type { IChartApi, ISeriesApi, Time, MouseEventParams } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, ISeriesPrimitive, IPriceLine, Time, MouseEventParams } from 'lightweight-charts';
+import { getActiveTPSLOrders } from '../../lib/tpsl-storage';
+import { TPSL_POLL_INTERVAL_MS } from '../../lib/tpsl-types';
 import { useMarket } from '../../context/MarketContext';
 import { useTheme } from '../../../../providers/theme';
 import {
@@ -22,8 +24,15 @@ import {
 import { useChartData } from './hooks/useChartData';
 import { ChartHeader } from './ChartHeader';
 import { OhlcvOverlay } from './OhlcvOverlay';
+import { DrawingToolbar } from './DrawingToolbar';
 import type { TimeInterval, IndicatorState, OhlcvData } from './types';
 import { CHART_COLORS, CHART_HEIGHT, VOLUME_HEIGHT, RSI_HEIGHT, MACD_HEIGHT } from './types';
+import type { ActiveTool, DrawingData, DrawingPoint } from './drawings/types';
+import { CLICKS_REQUIRED, DEFAULT_STYLES } from './drawings/types';
+import { loadDrawings, addDrawing, clearDrawings } from './drawings/drawing-storage';
+import { HorizontalLinePrimitive } from './drawings/HorizontalLineRenderer';
+import { TrendLinePrimitive } from './drawings/TrendLineRenderer';
+import { FibonacciPrimitive } from './drawings/FibonacciRenderer';
 
 // Re-export TimeInterval for backward compatibility
 export type { TimeInterval } from './types';
@@ -82,6 +91,30 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const signalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdHistSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
+
+  // Drawing tool state
+  const [activeTool, setActiveTool] = useState<ActiveTool>(null);
+  const [drawings, setDrawings] = useState<DrawingData[]>([]);
+  const pendingPointsRef = useRef<DrawingPoint[]>([]);
+  const drawingPrimitivesRef = useRef<ISeriesPrimitive<Time>[]>([]);
+  const poolId = currentPool.id ?? 'default';
+
+  // Load drawings when pool changes
+  useEffect(() => {
+    setDrawings(loadDrawings(poolId));
+  }, [poolId]);
+
+  // ESC key to deselect tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveTool(null);
+        pendingPointsRef.current = [];
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Persist interval and indicators to localStorage
   useEffect(() => { localStorage.setItem('pado:chart:interval', interval); }, [interval]);
@@ -188,6 +221,12 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       window.removeEventListener('resize', handleResize);
       chart.remove();
       volumeChart.remove();
+      chartRef.current = null;
+      volumeChartRef.current = null;
+      candleSeriesRef.current = null;
+      ma5SeriesRef.current = null;
+      ma20SeriesRef.current = null;
+      volumeSeriesRef.current = null;
     };
   }, []);
 
@@ -251,7 +290,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     });
     rsiChart.timeScale().fitContent();
 
-    return () => { rsiChart.remove(); };
+    return () => { rsiChart.remove(); rsiChartRef.current = null; rsiSeriesRef.current = null; };
   }, [indicators.rsi, effectiveCandleData, colors]);
 
   // === MACD chart ===
@@ -293,7 +332,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     });
     macdChart.timeScale().fitContent();
 
-    return () => { macdChart.remove(); };
+    return () => { macdChart.remove(); macdChartRef.current = null; macdSeriesRef.current = null; signalSeriesRef.current = null; macdHistSeriesRef.current = null; };
   }, [indicators.macd, effectiveCandleData, colors]);
 
   // === Theme change ===
@@ -319,6 +358,135 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       volumeSeriesRef.current.setData(generateVolumeData(effectiveCandleData, c.volumeUp, c.volumeDown));
     }
   }, [theme]);
+
+  // === TP/SL Price Lines ===
+  const tpslLinesRef = useRef<IPriceLine[]>([]);
+
+  useEffect(() => {
+    if (!candleSeriesRef.current) return;
+
+    const series = candleSeriesRef.current;
+    const updateLines = () => {
+      if (!series) return;
+
+      // Remove existing lines
+      for (const line of tpslLinesRef.current) {
+        try { series.removePriceLine(line); } catch { /* already removed */ }
+      }
+      tpslLinesRef.current = [];
+
+      // Add lines for active TP/SL orders
+      const activeOrders = getActiveTPSLOrders();
+      for (const order of activeOrders) {
+        const isTP = order.triggerType === 'tp';
+        const line = series.createPriceLine({
+          price: order.triggerPrice,
+          color: isTP ? '#22c55e' : '#ef4444',
+          lineWidth: 1,
+          lineStyle: 2, // Dashed
+          axisLabelVisible: true,
+          title: `${isTP ? 'TP' : 'SL'} ${order.side === 'buy' ? 'Buy' : 'Sell'} ${order.quantity}`,
+        });
+        if (line) tpslLinesRef.current.push(line);
+      }
+    };
+
+    updateLines();
+    const timer = window.setInterval(updateLines, TPSL_POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [effectiveCandleData]);
+
+  // === Drawing primitives rendering ===
+  useEffect(() => {
+    if (!candleSeriesRef.current) return;
+
+    // Remove existing primitives
+    for (const prim of drawingPrimitivesRef.current) {
+      try { candleSeriesRef.current?.detachPrimitive(prim); } catch { /* already detached */ }
+    }
+    drawingPrimitivesRef.current = [];
+
+    // Attach primitives for each drawing
+    for (const drawing of drawings) {
+      let primitive: ISeriesPrimitive<Time> | null = null;
+
+      switch (drawing.type) {
+        case 'horizontal-line': {
+          const p = drawing.points[0];
+          if (p) {
+            primitive = new HorizontalLinePrimitive(p.price, drawing.style, drawing.label);
+          }
+          break;
+        }
+        case 'trend-line': {
+          if (drawing.points.length >= 2) {
+            primitive = new TrendLinePrimitive(drawing.points, drawing.style);
+          }
+          break;
+        }
+        case 'fibonacci': {
+          if (drawing.points.length >= 2) {
+            primitive = new FibonacciPrimitive(drawing.points, drawing.style);
+          }
+          break;
+        }
+      }
+
+      if (primitive) {
+        candleSeriesRef.current?.attachPrimitive(primitive);
+        drawingPrimitivesRef.current.push(primitive);
+      }
+    }
+  }, [drawings, effectiveCandleData]);
+
+  // === Chart click handler for drawing tools ===
+  useEffect(() => {
+    if (!chartRef.current || !candleSeriesRef.current) return;
+
+    const handleClick = (param: MouseEventParams) => {
+      if (!activeTool || !param.time || !param.point) return;
+
+      const series = candleSeriesRef.current;
+      if (!series) return;
+
+      const price = series.coordinateToPrice(param.point.y);
+      if (price === null) return;
+
+      const point: DrawingPoint = {
+        time: param.time as number,
+        price: price as number,
+      };
+
+      const required = CLICKS_REQUIRED[activeTool];
+      pendingPointsRef.current.push(point);
+
+      if (pendingPointsRef.current.length >= required) {
+        const drawingData: DrawingData = {
+          id: crypto.randomUUID(),
+          type: activeTool,
+          points: [...pendingPointsRef.current],
+          style: { ...DEFAULT_STYLES[activeTool] },
+        };
+
+        addDrawing(poolId, drawingData);
+        setDrawings(loadDrawings(poolId));
+        pendingPointsRef.current = [];
+        // Keep tool active for rapid drawing (user can ESC to deselect)
+      }
+    };
+
+    const chart = chartRef.current;
+    chart.subscribeClick(handleClick);
+    return () => {
+      chart.unsubscribeClick(handleClick);
+    };
+  }, [activeTool, poolId]);
+
+  // Drawing toolbar handlers
+  const handleDeleteAllDrawings = useCallback(() => {
+    clearDrawings(poolId);
+    setDrawings([]);
+  }, [poolId]);
 
   // === Real-time update ===
   useEffect(() => {
@@ -399,8 +567,14 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       />
 
       {/* Candlestick Chart — fills remaining height */}
-      <div ref={mainChartWrapperRef} className="flex-1 min-h-0">
-        <div ref={chartContainerRef} className="w-full" />
+      <div ref={mainChartWrapperRef} className="flex-1 min-h-0 flex">
+        <DrawingToolbar
+          activeTool={activeTool}
+          onToolSelect={setActiveTool}
+          onDeleteAll={handleDeleteAllDrawings}
+          drawingCount={drawings.length}
+        />
+        <div ref={chartContainerRef} className={`flex-1 ${activeTool ? 'cursor-crosshair' : ''}`} />
       </div>
 
       {/* RSI Chart */}

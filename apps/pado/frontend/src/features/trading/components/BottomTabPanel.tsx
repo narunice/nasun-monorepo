@@ -5,7 +5,7 @@
  * Benchmark: Lighter, Hyperliquid, Binance common pattern
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { OrderHistory } from './OrderHistory';
@@ -15,8 +15,11 @@ import { useMarket } from '../context/MarketContext';
 import { calcLockedAmounts } from '../types';
 import { UnderlineTabs, type TabItem } from '@/components/common';
 import { TransferModal } from './TransferModal';
+import { getActiveTPSLOrders, getTPSLOrders, cancelTPSLOrder, removeTPSLOrder, clearTPSLHistory } from '../lib/tpsl-storage';
+import { TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
+import type { TPSLOrder } from '../lib/tpsl-types';
 
-export type TabType = 'openOrders' | 'orderHistory' | 'tradeHistory' | 'assets';
+export type TabType = 'openOrders' | 'tpsl' | 'orderHistory' | 'tradeHistory' | 'assets';
 
 type TabConfig = TabItem<TabType>;
 
@@ -30,8 +33,18 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const openOrderCount = openOrdersData?.orders?.length ?? 0;
 
+  // Periodic refresh instead of reading localStorage on every render
+  const [tpslActiveCount, setTpslActiveCount] = useState(() => getActiveTPSLOrders().length);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setTpslActiveCount(getActiveTPSLOrders().length);
+    }, TPSL_POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const tabs: TabConfig[] = [
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
+    { id: 'tpsl', label: 'TP/SL', badge: tpslActiveCount > 0 ? tpslActiveCount : undefined },
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
     { id: 'assets', label: 'Assets' },
@@ -58,6 +71,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
             onCancelAll={handleCancelAllOrders}
           />
         )}
+        {activeTab === 'tpsl' && <TPSLTab />}
         {activeTab === 'orderHistory' && <OrderHistoryTab />}
         {activeTab === 'tradeHistory' && <TradeHistoryTab />}
         {activeTab === 'assets' && <AssetsTab />}
@@ -96,6 +110,126 @@ function TradeHistoryTab() {
   return (
     <div className="min-h-[180px]">
       <TradeHistory />
+    </div>
+  );
+}
+
+// TP/SL Tab - shows active and triggered TP/SL orders
+function TPSLTab() {
+  const [orders, setOrders] = useState<TPSLOrder[]>(() => getTPSLOrders());
+
+  const refresh = () => setOrders(getTPSLOrders());
+
+  const handleCancel = (id: string) => {
+    cancelTPSLOrder(id);
+    refresh();
+  };
+
+  const handleRemove = (id: string) => {
+    removeTPSLOrder(id);
+    refresh();
+  };
+
+  const handleClearHistory = () => {
+    clearTPSLHistory();
+    refresh();
+  };
+
+  const activeOrders = orders.filter((o) => o.status === 'active');
+  const historyOrders = orders.filter((o) => o.status !== 'active');
+
+  const formatPrice = (price: number) =>
+    `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const formatTime = (ts: number) =>
+    new Date(ts).toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case 'triggered': return 'text-green-400';
+      case 'failed': return 'text-red-400';
+      case 'cancelled': return 'text-theme-text-muted';
+      default: return 'text-theme-text-primary';
+    }
+  };
+
+  return (
+    <div className="min-h-[180px]">
+      {/* Active TP/SL Orders */}
+      {activeOrders.length > 0 ? (
+        <>
+          <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-6 gap-2 mb-2 pb-1 border-b border-theme-border">
+            <span>Type</span>
+            <span>Side</span>
+            <span className="text-right">Trigger</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Created</span>
+            <span className="text-right">Action</span>
+          </div>
+          {activeOrders.map((order) => (
+            <div key={order.id} className="grid grid-cols-6 gap-2 py-1 text-trading-sm xl:text-trading-lg items-center">
+              <span className={order.triggerType === 'tp' ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
+                {order.triggerType === 'tp' ? 'TP' : 'SL'}
+              </span>
+              <span className={order.side === 'buy' ? 'text-green-400' : 'text-red-400'}>
+                {order.side === 'buy' ? 'Buy' : 'Sell'}
+              </span>
+              <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>
+              <span className="text-right font-mono">{order.quantity.toFixed(4)}</span>
+              <span className="text-right text-theme-text-muted text-[10px]">{formatTime(order.createdAt)}</span>
+              <div className="text-right">
+                <button
+                  onClick={() => handleCancel(order.id)}
+                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
+        </>
+      ) : (
+        <div className="text-center text-theme-text-muted py-6">
+          <p className="text-trading-sm xl:text-trading-lg">No active TP/SL orders</p>
+          <p className="text-trading-xs xl:text-trading-sm mt-1">Set TP/SL in the order form</p>
+        </div>
+      )}
+
+      {/* History */}
+      {historyOrders.length > 0 && (
+        <div className="mt-3 pt-2 border-t border-theme-border">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-trading-xs text-theme-text-muted">History</span>
+            <button
+              onClick={handleClearHistory}
+              className="text-[10px] text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+          {historyOrders.slice(0, 10).map((order) => (
+            <div key={order.id} className="grid grid-cols-6 gap-2 py-0.5 text-[10px] xl:text-xs text-theme-text-muted items-center">
+              <span className={order.triggerType === 'tp' ? 'text-green-400/60' : 'text-red-400/60'}>
+                {order.triggerType === 'tp' ? 'TP' : 'SL'}
+              </span>
+              <span>{order.side === 'buy' ? 'Buy' : 'Sell'}</span>
+              <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>
+              <span className="text-right font-mono">{order.quantity.toFixed(4)}</span>
+              <span className={`text-right ${statusColor(order.status)}`}>
+                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+              </span>
+              <div className="text-right">
+                <button
+                  onClick={() => handleRemove(order.id)}
+                  className="text-theme-text-muted hover:text-red-400 transition-colors"
+                >
+                  x
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
