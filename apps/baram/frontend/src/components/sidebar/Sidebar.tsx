@@ -1,10 +1,13 @@
 /**
- * Sidebar - Main sidebar container with chat history and settings
+ * Sidebar - Main sidebar container with chat history, budgets, and settings
  */
 
+import { useState } from 'react';
 import { NewChatButton } from './NewChatButton';
 import { SessionList } from './SessionList';
 import { SidebarSettings } from './SidebarSettings';
+import { SidebarTabs, type SidebarTab } from './SidebarTabs';
+import { BudgetSection } from './BudgetSection';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -12,6 +15,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+  const [activeTab, setActiveTab] = useState<SidebarTab>('chats');
+
   return (
     <>
       {/* Mobile overlay */}
@@ -53,15 +58,25 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </button>
           </div>
 
-          {/* New Chat Button */}
-          <div className="p-3">
-            <NewChatButton />
-          </div>
+          {/* Tab Bar */}
+          <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-          {/* Session List (scrollable) */}
-          <div className="flex-1 overflow-y-auto">
-            <SessionList />
-          </div>
+          {/* Tab Content */}
+          {activeTab === 'chats' ? (
+            <>
+              {/* New Chat Button */}
+              <div className="p-3">
+                <NewChatButton />
+              </div>
+
+              {/* Session List (scrollable) */}
+              <div className="flex-1 overflow-y-auto">
+                <SessionList />
+              </div>
+            </>
+          ) : (
+            <BudgetSection />
+          )}
 
           {/* Settings (Executor/Model selection) */}
           <div className="border-t border-[var(--color-border)]">

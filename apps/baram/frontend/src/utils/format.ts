@@ -7,8 +7,31 @@ export function truncateHash(hash: string, chars = 8): string {
   return `${hash.slice(0, chars)}...${hash.slice(-chars)}`;
 }
 
+export function truncateAddress(addr: string): string {
+  if (!addr || addr.length <= 12) return addr || '-';
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export function formatNusdc(amount: number): string {
   return `${(amount / 1e6).toFixed(2)} NUSDC`;
+}
+
+/** Format NUSDC raw amount to display value (without unit suffix) */
+export function formatNusdcValue(amount: number): string {
+  return (amount / 1e6).toFixed(2);
+}
+
+/**
+ * Convert user-entered NUSDC display amount to raw integer (6 decimals).
+ * Uses Math.round to avoid floating-point precision issues.
+ * Returns 0 for invalid inputs.
+ */
+export function nusdcToRaw(displayAmount: string): number {
+  const parsed = parseFloat(displayAmount);
+  if (isNaN(parsed) || parsed < 0) return 0;
+  const raw = Math.round(parsed * 1e6);
+  if (!Number.isSafeInteger(raw)) return 0;
+  return raw;
 }
 
 export function formatNasun(amount: number): string {

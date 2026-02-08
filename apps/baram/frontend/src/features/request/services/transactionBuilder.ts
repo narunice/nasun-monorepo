@@ -73,3 +73,105 @@ export function buildCancelRequestTransaction(requestId: number): Transaction {
   });
   return tx;
 }
+
+// ========== Budget Transaction Builders ==========
+
+export interface BuildCreateBudgetParams {
+  coins: CoinRef[];
+  deposit: number;
+  agent: string;
+  maxPerRequest: number;
+  allowedModels: string[];
+  allowedExecutors: string[];
+  expiresAt: number;
+}
+
+export function buildCreateBudgetTransaction(params: BuildCreateBudgetParams): Transaction {
+  const { coins, deposit, agent, maxPerRequest, allowedModels, allowedExecutors, expiresAt } = params;
+  const tx = new Transaction();
+
+  if (coins.length > 1) {
+    const [primary, ...rest] = coins;
+    tx.mergeCoins(
+      tx.object(primary.objectId),
+      rest.map(c => tx.object(c.objectId))
+    );
+  }
+
+  const [depositCoin] = tx.splitCoins(
+    tx.object(coins[0].objectId),
+    [tx.pure.u64(deposit)]
+  );
+
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::create_budget`,
+    arguments: [
+      depositCoin,
+      tx.pure.address(agent),
+      tx.pure.u64(maxPerRequest),
+      tx.pure.vector('string', allowedModels),
+      tx.pure.vector('address', allowedExecutors),
+      tx.pure.u64(expiresAt),
+      tx.object('0x6'), // Clock
+    ],
+  });
+
+  return tx;
+}
+
+export function buildDepositToBudgetTransaction(
+  budgetId: string,
+  coins: CoinRef[],
+  amount: number
+): Transaction {
+  const tx = new Transaction();
+
+  if (coins.length > 1) {
+    const [primary, ...rest] = coins;
+    tx.mergeCoins(
+      tx.object(primary.objectId),
+      rest.map(c => tx.object(c.objectId))
+    );
+  }
+
+  const [depositCoin] = tx.splitCoins(
+    tx.object(coins[0].objectId),
+    [tx.pure.u64(amount)]
+  );
+
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::deposit_to_budget`,
+    arguments: [
+      tx.object(budgetId),
+      depositCoin,
+    ],
+  });
+
+  return tx;
+}
+
+export function buildWithdrawFromBudgetTransaction(
+  budgetId: string,
+  amount: number
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::withdraw_from_budget`,
+    arguments: [
+      tx.object(budgetId),
+      tx.pure.u64(amount),
+    ],
+  });
+  return tx;
+}
+
+export function buildDeactivateBudgetTransaction(budgetId: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::deactivate_budget`,
+    arguments: [
+      tx.object(budgetId),
+    ],
+  });
+  return tx;
+}
