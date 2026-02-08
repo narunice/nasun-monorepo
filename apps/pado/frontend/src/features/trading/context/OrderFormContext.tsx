@@ -52,6 +52,14 @@ export interface OrderFormContextType {
   autoDepositEnabled: boolean;
   setAutoDepositEnabled: (enabled: boolean) => void;
 
+  // TP/SL (Take Profit / Stop Loss)
+  tpslEnabled: boolean;
+  setTpslEnabled: (enabled: boolean) => void;
+  tpPrice: string;
+  setTpPrice: (value: string) => void;
+  slPrice: string;
+  setSlPrice: (value: string) => void;
+
   // 확인 모달 상태
   isConfirmModalOpen: boolean;
   pendingOrderType: 'buy' | 'sell';
@@ -114,6 +122,11 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   }, []);
 
+  // TP/SL state
+  const [tpslEnabled, setTpslEnabled] = useState(false);
+  const [tpPrice, setTpPrice] = useState('');
+  const [slPrice, setSlPrice] = useState('');
+
   // OrderType 변환
   const getOrderType = useCallback((): OrderType => {
     return EXECUTION_OPTION_MAP[executionOption];
@@ -139,6 +152,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   const resetForm = useCallback(() => {
     setPrice('');
     setAmount('');
+    setTpPrice('');
+    setSlPrice('');
   }, []);
 
   return (
@@ -161,6 +176,12 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         setOneClickEnabled: handleSetOneClickEnabled,
         autoDepositEnabled,
         setAutoDepositEnabled: handleSetAutoDepositEnabled,
+        tpslEnabled,
+        setTpslEnabled,
+        tpPrice,
+        setTpPrice,
+        slPrice,
+        setSlPrice,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,
