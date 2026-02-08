@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
+import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
 import { calcLockedAmounts } from '../types';
 import { OrderForm, OrderConfirmModal, SimpleOrderForm } from '../components';
@@ -168,6 +169,14 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
 
+  // TP/SL Monitor — mount once, monitors price and auto-executes market orders
+  const { addOrder: addTPSLOrder } = useTPSLMonitor({
+    executeMarketOrder: useCallback(async (orderSide: 'buy' | 'sell', quantity: number) => {
+      return handleMarketOrder(orderSide, quantity);
+    }, [handleMarketOrder]),
+    hasBalanceManager: !!balanceManagerId,
+  });
+
   // 주문 폼 상태 (Context)
   const {
     price,
@@ -187,7 +196,25 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     openConfirmModal,
     closeConfirmModal,
     resetForm,
+    tpslEnabled,
+    tpPrice,
+    slPrice: slPriceValue,
   } = useOrderForm();
+
+  // Create TP/SL orders after successful main order
+  const createTPSLOrdersIfEnabled = useCallback((orderSide: 'buy' | 'sell', qty: number) => {
+    if (!tpslEnabled) return;
+    const tpValue = parseFloat(tpPrice);
+    const slValue = parseFloat(slPriceValue);
+    // TP: opposite side to close position
+    const closeSide = orderSide === 'buy' ? 'sell' : 'buy';
+    if (tpValue > 0 && Number.isFinite(tpValue)) {
+      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: tpValue, triggerType: 'tp' });
+    }
+    if (slValue > 0 && Number.isFinite(slValue)) {
+      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: slValue, triggerType: 'sl' });
+    }
+  }, [tpslEnabled, tpPrice, slPriceValue, addTPSLOrder]);
 
   // One-Click 주문 핸들러 (확인 모달 스킵)
   const handleOneClickOrder = async (type: 'buy' | 'sell') => {
@@ -200,6 +227,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     const result = await handleLimitOrder(type, priceNum, amountNum, orderType);
 
     if (result.success) {
+      createTPSLOrdersIfEnabled(type, amountNum);
       resetForm();
     }
   };
@@ -226,6 +254,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     closeConfirmModal();
 
     if (result.success) {
+      createTPSLOrdersIfEnabled(pendingOrderType, amountNum);
       resetForm();
     }
   };
@@ -236,6 +265,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     const amountNum = parseFloat(amount);
     const result = await handleMarketOrder(orderSide, amountNum);
     if (result.success) {
+      createTPSLOrdersIfEnabled(orderSide, amountNum);
       setAmount('');
     }
   };
