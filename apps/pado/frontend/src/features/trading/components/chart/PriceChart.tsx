@@ -5,37 +5,85 @@
  * - ChartHeader: interval/indicator controls
  * - OhlcvOverlay: crosshair OHLCV display
  * - useChartData: Binance/simulated data fetching
- * - Chart rendering: main candle, volume, RSI, MACD
+ * - useOverlayIndicators: SMA/EMA/BB overlay management
+ * - useSubChart: RSI/MACD/Stochastic/ATR sub-chart management
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, ISeriesPrimitive, IPriceLine, Time, MouseEventParams } from 'lightweight-charts';
 import { getActiveTPSLOrders } from '../../lib/tpsl-storage';
 import { TPSL_POLL_INTERVAL_MS } from '../../lib/tpsl-types';
+import { PRICE_ALERT_POLL_INTERVAL_MS } from '../../lib/price-alert-types';
+import { getActivePriceAlerts } from '../../lib/price-alert-storage';
+import { usePriceAlertMonitor } from '../../hooks/usePriceAlertMonitor';
 import { useMarket } from '../../context/MarketContext';
 import { useTheme } from '../../../../providers/theme';
 import {
-  calculateMA,
   calculateRSI,
   calculateMACD,
+  calculateStochastic,
+  calculateATR,
   generateVolumeData,
 } from '@/lib/indicators';
 import { useChartData } from './hooks/useChartData';
+import { useOverlayIndicators } from './hooks/useOverlayIndicators';
+import { useSubChart } from './hooks/useSubChart';
 import { ChartHeader } from './ChartHeader';
 import { OhlcvOverlay } from './OhlcvOverlay';
 import { DrawingToolbar } from './DrawingToolbar';
-import type { TimeInterval, IndicatorState, OhlcvData } from './types';
-import { CHART_COLORS, CHART_HEIGHT, VOLUME_HEIGHT, RSI_HEIGHT, MACD_HEIGHT } from './types';
+import type { TimeInterval, IndicatorState, IndicatorId, OhlcvData } from './types';
+import { CHART_COLORS, CHART_HEIGHT, VOLUME_HEIGHT, RSI_HEIGHT, MACD_HEIGHT, STOCH_HEIGHT, ATR_HEIGHT, DEFAULT_INDICATORS } from './types';
 import type { ActiveTool, DrawingData, DrawingPoint } from './drawings/types';
 import { CLICKS_REQUIRED, DEFAULT_STYLES } from './drawings/types';
 import { loadDrawings, addDrawing, clearDrawings } from './drawings/drawing-storage';
 import { HorizontalLinePrimitive } from './drawings/HorizontalLineRenderer';
 import { TrendLinePrimitive } from './drawings/TrendLineRenderer';
 import { FibonacciPrimitive } from './drawings/FibonacciRenderer';
+import { PriceAlertPopover } from '../PriceAlertPopover';
+import { NotificationSettings } from '../NotificationSettings';
 
 // Re-export TimeInterval for backward compatibility
 export type { TimeInterval } from './types';
+
+const INDICATOR_IDS: IndicatorId[] = ['sma', 'ema', 'bb', 'rsi', 'macd', 'stoch', 'atr'];
+
+function loadIndicators(): IndicatorState {
+  try {
+    const stored = localStorage.getItem('pado:chart:indicators');
+    if (!stored) return { ...DEFAULT_INDICATORS };
+    const parsed = JSON.parse(stored);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { ...DEFAULT_INDICATORS };
+    }
+
+    // Migration: old format { ma: boolean, rsi: boolean, macd: boolean }
+    if (Object.hasOwn(parsed, 'ma') && !Object.hasOwn(parsed, 'sma')) {
+      const migrated: IndicatorState = {
+        ...DEFAULT_INDICATORS,
+        sma: { ...DEFAULT_INDICATORS.sma, enabled: parsed.ma === true },
+        rsi: { ...DEFAULT_INDICATORS.rsi, enabled: parsed.rsi === true },
+        macd: { ...DEFAULT_INDICATORS.macd, enabled: parsed.macd === true },
+      };
+      localStorage.setItem('pado:chart:indicators', JSON.stringify(migrated));
+      return migrated;
+    }
+
+    // New format: validate each indicator
+    const result = { ...DEFAULT_INDICATORS };
+    for (const id of INDICATOR_IDS) {
+      if (id in parsed && typeof parsed[id] === 'object' && parsed[id] !== null) {
+        const cfg = parsed[id];
+        if (typeof cfg.enabled === 'boolean') {
+          result[id] = { ...DEFAULT_INDICATORS[id], enabled: cfg.enabled };
+        }
+      }
+    }
+    return result;
+  } catch {
+    return { ...DEFAULT_INDICATORS };
+  }
+}
 
 interface PriceChartProps {
   currentPrice?: number;
@@ -51,21 +99,9 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   // State (persisted to localStorage)
   const [interval, setInterval] = useState<TimeInterval>(() => {
     const stored = localStorage.getItem('pado:chart:interval');
-    return (stored && ['1m', '5m', '15m', '1h', '4h', '1d'].includes(stored)) ? stored as TimeInterval : '15m';
+    return (stored && ['1m', '5m', '15m', '1h', '4h', '1d', '1w'].includes(stored)) ? stored as TimeInterval : '15m';
   });
-  const [indicators, setIndicators] = useState<IndicatorState>(() => {
-    try {
-      const stored = localStorage.getItem('pado:chart:indicators');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (typeof parsed.ma === 'boolean' && typeof parsed.rsi === 'boolean' && typeof parsed.macd === 'boolean') {
-          // Only pick expected keys to prevent prototype pollution from tampered localStorage
-          return { ma: parsed.ma, rsi: parsed.rsi, macd: parsed.macd };
-        }
-      }
-    } catch { /* ignore corrupt data */ }
-    return { ma: true, rsi: false, macd: false };
-  });
+  const [indicators, setIndicators] = useState<IndicatorState>(loadIndicators);
   const [lastPrice, setLastPrice] = useState<{ value: number; change: number } | null>(null);
   const [ohlcv, setOhlcv] = useState<OhlcvData | null>(null);
 
@@ -78,18 +114,12 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const volumeContainerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
   const macdContainerRef = useRef<HTMLDivElement>(null);
+  const stochContainerRef = useRef<HTMLDivElement>(null);
+  const atrContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const volumeChartRef = useRef<IChartApi | null>(null);
-  const rsiChartRef = useRef<IChartApi | null>(null);
-  const macdChartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  const ma5SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
-  const ma20SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
-  const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
-  const macdSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
-  const signalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
-  const macdHistSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const currentCandleRef = useRef<{ time: number; open: number; high: number; low: number; close: number; volume: number } | null>(null);
 
   // Drawing tool state
@@ -98,6 +128,9 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   const pendingPointsRef = useRef<DrawingPoint[]>([]);
   const drawingPrimitivesRef = useRef<ISeriesPrimitive<Time>[]>([]);
   const poolId = currentPool.id ?? 'default';
+
+  // Price alert monitor
+  const priceAlertMonitor = usePriceAlertMonitor();
 
   // Load drawings when pool changes
   useEffect(() => {
@@ -120,15 +153,17 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
   useEffect(() => { localStorage.setItem('pado:chart:interval', interval); }, [interval]);
   useEffect(() => { localStorage.setItem('pado:chart:indicators', JSON.stringify(indicators)); }, [indicators]);
 
-  const handleToggleIndicator = useCallback((key: keyof IndicatorState) => {
-    setIndicators((prev) => ({ ...prev, [key]: !prev[key] }));
+  const handleToggleIndicator = useCallback((id: IndicatorId) => {
+    setIndicators((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], enabled: !prev[id].enabled },
+    }));
   }, []);
 
   // === Initialize main chart + volume chart ===
   useEffect(() => {
     if (!chartContainerRef.current || !volumeContainerRef.current || !mainChartWrapperRef.current) return;
 
-    // Use wrapper's measured height (flex-1 fills remaining space)
     const initialHeight = mainChartWrapperRef.current.clientHeight || CHART_HEIGHT;
 
     const chart = createChart(chartContainerRef.current, {
@@ -163,14 +198,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       wickDownColor: colors.candleDown, wickUpColor: colors.candleUp,
     });
 
-    const ma5Series = chart.addSeries(LineSeries, {
-      color: '#fbbf24', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-    });
-
-    const ma20Series = chart.addSeries(LineSeries, {
-      color: '#3b82f6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-    });
-
     const volumeSeries = volumeChart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' }, priceScaleId: 'right',
     });
@@ -178,11 +205,9 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     chartRef.current = chart;
     volumeChartRef.current = volumeChart;
     candleSeriesRef.current = candleSeries;
-    ma5SeriesRef.current = ma5Series;
-    ma20SeriesRef.current = ma20Series;
     volumeSeriesRef.current = volumeSeries;
 
-    // Crosshair → OHLCV overlay
+    // Crosshair -> OHLCV overlay
     chart.subscribeCrosshairMove((param: MouseEventParams) => {
       if (!param.time || !param.seriesData) { setOhlcv(null); return; }
       const cv = param.seriesData.get(candleSeries) as { open: number; high: number; low: number; close: number } | undefined;
@@ -198,7 +223,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       if (range) chart.timeScale().setVisibleLogicalRange(range);
     });
 
-    // Resize: update width + main chart height from wrapper
+    // Resize
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -211,7 +236,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       }
     };
 
-    // ResizeObserver for dynamic height tracking (parent container changes)
     const resizeObserver = new ResizeObserver(handleResize);
     if (mainChartWrapperRef.current) resizeObserver.observe(mainChartWrapperRef.current);
     window.addEventListener('resize', handleResize);
@@ -224,23 +248,15 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       chartRef.current = null;
       volumeChartRef.current = null;
       candleSeriesRef.current = null;
-      ma5SeriesRef.current = null;
-      ma20SeriesRef.current = null;
       volumeSeriesRef.current = null;
     };
   }, []);
 
-  // === Update data ===
+  // === Update candle + volume data ===
   useEffect(() => {
     if (!candleSeriesRef.current || !volumeSeriesRef.current || effectiveCandleData.length === 0) return;
 
     candleSeriesRef.current.setData(effectiveCandleData);
-
-    if (ma5SeriesRef.current && ma20SeriesRef.current) {
-      ma5SeriesRef.current.setData(calculateMA(effectiveCandleData, 5));
-      ma20SeriesRef.current.setData(calculateMA(effectiveCandleData, 20));
-    }
-
     volumeSeriesRef.current.setData(generateVolumeData(effectiveCandleData, colors.volumeUp, colors.volumeDown));
 
     if (effectiveCandleData.length > 1) {
@@ -253,87 +269,82 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     volumeChartRef.current?.timeScale().fitContent();
   }, [effectiveCandleData]);
 
-  // === MA visibility toggle ===
-  useEffect(() => {
-    ma5SeriesRef.current?.applyOptions({ visible: indicators.ma });
-    ma20SeriesRef.current?.applyOptions({ visible: indicators.ma });
-  }, [indicators.ma]);
+  // === Overlay indicators (SMA, EMA, BB) ===
+  useOverlayIndicators({
+    chartRef,
+    indicators,
+    candleData: effectiveCandleData,
+  });
 
-  // === RSI chart ===
-  useEffect(() => {
-    if (!indicators.rsi || !rsiContainerRef.current) {
-      if (rsiChartRef.current) { rsiChartRef.current.remove(); rsiChartRef.current = null; rsiSeriesRef.current = null; }
-      return;
-    }
+  // === RSI sub-chart ===
+  useSubChart({
+    containerRef: rsiContainerRef,
+    enabled: indicators.rsi.enabled,
+    mainChartRef: chartRef,
+    colors,
+    height: RSI_HEIGHT,
+    setup: (chart) => {
+      const series = chart.addSeries(LineSeries, {
+        color: '#a855f7', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: true,
+      });
+      series.setData(calculateRSI(effectiveCandleData));
+      series.createPriceLine({ price: 70, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+      series.createPriceLine({ price: 30, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+    },
+    deps: [effectiveCandleData],
+  });
 
-    const rsiChart = createChart(rsiContainerRef.current, {
-      layout: { background: { color: colors.background }, textColor: colors.text },
-      grid: { vertLines: { color: colors.grid }, horzLines: { color: colors.grid } },
-      width: rsiContainerRef.current.clientWidth, height: RSI_HEIGHT,
-      timeScale: { visible: false, barSpacing: 4 },
-      rightPriceScale: { borderColor: colors.border, scaleMargins: { top: 0.1, bottom: 0.1 } },
-      crosshair: { mode: 1 },
-    });
+  // === MACD sub-chart ===
+  useSubChart({
+    containerRef: macdContainerRef,
+    enabled: indicators.macd.enabled,
+    mainChartRef: chartRef,
+    colors,
+    height: MACD_HEIGHT,
+    setup: (chart) => {
+      const histSeries = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 2 }, priceLineVisible: false });
+      const macdSeries = chart.addSeries(LineSeries, { color: '#22d3ee', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
+      const signalSeries = chart.addSeries(LineSeries, { color: '#fb923c', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
+      const macdData = calculateMACD(effectiveCandleData, colors.candleUp, colors.candleDown);
+      histSeries.setData(macdData.histogram);
+      macdSeries.setData(macdData.macd);
+      signalSeries.setData(macdData.signal);
+    },
+    deps: [effectiveCandleData],
+  });
 
-    const rsiSeries = rsiChart.addSeries(LineSeries, {
-      color: '#a855f7', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: true,
-    });
-    rsiSeries.setData(calculateRSI(effectiveCandleData));
-    rsiSeries.createPriceLine({ price: 70, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
-    rsiSeries.createPriceLine({ price: 30, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+  // === Stochastic sub-chart ===
+  useSubChart({
+    containerRef: stochContainerRef,
+    enabled: indicators.stoch.enabled,
+    mainChartRef: chartRef,
+    colors,
+    height: STOCH_HEIGHT,
+    setup: (chart) => {
+      const kSeries = chart.addSeries(LineSeries, { color: '#22d3ee', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
+      const dSeries = chart.addSeries(LineSeries, { color: '#f97316', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
+      const stochData = calculateStochastic(effectiveCandleData);
+      kSeries.setData(stochData.k);
+      dSeries.setData(stochData.d);
+      kSeries.createPriceLine({ price: 80, color: '#ef4444', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+      kSeries.createPriceLine({ price: 20, color: '#22c55e', lineWidth: 1, lineStyle: 2, axisLabelVisible: true });
+    },
+    deps: [effectiveCandleData],
+  });
 
-    rsiChartRef.current = rsiChart;
-    rsiSeriesRef.current = rsiSeries;
-
-    chartRef.current?.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      if (range && rsiChartRef.current) rsiChartRef.current.timeScale().setVisibleLogicalRange(range);
-    });
-    rsiChart.timeScale().fitContent();
-
-    return () => { rsiChart.remove(); rsiChartRef.current = null; rsiSeriesRef.current = null; };
-  }, [indicators.rsi, effectiveCandleData, colors]);
-
-  // === MACD chart ===
-  useEffect(() => {
-    if (!indicators.macd || !macdContainerRef.current) {
-      if (macdChartRef.current) {
-        macdChartRef.current.remove();
-        macdChartRef.current = null; macdSeriesRef.current = null;
-        signalSeriesRef.current = null; macdHistSeriesRef.current = null;
-      }
-      return;
-    }
-
-    const macdChart = createChart(macdContainerRef.current, {
-      layout: { background: { color: colors.background }, textColor: colors.text },
-      grid: { vertLines: { color: colors.grid }, horzLines: { color: colors.grid } },
-      width: macdContainerRef.current.clientWidth, height: MACD_HEIGHT,
-      timeScale: { visible: false, barSpacing: 4 },
-      rightPriceScale: { borderColor: colors.border, scaleMargins: { top: 0.1, bottom: 0.1 } },
-      crosshair: { mode: 1 },
-    });
-
-    const macdHistSeries = macdChart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 2 }, priceLineVisible: false });
-    const macdSeries = macdChart.addSeries(LineSeries, { color: '#22d3ee', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
-    const signalSeries = macdChart.addSeries(LineSeries, { color: '#fb923c', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
-
-    const macdData = calculateMACD(effectiveCandleData, colors.candleUp, colors.candleDown);
-    macdHistSeries.setData(macdData.histogram);
-    macdSeries.setData(macdData.macd);
-    signalSeries.setData(macdData.signal);
-
-    macdChartRef.current = macdChart;
-    macdSeriesRef.current = macdSeries;
-    signalSeriesRef.current = signalSeries;
-    macdHistSeriesRef.current = macdHistSeries;
-
-    chartRef.current?.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      if (range && macdChartRef.current) macdChartRef.current.timeScale().setVisibleLogicalRange(range);
-    });
-    macdChart.timeScale().fitContent();
-
-    return () => { macdChart.remove(); macdChartRef.current = null; macdSeriesRef.current = null; signalSeriesRef.current = null; macdHistSeriesRef.current = null; };
-  }, [indicators.macd, effectiveCandleData, colors]);
+  // === ATR sub-chart ===
+  useSubChart({
+    containerRef: atrContainerRef,
+    enabled: indicators.atr.enabled,
+    mainChartRef: chartRef,
+    colors,
+    height: ATR_HEIGHT,
+    setup: (chart) => {
+      const atrSeries = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
+      atrSeries.setData(calculateATR(effectiveCandleData));
+    },
+    deps: [effectiveCandleData],
+  });
 
   // === Theme change ===
   useEffect(() => {
@@ -369,13 +380,11 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     const updateLines = () => {
       if (!series) return;
 
-      // Remove existing lines
       for (const line of tpslLinesRef.current) {
         try { series.removePriceLine(line); } catch { /* already removed */ }
       }
       tpslLinesRef.current = [];
 
-      // Add lines for active TP/SL orders
       const activeOrders = getActiveTPSLOrders();
       for (const order of activeOrders) {
         const isTP = order.triggerType === 'tp';
@@ -383,7 +392,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
           price: order.triggerPrice,
           color: isTP ? '#22c55e' : '#ef4444',
           lineWidth: 1,
-          lineStyle: 2, // Dashed
+          lineStyle: 2,
           axisLabelVisible: true,
           title: `${isTP ? 'TP' : 'SL'} ${order.side === 'buy' ? 'Buy' : 'Sell'} ${order.quantity}`,
         });
@@ -396,17 +405,49 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     return () => window.clearInterval(timer);
   }, [effectiveCandleData]);
 
+  // === Price Alert Lines ===
+  const alertLinesRef = useRef<IPriceLine[]>([]);
+
+  useEffect(() => {
+    if (!candleSeriesRef.current) return;
+
+    const series = candleSeriesRef.current;
+    const updateAlertLines = () => {
+      if (!series) return;
+
+      for (const line of alertLinesRef.current) {
+        try { series.removePriceLine(line); } catch { /* already removed */ }
+      }
+      alertLinesRef.current = [];
+
+      const activeAlerts = getActivePriceAlerts();
+      for (const alert of activeAlerts) {
+        const line = series.createPriceLine({
+          price: alert.targetPrice,
+          color: '#f97316',
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: `Alert ${alert.direction === 'above' ? '\u2191' : '\u2193'} $${alert.targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        });
+        if (line) alertLinesRef.current.push(line);
+      }
+    };
+
+    updateAlertLines();
+    const timer = window.setInterval(updateAlertLines, PRICE_ALERT_POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [effectiveCandleData]);
+
   // === Drawing primitives rendering ===
   useEffect(() => {
     if (!candleSeriesRef.current) return;
 
-    // Remove existing primitives
     for (const prim of drawingPrimitivesRef.current) {
       try { candleSeriesRef.current?.detachPrimitive(prim); } catch { /* already detached */ }
     }
     drawingPrimitivesRef.current = [];
 
-    // Attach primitives for each drawing
     for (const drawing of drawings) {
       let primitive: ISeriesPrimitive<Time> | null = null;
 
@@ -471,7 +512,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         addDrawing(poolId, drawingData);
         setDrawings(loadDrawings(poolId));
         pendingPointsRef.current = [];
-        // Keep tool active for rapid drawing (user can ESC to deselect)
       }
     };
 
@@ -482,7 +522,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     };
   }, [activeTool, poolId]);
 
-  // Drawing toolbar handlers
   const handleDeleteAllDrawings = useCallback(() => {
     clearDrawings(poolId);
     setDrawings([]);
@@ -494,7 +533,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
     if (effectiveCandleData.length === 0) return;
 
     if (binanceSymbol) {
-      // Real data: update last candle close with oracle price
       const lastCandle = effectiveCandleData[effectiveCandleData.length - 1];
       if (!lastCandle || !currentPrice) return;
       candleSeriesRef.current.update({
@@ -505,7 +543,6 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         close: currentPrice,
       });
     } else {
-      // Simulated: random tick every 3s
       const updateTimer = window.setInterval(() => {
         if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
         const now = Date.now();
@@ -557,6 +594,19 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         onToggleIndicator={handleToggleIndicator}
         interval={interval}
         onIntervalChange={setInterval}
+        priceAlertSlot={
+          <PriceAlertPopover
+            alerts={priceAlertMonitor.alerts}
+            activeAlerts={priceAlertMonitor.activeAlerts}
+            currentPrice={currentPrice}
+            symbol={baseSymbol}
+            onAddAlert={priceAlertMonitor.addAlert}
+            onCancelAlert={priceAlertMonitor.cancelAlert}
+            onRemoveAlert={priceAlertMonitor.removeAlert}
+            onClearHistory={priceAlertMonitor.clearHistory}
+          />
+        }
+        notificationSlot={<NotificationSettings />}
       />
       <OhlcvOverlay
         data={displayOhlcv}
@@ -566,7 +616,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
         indicators={indicators}
       />
 
-      {/* Candlestick Chart — fills remaining height */}
+      {/* Candlestick Chart */}
       <div ref={mainChartWrapperRef} className="flex-1 min-h-0 flex">
         <DrawingToolbar
           activeTool={activeTool}
@@ -578,7 +628,7 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       </div>
 
       {/* RSI Chart */}
-      {indicators.rsi && (
+      {indicators.rsi.enabled && (
         <div className="shrink-0 border-t border-theme-border">
           <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">RSI (14)</div>
           <div ref={rsiContainerRef} className="w-full" />
@@ -586,10 +636,26 @@ export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartP
       )}
 
       {/* MACD Chart */}
-      {indicators.macd && (
+      {indicators.macd.enabled && (
         <div className="shrink-0 border-t border-theme-border">
           <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">MACD (12, 26, 9)</div>
           <div ref={macdContainerRef} className="w-full" />
+        </div>
+      )}
+
+      {/* Stochastic Chart */}
+      {indicators.stoch.enabled && (
+        <div className="shrink-0 border-t border-theme-border">
+          <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">Stoch (14, 3, 3)</div>
+          <div ref={stochContainerRef} className="w-full" />
+        </div>
+      )}
+
+      {/* ATR Chart */}
+      {indicators.atr.enabled && (
+        <div className="shrink-0 border-t border-theme-border">
+          <div className="px-3 py-1 text-xs xl:text-sm text-theme-text-muted bg-theme-bg-tertiary/30">ATR (14)</div>
+          <div ref={atrContainerRef} className="w-full" />
         </div>
       )}
 

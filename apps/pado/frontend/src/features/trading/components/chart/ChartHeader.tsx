@@ -1,17 +1,23 @@
 /**
- * ChartHeader - Price display, indicator toggles, and interval selector
+ * ChartHeader - Price display, indicator menu, and interval selector
  */
 
-import type { TimeInterval, IndicatorState } from './types';
+import type { ReactNode } from 'react';
+import type { TimeInterval, IndicatorState, IndicatorId } from './types';
 import { INTERVAL_CONFIG } from './types';
+import { IndicatorMenu } from './IndicatorMenu';
 
 interface ChartHeaderProps {
   pairLabel: string;
   lastPrice: { value: number; change: number } | null;
   indicators: IndicatorState;
-  onToggleIndicator: (key: keyof IndicatorState) => void;
+  onToggleIndicator: (id: IndicatorId) => void;
   interval: TimeInterval;
   onIntervalChange: (interval: TimeInterval) => void;
+  /** Slot for PriceAlertPopover (bell icon) */
+  priceAlertSlot?: ReactNode;
+  /** Slot for NotificationSettings (speaker icon) */
+  notificationSlot?: ReactNode;
 }
 
 export function ChartHeader({
@@ -21,6 +27,8 @@ export function ChartHeader({
   onToggleIndicator,
   interval,
   onIntervalChange,
+  priceAlertSlot,
+  notificationSlot,
 }: ChartHeaderProps) {
   return (
     <div className="flex items-center justify-between p-3 border-b border-theme-border">
@@ -39,42 +47,19 @@ export function ChartHeader({
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Indicator Toggles */}
-        <div className="flex gap-1">
-          <button
-            onClick={() => onToggleIndicator('ma')}
-            className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
-              indicators.ma
-                ? 'bg-yellow-600 text-white'
-                : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
-            }`}
-            title="Toggle Moving Averages"
-          >
-            MA
-          </button>
-          <button
-            onClick={() => onToggleIndicator('rsi')}
-            className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
-              indicators.rsi
-                ? 'bg-purple-600 text-white'
-                : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
-            }`}
-            title="Toggle RSI (Relative Strength Index)"
-          >
-            RSI
-          </button>
-          <button
-            onClick={() => onToggleIndicator('macd')}
-            className={`px-2 py-1 text-xs xl:text-sm rounded transition-colors ${
-              indicators.macd
-                ? 'bg-cyan-600 text-white'
-                : 'text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
-            }`}
-            title="Toggle MACD"
-          >
-            MACD
-          </button>
-        </div>
+        {/* Indicator Menu */}
+        <IndicatorMenu
+          indicators={indicators}
+          onToggleIndicator={onToggleIndicator}
+        />
+
+        {/* Divider + Alert/Notification Icons */}
+        {(priceAlertSlot || notificationSlot) && (
+          <div className="flex items-center gap-1 border-l border-theme-border pl-2">
+            {priceAlertSlot}
+            {notificationSlot}
+          </div>
+        )}
 
         {/* Interval Selector */}
         <div className="flex gap-1">
