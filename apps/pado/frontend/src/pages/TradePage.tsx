@@ -22,14 +22,15 @@ import {
   TradingToggles,
   PoolInfo,
   ShortcutHelpTooltip,
+  MobileTradeLayout,
 } from "../features/trading/components";
 import { useTradeMode, useOrderbook, useKeyboardShortcuts } from "../features/trading/hooks";
 import { useOrderForm } from "../features/trading/context";
 import { usePrices } from "../features/core/usePrices";
-import { type TokenSymbol } from "../lib/prices";
+import { type TokenSymbol, set24hChange } from "../lib/prices";
 import type { PriceLevel } from "../lib/deepbook";
 import { fetchBinance24hTicker, getBinanceSymbol } from "../lib/indicators";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from "../features/social";
 import { NewsCarousel } from "../features/news";
 
@@ -178,6 +179,13 @@ function TradePageContent() {
     refetchInterval: 30_000,
     staleTime: 15_000,
   });
+
+  // Push real 24h change into unified price cache
+  useEffect(() => {
+    if (ticker24h?.priceChangePercent != null) {
+      set24hChange(baseSymbol, ticker24h.priceChangePercent);
+    }
+  }, [baseSymbol, ticker24h?.priceChangePercent]);
 
   // Market info data
   const marketInfo = {
@@ -384,25 +392,22 @@ function TradePageContent() {
         )}
       </div>
 
-      {/* Mobile: stacked panels (below lg) */}
-      <div className="lg:hidden space-y-3">
-        {isSimple ? (
-          <div style={{ height: `${CHART_HEIGHT}px` }}>
-            <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
-          </div>
-        ) : (
+      {/* Mobile: tab-based layout (below lg) */}
+      <MobileTradeLayout
+        chartContent={
+          <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
+        }
+        bookContent={
+          <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
+        }
+        tradeContent={
           <>
-            <div style={{ height: `${CHART_HEIGHT}px` }}>
-              <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
-            </div>
-            <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: "400px" }}>
-              <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
-            </div>
-            <BottomTabPanel />
+            <EnablePadoCard />
+            <TradingPanel mode={mode} />
           </>
-        )}
-        <TradingPanel mode={mode} />
-      </div>
+        }
+        bottomTabContent={!isSimple ? <BottomTabPanel /> : undefined}
+      />
 
       {/* Floating chat popup (xl+ only, when popped out) */}
       {chatFloating && (

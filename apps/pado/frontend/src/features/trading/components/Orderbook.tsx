@@ -236,6 +236,19 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
     return 3;
   }, [groupSize]);
 
+  // Track price direction for spread arrow
+  const prevMidPriceRef = useRef<number | null>(null);
+  const [priceDirection, setPriceDirection] = useState<'up' | 'down' | null>(null);
+
+  useEffect(() => {
+    if (!spreadInfo) return;
+    const prev = prevMidPriceRef.current;
+    if (prev !== null && prev !== spreadInfo.midPrice) {
+      setPriceDirection(spreadInfo.midPrice > prev ? 'up' : 'down');
+    }
+    prevMidPriceRef.current = spreadInfo.midPrice;
+  }, [spreadInfo]);
+
   // Auto-scroll asks container to bottom so best ask is visible near spread
   const asksContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -362,10 +375,13 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                       }`}
                       onClick={() => handlePriceClick(level.price)}
                     >
-                      {/* Depth Bar (right-aligned for asks) */}
+                      {/* Depth Bar (right-aligned, gradient for asks) */}
                       <div
-                        className="absolute right-0 top-0 bottom-0 bg-trading-ask-bg"
-                        style={{ width: `${depthPercent}%` }}
+                        className="absolute right-0 top-0 bottom-0"
+                        style={{
+                          width: `${depthPercent}%`,
+                          background: 'linear-gradient(to left, var(--color-ask-bg), transparent)',
+                        }}
                       />
                       {/* Content */}
                       <span className="relative z-10 font-mono text-trading-ask">{level.price.toFixed(priceDecimals)}</span>
@@ -383,11 +399,26 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           {/* Spread / Mid Price */}
           {showSpread && spreadInfo && (
             <div className="flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded">
-              <span className="text-trading-xl font-bold text-theme-text-primary font-mono">
-                {spreadInfo.midPrice.toFixed(2)}
+              <span className="text-trading-xl font-bold font-mono flex items-center gap-1">
+                {priceDirection === 'up' && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" className="text-trading-bid"><path d="M6 2L10 8H2L6 2Z" fill="currentColor" /></svg>
+                )}
+                {priceDirection === 'down' && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" className="text-trading-ask"><path d="M6 10L2 4H10L6 10Z" fill="currentColor" /></svg>
+                )}
+                <span className={priceDirection === 'up' ? 'text-trading-bid' : priceDirection === 'down' ? 'text-trading-ask' : 'text-theme-text-primary'}>
+                  {spreadInfo.midPrice.toFixed(2)}
+                </span>
               </span>
-              <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">
-                Spread: <span className="font-mono">{spreadInfo.spread.toFixed(2)}</span> ({spreadInfo.spreadPercent.toFixed(3)}%)
+              <span className="text-trading-xs xl:text-trading-sm">
+                <span className="text-theme-text-muted">Spread </span>
+                <span className={`font-mono ${
+                  spreadInfo.spreadPercent > 0.5 ? 'text-yellow-400' :
+                  spreadInfo.spreadPercent > 0.2 ? 'text-theme-text-muted' :
+                  'text-green-400'
+                }`}>
+                  {spreadInfo.spread.toFixed(2)} ({spreadInfo.spreadPercent.toFixed(3)}%)
+                </span>
               </span>
             </div>
           )}
@@ -410,10 +441,13 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                       }`}
                       onClick={() => handlePriceClick(level.price)}
                     >
-                      {/* Depth Bar (right-aligned for bids) */}
+                      {/* Depth Bar (right-aligned, gradient for bids) */}
                       <div
-                        className="absolute right-0 top-0 bottom-0 bg-trading-bid-bg"
-                        style={{ width: `${depthPercent}%` }}
+                        className="absolute right-0 top-0 bottom-0"
+                        style={{
+                          width: `${depthPercent}%`,
+                          background: 'linear-gradient(to left, var(--color-bid-bg), transparent)',
+                        }}
                       />
                       {/* Content */}
                       <span className="relative z-10 font-mono text-trading-bid">{level.price.toFixed(priceDecimals)}</span>

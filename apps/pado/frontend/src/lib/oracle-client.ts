@@ -25,7 +25,9 @@ let feedsTableId: string | null = null;
 // Symbol ID mapping (must match dev_oracle.move constants)
 export const SYMBOLS = {
   BTCUSD: 1,
+  ETHUSD: 2,
   NASUSD: 3,
+  SOLUSD: 4,
 } as const;
 
 export type SymbolKey = keyof typeof SYMBOLS;
