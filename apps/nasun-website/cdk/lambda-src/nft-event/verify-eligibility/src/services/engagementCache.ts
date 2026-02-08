@@ -2,8 +2,8 @@
  * Engagement Cache Service
  *
  * @description
- * DynamoDB nasun-nft-event-tasks 테이블에서 poll-engagement Lambda가 저장한
- * 캐시 엔트리를 조회하는 서비스 (Tier 2)
+ * DynamoDB nasun-nft-event-tasks 테이블에서 engagement 캐시 엔트리를
+ * 조회하는 서비스 (Tier 2). Cache miss 시 Tier 3 fallback으로 진행.
  *
  * Cache key convention:
  *   PK: __LIKE_CACHE__   SK: {xUserId}  → Like 확인됨
