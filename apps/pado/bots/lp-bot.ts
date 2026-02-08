@@ -32,6 +32,7 @@ import {
   type Inventory,
   rawToPrice,
   rawToQuantity,
+  isGasExhaustedError,
   timestamp,
 } from './lib/config.js';
 import { fetchBtcPrice, validatePrice } from './lib/price-source.js';
@@ -49,9 +50,10 @@ import {
   createBalanceManager,
   getBalanceManagerBalances,
   getWalletBalances,
+  getGasBalance,
   depositAllToBalanceManager,
 } from './lib/balance-manager.js';
-import { requestTokens } from './lib/faucet.js';
+import { requestTokens, requestGas } from './lib/faucet.js';
 
 // ========================================
 // Main Bot Logic
@@ -64,6 +66,21 @@ async function runBot(
   state: BotState,
 ): Promise<void> {
   const address = keypair.getPublicKey().toSuiAddress();
+
+  // Step 0: Ensure sufficient gas for transactions
+  const gasBalance = await getGasBalance(client, address);
+  if (gasBalance < config.gasRefillThreshold) {
+    console.log(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN (threshold: ${config.gasRefillThreshold}), requesting from faucet...`);
+    const gasSuccess = await requestGas(address);
+    if (gasSuccess) {
+      const newGas = await getGasBalance(client, address);
+      console.log(`[${timestamp()}] Gas balance: ${newGas.toFixed(4)} NASUN`);
+    } else {
+      console.error(`[${timestamp()}] Gas faucet request failed, skipping cycle`);
+      state.consecutiveFailures++;
+      return;
+    }
+  }
 
   // Step 1: Fetch current BTC price
   const btcPrice = await fetchBtcPrice();
@@ -194,6 +211,17 @@ async function runBot(
     const spread = bestAsk > 0 && bestBid > 0 ? ((bestAsk - bestBid) / btcPrice) * 100 : 0;
     console.log(`[${timestamp()}] Best bid: $${bestBid.toLocaleString()}, Best ask: $${bestAsk.toLocaleString()}, Spread: ${spread.toFixed(2)}%`);
   } else {
+    // Auto-recover from gas exhaustion (don't count toward circuit breaker)
+    if (result.error && isGasExhaustedError(result.error)) {
+      console.log(`[${timestamp()}] Gas exhaustion during order sync, requesting refill...`);
+      const gasSuccess = await requestGas(address);
+      if (gasSuccess) {
+        const newGas = await getGasBalance(client, address);
+        console.log(`[${timestamp()}] Gas refilled: ${newGas.toFixed(4)} NASUN, will retry next cycle`);
+        return;
+      }
+    }
+
     console.error(`[${timestamp()}] Failed to sync orders: ${result.error}`);
     state.consecutiveFailures++;
   }
@@ -212,6 +240,21 @@ async function initialize(
   const address = keypair.getPublicKey().toSuiAddress();
 
   console.log(`[${timestamp()}] Checking initial state...`);
+
+  // Check gas balance and refill if needed
+  const gasBalance = await getGasBalance(client, address);
+  console.log(`[${timestamp()}] Gas: ${gasBalance.toFixed(4)} NASUN`);
+
+  if (gasBalance < config.gasRefillThreshold) {
+    console.log(`[${timestamp()}] Low gas, requesting from faucet...`);
+    const gasSuccess = await requestGas(address);
+    if (!gasSuccess) {
+      console.error(`[${timestamp()}] Gas faucet failed — bot cannot operate without gas`);
+      return false;
+    }
+    const newGas = await getGasBalance(client, address);
+    console.log(`[${timestamp()}] Gas after faucet: ${newGas.toFixed(4)} NASUN`);
+  }
 
   // Check wallet balances
   const walletBalance = await getWalletBalances(client, address);
@@ -368,7 +411,20 @@ async function main() {
     try {
       await runBot(client, keypair, config, state);
     } catch (error) {
-      console.error(`[${timestamp()}] Error:`, error instanceof Error ? error.message : error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[${timestamp()}] Error:`, msg);
+
+      // Auto-recover from gas exhaustion without counting toward circuit breaker
+      if (isGasExhaustedError(msg)) {
+        console.log(`[${timestamp()}] Gas exhaustion detected, requesting refill...`);
+        const gasSuccess = await requestGas(address);
+        if (gasSuccess) {
+          const newGas = await getGasBalance(client, address);
+          console.log(`[${timestamp()}] Gas refilled: ${newGas.toFixed(4)} NASUN, will retry next cycle`);
+          return;
+        }
+      }
+
       state.consecutiveFailures++;
     }
   };
