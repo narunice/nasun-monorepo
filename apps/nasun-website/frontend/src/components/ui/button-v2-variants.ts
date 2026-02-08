@@ -3,7 +3,7 @@
 import { cva } from "class-variance-authority";
 
 export const buttonV2Variants = cva(
-  "inline-flex items-center justify-center rounded-full font-light text-nasun-white bg-gradient-to-r whitespace-nowrap active:scale-[0.97] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 transition-all cursor-pointer",
+  "inline-flex items-center justify-center rounded-full font-light whitespace-nowrap active:scale-[0.97] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 transition-all cursor-pointer",
   {
     variants: {
       variant: {
@@ -14,6 +14,10 @@ export const buttonV2Variants = cva(
         purple: "from-[#7B68AE] to-[#A594D0] hover:from-[#6E5CA0] hover:to-[#9786C2]",
         "gensol-red": "from-[#d52933] to-[#e85a62] hover:from-[#c0242d] hover:to-[#d54a52]",
       },
+      outline: {
+        true: "bg-transparent border-2",
+        false: "text-nasun-white bg-gradient-to-r",
+      },
       size: {
         xs: "text-xs px-6 py-1",
         sm: "text-sm px-8 py-1.5",
@@ -22,8 +26,16 @@ export const buttonV2Variants = cva(
         xl: "text-xl px-14 py-2.5",
       },
     },
+    compoundVariants: [
+      { variant: "red", outline: true, class: "border-[#C4634A] text-[#C4634A] hover:bg-[#C4634A]/10" },
+      { variant: "blue", outline: true, class: "border-[#6898B8] text-[#6898B8] hover:bg-[#6898B8]/10" },
+      { variant: "white", outline: true, class: "border-[#E0DAD0] text-[#E0DAD0] hover:bg-[#E0DAD0]/10" },
+      { variant: "purple", outline: true, class: "border-[#7B68AE] text-[#7B68AE] hover:bg-[#7B68AE]/10" },
+      { variant: "gensol-red", outline: true, class: "border-[#d52933] text-[#d52933] hover:bg-[#d52933]/10" },
+    ],
     defaultVariants: {
       variant: "red",
+      outline: false,
       size: "md",
     },
   },
