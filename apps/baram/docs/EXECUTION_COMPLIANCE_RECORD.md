@@ -1,5 +1,9 @@
 # ExecutionComplianceRecord (ECR) 설계
 
+> **후속 문서**: ECR을 30개 필드로 확장한 AIExecutionReport(AER) 설계는 [AER_DESIGN.md](AER_DESIGN.md) 참조.
+> AER은 Authorization Proof, Decision Lineage, Economic Context 3개 카테고리(8 필드)를 추가하여
+> AI agent의 경제 활동 감사를 지원한다.
+
 ## 요약
 
 ExecutionComplianceRecord는 AI 실행이 정해진 프로세스 규칙을 따랐다는 사실을
@@ -166,7 +170,8 @@ ECR이 기록 그릇으로서 채워갈 항목:
 
 | 단계 | 추가 기능 | ECR 변경 |
 |------|----------|---------|
-| Executor 스테이킹 계층화 | tier 시스템 | `executor_tier: u8` 필드 추가 |
+| ~~Executor 스테이킹 계층화~~ | ~~tier 시스템~~ | ✅ `executor_tier: u8` 필드 추가됨 |
 | 프로토콜 수수료 분배 | fee split | `protocol_fee: u64` 필드 추가 |
 | Attestation 보증금 | bond 시스템 | `bond_status: u8` 필드 추가 |
 | Dispute Resolution | 이의 제기 | `dispute_id: Option<u64>` 필드 추가 |
+| **AER 확장** | **Authorization + Lineage + Economic Context** | **8개 신규 필드 — [AER_DESIGN.md](AER_DESIGN.md) 참조** |
