@@ -69,7 +69,7 @@ describe('Baram Budget E2E', () => {
       agent: TEST_AGENT_ADDRESS,
       deposit: depositAmount,
       maxPerRequest: 1_000_000, // 1 NUSDC max per request
-      allowedModels: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
+      allowedModels: ['llama-3.3-70b-versatile'],
       allowedExecutors: [], // All executors allowed
       expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -99,7 +99,7 @@ describe('Baram Budget E2E', () => {
     expect(budget!.isActive).toBe(true);
     expect(budget!.balance).toBe(depositAmount);
     expect(budget!.maxPerRequest).toBe(1_000_000);
-    expect(budget!.allowedModels).toContain('llama-3.1-8b-instant');
+    expect(budget!.allowedModels).toContain('llama-3.3-70b-versatile');
 
     // ==========================================
     // Step 3: Test getOwnedBudgets
@@ -215,7 +215,7 @@ describe('Baram Budget E2E', () => {
       agentClient.executeWithBudget({
         budgetId,
         prompt: 'test',
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
       }),
     ).rejects.toThrow('deactivated');
 
@@ -235,7 +235,7 @@ describe('Baram Budget E2E', () => {
       agent: TEST_AGENT_ADDRESS,
       deposit: 1_000_000,
       maxPerRequest: 500_000,
-      allowedModels: ['llama-3.1-8b-instant'],
+      allowedModels: ['llama-3.3-70b-versatile'],
     });
 
     await sleep(2000);
@@ -254,7 +254,7 @@ describe('Baram Budget E2E', () => {
       unauthorizedClient.executeWithBudget({
         budgetId: createResult.budgetId,
         prompt: 'test',
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
       }),
     ).rejects.toThrow();
 

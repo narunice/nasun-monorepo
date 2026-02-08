@@ -9,7 +9,7 @@ describe('buildCreateRequestTransaction', () => {
     const tx = buildCreateRequestTransaction(config, {
       coins: [{ objectId: '0x0000000000000000000000000000000000000000000000000000000000000aaa', version: '1', digest: 'abc' }],
       promptHashBytes: new Array(32).fill(0),
-      model: 'llama-3.1-8b-instant',
+      model: 'llama-3.3-70b-versatile',
       executorOperator: '0x0000000000000000000000000000000000000000000000000000000000000001',
       price: 100_000,
     });

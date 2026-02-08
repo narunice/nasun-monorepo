@@ -121,7 +121,7 @@ export function LedgerAddressSelector({
           />
         </div>
         <span className="text-xs xl:text-sm text-gray-500 dark:text-gray-400">
-          {chainType === 'move' ? 'Sui/Nasun' : 'Ethereum'} addresses
+          {chainType === 'move' ? 'Nasun' : 'Ethereum'} addresses
         </span>
       </div>
 
@@ -159,7 +159,7 @@ export function LedgerAddressSelector({
       {/* Path info */}
       <p className="text-xs xl:text-sm text-gray-500 dark:text-gray-400 text-center">
         Using BIP-44 derivation path for{' '}
-        {chainType === 'move' ? 'Sui/Nasun' : 'Ethereum'}
+        {chainType === 'move' ? 'Nasun' : 'Ethereum'}
       </p>
     </div>
   );

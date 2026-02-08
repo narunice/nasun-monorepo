@@ -25,7 +25,7 @@ async function main() {
     process.exit(1);
   }
 
-  const model = process.env.MODEL || 'llama-3.1-8b-instant';
+  const model = process.env.MODEL || 'llama-3.3-70b-versatile';
   const prompt = process.env.PROMPT || 'What are the risk factors for BTC/USD in the next 24 hours?';
 
   // Initialize client
