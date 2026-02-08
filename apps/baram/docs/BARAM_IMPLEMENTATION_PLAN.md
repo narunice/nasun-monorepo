@@ -19,7 +19,7 @@
 
 ---
 
-## 구현 상태 (2026-02-07)
+## 구현 상태 (2026-02-08)
 
 | Phase | Status | 설명 |
 |-------|--------|------|
@@ -43,6 +43,8 @@
 | **Phase F-10: @nasun/baram-sdk** | ✅ | Node.js SDK v0.1.0 — BaramClient, Executor 선택, ECR 조회, CLI demo |
 | **Phase F-11: Budget Delegation** | ✅ | budget.move — 에이전트 예산 위임, 모델/Executor 화이트리스트, 만료, 건당 최대 금액 |
 | **Phase F-12: BetaAccessNFT Gate** | ✅ | beta_access.move — 베타 테스터 NFT 게이팅 (민팅, 만료, 사용 횟수 제한) + Frontend useNFTGate hook |
+| **Phase F-13: SDK E2E Tests** | ✅ | execute.e2e.ts (5/5), budget.e2e.ts (4/4) — 전체 파이프라인 + Budget 라이프사이클 검증 |
+| **Phase F-14: AER Design** | 📝 설계 완료 | [AER_DESIGN.md](AER_DESIGN.md) — ECR → AIExecutionReport 확장 설계 (30 필드, Authorization/Lineage/Economic Context 추가) |
 
 ---
 
@@ -348,16 +350,17 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 ## 다음 단계
 
-> **현재 상태**: Phase F-12까지 핵심 기능 완료, TEE 인스턴스 OFF
+> **현재 상태**: Phase F-14까지 핵심 기능 완료 + AER 설계, TEE 인스턴스 OFF
 
 ### 잔여 과제
 
 | 항목 | 설명 | 우선순위 |
 |------|------|----------|
 | Budget 프론트엔드 통합 | Budget 생성/관리 UI, Agent Budget 선택 (executeWithBudget) | 높음 |
-| Budget 통합 테스트 | E2E: Budget 생성 → Agent 실행 → 정산 검증 | 높음 |
+| ~~Budget 통합 테스트~~ | ~~E2E: Budget 생성 → Agent 실행 → 정산 검증~~ | ✅ 완료 (2026-02-08) |
 | BetaAccessNFT 운영 | NFT 민팅 → 베타 테스터 배포, gate 활성화 | 높음 |
 | HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
+| AER 스마트컨트랙트 구현 | compliance.move 확장 (8 신규 필드) — [AER_DESIGN.md](AER_DESIGN.md) | 중간 |
 
 ### Roadmap
 
@@ -377,6 +380,8 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | **F-10: @nasun/baram-sdk** | ✅ | Node.js SDK v0.1.0 — BaramClient, Executor 선택, ECR 조회, CLI demo |
 | **F-11: Budget Delegation** | ✅ | budget.move — 에이전트 예산 위임, 모델/Executor 화이트리스트, 만료, 건당 최대 금액 |
 | **F-12: BetaAccessNFT Gate** | ✅ | beta_access.move + useNFTGate hook + NFTGateScreen — 베타 테스터 NFT 게이팅 |
+| **F-13: SDK E2E Tests** | ✅ | execute.e2e.ts (5/5), budget.e2e.ts (4/4) — coin isolation fix, executeWithBudget happy path |
+| **F-14: AER Design** | 📝 | [AER_DESIGN.md](AER_DESIGN.md) — ECR→AER 확장 설계 (Authorization Proof, Decision Lineage, Economic Context) |
 | F-8: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
 
 #### Mid-term (Phase G: Model Marketplace)
@@ -396,6 +401,39 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | 분산 Executor 네트워크 | 다수 Executor 운영 + 자동 라우팅 |
 | Reserved Instance 전환 | 비용 최적화 |
 | 보안 감사 | Attestation, Key Management, 컨트랙트 감사 |
+
+---
+
+## SDK E2E Test Results (2026-02-08)
+
+### execute.e2e.ts — 5/5 통과 (9s)
+
+| 테스트 | 결과 | 비고 |
+|--------|------|------|
+| getBalance() | ✅ | 99989.3 NUSDC |
+| getExecutors() | ✅ | 1 executor (tier 0) |
+| execute() — AI 추론 + 정산 | ✅ | 응답 "4", Request ID: 16, 8.6s |
+| execute() — 알 수 없는 모델 거부 | ✅ | |
+| getECR() — requestId 재사용 | ✅ | ECR 0xbc60... (coin isolation fix 적용) |
+
+### budget.e2e.ts — 4/4 통과 (26s)
+
+| 테스트 | 결과 | 비고 |
+|--------|------|------|
+| hasBudgetSupport() | ✅ | |
+| Full lifecycle (10 steps) | ✅ | 20.5s — 생성→조회→입금→**executeWithBudget**→제약조건→출금→비활성화 |
+| Non-existent Budget | ✅ | null 반환 |
+| Unauthorized agent 거부 | ✅ | 랜덤 keypair로 시도 → throw |
+
+**주요 검증 사항 (Step 6: executeWithBudget happy path):**
+- Agent가 Budget으로 AI 추론 실행 성공 (응답: "4")
+- Budget 잔액 차감: 7.0 → 6.0 NUSDC
+- requestCount 증가: 0 → 1
+- ECR 정상 생성
+
+**수정된 이슈:**
+- `execute.e2e.ts`: getECR() 테스트에서 execute()를 재호출하던 coin version conflict 수정 — requestId 재사용 방식으로 변경
+- `budget.e2e.ts`: executeWithBudget() happy path 테스트 추가 (기존에는 제약조건 거부만 테스트)
 
 ---
 

@@ -396,6 +396,7 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | [NFTGateScreen.tsx](frontend/src/components/empty/NFTGateScreen.tsx) | NFT 게이트 화면 |
 | [mint-beta-access.sh](scripts/mint-beta-access.sh) | BetaAccessNFT 민팅 스크립트 |
 | [SPOT_INSTANCE_GUIDE.md](docs/SPOT_INSTANCE_GUIDE.md) | Spot 인스턴스 운영 가이드 |
+| [AER_DESIGN.md](docs/AER_DESIGN.md) | AIExecutionReport 확장 설계 (ECR 22→AER 30 fields) |
 
 ---
 
@@ -420,6 +421,8 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | **F-10** | **@nasun/baram-sdk (Node.js SDK, v0.1.0)** | **✅ 완료** |
 | **F-11** | **Budget Delegation (에이전트 예산 위임, budget.move)** | **✅ 완료** |
 | **F-12** | **BetaAccessNFT Gate (베타 테스터 NFT 게이팅, beta_access.move)** | **✅ 완료** |
+| **F-13** | **SDK E2E Tests (execute 5/5 + budget 4/4, coin isolation fix)** | **✅ 완료** |
+| **F-14** | **AER Design (ECR→AIExecutionReport 확장 설계, 30 fields)** | **📝 설계** |
 | G | Model Marketplace | 계획 |
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 

@@ -25,6 +25,7 @@ import {
 describe('Baram Budget E2E', () => {
   let userClient: BaramClient;
   let agentClient: BaramClient;
+  let hasExecutors = false;
 
   beforeAll(async () => {
     logTest('Setting up Budget E2E tests...');
@@ -48,6 +49,11 @@ describe('Baram Budget E2E', () => {
     // Ensure agent has gas for transactions (but no NUSDC needed)
     await requestFaucet(TEST_AGENT_ADDRESS);
     logTest('Agent has gas for transactions');
+
+    // Check if executors are available (needed for executeWithBudget happy path)
+    const executors = await userClient.getExecutors();
+    hasExecutors = executors.length > 0;
+    logTest(`Executors available: ${hasExecutors} (${executors.length} found)`);
   });
 
   it('should support Budget feature', () => {
@@ -143,9 +149,48 @@ describe('Baram Budget E2E', () => {
     expect(budgetAfterDeposit!.balance).toBe(balanceBeforeDeposit + depositMoreAmount);
 
     // ==========================================
-    // Step 6: Test constraint validation (model not allowed)
+    // Step 6: Execute with Budget (requires active executor)
     // ==========================================
-    logTest('Step 6: Testing model constraint validation...');
+    if (!hasExecutors) {
+      logTest('Step 6: SKIPPED - No executors available for executeWithBudget()');
+    } else {
+      logTest('Step 6: Agent executing with Budget...');
+
+      const budgetBeforeExec = await agentClient.getBudget(budgetId);
+      logTest(`Budget balance before execute: ${formatNusdc(budgetBeforeExec!.balance)}`);
+
+      const execResult = await agentClient.executeWithBudget({
+        budgetId,
+        prompt: 'What is 2 + 2? Answer with just the number.',
+        model: 'llama-3.3-70b-versatile',
+        minTier: 0, // Devnet executor is tier 0 (Open)
+      });
+
+      logTest(`Execute completed!`);
+      logTest(`Response: ${execResult.response.substring(0, 100)}`);
+      logTest(`Request ID: ${execResult.requestId}`);
+      logTest(`TX Digest: ${execResult.txDigest}`);
+
+      // Verify result structure
+      expect(execResult.response).toBeTruthy();
+      expect(execResult.requestId).toBeTruthy();
+      expect(execResult.txDigest).toBeTruthy();
+
+      // Verify budget balance decreased
+      await sleep(2000);
+      const budgetAfterExec = await agentClient.getBudget(budgetId);
+      logTest(`Budget balance after execute: ${formatNusdc(budgetAfterExec!.balance)}`);
+      expect(budgetAfterExec!.balance).toBeLessThan(budgetBeforeExec!.balance);
+
+      // Verify budget requestCount increased
+      expect(budgetAfterExec!.requestCount).toBeGreaterThan(budgetBeforeExec!.requestCount);
+      logTest(`Budget request count: ${budgetAfterExec!.requestCount}`);
+    }
+
+    // ==========================================
+    // Step 7: Test constraint validation (model not allowed)
+    // ==========================================
+    logTest('Step 7: Testing model constraint validation...');
 
     // llama-3.2-3b-local is not in the allowed models list
     await expect(
@@ -159,9 +204,9 @@ describe('Baram Budget E2E', () => {
     logTest('Model constraint validation works correctly');
 
     // ==========================================
-    // Step 7: Withdraw funds
+    // Step 8: Withdraw funds
     // ==========================================
-    logTest('Step 7: Withdrawing funds...');
+    logTest('Step 8: Withdrawing funds...');
 
     const budgetBeforeWithdraw = await userClient.getBudget(budgetId);
     const userBalanceBeforeWithdraw = await userClient.getBalance();
@@ -182,9 +227,9 @@ describe('Baram Budget E2E', () => {
     expect(userBalanceAfterWithdraw).toBeGreaterThan(userBalanceBeforeWithdraw);
 
     // ==========================================
-    // Step 8: Deactivate Budget
+    // Step 9: Deactivate Budget
     // ==========================================
-    logTest('Step 8: Deactivating Budget...');
+    logTest('Step 9: Deactivating Budget...');
 
     const budgetBeforeDeactivate = await userClient.getBudget(budgetId);
     const userBalanceBeforeDeactivate = await userClient.getBalance();
@@ -207,9 +252,9 @@ describe('Baram Budget E2E', () => {
     expect(userBalanceAfterDeactivate).toBeGreaterThan(userBalanceBeforeDeactivate);
 
     // ==========================================
-    // Step 9: Test deactivated budget rejection
+    // Step 10: Test deactivated budget rejection
     // ==========================================
-    logTest('Step 9: Testing deactivated budget rejection...');
+    logTest('Step 10: Testing deactivated budget rejection...');
 
     await expect(
       agentClient.executeWithBudget({
