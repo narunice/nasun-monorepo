@@ -2,57 +2,54 @@
  * Faucet Module
  *
  * Handles token faucet requests for auto-refill.
+ * Supports V1 faucet (NBTC/NUSDC) and V2 faucet (NETH/NSOL).
  */
 
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { TOKENS_PACKAGE, TOKEN_FAUCET, FAUCET_URL, timestamp } from './config.js';
+import {
+  TOKENS_PACKAGE,
+  TOKEN_FAUCET,
+  TOKENS_V2_PACKAGE,
+  TOKEN_FAUCET_V2,
+  FAUCET_URL,
+  MARKET,
+  timestamp,
+} from './config.js';
 
 // ========================================
-// Faucet Transaction Builders
+// V1 Faucet (NBTC + NUSDC, no cooldown)
 // ========================================
 
-/**
- * Build transaction to request both NBTC and NUSDC
- * Uses legacy function (no cooldown)
- */
-export function buildRequestTokens(): Transaction {
+function buildRequestTokensV1(): Transaction {
   const tx = new Transaction();
-
   tx.moveCall({
     target: `${TOKENS_PACKAGE}::faucet::request_tokens`,
     arguments: [tx.object(TOKEN_FAUCET)],
   });
-
   return tx;
 }
 
-/**
- * Build transaction to request NBTC only
- */
-export function buildRequestNbtc(): Transaction {
+function buildRequestNusdcOnly(): Transaction {
   const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${TOKENS_PACKAGE}::faucet::request_nbtc`,
-    arguments: [tx.object(TOKEN_FAUCET)],
-  });
-
-  return tx;
-}
-
-/**
- * Build transaction to request NUSDC only
- */
-export function buildRequestNusdc(): Transaction {
-  const tx = new Transaction();
-
   tx.moveCall({
     target: `${TOKENS_PACKAGE}::faucet::request_nusdc`,
     arguments: [tx.object(TOKEN_FAUCET)],
   });
+  return tx;
+}
 
+// ========================================
+// V2 Faucet (NETH + NSOL, no cooldown)
+// ========================================
+
+function buildRequestTokensV2(): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${TOKENS_V2_PACKAGE}::faucet_v2::request_tokens`,
+    arguments: [tx.object(TOKEN_FAUCET_V2)],
+  });
   return tx;
 }
 
@@ -62,7 +59,6 @@ export function buildRequestNusdc(): Transaction {
 
 /**
  * Request native gas coins (NASUN) from faucet via HTTP API.
- * This is separate from token faucet — it hits the /gas endpoint directly.
  */
 export async function requestGas(address: string): Promise<boolean> {
   try {
@@ -81,8 +77,6 @@ export async function requestGas(address: string): Promise<boolean> {
     }
 
     console.log(`[${timestamp()}] Received gas from faucet`);
-
-    // Wait for gas to be indexed
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     return true;
@@ -93,19 +87,36 @@ export async function requestGas(address: string): Promise<boolean> {
 }
 
 // ========================================
-// Faucet Execution
+// Market-aware Faucet Execution
 // ========================================
 
 /**
- * Request tokens from faucet
- * Returns: 1 NBTC + 100,000 NUSDC on success
- * Waits for transaction finalization to ensure tokens are indexed
+ * Request base + quote tokens for the current market.
+ *
+ * - NBTC market: V1 faucet (gives 1 NBTC + 100k NUSDC)
+ * - NETH/NSOL market: V2 faucet (gives 10 NETH + 100 NSOL) + V1 NUSDC faucet
  */
 export async function requestTokens(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<boolean> {
-  const tx = buildRequestTokens();
+  if (MARKET.faucetType === 'v1') {
+    return executeRequestTokensV1(client, keypair);
+  } else {
+    // V2 markets need two faucet calls: base from V2, quote (NUSDC) from V1
+    const baseSuccess = await executeRequestTokensV2(client, keypair);
+    if (!baseSuccess) return false;
+
+    const quoteSuccess = await executeRequestNusdc(client, keypair);
+    return quoteSuccess;
+  }
+}
+
+async function executeRequestTokensV1(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+): Promise<boolean> {
+  const tx = buildRequestTokensV1();
 
   try {
     const result = await client.signAndExecuteTransaction({
@@ -115,37 +126,25 @@ export async function requestTokens(
     });
 
     if (result.effects?.status?.status !== 'success') {
-      console.error(`[${timestamp()}] Faucet request failed:`, result.effects?.status?.error);
+      console.error(`[${timestamp()}] V1 faucet request failed:`, result.effects?.status?.error);
       return false;
     }
 
-    console.log(`[${timestamp()}] Received tokens from faucet (1 NBTC + 100k NUSDC)`);
-
-    // Wait for transaction to be fully indexed
-    await client.waitForTransaction({
-      digest: result.digest,
-      options: { showEffects: true },
-    });
-
-    // Additional delay for RPC indexing
+    console.log(`[${timestamp()}] Received tokens from V1 faucet (1 NBTC + 100k NUSDC)`);
+    await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
     await new Promise((resolve) => setTimeout(resolve, 2000));
-
     return true;
   } catch (error) {
-    console.error(`[${timestamp()}] Error requesting from faucet:`, error);
+    console.error(`[${timestamp()}] Error requesting from V1 faucet:`, error);
     return false;
   }
 }
 
-/**
- * Request NBTC only from faucet
- * Returns: 1 NBTC on success
- */
-export async function requestNbtc(
+async function executeRequestTokensV2(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<boolean> {
-  const tx = buildRequestNbtc();
+  const tx = buildRequestTokensV2();
 
   try {
     const result = await client.signAndExecuteTransaction({
@@ -155,27 +154,25 @@ export async function requestNbtc(
     });
 
     if (result.effects?.status?.status !== 'success') {
-      console.error(`[${timestamp()}] NBTC faucet request failed:`, result.effects?.status?.error);
+      console.error(`[${timestamp()}] V2 faucet request failed:`, result.effects?.status?.error);
       return false;
     }
 
-    console.log(`[${timestamp()}] Received 1 NBTC from faucet`);
+    console.log(`[${timestamp()}] Received tokens from V2 faucet (10 NETH + 100 NSOL)`);
+    await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     return true;
   } catch (error) {
-    console.error(`[${timestamp()}] Error requesting NBTC from faucet:`, error);
+    console.error(`[${timestamp()}] Error requesting from V2 faucet:`, error);
     return false;
   }
 }
 
-/**
- * Request NUSDC only from faucet
- * Returns: 100,000 NUSDC on success
- */
-export async function requestNusdc(
+async function executeRequestNusdc(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<boolean> {
-  const tx = buildRequestNusdc();
+  const tx = buildRequestNusdcOnly();
 
   try {
     const result = await client.signAndExecuteTransaction({
@@ -189,7 +186,7 @@ export async function requestNusdc(
       return false;
     }
 
-    console.log(`[${timestamp()}] Received 100k NUSDC from faucet`);
+    console.log(`[${timestamp()}] Received 100k NUSDC from V1 faucet`);
     return true;
   } catch (error) {
     console.error(`[${timestamp()}] Error requesting NUSDC from faucet:`, error);

@@ -18,7 +18,7 @@
 import { SuiClient, SuiObjectResponse } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { withRetry } from './lib/retry';
+import { withRetry } from './lib/retry.js';
 
 // ========================================
 // Configuration

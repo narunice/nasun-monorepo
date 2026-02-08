@@ -22,9 +22,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { TPSLStore, type TPSLOrder } from './lib/tpsl-store';
-import { executeMarketOrder, type ExecuteParams } from './lib/tpsl-executor';
-import { withRetry } from './lib/retry';
+import { TPSLStore, type TPSLOrder } from './lib/tpsl-store.js';
+import { executeMarketOrder, type ExecuteParams } from './lib/tpsl-executor.js';
+import { withRetry } from './lib/retry.js';
 
 // ========================================
 // Configuration
@@ -38,6 +38,7 @@ const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '';
 const DEEPBOOK_PACKAGE = process.env.DEEPBOOK_PACKAGE || '';
 const API_KEY = process.env.TPSL_API_KEY || '';
 const ALLOWED_ORIGIN = process.env.TPSL_ALLOWED_ORIGIN || 'https://pado.finance';
+const REQUIRE_AUTH = process.env.NODE_ENV === 'production';
 const MAX_BODY_SIZE = 10_000; // 10KB max request body
 const MAX_ORDERS_PER_USER = 50;
 const PRICE_STALENESS_MS = 60_000; // 60 seconds (reduced from 120s for financial safety)
@@ -80,7 +81,8 @@ async function fetchOraclePrices(client: SuiClient): Promise<Map<string, OracleP
 
     // Parse feeds from dynamic fields
     const fields = (content.fields as Record<string, unknown>);
-    const feedsTableId = (fields['feeds'] as Record<string, string>)?.['fields']?.['id']?.['id'];
+    const feedsField = fields['feeds'] as { fields?: { id?: { id?: string } } } | undefined;
+    const feedsTableId = feedsField?.fields?.id?.id;
 
     if (!feedsTableId) {
       throw new Error('Could not resolve feeds table ID');
@@ -272,7 +274,13 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
 
 // Authenticate request via API key
 function authenticateRequest(req: IncomingMessage, res: ServerResponse): boolean {
-  if (!API_KEY) return true; // Skip auth if no key configured (dev mode)
+  if (!API_KEY) {
+    if (REQUIRE_AUTH) {
+      sendJson(res, 503, { error: 'Server misconfigured: authentication not available' });
+      return false;
+    }
+    return true; // Allow unauthenticated in dev mode only
+  }
   const authHeader = req.headers['authorization'];
   if (authHeader !== `Bearer ${API_KEY}`) {
     sendJson(res, 401, { error: 'Unauthorized' });

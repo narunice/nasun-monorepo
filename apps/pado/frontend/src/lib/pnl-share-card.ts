@@ -129,7 +129,6 @@ export async function generatePnlCard(data: PnlCardData): Promise<Blob> {
   // PnL percentage
   ctx.font = 'bold 20px "Rubik", system-ui, sans-serif';
   const pctText = formatPercent(data.pnlPercent);
-  const pnlWidth = ctx.measureText(pnlText).width;
   ctx.font = 'bold 42px "Rubik", system-ui, sans-serif';
   const actualPnlWidth = ctx.measureText(pnlText).width;
   ctx.font = 'bold 20px "Rubik", system-ui, sans-serif';

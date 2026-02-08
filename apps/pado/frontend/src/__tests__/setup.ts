@@ -53,9 +53,14 @@ Object.defineProperty(window, 'Notification', {
   value: class NotificationMock {
     static permission = 'granted';
     static requestPermission = vi.fn().mockResolvedValue('granted');
+    title: string;
+    options?: NotificationOptions;
     onclick: (() => void) | null = null;
     close = vi.fn();
-    constructor(public title: string, public options?: NotificationOptions) {}
+    constructor(title: string, options?: NotificationOptions) {
+      this.title = title;
+      this.options = options;
+    }
   },
 });
 

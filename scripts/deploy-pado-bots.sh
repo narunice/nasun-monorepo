@@ -115,24 +115,24 @@ test_ec2_connection "$PEM_KEY_EXPANDED" "$EC2_USER" "$EC2_HOST"
 case $ACTION in
   status)
     log_info "PM2 상태 확인 중..."
-    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 status lp-bot 2>/dev/null || echo 'LP 봇이 실행되지 않고 있습니다'"
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 status 2>/dev/null || echo '봇이 실행되지 않고 있습니다'"
     ;;
 
   logs)
     log_info "PM2 로그 (Ctrl+C로 종료)..."
-    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 logs lp-bot --lines 50"
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 logs --lines 50"
     ;;
 
   stop)
-    log_info "LP 봇 중지 중..."
-    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 stop lp-bot 2>/dev/null || echo 'LP 봇이 실행되지 않고 있습니다'"
-    log_success "LP 봇 중지됨"
+    log_info "봇 중지 중..."
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 stop all 2>/dev/null || echo '봇이 실행되지 않고 있습니다'"
+    log_success "봇 중지됨"
     ;;
 
   restart)
-    log_info "LP 봇 재시작 중..."
-    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 restart lp-bot"
-    log_success "LP 봇 재시작됨"
+    log_info "봇 재시작 중..."
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 restart all"
+    log_success "봇 재시작됨"
     ;;
 
   deploy)
@@ -147,7 +147,8 @@ case $ACTION in
     log_info "봇 코드 동기화 중..."
     rsync -avz --progress -e "ssh -i $PEM_KEY_EXPANDED" \
       --exclude 'node_modules' \
-      --exclude '.lp-bot-state.json' \
+      --exclude '.lp-bot-state-*.json' \
+      --exclude 'data' \
       --exclude 'logs' \
       --exclude '*.log' \
       "$APP_DIR/" "${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}/"
@@ -203,10 +204,10 @@ case $ACTION in
       fi
 
       # PM2로 시작 (이미 실행 중이면 재시작)
-      if pm2 list | grep -q 'lp-bot'; then
-        pm2 restart lp-bot
+      if pm2 list | grep -q 'lp-bot-nbtc'; then
+        pm2 restart ecosystem.config.cjs
       else
-        pm2 start ecosystem.config.cjs --only lp-bot
+        pm2 start ecosystem.config.cjs
       fi
 
       pm2 save
@@ -217,7 +218,7 @@ case $ACTION in
     # 상태 확인
     echo ""
     log_info "현재 상태:"
-    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 status lp-bot"
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 status"
 
     # 완료 메시지
     echo ""

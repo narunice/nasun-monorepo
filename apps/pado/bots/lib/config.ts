@@ -1,7 +1,12 @@
 /**
  * LP Bot Configuration
  *
- * All constants and configuration for the liquidity provider bot.
+ * Multi-market configuration for the liquidity provider bot.
+ * Supports NBTC/NUSDC, NETH/NUSDC, and NSOL/NUSDC markets.
+ *
+ * Select market via LP_MARKET env var (default: NBTC).
+ *
+ * @version 0.2.0
  */
 
 // ========================================
@@ -19,35 +24,104 @@ export const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet
 export const DEEPBOOK_PACKAGE = '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134';
 export const DEEPBOOK_REGISTRY = '0x0a6ba6378a30598f1487e193865bfa387f177f82660400a5eace887cfe5a6b7b';
 
-// Tokens
+// Tokens V1 (NBTC, NUSDC)
 export const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
 
-// Token Types
-export const NBTC_TYPE = `${TOKENS_PACKAGE}::nbtc::NBTC`;
-export const NUSDC_TYPE = `${TOKENS_PACKAGE}::nusdc::NUSDC`;
+// Tokens V2 (NETH, NSOL)
+export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
+export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 
-// Pool
-export const NBTC_NUSDC_POOL = '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0';
+// Token Types
+const NBTC_TYPE = `${TOKENS_PACKAGE}::nbtc::NBTC`;
+const NUSDC_TYPE = `${TOKENS_PACKAGE}::nusdc::NUSDC`;
+const NETH_TYPE = `${TOKENS_V2_PACKAGE}::neth::NETH`;
+const NSOL_TYPE = `${TOKENS_V2_PACKAGE}::nsol::NSOL`;
 
 // System
 export const CLOCK_ID = '0x6';
 
 // ========================================
-// Token Decimals
+// Market Configuration
 // ========================================
 
-export const NBTC_DECIMALS = 8;
-export const NUSDC_DECIMALS = 6;
+export interface MarketConfig {
+  name: string;           // Display name (NBTC, NETH, NSOL)
+  baseType: string;       // Full Move type for base token
+  quoteType: string;      // Full Move type for quote token (always NUSDC)
+  poolId: string;         // DeepBook V3 pool object ID
+  baseDecimals: number;   // Base token decimals
+  quoteDecimals: number;  // Quote token decimals (always 6 for NUSDC)
+  tickSize: bigint;       // Pool tick size
+  lotSize: bigint;        // Pool lot size
+  minSize: bigint;        // Pool minimum order size
+  binanceSymbol: string;  // Binance API ticker (BTCUSDT, ETHUSDT, SOLUSDT)
+  defaultMinPrice: number;
+  defaultMaxPrice: number;
+  defaultOrderSize: number;
+  faucetType: 'v1' | 'v2'; // Which faucet module to use for base token
+}
 
-// ========================================
-// Pool Configuration
-// ========================================
+export const MARKETS: Record<string, MarketConfig> = {
+  NBTC: {
+    name: 'NBTC',
+    baseType: NBTC_TYPE,
+    quoteType: NUSDC_TYPE,
+    poolId: '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0',
+    baseDecimals: 8,
+    quoteDecimals: 6,
+    tickSize: 100000n,      // $0.1
+    lotSize: 1000n,          // 0.00001 BTC
+    minSize: 1000n,
+    binanceSymbol: 'BTCUSDT',
+    defaultMinPrice: 50000,
+    defaultMaxPrice: 200000,
+    defaultOrderSize: 0.01,
+    faucetType: 'v1',
+  },
+  NETH: {
+    name: 'NETH',
+    baseType: NETH_TYPE,
+    quoteType: NUSDC_TYPE,
+    poolId: '0x531fed7acf9f5f7fe3a206bc079d69d39db0bf8e22ff703c3fe0817edf9c0714',
+    baseDecimals: 18,
+    quoteDecimals: 6,
+    tickSize: 10000n,                // $0.01
+    lotSize: 1000000000000000n,      // 0.001 ETH (10^15)
+    minSize: 1000000000000000n,
+    binanceSymbol: 'ETHUSDT',
+    defaultMinPrice: 1000,
+    defaultMaxPrice: 10000,
+    defaultOrderSize: 0.1,
+    faucetType: 'v2',
+  },
+  NSOL: {
+    name: 'NSOL',
+    baseType: NSOL_TYPE,
+    quoteType: NUSDC_TYPE,
+    poolId: '0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769',
+    baseDecimals: 9,
+    quoteDecimals: 6,
+    tickSize: 10000n,         // $0.01
+    lotSize: 1000000000n,     // 1.0 SOL (10^9)
+    minSize: 1000000000n,
+    binanceSymbol: 'SOLUSDT',
+    defaultMinPrice: 10,
+    defaultMaxPrice: 1000,
+    defaultOrderSize: 10,
+    faucetType: 'v2',
+  },
+};
 
-// Pool configuration (from on-chain PoolInner)
-export const TICK_SIZE = 100000n; // 0.1 USDC
-export const LOT_SIZE = 1000n;    // 0.00001 BTC
-export const MIN_SIZE = 1000n;    // 0.00001 BTC minimum order
+// Active market (from LP_MARKET env var)
+const marketName = process.env.LP_MARKET || 'NBTC';
+export const MARKET: MarketConfig = (() => {
+  const m = MARKETS[marketName];
+  if (!m) {
+    throw new Error(`Unknown market: ${marketName}. Available: ${Object.keys(MARKETS).join(', ')}`);
+  }
+  return m;
+})();
 
 // ========================================
 // LP Bot Configuration
@@ -55,69 +129,62 @@ export const MIN_SIZE = 1000n;    // 0.00001 BTC minimum order
 
 export interface LPConfig {
   // Spread settings
-  spreadBps: number;          // Base spread in basis points (30 = 0.3%)
-  levelSpacingBps: number;    // Spacing between levels (10 = 0.1%)
-  orderLevels: number;        // Number of orders per side (5 = 5 bids + 5 asks)
+  spreadBps: number;
+  levelSpacingBps: number;
+  orderLevels: number;
 
   // Order sizing
-  orderSizeNbtc: number;      // Order size in BTC per level
+  orderSize: number;  // Base token units per order level
 
   // Timing
-  updateIntervalMs: number;   // Main loop interval in milliseconds
-  requoteThresholdBps: number; // Re-quote if price moves more than this
+  updateIntervalMs: number;
+  requoteThresholdBps: number;
 
   // Inventory management
-  refillThresholdNbtc: number;  // Request faucet if NBTC below this
-  refillThresholdNusdc: number; // Request faucet if NUSDC below this
+  refillThresholdBase: number;
+  refillThresholdQuote: number;
 
   // Risk controls
-  maxOrderSizeNbtc: number;    // Maximum order size allowed
-  minSpreadBps: number;        // Minimum spread floor
-  maxConsecutiveFailures: number; // Circuit breaker threshold
-  minPriceUsd: number;         // Minimum acceptable BTC price
-  maxPriceUsd: number;         // Maximum acceptable BTC price
+  maxOrderSize: number;
+  minSpreadBps: number;
+  maxConsecutiveFailures: number;
+  minPriceUsd: number;
+  maxPriceUsd: number;
 
   // Gas management
-  gasRefillThreshold: number;  // Request gas faucet if native balance below this (in NASUN)
+  gasRefillThreshold: number;
 
   // Arbitrage settings
-  enableArbitrage: boolean;         // Enable/disable arbitrage
-  minArbitrageProfitBps: number;    // Minimum profit threshold (default: 10 = 0.1%)
-  maxArbitrageQuantityNbtc: number; // Max quantity per arbitrage trade
+  enableArbitrage: boolean;
+  minArbitrageProfitBps: number;
+  maxArbitrageQuantity: number;
 }
 
 export function loadConfig(): LPConfig {
   const config = {
-    // Spread settings
     spreadBps: parseInt(process.env.LP_SPREAD_BPS || '30', 10),
     levelSpacingBps: parseInt(process.env.LP_LEVEL_SPACING_BPS || '10', 10),
     orderLevels: parseInt(process.env.LP_ORDER_LEVELS || '30', 10),
 
-    // Order sizing
-    orderSizeNbtc: parseFloat(process.env.LP_ORDER_SIZE || '0.01'),
+    orderSize: parseFloat(process.env.LP_ORDER_SIZE || String(MARKET.defaultOrderSize)),
 
-    // Timing
     updateIntervalMs: parseInt(process.env.LP_UPDATE_INTERVAL || '10000', 10),
     requoteThresholdBps: parseInt(process.env.LP_REQUOTE_THRESHOLD || '50', 10),
 
-    // Inventory management
-    refillThresholdNbtc: parseFloat(process.env.LP_REFILL_THRESHOLD_NBTC || '0.5'),
-    refillThresholdNusdc: parseFloat(process.env.LP_REFILL_THRESHOLD_NUSDC || '50000'),
+    refillThresholdBase: parseFloat(process.env.LP_REFILL_THRESHOLD_BASE || '0.5'),
+    refillThresholdQuote: parseFloat(process.env.LP_REFILL_THRESHOLD_QUOTE || '50000'),
 
-    // Risk controls
-    maxOrderSizeNbtc: parseFloat(process.env.LP_MAX_ORDER_SIZE || '0.1'),
+    maxOrderSize: parseFloat(process.env.LP_MAX_ORDER_SIZE || '0.1'),
     minSpreadBps: parseInt(process.env.LP_MIN_SPREAD_BPS || '10', 10),
     maxConsecutiveFailures: parseInt(process.env.LP_MAX_FAILURES || '5', 10),
-    minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || '50000'),
-    maxPriceUsd: parseFloat(process.env.LP_MAX_PRICE || '200000'),
+    minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || String(MARKET.defaultMinPrice)),
+    maxPriceUsd: parseFloat(process.env.LP_MAX_PRICE || String(MARKET.defaultMaxPrice)),
 
-    // Gas management
     gasRefillThreshold: parseFloat(process.env.LP_GAS_REFILL_THRESHOLD || '0.5'),
 
-    // Arbitrage settings
-    enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false', // Enabled by default
+    enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false',
     minArbitrageProfitBps: parseInt(process.env.LP_MIN_ARB_PROFIT_BPS || '10', 10),
-    maxArbitrageQuantityNbtc: parseFloat(process.env.LP_MAX_ARB_QUANTITY || '0.5'),
+    maxArbitrageQuantity: parseFloat(process.env.LP_MAX_ARB_QUANTITY || '0.5'),
   };
 
   // Validate configuration bounds
@@ -130,8 +197,8 @@ export function loadConfig(): LPConfig {
   if (config.spreadBps < 1 || config.spreadBps > 10000) {
     throw new Error('LP_SPREAD_BPS must be between 1 and 10000');
   }
-  if (config.orderSizeNbtc <= 0 || config.orderSizeNbtc > 10) {
-    throw new Error('LP_ORDER_SIZE must be between 0 and 10 BTC');
+  if (config.orderSize <= 0) {
+    throw new Error('LP_ORDER_SIZE must be positive');
   }
   if (config.minPriceUsd >= config.maxPriceUsd) {
     throw new Error('LP_MIN_PRICE must be less than LP_MAX_PRICE');
@@ -168,14 +235,14 @@ export const SELF_MATCHING = {
 // ========================================
 
 export interface OrderSpec {
-  price: bigint;     // Raw price in NUSDC units (6 decimals)
-  quantity: bigint;  // Raw quantity in NBTC units (8 decimals)
-  isBid: boolean;    // true = buy, false = sell
+  price: bigint;     // Raw price in quote token units
+  quantity: bigint;  // Raw quantity in base token units
+  isBid: boolean;
 }
 
 export interface Inventory {
-  nbtc: number;      // NBTC balance (human readable)
-  nusdc: number;     // NUSDC balance (human readable)
+  base: number;      // Base token balance (human readable)
+  quote: number;     // Quote token balance (human readable)
 }
 
 export interface BotState {
@@ -183,7 +250,7 @@ export interface BotState {
   consecutiveFailures: number;
   clientOrderIdCounter: bigint;
   balanceManagerId: string | null;
-  justInitialized: boolean;  // Skip refill on first run after init
+  justInitialized: boolean;
 }
 
 // ========================================
@@ -191,52 +258,49 @@ export interface BotState {
 // ========================================
 
 /**
- * Convert human-readable price to raw NUSDC units
- * Example: 100000 USD -> 100000000000 (100000 * 10^6)
+ * Convert human-readable price to raw quote token units
  */
 export function priceToRaw(price: number): bigint {
-  return BigInt(Math.round(price * Math.pow(10, NUSDC_DECIMALS)));
+  return BigInt(Math.round(price * Math.pow(10, MARKET.quoteDecimals)));
 }
 
 /**
- * Convert human-readable BTC amount to raw NBTC units
- * Example: 0.01 BTC -> 1000000 (0.01 * 10^8)
+ * Convert human-readable base amount to raw base token units
  */
 export function quantityToRaw(quantity: number): bigint {
-  return BigInt(Math.round(quantity * Math.pow(10, NBTC_DECIMALS)));
+  return BigInt(Math.round(quantity * Math.pow(10, MARKET.baseDecimals)));
 }
 
 /**
- * Convert raw NBTC units to human-readable BTC
+ * Convert raw base token units to human-readable
  */
 export function rawToQuantity(raw: bigint): number {
-  return Number(raw) / Math.pow(10, NBTC_DECIMALS);
+  return Number(raw) / Math.pow(10, MARKET.baseDecimals);
 }
 
 /**
- * Convert raw NUSDC units to human-readable USD
+ * Convert raw quote token units to human-readable
  */
 export function rawToPrice(raw: bigint): number {
-  return Number(raw) / Math.pow(10, NUSDC_DECIMALS);
+  return Number(raw) / Math.pow(10, MARKET.quoteDecimals);
 }
 
 /**
  * Round price to tick size
  */
 export function roundToTickSize(priceRaw: bigint): bigint {
-  return (priceRaw / TICK_SIZE) * TICK_SIZE;
+  return (priceRaw / MARKET.tickSize) * MARKET.tickSize;
 }
 
 /**
  * Round quantity to lot size
  */
 export function roundToLotSize(quantityRaw: bigint): bigint {
-  return (quantityRaw / LOT_SIZE) * LOT_SIZE;
+  return (quantityRaw / MARKET.lotSize) * MARKET.lotSize;
 }
 
 /**
  * Check if an error message indicates gas exhaustion.
- * Uses multiple patterns to be resilient against SDK error message changes.
  */
 export function isGasExhaustedError(error: string): boolean {
   const patterns = [

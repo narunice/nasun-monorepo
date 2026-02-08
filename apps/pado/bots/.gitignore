@@ -1,5 +1,8 @@
 # Bot state (contains BalanceManager IDs per address)
-.lp-bot-state.json
+.lp-bot-state*.json
+
+# TP/SL order data (contains user addresses and trade cap IDs)
+data/
 
 # Logs
 logs/

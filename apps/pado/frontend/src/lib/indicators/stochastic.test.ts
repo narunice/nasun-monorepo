@@ -2,19 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { calculateStochastic } from './stochastic';
 import type { CandlestickData, Time } from 'lightweight-charts';
 
-function makeCandles(
-  data: Array<{ close: number; high: number; low: number }>,
-  startTime = 1000
-): CandlestickData[] {
-  return data.map((d, i) => ({
-    time: (startTime + i * 60) as Time,
-    open: d.close,
-    high: d.high,
-    low: d.low,
-    close: d.close,
-  }));
-}
-
 function makeSimpleCandles(closes: number[], startTime = 1000): CandlestickData[] {
   return closes.map((close, i) => ({
     time: (startTime + i * 60) as Time,

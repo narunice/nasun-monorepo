@@ -4,7 +4,7 @@ import { NETWORK } from '@nasun/devnet-config';
 export const NETWORK_CONFIG = {
   rpcUrl: import.meta.env.VITE_RPC_URL || 'https://rpc.devnet.nasun.io',
   faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
-  chainId: import.meta.env.VITE_CHAIN_ID || '12bf3808',
+  chainId: import.meta.env.VITE_CHAIN_ID || '272218f1',
   explorerUrl: import.meta.env.VITE_EXPLORER_URL || NETWORK.explorerUrl,
 
   // DeepBook V3
@@ -91,7 +91,7 @@ export function getNetworkType(): NetworkType {
   const { rpcUrl, chainId } = NETWORK_CONFIG;
 
   // Chain ID based detection (primary)
-  if (chainId === '12bf3808') return 'devnet'; // Nasun Devnet V6
+  if (chainId === '272218f1') return 'devnet'; // Nasun Devnet V7
 
   // RPC URL based detection (fallback)
   if (rpcUrl.includes('devnet')) return 'devnet';
