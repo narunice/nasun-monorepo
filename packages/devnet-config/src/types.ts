@@ -77,11 +77,16 @@ export interface BaramConfig {
   attestationRegistry: ObjectId;
   attestationAdminCap: ObjectId;
   attestationUpgradeCap: ObjectId;
-  // Compliance (ECR)
+  // Compliance (ECR) — FROZEN, replaced by AER
   compliancePackageId: ObjectId;
   complianceRegistry: ObjectId;
   complianceAdminCap: ObjectId;
   complianceUpgradeCap: ObjectId;
+  // AER (AI Execution Report)
+  aerPackageId: ObjectId;
+  aerRegistry: ObjectId;
+  aerAdminCap: ObjectId;
+  aerUpgradeCap: ObjectId;
   // Budget type origin (package ID where budget module was first introduced)
   budgetTypeOrigin: ObjectId;
   // Beta Access NFT

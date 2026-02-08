@@ -43,33 +43,56 @@ export interface CoinRef {
   digest: string;
 }
 
-// ECR (ExecutionComplianceRecord) — mirrors compliance.move fields
-export interface ECRData {
+// AER Status codes — mirrors aer.move
+export const AER_STATUS_NAMES: Record<number, string> = {
+  0: 'Settled',
+  1: 'Disputed',
+  2: 'Slashed',
+};
+
+// AER (AI Execution Report) — mirrors aer.move fields (8 categories, 31 fields)
+export interface AERData {
   objectId: string;
   requestId: number;
-  requester: string;
+  // 1. WHO — Requester
+  initiator: string;
+  authorizer: string;
+  delegationPath: string[];
+  // 2. WHO — Executor
   executor: string;
-  model: string;
-  promptHash: string;
-  resultHash: string;
+  executorPrincipal: string | null;
+  // 3. HOW MUCH
+  paymentAmount: number;
+  paymentToken: number;
+  executorReceived: number;
+  feeDetail: string | null;
+  budgetId: string | null;
+  budgetRemaining: number | null;
+  // 4. WHAT
+  modelName: string;
+  modelMetadata: string | null;
+  inputHash: string;
+  outputHash: string;
   executionTimeMs: number;
-  teeType: number;
-  teeTypeName: string;
-  pcr0: string;
-  attestationHash: string;
-  pcrBaselineVersion: number;
-  pcrVerified: boolean;
-  executorReputation: number;
-  executorStakeAmount: number;
-  executorSlashCount: number;
+  // 5. WHY
+  purpose: string | null;
+  policyVersion: number | null;
+  constraints: string | null;
+  // 6. HOW TRUSTWORTHY
   executorTier: TierLevel;
   executorTierName: string;
-  paymentAmount: number;
-  requestCreatedAt: number;
+  executorReputation: number;
+  executorStakeAmount: number;
+  teeVerified: boolean;
+  teeAttestationHash: string | null;
+  // 7. WHEN
+  requestedAt: number;
   settledAt: number;
-  policyVersion: number;
-  timeoutMs: number;
-  minPrice: number;
+  status: number;
+  statusName: string;
+  // 8. CHAIN
+  triggeredBy: string | null;
+  triggeredAction: string | null;
 }
 
 // SDK configuration
@@ -85,7 +108,7 @@ export interface BaramConfig {
     processedRequestsId: string;
     tierRegistryId: string;
   };
-  compliance: {
+  aer: {
     packageId: string;
     registryId: string;
   };
@@ -121,7 +144,7 @@ export interface ExecuteResult {
   resultHash: string;
   txDigest: string;
   executionTimeMs: number;
-  ecr: ECRData | null;
+  aer: AERData | null;
   executor: ExecutorInfo;
   teeEncrypted: boolean;
 }

@@ -1,0 +1,33 @@
+{
+  "name": "@nasun/baram-executor-nitro",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TEE Executor for Baram - Local simulation with Nitro Enclave architecture",
+  "type": "module",
+  "scripts": {
+    "dev:enclave": "tsx watch --env-file=.env src/enclave/main.ts",
+    "dev:host": "tsx watch --env-file=.env src/host/main.ts",
+    "build": "tsc",
+    "start:enclave": "node dist/enclave/main.js",
+    "start:host": "node dist/host/main.js",
+    "test:client": "tsx --env-file=.env src/test-client.ts",
+    "docker:build": "docker-compose -f docker/docker-compose.yml build",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.45.2",
+    "aws-nitro-enclaves-nsm-node": "^0.0.2",
+    "cbor-x": "^1.6.0",
+    "express": "^4.18.2",
+    "node-llama-cpp": "^3.15.1",
+    "node-vsock": "^0.0.5",
+    "openai": "^4.20.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.2"
+  }
+}

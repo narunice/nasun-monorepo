@@ -2,7 +2,7 @@
  * @nasun/baram-sdk
  *
  * Node.js SDK for Baram AI Settlement Layer.
- * Enables programmatic access to Baram's escrow → execution → settlement → ECR pipeline.
+ * Enables programmatic access to Baram's escrow → execution → settlement → AER pipeline.
  *
  * Usage:
  *   import { BaramClient, createDevnetConfig } from '@nasun/baram-sdk';
@@ -19,7 +19,7 @@
  *   });
  *
  *   console.log(result.response);
- *   console.log(result.ecr?.objectId);
+ *   console.log(result.aer?.objectId);
  */
 
 // Client
@@ -44,7 +44,7 @@ export {
 export type {
   BaramConfig,
   ExecutorInfo,
-  ECRData,
+  AERData,
   CoinRef,
   BuildRequestParams,
   ExecuteParams,
@@ -65,6 +65,7 @@ export type {
 export {
   TIER_NAMES,
   TEE_TYPES,
+  AER_STATUS_NAMES,
   MODEL_PRICING,
   EXECUTOR_SELECTION,
   DORMANT_THRESHOLD_MS,
@@ -85,7 +86,7 @@ export { sha256, hexToBytes } from './services/encoding';
 export { getNusdcCoins } from './services/coin';
 export { fetchExecutors, selectExecutorWeightedRandom, calculateTierClient } from './services/executor';
 export { buildCreateRequestTransaction, buildCancelRequestTransaction } from './services/transaction';
-export { fetchECRByRequestId } from './services/ecr';
+export { fetchAERByRequestId } from './services/aer';
 
 // Budget services
 export {
