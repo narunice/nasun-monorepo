@@ -93,7 +93,7 @@ describe('BaramClient', () => {
       vi.mocked(selectExecutorWeightedRandom).mockReturnValue(null);
 
       await expect(
-        client.execute({ prompt: 'test', model: 'llama-3.1-8b-instant' }),
+        client.execute({ prompt: 'test', model: 'llama-3.3-70b-versatile' }),
       ).rejects.toThrow(NoExecutorError);
     });
   });
@@ -113,7 +113,7 @@ describe('BaramClient', () => {
         endpointUrl: 'https://tee.example.com',
         teeType: 1 as const,
         teeTypeName: 'AWS Nitro',
-        supportedModels: ['llama-3.1-8b-instant'],
+        supportedModels: ['llama-3.3-70b-versatile'],
         reputation: 500,
         completedJobs: 10,
         failedJobs: 0,
@@ -155,7 +155,7 @@ describe('BaramClient', () => {
 
       const result = await client.execute({
         prompt: 'Analyze BTC risk',
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
       });
 
       // Verify TEE encryption was used

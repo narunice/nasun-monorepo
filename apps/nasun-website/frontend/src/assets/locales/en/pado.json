@@ -255,7 +255,7 @@
     "section1": {
       "title": "1. Executive Summary",
       "p1": "Decentralized finance today is fragmented. Users bridge assets across chains, manage multiple wallets, and allocate capital into isolated protocols for trading, lending, or payments. This fragmentation reduces capital efficiency, increases operational risk, and limits adoption.",
-      "p2": "<0>Pado</0> unifies these functions into a single onchain financial system. Built on <0>Nasun</0>, an object-oriented, high-performance blockchain derived from Sui, Pado consolidates spot markets, derivatives, lending, staking, prediction markets, and payments into one <0>Smart Account</0> governed by a <0>Unified Risk Engine</0>.",
+      "p2": "<0>Pado</0> unifies these functions into a single onchain financial system. Built on <0>Nasun</0>, an object-oriented, high-performance blockchain, Pado consolidates spot markets, derivatives, lending, staking, prediction markets, and payments into one <0>Smart Account</0> governed by a <0>Unified Risk Engine</0>.",
       "p3": "By modeling assets and positions as programmable objects and executing them in parallel, Pado delivers exchange-grade performance while preserving non-custodial control, transparency, and onchain verifiability."
     },
     "section2": {
