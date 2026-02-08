@@ -305,6 +305,23 @@ export async function getWalletBalances(
   }
 }
 
+/**
+ * Get native gas coin (NASUN) balance for an address.
+ * Returns balance in NASUN (human readable, 9 decimals).
+ */
+export async function getGasBalance(
+  client: SuiClient,
+  address: string,
+): Promise<number> {
+  try {
+    const balance = await client.getBalance({ owner: address });
+    return Number(balance.totalBalance) / 1e9;
+  } catch (error) {
+    console.error(`[${timestamp()}] Error getting gas balance:`, error);
+    return 0;
+  }
+}
+
 // ========================================
 // Deposit Operations
 // ========================================
