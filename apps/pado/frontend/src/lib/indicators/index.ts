@@ -2,7 +2,7 @@
 // Extracted from PriceChart.tsx for reusability and testability
 
 // Moving Averages
-export { calculateMA, calculateEMA } from './movingAverage';
+export { calculateMA, calculateEMA, calculateEMALine } from './movingAverage';
 
 // RSI (Relative Strength Index)
 export { calculateRSI } from './rsi';
@@ -10,9 +10,18 @@ export { calculateRSI } from './rsi';
 // MACD (Moving Average Convergence Divergence)
 export { calculateMACD } from './macd';
 
+// Bollinger Bands
+export { calculateBollingerBands } from './bollingerBands';
+
+// Stochastic Oscillator
+export { calculateStochastic } from './stochastic';
+
+// ATR (Average True Range)
+export { calculateATR } from './atr';
+
 // Data Generators
 export { generateCandleData, generateVolumeData, fetchBinanceCandles, fetchBinance24hTicker, fetchBinanceRecentTrades, getBinanceSymbol } from './dataGenerator';
 export type { Binance24hTicker, RecentTrade } from './dataGenerator';
 
 // Types
-export type { CandleWithVolume, MACDResult, CandlestickData, Time, LineData, HistogramData } from './types';
+export type { CandleWithVolume, MACDResult, BollingerBandsResult, StochasticResult, CandlestickData, Time, LineData, HistogramData } from './types';

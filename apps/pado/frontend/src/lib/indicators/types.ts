@@ -12,5 +12,18 @@ export interface MACDResult {
   histogram: HistogramData[];
 }
 
+// Bollinger Bands result type
+export interface BollingerBandsResult {
+  upper: LineData[];
+  middle: LineData[];
+  lower: LineData[];
+}
+
+// Stochastic result type
+export interface StochasticResult {
+  k: LineData[];
+  d: LineData[];
+}
+
 // Re-export lightweight-charts types for convenience
 export type { CandlestickData, Time, LineData, HistogramData };
