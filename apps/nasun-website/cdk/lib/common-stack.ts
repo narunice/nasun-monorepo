@@ -21,7 +21,6 @@ export class CommonStack extends cdk.Stack {
   public readonly priceApiGateway: apigw.LambdaRestApi;
   public readonly priceUpdaterLambda: lambda.Function;
   public readonly userProfilesTable: dynamodb.ITable;
-  public readonly cumulativeLeaderboardTable: dynamodb.ITable;
 
   constructor(scope: Construct, id: string, props?: CommonStackProps) {
     super(scope, id, props);
@@ -29,11 +28,6 @@ export class CommonStack extends cdk.Stack {
     // ========================================
     // DynamoDB 테이블 참조 (기존 테이블 사용)
     // ========================================
-    this.cumulativeLeaderboardTable = dynamodb.Table.fromTableName(
-      this,
-      "CumulativeLeaderboardTable",
-      "nasun-leaderboard-data"
-    );
     const cryptoBackupPricesTable = dynamodb.Table.fromTableName(
       this,
       "CryptoBackupPricesTable",

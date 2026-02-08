@@ -140,32 +140,6 @@ fi
 cd "$CDK_ROOT"
 echo ""
 
-# Build sync-community-members (npm)
-echo "📦 Building sync-community-members..."
-cd "$CDK_ROOT/lambda-src/sync-community-members"
-
-if [ -f "package.json" ]; then
-  if [ ! -d "node_modules" ] || [ ! -f "package-lock.json" ]; then
-    echo "📥 Installing dependencies with npm..."
-    npm install --silent
-  fi
-
-  echo "🔨 Compiling with build script..."
-  npm run build
-
-  if [ -d "dist" ]; then
-    echo "✅ sync-community-members built successfully!"
-  else
-    echo "❌ sync-community-members build failed!"
-    exit 1
-  fi
-else
-  echo "⚠️  No package.json found in sync-community-members"
-fi
-
-cd "$CDK_ROOT"
-echo ""
-
 echo "✅ All Lambdas built successfully!"
 echo ""
 

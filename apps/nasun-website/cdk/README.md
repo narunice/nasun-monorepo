@@ -81,7 +81,7 @@ pnpm run deploy:safe
 ```
 
 This command:
-1. Builds all required Lambda functions (`auth-twitter`, `x-leaderboard`, etc.)
+1. Builds all required Lambda functions (`auth-twitter`, etc.)
 2. Verifies all required files exist
 3. Deploys all CDK stacks (`CdkStack`, `AuthStack`, `MonitoringStack`)
 
@@ -150,8 +150,7 @@ cdk/
 │   ├── cdk-stack.ts       # Main application stack
 │   └── auth-stack.ts      # Independent authentication stack
 ├── lambda-src/            # Lambda function source code
-│   ├── auth-twitter/      # Twitter OAuth (TypeScript, npm)
-│   └── x-leaderboard/     # X Leaderboard system (TypeScript, esbuild)
+│   └── auth-twitter/      # Twitter OAuth (TypeScript, npm)
 ├── scripts/               # Build and deployment scripts
 │   ├── pre-deploy.sh     # Builds all Lambdas automatically
 │   └── verify-build.sh   # Verifies builds before deployment
@@ -186,21 +185,6 @@ cdk/
 - 502 errors → TypeScript not compiled (run `pnpm run deploy:safe` or deploy `AuthStack` individually)
 - Secret not found → Check `SECRET_NAME` matches AWS Secrets Manager
 
-### x-leaderboard (Leaderboard System)
-
-**Location**: `lambda-src/x-leaderboard/`
-
-**Build Requirements**:
-- esbuild compilation required
-- Uses `pnpm` (correctly configured)
-- Environment: Node.js 18.x
-
-**Functions**:
-- Score calculation
-- Leaderboard generation
-- Engagement data collection
-- Tweet processing
-
 ---
 
 ## Build Scripts
@@ -212,10 +196,9 @@ Automatically builds all Lambda functions before deployment.
 **What it does**:
 1. Detects `auth-twitter` using pnpm → converts to npm
 2. Compiles TypeScript files for `auth-twitter`
-3. Builds `x-leaderboard` with esbuild
-4. Builds `wallet-api` with pnpm
-5. Builds `PriceAPI` with pnpm
-6. Verifies all output files exist
+3. Builds `wallet-api` with pnpm
+4. Builds `PriceAPI` with pnpm
+5. Verifies all output files exist
 
 **Usage**:
 ```bash
@@ -233,7 +216,6 @@ Verifies that all Lambda functions are properly built before deployment.
 - `auth-twitter/src/handlers/*.js` exist
 - `auth-twitter/src/utils/*.js` exist
 - No pnpm symlinks in auth-twitter
-- `x-leaderboard/dist/` directory exists
 
 **Usage**:
 ```bash

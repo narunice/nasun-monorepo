@@ -1,8 +1,5 @@
 /**
  * Nasun Community Leaderboard V3 - Type Definitions
- *
- * This is a completely independent system from v2.
- * Do not import or depend on any v2 code.
  */
 
 // ============================================

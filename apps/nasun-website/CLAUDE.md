@@ -96,7 +96,6 @@ nasun-website/
 │   │   ├── auth-metamask/        # MetaMask 인증
 │   │   ├── auth-twitter/         # Twitter OAuth
 │   │   ├── link-account/         # 계정 연결
-│   │   ├── x-leaderboard/        # 리더보드
 │   │   └── nft-event/            # Battalion NFT Event
 │   │       ├── verify-eligibility/   # 3-Tier 검증
 │   │       ├── poll-engagement/      # Engagement 폴링
