@@ -283,7 +283,7 @@ cd apps/baram/executor-nitro
 |------|-----|
 | API Endpoint | `https://ncn10xkbfh.execute-api.ap-northeast-2.amazonaws.com/prod` |
 | Region | ap-northeast-2 |
-| Active Models | llama-3.1-8b-instant, llama-3.3-70b-versatile (Groq) |
+| Active Models | llama-3.3-70b-versatile (Groq), llama-3.2-3b-local (TEE) |
 
 ---
 

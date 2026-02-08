@@ -85,7 +85,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
     }
   }, [requestStatus, result, addMessage, reset, selectedExecutor, selectedModel]);
 
-  const isProcessing = requestStatus === 'creating' || requestStatus === 'executing';
+  const isProcessing = requestStatus === 'creating' || requestStatus === 'executing' || requestStatus === 'cancelling';
 
   const submit = useCallback(async (prompt: string) => {
     if (!prompt.trim() || isProcessing || !selectedExecutor) return;
@@ -101,6 +101,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
     const { MAX_RETRIES } = EXECUTOR_SELECTION;
     let currentExecutor: ExecutorInfo | null = selectedExecutor;
     const excluded = new Set<string>();
+    let lastError: string | null = null;
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       if (!currentExecutor) break;
@@ -110,7 +111,9 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
           previousMessages,
         });
         return; // Success
-      } catch {
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : 'Unknown error';
+        console.warn(`[RequestWithRetry] Attempt ${attempt + 1}/${MAX_RETRIES} failed:`, lastError);
         excluded.add(currentExecutor.id);
         currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier, selectedModel ?? undefined);
         if (currentExecutor) {
@@ -119,8 +122,15 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
       }
     }
 
-    // All retries exhausted
+    // All retries exhausted — show error in chat
     updateMessage(userMessageId, { failed: true });
+    addMessage({
+      role: 'assistant',
+      content: lastError
+        ? `Request failed: ${lastError}`
+        : 'Request failed after multiple attempts. Please try again.',
+      failed: true,
+    });
     setFailedExecutorIds(excluded);
   }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, executors, requiredMinTier, updateMessage]);
 

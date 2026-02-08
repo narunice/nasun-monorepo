@@ -31,6 +31,7 @@ import {
   clearAllData,
 } from '../services/chatStorage';
 import { deriveStorageKey } from '../services/chatCrypto';
+import { PRIVACY_MODE_CONFIG, DEFAULT_PRIVACY_MODE } from '../config/network';
 
 // Settings are stored in localStorage (non-sensitive)
 const SETTINGS_KEY = 'baram-chat-settings';
@@ -41,6 +42,7 @@ const SETTINGS_KEY = 'baram-chat-settings';
 // storage operations use the cached CryptoKey.
 interface ExtendedChatState extends ChatState {
   currentWalletAddress: string | null;
+  privacyMode: boolean;
 }
 
 // Initial state
@@ -53,11 +55,13 @@ const initialState: ExtendedChatState = {
   isLoading: false,
   isEncrypting: false,
   currentWalletAddress: null,
+  privacyMode: DEFAULT_PRIVACY_MODE,
 };
 
 // Extended actions with clearOnLogout
 interface ExtendedChatActions extends ChatActions {
   clearOnLogout: () => void;
+  setPrivacyMode: (mode: boolean) => void;
 }
 
 type ExtendedChatStore = ExtendedChatState & ExtendedChatActions;
@@ -294,6 +298,12 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
     saveSettingsToLocalStorage(get());
   },
 
+  setPrivacyMode: (mode: boolean) => {
+    const config = mode ? PRIVACY_MODE_CONFIG.private : PRIVACY_MODE_CONFIG.standard;
+    set({ privacyMode: mode, selectedModel: config.modelId });
+    saveSettingsToLocalStorage(get());
+  },
+
   // ============================================
   // Persistence (IndexedDB with AES-256-GCM encryption)
   // ============================================
@@ -324,11 +334,18 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
       // Load settings from localStorage (non-sensitive)
       const settings = loadSettingsFromLocalStorage();
 
+      // Derive selectedModel from privacyMode if no explicit model saved
+      const privacyMode = settings.privacyMode;
+      const modelFromPrivacy = privacyMode
+        ? PRIVACY_MODE_CONFIG.private.modelId
+        : PRIVACY_MODE_CONFIG.standard.modelId;
+
       set({
         sessions,
         activeSessionId,
         messages,
-        selectedModel: settings.selectedModel,
+        selectedModel: settings.selectedModel || modelFromPrivacy,
+        privacyMode,
         isLoading: false,
       });
 
@@ -401,12 +418,14 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
 
 interface StoredSettings {
   selectedModel: string | null;
+  privacyMode: boolean;
 }
 
 function saveSettingsToLocalStorage(state: ExtendedChatState): void {
   try {
     const settings: StoredSettings = {
       selectedModel: state.selectedModel,
+      privacyMode: state.privacyMode,
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (error) {
@@ -419,12 +438,15 @@ function loadSettingsFromLocalStorage(): StoredSettings {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { selectedModel: parsed.selectedModel ?? null };
+      return {
+        selectedModel: parsed.selectedModel ?? null,
+        privacyMode: parsed.privacyMode ?? DEFAULT_PRIVACY_MODE,
+      };
     }
   } catch (error) {
     console.warn('[ChatStore] Failed to load settings:', error);
   }
-  return { selectedModel: null };
+  return { selectedModel: null, privacyMode: DEFAULT_PRIVACY_MODE };
 }
 
 // ============================================
@@ -447,7 +469,9 @@ export function useChatSettings() {
   return useChatStore((state) => ({
     executorId: state.selectedExecutorId,
     model: state.selectedModel,
+    privacyMode: state.privacyMode,
     setExecutor: state.setSelectedExecutor,
     setModel: state.setSelectedModel,
+    setPrivacyMode: state.setPrivacyMode,
   }));
 }

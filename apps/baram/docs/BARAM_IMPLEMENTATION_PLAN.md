@@ -337,7 +337,7 @@ cd apps/baram/executor-nitro
 ### Groq-only (OpenAI 제거 완료)
 
 OpenAI 모델(`gpt-4o`, `gpt-4-turbo`, `gpt-4o-mini`)과 `mistral-saba-24b`를 코드에서 완전 제거.
-Lambda, CDK, TEE Host 모두 Groq만 사용. 활성 모델: `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`.
+Lambda, CDK, TEE Host 모두 Groq만 사용. 활성 모델: `llama-3.3-70b-versatile` (Standard), `llama-3.2-3b-local` (Private/TEE).
 
 ### Chat History Migration (DB v2)
 
@@ -440,9 +440,8 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 | 모델 | Provider | 상태 |
 |------|----------|------|
-| llama-3.1-8b-instant | Groq | ✅ 정상 |
-| llama-3.3-70b-versatile | Groq | ✅ 정상 |
-| llama-3.2-3b-local | TEE | ✅ 정상 |
+| llama-3.3-70b-versatile | Groq | ✅ 정상 (Standard mode) |
+| llama-3.2-3b-local | TEE | ✅ 정상 (Private mode) |
 
 ### Frontend Build
 

@@ -6,7 +6,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSigner, useWallet } from '@nasun/wallet';
+import { useSigner } from '@nasun/wallet';
+import { useIsConnected } from '@/hooks/useWalletSession';
 import { suiClient } from '@/config/client';
 import { useBudgetStore, type BudgetInfo } from '@/stores/budgetStore';
 import { getNusdcCoins } from '@/features/request/services/coinService';
@@ -43,8 +44,7 @@ interface UseBudgetsReturn {
 
 export function useBudgets(): UseBudgetsReturn {
   const { signer, address } = useSigner();
-  const { status } = useWallet();
-  const isConnected = status === 'connected';
+  const isConnected = useIsConnected();
 
   const {
     budgets,
@@ -140,7 +140,8 @@ export function useBudgets(): UseBudgetsReturn {
         const digest = await signAndExecute(tx);
 
         if (digest) {
-          // Refresh budgets after creation
+          // Wait for indexer to process the new BudgetReceipt before refreshing
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
           await refresh();
         }
         return digest;
@@ -162,6 +163,7 @@ export function useBudgets(): UseBudgetsReturn {
         const tx = buildDepositToBudgetTransaction(budgetId, coins, amount);
         const digest = await signAndExecute(tx);
         if (digest) {
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
           await refreshBudget(suiClient, budgetId);
         }
         return !!digest;
@@ -182,6 +184,7 @@ export function useBudgets(): UseBudgetsReturn {
         const tx = buildWithdrawFromBudgetTransaction(budgetId, amount);
         const digest = await signAndExecute(tx);
         if (digest) {
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
           await refreshBudget(suiClient, budgetId);
         }
         return !!digest;
@@ -202,6 +205,7 @@ export function useBudgets(): UseBudgetsReturn {
         const tx = buildDeactivateBudgetTransaction(budgetId);
         const digest = await signAndExecute(tx);
         if (digest) {
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
           await refresh();
         }
         return !!digest;
@@ -214,6 +218,11 @@ export function useBudgets(): UseBudgetsReturn {
     },
     [address, signAndExecute, refresh]
   );
+
+  const resetTxStatus = useCallback(() => {
+    setTxStatus('idle');
+    setTxError(null);
+  }, []);
 
   return {
     budgets,
@@ -228,5 +237,6 @@ export function useBudgets(): UseBudgetsReturn {
     depositToBudget,
     withdrawFromBudget,
     deactivateBudget,
+    resetTxStatus,
   };
 }

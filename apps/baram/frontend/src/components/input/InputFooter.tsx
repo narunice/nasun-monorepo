@@ -1,50 +1,33 @@
 /**
- * InputFooter - Shows current model, price, and executor info below input
+ * InputFooter - Shows privacy mode, model info, and request stats below input
  */
 
-import { MODEL_PRICING, ModelId } from '@/config/network';
-import type { ExecutorInfo } from '@/features/request/hooks/useExecutors';
+import { MODEL_PRICING, ModelId, PRIVACY_MODE_CONFIG } from '@/config/network';
 
 interface InputFooterProps {
   selectedModel: ModelId | string | null;
-  selectedExecutor: ExecutorInfo | null;
+  privacyMode: boolean;
   requestId?: number;
   executionTime?: number;
 }
 
 export function InputFooter({
   selectedModel,
-  selectedExecutor,
+  privacyMode,
   requestId,
   executionTime,
 }: InputFooterProps) {
   const modelConfig = selectedModel ? MODEL_PRICING[selectedModel as ModelId] : null;
-  const priceDisplay = !modelConfig
-    ? '-'
-    : modelConfig.price === 0
-      ? 'Free'
-      : `${(modelConfig.price / 1e6).toFixed(2)} NUSDC`;
+  const modeConfig = privacyMode ? PRIVACY_MODE_CONFIG.private : PRIVACY_MODE_CONFIG.standard;
 
   return (
     <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mt-2 px-1">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span>{modelConfig?.name || 'Select model'}</span>
-        <span className="text-[var(--color-border)]">|</span>
-        <span className={modelConfig?.price === 0 ? 'text-[var(--color-success)]' : ''}>
-          {priceDisplay}
+      <div className="flex items-center gap-2">
+        <span className={privacyMode ? 'text-[var(--color-success)]' : ''}>
+          {modeConfig.label}
         </span>
-        {selectedExecutor && selectedExecutor.teeType > 0 && (
-          <>
-            <span className="text-[var(--color-border)]">|</span>
-            <span>{selectedExecutor.teeTypeName}</span>
-          </>
-        )}
-        {modelConfig && modelConfig.provider !== 'tee' && (
-          <>
-            <span className="text-[var(--color-border)]">|</span>
-            <span className="text-[var(--color-warning,#f59e0b)]">No TEE encryption</span>
-          </>
-        )}
+        <span className="text-[var(--color-border)]">|</span>
+        <span>{modelConfig?.name || 'Select model'}</span>
       </div>
       <div className="flex items-center gap-2">
         {requestId !== undefined && (

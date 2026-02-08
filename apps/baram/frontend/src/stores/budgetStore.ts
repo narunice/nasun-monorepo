@@ -69,19 +69,33 @@ export const useBudgetStore = create<BudgetState & BudgetActions>()((set, get) =
   fetchBudgets: async (client: SuiClient, ownerAddress: string) => {
     set({ isLoading: true, error: null });
     try {
-      const budgetType = `${BARAM_CONFIG.packageId}::budget::Budget`;
+      // Budget is a shared object — query BudgetReceipt (owned) to find budget IDs
+      // Use budgetTypeOrigin (runtime type origin) for type filtering, not the latest packageId
+      const receiptType = `${BARAM_CONFIG.budgetTypeOrigin}::budget::BudgetReceipt`;
       const result = await client.getOwnedObjects({
         owner: ownerAddress,
-        filter: { StructType: budgetType },
+        filter: { StructType: receiptType },
         options: { showContent: true },
       });
 
       const budgets: BudgetInfo[] = [];
       for (const obj of result.data) {
         if (obj.data?.content?.dataType !== 'moveObject') continue;
-        const fields = obj.data.content.fields as Record<string, unknown>;
-        const id = (fields.id as { id: string })?.id ?? obj.data.objectId;
-        budgets.push(parseBudgetFields(fields, id));
+        const receiptFields = obj.data.content.fields as Record<string, unknown>;
+        const budgetId = receiptFields.budget_id as string;
+        if (!budgetId) continue;
+
+        try {
+          const budgetObj = await client.getObject({
+            id: budgetId,
+            options: { showContent: true },
+          });
+          if (budgetObj.data?.content?.dataType !== 'moveObject') continue;
+          const fields = budgetObj.data.content.fields as Record<string, unknown>;
+          budgets.push(parseBudgetFields(fields, budgetId));
+        } catch {
+          // Budget may have been deleted or is inaccessible
+        }
       }
 
       // Sort by creation date descending

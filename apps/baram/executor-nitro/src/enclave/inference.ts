@@ -30,7 +30,7 @@ import {
 /**
  * AI provider type
  */
-type AIProvider = 'openai' | 'groq';
+type AIProvider = 'groq';
 
 /**
  * Model configuration with provider routing
@@ -45,16 +45,6 @@ interface ModelConfig {
  * Supported models and their configurations
  */
 const MODEL_CONFIG: Record<string, ModelConfig> = {
-  'gpt-4o': {
-    provider: 'openai',
-    maxTokens: 2048,
-    systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',
-  },
-  'llama-3.1-8b-instant': {
-    provider: 'groq',
-    maxTokens: 2048,
-    systemPrompt: 'You are a helpful assistant. Respond concisely and accurately.',
-  },
   'llama-3.3-70b-versatile': {
     provider: 'groq',
     maxTokens: 8192,

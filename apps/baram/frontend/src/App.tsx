@@ -12,7 +12,6 @@ import { ThemeProvider } from "./components/theme/ThemeProvider";
 import { ThemeToggle } from "./components/theme/ThemeToggle";
 import { ChatLayout } from "./layouts/ChatLayout";
 import { ChatInput } from "./components/input/ChatInput";
-import { InputFooter } from "./components/input/InputFooter";
 import { WelcomeScreen } from "./components/empty/WelcomeScreen";
 import { LandingScreen } from "./components/empty/LandingScreen";
 import { MessageList } from "./components/chat/MessageList";
@@ -21,7 +20,7 @@ import { useWalletSession } from "./hooks/useWalletSession";
 import { useNFTGate } from "./hooks/useNFTGate";
 import { NFTGateScreen } from "./components/empty/NFTGateScreen";
 import { useRequestWithRetry } from "./features/request/hooks/useRequestWithRetry";
-import { NETWORK_CONFIG, ModelId, DEFAULT_MODEL, MODEL_PRICING } from "./config/network";
+import { NETWORK_CONFIG, ModelId, MODEL_PRICING } from "./config/network";
 import { useChatStore } from "./stores/chatStore";
 import AuthCallback from "./pages/AuthCallback";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -45,14 +44,15 @@ function AppContent() {
   const createSession = useChatStore((state) => state.createSession);
   const activeSessionId = useChatStore((state) => state.activeSessionId);
   const selectedModel = useChatStore((state) => state.selectedModel);
-  const setSelectedModel = useChatStore((state) => state.setSelectedModel);
+  const privacyMode = useChatStore((state) => state.privacyMode);
+  const setPrivacyMode = useChatStore((state) => state.setPrivacyMode);
 
-  // Auto-select default model
+  // Auto-select model from privacy mode on mount
   useEffect(() => {
     if (!selectedModel) {
-      setSelectedModel(DEFAULT_MODEL);
+      setPrivacyMode(privacyMode);
     }
-  }, [selectedModel, setSelectedModel]);
+  }, [selectedModel, privacyMode, setPrivacyMode]);
 
   // Create session if none exists
   useEffect(() => {
@@ -100,15 +100,18 @@ function AppContent() {
                   ? "No eligible executors available"
                   : "Ask anything..."
         }
+        privacyMode={privacyMode}
+        onTogglePrivacy={(mode) => setPrivacyMode(mode)}
+        modelName={selectedModel ? MODEL_PRICING[selectedModel as ModelId]?.name : undefined}
       />
 
-      {/* Footer Info */}
-      <InputFooter
-        selectedModel={selectedModel as ModelId}
-        selectedExecutor={selectedExecutor}
-        requestId={result?.requestId}
-        executionTime={result?.executionTimeMs}
-      />
+      {/* Request stats (only shown after a request) */}
+      {(result?.requestId !== undefined || result?.executionTimeMs !== undefined) && (
+        <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] px-1">
+          {result?.requestId !== undefined && <span>Request #{result.requestId}</span>}
+          {result?.executionTimeMs !== undefined && <span>{(result.executionTimeMs / 1000).toFixed(2)}s</span>}
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

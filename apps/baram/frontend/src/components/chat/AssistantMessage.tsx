@@ -14,6 +14,7 @@ interface AssistantMessageProps {
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
   autoShowAuditTrail?: boolean;
+  failed?: boolean;
 }
 
 export function AssistantMessage({
@@ -23,6 +24,7 @@ export function AssistantMessage({
   isProcessing = false,
   isTeeExecutor = false,
   autoShowAuditTrail = false,
+  failed = false,
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
   const autoShownRef = useRef(false);
@@ -53,15 +55,25 @@ export function AssistantMessage({
     <div className="w-full py-3">
       {/* Header - Icon + Name */}
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-6 h-6 rounded-full bg-br-1/10 flex items-center justify-center flex-shrink-0">
-          <svg className="w-4 h-4 text-br-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-            />
-          </svg>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+          failed ? 'bg-[var(--color-error)]/10' : 'bg-br-1/10'
+        }`}>
+          {failed ? (
+            <svg className="w-4 h-4 text-[var(--color-error)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-br-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
+            </svg>
+          )}
         </div>
         <span className="text-sm font-medium text-[var(--color-text-primary)]">Baram AI</span>
         {timeString && (
@@ -86,7 +98,9 @@ export function AssistantMessage({
         </div>
       ) : (
         <>
-          <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap mb-3 pl-8">
+          <p className={`text-sm whitespace-pre-wrap mb-3 pl-8 ${
+            failed ? 'text-[var(--color-error)]' : 'text-[var(--color-text-primary)]'
+          }`}>
             {content}
           </p>
 
