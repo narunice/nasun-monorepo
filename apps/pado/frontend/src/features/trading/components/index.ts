@@ -19,3 +19,6 @@ export { BottomTabPanel } from './BottomTabPanel';
 export { TransferModal } from './TransferModal';
 export { TradingToggles } from './TradingToggles';
 export { ShortcutHelpTooltip } from './ShortcutHelpTooltip';
+export { MobileTradeLayout } from './MobileTradeLayout';
+export { MobileBottomBar } from './MobileBottomBar';
+export { TPSLKeeperBadge } from './TPSLKeeperBadge';
