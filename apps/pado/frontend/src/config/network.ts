@@ -18,9 +18,16 @@ export const NETWORK_CONFIG = {
   nbtcTreasuryCap: import.meta.env.VITE_NBTC_TREASURY_CAP,
   nusdcTreasuryCap: import.meta.env.VITE_NUSDC_TREASURY_CAP,
 
+  // Tokens V2 (NETH, NSOL)
+  tokensV2Package: import.meta.env.VITE_TOKENS_V2_PACKAGE || '',
+  nethType: import.meta.env.VITE_NETH_TYPE || '',
+  nsolType: import.meta.env.VITE_NSOL_TYPE || '',
+
   // Pools
   poolNbtcNusdc: import.meta.env.VITE_POOL_NBTC_NUSDC,
   poolNasunNusdc: import.meta.env.VITE_POOL_NASUN_NUSDC,
+  poolNethNusdc: import.meta.env.VITE_POOL_NETH_NUSDC || '',
+  poolNsolNusdc: import.meta.env.VITE_POOL_NSOL_NUSDC || '',
 
   // Token Faucet
   faucetPackage: import.meta.env.VITE_FAUCET_PACKAGE,
@@ -55,6 +62,18 @@ export const TOKENS = {
     name: 'Nasun USDC',
     decimals: 6,
     type: NETWORK_CONFIG.nusdcType,
+  },
+  NETH: {
+    symbol: 'NETH',
+    name: 'Nasun ETH',
+    decimals: 18,
+    type: NETWORK_CONFIG.nethType,
+  },
+  NSOL: {
+    symbol: 'NSOL',
+    name: 'Nasun SOL',
+    decimals: 9,
+    type: NETWORK_CONFIG.nsolType,
   },
 } as const;
 
@@ -104,5 +123,23 @@ export const POOLS = {
     lotSize: 1000000000, // 1.0 NASUN (on-chain verified)
     makerFeeBps: 5,     // 5 bps = 0.05% (on-chain verified)
     takerFeeBps: 10,    // 10 bps = 0.10% (on-chain verified)
+  },
+  NETH_NUSDC: {
+    id: NETWORK_CONFIG.poolNethNusdc,
+    baseToken: TOKENS.NETH,
+    quoteToken: TOKENS.NUSDC,
+    tickSize: 10000,    // $0.01
+    lotSize: 1000000000000000, // 0.001 ETH (18 decimals)
+    makerFeeBps: 5,
+    takerFeeBps: 10,
+  },
+  NSOL_NUSDC: {
+    id: NETWORK_CONFIG.poolNsolNusdc,
+    baseToken: TOKENS.NSOL,
+    quoteToken: TOKENS.NUSDC,
+    tickSize: 10000,    // $0.01
+    lotSize: 1000000000, // 1.0 SOL (9 decimals)
+    makerFeeBps: 5,
+    takerFeeBps: 10,
   },
 } as const;

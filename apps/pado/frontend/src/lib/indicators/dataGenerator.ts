@@ -42,6 +42,8 @@ export function generateCandleData(
 // Binance symbol mapping for tokens with external market data
 const BINANCE_SYMBOL_MAP: Record<string, string> = {
   'NBTC': 'BTCUSDT',
+  'NETH': 'ETHUSDT',
+  'NSOL': 'SOLUSDT',
   'NASUN': '', // No external data
 };
 

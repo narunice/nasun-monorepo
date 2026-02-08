@@ -24,6 +24,16 @@ export const MARKETS: { key: MarketKey; label: string; pool: PoolConfig }[] = [
     label: 'NASUN/NUSDC',
     pool: POOLS.NASUN_NUSDC,
   },
+  {
+    key: 'NETH_NUSDC',
+    label: 'NETH/NUSDC',
+    pool: POOLS.NETH_NUSDC,
+  },
+  {
+    key: 'NSOL_NUSDC',
+    label: 'NSOL/NUSDC',
+    pool: POOLS.NSOL_NUSDC,
+  },
 ];
 
 // Context 타입

@@ -84,6 +84,8 @@ export function useTotalValue(): UseTotalValueResult {
     const nasunWallet = Number(multiBalance?.native?.balance ?? 0n) / 10 ** TOKENS.NASUN.decimals;
     const nbtcWallet = Number(multiBalance?.tokens?.['NBTC']?.balance ?? 0n) / 10 ** TOKENS.NBTC.decimals;
     const nusdcWallet = Number(multiBalance?.tokens?.['NUSDC']?.balance ?? 0n) / 10 ** TOKENS.NUSDC.decimals;
+    const nethWallet = Number(multiBalance?.tokens?.['NETH']?.balance ?? 0n) / 10 ** TOKENS.NETH.decimals;
+    const nsolWallet = Number(multiBalance?.tokens?.['NSOL']?.balance ?? 0n) / 10 ** TOKENS.NSOL.decimals;
 
     // Parse trading balances (BalanceManager)
     const nbtcTrading = bmBalance?.base ?? 0;
@@ -98,16 +100,22 @@ export function useTotalValue(): UseTotalValueResult {
     const nasunTotal = nasunWallet;
     const nbtcTotal = nbtcWallet + nbtcTrading;
     const nusdcTotal = nusdcWallet + nusdcTrading + nusdcMargin;
+    const nethTotal = nethWallet;
+    const nsolTotal = nsolWallet;
 
     // Calculate USD values using unified prices
     const nasunValue = calculateUsdValue('NASUN', nasunTotal);
     const nbtcValue = calculateUsdValue('NBTC', nbtcTotal);
     const nusdcValue = calculateUsdValue('NUSDC', nusdcTotal);
+    const nethValue = calculateUsdValue('NETH', nethTotal);
+    const nsolValue = calculateUsdValue('NSOL', nsolTotal);
 
     // Calculate 24h P&L
     const nasunPnl = calculate24hPnl('NASUN', nasunValue);
     const nbtcPnl = calculate24hPnl('NBTC', nbtcValue);
     const nusdcPnl = calculate24hPnl('NUSDC', nusdcValue);
+    const nethPnl = calculate24hPnl('NETH', nethValue);
+    const nsolPnl = calculate24hPnl('NSOL', nsolValue);
 
     // Determine source for each token
     const getNasunSource = () => 'wallet' as const;
@@ -161,6 +169,30 @@ export function useTotalValue(): UseTotalValueResult {
       });
     }
 
+    if (nethTotal > 0) {
+      tokens.push({
+        symbol: 'NETH',
+        balance: nethTotal.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 }),
+        price: getUnifiedPrice('NETH'),
+        value: nethValue,
+        change24h: getPriceChange24h('NETH'),
+        pnl24h: nethPnl,
+        source: 'wallet',
+      });
+    }
+
+    if (nsolTotal > 0) {
+      tokens.push({
+        symbol: 'NSOL',
+        balance: nsolTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
+        price: getUnifiedPrice('NSOL'),
+        value: nsolValue,
+        change24h: getPriceChange24h('NSOL'),
+        pnl24h: nsolPnl,
+        source: 'wallet',
+      });
+    }
+
     // Pado Balance as separate entry (for display purposes)
     if (nusdcMargin > 0) {
       tokens.push({
@@ -192,8 +224,8 @@ export function useTotalValue(): UseTotalValueResult {
     }
 
     // Calculate totals (don't double-count margin in NUSDC)
-    const totalValue = nasunValue + nbtcValue + nusdcValue + predictionsValue;
-    const totalPnl24h = nasunPnl + nbtcPnl + nusdcPnl;
+    const totalValue = nasunValue + nbtcValue + nusdcValue + nethValue + nsolValue + predictionsValue;
+    const totalPnl24h = nasunPnl + nbtcPnl + nusdcPnl + nethPnl + nsolPnl;
     const totalChange24h = totalValue > 0 && totalPnl24h !== 0
       ? (totalPnl24h / (totalValue - totalPnl24h)) * 100
       : 0;
