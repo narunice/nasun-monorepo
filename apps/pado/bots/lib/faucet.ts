@@ -11,7 +11,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   TOKENS_PACKAGE,
   TOKEN_FAUCET,
-  TOKENS_V2_PACKAGE,
+  TOKENS_V2_FAUCET_PACKAGE,
   TOKEN_FAUCET_V2,
   FAUCET_URL,
   MARKET,
@@ -47,7 +47,7 @@ function buildRequestNusdcOnly(): Transaction {
 function buildRequestTokensV2(): Transaction {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${TOKENS_V2_PACKAGE}::faucet_v2::request_tokens`,
+    target: `${TOKENS_V2_FAUCET_PACKAGE}::faucet_v2::request_tokens`,
     arguments: [tx.object(TOKEN_FAUCET_V2)],
   });
   return tx;
@@ -158,7 +158,7 @@ async function executeRequestTokensV2(
       return false;
     }
 
-    console.log(`[${timestamp()}] Received tokens from V2 faucet (10 NETH + 100 NSOL)`);
+    console.log(`[${timestamp()}] Received tokens from V2 faucet (0.1 NETH + 10 NSOL)`);
     await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return true;
@@ -187,6 +187,8 @@ async function executeRequestNusdc(
     }
 
     console.log(`[${timestamp()}] Received 100k NUSDC from V1 faucet`);
+    await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     return true;
   } catch (error) {
     console.error(`[${timestamp()}] Error requesting NUSDC from faucet:`, error);

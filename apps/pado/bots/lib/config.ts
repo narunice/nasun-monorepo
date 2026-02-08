@@ -30,6 +30,8 @@ export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c6
 
 // Tokens V2 (NETH, NSOL)
 export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
+// V2 faucet upgraded package (reduced mint amounts to prevent u64 supply overflow)
+export const TOKENS_V2_FAUCET_PACKAGE = '0x3887377706f0307d22f1d0b04e0c4fa72b2cbbf0315502a0b8ecba9cba5216f8';
 export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 
 // Token Types
