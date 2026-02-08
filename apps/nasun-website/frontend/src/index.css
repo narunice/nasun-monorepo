@@ -191,11 +191,15 @@
     @apply bg-nasun-black text-nasun-white;
   }
 
-  /* Prevent double scrollbar compensation when modal opens.
-     scrollbar-gutter: stable on html already reserves scrollbar space,
-     so react-remove-scroll's margin-right compensation is not needed. */
-  body[data-scroll-locked] {
+  /* When modal opens, react-remove-scroll hides the scrollbar via overflow:hidden.
+     But scrollbar-gutter:stable on html still reserves the empty gutter space,
+     creating a visible black bar. Remove the gutter when scroll is locked. */
+  html:has(body[data-scroll-locked]) {
+    scrollbar-gutter: auto !important;
+  }
+  html body[data-scroll-locked] {
     margin-right: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* ========================================
