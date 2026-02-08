@@ -109,7 +109,11 @@ function balancedSlice(items: NewsItem[]): NewsItem[] {
   return selected.sort((a, b) => b.timestamp - a.timestamp);
 }
 
-export function NewsCarousel() {
+interface NewsCarouselProps {
+  onMinimize?: () => void;
+}
+
+export function NewsCarousel({ onMinimize }: NewsCarouselProps) {
   const { data, isLoading } = useNewsFeed(35);
   const items = data?.items ?? [];
   const displayItems = balancedSlice(items);
@@ -152,9 +156,22 @@ export function NewsCarousel() {
       {/* Header */}
       <div className="px-3 py-2 border-b border-theme-border flex items-center justify-between shrink-0 z-10">
         <span className="text-xs font-medium text-theme-text-secondary">News</span>
-        <span className="text-[10px] text-theme-text-tertiary">
-          {displayIndex + 1} / {displayItems.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-theme-text-tertiary">
+            {displayIndex + 1} / {displayItems.length}
+          </span>
+          {onMinimize && (
+            <button
+              onClick={onMinimize}
+              className="text-theme-text-muted hover:text-theme-text-primary transition-colors"
+              title="Minimize"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 15l6-6 6 6" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Carousel track */}
