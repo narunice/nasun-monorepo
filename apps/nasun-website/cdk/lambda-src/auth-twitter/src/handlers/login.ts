@@ -42,7 +42,7 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
 
   try {
     // Get credentials from environment variables (not Secrets Manager)
-    // This separates user auth path from operator path (x-leaderboard)
+    // This separates user auth path from operator path (data collection Lambdas)
     const TWITTER_CLIENT_ID = process.env.OAUTH2_CLIENT_ID;
     const TWITTER_CLIENT_SECRET = process.env.OAUTH2_CLIENT_SECRET;
     const { SESSIONS_TABLE_NAME, TWITTER_REDIRECT_URI } = process.env;

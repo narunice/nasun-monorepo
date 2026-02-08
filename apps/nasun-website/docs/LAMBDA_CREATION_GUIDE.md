@@ -14,7 +14,7 @@
 - Asset Path: `lambda-src/{lambda-name}/dist`
 
 ### 2. **Multi Entry Point는 예외적으로**
-- 28개 이상의 핸들러가 필요한 경우 (예: x-leaderboard)
+- 다수의 핸들러가 필요한 경우 (예: leaderboard-v3)
 - 각 핸들러가 독립적인 기능을 수행
 
 ### 3. **Handler 경로 불일치 방지**

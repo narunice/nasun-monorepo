@@ -31,8 +31,6 @@ bash scripts/verify-build.sh
 - [ ] `lambda-src/auth-twitter/src/handlers/callback.js` exists
 - [ ] `lambda-src/auth-twitter/src/utils/secrets.js` exists
 - [ ] `lambda-src/auth-twitter/node_modules/.pnpm` directory **does not exist** (must use npm!)
-- [ ] `lambda-src/x-leaderboard/dist` directory exists
-- [ ] `lambda-src/x-leaderboard/dist` contains `.js` files
 
 ### 2. Environment Variables
 

@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
@@ -21,12 +20,6 @@ export class AuthStack extends cdk.Stack {
     // Import NFT event tasks table for secure X access token storage
     const nftEventTasksTableName = cdk.Fn.importValue('NftEventTasksTableName');
     const nftEventTasksTable = dynamodb.Table.fromTableName(this, 'NftEventTasksTable', nftEventTasksTableName);
-
-    // Determine secret name based on environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const secretName = isProduction ? 'nasun-twitter-tokens-prod' : 'nasun-twitter-tokens';
-
-    const twitterTokensSecret = secretsmanager.Secret.fromSecretNameV2(this, "TwitterTokensSecret", secretName);
 
     // Leaderboard V3 accounts table name (for profile sync)
     // Note: Using hardcoded name as LeaderboardV3Stack is deployed separately
@@ -58,10 +51,6 @@ export class AuthStack extends cdk.Stack {
         retention: logs.RetentionDays.ONE_WEEK,
       }),
     });
-
-    // Note: Secrets Manager permissions removed for auth-twitter Lambda
-    // User auth path now uses environment variables only (separated from operator/leaderboard path)
-    // x-leaderboard Lambdas retain Secrets Manager access for operator tokens
 
     // Grant DynamoDB permissions
     twitterSessionsTable.grantReadWriteData(twitterLoginFunction);

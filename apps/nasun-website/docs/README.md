@@ -108,7 +108,7 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 - **My Rank Sidebar**: 로그인 사용자 순위 표시
 
 **문서**: [LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)
-**Legacy V2 문서**: [_legacy-leaderboard/](./_legacy-leaderboard/) (deprecated)
+**Legacy V2 문서**: [_legacy-leaderboard/](./_legacy-leaderboard/) (archived)
 
 ---
 
@@ -141,9 +141,8 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 - **[LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)** ⭐ **주요 참조**
   Community Leaderboard V3 전체 기획안 및 구현 상태 (Phase 1-6 완료)
 
-#### Legacy V2 (deprecated)
-- **[_legacy-leaderboard/](./_legacy-leaderboard/)** - X API 기반 리더보드 관련 문서 (9개)
-  - 데이터 수집, 스코어링, 동적 구성, Top Climbers 등
+#### Legacy V2 (archived)
+- **[_legacy-leaderboard/](./_legacy-leaderboard/)** - X API 기반 리더보드 관련 문서 (archived)
 
 #### OAuth Token Management
 - **[../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md](../cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md)** ⭐ **통합 문서**

@@ -102,7 +102,7 @@ my-new-lambda/
 
 ## 더 복잡한 구조가 필요한 경우
 
-여러 핸들러가 필요한 경우 (예: x-leaderboard처럼 28개 핸들러):
+여러 핸들러가 필요한 경우 (예: leaderboard-v3처럼 다수의 핸들러):
 
 1. `src/handlers/` 디렉토리 생성
 2. `build.js`에서 `entryPoints` 배열로 변경

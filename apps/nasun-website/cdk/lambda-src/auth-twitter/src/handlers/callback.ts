@@ -106,7 +106,6 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     }
 
     // Get credentials from environment variables (not Secrets Manager)
-    // This separates user auth path from operator path (x-leaderboard)
     const {
       OAUTH2_CLIENT_ID: TWITTER_CLIENT_ID,
       OAUTH2_CLIENT_SECRET: TWITTER_CLIENT_SECRET,

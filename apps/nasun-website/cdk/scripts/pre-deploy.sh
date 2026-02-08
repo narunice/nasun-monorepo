@@ -102,34 +102,6 @@ cd "$CDK_ROOT"
 echo ""
 
 # =============================================================================
-# Build sync-community-members (npm)
-# =============================================================================
-echo "📦 Building sync-community-members..."
-cd "$CDK_ROOT/lambda-src/sync-community-members"
-
-if [ -f "package.json" ]; then
-  if [ ! -d "node_modules" ] || [ ! -f "package-lock.json" ]; then
-    echo "📥 Installing dependencies with npm..."
-    npm install --silent
-  fi
-
-  echo "🔨 Compiling with build script..."
-  npm run build
-
-  if [ -d "dist" ]; then
-    echo "✅ sync-community-members built successfully!"
-  else
-    echo "❌ sync-community-members build failed! Missing compiled files."
-    exit 1
-  fi
-else
-  echo "⚠️  No package.json found in sync-community-members"
-fi
-
-cd "$CDK_ROOT"
-echo ""
-
-# =============================================================================
 # Build get-backup-prices (npm + esbuild)
 # =============================================================================
 echo "📦 Building get-backup-prices..."
@@ -250,7 +222,6 @@ echo "📋 Build Summary:"
 echo "  ✅ auth-twitter: TypeScript compiled (npm)"
 echo "  ✅ wallet-api: pnpm build completed"
 echo "  ✅ PriceAPI: pnpm build completed"
-echo "  ✅ sync-community-members: npm build completed"
 echo "  ✅ get-backup-prices: esbuild completed (npm)"
 echo "  ✅ get-follower-count: esbuild completed (npm)"
 echo "  ✅ get-user-count: esbuild completed (npm)"
