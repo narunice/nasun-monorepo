@@ -264,9 +264,9 @@ export function UnifiedBalanceCard({
             Token Breakdown
           </div>
           <div className="space-y-3">
-            {(['NASUN', 'NBTC', 'NUSDC'] as TokenSymbol[]).map((symbol) => {
+            {(Object.keys(breakdown) as TokenSymbol[]).map((symbol) => {
               const tokenData = breakdown[symbol];
-              if (tokenData.total === 0) return null;
+              if (!tokenData || tokenData.total === 0) return null;
 
               const formatted = formatTokenBreakdown(tokenData, symbol);
 
@@ -328,6 +328,8 @@ function TokenIcon({ symbol }: { symbol: TokenSymbol }) {
     NASUN: 'bg-gradient-to-br from-pd4 to-pd2',
     NBTC: 'bg-gradient-to-br from-orange-400 to-yellow-500',
     NUSDC: 'bg-gradient-to-br from-pd3 to-pd1',
+    NETH: 'bg-gradient-to-br from-indigo-400 to-blue-600',
+    NSOL: 'bg-gradient-to-br from-emerald-400 to-teal-600',
   };
 
   return (

@@ -1,16 +1,17 @@
 /**
  * Price Source Module
  *
- * Fetches BTC/USDT price from Binance API with caching.
+ * Fetches token price from Binance API with caching.
+ * Supports BTC, ETH, SOL via MARKET.binanceSymbol.
  */
 
-import { timestamp } from './config.js';
+import { MARKET, timestamp } from './config.js';
 
 // ========================================
 // Configuration
 // ========================================
 
-const BINANCE_API_URL = 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT';
+const BINANCE_API_URL = `https://api.binance.com/api/v3/ticker/price?symbol=${MARKET.binanceSymbol}`;
 const CACHE_TTL_MS = 5000; // 5 seconds cache
 const MAX_FALLBACK_AGE_MS = 60_000; // 1 minute max staleness for fallback
 
@@ -26,10 +27,10 @@ let cacheTimestamp = 0;
 // ========================================
 
 /**
- * Fetch BTC/USDT price from Binance API
+ * Fetch price from Binance API
  * Uses caching to avoid rate limiting
  */
-export async function fetchBtcPrice(): Promise<number> {
+export async function fetchPrice(): Promise<number> {
   const now = Date.now();
 
   // Return cached price if still valid
@@ -77,7 +78,7 @@ export async function fetchBtcPrice(): Promise<number> {
       console.error(`[${timestamp()}] Cached price too stale (${(age / 1000).toFixed(0)}s), refusing to use`);
     }
 
-    throw new Error(`Failed to fetch BTC price: ${error instanceof Error ? error.message : error}`);
+    throw new Error(`Failed to fetch ${MARKET.name} price: ${error instanceof Error ? error.message : error}`);
   }
 }
 

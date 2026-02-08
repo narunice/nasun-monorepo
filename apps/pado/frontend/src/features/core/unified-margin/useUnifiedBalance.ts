@@ -74,12 +74,8 @@ export interface UnifiedBalanceState {
   /** Total 24h change percentage */
   totalChange24h: number;
 
-  // Token breakdown
-  breakdown: {
-    NASUN: TokenBreakdown;
-    NBTC: TokenBreakdown;
-    NUSDC: TokenBreakdown;
-  };
+  // Token breakdown (extends as new markets are added)
+  breakdown: Partial<Record<TokenSymbol, TokenBreakdown>>;
 
   // Future-ready fields (v1 preparation)
   /** Margin usage percentage (0-100) - reserved for v1 */

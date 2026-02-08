@@ -17,7 +17,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { withRetry } from './lib/retry';
+import { withRetry } from './lib/retry.js';
 
 // ========================================
 // Configuration
@@ -76,7 +76,7 @@ async function fetchPrices(): Promise<FetchedPrices> {
       'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd',
       { signal: AbortSignal.timeout(5000) }
     );
-    const data = await response.json();
+    const data = await response.json() as Record<string, Record<string, number>>;
     const btc = data.bitcoin?.usd;
     const eth = data.ethereum?.usd;
     const sol = data.solana?.usd;
@@ -95,7 +95,7 @@ async function fetchPrices(): Promise<FetchedPrices> {
       fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', { signal: AbortSignal.timeout(5000) }),
       fetch('https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT', { signal: AbortSignal.timeout(5000) }),
     ]);
-    const [btcData, ethData, solData] = await Promise.all([btcRes.json(), ethRes.json(), solRes.json()]);
+    const [btcData, ethData, solData] = await Promise.all([btcRes.json(), ethRes.json(), solRes.json()]) as { price: string }[];
     const btc = parseFloat(btcData.price);
     const eth = parseFloat(ethData.price);
     const sol = parseFloat(solData.price);

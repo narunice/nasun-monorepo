@@ -34,7 +34,7 @@ describe('TOKENS', () => {
   });
 
   it('all tokens have required fields', () => {
-    for (const [key, token] of Object.entries(TOKENS)) {
+    for (const [, token] of Object.entries(TOKENS)) {
       expect(token.symbol).toBeTruthy();
       expect(token.name).toBeTruthy();
       expect(typeof token.decimals).toBe('number');
