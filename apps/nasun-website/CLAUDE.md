@@ -98,7 +98,6 @@ nasun-website/
 │   │   ├── link-account/         # 계정 연결
 │   │   └── nft-event/            # Battalion NFT Event
 │   │       ├── verify-eligibility/   # 3-Tier 검증
-│   │       ├── poll-engagement/      # Engagement 폴링
 │   │       ├── register-user/        # Allowlist 등록
 │   │       ├── admin-users/          # 관리자 대시보드
 │   │       ├── withdraw-user/        # 등록 철회
@@ -186,7 +185,6 @@ X API Basic Plan ($200/month) 에서 100명 이상의 참여자를 처리하기 
 | Lambda | 트리거 | 역할 |
 |--------|--------|------|
 | `nasun-nft-verify-eligibility` | API Gateway | 3-tier 검증 실행 |
-| `nasun-nft-poll-engagement` | EventBridge (5분) | liking_users + retweeted_by 폴링 → DynamoDB 캐시 |
 
 ### DynamoDB 캐시 설계 (nasun-nft-event-tasks 테이블 재활용)
 
@@ -201,7 +199,6 @@ X API Basic Plan ($200/month) 에서 100명 이상의 참여자를 처리하기 
 
 | Lambda | 인증 방식 | 이유 |
 |--------|----------|------|
-| `poll-engagement` | OAuth 1.0a (API Key + Access Token) | X API Basic Plan에서 tweet-centric 엔드포인트는 User Context 필수 |
 | `verify-eligibility` Tier 3 | OAuth 2.0 User Context (xAccessToken) | 사용자별 rate limit 활용, 앱 rate limit 소비 안 함 |
 
 ### MetaMask 미연결 시 동작
@@ -214,18 +211,14 @@ X API Basic Plan ($200/month) 에서 100명 이상의 참여자를 처리하기 
 
 ```
 cdk/lambda-src/nft-event/
-├── poll-engagement/                    # Tier 2 Background Polling Lambda
-│   ├── src/index.ts                   # EventBridge handler (OAuth 1.0a)
-│   └── src/services/engagementPoller.ts  # X API polling + DynamoDB cache
-│
 └── verify-eligibility/                 # 3-Tier Verification Lambda
     └── src/services/
         ├── verificationService.ts      # 3-tier orchestration logic
-        ├── engagementCache.ts          # Tier 2 cache lookup
+        ├── engagementCache.ts          # Tier 2 cache lookup (graceful miss → Tier 3)
         ├── xApiClient.ts              # X API calls (App-Only + User Context)
         └── taskTracker.ts             # Tier 1 DynamoDB task cache
 
-cdk/lib/nft-event-stack.ts             # CDK: Lambda 6 + EventBridge Rule
+cdk/lib/nft-event-stack.ts             # CDK: NFT Event 인프라
 ```
 
 ---

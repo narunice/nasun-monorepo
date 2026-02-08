@@ -4,7 +4,7 @@
  * @description
  * 3-Tier Hybrid Verification for 100+ participants:
  *   Tier 1: DynamoDB Task Cache — already-verified users (X API 0 calls)
- *   Tier 2: Engagement Polling Cache — poll-engagement Lambda results (X API 0 calls)
+ *   Tier 2: Engagement Cache — DynamoDB cache lookup (X API 0 calls)
  *   Tier 3: User Context OAuth Fallback — per-user rate limits (app rate limit 0 consumption)
  *
  * @author Claude Code
