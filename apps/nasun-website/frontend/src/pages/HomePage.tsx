@@ -71,7 +71,7 @@ export default function HomePage() {
   // HeroSection is always rendered, using CSS-based positioning
   // This prevents re-mounting and state reset issues
   return (
-    <>
+    <div className="bg-black">
       {/* Snap Scroll 섹션들 (Hero ~ NFT Sale) */}
       <ScrollSnapContainer>
         <ErrorBoundary fallback={errorFallback}>
@@ -126,6 +126,6 @@ export default function HomePage() {
           </Suspense>
         </ErrorBoundary>
       )}
-    </>
+    </div>
   );
 }

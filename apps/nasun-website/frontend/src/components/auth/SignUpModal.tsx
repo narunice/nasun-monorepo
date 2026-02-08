@@ -67,7 +67,7 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
   };
 
   const providerBtnClass =
-    "flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-nasun-black/80 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+    "flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-nasun-black/80 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <Dialog
@@ -82,7 +82,7 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
         onPointerDownOutside={(e) => { if (isSigningIn) e.preventDefault(); }}
       >
         <DialogHeader>
-          <DialogTitle className="text-nasun-black text-xl font-bold text-center">
+          <DialogTitle className="text-nasun-black text-xl font-semibold text-center">
             Join Nasun
           </DialogTitle>
           <DialogDescription className="text-nasun-black/60 text-center">
