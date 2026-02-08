@@ -52,9 +52,18 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
     VITE_LOTTERY_REGISTRY: () => config.lottery.registry,
     VITE_LOTTERY_ADMIN_CAP: () => config.lottery.adminCap,
 
+    // Tokens V2 (NETH, NSOL)
+    VITE_TOKENS_V2_PACKAGE: () => config.tokensV2?.packageId || '',
+    VITE_NETH_TYPE: () => config.tokensV2 ? `${config.tokensV2.packageId}::neth::NETH` : '',
+    VITE_NSOL_TYPE: () => config.tokensV2 ? `${config.tokensV2.packageId}::nsol::NSOL` : '',
+    VITE_TOKEN_FAUCET_V2: () => config.tokensV2?.tokenFaucetV2 || '',
+    VITE_CLAIM_RECORD_V2: () => config.tokensV2?.claimRecordV2 || '',
+
     // Pools (may be empty)
-    VITE_POOL_NBTC_NUSDC: () => config.pools.nbtcNusdc || '',
-    VITE_POOL_NASUN_NUSDC: () => config.pools.nsnNusdc || '',
+    VITE_POOL_NBTC_NUSDC: () => config.pools?.nbtcNusdc || '',
+    VITE_POOL_NASUN_NUSDC: () => config.pools?.nsnNusdc || '',
+    VITE_POOL_NETH_NUSDC: () => config.pools?.nethNusdc || '',
+    VITE_POOL_NSOL_NUSDC: () => config.pools?.nsolNusdc || '',
 
     // Oracle
     VITE_ORACLE_PACKAGE_ID: () => config.oracle?.packageId || '',

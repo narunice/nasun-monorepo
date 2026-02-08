@@ -3,6 +3,7 @@ import {
   shouldTrigger,
   shouldTriggerTP,
   shouldTriggerSL,
+  shouldTriggerStopLimit,
   MAX_TPSL_ORDERS,
   TPSL_POLL_INTERVAL_MS,
   TPSL_HISTORY_MAX_AGE_MS,
@@ -156,5 +157,52 @@ describe('shouldTrigger', () => {
   it('handles exact boundary prices (SL sell at exact triggerPrice)', () => {
     const order = makeOrder({ triggerType: 'sl', side: 'sell', triggerPrice: 40000 });
     expect(shouldTrigger(order, 40000)).toBe(true);
+  });
+
+  it('delegates stop-limit buy correctly (breakout)', () => {
+    const order = makeOrder({ triggerType: 'stop-limit', side: 'buy', triggerPrice: 100000, limitPrice: 100100 });
+    expect(shouldTrigger(order, 100001)).toBe(true);  // price above stop
+    expect(shouldTrigger(order, 100000)).toBe(true);   // exact stop
+    expect(shouldTrigger(order, 99999)).toBe(false);   // below stop
+  });
+
+  it('delegates stop-limit sell correctly (breakdown)', () => {
+    const order = makeOrder({ triggerType: 'stop-limit', side: 'sell', triggerPrice: 90000, limitPrice: 89900 });
+    expect(shouldTrigger(order, 89999)).toBe(true);   // price below stop
+    expect(shouldTrigger(order, 90000)).toBe(true);    // exact stop
+    expect(shouldTrigger(order, 90001)).toBe(false);   // above stop
+  });
+});
+
+// ========================================
+// shouldTriggerStopLimit
+// ========================================
+describe('shouldTriggerStopLimit', () => {
+  describe('buy side (breakout buy)', () => {
+    it('triggers when price >= stopPrice', () => {
+      expect(shouldTriggerStopLimit(100001, 100000, 'buy')).toBe(true);
+    });
+
+    it('triggers when price == stopPrice', () => {
+      expect(shouldTriggerStopLimit(100000, 100000, 'buy')).toBe(true);
+    });
+
+    it('does NOT trigger when price < stopPrice', () => {
+      expect(shouldTriggerStopLimit(99999, 100000, 'buy')).toBe(false);
+    });
+  });
+
+  describe('sell side (breakdown sell)', () => {
+    it('triggers when price <= stopPrice', () => {
+      expect(shouldTriggerStopLimit(89999, 90000, 'sell')).toBe(true);
+    });
+
+    it('triggers when price == stopPrice', () => {
+      expect(shouldTriggerStopLimit(90000, 90000, 'sell')).toBe(true);
+    });
+
+    it('does NOT trigger when price > stopPrice', () => {
+      expect(shouldTriggerStopLimit(90001, 90000, 'sell')).toBe(false);
+    });
   });
 });

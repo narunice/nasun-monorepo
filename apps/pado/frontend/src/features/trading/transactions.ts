@@ -473,6 +473,52 @@ export function buildRequestNusdc(): Transaction {
 }
 
 /**
+ * NETH 요청 (Faucet V2 - 24h cooldown)
+ * 10 NETH per claim
+ */
+export function buildRequestNeth(): Transaction {
+  if (!NETWORK_CONFIG.tokensV2Package || !NETWORK_CONFIG.tokenFaucetV2 || !NETWORK_CONFIG.claimRecordV2) {
+    throw new Error('NETH faucet not configured: tokensV2 contract addresses missing');
+  }
+
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${NETWORK_CONFIG.tokensV2Package}::faucet_v2::request_neth_with_cooldown`,
+    arguments: [
+      tx.object(NETWORK_CONFIG.tokenFaucetV2),
+      tx.object(NETWORK_CONFIG.claimRecordV2),
+      tx.object(CLOCK_ID),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * NSOL 요청 (Faucet V2 - 24h cooldown)
+ * 100 NSOL per claim
+ */
+export function buildRequestNsol(): Transaction {
+  if (!NETWORK_CONFIG.tokensV2Package || !NETWORK_CONFIG.tokenFaucetV2 || !NETWORK_CONFIG.claimRecordV2) {
+    throw new Error('NSOL faucet not configured: tokensV2 contract addresses missing');
+  }
+
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${NETWORK_CONFIG.tokensV2Package}::faucet_v2::request_nsol_with_cooldown`,
+    arguments: [
+      tx.object(NETWORK_CONFIG.tokenFaucetV2),
+      tx.object(NETWORK_CONFIG.claimRecordV2),
+      tx.object(CLOCK_ID),
+    ],
+  });
+
+  return tx;
+}
+
+/**
  * BalanceManager에서 현재 풀의 토큰 출금
  * Base와 Quote 토큰을 지갑으로 전송
  * @param balanceManagerId - BalanceManager object ID

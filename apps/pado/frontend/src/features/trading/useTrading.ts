@@ -14,6 +14,8 @@ import {
   buildRequestTokens,
   buildRequestNbtc,
   buildRequestNusdc,
+  buildRequestNeth,
+  buildRequestNsol,
   buildDepositAll,
   buildWithdrawAll,
   buildDepositExact,
@@ -72,6 +74,8 @@ interface UseTrading {
   requestTokens: () => Promise<TradeResult>;
   requestNbtc: () => Promise<TradeResult>;
   requestNusdc: () => Promise<TradeResult>;
+  requestNeth: () => Promise<TradeResult>;
+  requestNsol: () => Promise<TradeResult>;
 
   // Deposit / Withdraw
   depositAllTokens: () => Promise<TradeResult>;
@@ -298,6 +302,16 @@ export function useTrading(): UseTrading {
     return executeTransaction(tx);
   }, [executeTransaction]);
 
+  const requestNeth = useCallback(async (): Promise<TradeResult> => {
+    const tx = buildRequestNeth();
+    return executeTransaction(tx);
+  }, [executeTransaction]);
+
+  const requestNsol = useCallback(async (): Promise<TradeResult> => {
+    const tx = buildRequestNsol();
+    return executeTransaction(tx);
+  }, [executeTransaction]);
+
   // --- Per-Token Deposit/Withdraw ---
 
   const depositToken = useCallback(async (
@@ -361,6 +375,8 @@ export function useTrading(): UseTrading {
     requestTokens,
     requestNbtc,
     requestNusdc,
+    requestNeth,
+    requestNsol,
     depositAllTokens,
     withdrawAllTokens,
   };

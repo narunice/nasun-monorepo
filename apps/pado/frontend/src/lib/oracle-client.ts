@@ -240,10 +240,9 @@ export async function getAllPrices(
   client: SuiClient
 ): Promise<Record<SymbolKey, PriceData | null>> {
   const symbols = Object.keys(SYMBOLS) as SymbolKey[];
-  const results: Record<SymbolKey, PriceData | null> = {
-    BTCUSD: null,
-    NASUSD: null,
-  };
+  const results = Object.fromEntries(
+    symbols.map(s => [s, null])
+  ) as Record<SymbolKey, PriceData | null>;
 
   // Fetch in parallel
   await Promise.all(

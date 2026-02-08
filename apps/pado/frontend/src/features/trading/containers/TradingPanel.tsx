@@ -169,12 +169,16 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
 
-  // TP/SL Monitor — mount once, monitors price and auto-executes market orders
+  // TP/SL Monitor — mount once, monitors price and auto-executes market/limit orders
   const { addOrder: addTPSLOrder } = useTPSLMonitor({
     executeMarketOrder: useCallback(async (orderSide: 'buy' | 'sell', quantity: number) => {
       return handleMarketOrder(orderSide, quantity);
     }, [handleMarketOrder]),
+    executeLimitOrder: useCallback(async (orderSide: 'buy' | 'sell', quantity: number, limitPrice: number) => {
+      return handleLimitOrder(orderSide, limitPrice, quantity);
+    }, [handleLimitOrder]),
     hasBalanceManager: !!balanceManagerId,
+    marketSymbol: baseSymbol as import('../../../lib/prices').TokenSymbol,
   });
 
   // 주문 폼 상태 (Context)
@@ -183,6 +187,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     amount,
     side,
     setSide,
+    orderMode,
     executionOption,
     setExecutionOption,
     getOrderType,
@@ -199,6 +204,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     tpslEnabled,
     tpPrice,
     slPrice: slPriceValue,
+    stopPrice,
   } = useOrderForm();
 
   // Create TP/SL orders after successful main order
@@ -215,6 +221,26 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: slValue, triggerType: 'sl' });
     }
   }, [tpslEnabled, tpPrice, slPriceValue, addTPSLOrder]);
+
+  // Stop-Limit order handler — creates a conditional order in TP/SL storage
+  const handleStopLimitOrder = useCallback((orderSide: 'buy' | 'sell') => {
+    const stopPriceNum = parseFloat(stopPrice);
+    const limitPriceNum = parseFloat(price);
+    const amountNum = parseFloat(amount);
+
+    if (!Number.isFinite(stopPriceNum) || stopPriceNum <= 0) return;
+    if (!Number.isFinite(limitPriceNum) || limitPriceNum <= 0) return;
+    if (!Number.isFinite(amountNum) || amountNum <= 0) return;
+
+    addTPSLOrder({
+      side: orderSide,
+      quantity: amountNum,
+      triggerPrice: stopPriceNum,
+      triggerType: 'stop-limit',
+      limitPrice: limitPriceNum,
+    });
+    resetForm();
+  }, [stopPrice, price, amount, addTPSLOrder, resetForm]);
 
   // One-Click 주문 핸들러 (확인 모달 스킵)
   const handleOneClickOrder = async (type: 'buy' | 'sell') => {
@@ -234,6 +260,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
   // Unified limit order handler (One-Click or Modal)
   const handleOrderClick = (orderSide: 'buy' | 'sell') => {
+    // Stop-Limit: create conditional order (no confirmation modal needed)
+    if (orderMode === 'stop-limit') {
+      handleStopLimitOrder(orderSide);
+      return;
+    }
+
     if (oneClickEnabled) {
       handleOneClickOrder(orderSide);
     } else {

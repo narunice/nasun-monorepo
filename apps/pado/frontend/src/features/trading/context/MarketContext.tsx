@@ -12,8 +12,8 @@ export type { PoolConfig, TokenConfig };
 // 마켓 키 타입
 export type MarketKey = keyof typeof POOLS;
 
-// 마켓 목록
-export const MARKETS: { key: MarketKey; label: string; pool: PoolConfig }[] = [
+// All defined markets (including undeployed)
+const ALL_MARKETS: { key: MarketKey; label: string; pool: PoolConfig }[] = [
   {
     key: 'NBTC_NUSDC',
     label: 'NBTC/NUSDC',
@@ -35,6 +35,9 @@ export const MARKETS: { key: MarketKey; label: string; pool: PoolConfig }[] = [
     pool: POOLS.NSOL_NUSDC,
   },
 ];
+
+// Only show markets with deployed pool IDs (env vars set)
+export const MARKETS = ALL_MARKETS.filter(m => m.pool.id && m.pool.baseToken.type);
 
 // Context 타입
 interface MarketContextType {
