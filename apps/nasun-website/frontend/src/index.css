@@ -191,6 +191,13 @@
     @apply bg-nasun-black text-nasun-white;
   }
 
+  /* Prevent double scrollbar compensation when modal opens.
+     scrollbar-gutter: stable on html already reserves scrollbar space,
+     so react-remove-scroll's margin-right compensation is not needed. */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+  }
+
   /* ========================================
      언어별 폰트 정책 (한국어/영문)
      ======================================== */

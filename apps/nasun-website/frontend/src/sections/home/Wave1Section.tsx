@@ -1,31 +1,18 @@
 import React, { useRef, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import wave1VideoPcMP4 from "../../assets/videos/home-wave1-wave-light-desktop.mp4";
 import wave1VideoMobileMP4 from "../../assets/videos/home-wave1-wave-light-mobile.mp4";
-import leaderboardDesktop from "../../assets/images/leaderboard-ss.jpg";
-import leaderboardMobile from "../../assets/images/leaderboard-ss2.jpg";
+import leaderboardImage from "../../assets/images/leaderboard-img.jpg";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { SectionTitle } from "@/components/ui/SectionTitle";
-import { DividerBox } from "@/components/ui/DividerBox";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import { Tag } from "@/components/ui/tag";
+import { ButtonV2 } from "@/components/ui/button-v2";
 
 interface Wave1SectionV3Props {
   shouldLoadVideo?: boolean;
   onVideoReady?: () => void;
 }
 
-/**
- * Wave1SectionV3 - DividerBox version
- *
- * Uses DividerBox component instead of Tag for card titles.
- * - Same layout as original (left cards + right image)
- * - DividerBox with color="white" for light background
- * - Hover effects on cards and image
- */
 function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV3Props) {
-  const { t } = useTranslation("home");
   const [isMobile, setIsMobile] = useState(false);
 
   // Refs
@@ -43,9 +30,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Select video and image source based on device
   const videoSrc = isMobile ? wave1VideoMobileMP4 : wave1VideoPcMP4;
-  const leaderboardImage = isMobile ? leaderboardMobile : leaderboardDesktop;
 
   // Video autoplay handling (iOS support)
   useEffect(() => {
@@ -97,14 +82,10 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
     return () => observer.disconnect();
   }, [shouldLoadVideo]);
 
-  // Common DividerBox wrapper styles for hover effect
-  const dividerBoxWrapperStyles = "transition-all duration-300 ease-out ";
-
   return (
     <SectionLayout className="max-w-none relative min-h-screen">
       {/* Background video container */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full bg-nasun-black">
-        {/* Background video */}
         {shouldLoadVideo && (
           <video
             key={videoSrc}
@@ -130,7 +111,6 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             <source src={videoSrc} type="video/mp4" />
           </video>
         )}
-        {/* Radial gradient overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -139,101 +119,88 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
           }}
         />
       </div>
+
       {/* Content */}
       <FadeInUp>
-        <div className="relative z-20 h-full">
-          {/* WAVE 1 Title */}
-          <SectionTitle
-            as="h2"
-            color="black"
-            className="!font-eurostile text-center mb-2 sm:mb-4 md:mb-6 lg:mb-8 xl:mb-10 mt-4 sm:mt-8 md:mt-14 lg:mt-18 xl:mt-20"
-          >
-            {t("wave1.title")}
-          </SectionTitle>
-
-          {/* Content - Centered layout */}
-          <div className="flex flex-col lg:flex-row-reverse lg:gap-8 mb-6 md:mb-12 lg:mb-14 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto">
-            {/* Leaderboard image (mobile: top, desktop: right) */}
-            <div className="flex items-center justify-center w-full lg:w-[45%] px-4 lg:px-0">
-              <div className="group h-full flex items-center w-full lg:w-auto">
-                <img
-                  src={leaderboardImage}
-                  alt="Leaderboard Preview"
-                  className="w-full lg:w-auto lg:max-h-full lg:h-full object-contain rounded-sm lg:rounded-none"
-                />
+        <div className="relative z-20 flex flex-col lg:flex-row lg:gap-10 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto px-4 lg:px-0 mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14">
+          {/* Left: Cards */}
+          <div className="flex flex-col gap-5 w-full lg:w-[50%] mt-6 lg:mt-0 order-2 lg:order-1">
+            {/* LEADERBOARD */}
+            <Link
+              to="/wave1/leaderboard-info"
+              className="block w-full flex-1 group transition-all duration-300 ease-out"
+            >
+              <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
+                <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
+                  LEADERBOARD
+                </h6>
+                <p className="flex-1 text-nasun-black/90 ">
+                  Climb ranks &rarr; Launch pool + Battalion NFT eligibility.
+                  <br />
+                  Tasks: X follows, content, testing
+                </p>
+                <div className="flex justify-end mt-auto pt-3">
+                  <ButtonV2 variant="blue" size="sm" className="w-[160px]">
+                    Register Now
+                  </ButtonV2>
+                </div>
               </div>
-            </div>
+            </Link>
 
-            {/* DividerBox cards (mobile: bottom, desktop: left) */}
-            <div className="flex flex-col gap-6 items-center mt-6 lg:mt-0 w-full lg:w-[55%] px-4 lg:px-0">
-              {/* LEADERBOARD Box */}
-              <Link
-                to="/wave1/leaderboard-info"
-                className={`block w-full flex-1 group ${dividerBoxWrapperStyles}`}
-              >
-                <DividerBox color="w1" padding="md" className="h-full !bg-nasun-black/85 flex flex-col">
-                  <h6 className="mb-2 uppercase font-medium text-nasun-c1">
-                    {t("wave1.leaderboard.title")}
-                  </h6>
-                  <p className="flex-1">{t("wave1.leaderboard.description")}</p>
-                  <div className="flex justify-end mt-auto pt-3">
-                    <Tag
-                      variant="filledC1"
-                      size="sm"
-                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
-                    >
-                      {t("wave1.leaderboard.cta")}
-                    </Tag>
-                  </div>
-                </DividerBox>
-              </Link>
+            {/* BATTALION NFT */}
+            <Link
+              to="/wave1/battalion-nft"
+              className="block w-full flex-1 group transition-all duration-300 ease-out"
+            >
+              <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
+                <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
+                  BATTALION NFT (⅓)
+                </h6>
+                <p className="flex-1 text-nasun-black/90">
+                  Devnet/Testnet staking &rarr; Emissions &rarr; Mainnet $NSN airdrop
+                  <br />+ Alpha access + exclusive giveaways
+                </p>
+                <div className="flex justify-end mt-auto pt-3">
+                  <ButtonV2 variant="blue" size="sm" className="w-[160px]">
+                    Allow List
+                  </ButtonV2>
+                </div>
+              </div>
+            </Link>
 
-              {/* BATTALION NFT Box */}
-              <Link
-                to="/wave1/battalion-nft"
-                className={`block w-full flex-1 group ${dividerBoxWrapperStyles}`}
-              >
-                <DividerBox color="w1" padding="md" className="h-full !bg-nasun-black/85 flex flex-col">
-                  <h6 className="mb-2 uppercase font-medium text-nasun-c1">
-                    {t("wave1.battalionNft.title")}
-                  </h6>
-                  <p className="flex-1">{t("wave1.battalionNft.description")}</p>
-                  <div className="flex justify-end mt-auto pt-3">
-                    <Tag
-                      variant="filledC1"
-                      size="sm"
-                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
-                    >
-                      {t("wave1.battalionNft.cta")}
-                    </Tag>
-                  </div>
-                </DividerBox>
-              </Link>
-
-              {/* EARLY CONTRIBUTOR Box */}
-              <Link
-                to="/wave1/early-contributors"
-                className={`block w-full flex-1 group ${dividerBoxWrapperStyles}`}
-              >
-                <DividerBox color="w1" padding="md" className="h-full !bg-nasun-black/85 flex flex-col">
-                  <h6 className="mb-2 uppercase font-medium text-nasun-c1">
-                    {t("wave1.earlyContributor.title")}
-                  </h6>
-                  <p className="flex-1">{t("wave1.earlyContributor.description")}</p>
-                  <div className="flex justify-end mt-auto pt-3">
-                    <Tag
-                      variant="filledC1"
-                      size="sm"
-                      className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
-                    >
-                      {t("wave1.earlyContributor.cta")}
-                    </Tag>
-                  </div>
-                </DividerBox>
-              </Link>
-            </div>
+            {/* EARLY CONTRIBUTORS */}
+            <Link
+              to="/wave1/early-contributors"
+              className="block w-full flex-1 group transition-all duration-300 ease-out"
+            >
+              <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
+                <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
+                  EARLY CONTRIBUTORS
+                </h6>
+                <p className="flex-1 text-nasun-black/90 ">
+                  Launch pool + Rare Battalion NFTs &rarr; Exclusive utilities
+                </p>
+                <div className="flex justify-end mt-auto pt-3">
+                  <ButtonV2 variant="blue" size="sm" className="w-[160px]">
+                    Join Program
+                  </ButtonV2>
+                </div>
+              </div>
+            </Link>
           </div>
-        </div>{" "}
+
+          {/* Right: WAVE 1 title + Leaderboard image */}
+          <div className="flex flex-col items-center lg:items-start lg:justify-between w-full lg:w-[50%] order-1 lg:order-2">
+            <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 mb-4 lg:mb-6 lg:-mt-4 tracking-wide whitespace-nowrap w-full text-center">
+              WAVE 1
+            </h2>
+            <img
+              src={leaderboardImage}
+              alt="Leaderboard Preview"
+              className="w-full max-w-lg lg:max-w-none object-contain rounded-md shadow-lg"
+            />
+          </div>
+        </div>
       </FadeInUp>
     </SectionLayout>
   );
