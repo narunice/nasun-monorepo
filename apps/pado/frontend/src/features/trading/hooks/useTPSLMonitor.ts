@@ -2,7 +2,9 @@
  * useTPSLMonitor Hook
  *
  * Monitors oracle price and triggers TP/SL market orders when conditions are met.
- * Requires browser tab to be open (client-side polling).
+ * Supports two execution modes:
+ * - Client-side (browser): requires tab open, uses localStorage + client polling
+ * - Server-side (keeper): delegates TradeCap, keeper bot executes via REST API
  *
  * Safety features:
  * - Oracle freshness check (won't trigger on stale/simulated prices)
@@ -11,7 +13,8 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { getPriceWithFreshness } from '../../../lib/prices';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getPriceWithFreshness, type TokenSymbol } from '../../../lib/prices';
 import { playSound } from '../../../lib/sounds';
 import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
@@ -22,21 +25,30 @@ import {
   updateTPSLStatus,
   claimTPSLOrder,
   addTPSLOrder,
-  cancelTPSLOrder,
+  cancelTPSLOrder as cancelTPSLOrderLocal,
   removeTPSLOrder,
   getTPSLOrders,
   clearTPSLHistory,
   pruneTPSLHistory,
 } from '../lib/tpsl-storage';
+import {
+  registerTPSLOrder,
+  getUserTPSLOrders,
+  cancelTPSLOrder as cancelTPSLOrderKeeper,
+  isKeeperConfigured,
+} from '../lib/tpsl-api';
+import type { TradeCapStatus } from './useTradeCap';
 
 export interface UseTPSLMonitorResult {
   orders: TPSLOrder[];
   activeOrders: TPSLOrder[];
   addOrder: (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>) => TPSLOrder | null;
+  addOrderAsync: (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>) => Promise<TPSLOrder | null>;
   cancelOrder: (id: string) => void;
   removeOrder: (id: string) => void;
   clearHistory: () => void;
   isMonitoring: boolean;
+  executionMode: 'client' | 'server';
 }
 
 type ExecuteMarketOrderFn = (
@@ -47,14 +59,36 @@ type ExecuteMarketOrderFn = (
 interface UseTPSLMonitorParams {
   executeMarketOrder: ExecuteMarketOrderFn;
   hasBalanceManager: boolean;
+  /** Current market base symbol for price monitoring */
+  marketSymbol: TokenSymbol;
+  /** Current pool ID for keeper registration */
+  poolId: string;
+  /** Wallet address for keeper order queries */
+  walletAddress?: string;
+  /** BalanceManager ID for keeper registration */
+  balanceManagerId: string | null;
+  /** TradeCap delegation status */
+  tradeCapStatus: TradeCapStatus;
+  /** Delegated TradeCap object ID */
+  tradeCapId: string | null;
 }
 
 export function useTPSLMonitor({
   executeMarketOrder,
   hasBalanceManager,
+  marketSymbol,
+  poolId,
+  walletAddress,
+  balanceManagerId,
+  tradeCapStatus,
+  tradeCapId,
 }: UseTPSLMonitorParams): UseTPSLMonitorResult {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [orders, setOrders] = useState<TPSLOrder[]>(() => getTPSLOrders());
+
+  const isDelegated = tradeCapStatus === 'delegated' && isKeeperConfigured();
+  const executionMode = isDelegated ? 'server' : 'client';
 
   // Stable ref for executeMarketOrder to prevent interval restarts
   const executeRef = useRef<ExecuteMarketOrderFn>(executeMarketOrder);
@@ -63,6 +97,9 @@ export function useTPSLMonitor({
   const hasBalanceManagerRef = useRef(hasBalanceManager);
   useEffect(() => { hasBalanceManagerRef.current = hasBalanceManager; }, [hasBalanceManager]);
 
+  const marketSymbolRef = useRef(marketSymbol);
+  useEffect(() => { marketSymbolRef.current = marketSymbol; }, [marketSymbol]);
+
   // Prune old history on mount
   useEffect(() => { pruneTPSLHistory(); }, []);
 
@@ -70,19 +107,32 @@ export function useTPSLMonitor({
     setOrders(getTPSLOrders());
   }, []);
 
-  // Core trigger check - uses refs so it never changes identity
+  // Fetch keeper orders when delegated
+  const { data: keeperOrders } = useQuery({
+    queryKey: ['keeperTPSLOrders', walletAddress],
+    queryFn: () => getUserTPSLOrders(walletAddress!),
+    enabled: isDelegated && !!walletAddress,
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+
+  // Core trigger check - client-side only (skipped when delegated)
   const checkTriggers = useCallback(async () => {
+    // Skip client-side monitoring when keeper is handling orders
+    if (isDelegated) return;
     if (!hasBalanceManagerRef.current) return;
 
     const activeOrders = getActiveTPSLOrders();
     if (activeOrders.length === 0) return;
 
     // Only trigger on fresh oracle data, never on simulated fallback
-    const priceInfo = getPriceWithFreshness('NBTC');
+    const priceInfo = getPriceWithFreshness(marketSymbolRef.current);
     if (!priceInfo.isFresh || priceInfo.source !== 'oracle') return;
 
     const currentPrice = priceInfo.price;
     if (currentPrice <= 0) return;
+
+    const baseSymbol = marketSymbolRef.current;
 
     // Sequential execution to avoid nonce conflicts with Sui transaction signing
     for (const order of activeOrders) {
@@ -96,7 +146,7 @@ export function useTPSLMonitor({
 
       playSound('tpslTriggered');
       showToast(
-        `${typeLabel} triggered at $${priceStr} — executing ${order.side} ${order.quantity} BTC...`,
+        `${typeLabel} triggered at $${priceStr} — executing ${order.side} ${order.quantity} ${baseSymbol}...`,
         'info'
       );
 
@@ -108,7 +158,7 @@ export function useTPSLMonitor({
             triggeredAt: Date.now(),
             digest: result.digest,
           });
-          const successMsg = `${typeLabel} executed: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.quantity} BTC`;
+          const successMsg = `${typeLabel} executed: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.quantity} ${baseSymbol}`;
           showToast(successMsg, 'success');
           sendBrowserNotification('TP/SL Triggered', {
             body: successMsg,
@@ -139,14 +189,16 @@ export function useTPSLMonitor({
         refreshOrders();
       }
     }
-  }, [showToast, refreshOrders]); // No executeMarketOrder or hasBalanceManager — uses refs
+  }, [showToast, refreshOrders, isDelegated]); // No executeMarketOrder or hasBalanceManager — uses refs
 
   // Stable interval that never restarts
   useEffect(() => {
+    if (isDelegated) return; // Keeper handles monitoring
     const timer = window.setInterval(checkTriggers, TPSL_POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [checkTriggers]);
+  }, [checkTriggers, isDelegated]);
 
+  // Client-side addOrder (synchronous, localStorage)
   const addOrder = useCallback(
     (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>) => {
       const result = addTPSLOrder(order);
@@ -163,13 +215,73 @@ export function useTPSLMonitor({
     [refreshOrders, showToast]
   );
 
-  const handleCancelOrder = useCallback(
-    (id: string) => {
-      cancelTPSLOrder(id);
-      refreshOrders();
-      showToast('TP/SL order cancelled', 'info');
+  // Async addOrder that routes to keeper API when delegated
+  const addOrderAsync = useCallback(
+    async (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>): Promise<TPSLOrder | null> => {
+      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId) {
+        // Fall back to client-side
+        return addOrder(order);
+      }
+
+      try {
+        const response = await registerTPSLOrder({
+          userAddress: walletAddress,
+          poolId,
+          marketSymbol,
+          side: order.side,
+          triggerType: order.triggerType === 'tp' ? 'take_profit' : 'stop_loss',
+          triggerPrice: order.triggerPrice,
+          quantity: order.quantity,
+          tradeCapId,
+          balanceManagerId,
+        });
+
+        // Also store locally for immediate UI update
+        const localOrder: TPSLOrder = {
+          id: response.id,
+          side: order.side,
+          quantity: order.quantity,
+          triggerPrice: order.triggerPrice,
+          triggerType: order.triggerType,
+          status: 'active',
+          createdAt: response.createdAt,
+        };
+
+        const typeLabel = order.triggerType === 'tp' ? 'Take Profit' : 'Stop Loss';
+        const priceStr = order.triggerPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        showToast(`${typeLabel} set at $${priceStr} (server-side)`, 'success');
+
+        // Refresh keeper orders
+        queryClient.invalidateQueries({ queryKey: ['keeperTPSLOrders'] });
+
+        return localOrder;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        showToast(`Failed to register TP/SL: ${errorMsg}`, 'error');
+        return null;
+      }
     },
-    [refreshOrders, showToast]
+    [isDelegated, walletAddress, balanceManagerId, tradeCapId, poolId, marketSymbol, addOrder, showToast, queryClient]
+  );
+
+  const handleCancelOrder = useCallback(
+    async (id: string) => {
+      if (isDelegated) {
+        try {
+          await cancelTPSLOrderKeeper(id, walletAddress);
+          showToast('TP/SL order cancelled (server)', 'info');
+          queryClient.invalidateQueries({ queryKey: ['keeperTPSLOrders'] });
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+          showToast(`Cancel failed: ${errorMsg}`, 'error');
+        }
+      } else {
+        cancelTPSLOrderLocal(id);
+        refreshOrders();
+        showToast('TP/SL order cancelled', 'info');
+      }
+    },
+    [isDelegated, walletAddress, refreshOrders, showToast, queryClient]
   );
 
   const handleRemoveOrder = useCallback(
@@ -185,16 +297,37 @@ export function useTPSLMonitor({
     refreshOrders();
   }, [refreshOrders]);
 
-  const activeOrders = orders.filter((o) => o.status === 'active');
+  // Merge local orders with keeper orders for display
+  const displayOrders = isDelegated && keeperOrders
+    ? keeperOrders.map((ko): TPSLOrder => ({
+        id: ko.id,
+        side: ko.side,
+        quantity: ko.quantity,
+        triggerPrice: ko.triggerPrice,
+        triggerType: ko.triggerType === 'take_profit' ? 'tp' : 'sl',
+        status: ko.status === 'active' ? 'active'
+          : ko.status === 'executing' ? 'executing'
+          : ko.status === 'filled' ? 'triggered'
+          : ko.status === 'canceled' ? 'cancelled'
+          : 'failed',
+        createdAt: ko.createdAt,
+        digest: ko.txDigest,
+        error: ko.error,
+      }))
+    : orders;
+
+  const activeOrders = displayOrders.filter((o) => o.status === 'active');
   const isMonitoring = activeOrders.length > 0 && hasBalanceManager;
 
   return {
-    orders,
+    orders: displayOrders,
     activeOrders,
     addOrder,
+    addOrderAsync,
     cancelOrder: handleCancelOrder,
     removeOrder: handleRemoveOrder,
     clearHistory: handleClearHistory,
     isMonitoring,
+    executionMode,
   };
 }
