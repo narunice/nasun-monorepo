@@ -133,7 +133,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError }: Crea
                 }`}
             />
             {agent && !isAgentValid && (
-              <p className="text-[10px] text-red-400">Invalid Sui address (0x + 64 hex chars)</p>
+              <p className="text-[10px] text-red-400">Invalid address (0x + 64 hex chars)</p>
             )}
           </div>
 

@@ -1,8 +1,8 @@
 /**
- * ChatInput - Bottom-fixed chat input with send button
+ * ChatInput - Bottom-fixed chat input with segmented privacy toggle and send button
  */
 
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 
 const MAX_PROMPT_LENGTH = 10_000;
 
@@ -11,13 +11,19 @@ interface ChatInputProps {
   disabled?: boolean;
   placeholder?: string;
   initialValue?: string;
+  privacyMode: boolean;
+  onTogglePrivacy: (mode: boolean) => void;
+  modelName?: string;
 }
 
 export function ChatInput({
   onSubmit,
   disabled = false,
-  placeholder = 'Ask anything...',
-  initialValue = ''
+  placeholder = "Ask anything...",
+  initialValue = "",
+  privacyMode,
+  onTogglePrivacy,
+  modelName,
 }: ChatInputProps) {
   const [value, setValue] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -34,8 +40,8 @@ export function ChatInput({
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 320)}px`;
     }
   }, [value]);
 
@@ -44,19 +50,90 @@ export function ChatInput({
   const handleSubmit = () => {
     if (!value.trim() || disabled || isOverLimit) return;
     onSubmit(value.trim());
-    setValue('');
+    setValue("");
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
   };
 
   return (
-    <div className="flex items-end gap-3">
-      <div className="flex-1 relative">
+    <div className="space-y-2">
+      {/* Toggle row: Privacy Mode Switch + Model info */}
+      <div className="flex items-center gap-3">
+        <div
+          role="radiogroup"
+          aria-label="Privacy mode"
+          className="relative rounded-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] h-8 px-0.5 flex items-center"
+        >
+          {/* Sliding background indicator */}
+          <div
+            className={`absolute top-0.5 bottom-0.5 rounded-full transition-all duration-300 ease-out ${
+              privacyMode ? "left-0.5 bg-br-1d" : "left-[calc(50%)] bg-gray-500"
+            }`}
+            style={{ width: "calc(50% - 2px)" }}
+          />
+
+          {/* Private option */}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={privacyMode}
+            onClick={() => onTogglePrivacy(true)}
+            className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-300 whitespace-nowrap ${
+              privacyMode ? "text-white" : "text-[var(--color-text-muted)]"
+            }`}
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <span>Private</span>
+          </button>
+
+          {/* Standard option */}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!privacyMode}
+            onClick={() => onTogglePrivacy(false)}
+            className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-300 whitespace-nowrap ${
+              !privacyMode ? "text-white" : "text-[var(--color-text-muted)]"
+            }`}
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+              />
+            </svg>
+            <span>Standard</span>
+          </button>
+        </div>
+
+        {/* Mode & model label */}
+        <span className="text-xs text-[var(--color-text-muted)]">
+          {privacyMode ? "Private" : "Standard"}
+          {modelName && (
+            <>
+              <span className="mx-1.5 text-[var(--color-border)]">&middot;</span>
+              <span>{modelName}</span>
+            </>
+          )}
+        </span>
+      </div>
+
+      {/* Textarea wrapper — overflow-hidden preserves rounded corners when scrollbar appears */}
+      <div className="relative rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden focus-within:ring-2 focus-within:ring-br-1 focus-within:border-transparent">
         <textarea
           ref={textareaRef}
           value={value}
@@ -65,24 +142,29 @@ export function ChatInput({
           placeholder={placeholder}
           disabled={disabled}
           rows={3}
-          className="w-full px-4 py-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-br-1 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[72px] max-h-[200px]"
+          className="w-full px-4 py-3 pr-14 bg-transparent text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[72px] max-h-[320px]"
         />
         {isOverLimit && (
-          <p className="absolute bottom-1 right-2 text-xs text-[var(--color-error)]">
+          <p className="absolute bottom-1 right-14 text-xs text-[var(--color-error)]">
             {value.length.toLocaleString()} / {MAX_PROMPT_LENGTH.toLocaleString()}
           </p>
         )}
+        <button
+          onClick={handleSubmit}
+          disabled={!value.trim() || disabled || isOverLimit}
+          className="absolute bottom-3 right-3 w-8 h-8 rounded-lg bg-br-1d hover:bg-br-2d text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Send message"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 10l7-7m0 0l7 7m-7-7v18"
+            />
+          </svg>
+        </button>
       </div>
-      <button
-        onClick={handleSubmit}
-        disabled={!value.trim() || disabled || isOverLimit}
-        className="flex-shrink-0 w-10 h-10 self-end rounded-xl bg-br-1d hover:bg-br-2d text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-label="Send message"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-        </svg>
-      </button>
     </div>
   );
 }

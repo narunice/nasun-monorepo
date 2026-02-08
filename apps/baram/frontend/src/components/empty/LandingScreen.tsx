@@ -18,7 +18,7 @@ export function LandingScreen() {
           </svg>
         </div>
         <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-3">
-          Your Prompts, Your Eyes Only
+          Your Prompts, For Your Eyes Only
         </h1>
         <p className="text-[var(--color-text-secondary)] max-w-3xl text-sm leading-relaxed">
           End-to-end encrypted AI inference inside a hardware enclave. No logs, no training, no

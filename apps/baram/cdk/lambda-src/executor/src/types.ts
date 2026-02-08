@@ -41,8 +41,7 @@ export const STATUS = {
 
 // Model pricing (in NUSDC, 6 decimals)
 export const MODEL_PRICING: Record<string, number> = {
-  'llama-3.1-8b-instant': 100_000, // 0.1 NUSDC
   'llama-3.3-70b-versatile': 100_000, // 0.1 NUSDC
 } as const;
 
-export const DEFAULT_MODEL = 'llama-3.1-8b-instant';
+export const DEFAULT_MODEL = 'llama-3.3-70b-versatile';

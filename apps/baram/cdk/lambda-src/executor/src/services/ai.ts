@@ -23,7 +23,6 @@ const providers: Record<string, AIProvider> = {};
 // Model → Provider mapping
 // Kept in sync with MODEL_PRICING in types.ts — every model here must have a price entry.
 const MODEL_PROVIDER_MAP: Record<string, string> = {
-  'llama-3.1-8b-instant': 'groq',
   'llama-3.3-70b-versatile': 'groq',
 };
 

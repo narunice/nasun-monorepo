@@ -127,7 +127,7 @@ async function runTest(): Promise<void> {
       body: JSON.stringify({
         requestId: 9999, // Test request ID
         encryptedPrompt,
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
       }),
     });
 

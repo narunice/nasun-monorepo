@@ -3,15 +3,14 @@
  */
 
 import { useState } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useIsConnected } from '@/hooks/useWalletSession';
 import { useBudgets } from '@/hooks/useBudgets';
 import { BudgetCard } from './BudgetCard';
 import { BudgetDetail } from './BudgetDetail';
 import { CreateBudgetModal } from '@/components/modals/CreateBudgetModal';
 
 export function BudgetSection() {
-  const { status } = useWallet();
-  const isConnected = status === 'connected';
+  const isConnected = useIsConnected();
   const {
     budgets,
     isLoading,
@@ -25,6 +24,7 @@ export function BudgetSection() {
     depositToBudget,
     withdrawFromBudget,
     deactivateBudget,
+    resetTxStatus,
   } = useBudgets();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -46,7 +46,7 @@ export function BudgetSection() {
       {/* Create Budget Button */}
       <div className="p-3">
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg
                      border border-[var(--color-border)] border-dashed
                      text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]
@@ -87,7 +87,7 @@ export function BudgetSection() {
             key={budget.id}
             budget={budget}
             isSelected={selectedBudgetId === budget.id}
-            onClick={() => setSelectedBudget(budget.id)}
+            onClick={() => { resetTxStatus(); setSelectedBudget(budget.id); }}
           />
         ))}
       </div>

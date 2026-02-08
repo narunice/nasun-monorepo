@@ -22,6 +22,7 @@ export const ZKLOGIN_CONFIG = {
 export const BARAM_CONFIG = {
   packageId: import.meta.env.VITE_BARAM_PACKAGE_ID || BARAM.packageId,
   registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || BARAM.registry,
+  budgetTypeOrigin: BARAM.budgetTypeOrigin,
   executorAddress: import.meta.env.VITE_EXECUTOR_ADDRESS || '',
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
   apiKey: import.meta.env.VITE_BARAM_API_KEY || '',
@@ -129,20 +130,14 @@ export const TOKENS = {
 // AI Model Pricing (in NUSDC, 6 decimals)
 // Note: Contract MIN_PRICE is 100,000 (0.1 NUSDC)
 export const MODEL_PRICING = {
-  // Groq models (fast inference, free tier available)
-  'llama-3.1-8b-instant': {
-    name: 'Llama 3.1 8B (Groq)',
-    price: 100_000, // 0.1 NUSDC
-    description: 'Fast inference via Groq Cloud',
-    provider: 'groq',
-  },
+  // Groq (Standard mode)
   'llama-3.3-70b-versatile': {
     name: 'Llama 3.3 70B (Groq)',
     price: 100_000, // 0.1 NUSDC
     description: 'Large model via Groq Cloud',
     provider: 'groq',
   },
-  // TEE Local (when TEE is running)
+  // TEE Local (Private mode)
   'llama-3.2-3b-local': {
     name: 'Llama 3.2 3B (TEE)',
     price: 100_000, // 0.1 NUSDC
@@ -152,8 +147,24 @@ export const MODEL_PRICING = {
 } satisfies Record<string, { name: string; price: number; description: string; provider: string }>;
 
 export type ModelId = keyof typeof MODEL_PRICING;
-// Default to Groq for development/testing
-export const DEFAULT_MODEL: ModelId = 'llama-3.1-8b-instant';
+export const DEFAULT_MODEL: ModelId = 'llama-3.3-70b-versatile';
+
+// Privacy Mode Configuration
+// Maps toggle state to model selection
+export const PRIVACY_MODE_CONFIG = {
+  private: {
+    modelId: 'llama-3.2-3b-local' as ModelId,
+    label: 'Private',
+    description: 'Encrypted inference in TEE enclave',
+  },
+  standard: {
+    modelId: 'llama-3.3-70b-versatile' as ModelId,
+    label: 'Standard',
+    description: 'Fast inference via Groq Cloud',
+  },
+} as const;
+
+export const DEFAULT_PRIVACY_MODE = false; // Standard by default
 
 // Budget Configuration — matches budget.move constants
 export const BUDGET_CONFIG = {

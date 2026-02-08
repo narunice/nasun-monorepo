@@ -1,20 +1,11 @@
 /**
- * SidebarSettings - Model selection and clear history
- * Executor is auto-assigned (no manual selection).
+ * SidebarSettings - Clear history button
+ * Model selection moved to Privacy Mode toggle in ChatInput.
  */
 
 import { useChatStore } from '../../stores/chatStore';
-import { MODEL_PRICING, ModelId } from '../../config/network';
-
-// Format price for display
-function formatPrice(price: number): string {
-  if (price === 0) return 'Free';
-  return `${(price / 1e6).toFixed(2)} NUSDC`;
-}
 
 export function SidebarSettings() {
-  const selectedModel = useChatStore((state) => state.selectedModel);
-  const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const clearAllSessions = useChatStore((state) => state.clearAllSessions);
 
   const handleClearAll = async () => {
@@ -23,42 +14,8 @@ export function SidebarSettings() {
     }
   };
 
-  const allModels = Object.keys(MODEL_PRICING) as ModelId[];
-  const selectedModelConfig = selectedModel ? MODEL_PRICING[selectedModel as ModelId] : null;
-
   return (
-    <div className="p-3 space-y-3">
-      {/* Model Selection with Price */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-          Model
-        </label>
-        <select
-          value={selectedModel || ''}
-          onChange={(e) => setSelectedModel(e.target.value || null)}
-          className="w-full px-2 py-1.5 text-sm rounded-md
-                     bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]
-                     text-[var(--color-text-primary)]
-                     focus:outline-none focus:ring-1 focus:ring-br-1"
-        >
-          <option key="_model_placeholder" value="">Select model...</option>
-          {allModels.map((modelId) => {
-            const config = MODEL_PRICING[modelId];
-            return (
-              <option key={modelId} value={modelId}>
-                {config.name} ({formatPrice(config.price)})
-              </option>
-            );
-          })}
-        </select>
-        {selectedModelConfig && (
-          <div className="mt-1 text-xs text-[var(--color-text-muted)]">
-            {selectedModelConfig.description}
-          </div>
-        )}
-      </div>
-
-      {/* Clear History Button */}
+    <div className="p-3">
       <button
         onClick={handleClearAll}
         className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg

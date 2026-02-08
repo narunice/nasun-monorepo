@@ -32,9 +32,17 @@ SUPPORTED_MODELS='[]'
 PROXY_HOST="ubuntu@3.38.127.23"
 SSH_KEY="$HOME/.ssh/.awskey/nasun-devnet-key.pem"
 
-# Contract IDs (devnet-ids registry)
-EXECUTOR_PACKAGE_ID="0x4b0e89faaa8fa0af76d7e1765df14bfbfe2020a6207fd83e82089a0427ed4ddc"
-EXECUTOR_REGISTRY_ID="0xcb694425ce9b3d3024b069755b4152708976d5cd28295d2631f74e12363c009c"
+# Contract IDs — read from devnet-config if available, fallback to hardcoded
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEVNET_IDS="$SCRIPT_DIR/../../../../packages/devnet-config/devnet-ids.json"
+
+if [ -f "$DEVNET_IDS" ] && command -v jq &> /dev/null; then
+  EXECUTOR_PACKAGE_ID=$(jq -r '.baram.executorPackageId' "$DEVNET_IDS")
+  EXECUTOR_REGISTRY_ID=$(jq -r '.baram.executorRegistry' "$DEVNET_IDS")
+else
+  EXECUTOR_PACKAGE_ID="0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd"
+  EXECUTOR_REGISTRY_ID="0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656"
+fi
 
 # Nasun CLI path
 NASUN_CLI="${NASUN_CLI:-/home/naru/my_apps/nasun-devnet/sui/target/release/sui}"
