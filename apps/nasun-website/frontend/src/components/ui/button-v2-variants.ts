@@ -15,7 +15,7 @@ export const buttonV2Variants = cva(
         "gensol-red": "from-[#d52933] to-[#e85a62] hover:from-[#c0242d] hover:to-[#d54a52]",
       },
       outline: {
-        true: "bg-transparent border-2",
+        true: "bg-transparent border",
         false: "text-nasun-white bg-gradient-to-r",
       },
       size: {
@@ -27,11 +27,31 @@ export const buttonV2Variants = cva(
       },
     },
     compoundVariants: [
-      { variant: "red", outline: true, class: "border-[#C4634A] text-[#C4634A] hover:bg-[#C4634A]/10" },
-      { variant: "blue", outline: true, class: "border-[#6898B8] text-[#6898B8] hover:bg-[#6898B8]/10" },
-      { variant: "white", outline: true, class: "border-[#E0DAD0] text-[#E0DAD0] hover:bg-[#E0DAD0]/10" },
-      { variant: "purple", outline: true, class: "border-[#7B68AE] text-[#7B68AE] hover:bg-[#7B68AE]/10" },
-      { variant: "gensol-red", outline: true, class: "border-[#d52933] text-[#d52933] hover:bg-[#d52933]/10" },
+      {
+        variant: "red",
+        outline: true,
+        class: "border-[#C4634A] text-[#C4634A] hover:bg-[#C4634A]/10",
+      },
+      {
+        variant: "blue",
+        outline: true,
+        class: "border-[#6898B8] text-[#6898B8] hover:bg-[#6898B8]/10",
+      },
+      {
+        variant: "white",
+        outline: true,
+        class: "border-[#E0DAD0] text-[#E0DAD0] hover:bg-[#E0DAD0]/10",
+      },
+      {
+        variant: "purple",
+        outline: true,
+        class: "border-[#7B68AE] text-[#7B68AE] hover:bg-[#7B68AE]/10",
+      },
+      {
+        variant: "gensol-red",
+        outline: true,
+        class: "border-[#d52933] text-[#d52933] hover:bg-[#d52933]/10",
+      },
     ],
     defaultVariants: {
       variant: "red",

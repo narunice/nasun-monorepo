@@ -149,12 +149,6 @@ export const DORMANT_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Model pricing (in NUSDC smallest unit, 6 decimals)
 export const MODEL_PRICING: Record<string, ModelInfo> = {
-  'llama-3.1-8b-instant': {
-    name: 'Llama 3.1 8B (Groq)',
-    price: 100_000,
-    description: 'Fast inference via Groq Cloud',
-    provider: 'groq',
-  },
   'llama-3.3-70b-versatile': {
     name: 'Llama 3.3 70B (Groq)',
     price: 100_000,

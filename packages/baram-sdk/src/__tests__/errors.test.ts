@@ -43,9 +43,9 @@ describe('NoCoinsError', () => {
 
 describe('NoExecutorError', () => {
   it('includes model and tier info', () => {
-    const err = new NoExecutorError('llama-3.1-8b-instant', 2);
+    const err = new NoExecutorError('llama-3.3-70b-versatile', 2);
     expect(err.code).toBe('NO_EXECUTOR');
-    expect(err.message).toContain('llama-3.1-8b-instant');
+    expect(err.message).toContain('llama-3.3-70b-versatile');
     expect(err.message).toContain('2');
     expect(err).toBeInstanceOf(BaramError);
   });

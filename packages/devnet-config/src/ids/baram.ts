@@ -36,9 +36,12 @@ export const COMPLIANCE_REGISTRY = config.baram.complianceRegistry as ObjectId;
 export const COMPLIANCE_ADMIN_CAP = config.baram.complianceAdminCap as ObjectId;
 export const COMPLIANCE_UPGRADE_CAP = config.baram.complianceUpgradeCap as ObjectId;
 
+// Budget type origin (runtime type origin for budget module types)
+export const BUDGET_TYPE_ORIGIN = config.baram.budgetTypeOrigin as ObjectId;
+
 // Beta Access NFT
-export const BETA_ACCESS_REGISTRY = config.baram.betaAccessRegistry;
-export const BETA_ACCESS_ADMIN = config.baram.betaAccessAdmin;
+export const BETA_ACCESS_REGISTRY = (config.baram.betaAccessRegistry || '') as ObjectId | '';
+export const BETA_ACCESS_ADMIN = (config.baram.betaAccessAdmin || '') as ObjectId | '';
 
 // Baram now uses the unified devnet_tokens NUSDC
 // Note: Requires baram contract redeployment to use devnet_tokens::nusdc::NUSDC
@@ -63,6 +66,7 @@ export const BARAM: BaramConfig = {
   complianceRegistry: COMPLIANCE_REGISTRY,
   complianceAdminCap: COMPLIANCE_ADMIN_CAP,
   complianceUpgradeCap: COMPLIANCE_UPGRADE_CAP,
+  budgetTypeOrigin: BUDGET_TYPE_ORIGIN,
   betaAccessRegistry: BETA_ACCESS_REGISTRY,
   betaAccessAdmin: BETA_ACCESS_ADMIN,
   nusdcType: NUSDC_TYPE,

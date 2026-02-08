@@ -65,7 +65,7 @@ const ERROR_CONFIG: Record<LedgerErrorCode, ErrorConfig> = {
   APP_NOT_OPEN: {
     title: 'Wallet app not open',
     description: "The required app isn't open on your Ledger.",
-    solution: 'Open the Sui/Nasun app on your Ledger device.',
+    solution: 'Open the Nasun app on your Ledger device.',
     icon: '📱',
     severity: 'warning',
     showDeviceHint: true,

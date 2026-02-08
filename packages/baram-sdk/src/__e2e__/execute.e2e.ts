@@ -23,6 +23,8 @@ describe('Baram Execute E2E', () => {
   let userClient: BaramClient;
   let executors: ExecutorInfo[] = [];
   let hasExecutors = false;
+  // Shared across tests to avoid coin version conflicts from consecutive execute() calls
+  let lastExecuteRequestId: number | null = null;
 
   beforeAll(async () => {
     logTest('Setting up execute E2E tests...');
@@ -85,7 +87,7 @@ describe('Baram Execute E2E', () => {
 
       const result = await userClient.execute({
         prompt: 'What is 2 + 2? Answer with just the number.',
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         minTier: 0,
       });
 
@@ -100,6 +102,9 @@ describe('Baram Execute E2E', () => {
       expect(result).toHaveProperty('txDigest');
       expect(typeof result.response).toBe('string');
       expect(result.response.length).toBeGreaterThan(0);
+
+      // Store requestId for getECR() test reuse
+      lastExecuteRequestId = result.requestId;
 
       // Check ECR was created
       if (result.ecr) {
@@ -125,32 +130,24 @@ describe('Baram Execute E2E', () => {
 
   describe('getECR()', () => {
     it('should fetch ECR by request ID after execution (requires executor)', async () => {
-      if (!hasExecutors) {
-        logTest('SKIPPED: No executors available on devnet');
+      if (!hasExecutors || lastExecuteRequestId === null) {
+        logTest('SKIPPED: No executors available or execute() test did not run');
         return;
       }
 
-      // Execute to create an ECR
-      const result = await userClient.execute({
-        prompt: 'Say hello',
-        model: 'llama-3.1-8b-instant',
-        minTier: 0,
-      });
+      // Reuse requestId from the execute() test to avoid coin version conflicts
+      logTest(`Fetching ECR for request: ${lastExecuteRequestId}`);
 
-      logTest(`Fetching ECR for request: ${result.requestId}`);
-
-      // Fetch the ECR
-      const ecr = await userClient.getECR(result.requestId);
+      const ecr = await userClient.getECR(lastExecuteRequestId);
 
       if (ecr) {
         logTest(`ECR found: ${ecr.objectId}`);
         expect(ecr).toHaveProperty('objectId');
         expect(ecr).toHaveProperty('requestId');
-        expect(ecr.requestId).toBe(result.requestId);
+        expect(ecr.requestId).toBe(lastExecuteRequestId);
       } else {
-        // ECR might not be created immediately in some cases
         logTest('ECR not found (may be delayed)');
       }
-    }, 120000);
+    }, 30000);
   });
 });

@@ -82,6 +82,8 @@ export interface BaramConfig {
   complianceRegistry: ObjectId;
   complianceAdminCap: ObjectId;
   complianceUpgradeCap: ObjectId;
+  // Budget type origin (package ID where budget module was first introduced)
+  budgetTypeOrigin: ObjectId;
   // Beta Access NFT
   betaAccessRegistry: ObjectId | '';
   betaAccessAdmin: ObjectId | '';

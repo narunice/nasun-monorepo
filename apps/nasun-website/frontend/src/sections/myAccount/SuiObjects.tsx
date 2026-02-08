@@ -65,7 +65,7 @@ export const SuiObject: FC<SuiObjectProps> = ({ objectRes }) => {
       imageUrl={imageUrl}
       name={name}
       explorerUrl={explorerUrl}
-      explorerLabel="Sui Explorer"
+      explorerLabel="Nasun Explorer"
       renderFieldIfExists={renderFieldIfExists}
     >
       {/* 조건부 렌더링 적용 */}

@@ -106,7 +106,6 @@ const config: BaramConfig = {
 
 | Model ID | Name | Price | Provider |
 |----------|------|-------|----------|
-| `llama-3.1-8b-instant` | Llama 3.1 8B | 0.1 NUSDC | Groq Cloud |
 | `llama-3.3-70b-versatile` | Llama 3.3 70B | 0.1 NUSDC | Groq Cloud |
 | `llama-3.2-3b-local` | Llama 3.2 3B | 0.1 NUSDC | TEE Enclave |
 
@@ -122,7 +121,7 @@ const { budgetId } = await client.createBudget({
   agent: '0x...agent_address...',  // AI agent's wallet address
   deposit: 50_000_000,              // 50 NUSDC (6 decimals)
   maxPerRequest: 1_000_000,         // Max 1 NUSDC per request
-  allowedModels: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
+  allowedModels: ['llama-3.3-70b-versatile', 'llama-3.3-70b-versatile'],
   allowedExecutors: [],             // Empty = all executors allowed
   expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
 });
@@ -142,7 +141,7 @@ const agentClient = new BaramClient({
 const result = await agentClient.executeWithBudget({
   budgetId: '0x...budget_id...',
   prompt: 'Analyze market conditions',
-  model: 'llama-3.1-8b-instant',
+  model: 'llama-3.3-70b-versatile',
 });
 
 console.log(result.response);
