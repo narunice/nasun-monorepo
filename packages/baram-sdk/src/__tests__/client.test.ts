@@ -41,7 +41,7 @@ const mockConfig: BaramConfig = {
   rpcUrl: 'https://rpc.devnet.nasun.io',
   baram: { packageId: '0xaaa', registryId: '0xbbb' },
   executor: { packageId: '0xccc', registryId: '0xddd', processedRequestsId: '0xeee', tierRegistryId: '0xfff' },
-  compliance: { packageId: '0x111', registryId: '0x222' },
+  aer: { packageId: '0x111', registryId: '0x222' },
   tokens: { nusdcType: '0x333::nusdc::NUSDC' },
 };
 
@@ -60,8 +60,8 @@ describe('BaramClient', () => {
       config: mockConfig,
       signer: mockSigner,
       executorTimeoutMs: 5000,
-      ecrPollIntervalMs: 100,
-      ecrPollRetries: 2,
+      aerPollIntervalMs: 100,
+      aerPollRetries: 2,
     });
   });
 

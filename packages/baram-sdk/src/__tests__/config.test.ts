@@ -16,8 +16,8 @@ describe('createDevnetConfig', () => {
     expect(config.executor.processedRequestsId).toMatch(/^0x[a-f0-9]+$/);
     expect(config.executor.tierRegistryId).toMatch(/^0x[a-f0-9]+$/);
 
-    expect(config.compliance.packageId).toMatch(/^0x[a-f0-9]+$/);
-    expect(config.compliance.registryId).toMatch(/^0x[a-f0-9]+$/);
+    expect(config.aer.packageId).toMatch(/^0x[a-f0-9]+$/);
+    expect(config.aer.registryId).toMatch(/^0x[a-f0-9]+$/);
 
     expect(config.tokens.nusdcType).toBeTruthy();
   });

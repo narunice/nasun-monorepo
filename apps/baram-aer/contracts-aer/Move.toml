@@ -1,0 +1,15 @@
+[package]
+name = "baram_aer"
+edition = "2024"
+version = "0.0.1"
+published-at = "0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0"
+
+[dependencies]
+Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
+
+[addresses]
+baram_aer = "0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"

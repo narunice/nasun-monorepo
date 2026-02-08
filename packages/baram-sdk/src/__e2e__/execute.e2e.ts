@@ -2,9 +2,9 @@
  * E2E Tests for basic execute() flow
  *
  * Tests the core Baram pipeline:
- * User → createRequest (escrow) → Executor selection → AI inference → Settlement → ECR
+ * User → createRequest (escrow) → Executor selection → AI inference → Settlement → AER
  *
- * NOTE: execute() and getECR() tests require an active Executor on devnet.
+ * NOTE: execute() and getAER() tests require an active Executor on devnet.
  * These tests will be skipped if no executors are available.
  */
 
@@ -103,13 +103,13 @@ describe('Baram Execute E2E', () => {
       expect(typeof result.response).toBe('string');
       expect(result.response.length).toBeGreaterThan(0);
 
-      // Store requestId for getECR() test reuse
+      // Store requestId for getAER() test reuse
       lastExecuteRequestId = result.requestId;
 
-      // Check ECR was created
-      if (result.ecr) {
-        logTest(`ECR Object ID: ${result.ecr.objectId}`);
-        expect(result.ecr).toHaveProperty('objectId');
+      // Check AER was created
+      if (result.aer) {
+        logTest(`AER Object ID: ${result.aer.objectId}`);
+        expect(result.aer).toHaveProperty('objectId');
       }
 
       // Verify balance decreased (payment was made)
@@ -128,25 +128,25 @@ describe('Baram Execute E2E', () => {
     });
   });
 
-  describe('getECR()', () => {
-    it('should fetch ECR by request ID after execution (requires executor)', async () => {
+  describe('getAER()', () => {
+    it('should fetch AER by request ID after execution (requires executor)', async () => {
       if (!hasExecutors || lastExecuteRequestId === null) {
         logTest('SKIPPED: No executors available or execute() test did not run');
         return;
       }
 
       // Reuse requestId from the execute() test to avoid coin version conflicts
-      logTest(`Fetching ECR for request: ${lastExecuteRequestId}`);
+      logTest(`Fetching AER for request: ${lastExecuteRequestId}`);
 
-      const ecr = await userClient.getECR(lastExecuteRequestId);
+      const aer = await userClient.getAER(lastExecuteRequestId);
 
-      if (ecr) {
-        logTest(`ECR found: ${ecr.objectId}`);
-        expect(ecr).toHaveProperty('objectId');
-        expect(ecr).toHaveProperty('requestId');
-        expect(ecr.requestId).toBe(lastExecuteRequestId);
+      if (aer) {
+        logTest(`AER found: ${aer.objectId}`);
+        expect(aer).toHaveProperty('objectId');
+        expect(aer).toHaveProperty('requestId');
+        expect(aer.requestId).toBe(lastExecuteRequestId);
       } else {
-        logTest('ECR not found (may be delayed)');
+        logTest('AER not found (may be delayed)');
       }
     }, 30000);
   });

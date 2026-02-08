@@ -1,0 +1,15 @@
+[package]
+name = "baram_compliance"
+edition = "2024"
+version = "0.0.1"
+published-at = "0x601d879d176f5f22f1c3f267bb8895c6b18f1020878ac38a5f88f27ffeed55c3"
+
+[dependencies]
+Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
+
+[addresses]
+baram_compliance = "0x0"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"

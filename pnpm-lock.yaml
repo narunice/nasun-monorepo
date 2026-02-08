@@ -4,6 +4,14 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
+  '@mysten/sui': 1.45.2
+  happy-dom: '>=20.0.0'
+  valibot: '>=1.2.0'
+  esbuild: '>=0.25.0'
+
 importers:
 
   .:
@@ -11,6 +19,125 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  apps/baram-aer/executor-nitro:
+    dependencies:
+      '@mysten/sui':
+        specifier: 1.45.2
+        version: 1.45.2(typescript@5.9.3)
+      aws-nitro-enclaves-nsm-node:
+        specifier: ^0.0.2
+        version: 0.0.2
+      cbor-x:
+        specifier: ^1.6.0
+        version: 1.6.0
+      express:
+        specifier: ^4.18.2
+        version: 4.22.1
+      node-llama-cpp:
+        specifier: ^3.15.1
+        version: 3.15.1(typescript@5.9.3)
+      node-vsock:
+        specifier: ^0.0.5
+        version: 0.0.5
+      openai:
+        specifier: ^4.20.0
+        version: 4.104.0(ws@8.18.3)(zod@3.23.8)
+    devDependencies:
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.27
+      tsx:
+        specifier: ^4.6.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.3.2
+        version: 5.9.3
+
+  apps/baram-aer/frontend:
+    dependencies:
+      '@mysten/sui':
+        specifier: 1.45.2
+        version: 1.45.2(typescript@5.9.3)
+      '@nasun/devnet-config':
+        specifier: workspace:*
+        version: link:../../../packages/devnet-config
+      '@nasun/wallet':
+        specifier: workspace:*
+        version: link:../../../packages/wallet
+      '@nasun/wallet-ui':
+        specifier: workspace:*
+        version: link:../../../packages/wallet-ui
+      '@tanstack/react-query':
+        specifier: ^5.90.12
+        version: 5.90.12(react@19.2.3)
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
+      react-icons:
+        specifier: ^5.5.0
+        version: 5.5.0(react@19.2.3)
+      react-router-dom:
+        specifier: ^7.13.0
+        version: 7.13.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      zustand:
+        specifier: ^5.0.9
+        version: 5.0.9(@types/react@19.2.7)(immer@11.1.0)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.1
+        version: 9.39.2
+      '@nasun/tailwind-config':
+        specifier: workspace:*
+        version: link:../../../packages/tailwind-config
+      '@types/node':
+        specifier: ^24.10.4
+        version: 24.10.4
+      '@types/react':
+        specifier: ^19.2.5
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.7)
+      '@vitejs/plugin-react':
+        specifier: ^5.1.1
+        version: 5.1.2(vite@7.3.0(@types/node@24.10.4)(jiti@1.21.7)(terser@5.44.1)(tsx@4.21.0))
+      autoprefixer:
+        specifier: ^10.4.23
+        version: 10.4.23(postcss@8.5.6)
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.2(jiti@1.21.7)
+      eslint-plugin-react-hooks:
+        specifier: ^7.0.1
+        version: 7.0.1(eslint@9.39.2(jiti@1.21.7))
+      eslint-plugin-react-refresh:
+        specifier: ^0.4.24
+        version: 0.4.26(eslint@9.39.2(jiti@1.21.7))
+      globals:
+        specifier: ^16.5.0
+        version: 16.5.0
+      postcss:
+        specifier: ^8.5.6
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.19
+        version: 3.4.19(tsx@4.21.0)
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.46.4
+        version: 8.50.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      vite:
+        specifier: ^7.3.0
+        version: 7.3.0(@types/node@24.10.4)(jiti@1.21.7)(terser@5.44.1)(tsx@4.21.0)
 
   apps/baram/executor-nitro:
     dependencies:
@@ -658,25 +785,6 @@ importers:
       vite:
         specifier: ^7.3.0
         version: 7.3.0(@types/node@22.19.3)(jiti@1.21.7)(terser@5.44.1)(tsx@4.21.0)
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@22.19.3)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
-
-  apps/pado/bots:
-    dependencies:
-      '@mysten/sui':
-        specifier: ^1.21.1
-        version: 1.45.2(typescript@5.9.3)
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.3
-      tsx:
-        specifier: ^4.19.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@22.19.3)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
@@ -7670,7 +7778,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
-    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   terser@5.44.1:
     resolution: {integrity: sha512-t/R3R/n0MSwnnazuPpPNVO60LX0SKL45pyl9YlvxIdkH0Of7D5qM2EVe+yASRIlY5pZ73nclYJfNANGWPwFDZw==}
@@ -8213,7 +8321,7 @@ packages:
       '@vitest/browser-preview': 4.0.18
       '@vitest/browser-webdriverio': 4.0.18
       '@vitest/ui': 4.0.18
-      happy-dom: '*'
+      happy-dom: '>=20.0.0'
       jsdom: '*'
     peerDependenciesMeta:
       '@edge-runtime/vm':
@@ -12959,7 +13067,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@24.10.4)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
+      vitest: 3.2.4(@types/node@22.19.3)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
 
   '@vitest/utils@2.1.9':
     dependencies:

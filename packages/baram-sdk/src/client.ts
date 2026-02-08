@@ -1,7 +1,7 @@
 /**
  * BaramClient — High-level SDK client for Baram AI Settlement Layer
  *
- * Provides programmatic access to Baram's escrow → execution → settlement → ECR pipeline.
+ * Provides programmatic access to Baram's escrow → execution → settlement → AER pipeline.
  * Designed for Node.js agents, CLI tools, and backend services.
  */
 
@@ -12,7 +12,7 @@ import type {
   ExecuteParams,
   ExecuteResult,
   ExecutorInfo,
-  ECRData,
+  AERData,
   TierLevel,
   BudgetInfo,
   CreateBudgetParams,
@@ -31,7 +31,7 @@ import { sha256, hexToBytes } from './services/encoding';
 import { getNusdcCoins } from './services/coin';
 import { fetchExecutors, selectExecutorWeightedRandom } from './services/executor';
 import { buildCreateRequestTransaction, buildCancelRequestTransaction } from './services/transaction';
-import { fetchECRByRequestId } from './services/ecr';
+import { fetchAERByRequestId } from './services/aer';
 import { encryptForTee, decryptResponse } from './services/tee';
 import {
   fetchBudget,
@@ -50,15 +50,15 @@ export interface BaramClientOptions {
   signer: Keypair;
   /** Timeout for executor API calls in ms (default: 30000) */
   executorTimeoutMs?: number;
-  /** Interval between ECR poll attempts in ms (default: 2000) */
-  ecrPollIntervalMs?: number;
-  /** Number of ECR poll retries (default: 3) */
-  ecrPollRetries?: number;
+  /** Interval between AER poll attempts in ms (default: 2000) */
+  aerPollIntervalMs?: number;
+  /** Number of AER poll retries (default: 3) */
+  aerPollRetries?: number;
 }
 
 const DEFAULT_EXECUTOR_TIMEOUT_MS = 30_000;
-const DEFAULT_ECR_POLL_INTERVAL_MS = 2_000;
-const DEFAULT_ECR_POLL_RETRIES = 3;
+const DEFAULT_AER_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_AER_POLL_RETRIES = 3;
 
 export class BaramClient {
   private client: SuiClient;
@@ -66,8 +66,8 @@ export class BaramClient {
   private signer: Keypair;
   private address: string;
   private executorTimeoutMs: number;
-  private ecrPollIntervalMs: number;
-  private ecrPollRetries: number;
+  private aerPollIntervalMs: number;
+  private aerPollRetries: number;
 
   constructor(options: BaramClientOptions) {
     this.config = options.config;
@@ -76,16 +76,16 @@ export class BaramClient {
     this.client = new SuiClient({ url: options.config.rpcUrl });
 
     const timeout = options.executorTimeoutMs ?? DEFAULT_EXECUTOR_TIMEOUT_MS;
-    const pollInterval = options.ecrPollIntervalMs ?? DEFAULT_ECR_POLL_INTERVAL_MS;
-    const pollRetries = options.ecrPollRetries ?? DEFAULT_ECR_POLL_RETRIES;
+    const pollInterval = options.aerPollIntervalMs ?? DEFAULT_AER_POLL_INTERVAL_MS;
+    const pollRetries = options.aerPollRetries ?? DEFAULT_AER_POLL_RETRIES;
 
     if (timeout <= 0) throw new BaramError('executorTimeoutMs must be positive', 'INVALID_CONFIG');
-    if (pollInterval <= 0) throw new BaramError('ecrPollIntervalMs must be positive', 'INVALID_CONFIG');
-    if (pollRetries < 0) throw new BaramError('ecrPollRetries must be non-negative', 'INVALID_CONFIG');
+    if (pollInterval <= 0) throw new BaramError('aerPollIntervalMs must be positive', 'INVALID_CONFIG');
+    if (pollRetries < 0) throw new BaramError('aerPollRetries must be non-negative', 'INVALID_CONFIG');
 
     this.executorTimeoutMs = timeout;
-    this.ecrPollIntervalMs = pollInterval;
-    this.ecrPollRetries = pollRetries;
+    this.aerPollIntervalMs = pollInterval;
+    this.aerPollRetries = pollRetries;
   }
 
   /**
@@ -103,10 +103,10 @@ export class BaramClient {
   }
 
   /**
-   * Fetch an ECR (ExecutionComplianceRecord) by request ID.
+   * Fetch an AER (AI Execution Report) by request ID.
    */
-  async getECR(requestId: number): Promise<ECRData | null> {
-    return fetchECRByRequestId(this.client, this.config, requestId);
+  async getAER(requestId: number): Promise<AERData | null> {
+    return fetchAERByRequestId(this.client, this.config, requestId);
   }
 
   /**
@@ -129,7 +129,7 @@ export class BaramClient {
    * 2. Hash prompt (SHA-256)
    * 3. Create on-chain request (escrow NUSDC)
    * 4. Call executor API
-   * 5. Fetch ECR (on-chain compliance record)
+   * 5. Fetch AER (on-chain execution report)
    *
    * @throws {BaramError} if no eligible executor, insufficient balance, or execution fails
    */
@@ -471,12 +471,12 @@ export class BaramClient {
       throw err;
     }
 
-    // Fetch ECR
-    let ecr: ECRData | null = null;
-    for (let i = 0; i < this.ecrPollRetries; i++) {
-      ecr = await this.getECR(requestId);
-      if (ecr) break;
-      await new Promise(resolve => setTimeout(resolve, this.ecrPollIntervalMs));
+    // Fetch AER
+    let aer: AERData | null = null;
+    for (let i = 0; i < this.aerPollRetries; i++) {
+      aer = await this.getAER(requestId);
+      if (aer) break;
+      await new Promise(resolve => setTimeout(resolve, this.aerPollIntervalMs));
     }
 
     return {
@@ -485,7 +485,7 @@ export class BaramClient {
       resultHash,
       txDigest,
       executionTimeMs,
-      ecr,
+      aer,
       executor: selectedExecutor,
       teeEncrypted,
     };
@@ -551,12 +551,12 @@ export class BaramClient {
       throw err;
     }
 
-    // 6. Fetch ECR (may need a short delay for on-chain propagation)
-    let ecr: ECRData | null = null;
-    for (let i = 0; i < this.ecrPollRetries; i++) {
-      ecr = await this.getECR(requestId);
-      if (ecr) break;
-      await new Promise(resolve => setTimeout(resolve, this.ecrPollIntervalMs));
+    // 6. Fetch AER (may need a short delay for on-chain propagation)
+    let aer: AERData | null = null;
+    for (let i = 0; i < this.aerPollRetries; i++) {
+      aer = await this.getAER(requestId);
+      if (aer) break;
+      await new Promise(resolve => setTimeout(resolve, this.aerPollIntervalMs));
     }
 
     return {
@@ -565,7 +565,7 @@ export class BaramClient {
       resultHash,
       txDigest,
       executionTimeMs,
-      ecr,
+      aer,
       executor,
       teeEncrypted,
     };

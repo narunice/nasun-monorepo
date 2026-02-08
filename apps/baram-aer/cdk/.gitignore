@@ -1,0 +1,13 @@
+# CDK build output
+cdk.out/
+
+# Dependencies
+node_modules/
+
+# TypeScript output
+*.js
+*.d.ts
+!jest.config.js
+
+# CDK context
+cdk.context.json

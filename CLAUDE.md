@@ -568,6 +568,7 @@ cd apps/pado/contracts
 | Governance | governance (Dashboard)                        | ✅ V7          |
 | DeepBook   | DeepBook V3 (CLOB)                            | ✅ V7          |
 | Baram      | baram (BaramRegistry + Budget + BetaAccess)   | ✅ V7 (v3)     |
+| Baram      | baram_aer (AERRegistry + AIExecutionReport)   | ✅ V7          |
 | Baram      | executor (ExecutorRegistry + Staking + Tier)  | ✅ V7          |
 | Oracle     | pado_oracle                                   | ✅ V7          |
 | Lending    | pado_lending                                  | ✅ V7          |
