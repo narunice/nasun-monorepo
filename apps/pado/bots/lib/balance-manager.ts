@@ -65,7 +65,7 @@ export async function findBalanceManager(
     try {
       const obj = await client.getObject({ id: savedId });
       if (obj.data) {
-        console.log(`[${timestamp()}] Found saved BalanceManager: ${savedId.slice(0, 16)}...`);
+        console.log(`[${timestamp()}] Found saved BalanceManager for ${MARKET.name}: ${savedId.slice(0, 16)}...`);
         return savedId;
       }
     } catch {
@@ -74,27 +74,11 @@ export async function findBalanceManager(
     }
   }
 
-  try {
-    const objects = await client.getOwnedObjects({
-      owner: address,
-      filter: { StructType: BALANCE_MANAGER_TYPE },
-      options: { showContent: true },
-    });
-
-    if (objects.data.length > 0) {
-      const objectId = objects.data[0].data?.objectId;
-      if (objectId) {
-        persistentState.balanceManagers[address] = objectId;
-        savePersistentState(persistentState);
-        return objectId;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`[${timestamp()}] Error finding BalanceManager:`, error);
-    return null;
-  }
+  // In multi-market mode, do NOT auto-discover from owned objects.
+  // Each market must have its own BalanceManager to avoid object lock conflicts.
+  // Return null to trigger creation of a new dedicated BalanceManager.
+  console.log(`[${timestamp()}] No saved BalanceManager for ${MARKET.name}, will create new one`);
+  return null;
 }
 
 export function saveBalanceManagerId(address: string, balanceManagerId: string): void {
