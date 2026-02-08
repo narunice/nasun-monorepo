@@ -6,7 +6,7 @@
  * so TP/SL is implemented via client-side oracle polling + market order execution.
  */
 
-export type TPSLTriggerType = 'tp' | 'sl';
+export type TPSLTriggerType = 'tp' | 'sl' | 'stop-limit';
 export type TPSLStatus = 'active' | 'executing' | 'triggered' | 'cancelled' | 'failed';
 
 export interface TPSLOrder {
@@ -22,6 +22,8 @@ export interface TPSLOrder {
   triggerPrice: number;
   /** Take profit or stop loss */
   triggerType: TPSLTriggerType;
+  /** Limit price for stop-limit orders (places limit order instead of market) */
+  limitPrice?: number;
   /** Current status */
   status: TPSLStatus;
   /** Creation timestamp (ms) */
@@ -66,11 +68,26 @@ export function shouldTriggerSL(currentPrice: number, triggerPrice: number, side
 }
 
 /**
+ * Check if a stop-limit order should trigger.
+ * Buy stop-limit: triggers when price >= stopPrice (breakout buy)
+ * Sell stop-limit: triggers when price <= stopPrice (breakdown sell)
+ */
+export function shouldTriggerStopLimit(currentPrice: number, triggerPrice: number, side: 'buy' | 'sell'): boolean {
+  return side === 'buy'
+    ? currentPrice >= triggerPrice
+    : currentPrice <= triggerPrice;
+}
+
+/**
  * Check if a TP/SL order should trigger at the current price.
  */
 export function shouldTrigger(order: TPSLOrder, currentPrice: number): boolean {
   if (order.status !== 'active') return false;
   if (currentPrice <= 0) return false;
+
+  if (order.triggerType === 'stop-limit') {
+    return shouldTriggerStopLimit(currentPrice, order.triggerPrice, order.side);
+  }
 
   return order.triggerType === 'tp'
     ? shouldTriggerTP(currentPrice, order.triggerPrice, order.side)

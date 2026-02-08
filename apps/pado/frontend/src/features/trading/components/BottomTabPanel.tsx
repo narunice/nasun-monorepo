@@ -168,13 +168,18 @@ function TPSLTab() {
           </div>
           {activeOrders.map((order) => (
             <div key={order.id} className="grid grid-cols-6 gap-2 py-1 text-trading-sm xl:text-trading-lg items-center">
-              <span className={order.triggerType === 'tp' ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
-                {order.triggerType === 'tp' ? 'TP' : 'SL'}
+              <span className={order.triggerType === 'tp' ? 'text-green-400 font-medium' : order.triggerType === 'stop-limit' ? 'text-amber-400 font-medium' : 'text-red-400 font-medium'}>
+                {order.triggerType === 'tp' ? 'TP' : order.triggerType === 'stop-limit' ? 'S-L' : 'SL'}
               </span>
               <span className={order.side === 'buy' ? 'text-green-400' : 'text-red-400'}>
                 {order.side === 'buy' ? 'Buy' : 'Sell'}
               </span>
-              <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>
+              <span className="text-right font-mono" title={order.triggerType === 'stop-limit' && order.limitPrice ? `Limit: ${formatPrice(order.limitPrice)}` : undefined}>
+                {formatPrice(order.triggerPrice)}
+                {order.triggerType === 'stop-limit' && order.limitPrice ? (
+                  <span className="text-theme-text-muted text-[10px] ml-0.5">→{formatPrice(order.limitPrice)}</span>
+                ) : null}
+              </span>
               <span className="text-right font-mono">{order.quantity.toFixed(4)}</span>
               <span className="text-right text-theme-text-muted text-[10px]">{formatTime(order.createdAt)}</span>
               <div className="text-right">
@@ -209,8 +214,8 @@ function TPSLTab() {
           </div>
           {historyOrders.slice(0, 10).map((order) => (
             <div key={order.id} className="grid grid-cols-6 gap-2 py-0.5 text-[10px] xl:text-xs text-theme-text-muted items-center">
-              <span className={order.triggerType === 'tp' ? 'text-green-400/60' : 'text-red-400/60'}>
-                {order.triggerType === 'tp' ? 'TP' : 'SL'}
+              <span className={order.triggerType === 'tp' ? 'text-green-400/60' : order.triggerType === 'stop-limit' ? 'text-amber-400/60' : 'text-red-400/60'}>
+                {order.triggerType === 'tp' ? 'TP' : order.triggerType === 'stop-limit' ? 'S-L' : 'SL'}
               </span>
               <span>{order.side === 'buy' ? 'Buy' : 'Sell'}</span>
               <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>

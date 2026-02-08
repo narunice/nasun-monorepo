@@ -66,7 +66,7 @@ export function OrderForm({
   onSideChange,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
-  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice } = useOrderForm();
+  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
@@ -74,6 +74,7 @@ export function OrderForm({
   const [activeField, setActiveField] = useState<'amount' | 'total'>('amount');
 
   const isMarket = orderMode === 'market';
+  const isStopLimit = orderMode === 'stop-limit';
   const isBuy = side === 'buy';
 
   const effectivePrice = useMemo(
@@ -194,23 +195,29 @@ export function OrderForm({
     }
   }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate]);
 
+  const stopPriceNum = parseFloat(stopPrice) || 0;
   const hasValidationError = !quantityValidation.valid || (!isMarket && !priceValidation.valid);
+  const stopLimitMissingFields = isStopLimit && (stopPriceNum <= 0 || effectivePrice <= 0 || amountNum <= 0);
+  const stopLimitPriceInvalid = isStopLimit && effectivePrice > 0 && !priceValidation.valid;
   const isButtonDisabled = isMarket
     ? disabled || !amount || isLoading || isAutoDepositing || !quantityValidation.valid
-    : disabled || isLoading || isAutoDepositing || hasValidationError;
+    : isStopLimit
+      ? disabled || isLoading || isAutoDepositing || stopLimitMissingFields || !quantityValidation.valid || stopLimitPriceInvalid
+      : disabled || isLoading || isAutoDepositing || hasValidationError;
 
   return (
     <div className="space-y-2 flex-1 flex flex-col">
-      {/* A. Underline Tabs: Limit / Market */}
+      {/* A. Underline Tabs: Limit / Market / Stop-Limit */}
       <UnderlineTabs
         tabs={[
           { id: 'limit' as const, label: 'Limit' },
           { id: 'market' as const, label: 'Market' },
+          { id: 'stop-limit' as const, label: 'Stop' },
         ]}
         activeTab={orderMode}
         onTabChange={setOrderMode}
         rightContent={
-          !isMarket && executionOption !== 'GTC' ? (
+          !isMarket && !isStopLimit && executionOption !== 'GTC' ? (
             <span className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm bg-pd1/30 text-pd3 rounded">
               {executionOption}
             </span>
@@ -264,8 +271,77 @@ export function OrderForm({
         )}
       </div>
 
-      {/* D. Price Input (Limit) or Market Price Info */}
-      {!isMarket ? (
+      {/* D. Price Input (Limit / Stop-Limit) or Market Price Info */}
+      {isStopLimit ? (
+        <>
+          {/* Stop Price */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-trading-xs xl:text-trading-sm text-amber-400 font-medium">Stop Price ({quoteSymbol})</label>
+              <button
+                onClick={() => { if (midPrice) setStopPrice(snapToTick(midPrice, currentPool).toString()); }}
+                disabled={!midPrice}
+                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Mid
+              </button>
+            </div>
+            <NumberInput
+              placeholder="Trigger price"
+              value={stopPrice}
+              onChange={(e) => setStopPrice(e.target.value)}
+              step={minPrice}
+              className="px-3 py-2 text-sm xl:text-base"
+            />
+            <p className="text-[10px] xl:text-xs text-theme-text-muted mt-0.5">
+              {isBuy ? 'Triggers when price rises to this level' : 'Triggers when price falls to this level'}
+            </p>
+          </div>
+          {/* Limit Price */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Limit Price ({quoteSymbol})</label>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePriceSelect(midPrice || 0)}
+                  disabled={!midPrice}
+                  className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Mid
+                </button>
+                <button
+                  onClick={() => handlePriceSelect(bestBid)}
+                  disabled={!bestBid}
+                  className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-bid font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Bid
+                </button>
+                <button
+                  onClick={() => handlePriceSelect(bestAsk)}
+                  disabled={!bestAsk}
+                  className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-ask font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Ask
+                </button>
+              </div>
+            </div>
+            <NumberInput
+              placeholder="0.00"
+              value={price}
+              onChange={(e) => onPriceChange(e.target.value)}
+              step={minPrice}
+              className={`px-3 py-2 text-sm xl:text-base ${
+                effectivePrice > 0 && !priceValidation.valid
+                  ? 'ring-2 ring-yellow-500/50 focus:ring-yellow-500'
+                  : ''
+              }`}
+            />
+            {effectivePrice > 0 && !priceValidation.valid && (
+              <p className="text-trading-xs xl:text-trading-sm text-yellow-400 mt-1">{priceValidation.message}</p>
+            )}
+          </div>
+        </>
+      ) : !isMarket ? (
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-trading-xs xl:text-trading-sm text-theme-text-muted">Price ({quoteSymbol})</label>
@@ -373,18 +449,20 @@ export function OrderForm({
         />
       </div>
 
-      {/* E3. TP/SL Inputs */}
-      <TPSLInputs
-        enabled={tpslEnabled}
-        onToggle={setTpslEnabled}
-        tpPrice={tpPrice}
-        slPrice={slPriceValue}
-        onTPChange={setTpPrice}
-        onSLChange={setSlPrice}
-        midPrice={midPrice || 0}
-        side={side}
-        minPriceTick={minPrice}
-      />
+      {/* E3. TP/SL Inputs (hidden in stop-limit mode — stop-limit is its own conditional order) */}
+      {!isStopLimit && (
+        <TPSLInputs
+          enabled={tpslEnabled}
+          onToggle={setTpslEnabled}
+          tpPrice={tpPrice}
+          slPrice={slPriceValue}
+          onTPChange={setTpPrice}
+          onSLChange={setSlPrice}
+          midPrice={midPrice || 0}
+          side={side}
+          minPriceTick={minPrice}
+        />
+      )}
 
       {/* F. Info Rows */}
       <div className="space-y-1 pt-1 border-t border-theme-border">
@@ -425,8 +503,8 @@ export function OrderForm({
         )}
       </div>
 
-      {/* G. Execution Options (Limit only) */}
-      {!isMarket && onExecutionOptionChange && (
+      {/* G. Execution Options (Limit only — not applicable to Market or Stop-Limit) */}
+      {!isMarket && !isStopLimit && onExecutionOptionChange && (
         <div>
           <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted mb-1.5">Execution</div>
           <div className="grid grid-cols-4 gap-1">
@@ -465,7 +543,7 @@ export function OrderForm({
           ? 'Depositing...'
           : isLoading
             ? '...'
-            : `${isMarket ? 'Market ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
+            : `${isMarket ? 'Market ' : isStopLimit ? 'Stop-Limit ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
       </button>
     </div>
   );

@@ -33,6 +33,10 @@ export const NETWORK_CONFIG = {
   faucetPackage: import.meta.env.VITE_FAUCET_PACKAGE,
   tokenFaucet: import.meta.env.VITE_TOKEN_FAUCET,
 
+  // Token Faucet V2 (NETH, NSOL)
+  tokenFaucetV2: import.meta.env.VITE_TOKEN_FAUCET_V2 || '',
+  claimRecordV2: import.meta.env.VITE_CLAIM_RECORD_V2 || '',
+
   // zkLogin Configuration
   zkLoginSaltApiUrl: import.meta.env.VITE_ZKLOGIN_SALT_API_URL || '',
   zkLoginProverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL || '',  // Optional: custom prover URL (defaults to Mysten Labs)
