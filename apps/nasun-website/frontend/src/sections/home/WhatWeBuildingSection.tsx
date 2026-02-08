@@ -9,6 +9,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
 import gensolVideo from "../../assets/videos/Trakker-Flying-26rf.mp4";
+import baramVideo from "../../assets/videos/Baram-Ui-Demo-rf15.mp4";
 import padoVideo from "../../assets/videos/Pado-Ui-Demo-Final-rf26.mp4";
 import explorerVideo from "../../assets/videos/Explorer-Ui-Demo-rf15.mp4";
 
@@ -22,7 +23,7 @@ const CustomArrow = ({
   <button
     onClick={onClick}
     className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-black/80 p-3 rounded-full shadow-lg hover:bg-nasun-black/60 transition-all border border-nasun-white/30 hover:border-white/50 ${
-      direction === "left" ? "-left-14 xl:-left-16" : "-right-14 xl:-right-16"
+      direction === "left" ? "-left-20 xl:-left-24" : "-right-20 xl:-right-24"
     }`}
     aria-label={direction === "left" ? "Previous slide" : "Next slide"}
   >
@@ -61,11 +62,13 @@ const SLIDES: SlideData[] = [
   },
   {
     id: "baram",
-    bgColor: "#f0ebe3",
+    bgColor: "#f7f4ef",
     buttonPrefix: "EXPLORE",
     projectName: "BARAM",
     buttonVariant: "blue",
     link: "/baram",
+    video: baramVideo,
+    videoStartTime: 15,
   },
   {
     id: "pado",
@@ -75,7 +78,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "white",
     link: "/pado-new",
     video: padoVideo,
-    videoStartTime: 27,
+    videoStartTime: 16,
   },
   {
     id: "protocol",
@@ -90,6 +93,8 @@ const SLIDES: SlideData[] = [
 
 function WhatWeBuildingSection() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sliderRef = useRef<Slider>(null);
+  const activeSlideRef = useRef(0);
   const [hasEnteredView, setHasEnteredView] = useState(false);
 
   // Start video playback only when the section enters the viewport
@@ -111,15 +116,16 @@ function WhatWeBuildingSection() {
     return () => observer.disconnect();
   }, []);
 
-  // Play original (non-cloned) videos once section is in view
+  // Play only the first slide's video once section is in view
   useEffect(() => {
     if (!hasEnteredView) return;
     const container = containerRef.current;
     if (!container) return;
 
-    container
-      .querySelectorAll<HTMLVideoElement>(".slick-slide:not(.slick-cloned) video")
-      .forEach((v) => v.play().catch(() => {}));
+    const activeVideo = container.querySelector<HTMLVideoElement>(
+      `.slick-slide[data-index="0"]:not(.slick-cloned) video`,
+    );
+    activeVideo?.play().catch(() => {});
   }, [hasEnteredView]);
 
   // Pause cloned videos to prevent currentTime drift.
@@ -164,10 +170,30 @@ function WhatWeBuildingSection() {
     });
   }, []);
 
-  // After transition: pause clones again for next cycle
-  const pauseClones = useCallback(() => {
+  // After transition: update active index, reset+play new video, pause others and clones
+  const handleAfterChange = useCallback((index: number) => {
+    activeSlideRef.current = index;
     const container = containerRef.current;
     if (!container) return;
+
+    // Pause all original videos
+    container
+      .querySelectorAll<HTMLVideoElement>(".slick-slide:not(.slick-cloned) video")
+      .forEach((v) => {
+        if (!v.paused) v.pause();
+      });
+
+    // Reset and play the newly active video
+    const slide = SLIDES[index];
+    const activeVideo = container.querySelector<HTMLVideoElement>(
+      `.slick-slide[data-index="${index}"]:not(.slick-cloned) video`,
+    );
+    if (activeVideo) {
+      activeVideo.currentTime = slide.videoStartTime ?? 0;
+      activeVideo.play().catch(() => {});
+    }
+
+    // Pause clone videos
     container.querySelectorAll<HTMLVideoElement>(".slick-cloned video").forEach((v) => {
       if (!v.paused) v.pause();
     });
@@ -179,17 +205,15 @@ function WhatWeBuildingSection() {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 10000,
     arrows: true,
     prevArrow: <CustomArrow direction="left" />,
     nextArrow: <CustomArrow direction="right" />,
     beforeChange: syncAndPlayClones,
-    afterChange: pauseClones,
+    afterChange: handleAfterChange,
   };
 
   return (
-    <SectionLayout className="relative min-h-screen bg-nasun-black overflow-hidden !justify-start">
+    <SectionLayout className="max-w-none relative min-h-screen bg-nasun-black overflow-hidden !justify-start">
       <div className="relative z-10 flex flex-col items-center pt-[max(4.5rem,8vh)] pb-16 md:pb-20 lg:pb-24 px-4 md:px-8">
         {/* Section Title */}
         <FadeInUp>
@@ -213,7 +237,7 @@ function WhatWeBuildingSection() {
               "[&_.slick-dots_li.slick-active_button:before]:!text-white",
             ].join(" ")}
           >
-            <Slider {...sliderSettings}>
+            <Slider ref={sliderRef} {...sliderSettings}>
               {SLIDES.map((slide) => (
                 <div key={slide.id}>
                   <div
@@ -229,20 +253,16 @@ function WhatWeBuildingSection() {
                             el.currentTime = slide.videoStartTime;
                           }
                         }}
-                        loop={!slide.videoStartTime}
                         muted
                         playsInline
                         preload="auto"
-                        onEnded={
-                          slide.videoStartTime
-                            ? (e) => {
-                                const v = e.currentTarget;
-                                v.currentTime = slide.videoStartTime!;
-                                v.play();
-                              }
-                            : undefined
-                        }
-                        className={`absolute inset-0 w-full h-full object-cover ${slide.id === "pado" ? "object-top" : ""}`}
+                        onEnded={(e) => {
+                          // Ignore events from cloned slides
+                          const slideEl = e.currentTarget.closest(".slick-slide");
+                          if (slideEl?.classList.contains("slick-cloned")) return;
+                          sliderRef.current?.slickNext();
+                        }}
+                        className={`absolute inset-0 w-full h-full ${slide.id === "baram" ? "object-contain" : "object-cover"} ${slide.id === "pado" ? "object-top" : ""}`}
                       >
                         <source src={slide.video} type="video/mp4" />
                       </video>
