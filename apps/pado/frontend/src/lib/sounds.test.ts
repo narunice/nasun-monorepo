@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { playSound } from './sounds';
 import { setNotificationPrefs } from './notification-preferences';
 import type { TradingSound } from './sounds';

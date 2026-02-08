@@ -4,7 +4,7 @@ import {
   DEFAULT_STYLES,
   FIBONACCI_LEVELS,
 } from './types';
-import type { DrawingType, DrawingLineStyle } from './types';
+import type { DrawingType } from './types';
 
 // ========================================
 // CLICKS_REQUIRED

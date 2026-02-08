@@ -1,23 +1,28 @@
 /**
- * Liquidity Provider Bot
+ * Liquidity Provider Bot (Multi-Market)
  *
- * Automatically provides liquidity to the NBTC/NUSDC orderbook
- * by placing grid orders around the current BTC price.
+ * Automatically provides liquidity to a DeepBook V3 orderbook
+ * by placing grid orders around the current market price.
+ *
+ * Supports NBTC/NUSDC, NETH/NUSDC, and NSOL/NUSDC markets.
  *
  * Usage:
- *   pnpm lp-bot              # Run continuously (10s interval)
- *   pnpm lp-bot:once         # Run once and exit
+ *   LP_MARKET=NBTC pnpm lp-bot          # Run NBTC market (default)
+ *   LP_MARKET=NETH pnpm lp-bot          # Run NETH market
+ *   LP_MARKET=NSOL pnpm lp-bot          # Run NSOL market
+ *   pnpm lp-bot:once                    # Run once and exit
  *
  * Environment Variables:
  *   LP_PRIVATE_KEY           - Hex-encoded private key (required)
+ *   LP_MARKET                - Market to trade (NBTC|NETH|NSOL, default: NBTC)
  *   NASUN_RPC_URL            - RPC endpoint (default: https://rpc.devnet.nasun.io)
  *   LP_SPREAD_BPS            - Base spread in bps (default: 30 = 0.3%)
- *   LP_ORDER_LEVELS          - Orders per side (default: 5)
- *   LP_ORDER_SIZE            - BTC per order (default: 0.01)
+ *   LP_ORDER_LEVELS          - Orders per side (default: 30)
+ *   LP_ORDER_SIZE            - Base token per order (default: market-specific)
  *   LP_UPDATE_INTERVAL       - Update interval ms (default: 10000)
  *   LP_REQUOTE_THRESHOLD     - Re-quote threshold bps (default: 50)
  *
- * @version 0.1.0
+ * @version 0.2.0
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -26,6 +31,7 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 import {
   RPC_URL,
+  MARKET,
   loadConfig,
   type LPConfig,
   type BotState,
@@ -35,7 +41,7 @@ import {
   isGasExhaustedError,
   timestamp,
 } from './lib/config.js';
-import { fetchBtcPrice, validatePrice } from './lib/price-source.js';
+import { fetchPrice, validatePrice } from './lib/price-source.js';
 import { calculateOrders, validateOrders } from './lib/strategy.js';
 import { syncOrders, buildCancelAllOrders, executeTransaction } from './lib/order-manager.js';
 import { getFullOrderbookState } from './lib/orderbook.js';
@@ -67,10 +73,10 @@ async function runBot(
 ): Promise<void> {
   const address = keypair.getPublicKey().toSuiAddress();
 
-  // Step 0: Ensure sufficient gas for transactions
+  // Step 0: Ensure sufficient gas
   const gasBalance = await getGasBalance(client, address);
   if (gasBalance < config.gasRefillThreshold) {
-    console.log(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN (threshold: ${config.gasRefillThreshold}), requesting from faucet...`);
+    console.log(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN, requesting from faucet...`);
     const gasSuccess = await requestGas(address);
     if (gasSuccess) {
       const newGas = await getGasBalance(client, address);
@@ -82,20 +88,19 @@ async function runBot(
     }
   }
 
-  // Step 1: Fetch current BTC price
-  const btcPrice = await fetchBtcPrice();
+  // Step 1: Fetch current price
+  const price = await fetchPrice();
 
   // Step 2: Validate price
-  if (!validatePrice(btcPrice, config.minPriceUsd, config.maxPriceUsd)) {
-    console.error(`[${timestamp()}] Price out of bounds: $${btcPrice.toLocaleString()}`);
+  if (!validatePrice(price, config.minPriceUsd, config.maxPriceUsd)) {
+    console.error(`[${timestamp()}] Price out of bounds: $${price.toLocaleString()}`);
     state.consecutiveFailures++;
     return;
   }
 
-  // Log current price (always refresh orders every cycle)
-  console.log(`[${timestamp()}] BTC price: $${btcPrice.toLocaleString()}`);
+  console.log(`[${timestamp()}] ${MARKET.name} price: $${price.toLocaleString()}`);
 
-  // Step 4: Ensure BalanceManager exists
+  // Step 3: Ensure BalanceManager exists
   if (!state.balanceManagerId) {
     console.log(`[${timestamp()}] Looking for BalanceManager...`);
     state.balanceManagerId = await findBalanceManager(client, address);
@@ -112,81 +117,69 @@ async function runBot(
     }
   }
 
-  // Step 5: Check inventory and refill if needed
+  // Step 4: Check inventory and refill if needed
   let inventory = await getBalanceManagerBalances(client, state.balanceManagerId);
-  console.log(`[${timestamp()}] Inventory: ${inventory.nbtc.toFixed(4)} NBTC, ${inventory.nusdc.toLocaleString()} NUSDC`);
+  console.log(`[${timestamp()}] Inventory: ${inventory.base.toFixed(4)} ${MARKET.name}, ${inventory.quote.toLocaleString()} NUSDC`);
 
-  // Skip entire cycle on first run after initialization (RPC indexing lag)
-  // The BalanceManager won't have indexed balances yet, so orders would fail
   if (state.justInitialized) {
     state.justInitialized = false;
     console.log(`[${timestamp()}] First run after init, waiting for RPC to index deposited tokens...`);
-    console.log(`[${timestamp()}] Orders will be placed on next cycle`);
     return;
   }
 
-  // Check if we need to refill from faucet
-  if (inventory.nbtc < config.refillThresholdNbtc || inventory.nusdc < config.refillThresholdNusdc) {
+  if (inventory.base < config.refillThresholdBase || inventory.quote < config.refillThresholdQuote) {
     console.log(`[${timestamp()}] Low inventory, requesting tokens from faucet...`);
 
-    // Request faucet
     const faucetSuccess = await requestTokens(client, keypair);
     if (faucetSuccess) {
-      // Deposit new tokens to BalanceManager
       await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
 
-      // Re-fetch inventory
       const newInventory = await getBalanceManagerBalances(client, state.balanceManagerId);
-      console.log(`[${timestamp()}] New inventory: ${newInventory.nbtc.toFixed(4)} NBTC, ${newInventory.nusdc.toLocaleString()} NUSDC`);
-
-      // Update inventory for order calculation
+      console.log(`[${timestamp()}] New inventory: ${newInventory.base.toFixed(4)} ${MARKET.name}, ${newInventory.quote.toLocaleString()} NUSDC`);
       Object.assign(inventory, newInventory);
     }
   }
 
-  // Step 6: Query orderbook (with bot orders still present)
+  // Step 5: Query orderbook
   const fullOrderbook = await getFullOrderbookState(client);
   if (fullOrderbook.hasBids || fullOrderbook.hasAsks) {
     console.log(`[${timestamp()}] Orderbook: ${fullOrderbook.bids.length} bids, ${fullOrderbook.asks.length} asks`);
   }
 
-  // Step 7: Find and execute arbitrage opportunities
-  // Bot orders remain on book; IOC + CANCEL_TAKER prevents self-matching
+  // Step 6: Arbitrage
   if (config.enableArbitrage) {
     const arbConfig: ArbitrageConfig = {
       enabled: config.enableArbitrage,
       minProfitBps: config.minArbitrageProfitBps,
-      maxQuantityNbtc: config.maxArbitrageQuantityNbtc,
+      maxQuantity: config.maxArbitrageQuantity,
     };
 
     const opportunities = findArbitrageOpportunities(
       fullOrderbook.bids,
       fullOrderbook.asks,
-      btcPrice,
+      price,
       arbConfig,
     );
 
     if (opportunities.length > 0) {
-      logArbitrageOpportunities(opportunities, btcPrice);
+      logArbitrageOpportunities(opportunities, price);
 
       const arbTx = buildArbitrageTrades(state.balanceManagerId, opportunities, state);
       const arbResult = await executeTransaction(client, keypair, arbTx);
 
       if (arbResult.success) {
         console.log(`[${timestamp()}] Arbitrage executed: ${opportunities.length} trades (tx: ${arbResult.digest?.slice(0, 10)}...)`);
-
-        // Re-fetch inventory after arbitrage
         inventory = await getBalanceManagerBalances(client, state.balanceManagerId);
-        console.log(`[${timestamp()}] Inventory after arb: ${inventory.nbtc.toFixed(4)} NBTC, ${inventory.nusdc.toLocaleString()} NUSDC`);
+        console.log(`[${timestamp()}] Inventory after arb: ${inventory.base.toFixed(4)} ${MARKET.name}, ${inventory.quote.toLocaleString()} NUSDC`);
       } else {
         console.error(`[${timestamp()}] Arbitrage failed: ${arbResult.error}`);
       }
     }
   }
 
-  // Step 8: Calculate new grid orders (reuse fullOrderbook for bestBid/bestAsk)
-  const orders = calculateOrders(btcPrice, config, inventory, fullOrderbook);
-  const validOrders = validateOrders(orders, config, btcPrice);
+  // Step 7: Calculate new grid orders
+  const orders = calculateOrders(price, config, inventory, fullOrderbook);
+  const validOrders = validateOrders(orders, config, price);
 
   if (validOrders.length === 0) {
     console.error(`[${timestamp()}] No valid orders generated`);
@@ -194,24 +187,22 @@ async function runBot(
     return;
   }
 
-  // Log order summary
   const bids = validOrders.filter((o) => o.isBid);
   const asks = validOrders.filter((o) => !o.isBid);
-  console.log(`[${timestamp()}] Generating ${bids.length} bids + ${asks.length} asks around $${btcPrice.toLocaleString()}`);
+  console.log(`[${timestamp()}] Generating ${bids.length} bids + ${asks.length} asks around $${price.toLocaleString()}`);
 
-  // Step 9: Atomic cancel+place (single PTB — no empty orderbook window)
+  // Step 8: Atomic cancel+place
   const result = await syncOrders(client, keypair, state.balanceManagerId, validOrders, state);
 
   if (result.success) {
-    state.lastQuotedPrice = btcPrice;
+    state.lastQuotedPrice = price;
     state.consecutiveFailures = 0;
 
     const bestBid = bids.length > 0 ? rawToPrice(bids[0].price) : 0;
     const bestAsk = asks.length > 0 ? rawToPrice(asks[0].price) : 0;
-    const spread = bestAsk > 0 && bestBid > 0 ? ((bestAsk - bestBid) / btcPrice) * 100 : 0;
+    const spread = bestAsk > 0 && bestBid > 0 ? ((bestAsk - bestBid) / price) * 100 : 0;
     console.log(`[${timestamp()}] Best bid: $${bestBid.toLocaleString()}, Best ask: $${bestAsk.toLocaleString()}, Spread: ${spread.toFixed(2)}%`);
   } else {
-    // Auto-recover from gas exhaustion (don't count toward circuit breaker)
     if (result.error && isGasExhaustedError(result.error)) {
       console.log(`[${timestamp()}] Gas exhaustion during order sync, requesting refill...`);
       const gasSuccess = await requestGas(address);
@@ -241,7 +232,6 @@ async function initialize(
 
   console.log(`[${timestamp()}] Checking initial state...`);
 
-  // Check gas balance and refill if needed
   const gasBalance = await getGasBalance(client, address);
   console.log(`[${timestamp()}] Gas: ${gasBalance.toFixed(4)} NASUN`);
 
@@ -249,18 +239,16 @@ async function initialize(
     console.log(`[${timestamp()}] Low gas, requesting from faucet...`);
     const gasSuccess = await requestGas(address);
     if (!gasSuccess) {
-      console.error(`[${timestamp()}] Gas faucet failed — bot cannot operate without gas`);
+      console.error(`[${timestamp()}] Gas faucet failed`);
       return false;
     }
     const newGas = await getGasBalance(client, address);
     console.log(`[${timestamp()}] Gas after faucet: ${newGas.toFixed(4)} NASUN`);
   }
 
-  // Check wallet balances
   const walletBalance = await getWalletBalances(client, address);
-  console.log(`[${timestamp()}] Wallet: ${walletBalance.nbtc.toFixed(4)} NBTC, ${walletBalance.nusdc.toLocaleString()} NUSDC`);
+  console.log(`[${timestamp()}] Wallet: ${walletBalance.base.toFixed(4)} ${MARKET.name}, ${walletBalance.quote.toLocaleString()} NUSDC`);
 
-  // Find or create BalanceManager
   state.balanceManagerId = await findBalanceManager(client, address);
 
   if (!state.balanceManagerId) {
@@ -275,32 +263,27 @@ async function initialize(
     console.log(`[${timestamp()}] Found BalanceManager: ${state.balanceManagerId.slice(0, 16)}...`);
   }
 
-  // Check BalanceManager balances
   const bmBalance = await getBalanceManagerBalances(client, state.balanceManagerId);
-  console.log(`[${timestamp()}] BalanceManager: ${bmBalance.nbtc.toFixed(4)} NBTC, ${bmBalance.nusdc.toLocaleString()} NUSDC`);
+  console.log(`[${timestamp()}] BalanceManager: ${bmBalance.base.toFixed(4)} ${MARKET.name}, ${bmBalance.quote.toLocaleString()} NUSDC`);
 
-  // If BalanceManager is empty, request faucet and deposit
-  const totalNbtc = walletBalance.nbtc + bmBalance.nbtc;
-  const totalNusdc = walletBalance.nusdc + bmBalance.nusdc;
+  const totalBase = walletBalance.base + bmBalance.base;
+  const totalQuote = walletBalance.quote + bmBalance.quote;
 
-  if (totalNbtc < config.refillThresholdNbtc || totalNusdc < config.refillThresholdNusdc) {
+  if (totalBase < config.refillThresholdBase || totalQuote < config.refillThresholdQuote) {
     console.log(`[${timestamp()}] Insufficient funds, requesting from faucet...`);
     const faucetSuccess = await requestTokens(client, keypair);
 
     if (faucetSuccess) {
-      // Re-query wallet balance after faucet
       const newWalletBalance = await getWalletBalances(client, address);
-      console.log(`[${timestamp()}] Wallet after faucet: ${newWalletBalance.nbtc.toFixed(4)} NBTC, ${newWalletBalance.nusdc.toLocaleString()} NUSDC`);
+      console.log(`[${timestamp()}] Wallet after faucet: ${newWalletBalance.base.toFixed(4)} ${MARKET.name}, ${newWalletBalance.quote.toLocaleString()} NUSDC`);
 
-      // Deposit faucet tokens
-      if (newWalletBalance.nbtc > 0 || newWalletBalance.nusdc > 0) {
+      if (newWalletBalance.base > 0 || newWalletBalance.quote > 0) {
         console.log(`[${timestamp()}] Depositing faucet tokens to BalanceManager...`);
         await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
         state.justInitialized = true;
       }
     }
-  } else if (walletBalance.nbtc > 0 || walletBalance.nusdc > 0) {
-    // Deposit existing wallet tokens to BalanceManager
+  } else if (walletBalance.base > 0 || walletBalance.quote > 0) {
     console.log(`[${timestamp()}] Depositing wallet tokens to BalanceManager...`);
     await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
     state.justInitialized = true;
@@ -316,26 +299,26 @@ async function initialize(
 async function main() {
   console.log('');
   console.log('=================================================');
-  console.log('   LP Bot - NBTC/NUSDC Liquidity Provider');
+  console.log(`   LP Bot - ${MARKET.name}/NUSDC Liquidity Provider`);
   console.log('=================================================');
   console.log('');
 
-  // Load configuration
   const config = loadConfig();
   console.log(`[${timestamp()}] Configuration:`);
+  console.log(`   Market: ${MARKET.name}/NUSDC`);
   console.log(`   RPC: ${RPC_URL}`);
   console.log(`   Spread: ${config.spreadBps}bps (${(config.spreadBps / 100).toFixed(2)}%)`);
   console.log(`   Levels: ${config.orderLevels} per side`);
-  console.log(`   Order size: ${config.orderSizeNbtc} BTC`);
+  console.log(`   Order size: ${config.orderSize} ${MARKET.name}`);
+  console.log(`   Price range: $${config.minPriceUsd.toLocaleString()} - $${config.maxPriceUsd.toLocaleString()}`);
   console.log(`   Interval: ${config.updateIntervalMs / 1000}s`);
   console.log(`   Arbitrage: ${config.enableArbitrage ? 'enabled' : 'disabled'}`);
   if (config.enableArbitrage) {
     console.log(`   Min arb profit: ${config.minArbitrageProfitBps}bps`);
-    console.log(`   Max arb size: ${config.maxArbitrageQuantityNbtc} BTC`);
+    console.log(`   Max arb size: ${config.maxArbitrageQuantity} ${MARKET.name}`);
   }
   console.log('');
 
-  // Load and validate private key
   const privateKeyInput = process.env.LP_PRIVATE_KEY;
   if (!privateKeyInput) {
     console.error('LP_PRIVATE_KEY environment variable not set');
@@ -347,22 +330,15 @@ async function main() {
     console.log('Supported formats:');
     console.log('  - Bech32: suiprivkey1qq...');
     console.log('  - Hex: 64-character hex string');
-    console.log('');
-    console.log('Get it from: sui keytool export --key-identity <alias>');
-    console.log('');
-    console.log('CAUTION: Avoid typing secrets directly in terminal (shell history exposure)');
     process.exit(1);
   }
 
-  // Create keypair - supports both Bech32 (suiprivkey1...) and hex formats
   let keypair: Ed25519Keypair;
   try {
     if (privateKeyInput.startsWith('suiprivkey')) {
-      // Bech32 format (sui keytool export default output)
       const { secretKey } = decodeSuiPrivateKey(privateKeyInput);
       keypair = Ed25519Keypair.fromSecretKey(secretKey);
     } else {
-      // Hex format
       const cleanKey = privateKeyInput.replace(/^0x/, '').toLowerCase();
       if (!/^[0-9a-f]{64}$/.test(cleanKey)) {
         throw new Error('Invalid hex format');
@@ -380,7 +356,6 @@ async function main() {
   console.log(`[${timestamp()}] Bot address: ${address.slice(0, 16)}...`);
   console.log('');
 
-  // Initialize state
   const state: BotState = {
     lastQuotedPrice: 0,
     consecutiveFailures: 0,
@@ -389,19 +364,15 @@ async function main() {
     justInitialized: false,
   };
 
-  // Run initialization
   const initSuccess = await initialize(client, keypair, config, state);
   if (!initSuccess) {
     console.error(`[${timestamp()}] Initialization failed`);
     process.exit(1);
   }
 
-  // Check for --once flag
   const runOnce = process.argv.includes('--once');
 
-  // Main bot loop
   const update = async () => {
-    // Circuit breaker check
     if (state.consecutiveFailures >= config.maxConsecutiveFailures) {
       console.error(`[${timestamp()}] Circuit breaker: ${state.consecutiveFailures} consecutive failures`);
       console.error(`[${timestamp()}] Bot paused. Restart to continue.`);
@@ -414,7 +385,6 @@ async function main() {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(`[${timestamp()}] Error:`, msg);
 
-      // Auto-recover from gas exhaustion without counting toward circuit breaker
       if (isGasExhaustedError(msg)) {
         console.log(`[${timestamp()}] Gas exhaustion detected, requesting refill...`);
         const gasSuccess = await requestGas(address);
@@ -429,7 +399,6 @@ async function main() {
     }
   };
 
-  // Run immediately
   await update();
 
   if (runOnce) {
@@ -438,7 +407,6 @@ async function main() {
     process.exit(0);
   }
 
-  // Graceful shutdown handler
   const shutdown = async (signal: string) => {
     console.log('');
     console.log(`[${timestamp()}] Received ${signal}, shutting down...`);
@@ -461,7 +429,6 @@ async function main() {
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  // Run periodically
   console.log('');
   console.log(`[${timestamp()}] Running every ${config.updateIntervalMs / 1000}s... (Ctrl+C to stop)`);
   console.log('');
@@ -469,7 +436,6 @@ async function main() {
   setInterval(update, config.updateIntervalMs);
 }
 
-// Run
 main().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);

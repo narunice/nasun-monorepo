@@ -2,6 +2,7 @@
  * Order Manager Module
  *
  * Handles DeepBook V3 order placement and cancellation.
+ * Uses MARKET config for pool and token types.
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -9,9 +10,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   DEEPBOOK_PACKAGE,
-  NBTC_NUSDC_POOL,
-  NBTC_TYPE,
-  NUSDC_TYPE,
+  MARKET,
   CLOCK_ID,
   ORDER_TYPE,
   SELF_MATCHING,
@@ -24,9 +23,6 @@ import {
 // Transaction Builders
 // ========================================
 
-/**
- * Generate trade proof (ownership proof for BalanceManager)
- */
 function generateProofAsOwner(tx: Transaction, balanceManagerId: string) {
   return tx.moveCall({
     target: `${DEEPBOOK_PACKAGE}::balance_manager::generate_proof_as_owner`,
@@ -36,11 +32,6 @@ function generateProofAsOwner(tx: Transaction, balanceManagerId: string) {
 
 /**
  * Build transaction to cancel all orders and place new orders
- *
- * This is a single atomic transaction that:
- * 1. Generates trade proof
- * 2. Cancels all existing orders
- * 3. Places new orders
  */
 export function buildCancelAndPlaceOrders(
   balanceManagerId: string,
@@ -49,15 +40,14 @@ export function buildCancelAndPlaceOrders(
 ): Transaction {
   const tx = new Transaction();
 
-  // Generate trade proof (used for all operations)
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
   // Cancel all existing orders
   tx.moveCall({
     target: `${DEEPBOOK_PACKAGE}::pool::cancel_all_orders`,
-    typeArguments: [NBTC_TYPE, NUSDC_TYPE],
+    typeArguments: [MARKET.baseType, MARKET.quoteType],
     arguments: [
-      tx.object(NBTC_NUSDC_POOL),
+      tx.object(MARKET.poolId),
       tx.object(balanceManagerId),
       tradeProof,
       tx.object(CLOCK_ID),
@@ -70,13 +60,13 @@ export function buildCancelAndPlaceOrders(
 
     const orderInfo = tx.moveCall({
       target: `${DEEPBOOK_PACKAGE}::pool::place_limit_order`,
-      typeArguments: [NBTC_TYPE, NUSDC_TYPE],
+      typeArguments: [MARKET.baseType, MARKET.quoteType],
       arguments: [
-        tx.object(NBTC_NUSDC_POOL),
+        tx.object(MARKET.poolId),
         tx.object(balanceManagerId),
         tradeProof,
         tx.pure.u64(clientOrderId),
-        tx.pure.u8(ORDER_TYPE.POST_ONLY), // Maker only (no taker fees)
+        tx.pure.u8(ORDER_TYPE.POST_ONLY),
         tx.pure.u8(SELF_MATCHING.CANCEL_TAKER),
         tx.pure.u64(order.price),
         tx.pure.u64(order.quantity),
@@ -87,7 +77,6 @@ export function buildCancelAndPlaceOrders(
       ],
     });
 
-    // Return order info (required for Move, ignored in practice)
     tx.moveCall({
       target: `${DEEPBOOK_PACKAGE}::order_info::order_id`,
       arguments: [orderInfo],
@@ -106,19 +95,16 @@ export function buildPlaceOrders(
   state: BotState,
 ): Transaction {
   const tx = new Transaction();
-
-  // Generate trade proof
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
-  // Place new orders
   for (const order of orders) {
     const clientOrderId = state.clientOrderIdCounter++;
 
     const orderInfo = tx.moveCall({
       target: `${DEEPBOOK_PACKAGE}::pool::place_limit_order`,
-      typeArguments: [NBTC_TYPE, NUSDC_TYPE],
+      typeArguments: [MARKET.baseType, MARKET.quoteType],
       arguments: [
-        tx.object(NBTC_NUSDC_POOL),
+        tx.object(MARKET.poolId),
         tx.object(balanceManagerId),
         tradeProof,
         tx.pure.u64(clientOrderId),
@@ -147,14 +133,13 @@ export function buildPlaceOrders(
  */
 export function buildCancelAllOrders(balanceManagerId: string): Transaction {
   const tx = new Transaction();
-
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
   tx.moveCall({
     target: `${DEEPBOOK_PACKAGE}::pool::cancel_all_orders`,
-    typeArguments: [NBTC_TYPE, NUSDC_TYPE],
+    typeArguments: [MARKET.baseType, MARKET.quoteType],
     arguments: [
-      tx.object(NBTC_NUSDC_POOL),
+      tx.object(MARKET.poolId),
       tx.object(balanceManagerId),
       tradeProof,
       tx.object(CLOCK_ID),
@@ -168,9 +153,6 @@ export function buildCancelAllOrders(balanceManagerId: string): Transaction {
 // Transaction Execution
 // ========================================
 
-/**
- * Execute transaction and return result
- */
 export async function executeTransaction(
   client: SuiClient,
   keypair: Ed25519Keypair,
@@ -212,10 +194,9 @@ export async function syncOrders(
   orders: OrderSpec[],
   state: BotState,
 ): Promise<{ success: boolean; digest?: string; error?: string }> {
-  // Debug: log order details
   if (orders.length > 0) {
     const sample = orders[0];
-    console.log(`[${timestamp()}] Pool: ${NBTC_NUSDC_POOL.slice(0, 16)}...`);
+    console.log(`[${timestamp()}] Pool: ${MARKET.poolId.slice(0, 16)}...`);
     console.log(`[${timestamp()}] BalanceManager: ${balanceManagerId.slice(0, 16)}...`);
     console.log(`[${timestamp()}] Order sample: price=${sample.price}, qty=${sample.quantity}, isBid=${sample.isBid}`);
   }

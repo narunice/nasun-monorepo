@@ -19,7 +19,7 @@ interface UseSubChartConfig {
   containerRef: RefObject<HTMLDivElement | null>;
   enabled: boolean;
   mainChartRef: RefObject<IChartApi | null>;
-  colors: (typeof CHART_COLORS)['dark'];
+  colors: (typeof CHART_COLORS)[keyof typeof CHART_COLORS];
   height: number;
   setup: (chart: IChartApi) => void;
   deps: unknown[];

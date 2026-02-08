@@ -139,7 +139,9 @@ export function useTPSLMonitor({
     if (activeOrders.length === 0) return;
 
     // Only trigger on fresh oracle data, never on simulated fallback
-    const priceInfo = getPriceWithFreshness(marketSymbolRef.current);
+    const symbol = marketSymbolRef.current;
+    if (!symbol) return;
+    const priceInfo = getPriceWithFreshness(symbol);
     if (!priceInfo.isFresh || priceInfo.source !== 'oracle') return;
 
     const currentPrice = priceInfo.price;
@@ -254,7 +256,7 @@ export function useTPSLMonitor({
   const addOrderAsync = useCallback(
     async (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>): Promise<TPSLOrder | null> => {
       // Stop-limit always uses client-side (keeper API doesn't support stop_limit type)
-      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId || order.triggerType === 'stop-limit') {
+      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId || !poolId || !marketSymbol || order.triggerType === 'stop-limit') {
         return addOrder(order);
       }
 
