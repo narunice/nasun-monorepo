@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -75,7 +75,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "white",
     link: "/pado-new",
     video: padoVideo,
-    videoStartTime: 26,
+    videoStartTime: 27,
   },
   {
     id: "protocol",
@@ -90,6 +90,37 @@ const SLIDES: SlideData[] = [
 
 function WhatWeBuildingSection() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [hasEnteredView, setHasEnteredView] = useState(false);
+
+  // Start video playback only when the section enters the viewport
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasEnteredView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 },
+    );
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Play original (non-cloned) videos once section is in view
+  useEffect(() => {
+    if (!hasEnteredView) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    container
+      .querySelectorAll<HTMLVideoElement>(".slick-slide:not(.slick-cloned) video")
+      .forEach((v) => v.play().catch(() => {}));
+  }, [hasEnteredView]);
 
   // Pause cloned videos to prevent currentTime drift.
   // Paused clones never accumulate drift, making sync before transitions reliable.
@@ -98,11 +129,9 @@ function WhatWeBuildingSection() {
     if (!container) return;
 
     const doPauseClones = () => {
-      container
-        .querySelectorAll<HTMLVideoElement>(".slick-cloned video")
-        .forEach((v) => {
-          if (!v.paused) v.pause();
-        });
+      container.querySelectorAll<HTMLVideoElement>(".slick-cloned video").forEach((v) => {
+        if (!v.paused) v.pause();
+      });
     };
 
     // Pause after slick initializes clones
@@ -124,9 +153,7 @@ function WhatWeBuildingSection() {
     const originals = container.querySelectorAll<HTMLVideoElement>(
       ".slick-slide:not(.slick-cloned) video",
     );
-    const clones = container.querySelectorAll<HTMLVideoElement>(
-      ".slick-cloned video",
-    );
+    const clones = container.querySelectorAll<HTMLVideoElement>(".slick-cloned video");
     clones.forEach((clone) => {
       originals.forEach((original) => {
         if (clone.currentSrc && clone.currentSrc === original.currentSrc) {
@@ -141,11 +168,9 @@ function WhatWeBuildingSection() {
   const pauseClones = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
-    container
-      .querySelectorAll<HTMLVideoElement>(".slick-cloned video")
-      .forEach((v) => {
-        if (!v.paused) v.pause();
-      });
+    container.querySelectorAll<HTMLVideoElement>(".slick-cloned video").forEach((v) => {
+      if (!v.paused) v.pause();
+    });
   }, []);
 
   const sliderSettings = {
@@ -204,7 +229,6 @@ function WhatWeBuildingSection() {
                             el.currentTime = slide.videoStartTime;
                           }
                         }}
-                        autoPlay
                         loop={!slide.videoStartTime}
                         muted
                         playsInline
