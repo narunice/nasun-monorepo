@@ -41,3 +41,22 @@ export function calculateEMA(data: number[], period: number): number[] {
 
   return result;
 }
+
+/**
+ * Calculate EMA as LineData[] from candlestick data
+ * Wrapper around calculateEMA for direct chart usage.
+ * @param data - Array of candlestick data
+ * @param period - EMA period (e.g., 9, 21)
+ * @returns Array of EMA line data points
+ */
+export function calculateEMALine(data: CandlestickData[], period: number): LineData[] {
+  const closes = data.map((d) => d.close);
+  const emaValues = calculateEMA(closes, period);
+
+  // Skip first period-1 values (unconverged)
+  const offset = Math.max(0, period - 1);
+  return emaValues.slice(offset).map((value, i) => ({
+    time: data[i + offset].time,
+    value,
+  }));
+}

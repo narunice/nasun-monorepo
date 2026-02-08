@@ -18,6 +18,8 @@ export const CHART_HEIGHT = 280;
 export const VOLUME_HEIGHT = 80;
 export const RSI_HEIGHT = 80;
 export const MACD_HEIGHT = 100;
+export const STOCH_HEIGHT = 80;
+export const ATR_HEIGHT = 80;
 
 export const CHART_COLORS = {
   dark: {
@@ -42,11 +44,24 @@ export const CHART_COLORS = {
   },
 } as const;
 
-export interface IndicatorState {
-  ma: boolean;
-  rsi: boolean;
-  macd: boolean;
+export type IndicatorId = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'stoch' | 'atr';
+
+export interface IndicatorConfig {
+  enabled: boolean;
+  params?: Record<string, number>;
 }
+
+export type IndicatorState = Record<IndicatorId, IndicatorConfig>;
+
+export const DEFAULT_INDICATORS: IndicatorState = {
+  sma:   { enabled: true,  params: { period1: 5, period2: 20 } },
+  ema:   { enabled: false, params: { period1: 9, period2: 21 } },
+  bb:    { enabled: false, params: { period: 20, stddev: 2 } },
+  rsi:   { enabled: false, params: { period: 14 } },
+  macd:  { enabled: false, params: { fast: 12, slow: 26, signal: 9 } },
+  stoch: { enabled: false, params: { kPeriod: 14, dPeriod: 3, smooth: 3 } },
+  atr:   { enabled: false, params: { period: 14 } },
+};
 
 export interface OhlcvData {
   open: number;
