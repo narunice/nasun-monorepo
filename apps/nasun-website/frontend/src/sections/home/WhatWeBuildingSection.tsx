@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -9,6 +9,8 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
 import gensolVideo from "../../assets/videos/Trakker-Flying-26rf.mp4";
+import padoVideo from "../../assets/videos/Pado-Ui-Demo-Final-rf26.mp4";
+import explorerVideo from "../../assets/videos/Explorer-Ui-Demo-rf15.mp4";
 
 const CustomArrow = ({
   onClick,
@@ -32,84 +34,144 @@ const CustomArrow = ({
   </button>
 );
 
+type ContentPosition = "bottom-center" | "right-center";
+
 type SlideData = {
   id: string;
   bgColor: string;
-  textColor: "white" | "black";
-  category: string;
-  description?: string;
-  buttonText: string;
-  buttonVariant: "red" | "blue" | "white" | "purple";
+  buttonPrefix: string;
+  projectName: string;
+  buttonVariant: "red" | "blue" | "white" | "purple" | "gensol-red";
   link: string;
   video?: string;
+  videoStartTime?: number;
+  contentPosition?: ContentPosition;
 };
 
 const SLIDES: SlideData[] = [
   {
     id: "gensol",
     bgColor: "#2d1b3d",
-    textColor: "white",
-    category: "GAMES \u2022 SHOWS \u2022 FILMS",
-    description: "Sci-fi universe powered by the Nasun Community",
-    buttonText: "EXPLORE GEN SOL",
-    buttonVariant: "red",
+    buttonPrefix: "EXPLORE",
+    projectName: "GEN SOL",
+    buttonVariant: "gensol-red",
     link: "/ip/gensol",
     video: gensolVideo,
+    contentPosition: "right-center",
   },
   {
     id: "baram",
     bgColor: "#f0ebe3",
-    textColor: "black",
-    category: "AI",
-    description: "The global settlement layer for AI",
-    buttonText: "EXPLORE BARAM",
+    buttonPrefix: "EXPLORE",
+    projectName: "BARAM",
     buttonVariant: "blue",
     link: "/baram",
   },
   {
     id: "pado",
     bgColor: "#0f4f4f",
-    textColor: "white",
-    category: "UNIFIED ONCHAIN FINANCE",
-    buttonText: "EXPLORE PADO",
+    buttonPrefix: "EXPLORE",
+    projectName: "PADO",
     buttonVariant: "white",
     link: "/pado-new",
+    video: padoVideo,
+    videoStartTime: 26,
   },
   {
     id: "protocol",
     bgColor: "#1a2744",
-    textColor: "white",
-    category: "PROTOCOL",
-    description: "The decentralized network powering it all",
-    buttonText: "EXPLORE NASUN",
+    buttonPrefix: "EXPLORE",
+    projectName: "NASUN",
     buttonVariant: "purple",
     link: "/about/strategy",
+    video: explorerVideo,
   },
 ];
 
-const sliderSettings = {
-  dots: true,
-  infinite: true,
-  speed: 500,
-  slidesToShow: 1,
-  slidesToScroll: 1,
-  autoplay: true,
-  autoplaySpeed: 10000,
-  arrows: true,
-  prevArrow: <CustomArrow direction="left" />,
-  nextArrow: <CustomArrow direction="right" />,
-};
-
 function WhatWeBuildingSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Pause cloned videos to prevent currentTime drift.
+  // Paused clones never accumulate drift, making sync before transitions reliable.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const doPauseClones = () => {
+      container
+        .querySelectorAll<HTMLVideoElement>(".slick-cloned video")
+        .forEach((v) => {
+          if (!v.paused) v.pause();
+        });
+    };
+
+    // Pause after slick initializes clones
+    const timer = setTimeout(doPauseClones, 100);
+    const observer = new MutationObserver(doPauseClones);
+    observer.observe(container, { childList: true, subtree: true });
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, []);
+
+  // Before transition: sync clone currentTime to original and start playback.
+  // Setting currentTime on a paused video completes synchronously for buffered regions.
+  const syncAndPlayClones = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const originals = container.querySelectorAll<HTMLVideoElement>(
+      ".slick-slide:not(.slick-cloned) video",
+    );
+    const clones = container.querySelectorAll<HTMLVideoElement>(
+      ".slick-cloned video",
+    );
+    clones.forEach((clone) => {
+      originals.forEach((original) => {
+        if (clone.currentSrc && clone.currentSrc === original.currentSrc) {
+          clone.currentTime = original.currentTime;
+          clone.play().catch(() => {});
+        }
+      });
+    });
+  }, []);
+
+  // After transition: pause clones again for next cycle
+  const pauseClones = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container
+      .querySelectorAll<HTMLVideoElement>(".slick-cloned video")
+      .forEach((v) => {
+        if (!v.paused) v.pause();
+      });
+  }, []);
+
+  const sliderSettings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 10000,
+    arrows: true,
+    prevArrow: <CustomArrow direction="left" />,
+    nextArrow: <CustomArrow direction="right" />,
+    beforeChange: syncAndPlayClones,
+    afterChange: pauseClones,
+  };
+
   return (
     <SectionLayout className="relative min-h-screen bg-nasun-black overflow-hidden !justify-start">
-      <div className="relative z-10 flex flex-col items-center pt-[max(6rem,10vh)] pb-16 md:pb-20 lg:pb-24 px-4 md:px-8">
+      <div className="relative z-10 flex flex-col items-center pt-[max(4.5rem,8vh)] pb-16 md:pb-20 lg:pb-24 px-4 md:px-8">
         {/* Section Title */}
         <FadeInUp>
           <SectionTitle
             as="h2"
             color="white"
-            className="!font-eurostile text-center !mb-10 md:!mb-14 lg:!mb-16 uppercase"
+            className="!font-eurostile text-center !mb-6 md:!mb-8 lg:!mb-10 uppercase"
           >
             What We're Building
           </SectionTitle>
@@ -118,8 +180,9 @@ function WhatWeBuildingSection() {
         {/* Carousel Card */}
         <FadeInUp delay="0.2s">
           <div
+            ref={containerRef}
             className={[
-              "relative w-full max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto px-0 lg:px-16 xl:px-20",
+              "relative w-full max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto px-0 lg:px-16 xl:px-20",
               "[&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-6",
               "[&_.slick-dots_li_button:before]:!text-white/40",
               "[&_.slick-dots_li.slick-active_button:before]:!text-white",
@@ -127,63 +190,62 @@ function WhatWeBuildingSection() {
           >
             <Slider {...sliderSettings}>
               {SLIDES.map((slide) => (
-                <div key={slide.id} className="px-1">
+                <div key={slide.id}>
                   <div
-                    className="relative rounded-sm overflow-hidden aspect-[16/9]"
+                    className="relative rounded-sm overflow-hidden aspect-video"
                     style={{ backgroundColor: slide.bgColor }}
                   >
                     {/* Background Video */}
                     {slide.video && (
                       <video
+                        ref={(el) => {
+                          if (!el) return;
+                          if (slide.videoStartTime && el.currentTime === 0) {
+                            el.currentTime = slide.videoStartTime;
+                          }
+                        }}
                         autoPlay
-                        loop
+                        loop={!slide.videoStartTime}
                         muted
                         playsInline
                         preload="auto"
-                        className="absolute inset-0 w-full h-full object-cover"
+                        onEnded={
+                          slide.videoStartTime
+                            ? (e) => {
+                                const v = e.currentTarget;
+                                v.currentTime = slide.videoStartTime!;
+                                v.play();
+                              }
+                            : undefined
+                        }
+                        className={`absolute inset-0 w-full h-full object-cover ${slide.id === "pado" ? "object-top" : ""}`}
                       >
                         <source src={slide.video} type="video/mp4" />
                       </video>
                     )}
 
                     {/* Dark overlay for readability */}
-                    {slide.video && (
-                      <div className="absolute inset-0 bg-black/30" />
-                    )}
+                    {/* {slide.video && <div className="absolute inset-0 bg-black/30" />} */}
 
-                    {/* Content - positioned at bottom */}
-                    <div className="relative z-10 flex flex-col items-center justify-end h-full px-6 md:px-12 lg:px-16 pb-10 md:pb-14 lg:pb-16">
-                      {/* Category */}
-                      <h4
-                        className={`font-medium tracking-wider text-center ${
-                          slide.textColor === "white" ? "text-white/90" : "text-nasun-black/80"
-                        }`}
+                    {/* Content */}
+                    <div
+                      className={`relative z-10 flex flex-col h-full px-6 md:px-12 lg:px-16 ${
+                        slide.contentPosition === "right-center"
+                          ? "items-center justify-end pr-8 md:pr-16 lg:pr-20 pb-10 md:pb-14 lg:pb-16"
+                          : "items-center justify-end pb-10 md:pb-14 lg:pb-16"
+                      }`}
+                    >
+                      <ButtonV2
+                        variant={slide.buttonVariant}
+                        size="md"
+                        asChild
+                        className={`w-[200px] md:w-[240px] ${slide.id === "gensol" ? "from-[#d5293399] to-[#e85a6299] hover:from-[#c0242d99] hover:to-[#d54a5299]" : ""}`}
                       >
-                        {slide.category}
-                      </h4>
-
-                      {/* Description */}
-                      {slide.description && (
-                        <p
-                          className={`text-base md:text-lg lg:text-xl font-medium text-center max-w-xl mt-3 ${
-                            slide.textColor === "white" ? "text-white/60" : "text-nasun-black/50"
-                          }`}
-                        >
-                          {slide.description}
-                        </p>
-                      )}
-
-                      {/* CTA Button */}
-                      <div className="mt-6 lg:mt-8">
-                        <ButtonV2
-                          variant={slide.buttonVariant}
-                          size="lg"
-                          asChild
-                          className="w-[240px] md:w-[280px]"
-                        >
-                          <Link to={slide.link}>{slide.buttonText}</Link>
-                        </ButtonV2>
-                      </div>
+                        <Link to={slide.link}>
+                          {slide.buttonPrefix}
+                          <span className="font-medium ml-1">{slide.projectName}</span>
+                        </Link>
+                      </ButtonV2>
                     </div>
                   </div>
                 </div>
