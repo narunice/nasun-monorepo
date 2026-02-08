@@ -32,21 +32,14 @@ export class BaramStack extends cdk.Stack {
     } = props;
 
     // Import existing secrets (must be created manually in AWS Secrets Manager)
-    // Secret format: { "apiKey": "sk-..." } for OpenAI
+    // Secret format: { "apiKey": "gsk_..." } for Groq
     // Secret format: { "privateKey": "hex-encoded-32-bytes" } for Executor
-    const openaiSecret = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'OpenAISecret',
-      'baram/openai'
-    );
-
     const executorSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       'ExecutorSecret',
       'baram/executor'
     );
 
-    // Groq secret (optional - for fallback models)
     const groqSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       'GroqSecret',
@@ -67,7 +60,6 @@ export class BaramStack extends cdk.Stack {
         SUI_RPC_URL: suiRpcUrl,
         BARAM_PACKAGE_ID: baramPackageId,
         BARAM_REGISTRY_ID: baramRegistryId,
-        OPENAI_SECRET_NAME: 'baram/openai',
         EXECUTOR_SECRET_NAME: 'baram/executor',
         GROQ_SECRET_NAME: 'baram/groq',
         CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),
@@ -76,7 +68,6 @@ export class BaramStack extends cdk.Stack {
     });
 
     // Grant Lambda access to secrets
-    openaiSecret.grantRead(this.executorLambda);
     executorSecret.grantRead(this.executorLambda);
     groqSecret.grantRead(this.executorLambda);
 

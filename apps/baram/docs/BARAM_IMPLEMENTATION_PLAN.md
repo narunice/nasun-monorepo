@@ -92,7 +92,6 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 |------|----------|---------|------|
 | **Local LLM** | TEE (Llama 3.2 3B) | Complete | ✅ Production |
 | **Groq Cloud** | Groq API | None | ✅ Active (llama-3.1-8b, llama-3.3-70b) |
-| **OpenAI** | OpenAI API | None | ⚠️ Quota 초과 (gpt-4o, gpt-4-turbo) |
 
 ---
 
@@ -295,7 +294,7 @@ apps/baram/
 │   └── models/                  # LLaMA 모델 (.gitignore)
 │
 ├── cdk/                         # AWS CDK (Lambda Executor)
-│   └── lambda-src/executor/     # Lambda handler (Groq/OpenAI cloud models)
+│   └── lambda-src/executor/     # Lambda handler (Groq cloud models)
 │
 ├── scripts/                     # Admin 스크립트
 │   └── mint-beta-access.sh      # BetaAccessNFT 민팅
@@ -335,10 +334,10 @@ cd apps/baram/executor-nitro
 
 ## Known Issues (2026-02-07)
 
-### Removed Models
+### Groq-only (OpenAI 제거 완료)
 
-`mistral-saba-24b` (Lambda 500 에러, 불안정)와 `gpt-4o-mini` (OpenAI quota 초과)를 코드에서 제거.
-`gpt-4o`, `gpt-4-turbo`는 Lambda에 남아있으나 OpenAI 크레딧 충전 전까지 비활성.
+OpenAI 모델(`gpt-4o`, `gpt-4-turbo`, `gpt-4o-mini`)과 `mistral-saba-24b`를 코드에서 완전 제거.
+Lambda, CDK, TEE Host 모두 Groq만 사용. 활성 모델: `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`.
 
 ### Chat History Migration (DB v2)
 
@@ -358,7 +357,6 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 | Budget 프론트엔드 통합 | Budget 생성/관리 UI, Agent Budget 선택 (executeWithBudget) | 높음 |
 | Budget 통합 테스트 | E2E: Budget 생성 → Agent 실행 → 정산 검증 | 높음 |
 | BetaAccessNFT 운영 | NFT 민팅 → 베타 테스터 배포, gate 활성화 | 높음 |
-| OpenAI 크레딧 충전 | gpt-4o 사용 재개 | 중간 |
 | HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
 
 ### Roadmap
@@ -444,8 +442,6 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 |------|----------|------|
 | llama-3.1-8b-instant | Groq | ✅ 정상 |
 | llama-3.3-70b-versatile | Groq | ✅ 정상 |
-| ~~mistral-saba-24b~~ | ~~Groq~~ | ❌ 제거 (Lambda 500 에러) |
-| ~~gpt-4o-mini~~ | ~~OpenAI~~ | ❌ 제거 (Quota 초과) |
 | llama-3.2-3b-local | TEE | ✅ 정상 |
 
 ### Frontend Build
@@ -528,7 +524,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 **격차:**
 - **프롬프트/응답 내용 증명 부재** — `result_hash`만 제출. 실제 입출력 매핑은 TEE 신뢰에 의존
-- **Cloud 모델(Lambda) 실행은 ECR 미생성** — Groq/OpenAI 실행은 attestation 없음
+- **Cloud 모델(Lambda) 실행은 ECR 미생성** — Groq 실행은 attestation 없음
 - **Executor 선택 근거 미기록** — eligible set, weight 계산이 온체인에 기록되지 않음
 
 ### 개선 우선순위

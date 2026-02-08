@@ -5,7 +5,7 @@
  * 1. Receive execute request with requestId and encrypted prompt
  * 2. Verify request exists on-chain and is valid
  * 3. Decrypt prompt (MVP: Base64 decode)
- * 4. Call OpenAI API
+ * 4. Call Groq API
  * 5. Generate result hash
  * 6. Submit proof to chain (triggers automatic settlement)
  * 7. Return result to caller
@@ -14,7 +14,7 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { createHash } from 'crypto';
-import { initOpenAI, initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
+import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProof, markExecuting, getExecutorAddress } from './services/sui';
 import { ExecuteRequest, ExecuteResponse, DEFAULT_MODEL } from './types';
 
@@ -22,10 +22,8 @@ import { ExecuteRequest, ExecuteResponse, DEFAULT_MODEL } from './types';
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
 
 // Cached secrets (cleared after initialization)
-let openaiApiKey: string | null = null;
 let groqApiKey: string | null = null;
 let executorPrivateKey: string | null = null;
-let groqEnabled = false;
 let initialized = false;
 
 /**
@@ -111,24 +109,13 @@ function maskSensitive<T>(obj: T): T {
 async function loadSecrets(): Promise<void> {
   if (initialized) return;
 
-  // Load OpenAI API key
-  const openaiSecret = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: process.env.OPENAI_SECRET_NAME || 'baram/openai' })
+  // Load Groq API key
+  const groqSecret = await secretsClient.send(
+    new GetSecretValueCommand({ SecretId: process.env.GROQ_SECRET_NAME || 'baram/groq' })
   );
-  const openaiData = JSON.parse(requireSecretString(openaiSecret, 'baram/openai'));
-  openaiApiKey = openaiData.apiKey;
-
-  // Load Groq API key (optional - for fallback)
-  try {
-    const groqSecret = await secretsClient.send(
-      new GetSecretValueCommand({ SecretId: process.env.GROQ_SECRET_NAME || 'baram/groq' })
-    );
-    const groqData = JSON.parse(requireSecretString(groqSecret, 'baram/groq'));
-    groqApiKey = groqData.apiKey;
-    console.log('[Secrets] Groq API key loaded');
-  } catch (error) {
-    console.warn('[Secrets] Groq API key not found (optional fallback)');
-  }
+  const groqData = JSON.parse(requireSecretString(groqSecret, 'baram/groq'));
+  groqApiKey = groqData.apiKey;
+  console.log('[Secrets] Groq API key loaded');
 
   // Load executor private key
   const executorSecret = await secretsClient.send(
@@ -148,14 +135,8 @@ async function initialize(): Promise<void> {
 
   await loadSecrets();
 
-  // Initialize OpenAI
-  initOpenAI(openaiApiKey!);
-
-  // Initialize Groq (if available)
-  if (groqApiKey) {
-    initGroq(groqApiKey);
-    groqEnabled = true;
-  }
+  // Initialize Groq
+  initGroq(groqApiKey!);
 
   // Initialize Sui client
   initSui({
@@ -169,7 +150,6 @@ async function initialize(): Promise<void> {
   });
 
   // Clear raw secrets from memory — SDKs hold their own copies internally
-  openaiApiKey = null;
   groqApiKey = null;
   executorPrivateKey = null;
 
@@ -308,7 +288,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           packageId: process.env.BARAM_PACKAGE_ID,
           registryId: process.env.BARAM_REGISTRY_ID,
           supportedModels: getSupportedModels(),
-          groqEnabled,
           network: 'Nasun Devnet',
         }),
       };

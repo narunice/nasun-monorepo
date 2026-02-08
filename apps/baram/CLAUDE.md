@@ -71,7 +71,7 @@ apps/baram/
 │   └── models/                  # LLaMA 모델 (.gitignore)
 │
 ├── cdk/                         # AWS CDK 인프라
-│   └── lambda-src/executor/     # Lambda executor (Groq/OpenAI cloud models)
+│   └── lambda-src/executor/     # Lambda executor (Groq cloud models)
 ├── scripts/                     # mint-beta-access.sh (BetaAccessNFT 민팅)
 └── docs/                        # BARAM_IMPLEMENTATION_PLAN.md, SPOT_INSTANCE_GUIDE.md
 ```
@@ -284,8 +284,6 @@ cd apps/baram/executor-nitro
 | API Endpoint | `https://ncn10xkbfh.execute-api.ap-northeast-2.amazonaws.com/prod` |
 | Region | ap-northeast-2 |
 | Active Models | llama-3.1-8b-instant, llama-3.3-70b-versatile (Groq) |
-| Inactive Models | gpt-4o, gpt-4-turbo (OpenAI quota 초과) |
-| Removed Models | mistral-saba-24b (unstable), gpt-4o-mini (removed) |
 
 ---
 

@@ -9,9 +9,9 @@
  *    - Host sends request (GET_PUBLIC_KEY, EXECUTE_INFERENCE, etc.)
  *    - Enclave sends response
  *
- * 2. OpenAI Proxy (Nitro mode only):
+ * 2. AI Proxy (Nitro mode only):
  *    - During EXECUTE_INFERENCE, Enclave may send OPENAI_PROXY_REQUEST
- *    - Host calls OpenAI API
+ *    - Host calls Groq API (OpenAI-compatible)
  *    - Host sends OPENAI_PROXY_RESPONSE back to Enclave
  *    - Then Enclave sends final INFERENCE_RESULT
  *
@@ -48,8 +48,7 @@ interface VsockClientConfig {
   port: number;
   cid?: number;
   timeout?: number; // Request timeout in ms
-  openaiApiKey?: string; // For proxy mode
-  groqApiKey?: string; // For proxy mode (Groq)
+  groqApiKey?: string; // For AI proxy mode (Groq)
 }
 
 const DEFAULT_CONFIG: VsockClientConfig = {
@@ -81,13 +80,8 @@ export class VsockClient {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.useProxy = useOpenAIProxy();
 
-    // Initialize AI provider clients for proxy mode
+    // Initialize Groq client for AI proxy mode
     if (this.useProxy) {
-      const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
-      if (openaiKey) {
-        this.aiClients['openai'] = new OpenAI({ apiKey: openaiKey });
-        console.log('[Host/Vsock] OpenAI client initialized for proxy mode');
-      }
       const groqKey = config.groqApiKey || process.env.GROQ_API_KEY;
       if (groqKey) {
         this.aiClients['groq'] = new OpenAI({
@@ -95,9 +89,8 @@ export class VsockClient {
           baseURL: 'https://api.groq.com/openai/v1',
         });
         console.log('[Host/Vsock] Groq client initialized for proxy mode');
-      }
-      if (Object.keys(this.aiClients).length === 0) {
-        console.warn('[Host/Vsock] No AI provider keys provided for proxy mode');
+      } else {
+        console.warn('[Host/Vsock] No Groq API key provided for proxy mode');
       }
     }
   }
@@ -228,7 +221,7 @@ export class VsockClient {
     let response: OpenAIProxyResponse;
 
     // Route to the correct AI provider based on model
-    const providerName = getProviderForModel(model) || 'openai';
+    const providerName = getProviderForModel(model) || 'groq';
     const client = this.aiClients[providerName];
 
     if (!client) {
@@ -343,7 +336,7 @@ export class VsockClient {
    * 1. Sending request to Enclave
    * 2. Enclave decrypts prompt
    * 3. Enclave sends OPENAI_PROXY_REQUEST to Host
-   * 4. Host calls OpenAI
+   * 4. Host calls Groq API
    * 5. Host sends OPENAI_PROXY_RESPONSE to Enclave
    * 6. Enclave generates hash and attestation
    * 7. Enclave sends INFERENCE_RESULT
