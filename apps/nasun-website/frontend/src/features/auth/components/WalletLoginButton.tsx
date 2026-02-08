@@ -174,9 +174,9 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         <img
           src="/MetaMask_Fox.svg"
           alt="MetaMask"
-          className="w-4 h-4 flex-shrink-0"
+          className="w-5 h-5 flex-shrink-0"
         />
-        <span className="flex-1">{getButtonText()}</span>
+        <span>{getButtonText()}</span>
         {isLoading && <InlineLoading size="sm" className="ml-auto" />}
       </button>
 
