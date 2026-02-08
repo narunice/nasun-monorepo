@@ -35,8 +35,8 @@ export function createUserClient(): BaramClient {
     config,
     signer: TEST_USER_KEYPAIR,
     executorTimeoutMs: 60000, // 60s for AI inference
-    ecrPollIntervalMs: 3000,
-    ecrPollRetries: 5,
+    aerPollIntervalMs: 3000,
+    aerPollRetries: 5,
   });
 }
 
@@ -48,8 +48,8 @@ export function createAgentClient(): BaramClient {
     config,
     signer: TEST_AGENT_KEYPAIR,
     executorTimeoutMs: 60000,
-    ecrPollIntervalMs: 3000,
-    ecrPollRetries: 5,
+    aerPollIntervalMs: 3000,
+    aerPollRetries: 5,
   });
 }
 

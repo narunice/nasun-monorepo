@@ -17,8 +17,8 @@ const DEVNET_BARAM = {
   executorRegistryId: '0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656',
   processedRequestsId: '0x1d88bb96c90d9bde3a2c10fa4e26f3180e948dae908cb09ef4d6a79e905d7e48',
   tierRegistryId: '0xda37bee40cdc5e9a6188ddf021fe78d3328ff6384e84dc36014479c07e4300f1',
-  compliancePackageId: '0x601d879d176f5f22f1c3f267bb8895c6b18f1020878ac38a5f88f27ffeed55c3',
-  complianceRegistryId: '0x884af83cb0b9d5dc1f584a29018e812e777fb36ea99b8b0d96a8645188a4bec0',
+  aerPackageId: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
+  aerRegistryId: '0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583',
   // Budget module is now part of baram package (same packageId)
   budgetPackageId: '0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7',
   nusdcType: '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC',
@@ -40,9 +40,9 @@ export function createDevnetConfig(): BaramConfig {
       processedRequestsId: DEVNET_BARAM.processedRequestsId,
       tierRegistryId: DEVNET_BARAM.tierRegistryId,
     },
-    compliance: {
-      packageId: DEVNET_BARAM.compliancePackageId,
-      registryId: DEVNET_BARAM.complianceRegistryId,
+    aer: {
+      packageId: DEVNET_BARAM.aerPackageId,
+      registryId: DEVNET_BARAM.aerRegistryId,
     },
     // Budget is optional - only included if deployed
     ...(DEVNET_BARAM.budgetPackageId && {

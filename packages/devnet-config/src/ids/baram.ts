@@ -30,11 +30,17 @@ export const ATTESTATION_REGISTRY = config.baram.attestationRegistry as ObjectId
 export const ATTESTATION_ADMIN_CAP = config.baram.attestationAdminCap as ObjectId;
 export const ATTESTATION_UPGRADE_CAP = config.baram.attestationUpgradeCap as ObjectId;
 
-// Compliance (ECR)
+// Compliance (ECR) — FROZEN, replaced by AER
 export const COMPLIANCE_PACKAGE_ID = config.baram.compliancePackageId as ObjectId;
 export const COMPLIANCE_REGISTRY = config.baram.complianceRegistry as ObjectId;
 export const COMPLIANCE_ADMIN_CAP = config.baram.complianceAdminCap as ObjectId;
 export const COMPLIANCE_UPGRADE_CAP = config.baram.complianceUpgradeCap as ObjectId;
+
+// AER (AI Execution Report)
+export const AER_PACKAGE_ID = config.baram.aerPackageId as ObjectId;
+export const AER_REGISTRY = config.baram.aerRegistry as ObjectId;
+export const AER_ADMIN_CAP = config.baram.aerAdminCap as ObjectId;
+export const AER_UPGRADE_CAP = config.baram.aerUpgradeCap as ObjectId;
 
 // Budget type origin (runtime type origin for budget module types)
 export const BUDGET_TYPE_ORIGIN = config.baram.budgetTypeOrigin as ObjectId;
@@ -66,6 +72,10 @@ export const BARAM: BaramConfig = {
   complianceRegistry: COMPLIANCE_REGISTRY,
   complianceAdminCap: COMPLIANCE_ADMIN_CAP,
   complianceUpgradeCap: COMPLIANCE_UPGRADE_CAP,
+  aerPackageId: AER_PACKAGE_ID,
+  aerRegistry: AER_REGISTRY,
+  aerAdminCap: AER_ADMIN_CAP,
+  aerUpgradeCap: AER_UPGRADE_CAP,
   budgetTypeOrigin: BUDGET_TYPE_ORIGIN,
   betaAccessRegistry: BETA_ACCESS_REGISTRY,
   betaAccessAdmin: BETA_ACCESS_ADMIN,
