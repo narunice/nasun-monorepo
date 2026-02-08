@@ -166,9 +166,16 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
         let executeResponse: Response;
         try {
+          // Only send API key to our Lambda backend — never leak to third-party executors
+          const isLambdaBackend = executorUrl === BARAM_CONFIG.backendUrl;
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (isLambdaBackend && BARAM_CONFIG.apiKey) {
+            headers['x-api-key'] = BARAM_CONFIG.apiKey;
+          }
+
           executeResponse = await fetch(executorUrl + '/execute', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
               requestId,
               encryptedPrompt: promptPayload,

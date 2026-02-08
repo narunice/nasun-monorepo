@@ -24,6 +24,7 @@ export const BARAM_CONFIG = {
   registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || BARAM.registry,
   executorAddress: import.meta.env.VITE_EXECUTOR_ADDRESS || '',
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
+  apiKey: import.meta.env.VITE_BARAM_API_KEY || '',
   nftGateEnabled: import.meta.env.VITE_NFT_GATE_ENABLED === 'true',
 } as const;
 
@@ -153,3 +154,9 @@ export const MODEL_PRICING = {
 export type ModelId = keyof typeof MODEL_PRICING;
 // Default to Groq for development/testing
 export const DEFAULT_MODEL: ModelId = 'llama-3.1-8b-instant';
+
+// Budget Configuration — matches budget.move constants
+export const BUDGET_CONFIG = {
+  MIN_DEPOSIT: 100_000,           // 0.1 NUSDC (6 decimals)
+  DEFAULT_MAX_PER_REQUEST: 10_000_000, // 10 NUSDC
+} as const;
