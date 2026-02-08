@@ -13,6 +13,7 @@ import { useMarginAccount } from "../../core/unified-margin/useMarginAccount";
 import type { TradeResult, OrderType } from "../types";
 import { ORDER_TYPE } from "../constants";
 import { useToast } from "@/components/common";
+import { playSound } from "../../../lib/sounds";
 import { quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepbook";
 import { isMarginError } from "../../../lib/risk-engine";
 import { parseError } from "../utils/errorParser";
@@ -252,10 +253,12 @@ export function useOrderActions(): UseOrderActionsResult {
           : await placeSellOrder(price, amount, orderType);
 
       if (result.success) {
+        playSound('orderPlaced');
         const message = formatOrderResult(result, type === "buy", currentPool.takerFeeBps);
         showToast(message, "success");
         refreshData();
       } else {
+        playSound('error');
         const requiredQuote = type === "buy" ? price * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
         const friendlyError = formatUserFriendlyError(result.error, {
@@ -301,6 +304,7 @@ export function useOrderActions(): UseOrderActionsResult {
       });
 
       if (result.success) {
+        playSound('orderFilled');
         const baseSymbol = currentPool.baseToken.symbol;
         const msg = result.executionInfo
           ? formatOrderResult(result, type === "buy", currentPool.takerFeeBps)
@@ -308,6 +312,7 @@ export function useOrderActions(): UseOrderActionsResult {
         showToast(msg, "success");
         refreshData();
       } else {
+        playSound('error');
         const friendlyError = formatUserFriendlyError(result.error, {
           side: type,
           requiredAmount: amount,
