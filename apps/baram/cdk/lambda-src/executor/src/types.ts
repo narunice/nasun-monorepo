@@ -41,13 +41,8 @@ export const STATUS = {
 
 // Model pricing (in NUSDC, 6 decimals)
 export const MODEL_PRICING: Record<string, number> = {
-  // OpenAI models
-  'gpt-4o': 500_000, // 0.5 NUSDC
-  'gpt-4-turbo': 1_000_000, // 1.0 NUSDC
-  // Groq models (fallback - fast inference)
   'llama-3.1-8b-instant': 100_000, // 0.1 NUSDC
   'llama-3.3-70b-versatile': 100_000, // 0.1 NUSDC
 } as const;
 
-// Default to Groq for free tier usage
 export const DEFAULT_MODEL = 'llama-3.1-8b-instant';
