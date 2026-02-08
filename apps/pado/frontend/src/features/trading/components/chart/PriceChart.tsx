@@ -1,24 +1,14 @@
 /**
- * PriceChart - TradingView-style candlestick chart with indicators
+ * PriceChart - Chart component with feature-flag switch
  *
- * Decomposed into:
- * - ChartHeader: interval/indicator controls
- * - OhlcvOverlay: crosshair OHLCV display
- * - useChartData: Binance/simulated data fetching
- * - useOverlayIndicators: SMA/EMA/BB overlay management
- * - useSubChart: RSI/MACD/Stochastic/ATR sub-chart management
+ * When VITE_USE_TRADINGVIEW=true, renders TradingView Advanced Charts.
+ * Otherwise, renders the built-in lightweight-charts implementation.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, ISeriesPrimitive, IPriceLine, Time, MouseEventParams } from 'lightweight-charts';
-import { getActiveTPSLOrders } from '../../lib/tpsl-storage';
-import { TPSL_POLL_INTERVAL_MS } from '../../lib/tpsl-types';
-import { PRICE_ALERT_POLL_INTERVAL_MS } from '../../lib/price-alert-types';
-import { getActivePriceAlerts } from '../../lib/price-alert-storage';
-import { usePriceAlertMonitor } from '../../hooks/usePriceAlertMonitor';
-import { useMarket } from '../../context/MarketContext';
-import { useTheme } from '../../../../providers/theme';
+import { NETWORK_CONFIG } from '@/config/network';
 import {
   calculateRSI,
   calculateMACD,
@@ -26,12 +16,20 @@ import {
   calculateATR,
   generateVolumeData,
 } from '@/lib/indicators';
+import { getActiveTPSLOrders } from '../../lib/tpsl-storage';
+import { TPSL_POLL_INTERVAL_MS } from '../../lib/tpsl-types';
+import { PRICE_ALERT_POLL_INTERVAL_MS } from '../../lib/price-alert-types';
+import { getActivePriceAlerts } from '../../lib/price-alert-storage';
+import { usePriceAlertMonitor } from '../../hooks/usePriceAlertMonitor';
+import { useMarket } from '../../context/MarketContext';
+import { useTheme } from '../../../../providers/theme';
 import { useChartData } from './hooks/useChartData';
 import { useOverlayIndicators } from './hooks/useOverlayIndicators';
 import { useSubChart } from './hooks/useSubChart';
 import { ChartHeader } from './ChartHeader';
 import { OhlcvOverlay } from './OhlcvOverlay';
 import { DrawingToolbar } from './DrawingToolbar';
+import { TradingViewChart } from './TradingViewChart';
 import type { TimeInterval, IndicatorState, IndicatorId, OhlcvData } from './types';
 import { CHART_COLORS, CHART_HEIGHT, VOLUME_HEIGHT, RSI_HEIGHT, MACD_HEIGHT, STOCH_HEIGHT, ATR_HEIGHT, DEFAULT_INDICATORS } from './types';
 import type { ActiveTool, DrawingData, DrawingPoint } from './drawings/types';
@@ -45,6 +43,22 @@ import { NotificationSettings } from '../NotificationSettings';
 
 // Re-export TimeInterval for backward compatibility
 export type { TimeInterval } from './types';
+
+interface PriceChartProps {
+  currentPrice?: number;
+  className?: string;
+}
+
+export function PriceChart(props: PriceChartProps) {
+  if (NETWORK_CONFIG.useTradingView) {
+    return <TradingViewChart {...props} />;
+  }
+  return <LightweightChart {...props} />;
+}
+
+// ========================================
+// Lightweight Charts Implementation (original)
+// ========================================
 
 const INDICATOR_IDS: IndicatorId[] = ['sma', 'ema', 'bb', 'rsi', 'macd', 'stoch', 'atr'];
 
@@ -85,12 +99,7 @@ function loadIndicators(): IndicatorState {
   }
 }
 
-interface PriceChartProps {
-  currentPrice?: number;
-  className?: string;
-}
-
-export function PriceChart({ currentPrice = 95000, className = '' }: PriceChartProps) {
+function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartProps) {
   const { currentPool } = useMarket();
   const { theme } = useTheme();
   const baseSymbol = currentPool.baseToken.symbol;
