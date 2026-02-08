@@ -17,9 +17,13 @@ export interface UseFaucetResult {
   isNasunLoading: boolean;
   isNbtcLoading: boolean;
   isNusdcLoading: boolean;
+  isNethLoading: boolean;
+  isNsolLoading: boolean;
   handleNasunFaucet: () => Promise<void>;
   handleNbtcFaucet: () => Promise<void>;
   handleNusdcFaucet: () => Promise<void>;
+  handleNethFaucet: () => Promise<void>;
+  handleNsolFaucet: () => Promise<void>;
 }
 
 export function useFaucet(): UseFaucetResult {
@@ -28,12 +32,20 @@ export function useFaucet(): UseFaucetResult {
   // Use wallet address or zkLogin address
   const address = walletAccount?.address || zkState?.address;
   const { showToast } = useToast();
-  const { requestNbtc, requestNusdc } = useTrading();
+  const { requestNbtc, requestNusdc, requestNeth, requestNsol } = useTrading();
   const queryClient = useQueryClient();
 
   const [isNasunLoading, setIsNasunLoading] = useState(false);
   const [isNbtcLoading, setIsNbtcLoading] = useState(false);
   const [isNusdcLoading, setIsNusdcLoading] = useState(false);
+  const [isNethLoading, setIsNethLoading] = useState(false);
+  const [isNsolLoading, setIsNsolLoading] = useState(false);
+
+  const refreshBalances = useCallback(() => {
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
+    }, 2000);
+  }, [queryClient]);
 
   // NASUN Faucet 요청
   const handleNasunFaucet = useCallback(async () => {
@@ -44,10 +56,7 @@ export function useFaucet(): UseFaucetResult {
       const success = await requestFaucet(address);
       if (success) {
         showToast("NASUN received!", "success");
-        // 잔고 갱신 (2초 후)
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
-        }, 2000);
+        refreshBalances();
       } else {
         showToast("Faucet request failed", "error");
       }
@@ -56,7 +65,7 @@ export function useFaucet(): UseFaucetResult {
     } finally {
       setIsNasunLoading(false);
     }
-  }, [address, showToast, queryClient]);
+  }, [address, showToast, refreshBalances]);
 
   // NBTC Faucet 요청
   const handleNbtcFaucet = useCallback(async () => {
@@ -65,10 +74,7 @@ export function useFaucet(): UseFaucetResult {
       const result = await requestNbtc();
       if (result.success) {
         showToast("1 NBTC received!", "success");
-        // 잔고 갱신 (2초 후)
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
-        }, 2000);
+        refreshBalances();
       } else {
         showToast(`NBTC faucet error: ${result.error}`, "error");
       }
@@ -80,7 +86,7 @@ export function useFaucet(): UseFaucetResult {
     } finally {
       setIsNbtcLoading(false);
     }
-  }, [requestNbtc, showToast, queryClient]);
+  }, [requestNbtc, showToast, refreshBalances]);
 
   // NUSDC Faucet 요청
   const handleNusdcFaucet = useCallback(async () => {
@@ -89,10 +95,7 @@ export function useFaucet(): UseFaucetResult {
       const result = await requestNusdc();
       if (result.success) {
         showToast("100,000 NUSDC received!", "success");
-        // 잔고 갱신 (2초 후)
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: [MULTI_BALANCE_QUERY_KEY] });
-        }, 2000);
+        refreshBalances();
       } else {
         showToast(`NUSDC faucet error: ${result.error}`, "error");
       }
@@ -104,14 +107,70 @@ export function useFaucet(): UseFaucetResult {
     } finally {
       setIsNusdcLoading(false);
     }
-  }, [requestNusdc, showToast, queryClient]);
+  }, [requestNusdc, showToast, refreshBalances]);
+
+  // NETH Faucet 요청 (V2 - 24h cooldown)
+  const handleNethFaucet = useCallback(async () => {
+    setIsNethLoading(true);
+    try {
+      const result = await requestNeth();
+      if (result.success) {
+        showToast("10 NETH received!", "success");
+        refreshBalances();
+      } else {
+        const errorMsg = result.error || "Unknown error";
+        if (errorMsg.includes('MoveAbort') && errorMsg.includes(', 1)')) {
+          showToast("NETH faucet: 24h cooldown active. Try again later.", "warning");
+        } else {
+          showToast(`NETH faucet error: ${errorMsg}`, "error");
+        }
+      }
+    } catch (error) {
+      showToast(
+        `NETH faucet error: ${error instanceof Error ? error.message : "Unknown"}`,
+        "error"
+      );
+    } finally {
+      setIsNethLoading(false);
+    }
+  }, [requestNeth, showToast, refreshBalances]);
+
+  // NSOL Faucet 요청 (V2 - 24h cooldown)
+  const handleNsolFaucet = useCallback(async () => {
+    setIsNsolLoading(true);
+    try {
+      const result = await requestNsol();
+      if (result.success) {
+        showToast("100 NSOL received!", "success");
+        refreshBalances();
+      } else {
+        const errorMsg = result.error || "Unknown error";
+        if (errorMsg.includes('MoveAbort') && errorMsg.includes(', 1)')) {
+          showToast("NSOL faucet: 24h cooldown active. Try again later.", "warning");
+        } else {
+          showToast(`NSOL faucet error: ${errorMsg}`, "error");
+        }
+      }
+    } catch (error) {
+      showToast(
+        `NSOL faucet error: ${error instanceof Error ? error.message : "Unknown"}`,
+        "error"
+      );
+    } finally {
+      setIsNsolLoading(false);
+    }
+  }, [requestNsol, showToast, refreshBalances]);
 
   return {
     isNasunLoading,
     isNbtcLoading,
     isNusdcLoading,
+    isNethLoading,
+    isNsolLoading,
     handleNasunFaucet,
     handleNbtcFaucet,
     handleNusdcFaucet,
+    handleNethFaucet,
+    handleNsolFaucet,
   };
 }

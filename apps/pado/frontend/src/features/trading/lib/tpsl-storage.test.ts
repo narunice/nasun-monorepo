@@ -150,6 +150,43 @@ describe('addTPSLOrder', () => {
     expect(result).not.toBeNull();
     expect(getTPSLOrders()).toHaveLength(2);
   });
+
+  it('creates stop-limit order with valid limitPrice', () => {
+    const order = addTPSLOrder({
+      side: 'buy',
+      quantity: 0.5,
+      triggerPrice: 100000,
+      triggerType: 'stop-limit',
+      limitPrice: 100100,
+    });
+    expect(order).not.toBeNull();
+    expect(order!.triggerType).toBe('stop-limit');
+    expect(order!.limitPrice).toBe(100100);
+  });
+
+  it('rejects stop-limit order with missing limitPrice', () => {
+    expect(addTPSLOrder({
+      side: 'buy', quantity: 0.5, triggerPrice: 100000, triggerType: 'stop-limit',
+    })).toBeNull();
+  });
+
+  it('rejects stop-limit order with zero limitPrice', () => {
+    expect(addTPSLOrder({
+      side: 'buy', quantity: 0.5, triggerPrice: 100000, triggerType: 'stop-limit', limitPrice: 0,
+    })).toBeNull();
+  });
+
+  it('rejects stop-limit order with negative limitPrice', () => {
+    expect(addTPSLOrder({
+      side: 'sell', quantity: 0.5, triggerPrice: 90000, triggerType: 'stop-limit', limitPrice: -100,
+    })).toBeNull();
+  });
+
+  it('rejects stop-limit order with NaN limitPrice', () => {
+    expect(addTPSLOrder({
+      side: 'buy', quantity: 0.5, triggerPrice: 100000, triggerType: 'stop-limit', limitPrice: NaN,
+    })).toBeNull();
+  });
 });
 
 // ========================================

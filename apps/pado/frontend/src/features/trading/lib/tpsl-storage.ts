@@ -59,6 +59,10 @@ export function addTPSLOrder(
 ): TPSLOrder | null {
   if (!Number.isFinite(order.triggerPrice) || order.triggerPrice <= 0) return null;
   if (!Number.isFinite(order.quantity) || order.quantity <= 0) return null;
+  // Stop-limit orders require a valid limitPrice
+  if (order.triggerType === 'stop-limit') {
+    if (!order.limitPrice || !Number.isFinite(order.limitPrice) || order.limitPrice <= 0) return null;
+  }
 
   const orders = getTPSLOrders();
   const activeCount = orders.filter((o) => o.status === 'active').length;

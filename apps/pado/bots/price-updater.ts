@@ -11,7 +11,7 @@
  *   ORACLE_ADMIN_KEY    - Hex-encoded private key for AdminCap owner
  *   NASUN_RPC_URL       - RPC endpoint (default: https://rpc.devnet.nasun.io)
  *
- * @version 0.1.0
+ * @version 0.2.0
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -36,7 +36,9 @@ const UPDATE_INTERVAL_MS = 30_000; // 30 seconds
 
 // Symbol IDs (must match dev_oracle.move)
 const BTCUSD = 1;
+const ETHUSD = 2;
 const NASUSD = 3;
+const SOLUSD = 4;
 
 // ========================================
 // Helpers
@@ -61,29 +63,46 @@ function toConfidence(usd: number): bigint {
 // Price Fetching
 // ========================================
 
-async function fetchPrices(): Promise<{ BTC: number }> {
+interface FetchedPrices {
+  BTC: number;
+  ETH: number;
+  SOL: number;
+}
+
+async function fetchPrices(): Promise<FetchedPrices> {
   // Primary: CoinGecko
   try {
     const response = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd',
       { signal: AbortSignal.timeout(5000) }
     );
     const data = await response.json();
-    if (data.bitcoin?.usd) {
-      return { BTC: data.bitcoin.usd };
+    const btc = data.bitcoin?.usd;
+    const eth = data.ethereum?.usd;
+    const sol = data.solana?.usd;
+    if (typeof btc === 'number' && typeof eth === 'number' && typeof sol === 'number') {
+      return { BTC: btc, ETH: eth, SOL: sol };
     }
     throw new Error('Invalid CoinGecko response');
   } catch (error) {
     console.log('⚠️  CoinGecko failed, trying Binance...');
   }
 
-  // Backup: Binance
+  // Backup: Binance (fetch all in parallel)
   try {
-    const btcRes = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', {
-      signal: AbortSignal.timeout(5000),
-    });
-    const btcData = await btcRes.json();
-    return { BTC: parseFloat(btcData.price) };
+    const [btcRes, ethRes, solRes] = await Promise.all([
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', { signal: AbortSignal.timeout(5000) }),
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', { signal: AbortSignal.timeout(5000) }),
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT', { signal: AbortSignal.timeout(5000) }),
+    ]);
+    const [btcData, ethData, solData] = await Promise.all([btcRes.json(), ethRes.json(), solRes.json()]);
+    const btc = parseFloat(btcData.price);
+    const eth = parseFloat(ethData.price);
+    const sol = parseFloat(solData.price);
+    if (isNaN(btc) || isNaN(eth) || isNaN(sol) || btc <= 0 || eth <= 0 || sol <= 0) {
+      throw new Error(`Invalid Binance prices: BTC=${btcData.price} ETH=${ethData.price} SOL=${solData.price}`);
+    }
+    return { BTC: btc, ETH: eth, SOL: sol };
   } catch (error) {
     console.error('❌ Both APIs failed');
     throw error;
@@ -139,6 +158,7 @@ async function main() {
   console.log(`   RPC: ${RPC_URL}`);
   console.log(`   Package: ${ORACLE_PACKAGE_ID.slice(0, 16)}...`);
   console.log(`   Registry: ${ORACLE_REGISTRY_ID.slice(0, 16)}...`);
+  console.log(`   Symbols: BTC(1), ETH(2), NASUN(3), SOL(4)`);
   console.log(`   Interval: ${UPDATE_INTERVAL_MS / 1000}s\n`);
 
   // Get admin key from environment or use default (for testing only)
@@ -163,7 +183,9 @@ async function main() {
 
       const prices: PriceUpdate[] = [
         { symbol: BTCUSD, price: toOraclePrice(apiPrices.BTC), confidence: toConfidence(apiPrices.BTC) },
+        { symbol: ETHUSD, price: toOraclePrice(apiPrices.ETH), confidence: toConfidence(apiPrices.ETH) },
         { symbol: NASUSD, price: toOraclePrice(1.0), confidence: toOraclePrice(0.001) }, // NASUN = $1 (fixed)
+        { symbol: SOLUSD, price: toOraclePrice(apiPrices.SOL), confidence: toConfidence(apiPrices.SOL) },
       ];
 
       const digest = await withRetry(
@@ -173,7 +195,7 @@ async function main() {
 
       const now = new Date().toISOString().slice(11, 19);
       console.log(`[${now}] ✅ Updated prices (tx: ${digest.slice(0, 10)}...)`);
-      console.log(`         BTC: $${apiPrices.BTC.toLocaleString()}`);
+      console.log(`         BTC: $${apiPrices.BTC.toLocaleString()} | ETH: $${apiPrices.ETH.toLocaleString()} | SOL: $${apiPrices.SOL.toLocaleString()}`);
     } catch (error) {
       console.error('❌ Update failed after retries:', error instanceof Error ? error.message : error);
     }

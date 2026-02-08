@@ -72,6 +72,8 @@ export function usePrices(enabled: boolean = true): UsePricesResult {
         NASUN: buildPriceInfo('NASUN'),
         NBTC: buildPriceInfo('NBTC'),
         NUSDC: buildPriceInfo('NUSDC'),
+        NETH: buildPriceInfo('NETH'),
+        NSOL: buildPriceInfo('NSOL'),
       };
     },
     enabled,
@@ -93,6 +95,8 @@ export function usePrices(enabled: boolean = true): UsePricesResult {
       NASUN: buildPriceInfo('NASUN'),
       NBTC: buildPriceInfo('NBTC'),
       NUSDC: buildPriceInfo('NUSDC'),
+      NETH: buildPriceInfo('NETH'),
+      NSOL: buildPriceInfo('NSOL'),
     },
     isLoading: query.isLoading,
     isError: query.isError,
@@ -147,8 +151,9 @@ export function useIsOracleStale(symbolId: number) {
  * Format price with appropriate decimals based on oracle symbol
  */
 export function formatOraclePrice(price: number, symbolId: number): string {
-  // BTC/ETH: 2 decimals, others: 4 decimals
-  if (symbolId <= 2) {
+  // BTC (1), ETH (2), SOL (4): 2 decimals (high-value assets)
+  // NASUN (3): 4 decimals (sub-dollar asset)
+  if (symbolId <= 2 || symbolId === 4) {
     return price.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,

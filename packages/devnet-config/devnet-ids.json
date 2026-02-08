@@ -1,6 +1,6 @@
 {
   "version": "V7",
-  "lastUpdated": "2026-02-04",
+  "lastUpdated": "2026-02-08",
   "admin": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
   "network": {
     "chainId": "272218f1",
@@ -67,9 +67,17 @@
     "betaAccessRegistry": "0xaf2fd2a1ccfd1f41afe51071981047860b81f9cfaa775fc12acadf099577e4f7",
     "betaAccessAdmin": "0x7daa09decafcfa78b712308a13e8c8204eb89de8434df806df51f4cec076d6c2"
   },
+  "tokensV2": {
+    "packageId": "0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2",
+    "tokenFaucetV2": "0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2",
+    "claimRecordV2": "0x2c2dbaa8d08b04119f5a8459aba2ab4d71b887d55bb5c1d987af1f501a52c38a",
+    "upgradeCap": "0x4b70e4d8a5bd8dc9976082d8d16eb014303b3000cc6d52a9de19c6b3a7cdb755"
+  },
   "pools": {
     "nbtcNusdc": "0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0",
-    "nsnNusdc": "0x5953740daf54d767f2cd71a8372db75c7277f2907b55e0bdf7c172d96e033b1e"
+    "nsnNusdc": "0x5953740daf54d767f2cd71a8372db75c7277f2907b55e0bdf7c172d96e033b1e",
+    "nethNusdc": "0x531fed7acf9f5f7fe3a206bc079d69d39db0bf8e22ff703c3fe0817edf9c0714",
+    "nsolNusdc": "0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769"
   },
   "oracle": {
     "packageId": "0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c",

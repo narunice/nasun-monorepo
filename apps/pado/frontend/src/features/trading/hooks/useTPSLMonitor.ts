@@ -56,25 +56,34 @@ type ExecuteMarketOrderFn = (
   quantity: number
 ) => Promise<{ success: boolean; error?: string; digest?: string }>;
 
+type ExecuteLimitOrderFn = (
+  side: 'buy' | 'sell',
+  quantity: number,
+  limitPrice: number
+) => Promise<{ success: boolean; error?: string; digest?: string }>;
+
 interface UseTPSLMonitorParams {
   executeMarketOrder: ExecuteMarketOrderFn;
+  /** Execute limit order for stop-limit triggers */
+  executeLimitOrder?: ExecuteLimitOrderFn;
   hasBalanceManager: boolean;
   /** Current market base symbol for price monitoring */
-  marketSymbol: TokenSymbol;
+  marketSymbol?: TokenSymbol;
   /** Current pool ID for keeper registration */
-  poolId: string;
+  poolId?: string;
   /** Wallet address for keeper order queries */
   walletAddress?: string;
   /** BalanceManager ID for keeper registration */
-  balanceManagerId: string | null;
+  balanceManagerId?: string | null;
   /** TradeCap delegation status */
-  tradeCapStatus: TradeCapStatus;
+  tradeCapStatus?: TradeCapStatus;
   /** Delegated TradeCap object ID */
-  tradeCapId: string | null;
+  tradeCapId?: string | null;
 }
 
 export function useTPSLMonitor({
   executeMarketOrder,
+  executeLimitOrder,
   hasBalanceManager,
   marketSymbol,
   poolId,
@@ -93,6 +102,10 @@ export function useTPSLMonitor({
   // Stable ref for executeMarketOrder to prevent interval restarts
   const executeRef = useRef<ExecuteMarketOrderFn>(executeMarketOrder);
   useEffect(() => { executeRef.current = executeMarketOrder; }, [executeMarketOrder]);
+
+  // Stable ref for executeLimitOrder (stop-limit orders)
+  const executeLimitRef = useRef<ExecuteLimitOrderFn | undefined>(executeLimitOrder);
+  useEffect(() => { executeLimitRef.current = executeLimitOrder; }, [executeLimitOrder]);
 
   const hasBalanceManagerRef = useRef(hasBalanceManager);
   useEffect(() => { hasBalanceManagerRef.current = hasBalanceManager; }, [hasBalanceManager]);
@@ -141,17 +154,32 @@ export function useTPSLMonitor({
       // Cross-tab safety: claim order via localStorage before executing
       if (!claimTPSLOrder(order.id)) continue;
 
-      const typeLabel = order.triggerType === 'tp' ? 'Take Profit' : 'Stop Loss';
+      const typeLabel = order.triggerType === 'tp'
+        ? 'Take Profit'
+        : order.triggerType === 'stop-limit'
+          ? 'Stop-Limit'
+          : 'Stop Loss';
       const priceStr = currentPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
       playSound('tpslTriggered');
       showToast(
-        `${typeLabel} triggered at $${priceStr} — executing ${order.side} ${order.quantity} ${baseSymbol}...`,
+        `${typeLabel} triggered at $${priceStr} — ${order.triggerType === 'stop-limit' ? 'placing limit order' : 'executing'} ${order.side} ${order.quantity} ${baseSymbol}...`,
         'info'
       );
 
       try {
-        const result = await executeRef.current(order.side, order.quantity);
+        // Stop-limit: place limit order at the specified limitPrice
+        // TP/SL: execute market order immediately
+        let result: { success: boolean; error?: string; digest?: string };
+        if (order.triggerType === 'stop-limit') {
+          if (!order.limitPrice || !executeLimitRef.current) {
+            result = { success: false, error: 'Limit order function unavailable' };
+          } else {
+            result = await executeLimitRef.current(order.side, order.quantity, order.limitPrice);
+          }
+        } else {
+          result = await executeRef.current(order.side, order.quantity);
+        }
 
         if (result.success) {
           updateTPSLStatus(order.id, 'triggered', {
@@ -204,11 +232,18 @@ export function useTPSLMonitor({
       const result = addTPSLOrder(order);
       if (result) {
         refreshOrders();
-        const typeLabel = result.triggerType === 'tp' ? 'Take Profit' : 'Stop Loss';
+        const typeLabel = result.triggerType === 'tp'
+          ? 'Take Profit'
+          : result.triggerType === 'stop-limit'
+            ? 'Stop-Limit'
+            : 'Stop Loss';
         const priceStr = result.triggerPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
-        showToast(`${typeLabel} set at $${priceStr}`, 'success');
+        const limitInfo = result.triggerType === 'stop-limit' && result.limitPrice
+          ? ` → limit $${result.limitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+          : '';
+        showToast(`${typeLabel} set at $${priceStr}${limitInfo}`, 'success');
       } else {
-        showToast('Invalid TP/SL order or max limit reached (50)', 'warning');
+        showToast('Invalid order or max limit reached (50)', 'warning');
       }
       return result;
     },
@@ -218,8 +253,8 @@ export function useTPSLMonitor({
   // Async addOrder that routes to keeper API when delegated
   const addOrderAsync = useCallback(
     async (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>): Promise<TPSLOrder | null> => {
-      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId) {
-        // Fall back to client-side
+      // Stop-limit always uses client-side (keeper API doesn't support stop_limit type)
+      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId || order.triggerType === 'stop-limit') {
         return addOrder(order);
       }
 

@@ -18,7 +18,7 @@ export const EXECUTION_OPTION_MAP: Record<ExecutionOption, OrderType> = {
   POST_ONLY: ORDER_TYPE.POST_ONLY,
 };
 
-export type OrderModeType = 'limit' | 'market';
+export type OrderModeType = 'limit' | 'market' | 'stop-limit';
 
 export interface OrderFormContextType {
   // 주문 입력 상태
@@ -59,6 +59,10 @@ export interface OrderFormContextType {
   setTpPrice: (value: string) => void;
   slPrice: string;
   setSlPrice: (value: string) => void;
+
+  // Stop-Limit
+  stopPrice: string;
+  setStopPrice: (value: string) => void;
 
   // 확인 모달 상태
   isConfirmModalOpen: boolean;
@@ -127,6 +131,9 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   const [tpPrice, setTpPrice] = useState('');
   const [slPrice, setSlPrice] = useState('');
 
+  // Stop-Limit state
+  const [stopPrice, setStopPrice] = useState('');
+
   // OrderType 변환
   const getOrderType = useCallback((): OrderType => {
     return EXECUTION_OPTION_MAP[executionOption];
@@ -154,6 +161,7 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
     setAmount('');
     setTpPrice('');
     setSlPrice('');
+    setStopPrice('');
   }, []);
 
   return (
@@ -182,6 +190,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         setTpPrice,
         slPrice,
         setSlPrice,
+        stopPrice,
+        setStopPrice,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,

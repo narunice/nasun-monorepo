@@ -1,10 +1,31 @@
 /**
  * TradeStats Component
- * Display trading statistics summary
+ * Display trading statistics with period filter, win rate, and P&L summary.
  */
 
+import { useState, useMemo } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory } from '../hooks/useTradeHistory';
+import { useCostBasis } from '../hooks/useCostBasis';
+import { getUnifiedPrice, type TokenSymbol } from '@/lib/prices';
+
+type Period = '24h' | '7d' | '30d' | 'all';
+
+const PERIOD_LABELS: Record<Period, string> = {
+  '24h': '24H',
+  '7d': '7D',
+  '30d': '30D',
+  'all': 'All',
+};
+
+function getPeriodMs(period: Period): number {
+  switch (period) {
+    case '24h': return 24 * 60 * 60 * 1000;
+    case '7d': return 7 * 24 * 60 * 60 * 1000;
+    case '30d': return 30 * 24 * 60 * 60 * 1000;
+    case 'all': return Infinity;
+  }
+}
 
 interface StatCardProps {
   label: string;
@@ -22,11 +43,11 @@ function StatCard({ label, value, subValue, color = 'default' }: StatCardProps) 
       : 'text-theme-text-primary';
 
   return (
-    <div className="bg-theme-bg-tertiary rounded-lg p-4">
-      <div className="text-xs text-theme-text-secondary mb-1">{label}</div>
-      <div className={`text-lg font-semibold ${valueColor}`}>{value}</div>
+    <div className="bg-theme-bg-tertiary rounded-lg p-3 xl:p-4">
+      <div className="text-[10px] xl:text-xs text-theme-text-secondary mb-1">{label}</div>
+      <div className={`text-sm xl:text-lg font-semibold ${valueColor}`}>{value}</div>
       {subValue && (
-        <div className="text-xs text-theme-text-muted mt-1">{subValue}</div>
+        <div className="text-[10px] xl:text-xs text-theme-text-muted mt-0.5">{subValue}</div>
       )}
     </div>
   );
@@ -35,9 +56,85 @@ function StatCard({ label, value, subValue, color = 'default' }: StatCardProps) 
 export function TradeStats() {
   const { status } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
-  const { stats, isLoading } = useTradeHistory();
+  const { trades, isLoading } = useTradeHistory();
+  const { entries: costBasisEntries } = useCostBasis();
+  const [period, setPeriod] = useState<Period>('all');
 
   const isConnected = status === 'unlocked' || isZkConnected;
+
+  // Build avg buy price map from cost basis
+  const avgBuyPrices = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const entry of costBasisEntries) {
+      map.set(entry.symbol, entry.avgBuyPrice);
+    }
+    return map;
+  }, [costBasisEntries]);
+
+  // Filter trades by period
+  const filteredTrades = useMemo(() => {
+    if (period === 'all') return trades;
+    const cutoff = Date.now() - getPeriodMs(period);
+    return trades.filter((t) => t.timestamp >= cutoff);
+  }, [trades, period]);
+
+  // Compute volume stats
+  const stats = useMemo(() => {
+    const buyTrades = filteredTrades.filter((t) => t.side === 'buy');
+    const sellTrades = filteredTrades.filter((t) => t.side === 'sell');
+    const buyVolume = buyTrades.reduce((sum, t) => sum + t.total, 0);
+    const sellVolume = sellTrades.reduce((sum, t) => sum + t.total, 0);
+    const totalVolume = buyVolume + sellVolume;
+
+    return {
+      totalTrades: filteredTrades.length,
+      totalVolume,
+      buyTrades: buyTrades.length,
+      sellTrades: sellTrades.length,
+      buyVolume,
+      sellVolume,
+      avgTradeSize: filteredTrades.length > 0 ? totalVolume / filteredTrades.length : 0,
+      lastTradeTime: filteredTrades.length > 0
+        ? Math.max(...filteredTrades.map((t) => t.timestamp))
+        : null,
+    };
+  }, [filteredTrades]);
+
+  // Compute win rate and P&L
+  const pnlStats = useMemo(() => {
+    let profitable = 0;
+    let losing = 0;
+    let totalPnl = 0;
+    let bestTrade = -Infinity;
+    let worstTrade = Infinity;
+
+    for (const trade of filteredTrades) {
+      const baseSymbol = trade.poolName.split('/')[0] as TokenSymbol;
+      const avgBuy = avgBuyPrices.get(baseSymbol) ?? 0;
+      if (!avgBuy) continue;
+
+      const currentPrice = getUnifiedPrice(baseSymbol);
+      const pnl = trade.side === 'buy'
+        ? (currentPrice - trade.price) * trade.quantity
+        : (trade.price - avgBuy) * trade.quantity;
+
+      totalPnl += pnl;
+      if (pnl > bestTrade) bestTrade = pnl;
+      if (pnl < worstTrade) worstTrade = pnl;
+      if (pnl > 0) profitable++;
+      else if (pnl < 0) losing++;
+    }
+
+    const total = profitable + losing;
+    return {
+      winRate: total > 0 ? (profitable / total) * 100 : 0,
+      totalPnl: Math.round(totalPnl * 100) / 100,
+      bestTrade: bestTrade === -Infinity ? 0 : Math.round(bestTrade * 100) / 100,
+      worstTrade: worstTrade === Infinity ? 0 : Math.round(worstTrade * 100) / 100,
+      profitableTrades: profitable,
+      losingTrades: losing,
+    };
+  }, [filteredTrades, avgBuyPrices]);
 
   if (!isConnected) {
     return (
@@ -85,15 +182,44 @@ export function TradeStats() {
     return 'Just now';
   };
 
-  return (
-    <div className="bg-theme-bg-secondary rounded-lg p-6">
-      <h2 className="font-semibold mb-4">Trading Statistics</h2>
+  const pnlColor = pnlStats.totalPnl >= 0 ? 'green' : 'red' as const;
+  const pnlSign = pnlStats.totalPnl >= 0 ? '+' : '';
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+  return (
+    <div className="bg-theme-bg-secondary rounded-lg p-4 xl:p-6">
+      {/* Header with period filter */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold">Trading Statistics</h2>
+        <div className="flex gap-1 bg-theme-bg-tertiary rounded-lg p-0.5">
+          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                period === p
+                  ? 'bg-pd1 text-white font-medium'
+                  : 'text-theme-text-muted hover:text-theme-text-secondary'
+              }`}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Primary stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-3">
         <StatCard
-          label="Total Trades"
-          value={stats.totalTrades}
-          subValue={`${stats.buyTrades} buys / ${stats.sellTrades} sells`}
+          label="Total P&L"
+          value={`${pnlSign}${formatVolume(Math.abs(pnlStats.totalPnl))}`}
+          subValue={`${pnlStats.profitableTrades}W / ${pnlStats.losingTrades}L`}
+          color={pnlColor}
+        />
+        <StatCard
+          label="Win Rate"
+          value={`${pnlStats.winRate.toFixed(1)}%`}
+          subValue={`${stats.totalTrades} trades`}
+          color={pnlStats.winRate >= 50 ? 'green' : pnlStats.winRate > 0 ? 'red' : 'default'}
         />
         <StatCard
           label="Total Volume"
@@ -101,18 +227,30 @@ export function TradeStats() {
           subValue={`Avg ${formatVolume(stats.avgTradeSize)}`}
         />
         <StatCard
+          label="Best / Worst"
+          value={pnlStats.bestTrade > 0 ? `+$${pnlStats.bestTrade.toFixed(2)}` : '$0.00'}
+          subValue={pnlStats.worstTrade < 0 ? `-$${Math.abs(pnlStats.worstTrade).toFixed(2)}` : '$0.00'}
+          color="green"
+        />
+      </div>
+
+      {/* Secondary stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-3 mt-2 xl:mt-3">
+        <StatCard
           label="Buy Volume"
           value={formatVolume(stats.buyVolume)}
+          subValue={`${stats.buyTrades} buys`}
           color="green"
         />
         <StatCard
           label="Sell Volume"
           value={formatVolume(stats.sellVolume)}
+          subValue={`${stats.sellTrades} sells`}
           color="red"
         />
       </div>
 
-      <div className="mt-4 pt-4 border-t border-theme-border text-sm text-theme-text-secondary">
+      <div className="mt-3 xl:mt-4 pt-3 border-t border-theme-border text-xs xl:text-sm text-theme-text-secondary">
         Last trade: {formatTime(stats.lastTradeTime)}
       </div>
     </div>
