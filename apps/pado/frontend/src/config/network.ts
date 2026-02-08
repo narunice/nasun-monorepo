@@ -45,6 +45,9 @@ export const NETWORK_CONFIG = {
   // Chat
   chatWebSocketUrl: import.meta.env.VITE_CHAT_WS_URL || '',
   chatHttpUrl: import.meta.env.VITE_CHAT_HTTP_URL || '',
+
+  // Feature Flags
+  useTradingView: import.meta.env.VITE_USE_TRADINGVIEW === 'true',
 } as const;
 
 // Token Metadata
