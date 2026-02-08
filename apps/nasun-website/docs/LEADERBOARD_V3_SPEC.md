@@ -17,7 +17,6 @@
 |--------|--------|------|
 | `/wave1/leaderboard` | 공개 리더보드 (V3) | Active |
 | `/admin/leaderboard-v3` | Admin 포스트 등록/관리 | Active |
-| `/leaderboard-v2` | Legacy V2 (X API 기반) | Hidden, deprecated |
 
 ### Phase 5 구현 파일
 

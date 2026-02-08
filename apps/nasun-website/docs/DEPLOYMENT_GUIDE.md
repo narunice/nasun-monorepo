@@ -337,14 +337,11 @@ pnpm cdk deploy
 ```
 🔨 Step 1/6: 모든 Lambda 함수 빌드 중...
 ├── auth-twitter (npm)
-├── x-leaderboard (pnpm)
 ├── wallet-api (pnpm)
-├── PriceAPI (pnpm)
-└── sync-community-members (npm)
+└── PriceAPI (pnpm)
 
 🔍 Step 2/6: 빌드 결과 검증 중...
 ├── auth-twitter: index.js, login.js, callback.js 확인
-├── x-leaderboard: dist/ 디렉토리 확인
 └── pnpm symlink 체크 (auth-twitter에서 npm 강제)
 
 🔄 Step 3/6: 환경 변수 로드 중...

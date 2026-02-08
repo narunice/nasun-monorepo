@@ -172,17 +172,11 @@ pnpm deploy:prod
 # 개발 환경
 cd cdk
 cp .env.development .env
-cd lambda-src/x-leaderboard
-pnpm build
-cd ../../
 pnpm cdk deploy CdkStack --require-approval never
 
 # 프로덕션 환경
 cd cdk
 cp .env.production .env
-cd lambda-src/x-leaderboard
-pnpm build
-cd ../../
 pnpm cdk deploy CdkStack --profile nasun-prod --require-approval never
 ```
 
@@ -278,8 +272,7 @@ pnpm cdk deploy --all --profile nasun-prod --require-approval never
 
 ```typescript
 // ❌ 잘못된 디버깅 - 변경사항이 다음 빌드에서 소실됨!
-lambda-src/x-leaderboard/dist/api/get-leaderboard-snapshot.js  // 수정 금지!
-lambda-src/x-leaderboard/src/handlers/batch/collect-likes.js   // 수정 금지!
+lambda-src/auth-twitter/src/handlers/login.js   // 수정 금지! (.ts에서 컴파일됨)
 ```
 
 **이유**:
@@ -291,11 +284,11 @@ lambda-src/x-leaderboard/src/handlers/batch/collect-likes.js   // 수정 금지!
 
 ```bash
 # 1. 원본 TypeScript 소스 수정
-vim lambda-src/x-leaderboard/src/handlers/batch/collect-likes.ts
+vim lambda-src/auth-twitter/src/handlers/login.ts
 
 # 2. Git 커밋 (변경사항 영구 보존)
-git add src/handlers/batch/collect-likes.ts
-git commit -m "Fix: 좋아요 수집 로직 개선"
+git add lambda-src/auth-twitter/src/handlers/login.ts
+git commit -m "Fix: 로그인 로직 개선"
 
 # 3. 아래의 '완전한 배포 워크플로우' 실행
 ```
@@ -324,7 +317,7 @@ pnpm deploy  # → 환경 선택 에러 메시지 출력
 ```
 
 **이 명령어가 자동으로 수행하는 작업:**
-1. ✅ 모든 Lambda 함수 빌드 (auth-twitter, x-leaderboard, wallet-api, PriceAPI, sync-community-members)
+1. ✅ 모든 Lambda 함수 빌드 (auth-twitter, wallet-api, PriceAPI)
 2. ✅ 빌드 검증 (필수 파일 존재 확인, pnpm symlink 체크)
 3. ✅ `.env.development` 또는 `.env.production` → `.env` 자동 전환
 4. ✅ AWS 자격 증명 vs 환경 설정 불일치 검증
@@ -398,9 +391,7 @@ pnpm deploy:all  # → 환경 선택 에러 메시지 출력
 
 **❌ 구식 명령어 (더 이상 사용하지 마세요!)**
 ```bash
-pnpm run deploy:safe           # 환경 구분 없음 - 제거됨
 pnpm cdk deploy                # 빌드 누락 + 환경 불일치 위험
-bash scripts/deploy-all-with-sync.sh  # 환경 구분 없는 구버전
 ```
 
 **📚 상세 가이드**:
@@ -842,7 +833,7 @@ aws dynamodb query --table-name nasun-leaderboard-data \
 - ✅ **DRY 원칙**: 동일한 로직이 반복되면 반드시 함수로 추출
 
 **파일 위치:**
-- `cdk/lambda-src/x-leaderboard/src/services/leaderboard-generator.ts`
+- Legacy V2 코드: `apps/x-leaderboard-v2-legacy/` (archived)
 
 **커밋:**
 - `b101218` - fix(leaderboard): Fix EVENT1/EVENT2 date comparison logic bug
@@ -1066,11 +1057,7 @@ EVENT2_END_DATE=2025-10-30
 
 ### 관련 파일
 
-- **Lambda**: `cdk/lambda-src/x-leaderboard/src/services/leaderboard-generator.ts`
-  - `generateEvent1Leaderboard()`: Line 236-268
-  - `generateEvent2Leaderboard()`: Line 270-302
-  - `saveLeaderboardSnapshot()`: Line 1298-1469
-  - `saveUserRankHistories()`: Line 1544-1639
+- **Lambda**: Legacy V2 코드 `apps/x-leaderboard-v2-legacy/` (archived)
 
 - **환경 변수**: `cdk/.env.development`, `cdk/.env.production`
 

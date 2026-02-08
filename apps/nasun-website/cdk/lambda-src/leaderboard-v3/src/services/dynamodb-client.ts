@@ -2,7 +2,6 @@
  * DynamoDB Client for Leaderboard V3
  *
  * Provides data access layer for posts and accounts tables.
- * Completely independent from v2 leaderboard system.
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';

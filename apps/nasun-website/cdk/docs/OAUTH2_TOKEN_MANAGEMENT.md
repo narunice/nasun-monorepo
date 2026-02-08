@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document describes how OAuth 2.0 tokens are managed for the Nasun Community Leaderboard pipeline. The pipeline collects engagement data (likes, retweets, quotes, replies) from a target X account.
+This document describes how OAuth 2.0 tokens are managed for the Nasun website backend services (e.g., follower count API, follower collection).
 
-**Critical Requirement**: The OAuth 2.0 token MUST be authenticated as the **target account** itself. The Liking Users API (`tweetLikedBy`) only returns data for tweets owned by the authenticated user.
+**Critical Requirement**: The OAuth 2.0 token MUST be authenticated as the **target account** (@Nasun_io) itself for user-context API calls.
 
 ## Environment Configuration
 
@@ -93,8 +93,8 @@ npx tsx setup-oauth2-auto.ts
 
 - [ ] **6. Test Liking Users API**
   ```bash
-  npx tsx lambda-src/x-leaderboard/scripts/test-liking-users-other-tweet.ts
-  # Must return non-zero result_count for target's tweets
+  npx tsx scripts/verify-oauth-token.ts --all
+  # Verify token works for both dev and prod environments
   ```
 
 ---
@@ -288,8 +288,7 @@ kill <PID>
 | `scripts/verify-oauth-token.ts` | Token status verification |
 | `.env.development` | Development environment config |
 | `.env.production` | Production environment config |
-| `lambda-src/x-leaderboard/src/services/secure-token-manager.ts` | Token retrieval from Secrets Manager |
-| `lambda-src/x-leaderboard/src/handlers/system/refresh-oauth2-token.ts` | Automatic token refresh |
+| `lambda-src/get-follower-count/` | Follower count API using OAuth2 tokens |
 
 ---
 
@@ -329,8 +328,8 @@ npx tsx scripts/verify-oauth-token.ts --all
 # Re-authenticate OAuth 2.0
 npx tsx setup-oauth2-auto.ts
 
-# Test Liking Users API
-npx tsx lambda-src/x-leaderboard/scripts/test-liking-users-other-tweet.ts
+# Verify OAuth tokens
+npx tsx scripts/verify-oauth-token.ts --all
 
 # Check Lambda environment
 aws lambda get-function-configuration --function-name nasun-collect-likes \

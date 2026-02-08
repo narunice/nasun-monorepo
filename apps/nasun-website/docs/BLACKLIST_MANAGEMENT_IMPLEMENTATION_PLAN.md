@@ -7,12 +7,12 @@
 
 ### 시스템 현황
 
-| 항목 | V2 (x-leaderboard) | V3 (leaderboard-v3) |
-| :--- | :--- | :--- |
-| **차단 방식** | 환경변수 (`EXCLUDED_USERNAMES`, `EXCLUDED_USER_IDS`) | ❌ **없음** |
-| **필터링 로직** | `AccountFilterService` (5분 캐시) | `postCount > 0` 필터만 존재 |
-| **데이터 저장소** | Lambda 환경변수 | `leaderboard-v3-accounts` 테이블 |
-| **관리 UI** | 없음 (수동 `.env` 수정 → 재배포) | Placeholder만 존재 (`disabled: true`) |
+| 항목 | V3 (leaderboard-v3) |
+| :--- | :--- |
+| **차단 방식** | ❌ **없음** |
+| **필터링 로직** | `postCount > 0` 필터만 존재 |
+| **데이터 저장소** | `leaderboard-v3-accounts` 테이블 |
+| **관리 UI** | Placeholder만 존재 (`disabled: true`) |
 
 ### 구현 완료 항목
 
@@ -36,7 +36,7 @@ Leaderboard V3 시스템에서 어뷰징/스팸 계정을 Admin Dashboard UI를 
 
 ### 1.2 범위
 
-- **대상**: Leaderboard V3 시스템 전용 (V2 x-leaderboard 코드 수정 없음)
+- **대상**: Leaderboard V3 시스템 전용
 - **방식**: Soft Exclusion (데이터 보존, 표시 계층에서 필터링)
 - **저장소**: `leaderboard-v3-accounts` DynamoDB 테이블에 ban 필드 직접 추가
 
