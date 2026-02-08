@@ -162,20 +162,21 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             <FadeInUp delay="0.6s">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-3 lg:mt-4 max-w-xs lg:max-w-none mx-auto lg:mx-0 xl:w-auto xl:flex xl:flex-row">
                 <ButtonV2
-                  variant="red"
-                  size="lg"
-                  onClick={() => setIsSignUpModalOpen(true)}
-                  className="lg:px-4 xl:px-12 xl:w-[280px]"
-                >
-                  SIGN UP
-                </ButtonV2>
-                <ButtonV2
                   variant="blue"
                   size="lg"
                   asChild
                   className="lg:px-4 xl:px-12 xl:w-[280px]"
                 >
                   <Link to="/about/strategy">A UNIFIED VISION</Link>
+                </ButtonV2>
+                <ButtonV2
+                  variant="blue"
+                  outline
+                  size="lg"
+                  onClick={() => setIsSignUpModalOpen(true)}
+                  className="lg:px-4 xl:px-12 xl:w-[280px]"
+                >
+                  SIGN UP
                 </ButtonV2>
               </div>
             </FadeInUp>
