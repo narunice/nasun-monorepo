@@ -91,6 +91,28 @@ function ChartArea({ chartView, onChartViewChange, currentPrice, bids, asks, mid
   );
 }
 
+function NewsCollapsedBar({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full bg-theme-bg-secondary rounded-lg px-3 py-2
+        flex items-center justify-between
+        border border-theme-border
+        text-theme-text-muted hover:text-theme-text-primary transition-colors"
+    >
+      <div className="flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2z" />
+        </svg>
+        <span className="text-trading-sm font-medium">News</span>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+  );
+}
+
 function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -132,6 +154,7 @@ function TradePageContent() {
   useKeyboardShortcuts(!isSimple); // Pro mode only
   const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
   const [chatFloating, setChatFloating] = useState(false);
+  const [newsVisible, setNewsVisible] = useState(true);
   const [chartView, setChartView] = useState<ChartView>('price');
   const { currentPool } = useMarket();
   const { data: orderbookData } = useOrderbook();
@@ -318,12 +341,16 @@ function TradePageContent() {
             <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
               <TradingPanel mode={mode} />
             </div>
-            <div className="relative" style={{ height: `${CHAT_HEIGHT}px` }}>
-              <NewsCarousel />
-              <div className="absolute bottom-2 right-2">
-                <ShortcutHelpTooltip />
+            {newsVisible ? (
+              <div className="relative" style={{ height: `${CHAT_HEIGHT}px` }}>
+                <NewsCarousel onMinimize={() => setNewsVisible(false)} />
+                <div className="absolute bottom-2 right-2">
+                  <ShortcutHelpTooltip />
+                </div>
               </div>
-            </div>
+            ) : (
+              <NewsCollapsedBar onClick={() => setNewsVisible(true)} />
+            )}
           </div>
         </div>
       )}
