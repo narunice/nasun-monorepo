@@ -30,8 +30,14 @@ export function calculateRSI(data: CandlestickData[], period: number = 14): Line
       avgLoss = (avgLoss * (period - 1) + (change < 0 ? Math.abs(change) : 0)) / period;
     }
 
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    const rsi = 100 - 100 / (1 + rs);
+    // Standard Wilder RSI: RSI = 100 when avgLoss = 0, RSI = 0 when avgGain = 0
+    let rsi: number;
+    if (avgLoss === 0) {
+      rsi = 100;
+    } else {
+      const rs = avgGain / avgLoss;
+      rsi = 100 - 100 / (1 + rs);
+    }
 
     result.push({ time: data[i].time, value: rsi });
   }
