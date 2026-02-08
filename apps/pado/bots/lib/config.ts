@@ -9,6 +9,7 @@
 // ========================================
 
 export const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
+export const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet.nasun.io';
 
 // ========================================
 // Contract Addresses (DevNet V7 - 2026-02-04)
@@ -76,6 +77,9 @@ export interface LPConfig {
   minPriceUsd: number;         // Minimum acceptable BTC price
   maxPriceUsd: number;         // Maximum acceptable BTC price
 
+  // Gas management
+  gasRefillThreshold: number;  // Request gas faucet if native balance below this (in NASUN)
+
   // Arbitrage settings
   enableArbitrage: boolean;         // Enable/disable arbitrage
   minArbitrageProfitBps: number;    // Minimum profit threshold (default: 10 = 0.1%)
@@ -106,6 +110,9 @@ export function loadConfig(): LPConfig {
     maxConsecutiveFailures: parseInt(process.env.LP_MAX_FAILURES || '5', 10),
     minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || '50000'),
     maxPriceUsd: parseFloat(process.env.LP_MAX_PRICE || '200000'),
+
+    // Gas management
+    gasRefillThreshold: parseFloat(process.env.LP_GAS_REFILL_THRESHOLD || '0.5'),
 
     // Arbitrage settings
     enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false', // Enabled by default
@@ -225,6 +232,19 @@ export function roundToTickSize(priceRaw: bigint): bigint {
  */
 export function roundToLotSize(quantityRaw: bigint): bigint {
   return (quantityRaw / LOT_SIZE) * LOT_SIZE;
+}
+
+/**
+ * Check if an error message indicates gas exhaustion.
+ * Uses multiple patterns to be resilient against SDK error message changes.
+ */
+export function isGasExhaustedError(error: string): boolean {
+  const patterns = [
+    /balance of gas object.*is lower than.*needed amount/i,
+    /insufficient gas/i,
+    /not enough gas/i,
+  ];
+  return patterns.some((pattern) => pattern.test(error));
 }
 
 /**

@@ -7,7 +7,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { TOKENS_PACKAGE, TOKEN_FAUCET, timestamp } from './config.js';
+import { TOKENS_PACKAGE, TOKEN_FAUCET, FAUCET_URL, timestamp } from './config.js';
 
 // ========================================
 // Faucet Transaction Builders
@@ -54,6 +54,42 @@ export function buildRequestNusdc(): Transaction {
   });
 
   return tx;
+}
+
+// ========================================
+// Native Gas Faucet (HTTP API)
+// ========================================
+
+/**
+ * Request native gas coins (NASUN) from faucet via HTTP API.
+ * This is separate from token faucet — it hits the /gas endpoint directly.
+ */
+export async function requestGas(address: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${FAUCET_URL}/gas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        FixedAmountRequest: { recipient: address },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[${timestamp()}] Gas faucet request failed: ${response.status} ${errorText}`);
+      return false;
+    }
+
+    console.log(`[${timestamp()}] Received gas from faucet`);
+
+    // Wait for gas to be indexed
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    return true;
+  } catch (error) {
+    console.error(`[${timestamp()}] Error requesting gas from faucet:`, error);
+    return false;
+  }
 }
 
 // ========================================
