@@ -14,8 +14,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       return "light";
     }
 
-    // 3. Default: light
-    return "light";
+    // 3. Default: dark (trading apps use dark mode by default)
+    return "dark";
   };
 
   const [theme, setTheme] = useState<Theme>(getInitialTheme);

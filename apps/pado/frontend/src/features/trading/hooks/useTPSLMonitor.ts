@@ -12,6 +12,8 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { getPriceWithFreshness } from '../../../lib/prices';
+import { playSound } from '../../../lib/sounds';
+import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
 import type { TPSLOrder } from '../lib/tpsl-types';
 import { shouldTrigger, TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
@@ -92,6 +94,7 @@ export function useTPSLMonitor({
       const typeLabel = order.triggerType === 'tp' ? 'Take Profit' : 'Stop Loss';
       const priceStr = currentPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
+      playSound('tpslTriggered');
       showToast(
         `${typeLabel} triggered at $${priceStr} — executing ${order.side} ${order.quantity} BTC...`,
         'info'
@@ -105,16 +108,24 @@ export function useTPSLMonitor({
             triggeredAt: Date.now(),
             digest: result.digest,
           });
-          showToast(
-            `${typeLabel} executed: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.quantity} BTC`,
-            'success'
-          );
+          const successMsg = `${typeLabel} executed: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.quantity} BTC`;
+          showToast(successMsg, 'success');
+          sendBrowserNotification('TP/SL Triggered', {
+            body: successMsg,
+            tag: `tpsl-${order.id}`,
+          });
         } else {
           updateTPSLStatus(order.id, 'failed', {
             triggeredAt: Date.now(),
             error: result.error,
           });
-          showToast(`${typeLabel} failed: ${result.error || 'Unknown error'}`, 'error');
+          playSound('error');
+          const failMsg = `${typeLabel} failed: ${result.error || 'Unknown error'}`;
+          showToast(failMsg, 'error');
+          sendBrowserNotification('TP/SL Failed', {
+            body: `${typeLabel} execution failed. Check the app for details.`,
+            tag: `tpsl-${order.id}`,
+          });
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -122,6 +133,7 @@ export function useTPSLMonitor({
           triggeredAt: Date.now(),
           error: errorMsg,
         });
+        playSound('error');
         showToast(`${typeLabel} failed: ${errorMsg}`, 'error');
       } finally {
         refreshOrders();
