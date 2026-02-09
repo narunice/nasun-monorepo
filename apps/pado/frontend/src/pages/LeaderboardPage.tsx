@@ -7,6 +7,7 @@ import type { Period, LeaderboardMode } from '../features/leaderboard';
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
   const [mode, setMode] = useState<LeaderboardMode>('volume');
+  const [showFollowing, setShowFollowing] = useState(false);
 
   const volumeQuery = useLeaderboard(period, 100);
   const pnlQuery = usePnlLeaderboard(period, 100);
@@ -31,6 +32,16 @@ export function LeaderboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFollowing(!showFollowing)}
+            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+              showFollowing
+                ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400'
+                : 'border-theme-border text-theme-text-muted hover:text-theme-text-secondary'
+            }`}
+          >
+            Following
+          </button>
           <ModeSelector selected={mode} onSelect={setMode} />
           <PeriodSelector selected={period} onSelect={setPeriod} />
         </div>
@@ -65,12 +76,14 @@ export function LeaderboardPage() {
             traders={pnlQuery.data?.traders ?? []}
             isLoading={activeLoading}
             currentUserAddress={userAddress}
+            followFilter={showFollowing}
           />
         ) : (
           <LeaderboardTable
             traders={volumeQuery.data?.traders ?? []}
             isLoading={activeLoading}
             currentUserAddress={userAddress}
+            followFilter={showFollowing}
           />
         )}
       </div>

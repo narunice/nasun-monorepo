@@ -19,10 +19,16 @@ function setBmCache(key: string, value: string): void {
   bmCache.set(key, value);
 }
 
+export interface LargeTradeOptions {
+  thresholdRaw: bigint;
+  onLargeTrade: (message: string) => void;
+}
+
 let client: SuiClient | null = null;
 let config: LeaderboardConfig | null = null;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
+let largeTradeOpts: LargeTradeOptions | null = null;
 
 // ===== Balance Manager Resolution =====
 
@@ -153,6 +159,23 @@ async function pollOrderFilled(): Promise<number> {
           timestamp_ms: Number(json.timestamp) || Number(event.timestampMs) || Date.now(),
         });
 
+        // Check for large trade broadcast
+        if (largeTradeOpts) {
+          try {
+            const quoteRaw = BigInt(json.quote_quantity || '0');
+            if (quoteRaw >= largeTradeOpts.thresholdRaw) {
+              const quoteUsd = Number(quoteRaw / 1_000_000n) + Number(quoteRaw % 1_000_000n) / 1_000_000;
+              const baseQty = Number(json.base_quantity) / 1_000_000_000; // 9 decimals for base
+              const side = json.taker_is_bid ? 'bought' : 'sold';
+              const priceNum = Number(json.price) / 1_000_000_000; // price uses 9 decimals
+              const msg = `Large trade: ${baseQty.toFixed(4)} NBTC ${side} at $${priceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })} ($${quoteUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })})`;
+              largeTradeOpts.onLargeTrade(msg);
+            }
+          } catch {
+            // Ignore formatting errors in broadcast — never block indexing
+          }
+        }
+
         totalIndexed++;
       }
 
@@ -192,10 +215,11 @@ function schedulePoll(): void {
   }, config.indexerPollIntervalMs);
 }
 
-export function startIndexer(cfg: LeaderboardConfig): void {
+export function startIndexer(cfg: LeaderboardConfig, largeTrade?: LargeTradeOptions): void {
   config = cfg;
   client = new SuiClient({ url: cfg.rpcUrl });
   running = true;
+  largeTradeOpts = largeTrade ?? null;
 
   console.log(`[Indexer] Starting (poll interval: ${cfg.indexerPollIntervalMs}ms, RPC: ${cfg.rpcUrl})`);
   console.log(`[Indexer] DeepBook package: ${cfg.deepbookPackage.slice(0, 16)}...`);
