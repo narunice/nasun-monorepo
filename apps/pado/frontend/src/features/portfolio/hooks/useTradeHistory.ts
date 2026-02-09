@@ -139,7 +139,7 @@ async function fetchRealTrades(balanceManagerId: string): Promise<UserTrade[]> {
     const fee = total * feeBps / 10000;
 
     trades.push({
-      id: (event.id?.txDigest || '') + String(json.pool_id || '') + (isMaker ? 'm' : 't'),
+      id: `${event.id?.txDigest || ''}_${event.id?.eventSeq || '0'}`,
       poolId: String(json.pool_id || ''),
       poolName: name,
       side: isBid ? 'buy' : 'sell',

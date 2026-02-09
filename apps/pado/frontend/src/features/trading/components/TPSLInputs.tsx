@@ -29,8 +29,8 @@ interface TPSLInputsProps {
   minPriceTick?: number;
 }
 
-const TP_PRESETS = [1, 2, 5];
-const SL_PRESETS = [1, 2, 5];
+const TP_PRESETS = [1, 2, 5, 10];
+const SL_PRESETS = [1, 2, 5, 10];
 
 export function TPSLInputs({
   enabled,

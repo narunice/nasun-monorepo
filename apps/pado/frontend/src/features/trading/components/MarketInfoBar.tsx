@@ -71,7 +71,7 @@ export function MarketInfoBar({
         {/* Symbol & Price */}
         <div className="flex items-center gap-2">
           <span className="text-trading-lg font-bold text-theme-text-primary">{symbol}</span>
-          <span className={`text-trading-xl font-bold ${isPositiveChange ? 'text-trading-bid' : 'text-trading-ask'}`}>
+          <span className={`text-trading-xl xl:text-trading-2xl font-bold ${isPositiveChange ? 'text-trading-bid' : 'text-trading-ask'}`}>
             ${price > 0 ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
           </span>
         </div>
