@@ -17,9 +17,16 @@ export function generateCsv<T>(data: T[], columns: CsvColumn<T>[]): string {
     columns
       .map((col) => {
         const val = col.accessor(row);
-        // Escape strings containing commas, quotes, or newlines
-        if (typeof val === 'string' && /[,"\n\r]/.test(val)) {
-          return `"${val.replace(/"/g, '""')}"`;
+        if (typeof val === 'string') {
+          let safe = val;
+          // Guard against CSV formula injection
+          if (/^[=+\-@\t\r]/.test(safe)) {
+            safe = "'" + safe;
+          }
+          if (/[,"\n\r]/.test(safe)) {
+            return `"${safe.replace(/"/g, '""')}"`;
+          }
+          return safe;
         }
         return String(val);
       })
