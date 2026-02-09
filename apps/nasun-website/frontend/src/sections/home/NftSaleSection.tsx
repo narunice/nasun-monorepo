@@ -1,42 +1,45 @@
-import React, { useRef, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import nftCanyonsDesktopMP4 from "../../assets/videos/Homepage-Founders-Nft-Canyons-rf30.mp4";
-import nftCanyonsMobileMP4 from "../../assets/videos/Homepage-Founders-Nft-Canyons-mobile-rf25.mp4";
+import battalionNftVideo from "../../assets/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { SectionTitle } from "@/components/ui/SectionTitle";
-import { Button } from "@/components/ui/button";
-import { FadeInUp } from "@/components/ui/FadeInUp";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface NftSaleSectionProps {
   shouldLoadVideo?: boolean;
 }
 
+// Title animation timing constants (synced with video)
+const TITLE_START_TIME = 1.1;
+const WORD_FADE_DURATION = 0.45;
+const TITLE_END_TIME = 4.33;
+
 /**
- * NftSaleSection 컴포넌트 (Genesis NFT - Space Canyons)
+ * NftSaleSection - Battalion NFT video with synchronized title animation
  *
- * 우주 협곡 배경 비디오와 Genesis NFT 정보를 표시하는 섹션입니다.
- * 데스크탑/모바일 반응형 동영상 지원
+ * Video plays when section enters viewport (50% visible) and resets on re-entry.
+ * "POWER YOUR DESTINY" title animates in sync with the video timeline via requestAnimationFrame.
  */
 function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
-  const { t } = useTranslation("home");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [titleVisible, setTitleVisible] = useState(false);
+  const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
 
-  // 모바일 여부 감지
+  // Mobile detection (< 1024px)
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // md breakpoint
+      setIsMobile(window.innerWidth < 1024);
     };
-
     checkMobile();
     window.addEventListener("resize", checkMobile);
-
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // IntersectionObserver - viewport 진입 시 처음부터 재생, 완전히 이탈 시 멈춤
+  // IntersectionObserver on sectionRef (normal-flow wrapper)
+  // threshold: 0.5 ensures video only plays when section is meaningfully visible
   useEffect(() => {
     if (!shouldLoadVideo) return;
 
@@ -47,85 +50,137 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
           if (!video) return;
 
           if (entry.isIntersecting) {
-            // viewport 진입: 항상 처음부터 재생
             video.currentTime = 0;
-            video.play().catch(() => {
-              // 자동 재생 실패 시 무시
-            });
+            video.play().catch(() => {});
           } else {
-            // viewport 완전히 이탈: 즉시 멈춤
             video.pause();
+            setIsVideoPlaying(false);
+            setTitleVisible(false);
+            setWordOpacities([0, 0, 0]);
           }
         });
       },
-      { threshold: 0 }, // 0%: 완전히 벗어나면 멈춤, 조금이라도 보이면 재생
+      { threshold: 0.5 },
     );
 
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
     }
 
     return () => observer.disconnect();
   }, [shouldLoadVideo]);
 
+  // Title animation based on video currentTime
+  const updateTitleAnimation = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const currentTime = video.currentTime;
+
+    // "POWER YOUR DESTINY" - per-word fade-in
+    if (currentTime >= TITLE_START_TIME && currentTime < TITLE_END_TIME) {
+      setTitleVisible(true);
+      const newOpacities = [0, 1, 2].map((index) => {
+        const wordStartTime = TITLE_START_TIME + index * WORD_FADE_DURATION;
+        const wordEndTime = wordStartTime + WORD_FADE_DURATION;
+        if (currentTime < wordStartTime) return 0;
+        if (currentTime >= wordEndTime) return 1;
+        return (currentTime - wordStartTime) / WORD_FADE_DURATION;
+      });
+      setWordOpacities(newOpacities);
+    } else {
+      setTitleVisible(false);
+      setWordOpacities([0, 0, 0]);
+    }
+  }, []);
+
+  // Animation loop
+  useEffect(() => {
+    if (!isVideoPlaying) return;
+
+    const animate = () => {
+      updateTitleAnimation();
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isVideoPlaying, updateTitleAnimation]);
+
+  const handleVideoPlaying = () => {
+    setIsVideoPlaying(true);
+  };
+
   return (
-    <SectionLayout className={`relative ${isMobile ? "h-screen" : "min-h-screen"}`}>
-      {/* 배경 비디오 컨테이너 - 브라우저 전체 너비 */}
-      <div
-        ref={containerRef}
-        className={`absolute top-0 left-1/2 -translate-x-1/2 w-screen bg-nasun-black ${
-          isMobile ? "h-screen" : "h-full"
-        }`}
-      >
-        {/* 배경 비디오 - 데스크탑/모바일 반응형 */}
-        {shouldLoadVideo && (
-          <video
-            ref={videoRef}
-            loop
-            muted
-            playsInline
-            webkit-playsinline="true"
-            preload="metadata"
-            x-webkit-airplay="allow"
-            key={isMobile ? "mobile" : "desktop"} // 동영상 전환 시 재렌더링
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center",
-            }}
-          >
-            <source src={isMobile ? nftCanyonsMobileMP4 : nftCanyonsDesktopMP4} type="video/mp4" />
-          </video>
-        )}
-      </div>
-
-      {/* 컨텐츠 */}
-      <div className="max-w-8xl mx-auto relative z-10 px-4 lg:px-8 flex lg:justify-end">
-        {/* 모바일: 타이틀 상단, 카드 하단 (justify-between), 데스크톱: 우측 배치 */}
-        <div className="min-h-screen flex flex-col w-full lg:w-fit lg:justify-center items-center mt-80 md:mt-64 lg:mt-[25%] pb-8 lg:pt-14 lg:pb-0 px-14 gap-0 md:gap-2 lg:gap-4">
-          {/* GENESIS NFT 타이틀 - 가운데 정렬 */}
-          <FadeInUp>
-            <SectionTitle
-              as="h3"
-              className="font-medium  !font-eurostile !text-nasun-white text-center"
+    <div ref={sectionRef}>
+      <SectionLayout className="relative h-screen overflow-hidden">
+        {/* Background Video */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full bg-nasun-black">
+          {shouldLoadVideo && (
+            <video
+              ref={videoRef}
+              loop
+              muted
+              playsInline
+              webkit-playsinline="true"
+              preload="metadata"
+              onPlaying={handleVideoPlaying}
+              className="absolute left-1/2 -translate-x-1/2 -mt-[10%] max-w-9xl w-full min-h-[120%] object-cover object-center"
             >
-              {t("nftSale.title")}
-            </SectionTitle>
-
-            {/* Join Us 버튼 */}
-            <div className="w-full flex justify-center ">
-              <Button asChild size="md" variant="filledOutlineC1" className="">
-                <Link to="/wave1/genesis-nft">{t("nftSale.moreInfo")}</Link>
-              </Button>
-            </div>
-          </FadeInUp>
+              <source src={battalionNftVideo} type="video/mp4" />
+            </video>
+          )}
         </div>
-      </div>
-    </SectionLayout>
+
+        {/* Bottom Gradient Overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none z-10"
+          style={{
+            background: "linear-gradient(to bottom, transparent 66%, rgb(25, 22, 21) 100%)",
+          }}
+        />
+
+        {/* Title Overlay */}
+        <div
+          className={`absolute ${isMobile ? "bottom-[15%]" : "bottom-[23%]"} left-0 right-0 z-30`}
+        >
+          {/* POWER YOUR DESTINY */}
+          <div
+            className={`flex ${isMobile ? "flex-col items-center" : "justify-center items-baseline gap-4"}`}
+          >
+            <h2
+              className={`!font-changeling ${isMobile ? "text-3xl" : ""}`}
+              style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
+            >
+              POWER
+            </h2>
+            <h2
+              className={`!font-changeling ${isMobile ? "text-3xl" : ""}`}
+              style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
+            >
+              YOUR
+            </h2>
+            <h2
+              className={`!font-changeling ${isMobile ? "text-3xl" : ""}`}
+              style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
+            >
+              DESTINY
+            </h2>
+          </div>
+        </div>
+
+        {/* CTA Button */}
+        <div className="absolute bottom-[12%] left-0 right-0 z-30 flex justify-center">
+          <ButtonV3 asChild variant="gradient" size="md">
+            <Link to="/wave1/battalion-nft">Join the Battalion</Link>
+          </ButtonV3>
+        </div>
+      </SectionLayout>
+    </div>
   );
 }
 
