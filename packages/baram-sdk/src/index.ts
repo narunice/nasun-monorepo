@@ -38,6 +38,7 @@ export {
   ExecutorApiError,
   TransactionError,
   TimeoutError,
+  EscrowOrphanedError,
 } from './errors';
 
 // Types

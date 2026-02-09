@@ -26,6 +26,7 @@ import {
   ExecutorApiError,
   TransactionError,
   TimeoutError,
+  EscrowOrphanedError,
 } from './errors';
 import { sha256, hexToBytes } from './services/encoding';
 import { getNusdcCoins } from './services/coin';
@@ -160,6 +161,8 @@ export class BaramClient {
         const result = await this.executeWithExecutor(prompt, model, price, selectedExecutor);
         return result;
       } catch (err) {
+        // If escrow cancel failed, abort retries to prevent double-locking funds
+        if (err instanceof EscrowOrphanedError) throw err;
         lastError = err instanceof Error ? err : new Error(String(err));
         excludeIds.add(selectedExecutor.id);
         selectedExecutor = null;
@@ -553,16 +556,15 @@ export class BaramClient {
       teeEncrypted = execResult.teeEncrypted;
     } catch (err) {
       // Auto-cancel on executor failure to release escrow
+      const execErr = err instanceof Error ? err : new Error(String(err));
       try {
         await this.cancel(requestId);
       } catch (cancelErr) {
-        console.warn(
-          `[Baram SDK] Failed to cancel request ${requestId}. ` +
-          `Escrowed funds will auto-refund after on-chain timeout. ` +
-          `Cancel error: ${cancelErr instanceof Error ? cancelErr.message : String(cancelErr)}`
-        );
+        // Cancel failed — escrow is orphaned until on-chain timeout.
+        // Throw EscrowOrphanedError to prevent the retry loop from locking more funds.
+        throw new EscrowOrphanedError(requestId, execErr);
       }
-      throw err;
+      throw execErr;
     }
 
     // 6. Fetch AER (may need a short delay for on-chain propagation)
