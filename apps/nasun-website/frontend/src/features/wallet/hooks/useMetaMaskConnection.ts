@@ -146,6 +146,14 @@ export function useMetaMaskConnection(
         }
 
         const updatedProfile = await profileResponse.json();
+
+        // When re-linking MetaMask for a MetaMask-primary user, the backend
+        // may not update the top-level walletAddress (only linkedAccounts).
+        // Ensure the primary walletAddress reflects the newly authenticated wallet.
+        if (user.provider === 'MetaMask' && updatedProfile.walletAddress !== address) {
+          updatedProfile.walletAddress = address;
+        }
+
         updateUserProfile(updatedProfile);
         sessionStorage.setItem(
           'nasun_user_profile',

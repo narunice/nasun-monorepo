@@ -7,3 +7,4 @@ export * from './components/ConnectMetaMaskWallet';
 export * from './hooks/useUserWallet';
 export * from './hooks/useMetaMaskConnection';
 export * from './hooks/useEthereumNFTs';
+export * from './hooks/useMultiChainNFTs';

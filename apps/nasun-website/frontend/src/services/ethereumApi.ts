@@ -1,16 +1,17 @@
 /**
- * Ethereum NFT API Client
+ * Multi-Chain NFT API Client
  *
- * This module provides functions to fetch Ethereum NFT data from:
+ * This module provides functions to fetch NFT data from Ethereum and Polygon:
  * - Alchemy API (Primary - Fast & accurate NFT metadata)
- * - Etherscan API (Fallback - When Alchemy fails)
+ * - Etherscan API (Fallback - When Alchemy fails, Ethereum only)
  *
  * Features:
- * - Automatic fallback from Alchemy to Etherscan
- * - Network auto-detection (Mainnet/Sepolia)
+ * - Multi-chain support (Ethereum + Polygon via Alchemy)
+ * - Automatic fallback from Alchemy to Etherscan (Ethereum only)
+ * - Network auto-detection (Mainnet/Sepolia/Amoy)
  * - Error handling and retry logic
  * - Rate limit protection
- * - NFT data normalization
+ * - NFT data normalization with chain tagging
  *
  * @module services/ethereumApi
  * @since 2025-11-13
@@ -29,21 +30,36 @@ import type {
 // Configuration
 // ============================================================================
 
+export type NFTChain = 'ethereum' | 'polygon';
+
 const IS_MAINNET = import.meta.env.VITE_NETWORK === 'mainnet';
 const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY;
 const ETHERSCAN_API_KEY = import.meta.env.VITE_ETHERSCAN_API_KEY;
 
-const ALCHEMY_BASE_URL = IS_MAINNET
+// NFT queries are read-only, so it's safe to query mainnet even in dev.
+// VITE_NFT_USE_MAINNET allows fetching real NFTs during local development
+// while keeping other features (governance, tokens) on testnet.
+const NFT_USE_MAINNET = import.meta.env.VITE_NFT_USE_MAINNET === 'true' || IS_MAINNET;
+
+const ALCHEMY_ETH_URL = NFT_USE_MAINNET
   ? import.meta.env.VITE_ALCHEMY_MAINNET_URL
   : import.meta.env.VITE_ALCHEMY_SEPOLIA_URL;
 
-const ETHERSCAN_BASE_URL = IS_MAINNET
+const ALCHEMY_POLYGON_URL = NFT_USE_MAINNET
+  ? import.meta.env.VITE_ALCHEMY_POLYGON_URL
+  : import.meta.env.VITE_ALCHEMY_POLYGON_AMOY_URL;
+
+const ETHERSCAN_BASE_URL = NFT_USE_MAINNET
   ? import.meta.env.VITE_ETHERSCAN_MAINNET_URL
   : import.meta.env.VITE_ETHERSCAN_SEPOLIA_URL;
 
-const ETHERSCAN_EXPLORER_URL = IS_MAINNET
+const ETHERSCAN_EXPLORER_URL = NFT_USE_MAINNET
   ? 'https://etherscan.io'
   : 'https://sepolia.etherscan.io';
+
+const POLYGONSCAN_EXPLORER_URL = NFT_USE_MAINNET
+  ? 'https://polygonscan.com'
+  : 'https://amoy.polygonscan.com';
 
 // ============================================================================
 // Helper Functions
@@ -79,19 +95,26 @@ const logError = (...args: unknown[]): void => {
  * Get NFTs owned by a wallet address using Alchemy API
  *
  * @param walletAddress - Ethereum wallet address
+ * @param chain - Blockchain network (default: 'ethereum')
  * @returns Promise<AlchemyNFT[]>
  * @throws {EthereumAPIError} When API call fails
  */
 export const getAlchemyNFTs = async (
-  walletAddress: string
+  walletAddress: string,
+  chain: NFTChain = 'ethereum'
 ): Promise<AlchemyNFT[]> => {
   if (!ALCHEMY_API_KEY || ALCHEMY_API_KEY === 'your_alchemy_api_key_here') {
     throw new Error('Alchemy API key not configured');
   }
 
-  const url = `${ALCHEMY_BASE_URL}${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true`;
+  const baseUrl = chain === 'polygon' ? ALCHEMY_POLYGON_URL : ALCHEMY_ETH_URL;
+  if (!baseUrl) {
+    throw new Error(`Alchemy URL not configured for ${chain}`);
+  }
 
-  logDebug('Fetching NFTs from Alchemy:', { walletAddress, url });
+  const url = `${baseUrl}${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true`;
+
+  logDebug(`Fetching NFTs from Alchemy (${chain}):`, { walletAddress, url });
 
   try {
     const response = await fetch(url, {
@@ -218,7 +241,7 @@ export const getEtherscanNFTs = async (
 /**
  * Normalize Alchemy NFT data to unified EthereumNFT format
  */
-const normalizeAlchemyNFT = (nft: AlchemyNFT): EthereumNFT => {
+const normalizeAlchemyNFT = (nft: AlchemyNFT, chain: NFTChain = 'ethereum'): EthereumNFT => {
   const imageUrl =
     nft.media?.[0]?.gateway ||
     nft.metadata?.image ||
@@ -251,6 +274,7 @@ const normalizeAlchemyNFT = (nft: AlchemyNFT): EthereumNFT => {
       value: attr.value,
     })),
     source: 'alchemy',
+    chain,
     lastUpdated: nft.timeLastUpdated,
   };
 };
@@ -269,6 +293,7 @@ const normalizeEtherscanNFT = (nft: EtherscanNFT): EthereumNFT => {
     tokenSymbol: nft.tokenSymbol,
     tokenType: 'UNKNOWN', // Etherscan doesn't provide token type
     source: 'etherscan',
+    chain: 'ethereum', // Etherscan fallback is Ethereum-only
     lastUpdated: new Date(parseInt(nft.timeStamp) * 1000).toISOString(),
   };
 };
@@ -281,7 +306,7 @@ const deduplicateNFTs = (nfts: EthereumNFT[]): EthereumNFT[] => {
   const unique: EthereumNFT[] = [];
 
   for (const nft of nfts) {
-    const key = `${nft.contractAddress}-${nft.tokenId}`;
+    const key = `${nft.chain ?? 'ethereum'}-${nft.contractAddress}-${nft.tokenId}`;
     if (!seen.has(key)) {
       seen.add(key);
       unique.push(nft);
@@ -324,8 +349,8 @@ export const getEthereumNFTs = async (
 
   // Try Alchemy first (Primary)
   try {
-    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress);
-    const normalizedNFTs = alchemyNFTs.map(normalizeAlchemyNFT);
+    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress, 'ethereum');
+    const normalizedNFTs = alchemyNFTs.map((nft) => normalizeAlchemyNFT(nft, 'ethereum'));
 
     logDebug('✅ Alchemy API succeeded:', {
       count: normalizedNFTs.length,
@@ -362,6 +387,62 @@ export const getEthereumNFTs = async (
 };
 
 // ============================================================================
+// Polygon NFT Functions
+// ============================================================================
+
+/**
+ * Get Polygon NFTs owned by a wallet address (Alchemy only, no Etherscan fallback)
+ */
+export const getPolygonNFTs = async (
+  walletAddress: string
+): Promise<EthereumNFT[]> => {
+  if (!walletAddress || !walletAddress.startsWith('0x')) {
+    throw new Error('Invalid wallet address');
+  }
+
+  if (!ALCHEMY_POLYGON_URL) {
+    logDebug('Polygon Alchemy URL not configured, skipping');
+    return [];
+  }
+
+  const normalizedAddress = walletAddress.toLowerCase();
+  logDebug('Getting Polygon NFTs for:', normalizedAddress);
+
+  try {
+    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress, 'polygon');
+    const normalizedNFTs = alchemyNFTs.map((nft) => normalizeAlchemyNFT(nft, 'polygon'));
+
+    logDebug('Polygon NFTs fetched:', { count: normalizedNFTs.length });
+    return normalizedNFTs;
+  } catch (error) {
+    logError('Polygon NFT fetch failed:', error);
+    return []; // Graceful degradation — don't block Ethereum results
+  }
+};
+
+// ============================================================================
+// Multi-Chain Unified Function
+// ============================================================================
+
+/**
+ * Get NFTs from all supported chains (Ethereum + Polygon) in parallel
+ */
+export const getAllChainNFTs = async (
+  walletAddress: string
+): Promise<EthereumNFT[]> => {
+  if (!walletAddress || !walletAddress.startsWith('0x')) {
+    throw new Error('Invalid wallet address');
+  }
+
+  const [ethNFTs, polygonNFTs] = await Promise.all([
+    getEthereumNFTs(walletAddress),
+    getPolygonNFTs(walletAddress),
+  ]);
+
+  return [...ethNFTs, ...polygonNFTs];
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -376,16 +457,41 @@ export const getEtherscanNFTUrl = (
 };
 
 /**
- * Get OpenSea URL for an NFT (Mainnet only)
+ * Get OpenSea URL for an NFT (Mainnet only, supports Ethereum & Polygon)
  */
 export const getOpenSeaNFTUrl = (
   contractAddress: string,
-  tokenId: string
+  tokenId: string,
+  chain: NFTChain = 'ethereum'
 ): string | null => {
   if (!IS_MAINNET) {
     return null; // OpenSea doesn't support testnets
   }
-  return `https://opensea.io/assets/ethereum/${contractAddress}/${tokenId}`;
+  const chainSlug = chain === 'polygon' ? 'matic' : 'ethereum';
+  return `https://opensea.io/assets/${chainSlug}/${contractAddress}/${tokenId}`;
+};
+
+/**
+ * Get Polygonscan URL for an NFT
+ */
+export const getPolygonscanNFTUrl = (
+  contractAddress: string,
+  tokenId: string
+): string => {
+  return `${POLYGONSCAN_EXPLORER_URL}/nft/${contractAddress}/${tokenId}`;
+};
+
+/**
+ * Get explorer URL for an NFT based on chain
+ */
+export const getExplorerNFTUrl = (
+  contractAddress: string,
+  tokenId: string,
+  chain: NFTChain = 'ethereum'
+): string => {
+  return chain === 'polygon'
+    ? getPolygonscanNFTUrl(contractAddress, tokenId)
+    : getEtherscanNFTUrl(contractAddress, tokenId);
 };
 
 /**
