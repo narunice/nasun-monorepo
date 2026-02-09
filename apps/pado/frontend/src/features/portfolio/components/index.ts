@@ -1,4 +1,5 @@
 export { AssetOverview } from './AssetOverview';
+export { PnlChart } from './PnlChart';
 export { TokenBalanceList } from './TokenBalanceList';
 export { TradeStats } from './TradeStats';
 export { RecentTrades } from './RecentTrades';
