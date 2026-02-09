@@ -22,6 +22,13 @@ module.exports = {
     c6: "#1b374a", // color-6 (dark blue/navy)
     c7: "#B3E0FF", // color-7 (light blue)
 
+    // Nasun Network palette
+    nw1: "#6697b7",
+    nw2: "#4c7d9a",
+    nw3: "#3e5c7a",
+    nw4: "#afc3cf",
+    nw5: "#e6e6e6",
+
     // Gensol colors
     "gensol-red": "#d52933",
     "gensol-shade": "#b22432",

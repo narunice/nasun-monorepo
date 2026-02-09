@@ -5,7 +5,7 @@ import visionVideoMobileMP4 from "../../assets/videos/home-vision-wave-light-mob
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SignUpModal } from "@/components/auth/SignUpModal";
-import { ButtonV2 } from "@/components/ui/button-v2";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import visionTriangle from "../../assets/images/home-vision-triangle.png";
 
 interface VisionSectionV2Props {
@@ -159,27 +159,27 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
 
             {/* CTA Buttons */}
             <div className="lg:self-stretch lg:w-full">
-            <FadeInUp delay="0.6s">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-3 lg:mt-4 max-w-xs lg:max-w-none mx-auto lg:mx-0 xl:w-auto xl:flex xl:flex-row">
-                <ButtonV2
-                  variant="blue"
-                  size="lg"
-                  asChild
-                  className="lg:px-4 xl:px-12 xl:w-[280px]"
-                >
-                  <Link to="/about/strategy">A UNIFIED VISION</Link>
-                </ButtonV2>
-                <ButtonV2
-                  variant="blue"
-                  outline
-                  size="lg"
-                  onClick={() => setIsSignUpModalOpen(true)}
-                  className="lg:px-4 xl:px-12 xl:w-[280px]"
-                >
-                  SIGN UP
-                </ButtonV2>
-              </div>
-            </FadeInUp>
+              <FadeInUp delay="0.6s">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-3 lg:mt-4 max-w-xs lg:max-w-none mx-auto lg:mx-0 xl:w-auto xl:flex xl:flex-row">
+                  <ButtonV3
+                    variant="gradient"
+                    size="lg"
+                    asChild
+                    className="lg:px-4 xl:px-12 xl:w-[280px]"
+                  >
+                    <Link to="/about/strategy">A UNIFIED VISION</Link>
+                  </ButtonV3>
+                  <ButtonV3
+                    variant="nw1"
+                    outline
+                    size="lg"
+                    onClick={() => setIsSignUpModalOpen(true)}
+                    className="lg:px-4 xl:px-12 xl:w-[280px]"
+                  >
+                    SIGN UP
+                  </ButtonV3>
+                </div>
+              </FadeInUp>
             </div>
           </div>
         </div>
@@ -187,7 +187,8 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
         {/* Tagline */}
         <FadeInUp delay="0.7s">
           <p className="font-medium text-lg/snug md:text-xl/snug xl:text-2xl/snug text-nasun-black/80 text-center max-w-4xl mx-auto mt-16 lg:mt-20">
-            Building the next generation of global IP<br className="lg:hidden" />{" "}through coordinated creation.
+            Building the next generation of global IP
+            <br className="lg:hidden" /> through coordinated creation.
           </p>
         </FadeInUp>
       </div>
