@@ -75,3 +75,20 @@ export class TimeoutError extends BaramError {
     this.name = 'TimeoutError';
   }
 }
+
+export class EscrowOrphanedError extends BaramError {
+  public readonly requestId: number;
+
+  constructor(requestId: number, cause: Error) {
+    super(
+      `Failed to cancel request ${requestId} after executor failure. ` +
+      `Escrowed funds will auto-refund after on-chain timeout. ` +
+      `Original error: ${cause.message}`,
+      'ESCROW_ORPHANED',
+    );
+    this.name = 'EscrowOrphanedError';
+    this.requestId = requestId;
+    // Use standard ES2022 Error.cause instead of shadowing with a class field
+    this.cause = cause;
+  }
+}
