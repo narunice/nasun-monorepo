@@ -112,7 +112,7 @@ export const handler = async (
           body: JSON.stringify({ error: 'Method Not Allowed' })
         };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error processing request:', error);
 
     return {
@@ -120,7 +120,6 @@ export const handler = async (
       headers: corsHeaders(),
       body: JSON.stringify({
         error: 'Internal Server Error',
-        message: error.message || 'Unknown error occurred'
       })
     };
   }
