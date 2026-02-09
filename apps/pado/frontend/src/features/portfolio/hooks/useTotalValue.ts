@@ -16,6 +16,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMultiBalance, useWallet, useZkLogin } from '@nasun/wallet';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
 import { useMarginAccount } from '../../core/unified-margin';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
@@ -51,6 +52,7 @@ export interface UseTotalValueResult {
 }
 
 export function useTotalValue(): UseTotalValueResult {
+  const adaptiveInterval = useAdaptiveInterval(10_000);
   // Get active wallet address
   const { account: walletAccount, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
@@ -69,7 +71,7 @@ export function useTotalValue(): UseTotalValueResult {
       if (!balanceManagerId) return { base: 0, quote: 0 };
       return getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
     },
-    refetchInterval: 10000,
+    refetchInterval: adaptiveInterval,
     staleTime: 5000,
     enabled: !!balanceManagerId,
   });

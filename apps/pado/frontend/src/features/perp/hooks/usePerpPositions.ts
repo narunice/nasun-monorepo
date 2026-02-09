@@ -11,6 +11,7 @@ import {
   calculatePositionMetrics,
 } from '../lib/perp-client';
 import type { PerpPosition, PositionWithMetrics } from '../types';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 const POSITIONS_QUERY_KEY = 'perp-positions';
 const POSITION_QUERY_KEY = 'perp-position';
@@ -21,6 +22,7 @@ const REFETCH_INTERVAL = 5_000; // 5 seconds for positions (more frequent)
  */
 export function usePerpPositions() {
   const { account } = useWallet();
+  const adaptiveInterval = useAdaptiveInterval(REFETCH_INTERVAL);
 
   return useQuery<PerpPosition[]>({
     queryKey: [POSITIONS_QUERY_KEY, account?.address],
@@ -29,7 +31,7 @@ export function usePerpPositions() {
         ? fetchUserPositions(account.address)
         : Promise.resolve([]),
     enabled: !!account?.address,
-    refetchInterval: REFETCH_INTERVAL,
+    refetchInterval: adaptiveInterval,
     staleTime: 2_000,
   });
 }
@@ -64,12 +66,13 @@ export function usePerpPosition(
   positionId: string | undefined,
   currentPrice: number,
 ) {
+  const adaptivePosInterval = useAdaptiveInterval(REFETCH_INTERVAL);
   const query = useQuery<PerpPosition | null>({
     queryKey: [POSITION_QUERY_KEY, positionId],
     queryFn: () =>
       positionId ? fetchPosition(positionId) : Promise.resolve(null),
     enabled: !!positionId,
-    refetchInterval: REFETCH_INTERVAL,
+    refetchInterval: adaptivePosInterval,
     staleTime: 2_000,
   });
 

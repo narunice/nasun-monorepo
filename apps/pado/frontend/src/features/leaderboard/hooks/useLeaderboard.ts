@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { Period, LeaderboardMode, LeaderboardResponse, PnlLeaderboardResponse } from '../types';
 
 async function fetchLeaderboard(period: Period, limit: number, mode: LeaderboardMode = 'volume'): Promise<LeaderboardResponse> {
@@ -37,21 +38,25 @@ async function fetchPnlLeaderboard(period: Period, limit: number): Promise<PnlLe
 }
 
 export function useLeaderboard(period: Period, limit: number = 50) {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   return useQuery<LeaderboardResponse>({
     queryKey: ['leaderboard', 'volume', period, limit],
     queryFn: () => fetchLeaderboard(period, limit, 'volume'),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
 }
 
 export function usePnlLeaderboard(period: Period, limit: number = 50) {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   return useQuery<PnlLeaderboardResponse>({
     queryKey: ['leaderboard', 'pnl', period, limit],
     queryFn: () => fetchPnlLeaderboard(period, limit),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
 }

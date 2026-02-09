@@ -23,7 +23,25 @@ export interface PnlDataPoint {
 
 export interface UsePnlTimeSeriesResult {
   data: PnlDataPoint[];
+  totalRealized: number;
+  maxDrawdown: number;
   isLoading: boolean;
+}
+
+/**
+ * Calculate max drawdown (peak-to-trough) from PnL series.
+ * Returns the worst drop as a dollar amount (negative or zero).
+ */
+export function calcMaxDrawdown(data: PnlDataPoint[]): number {
+  if (data.length === 0) return 0;
+  let peak = data[0].cumulativePnl;
+  let maxDd = 0;
+  for (const d of data) {
+    if (d.cumulativePnl > peak) peak = d.cumulativePnl;
+    const dd = d.cumulativePnl - peak;
+    if (dd < maxDd) maxDd = dd;
+  }
+  return Math.round(maxDd * 100) / 100;
 }
 
 /**
@@ -82,5 +100,8 @@ export function usePnlTimeSeries(period: PnlPeriod): UsePnlTimeSeriesResult {
     return allData.filter((d) => d.time >= cutoff);
   }, [allData, period]);
 
-  return { data, isLoading };
+  const totalRealized = data.length > 0 ? data[data.length - 1].cumulativePnl : 0;
+  const maxDrawdown = useMemo(() => calcMaxDrawdown(data), [data]);
+
+  return { data, totalRealized, maxDrawdown, isLoading };
 }

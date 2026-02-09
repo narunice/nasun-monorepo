@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchLotteryRound } from '../lib/lottery-client';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { LotteryRound } from '../types';
 
 export interface UseLotteryRoundResult {
@@ -10,6 +11,8 @@ export interface UseLotteryRoundResult {
 }
 
 export function useLotteryRound(roundId: string | undefined): UseLotteryRoundResult {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   const {
     data: round = null,
     isLoading,
@@ -20,7 +23,7 @@ export function useLotteryRound(roundId: string | undefined): UseLotteryRoundRes
     queryFn: () => (roundId ? fetchLotteryRound(roundId) : null),
     enabled: !!roundId,
     staleTime: 10_000, // 10 seconds
-    refetchInterval: 30_000, // 30 seconds
+    refetchInterval: adaptiveInterval,
   });
 
   return {

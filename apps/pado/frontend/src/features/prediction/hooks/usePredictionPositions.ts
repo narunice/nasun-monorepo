@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { POSITION_TYPE, NUSDC_DECIMALS } from '../constants';
 import type { Position } from '../types';
 
@@ -58,6 +59,7 @@ export interface UsePredictionPositionsResult {
 export function usePredictionPositions(marketId?: string): UsePredictionPositionsResult {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const adaptiveInterval = useAdaptiveInterval(30_000);
 
   // Determine active address (zkLogin takes priority)
   const address = isZkConnected
@@ -89,7 +91,7 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
     },
     enabled: isConnected && !!address,
     staleTime: 10_000,
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
   });
 
   return {

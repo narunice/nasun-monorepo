@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 
@@ -158,6 +159,7 @@ async function fetchRealTrades(balanceManagerId: string): Promise<UserTrade[]> {
 export function useTradeHistory(): UseTradeHistoryResult {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const adaptiveInterval = useAdaptiveInterval(15_000);
 
   const activeAddress = isZkConnected
     ? zkState?.address
@@ -171,7 +173,7 @@ export function useTradeHistory(): UseTradeHistoryResult {
     queryKey: ['tradeHistory', balanceManagerId],
     queryFn: () => fetchRealTrades(balanceManagerId!),
     enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE,
-    refetchInterval: 15_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 10_000,
   });
 

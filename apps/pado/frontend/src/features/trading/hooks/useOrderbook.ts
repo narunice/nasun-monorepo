@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getOrderbook, getPoolMidPrice, type Orderbook } from '../../../lib/deepbook';
 import { getEventService } from '../../../lib/event-service';
 import { useMarket } from '../context/MarketContext';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 export interface OrderbookData {
   orderbook: Orderbook;
@@ -21,6 +22,7 @@ export interface OrderbookData {
 export function useOrderbook(refetchInterval = 10000) {
   const { currentPool, currentMarket } = useMarket();
   const queryClient = useQueryClient();
+  const adaptiveInterval = useAdaptiveInterval(refetchInterval);
 
   // Subscribe to orderbook-affecting events for instant updates
   useEffect(() => {
@@ -53,7 +55,9 @@ export function useOrderbook(refetchInterval = 10000) {
       ]);
       return { orderbook, midPrice };
     },
-    refetchInterval,
+    refetchInterval: adaptiveInterval,
     staleTime: 3000, // Increased from 2s since we have event-based updates
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
 }

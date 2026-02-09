@@ -13,12 +13,15 @@ import { useOrderForm } from '../context/OrderFormContext';
 import { InlineTokenSelector } from './InlineTokenSelector';
 import { SwapConfirmView } from './SwapConfirmView';
 import { SwapSuccessView } from './SwapSuccessView';
+import type { PriceLevel } from '../../../lib/deepbook';
 
 const SLIPPAGE_PRESETS = [0.1, 0.5, 1.0];
 const PERCENT_BUTTONS = [25, 50, 75, 100] as const;
 
 interface SwapOrderFormProps {
   midPrice?: number;
+  bids?: PriceLevel[];
+  asks?: PriceLevel[];
   onMarketBuy: (baseAmount: number) => Promise<boolean>;
   onMarketSell: (baseAmount: number) => Promise<boolean>;
   disabled: boolean;
@@ -36,6 +39,8 @@ interface LastTrade {
 
 export function SwapOrderForm({
   midPrice = 0,
+  bids = [],
+  asks = [],
   onMarketBuy,
   onMarketSell,
   disabled,
@@ -166,6 +171,33 @@ export function SwapOrderForm({
     return baseAmount * midPrice * feeRate;
   }, [payAmount, baseAmount, midPrice, isBuying, feeRate]);
 
+  // Price impact from orderbook depth (VWAP calculation)
+  const priceImpact = useMemo(() => {
+    if (baseAmount <= 0 || !midPrice || midPrice <= 0) {
+      return { avgPrice: 0, impactPct: 0, fillable: true, filledQty: 0 };
+    }
+    // Buy consumes asks (ascending price), sell consumes bids (descending price)
+    const levels = isBuying ? asks : bids;
+    if (levels.length === 0) {
+      return { avgPrice: 0, impactPct: 0, fillable: false, filledQty: 0 };
+    }
+    let remaining = baseAmount;
+    let totalCost = 0;
+    let filledQty = 0;
+    for (const level of levels) {
+      if (remaining <= 0) break;
+      const fill = Math.min(remaining, level.quantity);
+      totalCost += fill * level.price;
+      filledQty += fill;
+      remaining -= fill;
+    }
+    const avgPrice = filledQty > 0 ? totalCost / filledQty : 0;
+    const impactPct = midPrice > 0 && avgPrice > 0
+      ? Math.abs(avgPrice - midPrice) / midPrice * 100
+      : 0;
+    return { avgPrice, impactPct, fillable: remaining <= 0, filledQty };
+  }, [baseAmount, midPrice, isBuying, asks, bids]);
+
   // Balance and validation
   const payBalance = isBuying ? quoteBalance : baseBalance;
   const maxPayAmount = isBuying ? quoteBalance / (1 + feeRate) : baseBalance;
@@ -259,6 +291,8 @@ export function SwapOrderForm({
         slippage={slippage}
         midPrice={midPrice}
         baseSymbol={baseSymbol}
+        avgPrice={priceImpact.avgPrice > 0 ? priceImpact.avgPrice : undefined}
+        impactPct={priceImpact.impactPct > 0 ? priceImpact.impactPct : undefined}
         onConfirm={handleConfirm}
         onBack={() => setView('form')}
         isLoading={isLoading || isSubmitting}
@@ -363,6 +397,38 @@ export function SwapOrderForm({
           </div>
         </div>
       </div>
+
+      {/* Price Impact Warning */}
+      {baseAmount > 0 && priceImpact.avgPrice > 0 && (
+        <div className="mt-2 space-y-1 px-3 py-2 bg-theme-bg-tertiary/50 rounded text-xs shrink-0">
+          <div className="flex justify-between">
+            <span className="text-theme-text-muted">Est. Avg Price</span>
+            <span className="font-mono text-theme-text-secondary">
+              ${priceImpact.avgPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-theme-text-muted">Price Impact</span>
+            <span className={`font-mono font-medium ${
+              priceImpact.impactPct < 0.5 ? 'text-green-400' :
+              priceImpact.impactPct < 2 ? 'text-yellow-400' :
+              'text-red-400'
+            }`}>
+              {priceImpact.impactPct < 0.01 ? '<0.01' : priceImpact.impactPct.toFixed(2)}%
+            </span>
+          </div>
+          {!priceImpact.fillable && (
+            <p role="alert" className="text-red-400 mt-1">
+              Insufficient liquidity — only {priceImpact.filledQty.toFixed(4)} fillable
+            </p>
+          )}
+          {priceImpact.impactPct >= 2 && priceImpact.fillable && (
+            <p role="alert" className="text-yellow-400 mt-1">
+              High price impact. Consider reducing size or using Pro mode.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Rate + Fee + Slippage toggle */}
       <div className="mt-3 flex items-center justify-between text-xs text-theme-text-muted shrink-0">

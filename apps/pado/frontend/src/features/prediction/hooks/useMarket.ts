@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { fetchMarket } from '../lib/prediction-market';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { PredictionMarket } from '../types';
 
 interface UseMarketResult {
@@ -15,6 +16,8 @@ interface UseMarketResult {
 }
 
 export function useMarket(marketId: string | undefined): UseMarketResult {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   const {
     data: market = null,
     isLoading,
@@ -25,7 +28,7 @@ export function useMarket(marketId: string | undefined): UseMarketResult {
     queryFn: () => fetchMarket(marketId!),
     enabled: !!marketId,
     staleTime: 10_000, // 10 seconds
-    refetchInterval: 30_000, // Refetch every 30 seconds
+    refetchInterval: adaptiveInterval,
   });
 
   return {

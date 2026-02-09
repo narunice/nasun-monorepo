@@ -9,6 +9,7 @@ import {
   fetchBinanceCandles,
   getBinanceSymbol,
 } from '@/lib/indicators';
+import { useAdaptiveInterval } from '@/hooks/useAdaptiveInterval';
 import type { TimeInterval } from '../types';
 import { INTERVAL_CONFIG } from '../types';
 
@@ -19,6 +20,7 @@ export function useChartData(
 ) {
   const binanceSymbol = getBinanceSymbol(baseSymbol);
   const { count, ms: intervalMs } = INTERVAL_CONFIG[interval];
+  const adaptiveInterval = useAdaptiveInterval(intervalMs);
 
   // Fetch real candle data from Binance for supported pairs
   const { data: binanceData } = useQuery({
@@ -28,7 +30,7 @@ export function useChartData(
       return result ?? [];
     },
     enabled: !!binanceSymbol,
-    refetchInterval: intervalMs,
+    refetchInterval: adaptiveInterval,
     staleTime: intervalMs / 2,
     placeholderData: (prev) => prev,
   });

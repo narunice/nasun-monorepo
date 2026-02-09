@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getSuiClient } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 export interface MyTradeItem {
   id: string;
@@ -87,6 +88,7 @@ export function useMyTrades(
   refetchInterval = 10000,
 ) {
   const { currentPool } = useMarket();
+  const adaptiveInterval = useAdaptiveInterval(refetchInterval);
   const poolId = currentPool.id as string;
 
   return useQuery<MyTradeItem[]>({
@@ -99,7 +101,7 @@ export function useMyTrades(
         currentPool.baseToken.decimals,
       ),
     enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE && !!poolId,
-    refetchInterval,
+    refetchInterval: adaptiveInterval,
     staleTime: 5000,
   });
 }

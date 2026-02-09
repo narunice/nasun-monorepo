@@ -3,35 +3,22 @@
  * 거래쌍(마켓) 선택 드롭다운
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useMarket, type MarketKey } from '../context/MarketContext';
-
-const FAVORITES_KEY = 'pado:market:favorites';
+import { useFavoriteMarkets } from '../hooks/useFavoriteMarkets';
 
 export function MarketSelector() {
   const { currentMarket, setMarket, markets, getMarketLabel } = useMarket();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-      return Array.isArray(parsed) && parsed.every((v) => typeof v === 'string') ? parsed : [];
-    } catch { return []; }
-  });
+  const { favorites, toggleFavorite } = useFavoriteMarkets();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const toggleFavorite = useCallback((key: string, e: React.MouseEvent) => {
+  const handleToggleFavorite = useCallback((key: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavorites(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
-  }, []);
-
-  // Persist favorites to localStorage
-  useEffect(() => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-  }, [favorites]);
+    toggleFavorite(key);
+  }, [toggleFavorite]);
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -130,7 +117,7 @@ export function MarketSelector() {
               >
                 {/* Favorite star */}
                 <span
-                  onClick={(e) => toggleFavorite(market.key, e)}
+                  onClick={(e) => handleToggleFavorite(market.key, e)}
                   aria-label={favorites.includes(market.key) ? `Remove ${market.label} from favorites` : `Add ${market.label} to favorites`}
                   className={`text-sm transition-colors select-none ${
                     favorites.includes(market.key) ? 'text-yellow-400' : 'text-theme-text-muted/30 hover:text-yellow-400/60'
@@ -173,7 +160,7 @@ export function MarketSelector() {
 }
 
 // 토큰 아이콘 컴포넌트
-function TokenIcon({ symbol }: { symbol: string }) {
+export function TokenIcon({ symbol }: { symbol: string }) {
   // 토큰별 배경색
   const bgColors: Record<string, string> = {
     NBTC: 'bg-orange-500',

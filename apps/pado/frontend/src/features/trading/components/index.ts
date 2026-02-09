@@ -29,3 +29,4 @@ export { OnboardingTour } from './OnboardingTour';
 export { MobileTradeLayoutV2 } from './MobileTradeLayoutV2';
 export { MobileMarketHeader } from './MobileMarketHeader';
 export { MiniOrderbook } from './MiniOrderbook';
+export { FavoriteStrip } from './FavoriteStrip';

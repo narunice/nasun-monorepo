@@ -69,7 +69,11 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
         },
       });
 
-      if (result.effects?.status.status === 'success') {
+      if (!result.effects) {
+        return { success: false, error: 'Transaction submitted but status unknown. Check explorer.' };
+      }
+
+      if (result.effects.status.status === 'success') {
         return {
           success: true,
           digest: result.digest,
@@ -79,7 +83,7 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
       } else {
         return {
           success: false,
-          error: result.effects?.status.error || 'Transaction failed',
+          error: result.effects.status.error || 'Transaction failed',
         };
       }
     } catch (err) {
