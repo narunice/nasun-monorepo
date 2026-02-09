@@ -1,11 +1,13 @@
 // OwnedObjects.tsx
-// Simplified after IOTA removal
+// Multi-chain NFT thumbnail gallery + Sui objects display
 
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { useWalletAccount } from "@nasun/wallet";
+import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { useMultiChainNFTs } from "@/features/wallet";
 import { SuiObject } from "./SuiObjects";
-import { EthereumNFT } from "./EthereumNFT";
-import { useUserAssets } from "./hooks/useUserAssets";
+import { NftThumbnailGallery } from "./components/NftThumbnailGallery";
 
 interface OwnedObjectsProps {
   walletAddress?: string;
@@ -16,14 +18,41 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Sui objects
+  const suiAccount = useWalletAccount();
   const {
-    suiAccount,
-    suiObjects,
-    ethObjects,
-    suiError,
-    ethError,
-    isLoading,
-  } = useUserAssets({ walletAddress });
+    data: suiResponse,
+    error: suiError,
+    isPending: isSuiPending,
+  } = useSuiClientQuery(
+    "getOwnedObjects",
+    {
+      owner: suiAccount?.address as string,
+      options: {
+        showType: true,
+        showOwner: true,
+        showContent: true,
+        showDisplay: true,
+      },
+    },
+    { enabled: !!suiAccount }
+  );
+
+  const filterStrings = import.meta.env.VITE_FILTER_STRINGS?.split(",") || [];
+  const suiObjects =
+    suiAccount && suiResponse?.data
+      ? suiResponse.data.filter((objectRes) =>
+          objectRes.data?.type &&
+          filterStrings.some((filter: string) => objectRes.data?.type!.includes(filter))
+        )
+      : [];
+
+  // Multi-chain NFTs (Ethereum + Polygon)
+  const {
+    data: multiChainNfts,
+    error: nftError,
+    isPending: isNftPending,
+  } = useMultiChainNFTs(walletAddress);
 
   if (!suiAccount && !walletAddress) {
     return (
@@ -33,31 +62,7 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
     );
   }
 
-  // 로딩 및 에러 상태
-  if (isLoading) {
-    return <div className="flex">{t("loading")}</div>;
-  }
-
-  if (suiError || ethError) {
-    return (
-      <div className="flex flex-col gap-2">
-        {suiError && (
-          <p className="text-nasun-latte">
-            {t("loadingSui")}: {suiError.message}
-          </p>
-        )}
-        {ethError && (
-          <p className="text-nasun-latte">
-            {t("loadingEthereum", "Loading Ethereum")}: {ethError.message}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  const noObjectsFound = suiObjects.length === 0 && ethObjects.length === 0;
-
-  // 페이지네이션
+  // Pagination for Sui objects
   const totalPages = Math.ceil(suiObjects.length / itemsPerPage);
   const suiStartIndex = (currentPage - 1) * itemsPerPage;
   const suiEndIndex = suiStartIndex + itemsPerPage;
@@ -69,47 +74,56 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
     }
   };
 
+  const nftCount = multiChainNfts?.length ?? 0;
+  const hasNoAssets = suiObjects.length === 0 && nftCount === 0 && !isNftPending && !isSuiPending;
+
   return (
-    <div className="flex flex-col space-y-2">
-      {noObjectsFound && (
-        <p className="pt-8 text-gray-400">{t("myAssets.noObject")}</p>
+    <div className="flex flex-col space-y-6">
+      {hasNoAssets && (
+        <p className="pt-4 text-gray-400">{t("myAssets.noObject")}</p>
       )}
 
-      <div className="space-y-4 text-gray-300">
-        {/* Ethereum NFT 표시 */}
-        {walletAddress && ethObjects.length > 0 && (
-          <div className="mb-8">
-            <h6 className="font-semibold mb-4 text-gray-200">
-              {t("myAssets.ethereumNFTs", "Ethereum NFTs")}
-            </h6>
-            <div className="space-y-4">
-              {ethObjects.map((nft) => (
-                <EthereumNFT
-                  key={`eth-${nft.contractAddress}-${nft.tokenId}`}
-                  nft={nft}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Ethereum & Polygon NFTs */}
+      {walletAddress && (
+        <div>
+          <h6 className="font-semibold mb-4 text-gray-200">
+            Ethereum & Polygon NFTs{nftCount > 0 ? ` (${nftCount})` : ""}
+          </h6>
+          <NftThumbnailGallery
+            nfts={multiChainNfts}
+            isLoading={isNftPending}
+            error={nftError}
+          />
+        </div>
+      )}
 
-        {/* Sui 오브젝트 표시 */}
-        {suiAccount && paginatedSuiObjects.length > 0 && (
-          <div className="mb-8">
-            <h6 className="font-semibold mb-4 text-gray-200">
-              {t("myAssets.suiObjects", "Sui Objects")}
-            </h6>
-            <div className="space-y-4">
-              {paginatedSuiObjects.map((objectRes) => (
-                <SuiObject key={`sui-${objectRes.data?.objectId}`} objectRes={objectRes} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Sui Objects */}
+      {suiAccount && (
+        <div>
+          {isSuiPending ? (
+            <p className="text-gray-400">{t("loading")}</p>
+          ) : suiError ? (
+            <p className="text-nasun-latte">
+              {t("loadingSui")}: {suiError.message}
+            </p>
+          ) : paginatedSuiObjects.length > 0 ? (
+            <>
+              <h6 className="font-semibold mb-4 text-gray-200">
+                Nasun Objects ({suiObjects.length})
+              </h6>
+              <div className="space-y-4">
+                {paginatedSuiObjects.map((objectRes) => (
+                  <SuiObject key={`sui-${objectRes.data?.objectId}`} objectRes={objectRes} />
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
 
+      {/* Sui Pagination */}
       {suiObjects.length > itemsPerPage && (
-        <div className="flex justify-center items-center space-x-2 pt-6">
+        <div className="flex justify-center items-center space-x-2 pt-2">
           <button
             onClick={() => handlePageClick(currentPage - 1)}
             disabled={currentPage === 1}

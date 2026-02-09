@@ -264,6 +264,46 @@ export async function signMessage(message: string, walletAddress: string): Promi
 }
 
 /**
+ * Force MetaMask to show the account picker dialog.
+ * Unlike connectWallet(), this always opens the account selection popup,
+ * even if the site is already connected.
+ *
+ * @returns The selected wallet address (lowercase)
+ * @throws {Error} If user rejects or MetaMask is not installed
+ */
+export async function requestAccountSwitch(): Promise<string> {
+  if (!isMetaMaskInstalled()) {
+    throw new Error('MetaMask is not installed');
+  }
+
+  try {
+    // wallet_requestPermissions forces MetaMask to show account picker
+    await window.ethereum!.request({
+      method: 'wallet_requestPermissions',
+      params: [{ eth_accounts: {} }],
+    });
+
+    // After user selects, read the newly active account
+    const accounts = await window.ethereum!.request({
+      method: 'eth_accounts',
+    }) as string[];
+
+    if (accounts.length === 0) {
+      throw new Error('No accounts found after permission request');
+    }
+
+    return accounts[0].toLowerCase();
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as any;
+    if (err.code === 4001) {
+      throw new Error('User rejected the account switch request');
+    }
+    throw new Error(err.message || 'Failed to switch MetaMask account');
+  }
+}
+
+/**
  * MetaMask 지갑 정보 가져오기
  *
  * @returns 지갑 주소, Chain ID, 네트워크 이름
