@@ -5,6 +5,7 @@
 
 import {
   AssetOverview,
+  AllocationDonut,
   PnlChart,
   TokenBalanceList,
   TradeStats,
@@ -16,8 +17,11 @@ export function PortfolioPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Portfolio</h1>
 
-      {/* Total Asset Value */}
-      <AssetOverview />
+      {/* Total Asset Value + Allocation Donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AssetOverview />
+        <AllocationDonut />
+      </div>
 
       {/* P&L Equity Curve */}
       <PnlChart />

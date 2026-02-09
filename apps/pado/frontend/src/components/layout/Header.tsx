@@ -35,10 +35,8 @@ const NAV_ITEMS: NavItem[] = [
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMarketsOpen, setIsMarketsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const marketsRef = useRef<HTMLDivElement>(null);
 
   // Detect mobile viewport for address shortening
@@ -61,31 +59,27 @@ export function Header() {
   const isHomePage = location.pathname === '/';
   const showWalletButton = !isHomePage || status !== 'disconnected' || isZkLoggedIn;
 
-  // Close mobile menu on route change
+  // Close dropdowns on route change
   useEffect(() => {
-    setIsMobileMenuOpen(false);
     setIsMarketsOpen(false);
   }, [location.pathname]);
 
-  // Close mobile menu on outside click
+  // Close markets dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-        setIsMobileMenuOpen(false);
-      }
       if (marketsRef.current && !marketsRef.current.contains(event.target as Node)) {
         setIsMarketsOpen(false);
       }
     };
 
-    if (isMobileMenuOpen || isMarketsOpen) {
+    if (isMarketsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMobileMenuOpen, isMarketsOpen]);
+  }, [isMarketsOpen]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -229,108 +223,7 @@ export function Header() {
             />
           )}
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden relative" ref={mobileMenuRef}>
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-md bg-theme-bg-secondary hover:bg-theme-bg-tertiary transition-colors"
-              aria-label="Toggle menu"
-            >
-              {isMobileMenuOpen ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
-
-            {/* Mobile Dropdown Menu */}
-            {isMobileMenuOpen && (
-              <nav className="absolute right-0 top-full mt-2 w-48 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {/* Markets Section */}
-                <div className="border-b border-theme-border">
-                  <div className="px-4 py-2 text-xs font-medium text-theme-text-muted uppercase tracking-wider">
-                    Markets
-                  </div>
-                  {MARKETS_ITEMS.map((item) =>
-                    item.enabled ? (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={(e) => {
-                          handleNavClick(e, item.path);
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                          isActive(item.path)
-                            ? 'text-pd3 bg-pd3/10'
-                            : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                        }`}
-                      >
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <span
-                        key={item.path}
-                        className="block px-4 py-2.5 text-sm text-theme-text-muted cursor-not-allowed"
-                      >
-                        {item.label}
-                        <span className="text-xs ml-1 text-purple-400">(Soon)</span>
-                      </span>
-                    )
-                  )}
-                </div>
-
-                {/* Other Nav Items */}
-                {NAV_ITEMS.map((item) =>
-                  item.enabled ? (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={(e) => {
-                        handleNavClick(e, item.path);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`block px-4 py-3 text-sm font-medium transition-colors ${
-                        isActive(item.path)
-                          ? 'text-pd3 bg-pd3/10'
-                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <span
-                      key={item.path}
-                      className="block px-4 py-3 text-sm text-theme-text-muted cursor-not-allowed"
-                    >
-                      {item.label}
-                      <span className="text-xs ml-1">(Soon)</span>
-                    </span>
-                  )
-                )}
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={(e) => {
-                      handleNavClick(e, '/admin');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`block px-4 py-3 text-sm font-medium transition-colors border-t border-theme-border ${
-                      isActive('/admin')
-                        ? 'text-yellow-400 bg-yellow-400/10'
-                        : 'text-yellow-500 hover:bg-yellow-400/10'
-                    }`}
-                  >
-                    Admin
-                  </Link>
-                )}
-              </nav>
-            )}
-          </div>
+          {/* Mobile hamburger menu removed -- MobileBottomNav replaces it */}
         </div>
       </div>
     </header>

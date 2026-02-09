@@ -30,6 +30,8 @@ import {
   getTPSLOrders,
   clearTPSLHistory,
   pruneTPSLHistory,
+  updateTrailingHighWaterMarks,
+  cancelLinkedOrders,
 } from '../lib/tpsl-storage';
 import {
   registerTPSLOrder,
@@ -147,10 +149,15 @@ export function useTPSLMonitor({
     const currentPrice = priceInfo.price;
     if (currentPrice <= 0) return;
 
+    // Update trailing-stop highWaterMarks before checking triggers
+    updateTrailingHighWaterMarks(currentPrice);
+    // Re-fetch active orders since highWaterMarks may have been updated
+    const refreshedOrders = getActiveTPSLOrders();
+
     const baseSymbol = marketSymbolRef.current;
 
     // Sequential execution to avoid nonce conflicts with Sui transaction signing
-    for (const order of activeOrders) {
+    for (const order of refreshedOrders) {
       if (!shouldTrigger(order, currentPrice)) continue;
 
       // Cross-tab safety: claim order via localStorage before executing
@@ -160,7 +167,9 @@ export function useTPSLMonitor({
         ? 'Take Profit'
         : order.triggerType === 'stop-limit'
           ? 'Stop-Limit'
-          : 'Stop Loss';
+          : order.triggerType === 'trailing-stop'
+            ? 'Trailing Stop'
+            : 'Stop Loss';
       const priceStr = currentPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
       playSound('tpslTriggered');
@@ -188,6 +197,13 @@ export function useTPSLMonitor({
             triggeredAt: Date.now(),
             digest: result.digest,
           });
+          // Cancel OCO siblings after successful trigger
+          if (order.ocoGroupId) {
+            const cancelled = cancelLinkedOrders(order.ocoGroupId, order.id);
+            if (cancelled > 0) {
+              showToast(`OCO: ${cancelled} linked order(s) cancelled`, 'info');
+            }
+          }
           const successMsg = `${typeLabel} executed: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.quantity} ${baseSymbol}`;
           showToast(successMsg, 'success');
           sendBrowserNotification('TP/SL Triggered', {
@@ -238,12 +254,21 @@ export function useTPSLMonitor({
           ? 'Take Profit'
           : result.triggerType === 'stop-limit'
             ? 'Stop-Limit'
-            : 'Stop Loss';
+            : result.triggerType === 'trailing-stop'
+              ? 'Trailing Stop'
+              : 'Stop Loss';
         const priceStr = result.triggerPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
         const limitInfo = result.triggerType === 'stop-limit' && result.limitPrice
           ? ` → limit $${result.limitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
           : '';
-        showToast(`${typeLabel} set at $${priceStr}${limitInfo}`, 'success');
+        const trailInfo = result.triggerType === 'trailing-stop'
+          ? result.trailPercent
+            ? ` (trail ${result.trailPercent}%)`
+            : result.trailAmount
+              ? ` (trail $${result.trailAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })})`
+              : ''
+          : '';
+        showToast(`${typeLabel} set at $${priceStr}${limitInfo}${trailInfo}`, 'success');
       } else {
         showToast('Invalid order or max limit reached (50)', 'warning');
       }

@@ -9,7 +9,7 @@ export function MobileChatDrawer() {
       {/* Floating Action Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-40 xl:hidden
+        className="fixed bottom-[72px] md:bottom-4 right-4 z-40 xl:hidden
           w-12 h-12 rounded-full
           bg-theme-accent text-white shadow-lg
           flex items-center justify-center

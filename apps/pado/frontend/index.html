@@ -2,8 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:," />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/icons/pwa-192x192.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/pwa-192x192.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pado" />
 
     <!-- Security Headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
@@ -11,6 +16,7 @@
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self';
+      worker-src 'self';
       style-src 'self' 'unsafe-inline' https://use.typekit.net https://p.typekit.net;
       font-src 'self' https://use.typekit.net https://p.typekit.net data:;
       img-src 'self' data: blob: https:;
