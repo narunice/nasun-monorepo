@@ -67,6 +67,36 @@ function broadcastOnlineCount(): void {
   broadcast({ type: 'online_count', count });
 }
 
+/**
+ * Broadcast a system message to all connected clients and persist to chat DB.
+ * Used for automated announcements (e.g., large trade notifications).
+ */
+function broadcastSystemMessage(content: string, roomId: number = 0): void {
+  const now = Date.now();
+  const stored = insertMessage({
+    roomId,
+    sender: 'SYSTEM',
+    content,
+    messageType: 'system',
+    replyToId: null,
+    timestamp: now,
+  });
+
+  const chatMsg: ChatMessagePayload = {
+    type: 'chat_message',
+    id: stored.id,
+    roomId: stored.roomId,
+    sender: 'SYSTEM',
+    senderNickname: null,
+    content: stored.content,
+    messageType: 'system',
+    replyToId: null,
+    timestamp: stored.timestamp,
+  };
+
+  broadcast(chatMsg);
+}
+
 function getClientIp(ws: WebSocket, req: { socket: { remoteAddress?: string }; headers: Record<string, string | string[] | undefined> }): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
@@ -95,6 +125,12 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
 
   if (content.length > CONFIG.maxMessageLength) {
     send(ws, { type: 'error', code: 'MESSAGE_TOO_LONG', message: `Message exceeds ${CONFIG.maxMessageLength} characters` });
+    return;
+  }
+
+  // Block reserved prefixes (only system can send structured messages)
+  if (content.startsWith('[TRADE]') || content.startsWith('[SYSTEM]')) {
+    send(ws, { type: 'error', code: 'RESERVED_PREFIX', message: 'This message prefix is reserved' });
     return;
   }
 
@@ -923,7 +959,11 @@ function start(): void {
       aggregationIntervalMs: CONFIG.aggregationIntervalMs,
       excludedAddresses: new Set(CONFIG.excludedAddresses),
     };
-    startIndexer(lbConfig);
+    const largeTradeThresholdRaw = BigInt(CONFIG.largeTradeThresholdNusdc) * 1_000_000n; // NUSDC 6 decimals
+    startIndexer(lbConfig, {
+      thresholdRaw: largeTradeThresholdRaw,
+      onLargeTrade: (msg: string) => broadcastSystemMessage(msg),
+    });
     startAggregator(lbConfig);
   } else {
     console.log('[Leaderboard] Indexer disabled (DEEPBOOK_PACKAGE not set)');

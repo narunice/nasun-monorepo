@@ -2,6 +2,9 @@ import { NETWORK_CONFIG } from '../../../config/network';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
 import { TraderAvatar } from './TraderAvatar';
+import { BadgeDisplay } from './BadgeDisplay';
+import { computeBadges } from '../lib/badges';
+import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import type { TraderStatsResponse } from '../types';
 import { PERIOD_LABELS } from '../types';
 import type { Period } from '../types';
@@ -39,6 +42,9 @@ const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 export function TraderProfileHeader({ address, stats, classification, isLoading }: TraderProfileHeaderProps) {
   const nickname = stats?.nickname;
   const explorerUrl = NETWORK_CONFIG.explorerUrl;
+  const { isFollowing, toggleFollow } = useFollowedTraders();
+  const followed = isFollowing(address);
+  const earnedBadges = computeBadges(stats);
 
   return (
     <div className="bg-theme-bg-secondary rounded-lg border border-theme-border p-5">
@@ -75,18 +81,35 @@ export function TraderProfileHeader({ address, stats, classification, isLoading 
                 )}
               </div>
             )}
+            {earnedBadges.length > 0 && (
+              <div className="mt-1.5">
+                <BadgeDisplay badges={earnedBadges} />
+              </div>
+            )}
           </div>
         </div>
-        {explorerUrl && (
-          <a
-            href={`${explorerUrl}/address/${address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-pd3 hover:text-pd3/80 transition-colors"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => toggleFollow(address)}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+              followed
+                ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400'
+                : 'border-theme-border hover:border-theme-text-muted text-theme-text-muted hover:text-theme-text-secondary'
+            }`}
           >
-            View on Explorer
-          </a>
-        )}
+            {followed ? 'Following' : 'Follow'}
+          </button>
+          {explorerUrl && (
+            <a
+              href={`${explorerUrl}/address/${address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-pd3 hover:text-pd3/80 transition-colors"
+            >
+              View on Explorer
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}

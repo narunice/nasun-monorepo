@@ -1,14 +1,18 @@
 import type { PnlLeaderboardTrader } from '../types';
 import { PnlTraderRow } from './PnlTraderRow';
 import { SkeletonTable } from '@/components/common';
+import { useFollowedTraders } from '../hooks/useFollowedTraders';
 
 interface PnlLeaderboardTableProps {
   traders: PnlLeaderboardTrader[];
   isLoading: boolean;
   currentUserAddress?: string | null;
+  followFilter?: boolean;
 }
 
-export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress }: PnlLeaderboardTableProps) {
+export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress, followFilter }: PnlLeaderboardTableProps) {
+  const { isFollowing } = useFollowedTraders();
+
   if (isLoading) {
     return (
       <div className="py-4 px-2">
@@ -17,11 +21,24 @@ export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress }: 
     );
   }
 
-  if (traders.length === 0) {
+  const displayTraders = followFilter
+    ? traders.filter(t => isFollowing(t.address))
+    : traders;
+
+  if (displayTraders.length === 0) {
     return (
       <div className="text-center text-theme-text-muted py-12">
-        <p className="text-sm">No PnL data yet</p>
-        <p className="text-xs mt-1">Complete round-trip trades (buy + sell) to appear on the PnL leaderboard</p>
+        {followFilter ? (
+          <>
+            <p className="text-sm">Not following any traders yet</p>
+            <p className="text-xs mt-1">Star traders to track them here</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm">No PnL data yet</p>
+            <p className="text-xs mt-1">Complete round-trip trades (buy + sell) to appear on the PnL leaderboard</p>
+          </>
+        )}
       </div>
     );
   }
@@ -31,7 +48,7 @@ export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress }: 
       <table className="w-full">
         <thead>
           <tr className="text-xs text-theme-text-muted border-b border-theme-border">
-            <th className="py-3 px-3 text-left font-medium w-16">Rank</th>
+            <th className="py-3 px-3 text-left font-medium w-20">Rank</th>
             <th className="py-3 px-3 text-left font-medium">Trader</th>
             <th className="py-3 px-3 text-right font-medium">PnL</th>
             <th className="py-3 px-3 text-right font-medium">PnL %</th>
@@ -40,7 +57,7 @@ export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress }: 
           </tr>
         </thead>
         <tbody className="divide-y divide-theme-border/50">
-          {traders.map((trader) => (
+          {displayTraders.map((trader) => (
             <PnlTraderRow
               key={trader.address}
               trader={trader}

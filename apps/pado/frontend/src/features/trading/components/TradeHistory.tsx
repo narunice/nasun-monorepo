@@ -9,7 +9,7 @@
  * - Export all trades as CSV
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useMarket } from "../context/MarketContext";
 import { useMyTrades, type MyTradeItem } from "../hooks/useMyTrades";
@@ -19,6 +19,7 @@ import { type TokenSymbol, getUnifiedPrice } from '@/lib/prices';
 import { useCostBasis } from '@/features/portfolio/hooks/useCostBasis';
 import { downloadPnlCard, copyPnlCardToClipboard, type PnlCardData } from '@/lib/pnl-share-card';
 import { generateCsv, downloadCsv } from '@/lib/csv-export';
+import { getChatService } from '@/lib/chat-service';
 
 // Re-export Trade type for external consumers (useTradeEvents compatibility)
 export type { Trade } from '../types/trade';
@@ -114,6 +115,24 @@ function DownloadIcon({ className = '' }: { className?: string }) {
   );
 }
 
+// Chat bubble icon (share to chat)
+function ChatIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+type SideFilter = 'all' | 'buy' | 'sell';
+type PeriodFilter = 'all' | '24h' | '7d';
+
+const PERIOD_MS: Record<PeriodFilter, number> = {
+  all: 0,
+  '24h': 24 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
+};
+
 export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
@@ -131,6 +150,8 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sharingId, setSharingId] = useState<string | null>(null);
+  const [sideFilter, setSideFilter] = useState<SideFilter>('all');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
 
   const handleShareTrade = async (trade: MyTradeItem) => {
     const pnlData = computePnl(trade, baseSymbol, avgBuyPrice);
@@ -172,6 +193,39 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
     downloadCsv(csv, filename);
   };
 
+  const handleShareToChat = (trade: MyTradeItem) => {
+    const chatService = getChatService();
+    if (chatService.getStatus() !== 'connected') return;
+
+    const pnlData = computePnl(trade, baseSymbol, avgBuyPrice);
+    const total = Math.round(trade.price * trade.quantity * 100) / 100;
+    const side = trade.isBid ? 'BUY' : 'SELL';
+    const priceStr = trade.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const totalStr = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let msg = `${side} ${trade.quantity.toFixed(5)} ${baseSymbol} at $${priceStr} ($${totalStr})`;
+    if (pnlData) {
+      const pnlSign = pnlData.pnl >= 0 ? '+' : '';
+      msg += ` | PnL: ${pnlSign}$${pnlData.pnl.toFixed(2)} (${pnlSign}${pnlData.pnlPercent.toFixed(2)}%)`;
+    }
+    chatService.sendMessage(msg);
+    setSharingId('chat-' + trade.id);
+    setTimeout(() => setSharingId(null), 1500);
+  };
+
+  // Apply filters
+  const filteredTrades = useMemo(() => {
+    if (!trades) return [];
+    let result = trades;
+    if (sideFilter !== 'all') {
+      result = result.filter(t => sideFilter === 'buy' ? t.isBid : !t.isBid);
+    }
+    if (periodFilter !== 'all') {
+      const cutoff = Date.now() - PERIOD_MS[periodFilter];
+      result = result.filter(t => t.timestamp >= cutoff);
+    }
+    return result;
+  }, [trades, sideFilter, periodFilter]);
+
   if (!isConnected) {
     return (
       <div className={`text-center text-theme-text-muted py-6 ${className}`}>
@@ -205,15 +259,48 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
     );
   }
 
-  const visibleTrades = trades.slice(0, visibleCount);
-  const remainingCount = trades.length - visibleCount;
+  const visibleTrades = filteredTrades.slice(0, visibleCount);
+  const remainingCount = filteredTrades.length - visibleCount;
   const canShowMore = remainingCount > 0;
   const canShowLess = visibleCount > PAGE_SIZE;
 
   return (
     <div className={className}>
-      {/* Header with CSV export */}
-      <div className="flex items-center justify-end gap-2 pb-1">
+      {/* Header: filters + CSV export */}
+      <div className="flex items-center justify-between gap-2 pb-1 flex-wrap">
+        <div className="flex items-center gap-1">
+          {/* Side filter */}
+          {(['all', 'buy', 'sell'] as SideFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => { setSideFilter(f); setVisibleCount(PAGE_SIZE); }}
+              className={`px-2 py-0.5 text-[10px] xl:text-xs rounded transition-colors ${
+                sideFilter === f
+                  ? f === 'buy' ? 'bg-green-500/15 text-green-400 font-medium'
+                    : f === 'sell' ? 'bg-red-500/15 text-red-400 font-medium'
+                    : 'bg-theme-bg-tertiary text-theme-text-primary font-medium'
+                  : 'text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary'
+              }`}
+            >
+              {f === 'all' ? 'All' : f === 'buy' ? 'Buy' : 'Sell'}
+            </button>
+          ))}
+          <span className="w-px h-3 bg-theme-border mx-0.5" />
+          {/* Period filter */}
+          {(['all', '24h', '7d'] as PeriodFilter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => { setPeriodFilter(f); setVisibleCount(PAGE_SIZE); }}
+              className={`px-2 py-0.5 text-[10px] xl:text-xs rounded transition-colors ${
+                periodFilter === f
+                  ? 'bg-theme-bg-tertiary text-theme-text-primary font-medium'
+                  : 'text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary'
+              }`}
+            >
+              {f === 'all' ? 'All' : f.toUpperCase()}
+            </button>
+          ))}
+        </div>
         <button
           onClick={handleExportCsv}
           className="flex items-center gap-1 px-2 py-1 text-[10px] xl:text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors rounded hover:bg-theme-bg-tertiary"
@@ -239,7 +326,6 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
         <tbody className="divide-y divide-theme-border">
           {visibleTrades.map((trade) => {
             const pnlData = computePnl(trade, baseSymbol, avgBuyPrice);
-            const isSharing = sharingId === trade.id;
 
             return (
               <tr key={trade.id} className="hover:bg-theme-bg-tertiary/30 transition-colors">
@@ -287,28 +373,44 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
                   {formatDate(trade.timestamp)}
                 </td>
                 <td className="py-1.5 px-1">
-                  {pnlData && (
-                    <div className="flex items-center gap-0.5 justify-end">
-                      <button
-                        onClick={() => handleShareTrade(trade)}
-                        className={`p-1 rounded transition-colors ${
-                          isSharing
-                            ? 'text-green-400 bg-green-500/10'
-                            : 'text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary'
-                        }`}
-                        title={isSharing ? 'Copied!' : 'Copy PnL card'}
-                      >
-                        <ShareIcon />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadTrade(trade)}
-                        className="p-1 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors"
-                        title="Download PnL card"
-                      >
-                        <DownloadIcon />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-0.5 justify-end">
+                    {pnlData && (
+                      <>
+                        <button
+                          onClick={() => handleShareTrade(trade)}
+                          className={`p-1 rounded transition-colors ${
+                            sharingId === trade.id
+                              ? 'text-green-400 bg-green-500/10'
+                              : 'text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary'
+                          }`}
+                          title={sharingId === trade.id ? 'Copied!' : 'Copy PnL card'}
+                        >
+                          <ShareIcon />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadTrade(trade)}
+                          className="p-1 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors"
+                          title="Download PnL card"
+                        >
+                          <DownloadIcon />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleShareToChat(trade)}
+                      className={`p-1 rounded transition-colors ${
+                        sharingId === 'chat-' + trade.id
+                          ? 'text-pd3 bg-pd3/10'
+                          : getChatService().getStatus() === 'connected'
+                            ? 'text-theme-text-muted hover:text-pd3 hover:bg-pd3/10'
+                            : 'text-theme-text-muted/30 cursor-default'
+                      }`}
+                      title={sharingId === 'chat-' + trade.id ? 'Shared to chat!' : 'Share to chat'}
+                      disabled={getChatService().getStatus() !== 'connected'}
+                    >
+                      <ChatIcon />
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
