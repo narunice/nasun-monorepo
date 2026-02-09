@@ -39,6 +39,8 @@ export function getEventService(): EventService {
  * EventService class
  * Manages blockchain event subscriptions with automatic fallback
  */
+export type ModeChangeCallback = (newMode: ConnectionMode, oldMode: ConnectionMode) => void;
+
 export class EventService {
   private mode: ConnectionMode = 'simulation';
   private subscribers: Map<EventType, Set<EventCallback>> = new Map();
@@ -48,6 +50,7 @@ export class EventService {
   private isConnecting = false;
   private poolFilter: string | null = null;
   private consecutiveFailures = 0;
+  private modeChangeCallbacks: Set<ModeChangeCallback> = new Set();
 
   constructor() {
     // Initialize subscriber maps
@@ -72,7 +75,7 @@ export class EventService {
       // Try WebSocket first
       const wsSuccess = await this.tryWebSocket();
       if (wsSuccess) {
-        this.mode = 'websocket';
+        this.setMode('websocket');
         console.log('[EventService] Connected via WebSocket');
         this.isConnecting = false;
         return this.mode;
@@ -81,18 +84,18 @@ export class EventService {
       // Fall back to polling
       const pollingSuccess = await this.tryPolling();
       if (pollingSuccess) {
-        this.mode = 'polling';
+        this.setMode('polling');
         console.log('[EventService] Connected via Polling (2s interval)');
         this.isConnecting = false;
         return this.mode;
       }
 
       // Fall back to simulation
-      this.mode = 'simulation';
+      this.setMode('simulation');
       console.log('[EventService] Running in Simulation mode');
     } catch (error) {
       console.warn('[EventService] Connection error, falling back to simulation:', error);
-      this.mode = 'simulation';
+      this.setMode('simulation');
     }
 
     this.isConnecting = false;
@@ -113,7 +116,7 @@ export class EventService {
       this.pollingInterval = null;
     }
 
-    this.mode = 'simulation';
+    this.setMode('simulation');
     this.pollingCursor = null;
     this.consecutiveFailures = 0;
   }
@@ -149,6 +152,23 @@ export class EventService {
    */
   isRealtime(): boolean {
     return this.mode === 'websocket' || this.mode === 'polling';
+  }
+
+  /**
+   * Register a callback for mode changes (e.g. websocket → polling → simulation)
+   */
+  onModeChange(callback: ModeChangeCallback): () => void {
+    this.modeChangeCallbacks.add(callback);
+    return () => { this.modeChangeCallbacks.delete(callback); };
+  }
+
+  private setMode(newMode: ConnectionMode): void {
+    const oldMode = this.mode;
+    if (oldMode === newMode) return;
+    this.mode = newMode;
+    this.modeChangeCallbacks.forEach(cb => {
+      try { cb(newMode, oldMode); } catch { /* ignore */ }
+    });
   }
 
   /**

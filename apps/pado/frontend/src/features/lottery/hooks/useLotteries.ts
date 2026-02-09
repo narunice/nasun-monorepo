@@ -3,6 +3,7 @@ import {
   fetchLotteryRounds,
   fetchLotteryRegistry,
 } from '../lib/lottery-client';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { LotteryRound, LotteryRegistry } from '../types';
 import { ROUND_STATUS } from '../constants';
 
@@ -16,6 +17,8 @@ export interface UseLotteriesResult {
 }
 
 export function useLotteries(): UseLotteriesResult {
+  const adaptiveInterval = useAdaptiveInterval(60_000);
+
   const {
     data: rounds = [],
     isLoading: roundsLoading,
@@ -25,7 +28,7 @@ export function useLotteries(): UseLotteriesResult {
     queryKey: ['lottery-rounds'],
     queryFn: fetchLotteryRounds,
     staleTime: 30_000, // 30 seconds
-    refetchInterval: 60_000, // 1 minute
+    refetchInterval: adaptiveInterval,
   });
 
   const {
@@ -37,7 +40,7 @@ export function useLotteries(): UseLotteriesResult {
     queryKey: ['lottery-registry'],
     queryFn: fetchLotteryRegistry,
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: adaptiveInterval,
   });
 
   // Find the current active round (OPEN status and not expired)

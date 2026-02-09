@@ -77,6 +77,24 @@ export default defineConfig({
     commonjsOptions: {
       include: [/node_modules/],
     },
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react-dom/') || id.includes('node_modules/react/') || id.includes('node_modules/react-router')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/@tanstack/react-query')) {
+            return 'vendor-query';
+          }
+          if (id.includes('node_modules/@mysten/')) {
+            return 'vendor-sui';
+          }
+          if (id.includes('node_modules/lightweight-charts')) {
+            return 'vendor-charts';
+          }
+        },
+      },
+    },
   },
   server: {
     port: 5176,

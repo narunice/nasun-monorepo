@@ -10,6 +10,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWallet, useZkLogin, getSuiClient } from '@nasun/wallet';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { SuiObjectChange } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import {
@@ -51,6 +52,7 @@ export function useMarginAccount(): UseMarginAccountResult {
   const { account: walletAccount, status, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const queryClient = useQueryClient();
+  const adaptiveInterval = useAdaptiveInterval(10_000);
 
   // Determine active wallet (zkLogin takes priority)
   const isLocalWalletActive = status === 'unlocked' && !!walletAccount?.address;
@@ -123,7 +125,7 @@ export function useMarginAccount(): UseMarginAccountResult {
       return account;
     },
     enabled: !!marginAccountId && !!activeAddress,
-    refetchInterval: 10_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 5_000,
   });
 

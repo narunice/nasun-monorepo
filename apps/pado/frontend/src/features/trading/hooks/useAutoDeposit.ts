@@ -332,7 +332,10 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
         );
 
         if (!tx) {
-          const error = 'Failed to build deposit transaction. Check wallet balance.';
+          const missingToken = check.needsQuoteDeposit
+            ? currentPool.quoteToken.symbol
+            : currentPool.baseToken.symbol;
+          const error = `No ${missingToken} in wallet. Get tokens from Faucet.`;
           setLastDepositError(error);
           return { success: false, error };
         }
@@ -355,7 +358,8 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
           return { success: false, error: result.error };
         }
       } catch (err) {
-        const error = err instanceof Error ? err.message : 'Deposit failed';
+        const { formatErrorMessage } = await import('../utils/errorParser');
+        const error = formatErrorMessage(err);
         setLastDepositError(error);
         return { success: false, error };
       } finally {

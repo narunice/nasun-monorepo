@@ -11,6 +11,7 @@ import {
   type BalanceManagerBalance,
 } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 export interface OpenOrdersData {
   orders: OpenOrder[];
@@ -27,6 +28,7 @@ export function useOpenOrders(
   refetchInterval = 5000,
 ) {
   const { currentPool, currentMarket } = useMarket();
+  const adaptiveInterval = useAdaptiveInterval(refetchInterval);
 
   return useQuery<OpenOrdersData>({
     queryKey: ['openOrders', balanceManagerId, currentMarket],
@@ -43,7 +45,7 @@ export function useOpenOrders(
       return { orders, balance };
     },
     enabled: !!balanceManagerId,
-    refetchInterval,
+    refetchInterval: adaptiveInterval,
     staleTime: 2000,
     // Retry logic for RPC sync delay (newly created BM may not be indexed yet)
     retry: 3,

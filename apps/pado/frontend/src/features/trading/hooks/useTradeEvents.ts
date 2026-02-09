@@ -3,9 +3,10 @@
  * Subscribe to DeepBook OrderFilled events via EventService
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getEventService } from '../../../lib/event-service';
 import { useMarket } from '../context/MarketContext';
+import { useToast } from '@/components/common';
 import type { Trade } from '../types/trade';
 import type { ConnectionMode, DeepBookEvent, OrderFilledEvent } from '../types/events';
 
@@ -25,6 +26,9 @@ export function useTradeEvents(
   const { maxTrades = 50 } = options;
 
   const { currentPool } = useMarket();
+  const { showToast } = useToast();
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
   const [trades, setTrades] = useState<Trade[]>([]);
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>('polling');
   const [realTradeCount, setRealTradeCount] = useState(0);
@@ -72,10 +76,21 @@ export function useTradeEvents(
       }
     });
 
+    // Listen for mode degradation (e.g. websocket → polling → simulation)
+    const unsubscribeMode = eventService.onModeChange((newMode, oldMode) => {
+      const actualMode = newMode === 'simulation' ? 'polling' : newMode;
+      setConnectionMode(actualMode);
+      // Notify user when feed degrades from realtime to simulation
+      if (newMode === 'simulation' && oldMode !== 'simulation') {
+        showToastRef.current('Live feed interrupted. Market data may be delayed.', 'warning');
+      }
+    });
+
     connect();
 
     return () => {
       unsubscribe();
+      unsubscribeMode();
     };
   }, [currentPool, addTrade, parseOrderFilledToTrade]);
 

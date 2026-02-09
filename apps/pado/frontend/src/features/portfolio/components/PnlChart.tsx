@@ -10,6 +10,7 @@ import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTheme } from '../../../providers/theme';
 import { usePnlTimeSeries, type PnlPeriod } from '../hooks/usePnlTimeSeries';
+import { useCostBasis } from '../hooks/useCostBasis';
 
 const CHART_HEIGHT = 200;
 
@@ -46,7 +47,8 @@ export function PnlChart() {
   const { isConnected: isZkConnected } = useZkLogin();
   const { theme } = useTheme();
   const [period, setPeriod] = useState<PnlPeriod>('all');
-  const { data, isLoading } = usePnlTimeSeries(period);
+  const { data, maxDrawdown, isLoading } = usePnlTimeSeries(period);
+  const { totalRealizedPnl, totalUnrealizedPnl, totalPnl } = useCostBasis();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -159,8 +161,6 @@ export function PnlChart() {
     );
   }
 
-  const lastPnl = data.length > 0 ? data[data.length - 1].cumulativePnl : 0;
-
   return (
     <div className="bg-theme-bg-secondary rounded-lg overflow-hidden">
       {/* Header with period filter */}
@@ -169,11 +169,11 @@ export function PnlChart() {
           <h2 className="font-semibold">P&L Chart</h2>
           {data.length > 0 && (
             <span className={`text-sm font-medium ${
-              lastPnl >= 0
+              totalPnl >= 0
                 ? 'text-green-600 dark:text-green-400'
                 : 'text-red-600 dark:text-red-400'
             }`}>
-              {lastPnl >= 0 ? '+' : ''}${lastPnl.toFixed(2)}
+              {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
             </span>
           )}
         </div>
@@ -193,6 +193,30 @@ export function PnlChart() {
           ))}
         </div>
       </div>
+
+      {/* PnL breakdown stats */}
+      {data.length > 0 && (
+        <div className="px-4 py-2 flex items-center gap-4 text-xs border-b border-theme-border/50">
+          <div>
+            <span className="text-theme-text-muted">Realized </span>
+            <span className={totalRealizedPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+              {totalRealizedPnl >= 0 ? '+' : ''}${totalRealizedPnl.toFixed(2)}
+            </span>
+          </div>
+          <div>
+            <span className="text-theme-text-muted">Unrealized </span>
+            <span className={totalUnrealizedPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+              {totalUnrealizedPnl >= 0 ? '+' : ''}${totalUnrealizedPnl.toFixed(2)}
+            </span>
+          </div>
+          {maxDrawdown < 0 && (
+            <div>
+              <span className="text-theme-text-muted">Max Drawdown </span>
+              <span className="text-red-600 dark:text-red-400">${maxDrawdown.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Chart area - always render container so ref is available */}
       <div

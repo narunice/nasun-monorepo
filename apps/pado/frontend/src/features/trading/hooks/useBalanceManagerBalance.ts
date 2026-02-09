@@ -12,6 +12,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getBalanceManagerBalances, type BalanceManagerBalance } from '../../../lib/deepbook';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { useMarket } from '../context/MarketContext';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 interface UseBalanceManagerBalanceResult {
   balance: BalanceManagerBalance | null;
@@ -33,6 +34,7 @@ export function useBalanceManagerBalance(options?: {
   enabled?: boolean;
 }): UseBalanceManagerBalanceResult {
   const { refetchInterval = 5000, enabled = true } = options ?? {};
+  const adaptiveInterval = useAdaptiveInterval(refetchInterval);
   const { currentPool } = useMarket();
 
   // Get active wallet address (zkLogin takes priority)
@@ -57,7 +59,7 @@ export function useBalanceManagerBalance(options?: {
       if (!balanceManagerId) return null;
       return getBalanceManagerBalances(balanceManagerId, currentPool);
     },
-    refetchInterval,
+    refetchInterval: adaptiveInterval,
     enabled: enabled && !!balanceManagerId,
     staleTime: 2000,
   });

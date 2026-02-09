@@ -3,7 +3,7 @@
  * Move abort 에러를 사용자 친화적인 메시지로 변환
  */
 
-export type ErrorType = 'GAS_REQUIRED' | 'INSUFFICIENT_BALANCE' | 'GENERIC';
+export type ErrorType = 'GAS_REQUIRED' | 'INSUFFICIENT_BALANCE' | 'ORDER_NOT_FOUND' | 'GENERIC';
 
 export interface ParsedError {
   message: string;
@@ -68,6 +68,11 @@ const GENERAL_ERRORS: { pattern: RegExp; message: string; errorType?: ErrorType 
   {
     pattern: /TransactionExpired/i,
     message: 'Transaction expired. Please try again.',
+  },
+  {
+    pattern: /leaf_remove|big_vector/i,
+    message: 'Order no longer exists (already filled or cancelled)',
+    errorType: 'ORDER_NOT_FOUND',
   },
 ];
 
@@ -142,10 +147,12 @@ export function parseError(error: unknown): ParsedError {
     }
   }
 
-  // 알 수 없는 에러는 원본 메시지 반환 (최대 100자)
-  const truncated = errorStr.length > 100 ? errorStr.slice(0, 100) + '...' : errorStr;
+  // Unknown errors: show generic message, log details for debugging
+  if (import.meta.env.DEV) {
+    console.warn('[parseError] Unknown error:', errorStr);
+  }
   return {
-    message: truncated,
+    message: 'Transaction failed. Please try again.',
     isKnown: false,
   };
 }

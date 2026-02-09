@@ -66,6 +66,11 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
         <div className="flex items-center gap-2">
           <span className="text-trading-sm font-medium text-theme-text-primary">Chat</span>
           <StatusDot status={status} />
+          {status === 'connecting' || status === 'authenticating' ? (
+            <span className="text-trading-xs text-yellow-500">Connecting...</span>
+          ) : status !== 'connected' ? (
+            <span className="text-trading-xs text-red-400">Offline</span>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           {isConnected && nickname && (

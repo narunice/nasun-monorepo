@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { NewsFeedResponse } from '../types';
 
 const NEWS_API_URL = import.meta.env.VITE_NEWS_API_URL;
@@ -20,11 +21,13 @@ async function fetchNewsFeed(limit: number): Promise<NewsFeedResponse> {
 }
 
 export function useNewsFeed(limit = 20) {
+  const adaptiveInterval = useAdaptiveInterval(60_000);
+
   return useQuery({
     queryKey: ['newsFeed', limit],
     queryFn: () => fetchNewsFeed(limit),
     enabled: !!NEWS_API_URL,
-    refetchInterval: 60_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 30_000,
     retry: 2,
   });

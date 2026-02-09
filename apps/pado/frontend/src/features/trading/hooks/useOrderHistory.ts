@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getSuiClient } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 /** Safely convert unknown RPC value to BigInt, defaulting to 0n on invalid input */
 function safeBigInt(value: unknown): bigint {
@@ -227,6 +228,7 @@ export function useOrderHistory(
   refetchInterval = 10000,
 ) {
   const { currentPool } = useMarket();
+  const adaptiveInterval = useAdaptiveInterval(refetchInterval);
   const poolId = currentPool.id as string;
 
   return useQuery<OrderHistoryItem[]>({
@@ -239,7 +241,7 @@ export function useOrderHistory(
         currentPool.baseToken.decimals,
       ),
     enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE && !!poolId,
-    refetchInterval,
+    refetchInterval: adaptiveInterval,
     staleTime: 5000,
   });
 }

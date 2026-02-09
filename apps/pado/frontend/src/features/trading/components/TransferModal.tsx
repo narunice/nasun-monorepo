@@ -30,12 +30,14 @@ export function TransferModal({
 }: TransferModalProps) {
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const submittingRef = useRef(false);
 
-  // Reset amount on mount (parent conditionally renders this component)
+  // Reset state on mount (parent conditionally renders this component)
   useEffect(() => {
     setAmount('');
     setIsSubmitting(false);
+    setLocalError(null);
     submittingRef.current = false;
   }, []);
 
@@ -75,9 +77,12 @@ export function TransferModal({
     setIsSubmitting(true);
 
     try {
+      setLocalError(null);
       const result = await onConfirm(numAmount, tokenType, tokenDecimals, tokenSymbol);
       if (result?.success) {
         onClose();
+      } else {
+        setLocalError(result?.error || 'Transaction failed. Please try again.');
       }
     } finally {
       submittingRef.current = false;
@@ -221,6 +226,11 @@ export function TransferModal({
               )}
             </button>
           </div>
+
+          {/* Error display */}
+          {localError && (
+            <p className="text-red-400 text-xs" role="alert">{localError}</p>
+          )}
         </div>
       </div>
     </div>
