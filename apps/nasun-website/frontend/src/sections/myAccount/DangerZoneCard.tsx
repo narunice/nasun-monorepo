@@ -24,13 +24,13 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
     if (!confirmation) return;
 
     try {
-      if (!user?.identityId) {
+      if (!user?.identityId || !user?.provider) {
         throw new Error(t("error.notAuthenticated", { ns: "common" }));
       }
 
       const apiUrl = `${import.meta.env.VITE_DEACTIVATE_USER_API_URL}?identityId=${
-        user.identityId
-      }`;
+        encodeURIComponent(user.identityId)
+      }&provider=${encodeURIComponent(user.provider)}`;
 
       const response = await fetch(apiUrl, {
         method: "DELETE",

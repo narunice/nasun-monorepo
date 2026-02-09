@@ -139,7 +139,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         if (profileResponse.ok) {
           const updatedProfile = await profileResponse.json();
           updateUserProfile(updatedProfile);
-          localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+          sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
           logger.log("[WalletConnectCard] User profile updated");
         } else {
           throw new Error("Failed to fetch updated profile");

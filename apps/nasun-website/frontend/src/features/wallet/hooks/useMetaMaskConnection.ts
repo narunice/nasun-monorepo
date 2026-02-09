@@ -147,7 +147,7 @@ export function useMetaMaskConnection(
 
         const updatedProfile = await profileResponse.json();
         updateUserProfile(updatedProfile);
-        localStorage.setItem(
+        sessionStorage.setItem(
           'nasun_user_profile',
           JSON.stringify(updatedProfile)
         );

@@ -22,11 +22,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
 
-  console.log('User Profile API called:', {
+  console.log('[UserProfile] Request:', {
     httpMethod: event.httpMethod,
-    queryParams: event.queryStringParameters,
+    path: event.path,
     hasBody: !!event.body,
-    path: event.path
   });
 
   try {
@@ -182,19 +181,34 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       if (postData.twitterId) item.twitterId = { S: postData.twitterId };
       if (postData.profileImageUrl) item.profileImageUrl = { S: postData.profileImageUrl };
 
+      // Prevent overwriting existing profiles — only allow creation of new ones.
+      // Profile updates should go through dedicated endpoints (link-account, etc.)
       const putCommand = new PutItemCommand({
         TableName: tableName,
-        Item: item
+        Item: item,
+        ConditionExpression: 'attribute_not_exists(identityId)',
       });
 
-      await dynamoClient.send(putCommand);
+      try {
+        await dynamoClient.send(putCommand);
+      } catch (putError: unknown) {
+        const putErr = putError as { name?: string };
+        if (putErr.name === 'ConditionalCheckFailedException') {
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Profile already exists' }),
+          };
+        }
+        throw putError;
+      }
 
       return {
-        statusCode: 200,
+        statusCode: 201,
         headers: corsHeaders,
-        body: JSON.stringify({ 
-          message: 'User profile created/updated successfully',
-          success: true 
+        body: JSON.stringify({
+          message: 'User profile created successfully',
+          success: true
         }),
       };
     }
@@ -205,12 +219,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       body: JSON.stringify({ message: 'Method not allowed' }),
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error handling user profile:', error);
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ message: 'Internal server error', error: error.message }),
+      body: JSON.stringify({ message: 'Internal server error' }),
     };
   }
 };
