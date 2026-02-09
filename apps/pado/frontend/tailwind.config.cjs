@@ -17,12 +17,13 @@ module.exports = {
         'sans': ['Rubik', 'system-ui', 'sans-serif'],
       },
       fontSize: {
-        // Trading typography scale — bumped 1-2px from original for readability
+        // Trading typography scale — aligned with industry standard (Binance, Bybit, OKX)
         // Use xl: breakpoint variants in components for desktop scaling
-        'trading-xs': ['11px', { lineHeight: '16px' }],
-        'trading-sm': ['12px', { lineHeight: '16px' }],
-        'trading-lg': ['13px', { lineHeight: '18px' }],
-        'trading-xl': ['16px', { lineHeight: '22px' }],
+        'trading-xs': ['12px', { lineHeight: '16px' }],
+        'trading-sm': ['13px', { lineHeight: '18px' }],
+        'trading-lg': ['14px', { lineHeight: '20px' }],
+        'trading-xl': ['18px', { lineHeight: '24px' }],
+        'trading-2xl': ['22px', { lineHeight: '28px' }],
       },
       keyframes: {
         'flash-buy': {

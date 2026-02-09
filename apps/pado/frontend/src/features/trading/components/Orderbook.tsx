@@ -399,7 +399,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           {/* Spread / Mid Price */}
           {showSpread && spreadInfo && (
             <div className="flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded">
-              <span className="text-trading-xl font-bold font-mono flex items-center gap-1">
+              <span className="text-trading-xl xl:text-trading-2xl font-bold font-mono flex items-center gap-1">
                 {priceDirection === 'up' && (
                   <svg width="12" height="12" viewBox="0 0 12 12" className="text-trading-bid"><path d="M6 2L10 8H2L6 2Z" fill="currentColor" /></svg>
                 )}

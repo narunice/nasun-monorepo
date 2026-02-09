@@ -195,6 +195,18 @@ export function OrderForm({
     }
   }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate]);
 
+  // Current amount as percentage of max (for slider)
+  const currentPct = useMemo(() => {
+    if (isBuy) {
+      if (effectivePrice <= 0 || availableQuote <= 0) return 0;
+      const usableQuote = availableQuote / (1 + feeRate);
+      const maxBase = usableQuote / effectivePrice;
+      return maxBase > 0 ? Math.min(100, Math.round((amountNum / maxBase) * 100)) : 0;
+    } else {
+      return availableBase > 0 ? Math.min(100, Math.round((amountNum / availableBase) * 100)) : 0;
+    }
+  }, [isBuy, effectivePrice, availableQuote, availableBase, amountNum, feeRate]);
+
   const stopPriceNum = parseFloat(stopPrice) || 0;
   const hasValidationError = !quantityValidation.valid || (!isMarket && !priceValidation.valid);
   const stopLimitMissingFields = isStopLimit && (stopPriceNum <= 0 || effectivePrice <= 0 || amountNum <= 0);
@@ -253,11 +265,21 @@ export function OrderForm({
       <div className="text-trading-xs xl:text-trading-sm space-y-0.5">
         <div className="flex items-center justify-between">
           <span className="text-theme-text-muted">Available</span>
-          <span className="font-mono text-theme-text-secondary">
+          <button
+            type="button"
+            onClick={() => handlePercentAmount(100)}
+            disabled={isBuy && effectivePrice <= 0}
+            className={`font-mono transition-colors ${
+              isBuy && effectivePrice <= 0
+                ? 'text-theme-text-muted cursor-not-allowed'
+                : 'text-theme-text-secondary hover:text-pd3 hover:underline cursor-pointer'
+            }`}
+            title={isBuy && effectivePrice <= 0 ? 'Set a price first' : 'Click to use max balance'}
+          >
             {isBuy
               ? `${availableQuote.toFixed(2)} ${quoteSymbol}`
               : `${availableBase.toFixed(4)} ${baseSymbol}`}
-          </span>
+          </button>
         </div>
         {((isBuy && lockedQuote > 0) || (!isBuy && lockedBase > 0)) && (
           <div className="flex items-center justify-between">
@@ -423,18 +445,35 @@ export function OrderForm({
         {amountNum > 0 && !quantityValidation.valid && (
           <p className="text-trading-xs xl:text-trading-sm text-yellow-400 mt-1">{quantityValidation.message}</p>
         )}
-        {/* Percentage buttons */}
+        {/* Percentage buttons + slider */}
         <div className="flex gap-1 mt-1.5">
           {[25, 50, 75, 100].map((pct) => (
             <button
               key={pct}
               onClick={() => handlePercentAmount(pct)}
-              className="flex-1 py-1 text-trading-xs xl:text-trading-sm font-medium rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+              className={`flex-1 py-1 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
+                currentPct === pct
+                  ? 'bg-pd1/20 text-pd3'
+                  : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+              }`}
             >
               {pct}%
             </button>
           ))}
         </div>
+        <input
+          type="range"
+          aria-label="Order size percentage"
+          min={0}
+          max={100}
+          value={currentPct}
+          onChange={(e) => {
+            const val = parseInt(e.target.value, 10);
+            if (val > 0) handlePercentAmount(val);
+            else handleAmountChange('');
+          }}
+          className="w-full h-1.5 mt-1 appearance-none rounded-full bg-theme-bg-tertiary cursor-pointer accent-pd1 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-pd3 [&::-webkit-slider-thumb]:appearance-none"
+        />
       </div>
 
       {/* E2. Total Input (bidirectional with Amount) */}

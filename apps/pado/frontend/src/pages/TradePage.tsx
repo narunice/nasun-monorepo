@@ -35,7 +35,8 @@ import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from "..
 import { NewsCarousel } from "../features/news";
 
 // Fixed height for chart and orderbook to ensure consistent layout
-const CHART_HEIGHT = 606;
+// 750px: room for 4+ sub-indicators in chart, TP/SL in order form without scroll
+const CHART_HEIGHT = 750;
 // Chat panel height when expanded (below chart area)
 const CHAT_HEIGHT = 350;
 
@@ -46,7 +47,7 @@ const CARD_W = "w-[300px] 2xl:w-[340px]";
 // Calculation: ~600px chart + 2*300px cards + 2*12px gaps = ~1224px
 const SIMPLE_MAX_W = "xl:max-w-[1224px] 2xl:max-w-[1304px] xl:mx-auto";
 
-type ChartView = 'price' | 'depth';
+type ChartView = "price" | "depth";
 
 interface ChartAreaProps {
   chartView: ChartView;
@@ -57,36 +58,44 @@ interface ChartAreaProps {
   midPrice: number;
 }
 
-function ChartArea({ chartView, onChartViewChange, currentPrice, bids, asks, midPrice }: ChartAreaProps) {
+function ChartArea({
+  chartView,
+  onChartViewChange,
+  currentPrice,
+  bids,
+  asks,
+  midPrice,
+}: ChartAreaProps) {
   return (
     <div className="flex flex-col h-full bg-theme-bg-secondary rounded-lg overflow-hidden">
       <div className="shrink-0 flex items-center gap-1 px-3 py-1.5">
         <button
-          onClick={() => onChartViewChange('price')}
+          onClick={() => onChartViewChange("price")}
           className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
-            chartView === 'price'
-              ? 'text-theme-text-primary bg-theme-bg-tertiary'
-              : 'text-theme-text-muted hover:text-theme-text-secondary'
+            chartView === "price"
+              ? "text-theme-text-primary bg-theme-bg-tertiary"
+              : "text-theme-text-muted hover:text-theme-text-secondary"
           }`}
         >
           Price
         </button>
         <button
-          onClick={() => onChartViewChange('depth')}
+          onClick={() => onChartViewChange("depth")}
           className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
-            chartView === 'depth'
-              ? 'text-theme-text-primary bg-theme-bg-tertiary'
-              : 'text-theme-text-muted hover:text-theme-text-secondary'
+            chartView === "depth"
+              ? "text-theme-text-primary bg-theme-bg-tertiary"
+              : "text-theme-text-muted hover:text-theme-text-secondary"
           }`}
         >
           Depth
         </button>
       </div>
       <div className="flex-1 min-h-0">
-        {chartView === 'price'
-          ? <PriceChart currentPrice={currentPrice} />
-          : <DepthChart bids={bids} asks={asks} midPrice={midPrice} />
-        }
+        {chartView === "price" ? (
+          <PriceChart currentPrice={currentPrice} />
+        ) : (
+          <DepthChart bids={bids} asks={asks} midPrice={midPrice} />
+        )}
       </div>
     </div>
   );
@@ -102,12 +111,26 @@ function NewsCollapsedBar({ onClick }: { onClick: () => void }) {
         text-theme-text-muted hover:text-theme-text-primary transition-colors"
     >
       <div className="flex items-center gap-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2z" />
         </svg>
         <span className="text-trading-sm font-medium">News</span>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M6 9l6 6 6-6" />
       </svg>
     </button>
@@ -156,7 +179,7 @@ function TradePageContent() {
   const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
   const [chatFloating, setChatFloating] = useState(false);
   const [newsVisible, setNewsVisible] = useState(true);
-  const [chartView, setChartView] = useState<ChartView>('price');
+  const [chartView, setChartView] = useState<ChartView>("price");
   const { currentPool } = useMarket();
   const { data: orderbookData } = useOrderbook();
   const { setPrice } = useOrderForm();
@@ -296,7 +319,14 @@ function TradePageContent() {
         <div className={`hidden xl:flex gap-3 ${SIMPLE_MAX_W}`}>
           {/* Col 1: Chart (flexible, fills remaining space) */}
           <div className="flex-1 min-w-0" style={{ height: `${CHART_HEIGHT}px` }}>
-            <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
+            <ChartArea
+              chartView={chartView}
+              onChartViewChange={setChartView}
+              currentPrice={displayPrice}
+              bids={orderbook.bids}
+              asks={orderbook.asks}
+              midPrice={midPrice}
+            />
           </div>
           {/* Col 2: Quick Trade */}
           <div className={`shrink-0 ${CARD_W}`} style={{ height: `${CHART_HEIGHT}px` }}>
@@ -320,7 +350,14 @@ function TradePageContent() {
           {/* Col 1 (flex): Chart + BottomTab */}
           <div className="flex-1 min-w-0 flex flex-col gap-3">
             <div style={{ height: `${CHART_HEIGHT}px` }}>
-              <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
+              <ChartArea
+                chartView={chartView}
+                onChartViewChange={setChartView}
+                currentPrice={displayPrice}
+                bids={orderbook.bids}
+                asks={orderbook.asks}
+                midPrice={midPrice}
+              />
             </div>
             <div style={{ height: `${CHAT_HEIGHT}px` }}>
               <BottomTabPanel className="h-full" />
@@ -368,14 +405,28 @@ function TradePageContent() {
         {isSimple ? (
           <>
             <div style={{ height: `${CHART_HEIGHT}px` }}>
-              <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
+              <ChartArea
+                chartView={chartView}
+                onChartViewChange={setChartView}
+                currentPrice={displayPrice}
+                bids={orderbook.bids}
+                asks={orderbook.asks}
+                midPrice={midPrice}
+              />
             </div>
             <TradingPanel mode={mode} />
           </>
         ) : (
           <>
             <div style={{ height: `${CHART_HEIGHT}px` }}>
-              <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
+              <ChartArea
+                chartView={chartView}
+                onChartViewChange={setChartView}
+                currentPrice={displayPrice}
+                bids={orderbook.bids}
+                asks={orderbook.asks}
+                midPrice={midPrice}
+              />
             </div>
             <div className="flex gap-3">
               <div className="flex-1 min-w-0">
@@ -395,11 +446,16 @@ function TradePageContent() {
       {/* Mobile: tab-based layout (below lg) */}
       <MobileTradeLayout
         chartContent={
-          <ChartArea chartView={chartView} onChartViewChange={setChartView} currentPrice={displayPrice} bids={orderbook.bids} asks={orderbook.asks} midPrice={midPrice} />
+          <ChartArea
+            chartView={chartView}
+            onChartViewChange={setChartView}
+            currentPrice={displayPrice}
+            bids={orderbook.bids}
+            asks={orderbook.asks}
+            midPrice={midPrice}
+          />
         }
-        bookContent={
-          <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
-        }
+        bookContent={<Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />}
         tradeContent={
           <>
             <EnablePadoCard />
