@@ -283,13 +283,13 @@ export function SwapOrderForm({
   return (
     <div className="h-full flex flex-col">
       {/* Exchange Rate */}
-      <div className="text-xs text-theme-text-muted mb-3 shrink-0 font-mono">
+      <div className="text-sm text-theme-text-muted mb-3 shrink-0 font-mono">
         {rateDisplay}
       </div>
 
       {/* You Pay */}
-      <div className="bg-theme-bg-tertiary/50 rounded-lg p-3 shrink-0">
-        <div className="flex items-center justify-between text-xs mb-2">
+      <div className="bg-theme-bg-tertiary/50 rounded-lg p-4 shrink-0">
+        <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-theme-text-muted">You Pay</span>
           <span className="text-theme-text-muted font-mono">
             Bal: {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })}
@@ -309,17 +309,17 @@ export function SwapOrderForm({
             onChange={handlePayAmountChange}
             placeholder="0.00"
             disabled={disabled}
-            className="flex-1 min-w-0 bg-transparent text-right text-sm font-mono text-theme-text-primary placeholder:text-theme-text-muted/50 outline-none"
+            className="flex-1 min-w-0 bg-transparent text-right text-lg font-mono text-theme-text-primary placeholder:text-theme-text-muted/50 outline-none"
           />
         </div>
         {/* Percent buttons */}
-        <div className="flex gap-1.5 mt-2">
+        <div className="flex gap-2 mt-3">
           {PERCENT_BUTTONS.map((pct) => (
             <button
               key={pct}
               onClick={() => handlePercentClick(pct)}
               disabled={disabled || maxPayAmount <= 0}
-              className="flex-1 h-6 text-[10px] font-medium rounded bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 h-7 text-xs font-medium rounded bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {pct === 100 ? 'Max' : `${pct}%`}
             </button>
@@ -328,13 +328,13 @@ export function SwapOrderForm({
       </div>
 
       {/* Flip Button */}
-      <div className="flex justify-center -my-1.5 relative z-10 shrink-0">
+      <div className="flex justify-center -my-2 relative z-10 shrink-0">
         <button
           onClick={handleFlip}
           disabled={disabled}
-          className="w-8 h-8 rounded-full bg-theme-bg-secondary border-2 border-theme-bg-tertiary flex items-center justify-center text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary transition-colors disabled:opacity-40"
+          className="w-9 h-9 rounded-full bg-theme-bg-secondary border-2 border-theme-bg-tertiary flex items-center justify-center text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary transition-colors disabled:opacity-40"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
             <path
               d="M7 1v12M4 4l3-3 3 3M4 10l3 3 3-3"
               stroke="currentColor"
@@ -347,8 +347,8 @@ export function SwapOrderForm({
       </div>
 
       {/* You Receive */}
-      <div className="bg-theme-bg-tertiary/50 rounded-lg p-3 shrink-0">
-        <div className="text-xs text-theme-text-muted mb-2">You Receive</div>
+      <div className="bg-theme-bg-tertiary/50 rounded-lg p-4 shrink-0">
+        <div className="text-sm text-theme-text-muted mb-2">You Receive</div>
         <div className="flex items-center gap-2">
           <InlineTokenSelector
             selectedToken={receiveToken}
@@ -356,7 +356,7 @@ export function SwapOrderForm({
             onSelect={handleReceiveTokenSelect}
             disabled={disabled}
           />
-          <div className="flex-1 text-right text-sm font-mono text-theme-text-secondary">
+          <div className="flex-1 text-right text-lg font-mono text-theme-text-secondary">
             {receiveAmount > 0
               ? `≈ ${receiveAmount.toLocaleString('en-US', { maximumFractionDigits: isBuying ? 6 : 2 })}`
               : '—'}
@@ -365,7 +365,7 @@ export function SwapOrderForm({
       </div>
 
       {/* Rate + Fee + Slippage toggle */}
-      <div className="mt-2 flex items-center justify-between text-[10px] text-theme-text-muted shrink-0">
+      <div className="mt-3 flex items-center justify-between text-xs text-theme-text-muted shrink-0">
         <div className="flex items-center gap-2 min-w-0 truncate">
           <span>Fee: ~${feeUsd.toFixed(2)}</span>
         </div>
@@ -374,22 +374,22 @@ export function SwapOrderForm({
           className="shrink-0 p-1 text-theme-text-muted hover:text-theme-text-secondary transition-colors"
           title="Slippage Settings"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <circle cx="6" cy="6" r="1.5" />
-            <path d="M6 .75v1.5M6 9.75v1.5M.75 6h1.5M9.75 6h1.5M2.28 2.28l1.06 1.06M8.66 8.66l1.06 1.06M9.72 2.28L8.66 3.34M3.34 8.66l-1.06 1.06" />
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <circle cx="7" cy="7" r="1.75" />
+            <path d="M7 .875v1.75M7 11.375v1.75M.875 7h1.75M11.375 7h1.75M2.66 2.66l1.24 1.24M10.1 10.1l1.24 1.24M11.34 2.66l-1.24 1.24M3.9 10.1l-1.24 1.24" />
           </svg>
         </button>
       </div>
 
       {/* Slippage Settings (expandable) */}
       {showSlippage && (
-        <div className="mt-1 flex items-center gap-1.5 shrink-0">
-          <span className="text-[10px] text-theme-text-muted">Slippage:</span>
+        <div className="mt-1.5 flex items-center gap-2 shrink-0">
+          <span className="text-xs text-theme-text-muted">Slippage:</span>
           {SLIPPAGE_PRESETS.map((pct) => (
             <button
               key={pct}
               onClick={() => setSlippage(pct)}
-              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors ${
+              className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
                 slippage === pct
                   ? 'bg-pd1 text-white'
                   : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
@@ -403,19 +403,19 @@ export function SwapOrderForm({
 
       {/* Insufficient balance warning */}
       {isInsufficientBalance && (
-        <div className="mt-1.5 text-[10px] text-red-400 text-center shrink-0">
+        <div className="mt-2 text-xs text-red-400 text-center shrink-0">
           Insufficient balance (have {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })})
         </div>
       )}
 
       {/* Spacer */}
-      <div className="flex-1 min-h-2" />
+      <div className="flex-1 min-h-3" />
 
       {/* Preview Button */}
       <button
         onClick={handlePreview}
         disabled={previewBtn.disabled}
-        className="h-10 w-full rounded-lg text-xs font-semibold text-white bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 transition-colors shrink-0"
+        className="h-12 w-full rounded-lg text-sm font-semibold text-white bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 transition-colors shrink-0"
       >
         {previewBtn.text}
       </button>

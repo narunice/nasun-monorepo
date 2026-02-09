@@ -25,7 +25,13 @@ import {
   MobileTradeLayoutV2,
   OnboardingTour,
 } from "../features/trading/components";
-import { useTradeMode, useOrderbook, useKeyboardShortcuts, useOnboardingTour, isTourCompleted } from "../features/trading/hooks";
+import {
+  useTradeMode,
+  useOrderbook,
+  useKeyboardShortcuts,
+  useOnboardingTour,
+  isTourCompleted,
+} from "../features/trading/hooks";
 import { useOrderForm } from "../features/trading/context";
 import { usePrices } from "../features/core/usePrices";
 import { type TokenSymbol, set24hChange } from "../lib/prices";
@@ -37,16 +43,16 @@ import { NewsCarousel } from "../features/news";
 
 // Fixed height for chart and orderbook to ensure consistent layout
 // 750px: room for 4+ sub-indicators in chart, TP/SL in order form without scroll
-const CHART_HEIGHT = 750;
+const CHART_HEIGHT = 770;
 // Chat panel height when expanded (below chart area)
-const CHAT_HEIGHT = 350;
+const CHAT_HEIGHT = 360;
 
 // Per-card width — shared by each right-side card and header toggles
 const CARD_W = "w-[300px] 2xl:w-[340px]";
 
 // Simple mode max width: Chart + 2 cards + gaps, centered
-// Calculation: ~600px chart + 2*300px cards + 2*12px gaps = ~1224px
-const SIMPLE_MAX_W = "xl:max-w-[1224px] 2xl:max-w-[1304px] xl:mx-auto";
+// Wider layout for more chart space: ~780px chart + 2*300px cards + 2*12px gaps ≈ 1404px
+const SIMPLE_MAX_W = "xl:max-w-[1400px] 2xl:max-w-[1520px] xl:mx-auto";
 
 type ChartView = "price" | "depth";
 
@@ -242,42 +248,49 @@ function TradePageContent() {
         {/* Col 1: MarketSelector + MarketInfoBar stacked */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           <MarketSelector />
-          <MarketInfoBar {...marketInfo} />
-        </div>
-        {/* Col 2: Interface toggle + TradingToggles stacked */}
-        <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
-          <div className="flex flex-col gap-3">
-            <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
-              <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-trading-sm ${isSimple ? "text-theme-text-primary font-medium" : "text-theme-text-muted"}`}
-                >
-                  Simple
-                </span>
+          <div className="flex items-stretch gap-3">
+            <div className="flex-1 min-w-0">
+              <MarketInfoBar {...marketInfo} />
+            </div>
+            {/* Simple mode xl+: Interface toggle inline with market info */}
+            {isSimple && (
+              <div className="hidden xl:flex shrink-0 items-center bg-theme-bg-secondary rounded-lg px-3 gap-2">
+                <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
+                <span className="text-trading-sm text-theme-text-primary font-medium">Simple</span>
                 <button
                   onClick={toggleMode}
-                  className={`w-7 h-3.5 rounded-full transition-colors ${
-                    isSimple ? "bg-theme-toggle-off" : "bg-purple-500"
-                  }`}
-                  aria-label={`Switch to ${isSimple ? "Pro" : "Simple"} mode`}
+                  className="w-7 h-3.5 rounded-full transition-colors bg-theme-toggle-off"
+                  aria-label="Switch to Pro mode"
                 >
-                  <span
-                    className={`block w-3 h-3 rounded-full bg-white transition-transform ${
-                      isSimple ? "translate-x-0.5" : "translate-x-3.5"
-                    }`}
-                  />
+                  <span className="block w-3 h-3 rounded-full bg-white transition-transform translate-x-0.5" />
                 </button>
-                <span
-                  className={`text-trading-sm ${!isSimple ? "text-theme-text-primary font-medium" : "text-theme-text-muted"}`}
-                >
-                  Pro
-                </span>
+                <span className="text-trading-sm text-theme-text-muted">Pro</span>
               </div>
-            </div>
-            {!isSimple && <TradingToggles />}
+            )}
           </div>
         </div>
+        {/* Col 2: Interface toggle + TradingToggles stacked (Pro only in header row) */}
+        {!isSimple && (
+          <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
+            <div className="flex flex-col gap-3">
+              <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
+                <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-trading-sm text-theme-text-muted">Simple</span>
+                  <button
+                    onClick={toggleMode}
+                    className="w-7 h-3.5 rounded-full transition-colors bg-purple-500"
+                    aria-label="Switch to Simple mode"
+                  >
+                    <span className="block w-3 h-3 rounded-full bg-white transition-transform translate-x-3.5" />
+                  </button>
+                  <span className="text-trading-sm text-theme-text-primary font-medium">Pro</span>
+                </div>
+              </div>
+              <TradingToggles />
+            </div>
+          </div>
+        )}
         {/* Col 3: PoolInfo box (Pro only, full height matching Col 2) */}
         {!isSimple && (
           <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
@@ -394,7 +407,7 @@ function TradePageContent() {
           {/* Col 3 (CARD_W): EnablePado + OrderForm + News + Shortcut Help */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
             <EnablePadoCard />
-            <div data-tour="orderform" className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
+            <div data-tour="orderform" style={{ minHeight: `${CHART_HEIGHT}px` }}>
               <TradingPanel mode={mode} />
             </div>
             {newsVisible ? (

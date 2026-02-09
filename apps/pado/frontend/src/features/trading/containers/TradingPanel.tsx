@@ -368,12 +368,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   if (isSimple) {
     return (
       <div className="h-full">
-        <div className="bg-theme-bg-secondary rounded-lg p-3 h-full flex flex-col">
+        <div className="bg-theme-bg-secondary rounded-lg p-4 h-full flex flex-col">
           {/* Header with title and balance */}
-          <div className="flex items-center justify-between mb-3 shrink-0">
-            <h3 className="text-sm font-semibold text-theme-text-primary">Quick Trade</h3>
+          <div className="flex items-center justify-between mb-4 shrink-0">
+            <h3 className="text-base font-semibold text-theme-text-primary">Quick Trade</h3>
             {isConnected && (
-              <span className="text-xs text-theme-text-muted">
+              <span className="text-sm text-theme-text-muted font-mono">
                 ${availableQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             )}
@@ -381,22 +381,22 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
           {/* Connect wallet banner when not connected */}
           {!isConnected && (
-            <div className="mb-3 p-3 rounded-lg text-xs bg-theme-bg-tertiary text-theme-text-secondary text-center shrink-0">
+            <div className="mb-3 p-3 rounded-lg text-sm bg-theme-bg-tertiary text-theme-text-secondary text-center shrink-0">
               Connect wallet to start trading
             </div>
           )}
 
           {/* Enable Pado banner when connected but no BM */}
           {isConnected && !balanceManagerId && (
-            <div className="mb-3 p-3 bg-theme-bg-tertiary rounded-lg text-center shrink-0">
-              <div className="text-xs text-theme-text-secondary mb-2">
+            <div className="mb-3 p-4 bg-theme-bg-tertiary rounded-lg text-center shrink-0">
+              <div className="text-sm text-theme-text-secondary mb-2">
                 Enable Pado to start trading
                 <EnablePadoInfo />
               </div>
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
-                className="px-4 py-1.5 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-xs font-medium transition-colors"
+                className="px-5 py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 {isLoading ? 'Enabling...' : 'Enable Pado'}
               </button>
