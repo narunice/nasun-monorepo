@@ -19,8 +19,8 @@ export default function PostSidebar() {
             onClick={handleCopyLink}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
               copied
-                ? "bg-nasun-c4 text-white border border-nasun-c4"
-                : "bg-white/5 border border-white/10 text-gray-400 hover:bg-nasun-c4/50 hover:text-white hover:border-nasun-c4"
+                ? "bg-nasun-nw1 text-white border border-nasun-nw1"
+                : "bg-white/5 border border-white/10 text-gray-400 hover:bg-nasun-nw1/50 hover:text-white hover:border-nasun-nw1"
             }`}
             title="Copy Link"
           >
@@ -35,7 +35,7 @@ export default function PostSidebar() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -5 }}
                 transition={{ duration: 0.2 }}
-                className="absolute left-12 top-1/2 -translate-y-1/2 text-sm text-nasun-c4  whitespace-nowrap"
+                className="absolute left-12 top-1/2 -translate-y-1/2 text-sm text-nasun-nw1  whitespace-nowrap"
               >
                 URL copied!
               </motion.span>

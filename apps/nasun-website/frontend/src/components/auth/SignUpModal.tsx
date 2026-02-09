@@ -19,12 +19,7 @@ interface SignUpModalProps {
 export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
-  const {
-    isAuthenticated,
-    signInWithGoogle,
-    signInWithTwitter,
-    signInWithMetaMask,
-  } = useAuth();
+  const { isAuthenticated, signInWithGoogle, signInWithTwitter, signInWithMetaMask } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
@@ -51,7 +46,7 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
   const handleMetaMaskSuccess = async (
     identityId: string,
     _token: string,
-    walletAddress: string
+    walletAddress: string,
   ) => {
     try {
       await signInWithMetaMask(identityId, walletAddress);
@@ -67,7 +62,7 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
   };
 
   const providerBtnClass =
-    "flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-nasun-black/80 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+    "flex items-center justify-center gap-3 w-full px-4 py-3 rounded-lg text-base font-medium text-nasun-black/80 bg-gray-200 hover:bg-gray-300 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <Dialog
@@ -78,23 +73,28 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
     >
       <DialogContent
         className="bg-nasun-white border-gray-200 max-w-sm"
-        onEscapeKeyDown={(e) => { if (isSigningIn) e.preventDefault(); }}
-        onPointerDownOutside={(e) => { if (isSigningIn) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => {
+          if (isSigningIn) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (isSigningIn) e.preventDefault();
+        }}
       >
         <DialogHeader>
-          <DialogTitle className="text-nasun-black text-xl font-semibold text-center">
+          <DialogTitle
+            className="text-nasun-black 
+          text-xl tracking-wide font-medium text-center"
+          >
             Join Nasun
           </DialogTitle>
-          <DialogDescription className="text-nasun-black/60 text-center">
+          <DialogDescription className="text-nasun-black/80 text-center text-base">
             Choose your sign-up method
           </DialogDescription>
         </DialogHeader>
 
         {isAuthenticated ? (
           <div className="flex flex-col items-center gap-4 py-4">
-            <p className="text-nasun-black/70 text-sm text-center">
-              You are already signed in.
-            </p>
+            <p className="text-nasun-black/80 text-sm text-center">You are already signed in.</p>
             <button
               onClick={() => {
                 onClose();

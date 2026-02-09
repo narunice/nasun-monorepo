@@ -22,7 +22,7 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-black/80 p-3 rounded-full shadow-lg hover:bg-nasun-black/60 transition-all border border-nasun-white/30 hover:border-white/50 ${
+    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-white/10 p-3 rounded-full shadow-lg hover:bg-black/50 transition-all border border-nasun-white/50 hover:border-white/60 ${
       direction === "left" ? "-left-20 xl:-left-24" : "-right-20 xl:-right-24"
     }`}
     aria-label={direction === "left" ? "Previous slide" : "Next slide"}
@@ -220,7 +220,7 @@ function WhatWeBuildingSection() {
           <SectionTitle
             as="h2"
             color="white"
-            className="!font-eurostile text-center !mb-6 md:!mb-8 lg:!mb-10 uppercase"
+            className="!font-eurostile text-center !mb-6 md:!mb-9 lg:!mb-12 uppercase"
           >
             What We're Building
           </SectionTitle>
@@ -233,8 +233,8 @@ function WhatWeBuildingSection() {
             className={[
               "relative w-full max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto px-0 lg:px-16 xl:px-20",
               "[&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-6",
-              "[&_.slick-dots_li_button:before]:!text-white/40",
-              "[&_.slick-dots_li.slick-active_button:before]:!text-white",
+              "[&_.slick-dots_li_button:before]:!text-nasun-white/60",
+              "[&_.slick-dots_li.slick-active_button:before]:!text-nasun-nw1",
             ].join(" ")}
           >
             <Slider ref={sliderRef} {...sliderSettings}>

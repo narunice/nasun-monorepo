@@ -5,7 +5,7 @@ import wave1VideoMobileMP4 from "../../assets/videos/home-wave1-wave-light-mobil
 import leaderboardImage from "../../assets/images/leaderboard-img.jpg";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import { ButtonV2 } from "@/components/ui/button-v2";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface Wave1SectionV3Props {
   shouldLoadVideo?: boolean;
@@ -140,9 +140,9 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                   Tasks: X follows, content, testing
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
-                  <ButtonV2 variant="blue" size="sm" className="w-[160px]">
+                  <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
                     Register Now
-                  </ButtonV2>
+                  </ButtonV3>
                 </div>
               </div>
             </Link>
@@ -161,9 +161,9 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                   <br />+ Alpha access + exclusive giveaways
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
-                  <ButtonV2 variant="blue" size="sm" className="w-[160px]">
+                  <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
                     Allow List
-                  </ButtonV2>
+                  </ButtonV3>
                 </div>
               </div>
             </Link>
@@ -181,9 +181,9 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                   Launch pool + Rare Battalion NFTs &rarr; Exclusive utilities
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
-                  <ButtonV2 variant="blue" size="sm" className="w-[160px]">
+                  <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
                     Join Program
-                  </ButtonV2>
+                  </ButtonV3>
                 </div>
               </div>
             </Link>

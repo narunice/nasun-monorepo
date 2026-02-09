@@ -8,7 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
-import { Tag } from "@/components/ui/tag";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
@@ -21,7 +21,7 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-black p-3 rounded-full shadow-lg hover:bg-nasun-black/50 transition-all border border-nasun-white/50 hover:border-white ${
+    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-white/10 p-3 rounded-full shadow-lg hover:bg-black/50 transition-all border border-nasun-white/50 hover:border-white/60 ${
       direction === "left" ? "-left-14" : "-right-14"
     }`}
     aria-label={direction === "left" ? "Previous awards" : "Next awards"}
@@ -88,7 +88,7 @@ function AwardsGrantsSection() {
   };
 
   return (
-    <SectionLayout id="awards-grants" className="relative text-center min-h-screen bg-black">
+    <SectionLayout id="awards-grants" className="relative text-center min-h-screen bg-nasun-black">
       <FadeInUp>
         {/* 컨텐츠 */}
         <div className="relative max-w-8xl mx-auto z-10 h-full">
@@ -125,7 +125,7 @@ function AwardsGrantsSection() {
               No awards posts available.
             </div>
           ) : (
-            <div className="w-full dark:[&_.slick-dots]:dots-dark px-0 md:px-10 lg:px-12 [&_.slick-dots_li.slick-active_button:before]:!text-nasun-c1">
+            <div className="w-full px-0 md:px-10 lg:px-12 [&_.slick-dots_li_button:before]:!text-nasun-white/60 [&_.slick-dots_li.slick-active_button:before]:!text-nasun-nw1">
               <Slider {...sliderSettings}>
                 {posts.map((post) => {
                   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
@@ -136,45 +136,39 @@ function AwardsGrantsSection() {
                       to={`/awards-grants/${post.slug}`}
                       className="block py-4 px-4 md:px-6 lg:px-8 h-full mx-auto max-w-xl"
                     >
-                      <div className="group h-[446px] flex flex-col bg-nasun-black rounded-sm shadow-lg border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 pt-4 md:pt-5 lg:pt-6 overflow-hidden">
+                      <div className="group h-[446px] flex flex-col bg-nasun-white rounded-sm shadow-lg transition-all duration-300 overflow-hidden">
                         {/* Image */}
                         {imageUrl && (
-                          <div className="w-full px-4 md:px-5 lg:px-6 pb-2">
-                            <div className="w-full h-44 overflow-hidden rounded-sm">
-                              <img
-                                src={imageUrl}
-                                alt="Featured"
-                                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                              />
-                            </div>
+                          <div className="w-full aspect-[4/3] overflow-hidden">
+                            <img
+                              src={imageUrl}
+                              alt="Featured"
+                              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                            />
                           </div>
                         )}
 
                         {/* Content */}
-                        <div className="flex-grow flex flex-col p-4 md:p-5 lg:p-6 !pt-0">
+                        <div className="flex-grow flex flex-col p-4 md:p-5 lg:p-6 pt-3 md:pt-3.5 lg:pt-4">
                           {/* Title */}
-                          <h4 className="line-clamp-2 !text-lg md:!text-xl lg:!text-2xl text-nasun-white mb-2 text-left group-hover:text-white transition-colors ">
+                          <h4 className="line-clamp-2 !text-lg md:!text-xl lg:!text-2xl text-nasun-black mb-2 text-left transition-colors">
                             {stripHtml(post.title.rendered)}
                           </h4>
                           {/* Divider */}
-                          <hr className="border-nasun-white/50 mb-3" />
+                          <hr className="border-nasun-black/10 mb-3" />
                           {/* Date */}{" "}
                           <div className="flex items-center justify-between">
-                            <p className=" !text-sm text-nasun-white/80">{formatDate(post.date)}</p>
+                            <p className="!text-sm text-nasun-black/60">{formatDate(post.date)}</p>
                           </div>
                           {/* Excerpt */}
-                          <p className=" !text-base text-nasun-white/80 line-clamp-2 flex-grow my-1 text-left">
+                          <p className="!text-base text-nasun-black/80 line-clamp-2 flex-grow my-1 text-left">
                             {stripHtml(post.excerpt.rendered)}
                           </p>
                           {/* Read More */}
                           <div className="flex justify-end pt-0 md:pt-2 mb-0 md:-mb-2">
-                            <Tag
-                              variant="filledC1"
-                              size="sm"
-                              className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
-                            >
+                            <ButtonV3 variant="gradient" size="sm" className="capitalize">
                               {t("awardsGrants.readMore")}
-                            </Tag>
+                            </ButtonV3>
                           </div>
                         </div>
                       </div>

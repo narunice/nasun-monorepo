@@ -56,7 +56,7 @@ export default function Footer() {
   };
 
   return (
-    <div className={isHomePage ? "bg-black" : "bg-nasun-black"}>
+    <div className="bg-nasun-black">
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>
