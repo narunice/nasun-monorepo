@@ -54,7 +54,7 @@ export function InlineTokenSelector({
         type="button"
         onClick={() => canOpen && setIsOpen(!isOpen)}
         disabled={!canOpen}
-        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
           canOpen
             ? 'bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary cursor-pointer'
             : 'bg-theme-bg-tertiary text-theme-text-muted cursor-default'
@@ -63,8 +63,8 @@ export function InlineTokenSelector({
         <span>{selectedToken}</span>
         {canOpen && (
           <svg
-            width="8"
-            height="8"
+            width="10"
+            height="10"
             viewBox="0 0 8 8"
             fill="none"
             className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -86,12 +86,12 @@ export function InlineTokenSelector({
             <button
               key={token.symbol}
               onClick={() => handleSelect(token.symbol)}
-              className={`w-full flex flex-col items-start px-3 py-2 text-xs hover:bg-theme-bg-tertiary transition-colors ${
+              className={`w-full flex flex-col items-start px-3 py-2 text-sm hover:bg-theme-bg-tertiary transition-colors ${
                 token.symbol === selectedToken ? 'text-pd1' : 'text-theme-text-primary'
               }`}
             >
               <span className="font-semibold">{token.symbol}</span>
-              <span className="text-[10px] text-theme-text-muted">{token.name}</span>
+              <span className="text-xs text-theme-text-muted">{token.name}</span>
             </button>
           ))}
         </div>

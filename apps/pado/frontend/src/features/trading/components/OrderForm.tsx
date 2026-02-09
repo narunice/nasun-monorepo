@@ -83,8 +83,8 @@ export function OrderForm({
   const isBuy = side === 'buy';
 
   const effectivePrice = useMemo(
-    () => isMarket ? (midPrice || 0) : parseFloat(price) || 0,
-    [isMarket, midPrice, price]
+    () => (isMarket || isTrailingStop) ? (midPrice || 0) : parseFloat(price) || 0,
+    [isMarket, isTrailingStop, midPrice, price]
   );
   const amountNum = parseFloat(amount) || 0;
   const total = effectivePrice * amountNum;
