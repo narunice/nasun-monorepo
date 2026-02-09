@@ -1,15 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import type { ChatMessage as ChatMessageType } from '../types';
+import type { ChatTextSize } from '../hooks/useChatTextSize';
 
 interface Props {
   messages: ChatMessageType[];
   currentAddress: string | null;
   hasMore: boolean;
   onLoadMore: () => void;
+  textSize?: ChatTextSize;
 }
 
-export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore }: Props) {
+export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore, textSize = 0 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
 
@@ -68,6 +70,7 @@ export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore 
           isOwnMessage={
             !!currentAddress && msg.sender.toLowerCase() === currentAddress.toLowerCase()
           }
+          textSize={textSize}
         />
       ))}
     </div>
