@@ -1,7 +1,9 @@
 import { shortenAddress } from '@nasun/wallet';
 import Avatar from 'boring-avatars';
 import type { ChatMessage as ChatMessageType } from '../types';
+import { isTradeShare, parseTradeShare } from '../types';
 import type { ChatTextSize } from '../hooks/useChatTextSize';
+import { NETWORK_CONFIG } from '../../../config/network';
 
 // Text size presets: [content, sender, system, avatar]
 const SIZE_PRESETS: Record<ChatTextSize, { content: string; sender: string; system: string; avatar: number }> = {
@@ -29,6 +31,64 @@ function formatSender(message: ChatMessageType): string {
   return shortenAddress(message.sender);
 }
 
+function TradeShareCard({ content, sizes }: { content: string; sizes: typeof SIZE_PRESETS[0] }) {
+  const data = parseTradeShare(content);
+  if (!data) return <p className={`${sizes.content} text-theme-text-muted italic`}>Invalid trade data</p>;
+
+  const isBuy = data.side === 'BUY';
+  const hasPnl = data.pnl !== undefined && data.pnl !== null;
+  const pnlPositive = hasPnl && data.pnl! > 0;
+  const pnlNegative = hasPnl && data.pnl! < 0;
+  const explorerUrl = NETWORK_CONFIG.explorerUrl;
+
+  return (
+    <div className="bg-theme-bg-primary rounded border border-theme-border p-2 mt-0.5 max-w-[260px]">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+            isBuy ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+          }`}>
+            {data.side}
+          </span>
+          <span className="text-[11px] font-medium text-theme-text-primary">{data.pair}</span>
+        </div>
+        {explorerUrl && data.tx.length > 8 && (
+          <a
+            href={`${explorerUrl}/tx/${data.tx}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[9px] text-pd3 hover:text-pd3/80 transition-colors"
+          >
+            View TX
+          </a>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-1 text-[10px]">
+        <div>
+          <div className="text-theme-text-muted">Price</div>
+          <div className="font-mono text-theme-text-primary">${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        </div>
+        <div>
+          <div className="text-theme-text-muted">Qty</div>
+          <div className="font-mono text-theme-text-primary">{data.qty.toFixed(5)}</div>
+        </div>
+        <div>
+          <div className="text-theme-text-muted">Total</div>
+          <div className="font-mono text-theme-text-primary">${data.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        </div>
+      </div>
+      {hasPnl && (
+        <div className={`mt-1.5 pt-1 border-t border-theme-border/50 text-[10px] font-mono ${
+          pnlPositive ? 'text-green-400' : pnlNegative ? 'text-red-400' : 'text-theme-text-muted'
+        }`}>
+          P&L: {data.pnl! > 0 ? '+' : ''}${data.pnl!.toFixed(2)}
+          {data.pnlPct !== undefined && ` (${data.pnlPct > 0 ? '+' : ''}${data.pnlPct.toFixed(2)}%)`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
   const sizes = SIZE_PRESETS[textSize];
 
@@ -41,6 +101,8 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
       </div>
     );
   }
+
+  const tradeShare = isTradeShare(message.content);
 
   return (
     <div className={`group ${message.pending ? 'opacity-60' : ''} ${
@@ -59,11 +121,15 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
           {formatTime(message.timestamp)}
         </span>
       </div>
-      <p className={`${sizes.content} text-theme-text-primary break-words leading-relaxed ${
-        isOwnMessage ? 'text-right' : ''
-      }`}>
-        {message.content}
-      </p>
+      {tradeShare ? (
+        <TradeShareCard content={message.content} sizes={sizes} />
+      ) : (
+        <p className={`${sizes.content} text-theme-text-primary break-words leading-relaxed ${
+          isOwnMessage ? 'text-right' : ''
+        }`}>
+          {message.content}
+        </p>
+      )}
     </div>
   );
 }

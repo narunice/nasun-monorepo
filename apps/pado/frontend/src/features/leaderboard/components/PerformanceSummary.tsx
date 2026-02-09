@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { TraderStatsResponse, TraderFill } from '../types';
 import type { TraderClassification } from '../hooks/useTraderClassification';
+import { computeBadges } from '../lib/badges';
+import { BadgeDisplay } from './BadgeDisplay';
 
 interface PerformanceSummaryProps {
   stats: TraderStatsResponse | undefined;
@@ -55,6 +57,7 @@ function computeMetrics(stats: TraderStatsResponse | undefined, fills: TraderFil
 
 export function PerformanceSummary({ stats, fills, classification, isLoading }: PerformanceSummaryProps) {
   const metrics = useMemo(() => computeMetrics(stats, fills), [stats, fills]);
+  const badges = useMemo(() => computeBadges(stats), [stats]);
 
   if (isLoading) {
     return (
@@ -92,6 +95,14 @@ export function PerformanceSummary({ stats, fills, classification, isLoading }: 
         />
         <MetricCard label="Markets Traded" value={metrics.uniquePools.toString()} />
       </div>
+
+      {/* Achievements */}
+      {badges.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-theme-border/50">
+          <h4 className="text-xs font-medium text-theme-text-muted mb-2">Achievements</h4>
+          <BadgeDisplay badges={badges} />
+        </div>
+      )}
     </div>
   );
 }

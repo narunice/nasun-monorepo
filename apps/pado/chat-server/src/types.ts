@@ -173,6 +173,8 @@ export interface ChatServerConfig {
   excludedAddresses: string[];
   // Competitions
   competitionAdminKey: string;
+  // Large trade broadcast
+  largeTradeThresholdNusdc: number;
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -196,4 +198,5 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   excludedAddresses: (process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
   // Competitions
   competitionAdminKey: process.env.COMPETITION_ADMIN_KEY || '',
+  largeTradeThresholdNusdc: Math.max(parseInt(process.env.LARGE_TRADE_THRESHOLD_NUSDC || '1000', 10), 100),
 };
