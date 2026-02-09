@@ -182,6 +182,9 @@ export interface EthereumNFT {
   /** Data source */
   source: 'alchemy' | 'etherscan';
 
+  /** Blockchain network */
+  chain?: 'ethereum' | 'polygon';
+
   /** Last updated timestamp */
   lastUpdated?: string;
 }

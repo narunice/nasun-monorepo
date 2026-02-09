@@ -320,8 +320,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ) : // Case 2: Linked but Inactive or Different -> Activate/Switch Button
                 !isMetaMaskActive ? (
                   <div key="actions" className="flex gap-2">
-                    <Button size="sm" variant="filledOutlineC7" onClick={handleActivateMetaMask}>
-                      {isDifferentWalletActive ? "Switch" : "Activate"}
+                    <Button
+                      size="sm"
+                      variant="filledOutlineC7"
+                      onClick={isDifferentWalletActive ? handleLinkMetaMask : handleActivateMetaMask}
+                      disabled={isDifferentWalletActive ? (isMetaMaskLinking || isLinking) : false}
+                    >
+                      {isDifferentWalletActive
+                        ? (isMetaMaskLinking ? "Switching..." : "Switch")
+                        : "Activate"}
                     </Button>
                     {!isMetaMaskPrimary && (
                       <Button
