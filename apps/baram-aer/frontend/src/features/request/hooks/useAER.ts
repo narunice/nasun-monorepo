@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchAERByRequestId, type AERData } from '../services/ecrService';
+import { fetchAERByRequestId, type AERData } from '../services/aerService';
 
 interface UseAERReturn {
   aer: AERData | null;

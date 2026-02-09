@@ -267,15 +267,18 @@ function handleConnection(socket: net.Socket): void {
   activeSocket = socket;
 
   let buffer = '';
+  let parseErrorCount = 0;
+  const MAX_PARSE_ERRORS = 10;
 
   socket.on('data', async (data) => {
-    buffer += data.toString();
-
-    if (buffer.length > MAX_BUFFER_SIZE) {
+    // Check buffer size BEFORE concatenation to prevent OOM from single large chunk
+    const chunk = data.toString();
+    if (buffer.length + chunk.length > MAX_BUFFER_SIZE) {
       console.error('[Enclave] Buffer overflow — dropping connection');
       socket.destroy();
       return;
     }
+    buffer += chunk;
 
     // Check for complete message (newline-delimited JSON)
     const lines = buffer.split('\n');
@@ -286,6 +289,7 @@ function handleConnection(socket: net.Socket): void {
 
       try {
         const request: EnclaveRequest = JSON.parse(line);
+        parseErrorCount = 0; // Reset on successful parse
         const response = await handleRequest(request);
 
         // Only send response if one was generated (proxy responses don't need a reply)
@@ -293,7 +297,15 @@ function handleConnection(socket: net.Socket): void {
           socket.write(JSON.stringify(response) + '\n');
         }
       } catch (error) {
-        console.error('[Enclave] Failed to parse request:', error);
+        parseErrorCount++;
+        console.error(`[Enclave] Failed to parse request (${parseErrorCount}/${MAX_PARSE_ERRORS}):`, error);
+
+        if (parseErrorCount >= MAX_PARSE_ERRORS) {
+          console.error('[Enclave] Too many parse errors — dropping connection');
+          socket.destroy();
+          return;
+        }
+
         const errorResponse: EnclaveResponse = {
           type: 'ERROR',
           requestId: 'unknown',

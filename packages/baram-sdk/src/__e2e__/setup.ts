@@ -162,3 +162,23 @@ export function logTest(message: string): void {
 export function formatNusdc(amount: number): string {
   return `${(amount / 1_000_000).toFixed(6)} NUSDC`;
 }
+
+/**
+ * Check if any executor endpoint is reachable (health check).
+ * Returns true if at least one executor responds within 5 seconds.
+ */
+export async function isExecutorReachable(endpointUrl: string): Promise<boolean> {
+  try {
+    const url = new URL('/health', endpointUrl);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(url.href, { signal: controller.signal });
+      return res.ok;
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch {
+    return false;
+  }
+}

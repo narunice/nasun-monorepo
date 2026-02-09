@@ -10,6 +10,13 @@ export interface BaramStackProps extends cdk.StackProps {
   baramPackageId: string;
   baramRegistryId: string;
 
+  // AER (AI Execution Report) contract addresses
+  aerPackageId?: string;
+  aerRegistryId?: string;
+
+  // Executor registry address
+  executorRegistryId?: string;
+
   // Sui RPC URL
   suiRpcUrl?: string;
 
@@ -27,6 +34,9 @@ export class BaramStack extends cdk.Stack {
     const {
       baramPackageId,
       baramRegistryId,
+      aerPackageId = '',
+      aerRegistryId = '',
+      executorRegistryId = '',
       suiRpcUrl = 'https://rpc.devnet.nasun.io',
       corsAllowedOrigins = ['https://baram.nasun.io', 'http://localhost:5177'],
     } = props;
@@ -60,6 +70,9 @@ export class BaramStack extends cdk.Stack {
         SUI_RPC_URL: suiRpcUrl,
         BARAM_PACKAGE_ID: baramPackageId,
         BARAM_REGISTRY_ID: baramRegistryId,
+        AER_PACKAGE_ID: aerPackageId,
+        AER_REGISTRY_ID: aerRegistryId,
+        EXECUTOR_REGISTRY_ID: executorRegistryId,
         EXECUTOR_SECRET_NAME: 'baram/executor',
         GROQ_SECRET_NAME: 'baram/groq',
         CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),

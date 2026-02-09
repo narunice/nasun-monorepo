@@ -6,6 +6,8 @@ import { Transaction } from '@mysten/sui/transactions';
 import { BARAM_CONFIG } from '@/config/network';
 import type { CoinRef } from './coinService';
 
+const SUI_CLOCK_ID = '0x6';
+
 export interface BuildRequestParams {
   coins: CoinRef[];
   promptHashBytes: number[];
@@ -48,7 +50,7 @@ export function buildCreateRequestTransaction(params: BuildRequestParams): Trans
       tx.pure.vector('u8', promptHashBytes), // prompt_hash
       tx.pure.string(model), // model
       tx.pure.address(executorOperator), // executor from registry
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
 
@@ -68,7 +70,7 @@ export function buildCancelRequestTransaction(requestId: number): Transaction {
     arguments: [
       tx.object(BARAM_CONFIG.registryId),
       tx.pure.u64(requestId),
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
   return tx;
@@ -112,7 +114,7 @@ export function buildCreateBudgetTransaction(params: BuildCreateBudgetParams): T
       tx.pure.vector('string', allowedModels),
       tx.pure.vector('address', allowedExecutors),
       tx.pure.u64(expiresAt),
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
 

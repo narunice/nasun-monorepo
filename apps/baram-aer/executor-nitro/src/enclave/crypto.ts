@@ -36,6 +36,11 @@ let requireEncryption = true;
  * Set to false for non-TEE (simulation) mode to accept plaintext prompts from SDK.
  */
 export function setRequireEncryption(required: boolean): void {
+  // Safety: never allow plaintext fallback in production
+  if (!required && process.env.NODE_ENV === 'production') {
+    console.warn('[Enclave/Crypto] WARNING: Forcing encryption in production environment');
+    required = true;
+  }
   requireEncryption = required;
   console.log(`[Enclave/Crypto] Encryption requirement: ${required ? 'mandatory (Nitro)' : 'optional (simulation)'}`);
 }

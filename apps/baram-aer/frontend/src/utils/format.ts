@@ -48,3 +48,12 @@ export function formatTimestamp(ms: number): string {
     minute: '2-digit',
   });
 }
+
+/** Format timestamp as short time (HH:MM AM/PM) for chat messages */
+export function formatMessageTime(ms: number): string {
+  if (!ms) return '';
+  return new Date(ms).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

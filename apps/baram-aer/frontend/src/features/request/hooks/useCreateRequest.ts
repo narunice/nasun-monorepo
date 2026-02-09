@@ -198,7 +198,10 @@ export function useCreateRequest(): UseCreateRequestReturn {
         executeResult = await executeResponse.json();
 
         if (!executeResult.success) {
-          throw new Error(executeResult.error || 'Execution failed');
+          // Sanitize executor error: truncate and strip URLs to prevent phishing
+          const rawErr = String(executeResult.error || 'Execution failed');
+          const safeErr = rawErr.slice(0, 200).replace(/https?:\/\/\S+/g, '[URL removed]');
+          throw new Error(safeErr);
         }
       } catch (executeError) {
         // Execution failed — auto-cancel to release escrow immediately

@@ -14,6 +14,7 @@ import {
   createUserClient,
   createAgentClient,
   ensureNusdcBalance,
+  isExecutorReachable,
   requestFaucet,
   logTest,
   formatNusdc,
@@ -26,6 +27,7 @@ describe('Baram Budget E2E', () => {
   let userClient: BaramClient;
   let agentClient: BaramClient;
   let hasExecutors = false;
+  let executorReachable = false;
 
   beforeAll(async () => {
     logTest('Setting up Budget E2E tests...');
@@ -50,9 +52,13 @@ describe('Baram Budget E2E', () => {
     await requestFaucet(TEST_AGENT_ADDRESS);
     logTest('Agent has gas for transactions');
 
-    // Check if executors are available (needed for executeWithBudget happy path)
+    // Check if executors are available and reachable (needed for executeWithBudget happy path)
     const executors = await userClient.getExecutors();
     hasExecutors = executors.length > 0;
+    if (hasExecutors) {
+      executorReachable = await isExecutorReachable(executors[0].endpointUrl);
+      logTest(`Executor endpoint reachable: ${executorReachable}`);
+    }
     logTest(`Executors available: ${hasExecutors} (${executors.length} found)`);
   });
 
@@ -88,7 +94,7 @@ describe('Baram Budget E2E', () => {
     expect(createResult.txDigest).toBeTruthy();
 
     // Wait for state to sync
-    await sleep(2000);
+    await sleep(3000);
 
     // ==========================================
     // Step 2: Verify Budget exists and has correct data
@@ -141,7 +147,7 @@ describe('Baram Budget E2E', () => {
     const depositTx = await userClient.depositToBudget(budgetId, depositMoreAmount);
     logTest(`Deposit TX: ${depositTx}`);
 
-    await sleep(2000);
+    await sleep(3000);
 
     const budgetAfterDeposit = await userClient.getBudget(budgetId);
     logTest(`Budget balance after deposit: ${formatNusdc(budgetAfterDeposit!.balance)}`);
@@ -151,8 +157,8 @@ describe('Baram Budget E2E', () => {
     // ==========================================
     // Step 6: Execute with Budget (requires active executor)
     // ==========================================
-    if (!hasExecutors) {
-      logTest('Step 6: SKIPPED - No executors available for executeWithBudget()');
+    if (!hasExecutors || !executorReachable) {
+      logTest('Step 6: SKIPPED - No reachable executor for executeWithBudget()');
     } else {
       logTest('Step 6: Agent executing with Budget...');
 
@@ -177,7 +183,7 @@ describe('Baram Budget E2E', () => {
       expect(execResult.txDigest).toBeTruthy();
 
       // Verify budget balance decreased
-      await sleep(2000);
+      await sleep(3000);
       const budgetAfterExec = await agentClient.getBudget(budgetId);
       logTest(`Budget balance after execute: ${formatNusdc(budgetAfterExec!.balance)}`);
       expect(budgetAfterExec!.balance).toBeLessThan(budgetBeforeExec!.balance);
@@ -215,7 +221,7 @@ describe('Baram Budget E2E', () => {
     const withdrawTx = await userClient.withdrawFromBudget(budgetId, withdrawAmount);
     logTest(`Withdraw TX: ${withdrawTx}`);
 
-    await sleep(2000);
+    await sleep(3000);
 
     const budgetAfterWithdraw = await userClient.getBudget(budgetId);
     const userBalanceAfterWithdraw = await userClient.getBalance();
@@ -238,7 +244,7 @@ describe('Baram Budget E2E', () => {
     const deactivateTx = await userClient.deactivateBudget(budgetId);
     logTest(`Deactivate TX: ${deactivateTx}`);
 
-    await sleep(2000);
+    await sleep(3000);
 
     const budgetAfterDeactivate = await userClient.getBudget(budgetId);
     const userBalanceAfterDeactivate = await userClient.getBalance();
@@ -275,6 +281,9 @@ describe('Baram Budget E2E', () => {
   });
 
   it('should reject unauthorized agent', async () => {
+    // Wait for previous test's coin operations to finalize
+    await sleep(3000);
+
     // Create a Budget for testing unauthorized access
     const createResult = await userClient.createBudget({
       agent: TEST_AGENT_ADDRESS,
@@ -283,7 +292,7 @@ describe('Baram Budget E2E', () => {
       allowedModels: ['llama-3.3-70b-versatile'],
     });
 
-    await sleep(2000);
+    await sleep(3000);
 
     // Create a new client with a different keypair (unauthorized)
     const { Ed25519Keypair } = await import('@mysten/sui/keypairs/ed25519');

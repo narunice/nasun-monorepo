@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
-import { useAER } from '../hooks/useECR';
+import { useAER } from '../hooks/useAER';
 import { LocalReceiptContent } from '@/components/receipt/LocalReceiptContent';
 import { OnChainReceiptContent } from '@/components/receipt/OnChainReceiptContent';
 import type { MessageMetadata } from '@/types/chat';

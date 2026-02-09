@@ -114,11 +114,11 @@ export class BaramClient {
    * @returns Balance in NUSDC smallest units (1,000,000 = 1 NUSDC)
    */
   async getBalance(): Promise<number> {
-    const coins = await this.client.getCoins({
+    const balance = await this.client.getBalance({
       owner: this.address,
       coinType: this.config.tokens.nusdcType,
     });
-    return coins.data.reduce((sum, c) => sum + Number(c.balance), 0);
+    return Number(balance.totalBalance);
   }
 
   /**
