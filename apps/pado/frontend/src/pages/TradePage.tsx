@@ -23,8 +23,9 @@ import {
   PoolInfo,
   ShortcutHelpTooltip,
   MobileTradeLayout,
+  OnboardingTour,
 } from "../features/trading/components";
-import { useTradeMode, useOrderbook, useKeyboardShortcuts } from "../features/trading/hooks";
+import { useTradeMode, useOrderbook, useKeyboardShortcuts, useOnboardingTour, isTourCompleted } from "../features/trading/hooks";
 import { useOrderForm } from "../features/trading/context";
 import { usePrices } from "../features/core/usePrices";
 import { type TokenSymbol, set24hChange } from "../lib/prices";
@@ -180,6 +181,15 @@ function TradePageContent() {
   const [chatFloating, setChatFloating] = useState(false);
   const [newsVisible, setNewsVisible] = useState(true);
   const [chartView, setChartView] = useState<ChartView>("price");
+  const tour = useOnboardingTour();
+
+  // Auto-start tour on first visit (Pro mode, xl+ viewport, not completed)
+  useEffect(() => {
+    if (!isSimple && !isTourCompleted() && window.innerWidth >= 1280) {
+      const timer = setTimeout(() => tour.start(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
   const { currentPool } = useMarket();
   const { data: orderbookData } = useOrderbook();
   const { setPrice } = useOrderForm();
@@ -349,7 +359,7 @@ function TradePageContent() {
         <div className="hidden xl:flex gap-3">
           {/* Col 1 (flex): Chart + BottomTab */}
           <div className="flex-1 min-w-0 flex flex-col gap-3">
-            <div style={{ height: `${CHART_HEIGHT}px` }}>
+            <div data-tour="chart" style={{ height: `${CHART_HEIGHT}px` }}>
               <ChartArea
                 chartView={chartView}
                 onChartViewChange={setChartView}
@@ -366,6 +376,7 @@ function TradePageContent() {
           {/* Col 2 (CARD_W): Orderbook + Chat */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
             <div
+              data-tour="orderbook"
               className="bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
               style={{ height: `${CHART_HEIGHT}px` }}
             >
@@ -373,7 +384,7 @@ function TradePageContent() {
             </div>
             {!chatFloating &&
               (chatVisible ? (
-                <div style={{ height: `${CHAT_HEIGHT}px` }}>
+                <div data-tour="chat" style={{ height: `${CHAT_HEIGHT}px` }}>
                   <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
                 </div>
               ) : (
@@ -383,7 +394,7 @@ function TradePageContent() {
           {/* Col 3 (CARD_W): EnablePado + OrderForm + News + Shortcut Help */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
             <EnablePadoCard />
-            <div className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
+            <div data-tour="orderform" className="overflow-y-auto" style={{ height: `${CHART_HEIGHT}px` }}>
               <TradingPanel mode={mode} />
             </div>
             {newsVisible ? (
@@ -474,6 +485,9 @@ function TradePageContent() {
 
       {/* Chat drawer (below xl) — available at both lg-xl and mobile */}
       <MobileChatDrawer />
+
+      {/* Onboarding tour overlay */}
+      <OnboardingTour tour={tour} />
     </div>
   );
 }

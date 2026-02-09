@@ -22,3 +22,4 @@ export { ShortcutHelpTooltip } from './ShortcutHelpTooltip';
 export { MobileTradeLayout } from './MobileTradeLayout';
 export { MobileBottomBar } from './MobileBottomBar';
 export { TPSLKeeperBadge } from './TPSLKeeperBadge';
+export { OnboardingTour } from './OnboardingTour';

@@ -5,6 +5,7 @@
 
 import {
   AssetOverview,
+  PnlChart,
   TokenBalanceList,
   TradeStats,
   ActivityTabs,
@@ -17,6 +18,9 @@ export function PortfolioPage() {
 
       {/* Total Asset Value */}
       <AssetOverview />
+
+      {/* P&L Equity Curve */}
+      <PnlChart />
 
       {/* Token Balance List */}
       <TokenBalanceList />
