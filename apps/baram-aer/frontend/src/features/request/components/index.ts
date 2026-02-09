@@ -1,2 +1,2 @@
 export { AttestationDisplay } from './AttestationDisplay';
-export { ExecutionReport } from './ECRReceipt';
+export { ExecutionReport } from './ExecutionReport';

@@ -8,6 +8,8 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { bcs } from '@mysten/sui/bcs';
 import { ComputeRequestOnChain, STATUS } from '../types';
 
+const SUI_CLOCK_ID = '0x6';
+
 let suiClient: SuiClient | null = null;
 let executorKeypair: Ed25519Keypair | null = null;
 
@@ -106,10 +108,10 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
     const tableId = requestsTable.fields.id.id;
     console.log(`[Sui] Querying dynamic field: parentId=${tableId}, name.value=${requestId}`);
 
-    // Retry logic: wait for on-chain state to propagate
+    // Retry logic: wait for on-chain state to propagate (exponential backoff + jitter)
     let dynamicField = null;
     const maxRetries = 5;
-    const retryDelay = 1000; // 1 second
+    const baseDelay = 1000;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -127,8 +129,9 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
       }
 
       if (attempt < maxRetries) {
-        console.log(`[Sui] Request ${requestId} not found, retrying in ${retryDelay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+        console.log(`[Sui] Request ${requestId} not found, retrying in ${Math.round(delay)}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
@@ -232,6 +235,11 @@ export async function submitProof(
 
   console.log(`[Sui] Submitting proof for request ${requestId}`);
 
+  // Validate hash format before PTB construction
+  if (resultHash.length !== 64 || !/^[0-9a-f]+$/i.test(resultHash)) {
+    throw new Error(`Invalid result hash: expected 64 hex chars, got ${resultHash.length}`);
+  }
+
   // Build transaction
   const tx = new Transaction();
 
@@ -245,7 +253,7 @@ export async function submitProof(
       tx.pure.u64(requestId), // request_id
       tx.pure.vector('u8', resultHashBytes), // result_hash
       tx.pure.u64(executionTimeMs), // execution_time_ms
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
 
@@ -315,6 +323,11 @@ export async function submitProofWithAER(
     return submitProof(requestId, resultHash, executionTimeMs);
   }
 
+  // Validate hash format before PTB construction
+  if (resultHash.length !== 64 || !/^[0-9a-f]+$/i.test(resultHash)) {
+    throw new Error(`Invalid result hash: expected 64 hex chars, got ${resultHash.length}`);
+  }
+
   const client = getClient();
   const keypair = getKeypair();
 
@@ -335,7 +348,7 @@ export async function submitProofWithAER(
       tx.pure.u64(requestId),
       tx.pure.vector('u8', resultHashBytes),
       tx.pure.u64(executionTimeMs),
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
 
@@ -381,7 +394,7 @@ export async function submitProofWithAER(
       tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredBy)),           // triggered_by
       tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredAction)),       // triggered_action
       // System
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
 
@@ -480,7 +493,7 @@ export async function markExecuting(requestId: number): Promise<string> {
     arguments: [
       tx.object(BARAM_REGISTRY_ID),
       tx.pure.u64(requestId),
-      tx.object('0x6'), // Clock
+      tx.object(SUI_CLOCK_ID),
     ],
   });
 

@@ -41,11 +41,11 @@ async function main(): Promise<void> {
     port: enclavePort,
   });
 
-  // Try to connect to Enclave with retry
+  // Try to connect to Enclave with retry (exponential backoff + jitter)
   let connected = false;
   let retries = 0;
   const maxRetries = 10;
-  const retryDelay = 2000;
+  const baseDelay = 2000;
 
   while (!connected && retries < maxRetries) {
     try {
@@ -60,8 +60,9 @@ async function main(): Promise<void> {
     } catch (error) {
       retries++;
       if (retries < maxRetries) {
-        console.log(`[Host] Connection failed, retrying in ${retryDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        const delay = baseDelay * Math.pow(2, retries - 1) + Math.random() * 1000;
+        console.log(`[Host] Connection failed, retrying in ${Math.round(delay)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         console.error('[Host] Failed to connect to Enclave after max retries');
         console.error('[Host] Make sure the Enclave is running: pnpm dev:enclave');

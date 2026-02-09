@@ -18,8 +18,9 @@ interface CachedPublicKey {
 
 let cachedPublicKey: CachedPublicKey | null = null;
 
-// AES key retained for response decryption (one pending request at a time)
-let pendingAesKey: Uint8Array | null = null;
+// AES keys retained for response decryption, keyed by requestId.
+// Supports concurrent requests safely (previous single variable caused overwrites).
+const pendingAesKeys = new Map<number, Uint8Array>();
 
 /**
  * Clear the cached public key (useful for testing or when executor changes)
@@ -40,7 +41,7 @@ export function clearPublicKeyCache(): void {
 export async function encryptPromptForTEE(
   prompt: string,
   executorUrl: string,
-  requestId?: number,
+  requestId: number,
 ): Promise<string> {
   // Fetch and cache public key
   if (!cachedPublicKey || cachedPublicKey.url !== executorUrl) {
@@ -58,12 +59,12 @@ export async function encryptPromptForTEE(
 
   const { encrypted, aesKeyBytes } = await encryptWithRSA(cachedPublicKey.key, prompt);
 
-  // Retain AES key for response decryption
-  pendingAesKey = aesKeyBytes;
+  // Retain AES key by requestId for concurrent-safe response decryption
+  pendingAesKeys.set(requestId, aesKeyBytes);
 
   // Backup to sessionStorage only in development (HMR resilience).
   // In production, the key exists only in memory to minimize XSS exposure.
-  if (import.meta.env.DEV && requestId !== undefined) {
+  if (import.meta.env.DEV) {
     try {
       sessionStorage.setItem(
         `baram_aes_${requestId}`,
@@ -86,12 +87,12 @@ export async function encryptPromptForTEE(
  */
 export async function decryptResponseFromTEE(
   encryptedResult: string,
-  requestId?: number,
+  requestId: number,
 ): Promise<string> {
-  let keyToUse = pendingAesKey;
+  let keyToUse = pendingAesKeys.get(requestId) ?? null;
 
-  // Recover from sessionStorage if module-level key was lost (DEV only: HMR)
-  if (!keyToUse && import.meta.env.DEV && requestId !== undefined) {
+  // Recover from sessionStorage if in-memory key was lost (DEV only: HMR)
+  if (!keyToUse && import.meta.env.DEV) {
     try {
       const stored = sessionStorage.getItem(`baram_aes_${requestId}`);
       if (stored) {
@@ -107,13 +108,12 @@ export async function decryptResponseFromTEE(
   const result = await decryptResponse(encryptedResult, keyToUse);
 
   // Clear key from all locations immediately after use
-  if (pendingAesKey) {
-    pendingAesKey.fill(0);
-    pendingAesKey = null;
+  const storedKey = pendingAesKeys.get(requestId);
+  if (storedKey) {
+    storedKey.fill(0);
+    pendingAesKeys.delete(requestId);
   }
-  if (requestId !== undefined) {
-    try { sessionStorage.removeItem(`baram_aes_${requestId}`); } catch { /* ignore */ }
-  }
+  try { sessionStorage.removeItem(`baram_aes_${requestId}`); } catch { /* ignore */ }
 
   return result;
 }

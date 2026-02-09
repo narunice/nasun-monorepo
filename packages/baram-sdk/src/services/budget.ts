@@ -86,15 +86,26 @@ export async function fetchBudgetsByOwner(
   // Budget is shared, so we query BudgetReceipt (owned by user) instead
   const receiptType = `${config.budget.packageId}::budget::BudgetReceipt`;
 
-  const response = await client.getOwnedObjects({
-    owner,
-    filter: { StructType: receiptType },
-    options: { showContent: true },
-  });
+  // Paginate through all BudgetReceipt objects
+  const allObjects: Array<{ data?: { content?: { dataType: string; fields?: Record<string, unknown> } } }> = [];
+  let cursor: string | null | undefined = undefined;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const response = await client.getOwnedObjects({
+      owner,
+      filter: { StructType: receiptType },
+      options: { showContent: true },
+      ...(cursor ? { cursor } : {}),
+    });
+    allObjects.push(...response.data);
+    hasNextPage = response.hasNextPage;
+    cursor = response.nextCursor;
+  }
 
   const budgets: BudgetInfo[] = [];
 
-  for (const obj of response.data) {
+  for (const obj of allObjects) {
     if (obj.data?.content && obj.data.content.dataType === 'moveObject') {
       const fields = obj.data.content.fields as Record<string, unknown>;
       const budgetId = fields.budget_id as string;

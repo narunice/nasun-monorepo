@@ -4,7 +4,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { NETWORK_CONFIG } from '@/config/network';
-import { ExecutionReport } from '@/features/request/components/ECRReceipt';
+import { ExecutionReport } from '@/features/request/components/ExecutionReport';
+import { formatMessageTime } from '@/utils/format';
 import type { MessageMetadata } from '@/types/chat';
 
 interface AssistantMessageProps {
@@ -39,9 +40,7 @@ export function AssistantMessage({
     return () => clearTimeout(timer);
   }, [autoShowAuditTrail, metadata]);
 
-  const timeString = timestamp
-    ? new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    : undefined;
+  const timeString = timestamp ? formatMessageTime(timestamp) : undefined;
 
   const explorerUrl = metadata?.txDigest
     ? `${NETWORK_CONFIG.explorerUrl}/tx/${metadata.txDigest}`
@@ -157,7 +156,7 @@ export function AssistantMessage({
                   metadata.teeVerified ? (
                     <button
                       onClick={() => setShowReceipt(true)}
-                      className="flex items-center gap-1 text-xs transition-colors text-[var(--color-text-muted)] hover:text-br-1"
+                      className="flex items-center gap-1.5 text-xs font-medium transition-colors text-br-1 hover:text-br-2 border border-br-1/30 rounded-md px-2 py-0.5 hover:border-br-1/60 hover:bg-br-1/5"
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

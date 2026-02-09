@@ -85,21 +85,34 @@ export async function generateCompletion(
   const startTime = Date.now();
   console.log(`[AI] Starting completion with model: ${model} (provider: ${providerName})`);
 
-  const response = await provider.client.chat.completions.create({
-    model,
-    messages: [
+  // 60s timeout to prevent Lambda resource waste on API hangs
+  const AI_TIMEOUT_MS = 60_000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await provider.client.chat.completions.create(
       {
-        role: 'system',
-        content: 'You are a helpful AI assistant. Provide clear, concise, and accurate responses.',
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful AI assistant. Provide clear, concise, and accurate responses.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        max_tokens: 2048,
+        temperature: 0.7,
       },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-    max_tokens: 2048,
-    temperature: 0.7,
-  });
+      { signal: controller.signal },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const elapsed = Date.now() - startTime;
   console.log(`[AI] Completion finished in ${elapsed}ms`);

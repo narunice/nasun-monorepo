@@ -11,11 +11,32 @@ import { Section } from './Section';
 import { Row } from './Row';
 import { CopyableHash } from './CopyableHash';
 import { ReceiptFooter } from './ReceiptFooter';
-import type { AERData } from '@/features/request/services/ecrService';
+import type { AERData } from '@/features/request/services/aerService';
 
 interface OnChainReceiptContentProps {
   aer: AERData;
   onClose: () => void;
+}
+
+function JsonFields({ value }: { value: string }) {
+  try {
+    const obj = JSON.parse(value);
+    if (typeof obj !== 'object' || obj === null) return <span>{value}</span>;
+    const entries = Object.entries(obj).filter(([, v]) => v != null && v !== '');
+    if (entries.length === 0) return <span>{value}</span>;
+    return (
+      <div className="space-y-0.5">
+        {entries.map(([k, v]) => (
+          <div key={k} className="flex justify-between text-xs">
+            <span className="text-[var(--color-text-muted)]">{k.replace(/_/g, ' ')}</span>
+            <span className="text-[var(--color-text-secondary)] ml-2 text-right">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  } catch {
+    return <span>{value}</span>;
+  }
 }
 
 export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentProps) {
@@ -52,7 +73,7 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
         <Row label="Payment">{formatNusdc(aer.paymentAmount)}</Row>
         <Row label="Executor Received">{formatNusdc(aer.executorReceived)}</Row>
         {aer.feeDetail && (
-          <Row label="Fee Detail">{aer.feeDetail}</Row>
+          <Row label="Fee Detail"><JsonFields value={aer.feeDetail} /></Row>
         )}
         {aer.budgetId && (
           <Row label="Budget">{truncateAddress(aer.budgetId)}</Row>
@@ -66,7 +87,7 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
       <Section title="What Executed">
         <Row label="Model">{aer.modelName}</Row>
         {aer.modelMetadata && (
-          <Row label="Metadata">{aer.modelMetadata}</Row>
+          <Row label="Metadata"><JsonFields value={aer.modelMetadata} /></Row>
         )}
         <Row label="Time">{(aer.executionTimeMs / 1000).toFixed(2)}s</Row>
         <CopyableHash hash={aer.outputHash} label="Output Hash" />
@@ -83,7 +104,7 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
             <Row label="Policy">v{aer.policyVersion}</Row>
           )}
           {aer.constraints && (
-            <Row label="Constraints">{aer.constraints}</Row>
+            <Row label="Constraints"><JsonFields value={aer.constraints} /></Row>
           )}
         </Section>
       )}

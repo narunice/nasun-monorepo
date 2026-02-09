@@ -2,6 +2,8 @@
  * UserMessage - User's message bubble
  */
 
+import { formatMessageTime } from '@/utils/format';
+
 interface UserMessageProps {
   content: string;
   timestamp?: number;
@@ -9,9 +11,7 @@ interface UserMessageProps {
 }
 
 export function UserMessage({ content, timestamp, failed }: UserMessageProps) {
-  const timeString = timestamp
-    ? new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    : undefined;
+  const timeString = timestamp ? formatMessageTime(timestamp) : undefined;
 
   return (
     <div className="flex justify-end">
