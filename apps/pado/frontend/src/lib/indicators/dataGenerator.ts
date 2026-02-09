@@ -131,6 +131,41 @@ export async function fetchBinance24hTicker(
 }
 
 /**
+ * Fetch 24h tickers for multiple symbols in a single Binance API call.
+ * @param symbols - Array of Binance symbols (e.g., ['BTCUSDT', 'ETHUSDT'])
+ * @returns Map from Binance symbol to ticker data, or empty map on error
+ */
+export async function fetchBinanceMultiTicker(
+  symbols: string[]
+): Promise<Map<string, Binance24hTicker>> {
+  const result = new Map<string, Binance24hTicker>();
+  if (symbols.length === 0) return result;
+
+  try {
+    const symbolsParam = JSON.stringify(symbols);
+    const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(symbolsParam)}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+
+    if (!response.ok) throw new Error(`Binance API ${response.status}`);
+
+    const data: Array<Record<string, string>> = await response.json();
+    for (const item of data) {
+      result.set(item.symbol, {
+        priceChange: parseFloat(item.priceChange),
+        priceChangePercent: parseFloat(item.priceChangePercent),
+        highPrice: parseFloat(item.highPrice),
+        lowPrice: parseFloat(item.lowPrice),
+        volume: parseFloat(item.volume),
+        quoteVolume: parseFloat(item.quoteVolume),
+      });
+    }
+  } catch (error) {
+    console.warn('[Market] Binance multi-ticker failed:', error);
+  }
+  return result;
+}
+
+/**
  * Recent trade data from Binance
  */
 export interface RecentTrade {

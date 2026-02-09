@@ -8,14 +8,22 @@ import { useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useOrderForm } from '../context';
 import { MobileBottomBar } from './MobileBottomBar';
+import { MobileMiniTicker } from './MobileMiniTicker';
 
 type MobileTab = 'chart' | 'book' | 'trade';
+
+interface MiniTickerData {
+  symbol: string;
+  price: number;
+  priceChange24h?: number;
+}
 
 interface MobileTradeLayoutProps {
   chartContent: ReactNode;
   bookContent: ReactNode;
   tradeContent: ReactNode;
   bottomTabContent?: ReactNode;
+  miniTicker?: MiniTickerData;
 }
 
 const TAB_LABELS: Record<MobileTab, string> = {
@@ -29,6 +37,7 @@ export function MobileTradeLayout({
   bookContent,
   tradeContent,
   bottomTabContent,
+  miniTicker,
 }: MobileTradeLayoutProps) {
   const [activeTab, setActiveTab] = useState<MobileTab>('chart');
   const { setSide } = useOrderForm();
@@ -40,6 +49,15 @@ export function MobileTradeLayout({
 
   return (
     <div className="lg:hidden flex flex-col" style={{ minHeight: 'calc(100vh - 52px)' }}>
+      {/* Mini Ticker — persistent price context across tabs */}
+      {miniTicker && (
+        <MobileMiniTicker
+          symbol={miniTicker.symbol}
+          price={miniTicker.price}
+          priceChange24h={miniTicker.priceChange24h}
+        />
+      )}
+
       {/* Tab Bar */}
       <div className="flex border-b border-theme-border bg-theme-bg-secondary">
         {(['chart', 'book', 'trade'] as MobileTab[]).map((tab) => (

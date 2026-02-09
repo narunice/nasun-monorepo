@@ -70,7 +70,7 @@ export function OrderForm({
   asks = [],
 }: OrderFormProps) {
   const { currentPool } = useMarket();
-  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice } = useOrderForm();
+  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
@@ -79,6 +79,7 @@ export function OrderForm({
 
   const isMarket = orderMode === 'market';
   const isStopLimit = orderMode === 'stop-limit';
+  const isTrailingStop = orderMode === 'trailing-stop';
   const isBuy = side === 'buy';
 
   const effectivePrice = useMemo(
@@ -240,14 +241,19 @@ export function OrderForm({
   }, [isMarket, amountNum, midPrice, isBuy, asks, bids]);
 
   const stopPriceNum = parseFloat(stopPrice) || 0;
-  const hasValidationError = !quantityValidation.valid || (!isMarket && !priceValidation.valid);
+  const trailValueNum = parseFloat(trailValue) || 0;
+  const hasValidationError = !quantityValidation.valid || (!isMarket && !isTrailingStop && !priceValidation.valid);
   const stopLimitMissingFields = isStopLimit && (stopPriceNum <= 0 || effectivePrice <= 0 || amountNum <= 0);
   const stopLimitPriceInvalid = isStopLimit && effectivePrice > 0 && !priceValidation.valid;
+  const trailingStopMissing = isTrailingStop && (trailValueNum <= 0 || amountNum <= 0);
+  const trailingStopInvalid = isTrailingStop && trailMode === 'percent' && trailValueNum > 50;
   const isButtonDisabled = isMarket
     ? disabled || !amount || isLoading || isAutoDepositing || !quantityValidation.valid
     : isStopLimit
       ? disabled || isLoading || isAutoDepositing || stopLimitMissingFields || !quantityValidation.valid || stopLimitPriceInvalid
-      : disabled || isLoading || isAutoDepositing || hasValidationError;
+      : isTrailingStop
+        ? disabled || isLoading || isAutoDepositing || trailingStopMissing || trailingStopInvalid || !quantityValidation.valid
+        : disabled || isLoading || isAutoDepositing || hasValidationError;
 
   return (
     <div className="space-y-2 flex-1 flex flex-col">
@@ -257,11 +263,12 @@ export function OrderForm({
           { id: 'limit' as const, label: 'Limit' },
           { id: 'market' as const, label: 'Market' },
           { id: 'stop-limit' as const, label: 'Stop' },
+          { id: 'trailing-stop' as const, label: 'Trail' },
         ]}
         activeTab={orderMode}
         onTabChange={setOrderMode}
         rightContent={
-          !isMarket && !isStopLimit && executionOption !== 'GTC' ? (
+          !isMarket && !isStopLimit && !isTrailingStop && executionOption !== 'GTC' ? (
             <span className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm bg-pd1/30 text-pd3 rounded">
               {executionOption}
             </span>
@@ -325,8 +332,60 @@ export function OrderForm({
         )}
       </div>
 
-      {/* D. Price Input (Limit / Stop-Limit) or Market Price Info */}
-      {isStopLimit ? (
+      {/* D. Price Input (Limit / Market / Stop-Limit / Trailing-Stop) */}
+      {isTrailingStop ? (
+        <>
+          {/* Trail Mode Toggle */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-trading-xs xl:text-trading-sm text-amber-400 font-medium">Trail</label>
+              <div className="flex items-center bg-theme-bg-tertiary rounded overflow-hidden">
+                <button
+                  onClick={() => setTrailMode('percent')}
+                  className={`px-2 py-0.5 text-[10px] xl:text-xs font-medium transition-colors ${
+                    trailMode === 'percent'
+                      ? 'bg-pd1/30 text-pd3'
+                      : 'text-theme-text-muted hover:text-theme-text-secondary'
+                  }`}
+                >
+                  %
+                </button>
+                <button
+                  onClick={() => setTrailMode('amount')}
+                  className={`px-2 py-0.5 text-[10px] xl:text-xs font-medium transition-colors ${
+                    trailMode === 'amount'
+                      ? 'bg-pd1/30 text-pd3'
+                      : 'text-theme-text-muted hover:text-theme-text-secondary'
+                  }`}
+                >
+                  $
+                </button>
+              </div>
+            </div>
+            <NumberInput
+              placeholder={trailMode === 'percent' ? 'e.g. 2.0' : 'e.g. 500'}
+              value={trailValue}
+              onChange={(e) => setTrailValue(e.target.value)}
+              step={trailMode === 'percent' ? 0.1 : 1}
+              className="px-3 py-2 text-sm xl:text-base"
+            />
+            <p className="text-[10px] xl:text-xs text-theme-text-muted mt-0.5">
+              {isBuy
+                ? `Triggers buy when price rises ${trailMode === 'percent' ? '%' : '$'} above lowest point`
+                : `Triggers sell when price drops ${trailMode === 'percent' ? '%' : '$'} from highest point`}
+            </p>
+          </div>
+          {/* Current mid price display */}
+          {midPrice && midPrice > 0 && (
+            <div className="flex items-center justify-between text-trading-xs xl:text-trading-sm py-2 px-3 bg-theme-bg-tertiary/50 rounded">
+              <span className="text-theme-text-muted">Current Price</span>
+              <span className="text-green-400 font-mono">
+                ${midPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
+        </>
+      ) : isStopLimit ? (
         <>
           {/* Stop Price */}
           <div>
@@ -551,8 +610,8 @@ export function OrderForm({
         />
       </div>
 
-      {/* E3. TP/SL Inputs (hidden in stop-limit mode — stop-limit is its own conditional order) */}
-      {!isStopLimit && (
+      {/* E3. TP/SL Inputs (hidden in stop-limit / trailing-stop mode — they are their own conditional orders) */}
+      {!isStopLimit && !isTrailingStop && (
         <TPSLInputs
           enabled={tpslEnabled}
           onToggle={setTpslEnabled}
@@ -563,6 +622,8 @@ export function OrderForm({
           midPrice={midPrice || 0}
           side={side}
           minPriceTick={minPrice}
+          ocoEnabled={ocoEnabled}
+          onOcoToggle={setOcoEnabled}
         />
       )}
 
@@ -605,8 +666,8 @@ export function OrderForm({
         )}
       </div>
 
-      {/* G. Execution Options (Limit only — not applicable to Market or Stop-Limit) */}
-      {!isMarket && !isStopLimit && onExecutionOptionChange && (
+      {/* G. Execution Options (Limit only — not applicable to Market, Stop-Limit, or Trailing-Stop) */}
+      {!isMarket && !isStopLimit && !isTrailingStop && onExecutionOptionChange && (
         <div>
           <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted mb-1.5">Execution</div>
           <div className="grid grid-cols-4 gap-1">
@@ -645,7 +706,7 @@ export function OrderForm({
           ? 'Depositing...'
           : isLoading
             ? '...'
-            : `${isMarket ? 'Market ' : isStopLimit ? 'Stop-Limit ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
+            : `${isMarket ? 'Market ' : isStopLimit ? 'Stop-Limit ' : isTrailingStop ? 'Trail ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
       </button>
     </div>
   );

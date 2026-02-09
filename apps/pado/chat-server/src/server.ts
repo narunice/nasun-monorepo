@@ -18,14 +18,14 @@ import type {
 import { DEFAULT_CONFIG as CONFIG } from './types.js';
 import {
   initLeaderboardStore, closeLeaderboardStore,
-  getLeaderboard, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
+  getLeaderboard, getLeaderboardPnl, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
   getIndexerState,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
 } from './leaderboard-store.js';
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
-import { VALID_PERIODS } from './leaderboard-types.js';
+import { VALID_PERIODS, VALID_MODES } from './leaderboard-types.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { LeaderboardConfig, Period, CompetitionStatus } from './leaderboard-types.js';
 
@@ -449,6 +449,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
 
   if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
     const period = url.searchParams.get('period') || '24h';
+    const mode = url.searchParams.get('mode') || 'volume';
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
 
     if (!VALID_PERIODS.has(period)) {
@@ -457,28 +458,57 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       return;
     }
 
+    if (!VALID_MODES.has(mode)) {
+      res.writeHead(400, corsHeaders);
+      res.end(JSON.stringify({ error: 'Invalid mode. Use: volume, pnl' }));
+      return;
+    }
+
     try {
-      const rows = getLeaderboard(period, limit);
-      const addresses = rows.map((r) => r.address);
-      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+      if (mode === 'pnl') {
+        // PnL leaderboard
+        const rows = getLeaderboardPnl(period, limit);
+        const addresses = rows.map((r) => r.address);
+        const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
 
-      // Convert raw quote volume to USD-formatted string
-      const traders = rows.map((r) => ({
-        rank: r.rank,
-        address: r.address,
-        nickname: nicknames.get(r.address) ?? null,
-        volumeUsd: formatQuoteVolume(r.volume_quote),
-        tradeCount: r.trade_count,
-        uniquePools: r.unique_pools,
-        rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
-        lastTradeAt: r.last_trade_at,
-      }));
+        const traders = rows.map((r) => ({
+          rank: r.rank,
+          address: r.address,
+          nickname: nicknames.get(r.address) ?? null,
+          pnlUsd: formatQuoteVolume(r.realized_pnl),
+          pnlPercent: r.pnl_percent,
+          tradeCount: r.trade_count,
+          rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
+        }));
 
-      const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
-      const totalTraders = getTotalTradersCount();
+        const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
+        const totalTraders = getTotalTradersCount();
 
-      res.writeHead(200, corsHeaders);
-      res.end(JSON.stringify({ period, traders, updatedAt, totalTraders }));
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({ mode: 'pnl', period, traders, updatedAt, totalTraders }));
+      } else {
+        // Volume leaderboard (existing)
+        const rows = getLeaderboard(period, limit);
+        const addresses = rows.map((r) => r.address);
+        const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+
+        const traders = rows.map((r) => ({
+          rank: r.rank,
+          address: r.address,
+          nickname: nicknames.get(r.address) ?? null,
+          volumeUsd: formatQuoteVolume(r.volume_quote),
+          tradeCount: r.trade_count,
+          uniquePools: r.unique_pools,
+          rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
+          lastTradeAt: r.last_trade_at,
+        }));
+
+        const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
+        const totalTraders = getTotalTradersCount();
+
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({ mode: 'volume', period, traders, updatedAt, totalTraders }));
+      }
     } catch (err) {
       console.error('[Leaderboard] API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);

@@ -5,6 +5,7 @@ import type {
   LeaderboardConfig,
   TradeFillRow,
   TraderStatsRow,
+  TraderPnlStatsRow,
   BalanceManagerRow,
   CompetitionRow,
   CompetitionResultRow,
@@ -109,6 +110,21 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
 
     CREATE INDEX IF NOT EXISTS idx_cr_rank
       ON competition_results(competition_id, rank ASC);
+
+    CREATE TABLE IF NOT EXISTS trader_pnl (
+      address TEXT NOT NULL,
+      period TEXT NOT NULL,
+      realized_pnl TEXT NOT NULL,
+      pnl_percent REAL NOT NULL DEFAULT 0,
+      trade_count INTEGER NOT NULL DEFAULT 0,
+      rank INTEGER NOT NULL DEFAULT 0,
+      prev_rank INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (address, period)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pnl_period_rank
+      ON trader_pnl(period, rank ASC);
   `);
 }
 
@@ -534,4 +550,180 @@ export function getCompetitionResults(
        LIMIT ?`
     )
     .all(competitionId, limit) as CompetitionResultRow[];
+}
+
+// ===== PnL Aggregation =====
+
+interface RawPnlRow {
+  address: string;
+  buy_base: number;
+  buy_quote: number;
+  sell_base: number;
+  sell_quote: number;
+  trade_count: number;
+}
+
+/**
+ * Aggregate per-trader buy/sell totals for PnL calculation.
+ * Uses weighted average cost basis: PnL = matched_qty * (avg_sell - avg_buy).
+ */
+export function aggregateTraderPnlRaw(
+  cutoffMs: number,
+  excludedAddresses: Set<string>,
+): RawPnlRow[] {
+  const ldb = getLeaderboardDb();
+
+  const excludeList = [...excludedAddresses];
+  const excludePlaceholders = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+
+  const query = `
+    SELECT
+      address,
+      SUM(CASE WHEN is_buy = 1 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as buy_base,
+      SUM(CASE WHEN is_buy = 1 THEN CAST(quote_qty AS REAL) ELSE 0.0 END) as buy_quote,
+      SUM(CASE WHEN is_buy = 0 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as sell_base,
+      SUM(CASE WHEN is_buy = 0 THEN CAST(quote_qty AS REAL) ELSE 0.0 END) as sell_quote,
+      COUNT(*) as trade_count
+    FROM (
+      SELECT taker_address as address, base_quantity as base_qty, quote_quantity as quote_qty,
+             taker_is_bid as is_buy, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+      UNION ALL
+      SELECT maker_address as address, base_quantity as base_qty, quote_quantity as quote_qty,
+             CASE WHEN taker_is_bid = 1 THEN 0 ELSE 1 END as is_buy, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+    )
+    WHERE 1=1 ${excludePlaceholders}
+    GROUP BY address
+    HAVING MIN(buy_base, sell_base) > 0
+  `;
+
+  const params = [cutoffMs, cutoffMs, ...excludeList];
+  return ldb.prepare(query).all(...params) as RawPnlRow[];
+}
+
+/**
+ * Compute realized PnL from raw buy/sell totals.
+ * Returns sorted array with PnL values (highest PnL first).
+ */
+export function computeTraderPnl(
+  cutoffMs: number,
+  excludedAddresses: Set<string>,
+  limit: number = 100,
+): Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> {
+  const rawRows = aggregateTraderPnlRaw(cutoffMs, excludedAddresses);
+
+  const results: Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> = [];
+
+  for (const row of rawRows) {
+    if (row.buy_base <= 0 || row.sell_base <= 0) continue;
+
+    const matchedBase = Math.min(row.buy_base, row.sell_base);
+    const buyRatio = matchedBase / row.buy_base;
+    const sellRatio = matchedBase / row.sell_base;
+
+    const costBasis = buyRatio * row.buy_quote;
+    const revenue = sellRatio * row.sell_quote;
+    const realizedPnlRaw = revenue - costBasis;
+
+    const pnlPercent = costBasis > 0 ? (realizedPnlRaw / costBasis) * 100 : 0;
+
+    results.push({
+      address: row.address,
+      realizedPnlRaw: Math.round(realizedPnlRaw), // round to nearest raw unit
+      pnlPercent: Math.round(pnlPercent * 100) / 100, // 2 decimal places
+      tradeCount: row.trade_count,
+    });
+  }
+
+  // Sort by absolute PnL descending (best performers first — both profit and loss matter for ranking)
+  results.sort((a, b) => b.realizedPnlRaw - a.realizedPnlRaw);
+
+  return results.slice(0, limit);
+}
+
+/**
+ * Get current PnL ranks for a period.
+ */
+export function getPnlCurrentRanks(period: string): Map<string, number> {
+  const rows = getLeaderboardDb()
+    .prepare('SELECT address, rank FROM trader_pnl WHERE period = ?')
+    .all(period) as Array<{ address: string; rank: number }>;
+
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    map.set(row.address, row.rank);
+  }
+  return map;
+}
+
+/**
+ * Replace PnL stats for a period.
+ */
+export function replaceTraderPnlStats(
+  period: string,
+  traders: Array<{
+    address: string;
+    realizedPnlRaw: number;
+    pnlPercent: number;
+    tradeCount: number;
+    rank: number;
+    prevRank: number;
+  }>,
+): void {
+  const ldb = getLeaderboardDb();
+  const now = Date.now();
+
+  const replaceStmt = ldb.prepare(
+    `INSERT INTO trader_pnl (address, period, realized_pnl, pnl_percent, trade_count, rank, prev_rank, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(address, period) DO UPDATE SET
+       realized_pnl = excluded.realized_pnl,
+       pnl_percent = excluded.pnl_percent,
+       trade_count = excluded.trade_count,
+       rank = excluded.rank,
+       prev_rank = excluded.prev_rank,
+       updated_at = excluded.updated_at`
+  );
+
+  const tx = ldb.transaction(() => {
+    const addresses = traders.map((t) => t.address);
+    if (addresses.length > 0) {
+      const placeholders = addresses.map(() => '?').join(',');
+      ldb.prepare(
+        `DELETE FROM trader_pnl WHERE period = ? AND address NOT IN (${placeholders})`
+      ).run(period, ...addresses);
+    } else {
+      ldb.prepare('DELETE FROM trader_pnl WHERE period = ?').run(period);
+    }
+
+    for (const t of traders) {
+      replaceStmt.run(
+        t.address, period, String(t.realizedPnlRaw), t.pnlPercent,
+        t.tradeCount, t.rank, t.prevRank, now,
+      );
+    }
+  });
+
+  tx();
+}
+
+/**
+ * Get PnL leaderboard for a period.
+ */
+export function getLeaderboardPnl(
+  period: string,
+  limit: number = 50,
+): TraderPnlStatsRow[] {
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT address, period, realized_pnl, pnl_percent, trade_count, rank, prev_rank, updated_at
+       FROM trader_pnl
+       WHERE period = ?
+       ORDER BY rank ASC
+       LIMIT ?`
+    )
+    .all(period, limit) as TraderPnlStatsRow[];
 }

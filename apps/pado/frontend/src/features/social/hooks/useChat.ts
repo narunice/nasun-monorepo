@@ -221,6 +221,12 @@ export function useChat(roomId: number = 0): UseChatResult {
     const trimmed = content.trim();
     if (!trimmed) return;
     getChatService().sendMessage(trimmed, roomId);
+    // Increment chat message counter for badge tracking
+    try {
+      const key = 'pado-chat-message-count';
+      const count = parseInt(localStorage.getItem(key) ?? '0', 10) || 0;
+      localStorage.setItem(key, String(count + 1));
+    } catch { /* ignore storage errors */ }
   }, [roomId]);
 
   const loadMore = useCallback(() => {

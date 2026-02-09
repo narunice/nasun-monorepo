@@ -1,13 +1,23 @@
 import { NETWORK_CONFIG } from '../../../config/network';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
+import { TraderAvatar } from './TraderAvatar';
 import type { TraderStatsResponse } from '../types';
 import { PERIOD_LABELS } from '../types';
 import type { Period } from '../types';
+import type { TraderClassification } from '../hooks/useTraderClassification';
+
+const STYLE_COLORS: Record<string, string> = {
+  'scalper': 'text-red-400 bg-red-400/10',
+  'day-trader': 'text-orange-400 bg-orange-400/10',
+  'swing-trader': 'text-blue-400 bg-blue-400/10',
+  'holder': 'text-emerald-400 bg-emerald-400/10',
+};
 
 interface TraderProfileHeaderProps {
   address: string;
   stats: TraderStatsResponse | undefined;
+  classification?: TraderClassification;
   isLoading: boolean;
 }
 
@@ -26,7 +36,7 @@ function formatVolume(volumeStr: string): string {
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 
-export function TraderProfileHeader({ address, stats, isLoading }: TraderProfileHeaderProps) {
+export function TraderProfileHeader({ address, stats, classification, isLoading }: TraderProfileHeaderProps) {
   const nickname = stats?.nickname;
   const explorerUrl = NETWORK_CONFIG.explorerUrl;
 
@@ -34,21 +44,38 @@ export function TraderProfileHeader({ address, stats, isLoading }: TraderProfile
     <div className="bg-theme-bg-secondary rounded-lg border border-theme-border p-5">
       {/* Identity */}
       <div className="flex items-center justify-between mb-4">
-        <div>
-          {nickname ? (
-            <div>
-              <h2 className="text-lg font-semibold text-theme-text-primary">
-                {nickname}
-              </h2>
-              <p className="text-sm text-theme-text-muted font-mono mt-0.5">
-                {shortenAddress(address)}
-              </p>
-            </div>
-          ) : (
-            <h2 className="text-lg font-semibold text-theme-text-primary font-mono">
-              {shortenAddress(address)}
-            </h2>
-          )}
+        <div className="flex items-center gap-3">
+          <TraderAvatar address={address} size={48} />
+          <div>
+            {nickname ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-theme-text-primary">
+                    {nickname}
+                  </h2>
+                  {classification && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STYLE_COLORS[classification.style] ?? 'text-theme-text-muted bg-theme-bg-tertiary'}`}>
+                      {classification.label}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-theme-text-muted font-mono mt-0.5">
+                  {shortenAddress(address)}
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-theme-text-primary font-mono">
+                  {shortenAddress(address)}
+                </h2>
+                {classification && (
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STYLE_COLORS[classification.style] ?? 'text-theme-text-muted bg-theme-bg-tertiary'}`}>
+                    {classification.label}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {explorerUrl && (
           <a

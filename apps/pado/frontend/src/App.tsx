@@ -6,9 +6,10 @@
 import { useEffect, useSyncExternalStore, useCallback } from 'react';
 import { registerTokenFaucet, consumePendingMnemonic, hasPendingMnemonic } from '@nasun/wallet';
 import { MnemonicBackup } from '@nasun/wallet-ui';
-import { Header } from './components/layout';
+import { Header, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { useTrading } from './features/trading/useTrading';
+import { OfflineBanner } from './components/common/OfflineBanner';
 
 // ============================================
 // Mnemonic Backup Modal (App-level)
@@ -76,12 +77,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-theme-bg-primary text-theme-text-primary">
+      <OfflineBanner />
       <Header />
 
       {/* Main Content - No max-width for full-width trading experience */}
-      <main className="px-3 sm:px-4 py-4 sm:py-6">
+      {/* pb-16 on mobile reserves space for MobileBottomNav (56px + safe area) */}
+      <main className="px-3 sm:px-4 py-4 sm:py-6 pb-20 md:pb-6">
         <AppRoutes />
       </main>
+
+      {/* Mobile bottom navigation bar (< md) */}
+      <MobileBottomNav />
 
       {/* App-level mnemonic backup modal - independent of page/component lifecycle */}
       <MnemonicBackupModal />

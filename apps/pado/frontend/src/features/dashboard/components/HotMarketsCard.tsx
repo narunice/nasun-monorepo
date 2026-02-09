@@ -1,26 +1,14 @@
 /**
  * HotMarketsCard
- * Shows trending trading pairs with price changes
+ * Shows trending trading pairs with live price data from Binance
  */
 
 import { Link } from 'react-router-dom';
-
-// Simulated market data (will be replaced with real data)
-interface MarketData {
-  symbol: string;
-  name: string;
-  price: number;
-  change24h: number;
-  pool: string;
-}
-
-const HOT_MARKETS: MarketData[] = [
-  { symbol: 'NBTC', name: 'Nasun BTC', price: 45000, change24h: 5.2, pool: 'NBTC_NUSDC' },
-  { symbol: 'NASUN', name: 'Nasun', price: 1.25, change24h: -1.3, pool: 'NASUN_NUSDC' },
-  { symbol: 'NUSDC', name: 'Nasun USDC', price: 1.0, change24h: 0.0, pool: 'NASUN_NUSDC' },
-];
+import { useMarketOverview } from '../hooks';
 
 export function HotMarketsCard() {
+  const { markets, isLoading } = useMarketOverview();
+
   const formatPrice = (price: number) => {
     if (price >= 1000) {
       return `$${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
@@ -28,7 +16,8 @@ export function HotMarketsCard() {
     return `$${price.toFixed(2)}`;
   };
 
-  const formatPercent = (value: number) => {
+  const formatPercent = (value: number | null) => {
+    if (value == null) return '--';
     const sign = value >= 0 ? '+' : '';
     return `${sign}${value.toFixed(1)}%`;
   };
@@ -41,10 +30,10 @@ export function HotMarketsCard() {
           View All →
         </Link>
       </div>
-      <p className="text-xs text-theme-text-muted mb-3">Trending tokens on Pado</p>
+      <p className="text-xs text-theme-text-muted mb-3">Live market data</p>
 
       <div className="space-y-3">
-        {HOT_MARKETS.map((market) => (
+        {markets.map((market) => (
           <Link
             key={market.symbol}
             to={`/trade?pool=${market.pool}`}
@@ -62,9 +51,15 @@ export function HotMarketsCard() {
 
             <div className="text-right">
               <div className="font-medium text-theme-text-primary text-sm">
-                {formatPrice(market.price)}
+                {isLoading ? '...' : formatPrice(market.price)}
               </div>
-              <div className={`text-xs ${market.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`text-xs font-medium ${
+                market.change24h == null
+                  ? 'text-theme-text-muted'
+                  : market.change24h >= 0
+                    ? 'text-green-500'
+                    : 'text-red-500'
+              }`}>
                 {formatPercent(market.change24h)}
               </div>
             </div>

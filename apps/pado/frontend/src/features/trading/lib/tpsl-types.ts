@@ -6,7 +6,7 @@
  * so TP/SL is implemented via client-side oracle polling + market order execution.
  */
 
-export type TPSLTriggerType = 'tp' | 'sl' | 'stop-limit';
+export type TPSLTriggerType = 'tp' | 'sl' | 'stop-limit' | 'trailing-stop';
 export type TPSLStatus = 'active' | 'executing' | 'triggered' | 'cancelled' | 'failed';
 
 export interface TPSLOrder {
@@ -24,6 +24,12 @@ export interface TPSLOrder {
   triggerType: TPSLTriggerType;
   /** Limit price for stop-limit orders (places limit order instead of market) */
   limitPrice?: number;
+  /** Trail amount in USD (for trailing-stop) */
+  trailAmount?: number;
+  /** Trail percentage (for trailing-stop, 0-100) */
+  trailPercent?: number;
+  /** High water mark for trailing-stop (auto-updated during monitoring) */
+  highWaterMark?: number;
   /** Current status */
   status: TPSLStatus;
   /** Creation timestamp (ms) */
@@ -34,6 +40,8 @@ export interface TPSLOrder {
   error?: string;
   /** Transaction digest if executed */
   digest?: string;
+  /** OCO group ID — when one order in the group triggers, all others are cancelled */
+  ocoGroupId?: string;
 }
 
 /** Maximum active TP/SL orders per user */
@@ -79,6 +87,41 @@ export function shouldTriggerStopLimit(currentPrice: number, triggerPrice: numbe
 }
 
 /**
+ * Calculate the effective stop price for a trailing-stop order.
+ * For sell: effectiveStop = highWaterMark - trailAmount (or * (1 - trailPercent/100))
+ * For buy: effectiveStop = lowWaterMark + trailAmount (or * (1 + trailPercent/100))
+ */
+export function getTrailingStopPrice(order: TPSLOrder): number {
+  const hwm = order.highWaterMark ?? 0;
+  if (hwm <= 0) return 0;
+
+  if (order.trailPercent && order.trailPercent > 0) {
+    return order.side === 'sell'
+      ? hwm * (1 - order.trailPercent / 100)
+      : hwm * (1 + order.trailPercent / 100);
+  }
+
+  const trail = order.trailAmount ?? 0;
+  return order.side === 'sell'
+    ? hwm - trail
+    : hwm + trail;
+}
+
+/**
+ * Check if a trailing-stop should trigger.
+ * Sell trailing: trigger when currentPrice <= effectiveStop
+ * Buy trailing: trigger when currentPrice >= effectiveStop
+ */
+export function shouldTriggerTrailingStop(order: TPSLOrder, currentPrice: number): boolean {
+  const effectiveStop = getTrailingStopPrice(order);
+  if (effectiveStop <= 0) return false;
+
+  return order.side === 'sell'
+    ? currentPrice <= effectiveStop
+    : currentPrice >= effectiveStop;
+}
+
+/**
  * Check if a TP/SL order should trigger at the current price.
  */
 export function shouldTrigger(order: TPSLOrder, currentPrice: number): boolean {
@@ -87,6 +130,10 @@ export function shouldTrigger(order: TPSLOrder, currentPrice: number): boolean {
 
   if (order.triggerType === 'stop-limit') {
     return shouldTriggerStopLimit(currentPrice, order.triggerPrice, order.side);
+  }
+
+  if (order.triggerType === 'trailing-stop') {
+    return shouldTriggerTrailingStop(order, currentPrice);
   }
 
   return order.triggerType === 'tp'
