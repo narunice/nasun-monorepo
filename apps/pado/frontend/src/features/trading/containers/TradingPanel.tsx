@@ -12,6 +12,10 @@ import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
 import { calcLockedAmounts } from '../types';
 import { OrderForm, OrderConfirmModal, SimpleOrderForm } from '../components';
+import type { PriceLevel } from '../../../lib/deepbook';
+
+// Stable empty array reference to avoid useMemo invalidation
+const EMPTY_LEVELS: PriceLevel[] = [];
 
 export function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'pro' }) {
   const [open, setOpen] = useState(false);
@@ -138,11 +142,13 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
 
-  // 오더북 데이터 (가격 정보)
+  // 오더북 데이터 (가격 정보 + depth for price impact)
   const { data: orderbookData } = useOrderbook();
   const midPrice = orderbookData?.midPrice ?? 0;
-  const bestBid = orderbookData?.orderbook?.bids[0]?.price ?? 0;
-  const bestAsk = orderbookData?.orderbook?.asks[0]?.price ?? 0;
+  const bids = orderbookData?.orderbook?.bids ?? EMPTY_LEVELS;
+  const asks = orderbookData?.orderbook?.asks ?? EMPTY_LEVELS;
+  const bestBid = bids[0]?.price ?? 0;
+  const bestAsk = asks[0]?.price ?? 0;
 
   // 주문 액션
   const {
@@ -194,6 +200,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     slippage,
     setSlippage,
     oneClickEnabled,
+    setOneClickEnabled,
     isConfirmModalOpen,
     pendingOrderType,
     setPrice,
@@ -406,6 +413,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           lockedBase={lockedBase}
           side={side}
           onSideChange={setSide}
+          bids={bids}
+          asks={asks}
         />
 
         {/* Order Confirmation Modal */}
@@ -418,6 +427,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           amount={amount}
           isLoading={isLoading}
           executionOption={executionOption}
+          midPrice={midPrice}
+          onEnableOneClick={() => setOneClickEnabled(true)}
         />
 
       </div>
