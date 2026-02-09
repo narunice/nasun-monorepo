@@ -1,0 +1,62 @@
+{
+  "name": "@nasun/baram-aer-sdk",
+  "version": "0.1.0",
+  "description": "Analytics SDK for Baram AI Execution Reports (AER) on Nasun Network",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "baram",
+    "nasun",
+    "aer",
+    "ai",
+    "analytics",
+    "audit",
+    "blockchain",
+    "sui"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nasun-io/nasun-monorepo",
+    "directory": "packages/baram-aer-sdk"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "^1.45.0"
+  },
+  "devDependencies": {
+    "@mysten/sui": "^1.45.2",
+    "@nasun/tsconfig": "workspace:*",
+    "tsup": "^8.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
+  }
+}
