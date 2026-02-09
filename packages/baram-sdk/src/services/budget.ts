@@ -5,7 +5,7 @@
  * users to delegate compute spending to AI agents with constraints.
  */
 
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiClient, SuiObjectResponse } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import type {
   BaramConfig,
@@ -87,7 +87,7 @@ export async function fetchBudgetsByOwner(
   const receiptType = `${config.budget.packageId}::budget::BudgetReceipt`;
 
   // Paginate through all BudgetReceipt objects
-  const allObjects: Array<{ data?: { content?: { dataType: string; fields?: Record<string, unknown> } } }> = [];
+  const allObjects: SuiObjectResponse[] = [];
   let cursor: string | null | undefined = undefined;
   let hasNextPage = true;
 
