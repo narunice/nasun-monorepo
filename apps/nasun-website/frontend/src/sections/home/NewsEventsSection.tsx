@@ -8,7 +8,8 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
-import { Tag } from "@/components/ui/tag";
+import { TagV2 } from "@/components/ui/tag-v2";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
 import { Post } from "../../types/post.d";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -22,7 +23,7 @@ const CustomArrow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-black p-3 rounded-full shadow-lg hover:bg-nasun-black/50 transition-all border border-nasun-white/50 hover:border-white ${
+    className={`hidden lg:block absolute top-1/2 z-10 -translate-y-1/2 bg-nasun-white/10 p-3 rounded-full shadow-lg hover:bg-black/50 transition-all border border-nasun-white/50 hover:border-white/60 ${
       direction === "left" ? "-left-24" : "-right-24"
     }`}
     aria-label={direction === "left" ? "Previous news" : "Next news"}
@@ -77,7 +78,7 @@ function NewsEventsSection() {
   };
 
   return (
-    <SectionLayout id="news-events" className="relative min-h-screen bg-black">
+    <SectionLayout id="news-events" className="relative min-h-screen bg-nasun-black">
       {/* 컨텐츠 */}
       <FadeInUp>
         <div className="relative max-w-6xl mx-auto z-10 w-full h-full px-4 md:px-8 lg:px-32 flex flex-col justify-start min-h-screen gap-6 md:gap-9 lg:gap-12 pt-10 md:pt-20 lg:pt-24 pb-8 md:pb-16 lg:pb-20">
@@ -99,7 +100,7 @@ function NewsEventsSection() {
           ) : !Array.isArray(posts) || posts.length === 0 ? (
             <div className="w-full text-center py-12 text-gray-400">No news posts available.</div>
           ) : (
-            <div className="w-full [&_.slick-dots_li.slick-active_button:before]:!text-nasun-c1 [&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-4">
+            <div className="w-full [&_.slick-dots_li.slick-active_button:before]:!text-nasun-nw1 [&_.slick-dots_li_button:before]:!text-nasun-white/60 [&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-4">
               <Slider {...sliderSettings}>
                 {posts.map((post) => {
                   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
@@ -107,7 +108,7 @@ function NewsEventsSection() {
                   return (
                     <Link key={post.id} to={`/news-events/${post.slug}`} className="block px-2">
                       {/* 수평 카드 레이아웃 */}
-                      <div className="group flex flex-col md:flex-row bg-nasun-black overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 rounded-sm">
+                      <div className="group flex flex-col md:flex-row bg-nasun-white overflow-hiddentransition-all duration-300 rounded-sm">
                         {/* 좌측: 이미지 */}
                         <div className="md:w-1/2 md:self-stretch overflow-hidden">
                           {imageUrl ? (
@@ -117,47 +118,43 @@ function NewsEventsSection() {
                               className="block w-full h-64 md:h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                             />
                           ) : (
-                            <div className="w-full h-64 md:h-full bg-gradient-to-br from-nasun-c4/30 to-nasun-c1/20 flex items-center justify-center">
-                              <span className="text-white/40 text-lg">No Image</span>
+                            <div className="w-full h-64 md:h-full bg-gradient-to-br from-nasun-nw4/30 to-nasun-nw1/20 flex items-center justify-center">
+                              <span className="text-nasun-black/30 text-lg">No Image</span>
                             </div>
                           )}
                         </div>
 
                         {/* 우측: 콘텐츠 */}
-                        <div className="md:w-1/2 py-3 md:py-5 lg:py-8 px-4 md:px-6 lg:px-10 flex flex-col justify-center gap-3 md:gap-4 lg:gap-4">
+                        <div className="md:w-1/2 py-3 md:py-5 lg:py-8 px-4 md:px-6 lg:px-10 flex flex-col justify-center gap-3 md:gap-4 lg:gap-4 ">
                           {/* WordPress 카테고리 뱃지 - 왼쪽 정렬 */}
-                          <Tag
-                            variant="outlineC1"
+                          <TagV2
+                            variant="outlineNw2"
                             size="md"
                             className="self-center font-medium uppercase tracking-wider"
                           >
                             {getCategory(post)}
-                          </Tag>
+                          </TagV2>
 
                           {/* 제목 - 가운데 정렬 */}
-                          <h3 className="font-semibold line-clamp-3 text-center pt-1">
+                          <h4 className="font-semibold line-clamp-3 text-center pt-1 text-nasun-black">
                             {stripHtml(post.title.rendered)}
-                          </h3>
+                          </h4>
 
                           {/* 날짜 */}
-                          <time className="text-nasun-white/80 text-center" dateTime={post.date}>
+                          <time className="text-nasun-black/60 text-center" dateTime={post.date}>
                             {formatDate(post.date)}
                           </time>
 
                           {/* 설명 - 가운데 정렬 */}
-                          <p className=" line-clamp-3 text-center">
+                          <p className="line-clamp-3 text-center text-nasun-black/80">
                             {stripHtml(post.excerpt.rendered)}
                           </p>
 
                           {/* Read More 버튼 - 오른쪽 정렬 */}
                           <div className="flex justify-end">
-                            <Tag
-                              variant="filledC1"
-                              size="sm"
-                              className="!border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8 mt-1"
-                            >
+                            <ButtonV3 variant="gradient" size="sm" className="capitalize mt-1">
                               {t("newsEvents.readMore")}
-                            </Tag>
+                            </ButtonV3>
                           </div>
                         </div>
                       </div>
