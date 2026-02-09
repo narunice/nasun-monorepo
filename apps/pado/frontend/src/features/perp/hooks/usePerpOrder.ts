@@ -31,6 +31,7 @@ import type {
   RemoveCollateralParams,
   OrderPreview,
 } from '../types';
+import { formatErrorMessage } from '../../trading/utils/errorParser';
 
 const MARKET_QUERY_KEY = 'perp-market';
 
@@ -108,16 +109,19 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
         },
       });
 
-      const txStatus = result.effects?.status?.status;
+      if (!result.effects) {
+        return { success: false, error: 'Transaction submitted but status unknown. Check explorer.' };
+      }
+
+      const txStatus = result.effects.status?.status;
       if (txStatus !== 'success') {
-        const errorMsg = result.effects?.status?.error || 'Transaction failed';
-        return { success: false, error: errorMsg };
+        const rawError = result.effects.status?.error || 'Transaction failed';
+        return { success: false, error: formatErrorMessage(rawError) };
       }
 
       return { success: true, digest: result.digest };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      return { success: false, error: errorMessage };
+      return { success: false, error: formatErrorMessage(err) };
     }
   }, [walletAddress, isZkLoggedIn, zkState, zkSignTransaction, getKeypair]);
 
@@ -182,7 +186,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
 
     const nusdcCoinId = await getNusdcCoin(collateralUnits);
     if (!nusdcCoinId) {
-      throw new Error('Insufficient NUSDC balance');
+      throw new Error('Not enough NUSDC in wallet. Get tokens from Faucet.');
     }
 
     const sizeUnits = toContractPrice(size / currentPrice);
@@ -282,7 +286,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
 
     const nusdcCoinId = await getNusdcCoin(amountUnits);
     if (!nusdcCoinId) {
-      throw new Error('Insufficient NUSDC balance');
+      throw new Error('Not enough NUSDC in wallet. Get tokens from Faucet.');
     }
 
     const addParams: AddCollateralParams = {

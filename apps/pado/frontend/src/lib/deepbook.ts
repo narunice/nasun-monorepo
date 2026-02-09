@@ -99,7 +99,7 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
     return { bids, asks, spread, midPrice };
   } catch (error) {
     logOnce('deepbook-orderbook', 'warn', '[DeepBook] Orderbook unavailable (pool may not exist on-chain):', error);
-    return { bids: [], asks: [], spread: 0, midPrice: 0 };
+    throw error;
   }
 }
 

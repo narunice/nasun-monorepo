@@ -10,6 +10,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useAdaptiveInterval } from "../hooks/useAdaptiveInterval";
 import { OrderFormProvider, MarketProvider, useMarket } from "../features/trading/context";
 import { TradingPanel, EnablePadoCard } from "../features/trading/containers";
 import {
@@ -24,6 +25,7 @@ import {
   ShortcutHelpTooltip,
   MobileTradeLayoutV2,
   OnboardingTour,
+  FavoriteStrip,
 } from "../features/trading/components";
 import {
   useTradeMode,
@@ -197,9 +199,9 @@ function TradePageContent() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
   const { currentPool } = useMarket();
-  const { data: orderbookData } = useOrderbook();
+  const { data: orderbookData, isError: isOrderbookError } = useOrderbook();
   const { setPrice } = useOrderForm();
-  const { getPrice } = usePrices();
+  const { getPrice, getPriceInfo } = usePrices();
 
   const orderbook = orderbookData?.orderbook ?? { bids: [], asks: [], spread: 0, midPrice: 0 };
   const midPrice = orderbookData?.midPrice ?? 0;
@@ -211,11 +213,12 @@ function TradePageContent() {
 
   // Fetch real 24h market data from Binance
   const binanceSymbol = getBinanceSymbol(baseSymbol);
+  const adaptiveInterval = useAdaptiveInterval(30_000);
   const { data: ticker24h } = useQuery({
     queryKey: ["ticker24h", binanceSymbol],
     queryFn: () => fetchBinance24hTicker(binanceSymbol),
     enabled: !!binanceSymbol,
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
 
@@ -234,6 +237,7 @@ function TradePageContent() {
     volume24h: ticker24h?.quoteVolume,
     high24h: ticker24h?.highPrice,
     low24h: ticker24h?.lowPrice,
+    priceSource: midPrice ? 'oracle' as const : getPriceInfo(baseSymbol).source,
   };
 
   // Handle orderbook price click
@@ -245,9 +249,12 @@ function TradePageContent() {
     <div className="space-y-3">
       {/* Header: MarketSelector+InfoBar | Interface+Toggles (Col2) | PoolInfo box (Col3, Pro only) */}
       <div className={`flex gap-3 ${isSimple ? SIMPLE_MAX_W : ""}`}>
-        {/* Col 1: MarketSelector + MarketInfoBar stacked */}
+        {/* Col 1: MarketSelector + FavoriteStrip + MarketInfoBar stacked */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <MarketSelector />
+          <div className="flex items-center gap-3">
+            <MarketSelector />
+            <FavoriteStrip />
+          </div>
           <div className="flex items-stretch gap-3">
             <div className="flex-1 min-w-0">
               <MarketInfoBar {...marketInfo} />
@@ -393,7 +400,7 @@ function TradePageContent() {
               className="bg-theme-bg-secondary rounded-lg p-3 overflow-hidden"
               style={{ height: `${CHART_HEIGHT}px` }}
             >
-              <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} compact />
+              <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} compact isError={isOrderbookError} />
             </div>
             {!chatFloating &&
               (chatVisible ? (
@@ -455,7 +462,7 @@ function TradePageContent() {
             <div className="flex gap-3">
               <div className="flex-1 min-w-0">
                 <div className="bg-theme-bg-secondary rounded-lg p-3" style={{ height: "400px" }}>
-                  <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />
+                  <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} isError={isOrderbookError} />
                 </div>
               </div>
               <div className="flex-1 min-w-0">

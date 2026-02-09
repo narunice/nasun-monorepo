@@ -15,6 +15,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPriceWithFreshness, type TokenSymbol } from '../../../lib/prices';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { playSound } from '../../../lib/sounds';
 import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
@@ -100,6 +101,7 @@ export function useTPSLMonitor({
 
   const isDelegated = tradeCapStatus === 'delegated' && isKeeperConfigured();
   const executionMode = isDelegated ? 'server' : 'client';
+  const adaptiveInterval = useAdaptiveInterval(10_000);
 
   // Stable ref for executeMarketOrder to prevent interval restarts
   const executeRef = useRef<ExecuteMarketOrderFn>(executeMarketOrder);
@@ -127,7 +129,7 @@ export function useTPSLMonitor({
     queryKey: ['keeperTPSLOrders', walletAddress],
     queryFn: () => getUserTPSLOrders(walletAddress!),
     enabled: isDelegated && !!walletAddress,
-    refetchInterval: 10_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 5_000,
   });
 

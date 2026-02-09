@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getLendingPool, calculatePoolStats } from '../lib/lending-client';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { type LendingPool, type PoolStats } from '../types/lending';
 
 interface UseLendingPoolResult {
@@ -16,6 +17,8 @@ interface UseLendingPoolResult {
 }
 
 export function useLendingPool(): UseLendingPoolResult {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   const {
     data: pool,
     isLoading,
@@ -24,7 +27,7 @@ export function useLendingPool(): UseLendingPoolResult {
   } = useQuery({
     queryKey: ['lending-pool'],
     queryFn: getLendingPool,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: adaptiveInterval,
     staleTime: 10000,
   });
 

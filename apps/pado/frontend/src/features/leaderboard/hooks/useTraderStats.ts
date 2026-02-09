@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { TraderStatsResponse } from '../types';
 
 async function fetchTraderStats(address: string): Promise<TraderStatsResponse> {
@@ -19,11 +20,13 @@ async function fetchTraderStats(address: string): Promise<TraderStatsResponse> {
 }
 
 export function useTraderStats(address: string | null) {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   return useQuery<TraderStatsResponse>({
     queryKey: ['traderStats', address],
     queryFn: () => fetchTraderStats(address!),
     enabled: !!address && !!NETWORK_CONFIG.chatHttpUrl,
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
 }

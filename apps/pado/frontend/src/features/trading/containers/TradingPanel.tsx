@@ -407,6 +407,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           <div className="flex-1 min-h-0">
             <SwapOrderForm
               midPrice={midPrice}
+              bids={bids}
+              asks={asks}
               onMarketBuy={handleSimpleMarketBuy}
               onMarketSell={handleSimpleMarketSell}
               disabled={!isConnected || !balanceManagerId}

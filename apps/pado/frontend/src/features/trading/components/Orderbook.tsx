@@ -54,6 +54,7 @@ interface OrderbookProps {
   onPriceClick?: (price: number) => void;
   showSpread?: boolean;
   compact?: boolean;
+  isError?: boolean;
 }
 
 function formatTradeTime(timestamp: number): string {
@@ -132,7 +133,7 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
   );
 }
 
-export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact = false }: OrderbookProps) {
+export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact = false, isError = false }: OrderbookProps) {
   const { currentPool } = useMarket();
   const tickSizeUsd = currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals);
   const groupOptions = useMemo(() => getGroupOptions(tickSizeUsd), [tickSizeUsd]);
@@ -302,6 +303,12 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
 
   return (
     <div className="flex flex-col h-full">
+      {/* Error banner */}
+      {isError && (
+        <div className="px-2 py-1 text-xs text-yellow-300 bg-yellow-900/30 border-b border-yellow-700/40" role="alert">
+          Orderbook unavailable — showing last known data
+        </div>
+      )}
       {/* Header: Book/Trades tabs + depth selector */}
       <UnderlineTabs
         tabs={[

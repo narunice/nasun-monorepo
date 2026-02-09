@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { CompetitionsListResponse, CompetitionStatus } from '../types';
 
 async function fetchCompetitions(status?: CompetitionStatus): Promise<CompetitionsListResponse> {
@@ -22,11 +23,13 @@ async function fetchCompetitions(status?: CompetitionStatus): Promise<Competitio
 }
 
 export function useCompetitions(status?: CompetitionStatus) {
+  const adaptiveInterval = useAdaptiveInterval(60_000);
+
   return useQuery<CompetitionsListResponse>({
     queryKey: ['competitions', status ?? 'all'],
     queryFn: () => fetchCompetitions(status),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
-    refetchInterval: 60_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 30_000,
   });
 }

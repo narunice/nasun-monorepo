@@ -14,6 +14,8 @@ interface SwapConfirmViewProps {
   slippage: number;
   midPrice: number;
   baseSymbol: string;
+  avgPrice?: number;
+  impactPct?: number;
   onConfirm: () => void;
   onBack: () => void;
   isLoading: boolean;
@@ -29,6 +31,8 @@ export function SwapConfirmView({
   slippage,
   midPrice,
   baseSymbol,
+  avgPrice,
+  impactPct,
   onConfirm,
   onBack,
   isLoading,
@@ -68,6 +72,26 @@ export function SwapConfirmView({
             <span className="text-theme-text-muted">Fee ({feePercent})</span>
             <span className="font-mono text-theme-text-muted">~${fee.toFixed(2)}</span>
           </div>
+          {avgPrice != null && avgPrice > 0 && (
+            <div className="flex justify-between text-xs">
+              <span className="text-theme-text-muted">Est. Avg Price</span>
+              <span className="font-mono text-theme-text-secondary">
+                ${avgPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
+          {impactPct != null && impactPct > 0 && (
+            <div className="flex justify-between text-xs">
+              <span className="text-theme-text-muted">Price Impact</span>
+              <span className={`font-mono font-medium ${
+                impactPct < 0.5 ? 'text-green-400' :
+                impactPct < 2 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {impactPct < 0.01 ? '<0.01' : impactPct.toFixed(2)}%
+              </span>
+            </div>
+          )}
           <div className="flex justify-between text-xs">
             <span className="text-theme-text-muted">Max Slippage</span>
             <span className="font-mono text-theme-text-muted">{slippage}%</span>

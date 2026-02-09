@@ -19,6 +19,7 @@ import {
   getTokenByOracleId,
   type TokenSymbol,
 } from '../../lib/prices';
+import { useAdaptiveInterval } from '../../hooks/useAdaptiveInterval';
 
 // ========================================
 // Configuration
@@ -63,6 +64,7 @@ export interface UsePricesResult {
  * const btcPrice = getPrice('NBTC'); // 97000
  */
 export function usePrices(enabled: boolean = true): UsePricesResult {
+  const adaptiveInterval = useAdaptiveInterval(REFRESH_INTERVAL_MS);
   const query = useQuery({
     queryKey: ['oracle-prices'],
     queryFn: async () => {
@@ -77,7 +79,7 @@ export function usePrices(enabled: boolean = true): UsePricesResult {
       };
     },
     enabled,
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: adaptiveInterval,
     staleTime: STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
@@ -122,6 +124,7 @@ export interface OraclePriceData {
  * @param symbolId - On-chain oracle symbol ID (1=BTC, 2=ETH, 3=NASUN)
  */
 export function useOraclePrice(symbolId: number) {
+  const adaptiveOracleInterval = useAdaptiveInterval(REFRESH_INTERVAL_MS);
   const token = getTokenByOracleId(symbolId);
 
   return useQuery<OraclePriceData | null>({
@@ -132,7 +135,7 @@ export function useOraclePrice(symbolId: number) {
       const { price, timestamp, isFresh } = getPriceWithFreshness(token);
       return { price, timestamp, isFresh };
     },
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: adaptiveOracleInterval,
     staleTime: STALE_TIME_MS,
     enabled: !!token,
   });

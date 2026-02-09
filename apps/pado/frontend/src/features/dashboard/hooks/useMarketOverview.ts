@@ -8,6 +8,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchBinanceMultiTicker, getBinanceSymbol } from '../../../lib/indicators';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { getUnifiedPrice, set24hChange, type TokenSymbol } from '../../../lib/prices';
 
 export interface MarketOverviewItem {
@@ -40,10 +41,12 @@ export function useMarketOverview(): {
   markets: MarketOverviewItem[];
   isLoading: boolean;
 } {
+  const adaptiveInterval = useAdaptiveInterval(30_000);
+
   const { data: tickerMap, isLoading } = useQuery({
     queryKey: ['marketOverview', 'binanceMultiTicker'],
     queryFn: () => fetchBinanceMultiTicker(BINANCE_SYMBOLS),
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
 

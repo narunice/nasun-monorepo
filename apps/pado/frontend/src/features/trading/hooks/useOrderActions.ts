@@ -344,17 +344,17 @@ export function useOrderActions(): UseOrderActionsResult {
         showToast("Order cancelled successfully", "success");
         refreshData();
       } else {
-        // 이미 체결된 주문인 경우 경고
-        if (result.error?.includes("leaf_remove") || result.error?.includes("big_vector")) {
+        const parsed = parseError(result.error);
+        if (parsed.errorType === 'ORDER_NOT_FOUND') {
           showToast("Order already filled or cancelled", "warning");
         } else {
-          showToast(`Cancel error: ${result.error}`, "error");
+          showToast(formatUserFriendlyError(result.error), "error");
         }
       }
 
       return result;
     },
-    [cancelOrder, showToast, refreshData]
+    [cancelOrder, showToast, refreshData, formatUserFriendlyError]
   );
 
   // Cancel all open orders sequentially (capped to prevent UI freeze / gas drain)
@@ -373,7 +373,8 @@ export function useOrderActions(): UseOrderActionsResult {
           cancelled++;
         } else {
           // Skip already-filled orders
-          if (result.error?.includes("leaf_remove") || result.error?.includes("big_vector")) {
+          const parsed = parseError(result.error);
+          if (parsed.errorType === 'ORDER_NOT_FOUND') {
             cancelled++;
           } else {
             lastError = result.error;
@@ -394,7 +395,7 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast(`Failed to cancel orders: ${formatUserFriendlyError(lastError)}`, "error");
       return { success: false, error: lastError };
     },
-    [cancelOrder, showToast, refreshData]
+    [cancelOrder, showToast, refreshData, formatUserFriendlyError]
   );
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
@@ -440,7 +441,7 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast(message, "success");
       refreshData();
     } else {
-      showToast(`Error: ${result.error}`, "error");
+      showToast(formatUserFriendlyError(result.error), "error");
     }
 
     return result;
@@ -454,7 +455,7 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast("Funds returned to wallet!", "success");
       refreshData();
     } else {
-      showToast(`Error: ${result.error}`, "error");
+      showToast(formatUserFriendlyError(result.error), "error");
     }
 
     return result;

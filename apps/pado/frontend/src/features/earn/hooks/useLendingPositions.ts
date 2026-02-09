@@ -10,6 +10,7 @@ import {
   calculatePositionValue,
 } from '../lib/lending-client';
 import { useLendingPool } from './useLendingPool';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import {
   type PositionValue,
   formatNUSDC,
@@ -30,6 +31,7 @@ export function useLendingPositions(): UseLendingPositionsResult {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { pool } = useLendingPool();
+  const adaptiveInterval = useAdaptiveInterval(30_000);
 
   // Determine active address (zkLogin takes priority)
   const address = isZkConnected
@@ -47,7 +49,7 @@ export function useLendingPositions(): UseLendingPositionsResult {
     queryKey: ['lending-positions', address],
     queryFn: () => getUserPositions(address!),
     enabled: !!address,
-    refetchInterval: 30000,
+    refetchInterval: adaptiveInterval,
     staleTime: 10000,
   });
 

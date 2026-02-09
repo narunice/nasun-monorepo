@@ -13,6 +13,32 @@ import { useWalletAccount, useZkLogin } from "@nasun/wallet";
 // Must match the query key in @nasun/wallet useMultiBalance
 const MULTI_BALANCE_QUERY_KEY = "wallet-multi-balance";
 
+/**
+ * Format faucet errors into user-friendly messages
+ */
+function formatFaucetError(error: unknown, symbol: string): string {
+  const msg = error instanceof Error ? error.message : String(error ?? '');
+
+  // MoveAbort code 1 = 24h cooldown
+  if (msg.includes('MoveAbort') && msg.includes(', 1)')) {
+    return `${symbol} faucet: 24h cooldown active. Try again later.`;
+  }
+  // Rate limiting
+  if (msg.includes('429') || /rate.?limit/i.test(msg)) {
+    return `${symbol} faucet rate limited. Wait a moment and try again.`;
+  }
+  // Gas error
+  if (/InsufficientGas|No valid gas coins/i.test(msg)) {
+    return 'Not enough NASUN for gas. Request NASUN first.';
+  }
+  // Network / fetch errors
+  if (/fetch|network|ECONNREFUSED|timeout/i.test(msg)) {
+    return `${symbol} faucet temporarily unavailable. Try again shortly.`;
+  }
+  // Generic
+  return `${symbol} faucet failed. Try again.`;
+}
+
 export interface UseFaucetResult {
   isNasunLoading: boolean;
   isNbtcLoading: boolean;
@@ -61,7 +87,7 @@ export function useFaucet(): UseFaucetResult {
         showToast("Faucet request failed", "error");
       }
     } catch (error) {
-      showToast(`Faucet error: ${error instanceof Error ? error.message : "Unknown"}`, "error");
+      showToast(formatFaucetError(error, "NASUN"), "error");
     } finally {
       setIsNasunLoading(false);
     }
@@ -76,13 +102,10 @@ export function useFaucet(): UseFaucetResult {
         showToast("1 NBTC received!", "success");
         refreshBalances();
       } else {
-        showToast(`NBTC faucet error: ${result.error}`, "error");
+        showToast(formatFaucetError(result.error, "NBTC"), "error");
       }
     } catch (error) {
-      showToast(
-        `NBTC faucet error: ${error instanceof Error ? error.message : "Unknown"}`,
-        "error"
-      );
+      showToast(formatFaucetError(error, "NBTC"), "error");
     } finally {
       setIsNbtcLoading(false);
     }
@@ -97,13 +120,10 @@ export function useFaucet(): UseFaucetResult {
         showToast("100,000 NUSDC received!", "success");
         refreshBalances();
       } else {
-        showToast(`NUSDC faucet error: ${result.error}`, "error");
+        showToast(formatFaucetError(result.error, "NUSDC"), "error");
       }
     } catch (error) {
-      showToast(
-        `NUSDC faucet error: ${error instanceof Error ? error.message : "Unknown"}`,
-        "error"
-      );
+      showToast(formatFaucetError(error, "NUSDC"), "error");
     } finally {
       setIsNusdcLoading(false);
     }
@@ -118,18 +138,12 @@ export function useFaucet(): UseFaucetResult {
         showToast("10 NETH received!", "success");
         refreshBalances();
       } else {
-        const errorMsg = result.error || "Unknown error";
-        if (errorMsg.includes('MoveAbort') && errorMsg.includes(', 1)')) {
-          showToast("NETH faucet: 24h cooldown active. Try again later.", "warning");
-        } else {
-          showToast(`NETH faucet error: ${errorMsg}`, "error");
-        }
+        const formatted = formatFaucetError(result.error, "NETH");
+        const isCooldown = formatted.includes('cooldown');
+        showToast(formatted, isCooldown ? "warning" : "error");
       }
     } catch (error) {
-      showToast(
-        `NETH faucet error: ${error instanceof Error ? error.message : "Unknown"}`,
-        "error"
-      );
+      showToast(formatFaucetError(error, "NETH"), "error");
     } finally {
       setIsNethLoading(false);
     }
@@ -144,18 +158,12 @@ export function useFaucet(): UseFaucetResult {
         showToast("100 NSOL received!", "success");
         refreshBalances();
       } else {
-        const errorMsg = result.error || "Unknown error";
-        if (errorMsg.includes('MoveAbort') && errorMsg.includes(', 1)')) {
-          showToast("NSOL faucet: 24h cooldown active. Try again later.", "warning");
-        } else {
-          showToast(`NSOL faucet error: ${errorMsg}`, "error");
-        }
+        const formatted = formatFaucetError(result.error, "NSOL");
+        const isCooldown = formatted.includes('cooldown');
+        showToast(formatted, isCooldown ? "warning" : "error");
       }
     } catch (error) {
-      showToast(
-        `NSOL faucet error: ${error instanceof Error ? error.message : "Unknown"}`,
-        "error"
-      );
+      showToast(formatFaucetError(error, "NSOL"), "error");
     } finally {
       setIsNsolLoading(false);
     }

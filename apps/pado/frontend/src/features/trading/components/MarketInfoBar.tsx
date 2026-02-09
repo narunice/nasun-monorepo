@@ -5,6 +5,7 @@
  */
 
 import { useMemo } from 'react';
+import { StalePriceWarning } from '../../../components/common/StalePriceWarning';
 
 interface MarketInfoBarProps {
   symbol: string;
@@ -16,6 +17,7 @@ interface MarketInfoBarProps {
   openInterest?: number;
   fundingRate?: number;
   nextFundingTime?: Date;
+  priceSource?: 'oracle' | 'simulated' | 'unknown';
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function MarketInfoBar({
   openInterest,
   fundingRate,
   nextFundingTime,
+  priceSource,
   className,
 }: MarketInfoBarProps) {
   const hasChange = priceChange24h != null;
@@ -76,6 +79,7 @@ export function MarketInfoBar({
           <span className={`text-trading-xl xl:text-trading-2xl font-bold ${isPositiveChange ? 'text-trading-bid' : 'text-trading-ask'}`}>
             ${price > 0 ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
           </span>
+          {priceSource && <StalePriceWarning source={priceSource} />}
         </div>
 
         {/* 24h Change */}

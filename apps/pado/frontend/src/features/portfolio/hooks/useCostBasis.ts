@@ -9,6 +9,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { getUnifiedPrice, type TokenSymbol } from '../../../lib/prices';
@@ -139,6 +140,7 @@ async function fetchCostBasis(balanceManagerId: string): Promise<CostBasisEntry[
 export function useCostBasis(): CostBasisResult {
   const { account, status } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const adaptiveInterval = useAdaptiveInterval(30_000);
 
   const activeAddress = isZkConnected
     ? zkState?.address
@@ -150,7 +152,7 @@ export function useCostBasis(): CostBasisResult {
     queryKey: ['costBasis', balanceManagerId],
     queryFn: () => fetchCostBasis(balanceManagerId!),
     enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE,
-    refetchInterval: 30_000,
+    refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
 

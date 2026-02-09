@@ -10,6 +10,7 @@ import {
   toMarketDisplay,
 } from '../lib/perp-client';
 import type { PerpMarket, PerpMarketDisplay } from '../types';
+import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 
 const MARKET_QUERY_KEY = 'perp-market';
 const MARKETS_QUERY_KEY = 'perp-markets';
@@ -19,11 +20,12 @@ const REFETCH_INTERVAL = 10_000; // 10 seconds
  * Fetch a single perp market by ID
  */
 export function usePerpMarket(marketId: string | undefined) {
+  const adaptiveInterval = useAdaptiveInterval(REFETCH_INTERVAL);
   return useQuery<PerpMarket | null>({
     queryKey: [MARKET_QUERY_KEY, marketId],
     queryFn: () => (marketId ? fetchPerpMarket(marketId) : Promise.resolve(null)),
     enabled: !!marketId,
-    refetchInterval: REFETCH_INTERVAL,
+    refetchInterval: adaptiveInterval,
     staleTime: 5_000,
   });
 }
@@ -32,10 +34,11 @@ export function usePerpMarket(marketId: string | undefined) {
  * Fetch all available perp markets
  */
 export function usePerpMarkets() {
+  const adaptiveMarketsInterval = useAdaptiveInterval(REFETCH_INTERVAL);
   return useQuery<PerpMarket[]>({
     queryKey: [MARKETS_QUERY_KEY],
     queryFn: fetchAllPerpMarkets,
-    refetchInterval: REFETCH_INTERVAL,
+    refetchInterval: adaptiveMarketsInterval,
     staleTime: 5_000,
   });
 }
