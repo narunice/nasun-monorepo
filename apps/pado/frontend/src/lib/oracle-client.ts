@@ -166,7 +166,7 @@ export async function getPrice(
 
     const outerFields = getMoveFields(result.data?.content);
     if (!outerFields) {
-      console.warn(`[Oracle] Feed not found for ${symbol}`);
+      logOnce(`oracle-feed-${symbol}`, 'warn', `[Oracle] Feed not found for ${symbol}`);
       return null;
     }
 
@@ -175,7 +175,7 @@ export async function getPrice(
     const timestamp = getNestedField(outerFields, 'value.timestamp');
 
     if (rawPrice === null || rawConfidence === null || timestamp == null) {
-      console.warn(`[Oracle] Invalid feed data for ${symbol}`);
+      logOnce(`oracle-feeddata-${symbol}`, 'warn', `[Oracle] Invalid feed data for ${symbol}`);
       return null;
     }
 
