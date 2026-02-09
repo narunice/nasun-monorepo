@@ -12,6 +12,9 @@ import {
   EXECUTOR_SELECTION,
 } from '../types';
 
+// Safety bound for pagination loops to prevent infinite loops on malformed RPC responses
+const MAX_PAGINATION_PAGES = 100;
+
 // Stake thresholds in SOE (9 decimals) — mirrors executor_tier.move
 const BRONZE_STAKE = 1_000_000_000_000;
 const SILVER_STAKE = 5_000_000_000_000;
@@ -100,25 +103,39 @@ async function fetchTierMap(client: SuiClient, config: BaramConfig): Promise<Map
     const tableId = tiersTable?.fields?.id?.id;
     if (!tableId) return tierMap;
 
-    const dynamicFields = await client.getDynamicFields({ parentId: tableId });
+    // Paginate through all dynamic fields (default page size = 50)
+    let dfCursor: string | null | undefined = undefined;
+    let dfHasNextPage = true;
+    let pageCount = 0;
 
-    for (const field of dynamicFields.data) {
-      try {
-        const fieldData = await client.getDynamicFieldObject({
-          parentId: tableId,
-          name: field.name,
-        });
-        if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
-          const content = fieldData.data.content.fields as Record<string, unknown>;
-          const executorAddr = String((field.name as { value?: string })?.value || '');
-          const tierValue = Number(content.value ?? 0);
-          if (executorAddr) {
-            tierMap.set(executorAddr, tierValue);
+    while (dfHasNextPage && pageCount < MAX_PAGINATION_PAGES) {
+      pageCount++;
+      const page = await client.getDynamicFields({
+        parentId: tableId,
+        ...(dfCursor ? { cursor: dfCursor } : {}),
+      });
+
+      for (const field of page.data) {
+        try {
+          const fieldData = await client.getDynamicFieldObject({
+            parentId: tableId,
+            name: field.name,
+          });
+          if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
+            const content = fieldData.data.content.fields as Record<string, unknown>;
+            const executorAddr = String((field.name as { value?: string })?.value || '');
+            const tierValue = Number(content.value ?? 0);
+            if (executorAddr) {
+              tierMap.set(executorAddr, tierValue);
+            }
           }
+        } catch {
+          // Skip individual tier fetch failures
         }
-      } catch {
-        // Skip individual tier fetch failures
       }
+
+      dfHasNextPage = page.hasNextPage;
+      dfCursor = page.nextCursor;
     }
   } catch {
     // TierRegistry unavailable, use client fallback
@@ -152,29 +169,43 @@ export async function fetchExecutors(
 
   if (!tableId) return [];
 
-  const dynamicFields = await client.getDynamicFields({ parentId: tableId });
+  // Paginate through all dynamic fields (default page size = 50)
   const executorList: ExecutorInfo[] = [];
+  let dfCursor: string | null | undefined = undefined;
+  let dfHasNextPage = true;
+  let pageCount = 0;
 
-  for (const field of dynamicFields.data) {
-    try {
-      const fieldData = await client.getDynamicFieldObject({
-        parentId: tableId,
-        name: field.name,
-      });
+  while (dfHasNextPage && pageCount < MAX_PAGINATION_PAGES) {
+    pageCount++;
+    const page = await client.getDynamicFields({
+      parentId: tableId,
+      ...(dfCursor ? { cursor: dfCursor } : {}),
+    });
 
-      if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
-        const content = fieldData.data.content.fields as Record<string, unknown>;
-        const valueWrapper = content.value as { fields?: Record<string, unknown> };
-        const value = valueWrapper.fields ?? (valueWrapper as unknown as Record<string, unknown>);
-        const operator = String((field.name as { value?: string })?.value || value.operator || '');
-        const info = parseExecutorInfo(value, operator, tierMap);
-        if (info.isActive) {
-          executorList.push(info);
+    for (const field of page.data) {
+      try {
+        const fieldData = await client.getDynamicFieldObject({
+          parentId: tableId,
+          name: field.name,
+        });
+
+        if (fieldData.data?.content && fieldData.data.content.dataType === 'moveObject') {
+          const content = fieldData.data.content.fields as Record<string, unknown>;
+          const valueWrapper = content.value as { fields?: Record<string, unknown> };
+          const value = valueWrapper.fields ?? (valueWrapper as unknown as Record<string, unknown>);
+          const operator = String((field.name as { value?: string })?.value || value.operator || '');
+          const info = parseExecutorInfo(value, operator, tierMap);
+          if (info.isActive) {
+            executorList.push(info);
+          }
         }
+      } catch {
+        // Skip individual executor fetch failures
       }
-    } catch {
-      // Skip individual executor fetch failures
     }
+
+    dfHasNextPage = page.hasNextPage;
+    dfCursor = page.nextCursor;
   }
 
   return executorList;

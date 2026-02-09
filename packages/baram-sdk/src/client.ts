@@ -68,6 +68,7 @@ export class BaramClient {
   private executorTimeoutMs: number;
   private aerPollIntervalMs: number;
   private aerPollRetries: number;
+  private nonTeeWarningShown = false;
 
   constructor(options: BaramClientOptions) {
     this.config = options.config;
@@ -169,7 +170,16 @@ export class BaramClient {
       throw new NoExecutorError(model, effectiveMinTier);
     }
 
-    throw lastError ?? new NoExecutorError(model, effectiveMinTier);
+    // Wrap the final error with retry context for debugging
+    const finalError = lastError ?? new NoExecutorError(model, effectiveMinTier);
+    if (excludeIds.size > 0) {
+      const context = `${excludeIds.size} executor(s) failed: ${[...excludeIds].map(id => id.slice(0, 10)).join(', ')}`;
+      throw new BaramError(
+        `${finalError.message} (${context})`,
+        finalError instanceof BaramError ? finalError.code : 'EXECUTION_FAILED'
+      );
+    }
+    throw finalError;
   }
 
   /**
@@ -545,8 +555,12 @@ export class BaramClient {
       // Auto-cancel on executor failure to release escrow
       try {
         await this.cancel(requestId);
-      } catch {
-        // Cancel may fail if already timed out — escrow auto-refunds after timeout
+      } catch (cancelErr) {
+        console.warn(
+          `[Baram SDK] Failed to cancel request ${requestId}. ` +
+          `Escrowed funds will auto-refund after on-chain timeout. ` +
+          `Cancel error: ${cancelErr instanceof Error ? cancelErr.message : String(cancelErr)}`
+        );
       }
       throw err;
     }
@@ -613,6 +627,14 @@ export class BaramClient {
       encodedPrompt = result.encrypted;
       aesKeyBytes = result.aesKeyBytes;
     } else {
+      if (!this.nonTeeWarningShown) {
+        this.nonTeeWarningShown = true;
+        console.warn(
+          `[Baram SDK] Sending prompt to non-TEE executor (${executor.name || executor.id}). ` +
+          `Prompt is Base64-encoded only, not encrypted. ` +
+          `For end-to-end encryption, use a TEE-enabled executor (teeType > 0).`
+        );
+      }
       encodedPrompt = Buffer.from(prompt, 'utf-8').toString('base64');
     }
 
