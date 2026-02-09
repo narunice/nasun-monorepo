@@ -7,11 +7,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
-import { useOrderbook, useOpenOrders, useOrderActions, type TradeMode } from '../hooks';
+import { useOrderbook, useOpenOrders, useOrderActions, useOrderFillNotifier, type TradeMode } from '../hooks';
 import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
 import { calcLockedAmounts } from '../types';
-import { OrderForm, OrderConfirmModal, SimpleOrderForm } from '../components';
+import { OrderForm, OrderConfirmModal, SwapOrderForm } from '../components';
 import type { PriceLevel } from '../../../lib/deepbook';
 
 // Stable empty array reference to avoid useMemo invalidation
@@ -175,6 +175,13 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
 
+  // Order fill notifier — browser notification + sound when user's orders are filled
+  useOrderFillNotifier({
+    balanceManagerId,
+    quoteDecimals: currentPool.quoteToken.decimals,
+    baseDecimals: currentPool.baseToken.decimals,
+  });
+
   // TP/SL Monitor — mount once, monitors price and auto-executes market/limit orders
   const { addOrder: addTPSLOrder } = useTPSLMonitor({
     executeMarketOrder: useCallback(async (orderSide: 'buy' | 'sell', quantity: number) => {
@@ -212,22 +219,30 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     tpPrice,
     slPrice: slPriceValue,
     stopPrice,
+    trailValue,
+    trailMode,
+    ocoEnabled,
   } = useOrderForm();
 
-  // Create TP/SL orders after successful main order
+  // Create TP/SL orders after successful main order (with optional OCO linking)
   const createTPSLOrdersIfEnabled = useCallback((orderSide: 'buy' | 'sell', qty: number) => {
     if (!tpslEnabled) return;
     const tpValue = parseFloat(tpPrice);
     const slValue = parseFloat(slPriceValue);
-    // TP: opposite side to close position
     const closeSide = orderSide === 'buy' ? 'sell' : 'buy';
-    if (tpValue > 0 && Number.isFinite(tpValue)) {
-      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: tpValue, triggerType: 'tp' });
+    const hasTP = tpValue > 0 && Number.isFinite(tpValue);
+    const hasSL = slValue > 0 && Number.isFinite(slValue);
+
+    // Generate shared OCO group ID if OCO enabled and both TP+SL are set
+    const ocoGroupId = ocoEnabled && hasTP && hasSL ? crypto.randomUUID() : undefined;
+
+    if (hasTP) {
+      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: tpValue, triggerType: 'tp', ocoGroupId });
     }
-    if (slValue > 0 && Number.isFinite(slValue)) {
-      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: slValue, triggerType: 'sl' });
+    if (hasSL) {
+      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: slValue, triggerType: 'sl', ocoGroupId });
     }
-  }, [tpslEnabled, tpPrice, slPriceValue, addTPSLOrder]);
+  }, [tpslEnabled, tpPrice, slPriceValue, ocoEnabled, addTPSLOrder]);
 
   // Stop-Limit order handler — creates a conditional order in TP/SL storage
   const handleStopLimitOrder = useCallback((orderSide: 'buy' | 'sell') => {
@@ -248,6 +263,28 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     });
     resetForm();
   }, [stopPrice, price, amount, addTPSLOrder, resetForm]);
+
+  // Trailing Stop order handler — creates a trailing-stop conditional order
+  const handleTrailingStopOrder = useCallback((orderSide: 'buy' | 'sell') => {
+    const amountNum = parseFloat(amount);
+    const trail = parseFloat(trailValue);
+
+    if (!Number.isFinite(trail) || trail <= 0) return;
+    if (!Number.isFinite(amountNum) || amountNum <= 0) return;
+    if (midPrice <= 0) return;
+
+    addTPSLOrder({
+      side: orderSide,
+      quantity: amountNum,
+      triggerPrice: midPrice, // initial reference price
+      triggerType: 'trailing-stop',
+      ...(trailMode === 'percent'
+        ? { trailPercent: trail }
+        : { trailAmount: trail }),
+      highWaterMark: midPrice,
+    });
+    resetForm();
+  }, [amount, trailValue, trailMode, midPrice, addTPSLOrder, resetForm]);
 
   // One-Click 주문 핸들러 (확인 모달 스킵)
   const handleOneClickOrder = async (type: 'buy' | 'sell') => {
@@ -270,6 +307,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     // Stop-Limit: create conditional order (no confirmation modal needed)
     if (orderMode === 'stop-limit') {
       handleStopLimitOrder(orderSide);
+      return;
+    }
+
+    // Trailing Stop: create conditional order
+    if (orderMode === 'trailing-stop') {
+      handleTrailingStopOrder(orderSide);
       return;
     }
 
@@ -360,9 +403,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             </div>
           )}
 
-          {/* Simple Order Form - fills remaining space */}
+          {/* Swap Order Form - fills remaining space */}
           <div className="flex-1 min-h-0">
-            <SimpleOrderForm
+            <SwapOrderForm
               midPrice={midPrice}
               onMarketBuy={handleSimpleMarketBuy}
               onMarketSell={handleSimpleMarketSell}

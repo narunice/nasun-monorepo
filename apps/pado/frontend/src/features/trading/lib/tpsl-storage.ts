@@ -57,8 +57,16 @@ function saveOrders(orders: TPSLOrder[]): boolean {
 export function addTPSLOrder(
   order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>
 ): TPSLOrder | null {
-  if (!Number.isFinite(order.triggerPrice) || order.triggerPrice <= 0) return null;
   if (!Number.isFinite(order.quantity) || order.quantity <= 0) return null;
+  // Trailing-stop orders don't use triggerPrice; they use trailAmount/trailPercent
+  if (order.triggerType === 'trailing-stop') {
+    const hasTrail = (order.trailAmount && Number.isFinite(order.trailAmount) && order.trailAmount > 0)
+      || (order.trailPercent && Number.isFinite(order.trailPercent) && order.trailPercent > 0 && order.trailPercent < 100);
+    if (!hasTrail) return null;
+    if (!order.highWaterMark || !Number.isFinite(order.highWaterMark) || order.highWaterMark <= 0) return null;
+  } else {
+    if (!Number.isFinite(order.triggerPrice) || order.triggerPrice <= 0) return null;
+  }
   // Stop-limit orders require a valid limitPrice
   if (order.triggerType === 'stop-limit') {
     if (!order.limitPrice || !Number.isFinite(order.limitPrice) || order.limitPrice <= 0) return null;
@@ -111,6 +119,60 @@ export function updateTPSLStatus(
 
   orders[idx] = { ...orders[idx], status, ...extra };
   saveOrders(orders);
+}
+
+/**
+ * Update highWaterMark for all active trailing-stop orders.
+ * For sell trailing: hwm = max(hwm, currentPrice)
+ * For buy trailing: hwm = min(hwm, currentPrice) [hwm tracks low-water-mark]
+ * @returns true if any order was updated
+ */
+export function updateTrailingHighWaterMarks(currentPrice: number): boolean {
+  if (currentPrice <= 0) return false;
+
+  const orders = getTPSLOrders();
+  let updated = false;
+
+  for (const order of orders) {
+    if (order.status !== 'active' || order.triggerType !== 'trailing-stop') continue;
+    if (!order.highWaterMark) continue;
+
+    if (order.side === 'sell') {
+      if (currentPrice > order.highWaterMark) {
+        order.highWaterMark = currentPrice;
+        updated = true;
+      }
+    } else {
+      if (currentPrice < order.highWaterMark) {
+        order.highWaterMark = currentPrice;
+        updated = true;
+      }
+    }
+  }
+
+  if (updated) saveOrders(orders);
+  return updated;
+}
+
+/**
+ * Cancel all active orders in an OCO group except the triggering order.
+ * @returns number of orders cancelled
+ */
+export function cancelLinkedOrders(ocoGroupId: string, exceptId: string): number {
+  if (!ocoGroupId) return 0;
+
+  const orders = getTPSLOrders();
+  let cancelled = 0;
+
+  for (const order of orders) {
+    if (order.ocoGroupId === ocoGroupId && order.id !== exceptId && order.status === 'active') {
+      order.status = 'cancelled';
+      cancelled++;
+    }
+  }
+
+  if (cancelled > 0) saveOrders(orders);
+  return cancelled;
 }
 
 /**

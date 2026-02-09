@@ -22,8 +22,8 @@ interface MarketInfoBarProps {
 export function MarketInfoBar({
   symbol,
   price,
-  priceChange24h = 0,
-  volume24h = 0,
+  priceChange24h,
+  volume24h,
   high24h,
   low24h,
   openInterest,
@@ -31,9 +31,11 @@ export function MarketInfoBar({
   nextFundingTime,
   className,
 }: MarketInfoBarProps) {
-  const isPositiveChange = priceChange24h >= 0;
+  const hasChange = priceChange24h != null;
+  const isPositiveChange = (priceChange24h ?? 0) >= 0;
 
   const formattedVolume = useMemo(() => {
+    if (volume24h == null) return '--';
     if (volume24h >= 1_000_000) {
       return `$${(volume24h / 1_000_000).toFixed(2)}M`;
     } else if (volume24h >= 1_000) {
@@ -79,8 +81,8 @@ export function MarketInfoBar({
         {/* 24h Change */}
         <div className="flex flex-col">
           <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted">24h Change</span>
-          <span className={`text-trading-sm xl:text-trading-lg font-medium ${isPositiveChange ? 'text-trading-bid' : 'text-trading-ask'}`}>
-            {isPositiveChange ? '+' : ''}{priceChange24h.toFixed(2)}%
+          <span className={`text-trading-sm xl:text-trading-lg font-medium ${hasChange ? (isPositiveChange ? 'text-trading-bid' : 'text-trading-ask') : 'text-theme-text-muted'}`}>
+            {hasChange ? `${isPositiveChange ? '+' : ''}${priceChange24h.toFixed(2)}%` : '--'}
           </span>
         </div>
 

@@ -22,7 +22,7 @@ import {
   TradingToggles,
   PoolInfo,
   ShortcutHelpTooltip,
-  MobileTradeLayout,
+  MobileTradeLayoutV2,
   OnboardingTour,
 } from "../features/trading/components";
 import { useTradeMode, useOrderbook, useKeyboardShortcuts, useOnboardingTour, isTourCompleted } from "../features/trading/hooks";
@@ -220,12 +220,12 @@ function TradePageContent() {
     }
   }, [baseSymbol, ticker24h?.priceChangePercent]);
 
-  // Market info data
+  // Market info data (undefined when no Binance data, shows "--" in bar)
   const marketInfo = {
     symbol: `${currentPool.baseToken.symbol}/${currentPool.quoteToken.symbol}`,
     price: displayPrice,
-    priceChange24h: ticker24h?.priceChangePercent ?? 0,
-    volume24h: ticker24h?.quoteVolume ?? 0,
+    priceChange24h: ticker24h?.priceChangePercent,
+    volume24h: ticker24h?.quoteVolume,
     high24h: ticker24h?.highPrice,
     low24h: ticker24h?.lowPrice,
   };
@@ -454,8 +454,8 @@ function TradePageContent() {
         )}
       </div>
 
-      {/* Mobile: tab-based layout (below lg) */}
-      <MobileTradeLayout
+      {/* Mobile: scrollable single-page layout (below lg) */}
+      <MobileTradeLayoutV2
         chartContent={
           <ChartArea
             chartView={chartView}
@@ -466,14 +466,19 @@ function TradePageContent() {
             midPrice={midPrice}
           />
         }
-        bookContent={<Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} />}
         tradeContent={
           <>
             <EnablePadoCard />
             <TradingPanel mode={mode} />
           </>
         }
+        bids={orderbook.bids}
+        asks={orderbook.asks}
+        midPrice={midPrice}
+        onPriceClick={handlePriceClick}
         bottomTabContent={!isSimple ? <BottomTabPanel /> : undefined}
+        miniTicker={marketInfo}
+        isSimple={isSimple}
       />
 
       {/* Floating chat popup (xl+ only, when popped out) */}

@@ -20,6 +20,9 @@ import {
   HotMarketsCard,
   PredictionHighlight,
   WelcomeBanner,
+  MobileAssetBar,
+  MobileTokenPills,
+  MobileQuickActions,
 } from "../features/dashboard";
 import { AssetOverview, TokenBalanceList, ActivityTabs } from "../features/portfolio";
 
@@ -33,38 +36,43 @@ export function HomePage() {
       {/* ===== Connected or Locked State: Portfolio-Centric Layout ===== */}
       {!hasNoWallet && (
         <>
-          {/* Asset Overview Section */}
-          <div className="mb-6">
+          {/* Mobile: compact asset bar + token pills + icon strip */}
+          <div className="md:hidden space-y-3 mb-4">
+            <MobileAssetBar />
+            <MobileTokenPills />
+            <MobileQuickActions />
+          </div>
+
+          {/* Desktop: full Asset Overview + Token List grid */}
+          <div className="hidden md:block mb-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Asset Overview - spans 1 column on lg */}
               <div className="lg:col-span-1">
                 <AssetOverview />
               </div>
-              {/* Token Balance List - spans 2 columns on lg */}
               <div className="lg:col-span-2">
                 <TokenBalanceList />
               </div>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="mb-6">
+          {/* Desktop: Quick Actions grid */}
+          <div className="hidden md:block mb-6">
             <h2 className="text-lg font-bold text-theme-text-primary mb-4">
               What would you like to do?
             </h2>
             <QuickActions />
           </div>
 
-          {/* Activity (Trades & Transfers) */}
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-theme-text-primary mb-4">Recent Activity</h2>
-            <ActivityTabs />
-          </div>
-
-          {/* Markets Section (compact) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Markets Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 md:mb-0">
             <HotMarketsCard />
             <PredictionHighlight />
+          </div>
+
+          {/* Activity (Trades & Transfers) */}
+          <div className="mt-4">
+            <h2 className="text-sm md:text-lg font-bold text-theme-text-primary mb-3 md:mb-4">Recent Activity</h2>
+            <ActivityTabs />
           </div>
         </>
       )}

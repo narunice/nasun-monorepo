@@ -20,7 +20,7 @@ export { calculateStochastic } from './stochastic';
 export { calculateATR } from './atr';
 
 // Data Generators
-export { generateCandleData, generateVolumeData, fetchBinanceCandles, fetchBinance24hTicker, fetchBinanceRecentTrades, getBinanceSymbol } from './dataGenerator';
+export { generateCandleData, generateVolumeData, fetchBinanceCandles, fetchBinance24hTicker, fetchBinanceMultiTicker, fetchBinanceRecentTrades, getBinanceSymbol } from './dataGenerator';
 export type { Binance24hTicker, RecentTrade } from './dataGenerator';
 
 // Types

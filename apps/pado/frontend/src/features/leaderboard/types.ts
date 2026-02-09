@@ -1,4 +1,5 @@
 export type Period = '24h' | '7d' | '30d' | 'all';
+export type LeaderboardMode = 'volume' | 'pnl';
 
 export interface LeaderboardTrader {
   rank: number;
@@ -14,6 +15,24 @@ export interface LeaderboardTrader {
 export interface LeaderboardResponse {
   period: Period;
   traders: LeaderboardTrader[];
+  updatedAt: number;
+  totalTraders: number;
+}
+
+export interface PnlLeaderboardTrader {
+  rank: number;
+  address: string;
+  nickname: string | null;
+  pnlUsd: string;
+  pnlPercent: number;
+  tradeCount: number;
+  rankChange: number;
+}
+
+export interface PnlLeaderboardResponse {
+  mode: 'pnl';
+  period: Period;
+  traders: PnlLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;
 }

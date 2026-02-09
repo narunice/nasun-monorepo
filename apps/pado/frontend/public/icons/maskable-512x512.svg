@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Maskable icon: safe zone is the center 80% circle -->
+  <rect width="512" height="512" fill="#0f172a"/>
+  <text x="256" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="256" font-weight="700" fill="#3b82f6" text-anchor="middle">P</text>
+</svg>

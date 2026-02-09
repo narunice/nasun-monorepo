@@ -18,7 +18,8 @@ export const EXECUTION_OPTION_MAP: Record<ExecutionOption, OrderType> = {
   POST_ONLY: ORDER_TYPE.POST_ONLY,
 };
 
-export type OrderModeType = 'limit' | 'market' | 'stop-limit';
+export type OrderModeType = 'limit' | 'market' | 'stop-limit' | 'trailing-stop';
+export type TrailMode = 'amount' | 'percent';
 
 export interface OrderFormContextType {
   // 주문 입력 상태
@@ -63,6 +64,16 @@ export interface OrderFormContextType {
   // Stop-Limit
   stopPrice: string;
   setStopPrice: (value: string) => void;
+
+  // Trailing Stop
+  trailValue: string;
+  setTrailValue: (value: string) => void;
+  trailMode: TrailMode;
+  setTrailMode: (mode: TrailMode) => void;
+
+  // OCO (One-Cancels-Other)
+  ocoEnabled: boolean;
+  setOcoEnabled: (enabled: boolean) => void;
 
   // 확인 모달 상태
   isConfirmModalOpen: boolean;
@@ -134,6 +145,13 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   // Stop-Limit state
   const [stopPrice, setStopPrice] = useState('');
 
+  // Trailing Stop state
+  const [trailValue, setTrailValue] = useState('');
+  const [trailMode, setTrailMode] = useState<TrailMode>('percent');
+
+  // OCO state
+  const [ocoEnabled, setOcoEnabled] = useState(false);
+
   // OrderType 변환
   const getOrderType = useCallback((): OrderType => {
     return EXECUTION_OPTION_MAP[executionOption];
@@ -162,6 +180,7 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
     setTpPrice('');
     setSlPrice('');
     setStopPrice('');
+    setTrailValue('');
   }, []);
 
   return (
@@ -192,6 +211,12 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         setSlPrice,
         stopPrice,
         setStopPrice,
+        trailValue,
+        setTrailValue,
+        trailMode,
+        setTrailMode,
+        ocoEnabled,
+        setOcoEnabled,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,

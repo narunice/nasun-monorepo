@@ -8,6 +8,9 @@ import {
   aggregateCompetitionVolume,
   replaceCompetitionResults,
   updateCompetition,
+  computeTraderPnl,
+  getPnlCurrentRanks,
+  replaceTraderPnlStats,
 } from './leaderboard-store.js';
 
 let config: LeaderboardConfig | null = null;
@@ -51,12 +54,45 @@ function runAggregation(): void {
     replaceTraderStats(period, ranked);
   }
 
+  // Aggregate PnL rankings
+  runPnlAggregation();
+
   // Aggregate active competitions
   runCompetitionAggregation();
 
   const elapsed = Date.now() - start;
   if (elapsed > 1000) {
     console.log(`[Aggregator] Completed in ${elapsed}ms`);
+  }
+}
+
+/**
+ * Run PnL aggregation for all periods.
+ * Uses weighted average cost basis to compute realized PnL per trader.
+ */
+function runPnlAggregation(): void {
+  if (!config) return;
+
+  for (const period of PERIODS) {
+    const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
+
+    const currentRanks = getPnlCurrentRanks(period);
+    const traders = computeTraderPnl(cutoff, config.excludedAddresses, 100);
+
+    const ranked = traders.map((t, index) => {
+      const rank = index + 1;
+      const prevRank = currentRanks.get(t.address) ?? 0;
+      return {
+        address: t.address,
+        realizedPnlRaw: t.realizedPnlRaw,
+        pnlPercent: t.pnlPercent,
+        tradeCount: t.tradeCount,
+        rank,
+        prevRank: prevRank > 0 ? prevRank : rank,
+      };
+    });
+
+    replaceTraderPnlStats(period, ranked);
   }
 }
 

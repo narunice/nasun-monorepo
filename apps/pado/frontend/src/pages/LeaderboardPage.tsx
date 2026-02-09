@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { useWallet, useZkLogin, useSignerAddress } from '@nasun/wallet';
-import { useLeaderboard, LeaderboardTable, PeriodSelector, MyRankCard } from '../features/leaderboard';
+import { useLeaderboard, usePnlLeaderboard, LeaderboardTable, PnlLeaderboardTable, PeriodSelector, ModeSelector, MyRankCard } from '../features/leaderboard';
 import { CompetitionBanner } from '../features/competitions';
-import type { Period } from '../features/leaderboard';
+import type { Period, LeaderboardMode } from '../features/leaderboard';
 
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
-  const { data, isLoading } = useLeaderboard(period, 100);
+  const [mode, setMode] = useState<LeaderboardMode>('volume');
+
+  const volumeQuery = useLeaderboard(period, 100);
+  const pnlQuery = usePnlLeaderboard(period, 100);
+
+  const activeData = mode === 'pnl' ? pnlQuery.data : volumeQuery.data;
+  const activeLoading = mode === 'pnl' ? pnlQuery.isLoading : volumeQuery.isLoading;
 
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
@@ -21,10 +27,13 @@ export function LeaderboardPage() {
         <div>
           <h1 className="text-xl font-semibold text-theme-text-primary">Leaderboard</h1>
           <p className="text-sm text-theme-text-muted mt-0.5">
-            Top traders ranked by volume
+            {mode === 'pnl' ? 'Top traders ranked by realized PnL' : 'Top traders ranked by volume'}
           </p>
         </div>
-        <PeriodSelector selected={period} onSelect={setPeriod} />
+        <div className="flex items-center gap-2">
+          <ModeSelector selected={mode} onSelect={setMode} />
+          <PeriodSelector selected={period} onSelect={setPeriod} />
+        </div>
       </div>
 
       {/* Active Competition Banner */}
@@ -36,12 +45,12 @@ export function LeaderboardPage() {
       )}
 
       {/* Stats Bar */}
-      {data && data.totalTraders > 0 && (
+      {activeData && activeData.totalTraders > 0 && (
         <div className="flex items-center gap-4 text-xs text-theme-text-muted">
-          <span>{data.totalTraders} active traders</span>
-          {data.updatedAt > 0 && (
+          <span>{activeData.totalTraders} active traders</span>
+          {activeData.updatedAt > 0 && (
             <span>
-              Updated {new Date(data.updatedAt).toLocaleTimeString('en-US', {
+              Updated {new Date(activeData.updatedAt).toLocaleTimeString('en-US', {
                 hour: '2-digit', minute: '2-digit', hour12: false,
               })}
             </span>
@@ -51,11 +60,19 @@ export function LeaderboardPage() {
 
       {/* Leaderboard Table */}
       <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
-        <LeaderboardTable
-          traders={data?.traders ?? []}
-          isLoading={isLoading}
-          currentUserAddress={userAddress}
-        />
+        {mode === 'pnl' ? (
+          <PnlLeaderboardTable
+            traders={pnlQuery.data?.traders ?? []}
+            isLoading={activeLoading}
+            currentUserAddress={userAddress}
+          />
+        ) : (
+          <LeaderboardTable
+            traders={volumeQuery.data?.traders ?? []}
+            isLoading={activeLoading}
+            currentUserAddress={userAddress}
+          />
+        )}
       </div>
     </div>
   );

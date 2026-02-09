@@ -1,6 +1,8 @@
 // ===== Leaderboard Types =====
 
 export type Period = '24h' | '7d' | '30d' | 'all';
+export type LeaderboardMode = 'volume' | 'pnl';
+export const VALID_MODES = new Set<string>(['volume', 'pnl']);
 
 export const PERIOD_MS: Record<Period, number> = {
   '24h': 24 * 60 * 60 * 1000,
@@ -34,6 +36,17 @@ export interface TraderStatsRow {
   trade_count: number;
   unique_pools: number;
   last_trade_at: number;
+  rank: number;
+  prev_rank: number;
+  updated_at: number;
+}
+
+export interface TraderPnlStatsRow {
+  address: string;
+  period: string;
+  realized_pnl: string; // raw NUSDC amount (can be negative)
+  pnl_percent: number;
+  trade_count: number;
   rank: number;
   prev_rank: number;
   updated_at: number;
@@ -83,6 +96,24 @@ export interface TraderStatsResponse {
   address: string;
   nickname: string | null;
   stats: Record<Period, TraderPeriodStats | null>;
+}
+
+export interface PnlLeaderboardTrader {
+  rank: number;
+  address: string;
+  nickname: string | null;
+  pnlUsd: string;
+  pnlPercent: number;
+  tradeCount: number;
+  rankChange: number;
+}
+
+export interface PnlLeaderboardResponse {
+  mode: 'pnl';
+  period: Period;
+  traders: PnlLeaderboardTrader[];
+  updatedAt: number;
+  totalTraders: number;
 }
 
 export interface LeaderboardStatusResponse {

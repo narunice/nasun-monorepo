@@ -27,6 +27,10 @@ interface TPSLInputsProps {
   side: 'buy' | 'sell';
   /** Minimum price tick for step input */
   minPriceTick?: number;
+  /** OCO mode enabled */
+  ocoEnabled?: boolean;
+  /** Toggle OCO on/off */
+  onOcoToggle?: (enabled: boolean) => void;
 }
 
 const TP_PRESETS = [1, 2, 5, 10];
@@ -42,6 +46,8 @@ export function TPSLInputs({
   midPrice,
   side,
   minPriceTick = 0.1,
+  ocoEnabled = false,
+  onOcoToggle,
 }: TPSLInputsProps) {
   const isBuy = side === 'buy';
 
@@ -168,6 +174,24 @@ export function TPSLInputs({
               <p className="text-[10px] text-yellow-400 mt-0.5">{slValidation}</p>
             )}
           </div>
+
+          {/* OCO toggle (shown when both TP and SL have values) */}
+          {onOcoToggle && tpPrice && slPrice && (
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={ocoEnabled}
+                onChange={(e) => onOcoToggle(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-theme-border text-amber-500 focus:ring-amber-500/30 bg-theme-bg-tertiary cursor-pointer"
+              />
+              <span className="text-trading-xs xl:text-trading-sm text-theme-text-muted font-medium">
+                OCO
+              </span>
+              <span className="text-[10px] text-theme-text-muted">
+                (one cancels other)
+              </span>
+            </label>
+          )}
         </div>
       )}
     </div>
