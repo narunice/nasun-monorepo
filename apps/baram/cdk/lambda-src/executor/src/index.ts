@@ -2,9 +2,9 @@
  * Baram Executor Lambda Handler
  *
  * Flow:
- * 1. Receive execute request with requestId and encrypted prompt
+ * 1. Receive execute request with requestId and Base64-encoded prompt
  * 2. Verify request exists on-chain and is valid
- * 3. Decrypt prompt (MVP: Base64 decode)
+ * 3. Decode prompt (Base64 — no E2E encryption in Standard mode)
  * 4. Call Groq API
  * 5. Generate result hash
  * 6. Submit proof to chain (triggers automatic settlement)
@@ -158,12 +158,14 @@ async function initialize(): Promise<void> {
 }
 
 /**
- * Decrypt prompt (MVP: Base64 decode)
- * Future: Implement proper decryption with TEE
+ * Decode Base64-encoded prompt.
+ *
+ * Standard (Lambda) mode does NOT provide E2E encryption — prompts are
+ * Base64-encoded by the SDK/frontend and protected only by HTTPS in transit.
+ * For end-to-end privacy, use a TEE-enabled executor (Nitro Enclave).
  */
-function decryptPrompt(encryptedPrompt: string): string {
-  // MVP: Simple Base64 decode
-  return Buffer.from(encryptedPrompt, 'base64').toString('utf-8');
+function decodePrompt(encodedPrompt: string): string {
+  return Buffer.from(encodedPrompt, 'base64').toString('utf-8');
 }
 
 /**
@@ -191,8 +193,8 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     };
   }
 
-  // Decrypt prompt
-  const prompt = decryptPrompt(encryptedPrompt);
+  // Decode Base64 prompt (Standard mode — no E2E encryption, HTTPS only)
+  const prompt = decodePrompt(encryptedPrompt);
   const promptHash = sha256(prompt);
 
   console.log(`[Execute] Prompt hash: ${promptHash}`);

@@ -2,9 +2,12 @@
  * AER (AI Execution Report) on-chain fetch service
  */
 
-import { SuiClient } from '@mysten/sui/client';
+import type { SuiClient, EventId } from '@mysten/sui/client';
 import type { BaramConfig, AERData, TierLevel } from '../types';
 import { AER_STATUS_NAMES, TIER_NAMES } from '../types';
+
+// Max pages to paginate when searching for a specific AER event (50 events/page)
+const MAX_EVENT_PAGES = 10;
 
 function bytesToHex(bytes: number[] | string): string {
   if (typeof bytes === 'string') return bytes;
@@ -93,23 +96,37 @@ export async function fetchAERByRequestId(
   }
 
   try {
-    const events = await client.queryEvents({
-      query: {
-        MoveEventType: `${config.aer.packageId}::aer::ExecutionReportCreated`,
-      },
-      limit: 50,
-      order: 'descending',
-    });
+    // Paginate through events to find the matching requestId
+    let cursor: EventId | null | undefined = null;
+    let hasNextPage = true;
+    let pageCount = 0;
+    let recordId: string | null = null;
 
-    const matchingEvent = events.data.find(event => {
-      const json = event.parsedJson as { request_id?: string | number };
-      return Number(json?.request_id) === requestId;
-    });
+    while (hasNextPage && pageCount < MAX_EVENT_PAGES) {
+      pageCount++;
+      const events = await client.queryEvents({
+        query: {
+          MoveEventType: `${config.aer.packageId}::aer::ExecutionReportCreated`,
+        },
+        limit: 50,
+        order: 'descending',
+        ...(cursor !== null ? { cursor } : {}),
+      });
 
-    if (!matchingEvent) return null;
+      const match = events.data.find(event => {
+        const json = event.parsedJson as { request_id?: string | number };
+        return Number(json?.request_id) === requestId;
+      });
 
-    const eventJson = matchingEvent.parsedJson as { record_id?: string };
-    const recordId = eventJson.record_id;
+      if (match) {
+        recordId = (match.parsedJson as { record_id?: string }).record_id ?? null;
+        break;
+      }
+
+      hasNextPage = events.hasNextPage;
+      cursor = events.nextCursor;
+    }
+
     if (!recordId) return null;
 
     const obj = await client.getObject({
