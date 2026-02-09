@@ -4,6 +4,7 @@ import { useChat } from '../hooks/useChat';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
 import { SetNicknameModal } from './SetNicknameModal';
+import { useChatTextSize } from '../hooks/useChatTextSize';
 
 interface Props {
   onMinimize?: () => void;
@@ -52,6 +53,8 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
     }
   }, [sendMessage, nicknameModalMode]);
 
+  const { textSize, increase, decrease, isMin, isMax } = useChatTextSize();
+
   const canEditNickname = nicknameRateLimit?.canChange !== false;
 
   const addressSuffix = address ? address.slice(-4) : '0000';
@@ -85,6 +88,27 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
               {onlineCount} online
             </span>
           )}
+          {/* Text size controls */}
+          <div className="flex items-center border-l border-theme-border pl-1.5 ml-0.5">
+            <button
+              onClick={decrease}
+              disabled={isMin}
+              className={`px-0.5 font-semibold leading-none transition-colors ${
+                isMin ? 'text-theme-text-muted/30 cursor-default' : 'text-theme-text-muted hover:text-theme-text-primary'
+              }`}
+              title="Decrease text size"
+              style={{ fontSize: '10px' }}
+            >A</button>
+            <button
+              onClick={increase}
+              disabled={isMax}
+              className={`px-0.5 font-semibold leading-none transition-colors ${
+                isMax ? 'text-theme-text-muted/30 cursor-default' : 'text-theme-text-muted hover:text-theme-text-primary'
+              }`}
+              title="Increase text size"
+              style={{ fontSize: '14px' }}
+            >A</button>
+          </div>
           {onPopOut && (
             <button
               onClick={onPopOut}
@@ -116,6 +140,7 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
         currentAddress={address}
         hasMore={hasMore}
         onLoadMore={loadMore}
+        textSize={textSize}
       />
 
       {/* Input */}
