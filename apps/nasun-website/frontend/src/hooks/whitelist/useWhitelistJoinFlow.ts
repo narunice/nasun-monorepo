@@ -100,7 +100,7 @@ export function useWhitelistJoinFlow(
         if (profileResponse.ok) {
           const updatedProfile = await profileResponse.json();
           updateUserProfile(updatedProfile);
-          localStorage.setItem('nasun_user_profile', JSON.stringify(updatedProfile));
+          sessionStorage.setItem('nasun_user_profile', JSON.stringify(updatedProfile));
         }
       }
 
