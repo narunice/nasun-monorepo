@@ -5,7 +5,7 @@ import { UnderlineTabs } from '@/components/common';
 import { SlippageSettings } from './SlippageSettings';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { NumberInput } from '@/components/ui/NumberInput';
-import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick } from '../../../lib/deepbook';
+import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick, type PriceLevel } from '../../../lib/deepbook';
 import { TPSLInputs } from './TPSLInputs';
 
 // Execution Option descriptions
@@ -39,6 +39,8 @@ interface OrderFormProps {
   lockedBase?: number;
   side: 'buy' | 'sell';
   onSideChange: (side: 'buy' | 'sell') => void;
+  bids?: PriceLevel[];
+  asks?: PriceLevel[];
 }
 
 export function OrderForm({
@@ -64,6 +66,8 @@ export function OrderForm({
   lockedBase = 0,
   side,
   onSideChange,
+  bids = [],
+  asks = [],
 }: OrderFormProps) {
   const { currentPool } = useMarket();
   const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice } = useOrderForm();
@@ -206,6 +210,34 @@ export function OrderForm({
       return availableBase > 0 ? Math.min(100, Math.round((amountNum / availableBase) * 100)) : 0;
     }
   }, [isBuy, effectivePrice, availableQuote, availableBase, amountNum, feeRate]);
+
+  // Price impact for market orders (VWAP calculation from orderbook depth)
+  const priceImpact = useMemo(() => {
+    if (!isMarket || amountNum <= 0 || !Number.isFinite(midPrice) || (midPrice ?? 0) <= 0) {
+      return { avgPrice: 0, impactPct: 0, fillable: true, filledQty: 0 };
+    }
+    // Buy consumes asks (ascending price), sell consumes bids (descending price)
+    const levels = isBuy ? asks : bids;
+    if (levels.length === 0) {
+      return { avgPrice: 0, impactPct: 0, fillable: false, filledQty: 0 };
+    }
+    let remaining = amountNum;
+    let totalCost = 0;
+    let filledQty = 0;
+    for (const level of levels) {
+      if (remaining <= 0) break;
+      const fill = Math.min(remaining, level.quantity);
+      totalCost += fill * level.price;
+      filledQty += fill;
+      remaining -= fill;
+    }
+    const mid = midPrice ?? 0;
+    const avgPrice = filledQty > 0 ? totalCost / filledQty : 0;
+    const impactPct = mid > 0 && avgPrice > 0
+      ? Math.abs(avgPrice - mid) / mid * 100
+      : 0;
+    return { avgPrice, impactPct, fillable: remaining <= 0, filledQty };
+  }, [isMarket, amountNum, midPrice, isBuy, asks, bids]);
 
   const stopPriceNum = parseFloat(stopPrice) || 0;
   const hasValidationError = !quantityValidation.valid || (!isMarket && !priceValidation.valid);
@@ -421,6 +453,37 @@ export function OrderForm({
           )}
           {onSlippageChange && (
             <SlippageSettings value={slippage} onChange={onSlippageChange} />
+          )}
+          {/* Price Impact (visible when amount is entered) */}
+          {amountNum > 0 && priceImpact.avgPrice > 0 && (
+            <div className="space-y-1 px-3 py-2 bg-theme-bg-tertiary/50 rounded text-trading-xs xl:text-trading-sm">
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">Est. Avg Price</span>
+                <span className="font-mono text-theme-text-secondary">
+                  ${priceImpact.avgPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">Price Impact</span>
+                <span className={`font-mono font-medium ${
+                  priceImpact.impactPct < 0.5 ? 'text-green-400' :
+                  priceImpact.impactPct < 2 ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  {priceImpact.impactPct < 0.01 ? '<0.01' : priceImpact.impactPct.toFixed(2)}%
+                </span>
+              </div>
+              {!priceImpact.fillable && (
+                <p className="text-red-400 mt-1">
+                  Insufficient liquidity — only {priceImpact.filledQty.toFixed(4)} fillable
+                </p>
+              )}
+              {priceImpact.impactPct >= 2 && priceImpact.fillable && (
+                <p className="text-yellow-400 mt-1">
+                  High price impact. Consider reducing size or using a limit order.
+                </p>
+              )}
+            </div>
           )}
         </>
       )}
