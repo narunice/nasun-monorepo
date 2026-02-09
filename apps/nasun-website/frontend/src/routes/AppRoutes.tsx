@@ -52,7 +52,7 @@ const AppRoutes = () => {
 
         {/* Dynamic Routes from routesV2 (non-nested) */}
         {Object.entries(routesV2)
-          .filter(([key]) => !["home", "ecosystem", "ip", "team", "wave1Campaign", "updates", "network", "about"].includes(key))
+          .filter(([key]) => !["home", "ecosystem", "infra", "team", "wave1Campaign", "updates", "network", "about"].includes(key))
           .map(([key, routeConfig]) => {
             const RouteElement = routeConfig.isProtected ? (
               <PrivateRoute>
@@ -73,12 +73,12 @@ const AppRoutes = () => {
           <Route path="governance/proposal/:proposalId" element={<Pages.ProposalDetail />} />
         </Route>
 
-        <Route path="/ecosystem">
-          {renderNestedRoutes("Ecosystem", routesV2.ecosystem, "finance", pageTitleMaps.ecosystem)}
+        <Route path="/infra">
+          {renderNestedRoutes("Infra", routesV2.infra, "overview", pageTitleMaps.infra)}
         </Route>
 
-        <Route path="/ip">
-          {renderNestedRoutes("IP", routesV2.ip, "gensol", pageTitleMaps.ip)}
+        <Route path="/ecosystem">
+          {renderNestedRoutes("Ecosystem", routesV2.ecosystem, "ai-economy", pageTitleMaps.ecosystem)}
         </Route>
 
         <Route path="/team">
@@ -94,13 +94,15 @@ const AppRoutes = () => {
         </Route>
 
         <Route path="/about">
-          {renderNestedRoutes("About", routesV2.about, "founders", pageTitleMaps.about)}
+          {renderNestedRoutes("About", routesV2.about, "overview", pageTitleMaps.about)}
         </Route>
 
         {/* Legacy redirects */}
         <Route path="/protocol" element={<Navigate to="/network" replace />} />
         <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
-        <Route path="/ips" element={<Navigate to="/ip" replace />} />
+        <Route path="/ips" element={<Navigate to="/ecosystem" replace />} />
+        <Route path="/ip/gensol/*" element={<Navigate to="/ecosystem/gensol/main" replace />} />
+        <Route path="/ip/*" element={<Navigate to="/ecosystem" replace />} />
         <Route path="/nft-event" element={<Navigate to="/wave1/battalion-nft" replace />} />
         <Route path="/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
         <Route path="/opportunities" element={<Navigate to="/about/opportunities" replace />} />

@@ -48,6 +48,10 @@ export const Pages = {
   PadoPitch: lazyWithRetry(() => import("../pages/ecosystem/PadoPitchPage")),
   PadoRevised: lazyWithRetry(() => import("../pages/ecosystem/PadoRevisedPage")),
   Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
+  // Infra Pages
+  InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
+  // About Pages (new)
+  AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -69,12 +73,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  // Network 섹션 (서브메뉴 있음) - 기존 Protocol에서 변경
+  // Protocol 섹션 (기존 Network에서 라벨 변경, path 유지)
   network: {
     path: "/network",
-    component: Pages.VisionNetwork, // 기본 서브페이지로 Nasun Network
+    component: Pages.VisionNetwork,
     navItem: {
-      name: "navigation.network",
+      name: "navigation.protocol",
       path: "/network",
       subMenu: [
         {
@@ -90,136 +94,142 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         {
           name: "navigation.governance",
           path: "/network/governance",
-          element: Pages.Web3, // ProposalPage - Nasun Devnet Voting System
+          element: Pages.Web3,
         },
         {
-          name: "navigation.privacy",
-          path: "/network/privacy",
+          name: "navigation.identity",
+          path: "/network/identity",
           element: Pages.VisionNetwork, // Placeholder
           disabled: true, // Coming Soon
         },
         {
           name: "navigation.litepaper",
-          path: "/network/litepaper", // Placeholder path
+          path: "/network/litepaper",
           element: Pages.VisionNetwork, // Placeholder
           disabled: true, // Coming Soon
-          external: true, // To show external link icon
+          external: true,
         },
       ],
     },
     meta: {
-      title: "Network - NASUN",
-      description: "NASUN Network",
+      title: "Protocol - NASUN",
+      description: "NASUN Protocol",
     },
   },
 
-  // Ecosystem 섹션 (서브메뉴 있음) - 기존 Finance에서 변경
+  // Infra 섹션 (신설)
+  infra: {
+    path: "/infra",
+    component: Pages.InfraOverview,
+    navItem: {
+      name: "navigation.infra",
+      path: "/infra",
+      subMenu: [
+        {
+          name: "navigation.infraOverview",
+          path: "/infra/overview",
+          element: Pages.InfraOverview,
+        },
+        {
+          name: "navigation.aiExecutors",
+          path: "/infra/ai-executors",
+          element: Pages.InfraOverview, // Placeholder
+          disabled: true,
+        },
+        {
+          name: "navigation.compute",
+          path: "/infra/compute",
+          element: Pages.InfraOverview, // Placeholder
+          disabled: true,
+        },
+        {
+          name: "navigation.storage",
+          path: "/infra/storage",
+          element: Pages.InfraOverview, // Placeholder
+          disabled: true,
+        },
+        {
+          name: "navigation.streaming",
+          path: "/infra/streaming",
+          element: Pages.InfraOverview, // Placeholder
+          disabled: true,
+        },
+        {
+          name: "navigation.gameServers",
+          path: "/infra/game-servers",
+          element: Pages.InfraOverview, // Placeholder
+          disabled: true,
+        },
+      ],
+    },
+    meta: {
+      title: "Infra - NASUN",
+      description: "NASUN Decentralized Infrastructure",
+    },
+  },
+
+  // Ecosystem 섹션 (IP 통합)
   ecosystem: {
     path: "/ecosystem",
-    component: Pages.FinancePado, // 기본 서브페이지로 Pado
+    component: Pages.AiEconomy, // 기본 서브페이지: Baram - AI
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
       subMenu: [
         {
-          name: "navigation.financePado",
-          path: "/ecosystem/finance",
-          element: Pages.FinancePado,
-        },
-        {
-          name: "navigation.aiEconomy",
+          name: "navigation.baramAi",
           path: "/ecosystem/ai-economy",
           element: Pages.AiEconomy,
         },
         {
-          name: "navigation.tokenizedAssets",
-          path: "/ecosystem/tokenized-assets",
-          element: Pages.FinancePado, // Placeholder
-          disabled: true, // Coming Soon
+          name: "navigation.padoFinance",
+          path: "/ecosystem/finance",
+          element: Pages.FinancePado,
         },
-        {
-          name: "navigation.stablecoinRails",
-          path: "/ecosystem/stablecoin-rails",
-          element: Pages.FinancePado, // Placeholder
-          disabled: true, // Coming Soon
-        },
-        {
-          name: "navigation.depinCompute",
-          path: "/ecosystem/depin-compute",
-          element: Pages.FinancePado, // Placeholder
-          disabled: true, // Coming Soon
-        },
-      ],
-    },
-    meta: {
-      title: "Ecosystem - NASUN",
-      description: "NASUN Ecosystem - The Pado Initiative",
-    },
-  },
-
-  // IP 섹션 (서브메뉴 있음)
-  ip: {
-    path: "/ip",
-    component: Pages.IPs,
-    navItem: {
-      name: "navigation.ip",
-      path: "/ip",
-      subMenu: [
         {
           name: "navigation.genSol",
-          path: "/ip/gensol",
+          path: "/ecosystem/gensol",
           element: Pages.IPsGenSol,
           subMenu: [
             {
               name: "navigation.genSolMain",
-              path: "/ip/gensol/main",
+              path: "/ecosystem/gensol/main",
               element: Pages.IPsGenSol,
             },
             {
               name: "navigation.genSolShooter",
-              path: "/ip/gensol/shooter",
+              path: "/ecosystem/gensol/shooter",
               element: Pages.IPsGenSolShooter,
             },
             {
               name: "navigation.genSolAnimation",
-              path: "/ip/gensol/animation",
+              path: "/ecosystem/gensol/animation",
               element: Pages.IPsGenSolHeist,
             },
             {
               name: "navigation.genSolPlan",
-              path: "/ip/gensol/plan",
+              path: "/ecosystem/gensol/plan",
               element: Pages.IPsGenSolOverview,
             },
           ],
         },
         {
           name: "navigation.riderStudio",
-          path: "/ip/riderstudio",
-          element: Pages.IPsRiderStudioMain,
-          subMenu: [
-            {
-              name: "navigation.riderStudioMain",
-              path: "/ip/riderstudio/main",
-              element: Pages.IPsRiderStudioMain,
-            },
-            {
-              name: "navigation.riderStudioFramework",
-              path: "/ip/riderstudio/framework",
-              element: Pages.IPsRiderStudioOverview,
-            },
-          ],
+          path: "/ecosystem/riderstudio",
+          element: Pages.IPsRiderStudioMain, // Placeholder
+          disabled: true,
         },
         {
-          name: "navigation.wePop",
-          path: "/ip/wepop",
-          element: Pages.IPsWePop,
-          disabled: true, // Coming Soon
+          name: "navigation.oneLight",
+          path: "/ecosystem/1light",
+          element: Pages.AiEconomy, // Placeholder
+          disabled: true,
         },
       ],
     },
     meta: {
-      title: "IP - NASUN",
-      description: "NASUN intellectual properties",
+      title: "Ecosystem - NASUN",
+      description: "NASUN Ecosystem",
     },
   },
 
@@ -285,15 +295,26 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // About 섹션 (서브메뉴 있음)
   about: {
     path: "/about",
-    component: Pages.Founders, // 기본 서브페이지로 Founders
+    component: Pages.AboutOverview, // 기본 서브페이지: Overview
     navItem: {
       name: "navigation.about",
       path: "/about",
       subMenu: [
         {
+          name: "navigation.aboutOverview",
+          path: "/about/overview",
+          element: Pages.AboutOverview,
+        },
+        {
           name: "navigation.founders",
           path: "/about/founders",
           element: Pages.Founders,
+        },
+        {
+          name: "navigation.aboutTeam",
+          path: "/about/team",
+          element: Pages.AboutTeam,
+          disabled: true, // Coming Soon
         },
         {
           name: "navigation.opportunities",
@@ -304,12 +325,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.strategy",
           path: "/about/strategy",
           element: Pages.VisionStrategy,
-        },
-        {
-          name: "navigation.aboutTeam",
-          path: "/about/team",
-          element: Pages.AboutTeam,
-          disabled: true, // Coming Soon
         },
       ],
     },
@@ -364,17 +379,17 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.EarlyContributors,
         },
         {
-          name: "navigation.leaderboardInfo",
-          path: "/wave1/leaderboard-info",
-          element: Pages.LeaderboardInfo,
-        },
-        {
           name: "navigation.leaderboard",
           path: "/wave1/leaderboard",
           element: Pages.LeaderboardV3,
         },
         {
-          name: "navigation.genesisNft",
+          name: "navigation.leaderboardInfo",
+          path: "/wave1/leaderboard-info",
+          element: Pages.LeaderboardInfo,
+        },
+        {
+          name: "navigation.genesisEvent",
           path: "/wave1/genesis-nft",
           element: Pages.GenesisNft,
         },
@@ -396,7 +411,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     path: "/wave1/genesis-nft",
     component: Pages.GenesisNft,
     navItem: {
-      name: "navigation.genesisNft",
+      name: "navigation.genesisEvent",
       path: "/wave1/genesis-nft",
       hidden: true,
     },
@@ -607,17 +622,14 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
       })),
     }))
     .sort((a, b) => {
-      // 정렬 순서: network, ecosystem, ip, updates, about, team, wave1, leaderboard, genesis-nft
+      // 정렬 순서: network, infra, ecosystem, updates, about, wave1
       const order = [
         "network",
+        "infra",
         "ecosystem",
-        "ip",
         "updates",
         "about",
-        "team",
         "wave1",
-        "leaderboard",
-        "genesis-nft",
       ];
       const aIndex = order.findIndex((item) => a.path.includes(item));
       const bIndex = order.findIndex((item) => b.path.includes(item));
@@ -631,24 +643,26 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.nasunNetwork": "Nasun Network",
     "navigation.protocolOverview": "Protocol Overview",
     "navigation.governance": "Governance",
+    "navigation.identity": "Identity",
+  },
+  infra: {
+    "navigation.infraOverview": "Infra Overview",
+    "navigation.aiExecutors": "AI Executors",
+    "navigation.compute": "Compute",
+    "navigation.storage": "Storage",
+    "navigation.streaming": "Streaming",
+    "navigation.gameServers": "Game Servers",
   },
   ecosystem: {
-    "navigation.financePado": "Finance (Pado)",
-    "navigation.aiEconomy": "AI Economy",
-    "navigation.tokenizedAssets": "Tokenized Assets",
-    "navigation.stablecoinRails": "Stablecoin Rails",
-    "navigation.depinCompute": "DePIN & Compute",
-  },
-  ip: {
+    "navigation.baramAi": "Baram - AI",
+    "navigation.padoFinance": "Pado - Finance",
     "navigation.genSol": "GenSol",
     "navigation.genSolMain": "GenSol",
     "navigation.genSolPlan": "GenSol Plan",
     "navigation.genSolShooter": "Multiplayer Shooter",
     "navigation.genSolAnimation": "Animation Series",
     "navigation.riderStudio": "Rider Studio",
-    "navigation.riderStudioMain": "Rider Studio",
-    "navigation.riderStudioFramework": "Rider Studio Framework",
-    "navigation.wePop": "WePop",
+    "navigation.oneLight": "1Light",
   },
   team: {
     "navigation.founders": "Founders",
@@ -657,7 +671,9 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   wave1: {
     "navigation.battalionNft": "Battalion NFT",
     "navigation.earlyContributors": "Early Contributors",
-    "navigation.giveaways": "Giveaways",
+    "navigation.leaderboard": "Leaderboard",
+    "navigation.leaderboardInfo": "Leaderboard Info",
+    "navigation.genesisEvent": "Genesis Event",
     "navigation.contests": "Contests",
   },
   updates: {
@@ -666,6 +682,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.roadmap": "Roadmap",
   },
   about: {
+    "navigation.aboutOverview": "Overview",
     "navigation.founders": "Founders",
     "navigation.aboutTeam": "Team",
     "navigation.opportunities": "Opportunities",
