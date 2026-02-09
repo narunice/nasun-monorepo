@@ -14,6 +14,7 @@ import type { ExecutorInfo } from '../types';
 import {
   createUserClient,
   ensureNusdcBalance,
+  isExecutorReachable,
   logTest,
   formatNusdc,
   TEST_USER_ADDRESS,
@@ -23,6 +24,7 @@ describe('Baram Execute E2E', () => {
   let userClient: BaramClient;
   let executors: ExecutorInfo[] = [];
   let hasExecutors = false;
+  let executorReachable = false;
   // Shared across tests to avoid coin version conflicts from consecutive execute() calls
   let lastExecuteRequestId: number | null = null;
 
@@ -36,9 +38,13 @@ describe('Baram Execute E2E', () => {
     const balance = await userClient.getBalance();
     logTest(`User NUSDC balance: ${formatNusdc(balance)}`);
 
-    // Check if executors are available
+    // Check if executors are available and reachable
     executors = await userClient.getExecutors();
     hasExecutors = executors.length > 0;
+    if (hasExecutors) {
+      executorReachable = await isExecutorReachable(executors[0].endpointUrl);
+      logTest(`Executor endpoint reachable: ${executorReachable}`);
+    }
     logTest(`Executors available: ${hasExecutors} (${executors.length} found)`);
   });
 
@@ -75,8 +81,8 @@ describe('Baram Execute E2E', () => {
 
   describe('execute()', () => {
     it('should execute AI inference and return result (requires executor)', async () => {
-      if (!hasExecutors) {
-        logTest('SKIPPED: No executors available on devnet');
+      if (!hasExecutors || !executorReachable) {
+        logTest('SKIPPED: No reachable executor on devnet');
         return;
       }
 
@@ -130,8 +136,8 @@ describe('Baram Execute E2E', () => {
 
   describe('getAER()', () => {
     it('should fetch AER by request ID after execution (requires executor)', async () => {
-      if (!hasExecutors || lastExecuteRequestId === null) {
-        logTest('SKIPPED: No executors available or execute() test did not run');
+      if (!hasExecutors || !executorReachable || lastExecuteRequestId === null) {
+        logTest('SKIPPED: No reachable executor or execute() test did not run');
         return;
       }
 
