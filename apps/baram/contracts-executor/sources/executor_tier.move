@@ -26,6 +26,10 @@ module baram_executor::executor_tier {
     const E_EXECUTOR_ALREADY_REGISTERED: u64 = 302;
     const E_INVALID_TIER: u64 = 303;
     const E_BATCH_LENGTH_MISMATCH: u64 = 304;
+    const E_BATCH_TOO_LARGE: u64 = 305;
+
+    // ========== Batch Limits ==========
+    const MAX_BATCH_SIZE: u64 = 100;
 
     // ========== Tier Constants ==========
     const TIER_OPEN: u8 = 0;
@@ -141,6 +145,7 @@ module baram_executor::executor_tier {
         _ctx: &mut TxContext
     ) {
         let len = vector::length(&operators);
+        assert!(len <= MAX_BATCH_SIZE, E_BATCH_TOO_LARGE);
         assert!(len == vector::length(&stake_amounts), E_BATCH_LENGTH_MISMATCH);
         assert!(len == vector::length(&reputations), E_BATCH_LENGTH_MISMATCH);
 

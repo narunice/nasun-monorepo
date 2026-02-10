@@ -342,7 +342,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
           // Settlement failed after retries — do NOT return the result.
           // User's escrow is safe (PENDING state, auto-refund after 5min timeout).
           console.error('[Host/Server] Settlement failed after retries:', settlementError);
-          res.status(502).json({
+          res.status(500).json({
             success: false,
             error: 'Settlement failed. Your escrow is safe and will auto-refund after timeout.',
             settlementFailed: true,

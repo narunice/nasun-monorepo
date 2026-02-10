@@ -24,6 +24,12 @@ interface EnclaveKeyPair {
   privateKeyObj: crypto.KeyObject; // Opaque handle — not a JS string
 }
 
+// ========== Crypto Constants ==========
+const AES_KEY_LEN = 32;   // AES-256 key size in bytes
+const IV_LEN = 12;         // GCM initialization vector size in bytes
+const ENVELOPE_LEN = AES_KEY_LEN + IV_LEN; // RSA-decrypted envelope: key + IV
+const AUTH_TAG_LEN = 16;   // GCM authentication tag size in bytes
+
 // Singleton key pair - generated once on Enclave startup
 let keyPair: EnclaveKeyPair | null = null;
 
@@ -126,11 +132,11 @@ export function decrypt(encryptedBase64: string): DecryptResult {
       throw new Error(`Encrypted data too short: ${combined.length} bytes`);
     }
 
-    // 1. Split: RSA envelope (256B) || AES ciphertext (rest)
+    // 1. Split: RSA envelope || AES ciphertext (rest)
     const rsaCiphertext = combined.subarray(0, RSA_CIPHERTEXT_LEN);
     const aesCiphertextWithTag = combined.subarray(RSA_CIPHERTEXT_LEN);
 
-    // 2. RSA-OAEP decrypt the envelope → aesKey (32B) + iv (12B)
+    // 2. RSA-OAEP decrypt the envelope → aesKey + iv
     const envelope = crypto.privateDecrypt(
       {
         key: keyPair.privateKeyObj,
@@ -140,15 +146,14 @@ export function decrypt(encryptedBase64: string): DecryptResult {
       rsaCiphertext
     );
 
-    if (envelope.length !== 44) {
-      throw new Error(`Unexpected envelope size: ${envelope.length} (expected 44)`);
+    if (envelope.length !== ENVELOPE_LEN) {
+      throw new Error(`Unexpected envelope size: ${envelope.length} (expected ${ENVELOPE_LEN})`);
     }
 
-    const aesKey = envelope.subarray(0, 32);
-    const iv = envelope.subarray(32, 44);
+    const aesKey = envelope.subarray(0, AES_KEY_LEN);
+    const iv = envelope.subarray(AES_KEY_LEN, ENVELOPE_LEN);
 
-    // 3. AES-256-GCM decrypt (last 16 bytes of ciphertext are the auth tag)
-    const AUTH_TAG_LEN = 16;
+    // 3. AES-256-GCM decrypt (last AUTH_TAG_LEN bytes are the auth tag)
     const ciphertextOnly = aesCiphertextWithTag.subarray(0, aesCiphertextWithTag.length - AUTH_TAG_LEN);
     const authTag = aesCiphertextWithTag.subarray(aesCiphertextWithTag.length - AUTH_TAG_LEN);
 
@@ -193,7 +198,7 @@ export function decrypt(encryptedBase64: string): DecryptResult {
  * @returns Base64-encoded encrypted response
  */
 export function encryptResponse(plaintext: string, aesKey: Buffer): string {
-  const iv = crypto.randomBytes(12); // Fresh IV (never reuse)
+  const iv = crypto.randomBytes(IV_LEN); // Fresh IV (never reuse)
   const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
 
   const encrypted = Buffer.concat([
