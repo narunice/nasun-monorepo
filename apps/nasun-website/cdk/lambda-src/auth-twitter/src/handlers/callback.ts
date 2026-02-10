@@ -289,7 +289,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(userProfile),
+      body: JSON.stringify({ ...userProfile, cognitoToken: cognitoIdentity.token }),
     };
 
   } catch (error: any) {

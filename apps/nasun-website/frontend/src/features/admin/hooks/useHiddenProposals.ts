@@ -34,21 +34,22 @@ interface UseHiddenProposalsReturn {
 
 export const useHiddenProposals = (): UseHiddenProposalsReturn => {
   const { user } = useAuth();
+  const cognitoToken = user?.cognitoToken;
   const identityId = user?.identityId;
   const queryClient = useQueryClient();
 
   // Query for fetching hidden proposals
   const query = useQuery<string[]>({
     queryKey: [HIDDEN_PROPOSALS_KEY, identityId],
-    queryFn: () => getHiddenProposals(identityId!),
-    enabled: !!identityId,
+    queryFn: () => getHiddenProposals(cognitoToken!),
+    enabled: !!cognitoToken,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Mutation for hiding a proposal
   const hideMutation = useMutation({
-    mutationFn: (proposalId: string) => apiHideProposal(identityId!, proposalId),
+    mutationFn: (proposalId: string) => apiHideProposal(cognitoToken!, proposalId),
     onSuccess: (_, proposalId) => {
       // Optimistically update cache
       queryClient.setQueryData<string[]>(
@@ -60,7 +61,7 @@ export const useHiddenProposals = (): UseHiddenProposalsReturn => {
 
   // Mutation for unhiding a proposal
   const unhideMutation = useMutation({
-    mutationFn: (proposalId: string) => apiUnhideProposal(identityId!, proposalId),
+    mutationFn: (proposalId: string) => apiUnhideProposal(cognitoToken!, proposalId),
     onSuccess: (_, proposalId) => {
       // Optimistically update cache
       queryClient.setQueryData<string[]>(
@@ -78,18 +79,18 @@ export const useHiddenProposals = (): UseHiddenProposalsReturn => {
   );
 
   const hide = useCallback(async (id: string) => {
-    if (!identityId) {
+    if (!cognitoToken) {
       throw new Error('Not authenticated');
     }
     await hideMutation.mutateAsync(id);
-  }, [identityId, hideMutation]);
+  }, [cognitoToken, hideMutation]);
 
   const unhide = useCallback(async (id: string) => {
-    if (!identityId) {
+    if (!cognitoToken) {
       throw new Error('Not authenticated');
     }
     await unhideMutation.mutateAsync(id);
-  }, [identityId, unhideMutation]);
+  }, [cognitoToken, unhideMutation]);
 
   const toggle = useCallback(async (id: string) => {
     if (hiddenIds.has(id)) {

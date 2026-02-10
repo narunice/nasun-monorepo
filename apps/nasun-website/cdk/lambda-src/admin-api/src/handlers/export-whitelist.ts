@@ -6,7 +6,7 @@ import {
   PutItemCommand,
   DeleteItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { verifyAdminRole, extractIdentityId } from "../utils/auth.js";
+import { verifyAdminRole, extractIdentityIdFromAuthorizer } from "../utils/auth.js";
 import { generateCSV, generateFilename } from "../utils/csv.js";
 import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResponse } from "../utils/response.js";
 
@@ -262,11 +262,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(200, { proposalIds: items.map((i) => i.proposalId) }, requestOrigin);
     }
 
-    // All other endpoints require admin authentication
-    const identityId = extractIdentityId(
-      event.headers as Record<string, string>,
-      event.queryStringParameters
-    );
+    // All other endpoints require admin authentication (verified by API Gateway Token Authorizer)
+    const identityId = extractIdentityIdFromAuthorizer(event.requestContext);
 
     if (!identityId) {
       console.warn("No identityId provided");
@@ -430,6 +427,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     return errorResponse(404, "Not found", requestOrigin);
   } catch (error: any) {
     console.error("Admin Export API error:", error);
-    return errorResponse(500, `Internal server error: ${error.message}`, requestOrigin);
+    return errorResponse(500, "Internal server error", requestOrigin);
   }
 };

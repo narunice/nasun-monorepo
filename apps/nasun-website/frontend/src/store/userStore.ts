@@ -30,6 +30,8 @@ export interface UserData {
   profileImageUrl?: string;
   // MetaMask-specific fields
   walletAddress?: string;
+  // Cognito OIDC token for authenticated API calls
+  cognitoToken?: string;
   // Linked accounts
   linkedAccounts?: {
     google?: LinkedAccount;
