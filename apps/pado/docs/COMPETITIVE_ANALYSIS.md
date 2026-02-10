@@ -14,11 +14,11 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 | Order Types    | 80   | 90    | 95      | 75          | 70   | 45      |
 | Orderbook/Depth| 75   | 90    | 90      | 80          | 75   | 30      |
 | UX/Interaction | 80   | 90    | 85      | 70          | 70   | 65      |
-| Social/Gamif.  | 60   | 85    | 80      | 50          | 45   | 60      |
-| Portfolio/PnL  | 70   | 95    | 95      | 75          | 75   | 50      |
-| Mobile/Perf.   | 40   | 95    | 95      | 70          | 65   | 70      |
+| Social/Gamif.  | 75   | 85    | 80      | 50          | 45   | 60      |
+| Portfolio/PnL  | 80   | 95    | 95      | 75          | 75   | 50      |
+| Mobile/Perf.   | 55   | 95    | 95      | 70          | 65   | 70      |
 | Onboarding     | 80   | 85    | 85      | 60          | 65   | 75      |
-| **Overall**    | **74** | **91** | **90** | **75**    | **72** | **54** |
+| **Overall**    | **80** | **91** | **90** | **75**    | **72** | **54** |
 
 ## Current Pado Strengths
 
@@ -31,28 +31,31 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 - Market stats bar (24h volume, high/low, change %)
 - Favorites quick-switch strip for one-click market switching
 - PnL equity curve with realized/unrealized split and max drawdown
-- Global chat with trade notifications
-- Leaderboard system
+- Per-market performance table with P&L, volume, win rate breakdown
+- Advanced risk metrics (Sharpe Ratio, Profit Factor, Expectancy)
+- Portfolio summary CSV export (holdings, P&L, per-market stats)
+- Followed traders system with localStorage persistence
+- Global chat with trade notifications and large trade alerts
+- Leaderboard system with trader profiles and follow/unfollow
 - Step-by-step onboarding tour for new users
 - Keyboard shortcuts (B/S/L/M/Esc)
 - Dark/light theme support
 
 ## Key Gaps
 
-### 1. Mobile/Performance (40/100) - BIGGEST REMAINING GAP
-- No native mobile app
-- Web performance not optimized for mobile
+### 1. Mobile/Performance (55/100) - BIGGEST REMAINING GAP
+- No native mobile app (web responsive improved with adaptive intervals + lazy loading)
 - Touch interactions limited
 - No PWA support
 
-### 2. Social/Gamification (60/100)
-- No copy trading
+### 2. Social/Gamification (75/100)
+- Followed traders, leaderboard trader profiles, large trade alerts in chat
+- No copy trading (would require smart contract changes)
 - No trading bot SDK for users
-- Chat exists but no trade-sharing or social feeds
 
-### 3. Portfolio/PnL (70/100)
-- PnL chart and cost basis tracking implemented
-- Still missing: portfolio analytics dashboard, CSV export, date range filters
+### 3. Portfolio/PnL (80/100)
+- PnL chart, cost basis, per-market performance, risk metrics, CSV export, period filters all implemented
+- Still missing: tax lot reporting, multi-account aggregation
 
 ## Prioritized Improvements
 
@@ -87,11 +90,21 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 - **Impact**: UX +5
 - **Status**: Deployed (star toggle in MarketSelector + FavoriteStrip quick-switch)
 
-### P8: Trade History Filters
+### P8: Trade History Filters -- COMPLETED
 - **Impact**: Portfolio +5
-- **Effort**: Low
-- Filter by market, date range, side (buy/sell)
-- CSV export (already partially implemented)
+- **Status**: Deployed (side, market, period filters + CSV export in RecentTrades)
+
+### P16: Per-Market Performance Table -- COMPLETED
+- **Impact**: Portfolio +5
+- **Status**: Deployed (MarketPerformance component with P&L, volume, win rate per pool)
+
+### P17: Advanced Risk Metrics -- COMPLETED
+- **Impact**: Portfolio +5
+- **Status**: Deployed (Sharpe Ratio, Profit Factor, Avg Win/Loss, Expectancy in TradeStats)
+
+### P18: Portfolio Summary Export -- COMPLETED
+- **Impact**: Portfolio +5
+- **Status**: Deployed (multi-section CSV from AssetOverview: summary, holdings, per-market, stats)
 
 ### P9: Copy Trading (Social)
 - **Impact**: Social 60 -> 80 (+20 points)
@@ -136,10 +149,9 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 
 ## Implementation Order
 
-P1-P7 and P11 are completed (2026-02-09). Overall score improved from 60 to 74.
+P1-P8, P11, and P16-P18 are completed (2026-02-09). Overall score improved from 60 to 80.
 
 Next priorities by impact-to-effort ratio:
-1. **P8** (Trade History Filters) - Low effort, completes portfolio gap
-2. **P9** (Copy Trading) - High impact on social score, but high effort
-3. **P13** (WebSocket) - Significant perf improvement
-4. **P15** (Native Mobile) - Closes biggest remaining gap but very high effort
+1. **P9** (Copy Trading) - High impact on social score, but high effort
+2. **P13** (WebSocket) - Significant perf improvement
+3. **P15** (Native Mobile) - Closes biggest remaining gap but very high effort
