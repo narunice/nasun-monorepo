@@ -15,6 +15,7 @@ module baram::budget {
     use sui::balance::{Self, Balance};
     use sui::clock::Clock;
     use sui::event;
+    use sui::dynamic_field;
     use std::string::String;
     use devnet_tokens::nusdc::NUSDC;
 
@@ -30,10 +31,18 @@ module baram::budget {
     const E_INVALID_AMOUNT: u64 = 108;
     const E_INVALID_EXPIRATION: u64 = 109;
     const E_ZERO_WITHDRAWAL: u64 = 110;
+    const E_CATEGORY_NOT_ALLOWED: u64 = 111;
+    const E_DAILY_LIMIT_EXCEEDED: u64 = 112;
+    const E_WEEKLY_LIMIT_EXCEEDED: u64 = 113;
+    const E_MONTHLY_LIMIT_EXCEEDED: u64 = 114;
+    const E_RATE_LIMITED: u64 = 115;
 
     // ========== Constants ==========
     const MIN_DEPOSIT: u64 = 100_000; // 0.1 NUSDC (6 decimals)
     const DEFAULT_MAX_PER_REQUEST: u64 = 10_000_000; // 10 NUSDC
+    const DAY_MS: u64 = 86_400_000;       // 24 hours
+    const WEEK_MS: u64 = 604_800_000;     // 7 days
+    const MONTH_MS: u64 = 2_592_000_000;  // 30 days
 
     // ========== Structs ==========
 
@@ -72,6 +81,36 @@ module baram::budget {
         max_per_request: u64,
         created_at: u64,
         expires_at: u64,
+    }
+
+    // ========== Dynamic Field Keys ==========
+
+    /// Key for SpendingLimits dynamic field on Budget
+    public struct SpendingLimitsKey has copy, drop, store {}
+
+    /// Key for CategoryLimits dynamic field on Budget
+    public struct CategoryLimitsKey has copy, drop, store {}
+
+    // ========== Dynamic Field Values ==========
+
+    /// Time-windowed spending limits with automatic reset
+    public struct SpendingLimits has copy, drop, store {
+        daily_limit: u64,       // 0 = no daily limit
+        weekly_limit: u64,      // 0 = no weekly limit
+        monthly_limit: u64,     // 0 = no monthly limit
+        daily_spent: u64,       // Accumulator for current day
+        weekly_spent: u64,      // Accumulator for current week
+        monthly_spent: u64,     // Accumulator for current month
+        daily_reset_at: u64,    // Timestamp when daily counter resets
+        weekly_reset_at: u64,   // Timestamp when weekly counter resets
+        monthly_reset_at: u64,  // Timestamp when monthly counter resets
+        min_interval_ms: u64,   // Minimum time between requests (0 = no limit)
+        last_request_at: u64,   // Timestamp of last request
+    }
+
+    /// Category-based spending restrictions
+    public struct CategoryLimits has copy, drop, store {
+        allowed_categories: vector<String>, // Empty = all allowed
     }
 
     // ========== Events ==========
@@ -122,6 +161,32 @@ module baram::budget {
         models_count: u64,
         executors_count: u64,
         expires_at: u64,
+    }
+
+    public struct SpendingLimitsUpdated has copy, drop {
+        budget_id: address,
+        owner: address,
+        daily_limit: u64,
+        weekly_limit: u64,
+        monthly_limit: u64,
+        min_interval_ms: u64,
+    }
+
+    public struct CategoryLimitsUpdated has copy, drop {
+        budget_id: address,
+        owner: address,
+        categories_count: u64,
+    }
+
+    public struct BudgetSpentWithCategory has copy, drop {
+        budget_id: address,
+        agent: address,
+        amount: u64,
+        request_id: u64,
+        model: String,
+        executor: address,
+        category: String,
+        remaining_balance: u64,
     }
 
     // ========== Owner Functions ==========
@@ -192,7 +257,7 @@ module baram::budget {
         transfer::transfer(receipt, owner);
     }
 
-    /// Deposit additional funds to budget (anyone can deposit)
+    /// Deposit additional funds to budget (owner only)
     public entry fun deposit_to_budget(
         budget: &mut Budget,
         deposit: Coin<NUSDC>,
@@ -200,6 +265,7 @@ module baram::budget {
     ) {
         let amount = coin::value(&deposit);
         assert!(amount > 0, E_INVALID_AMOUNT);
+        assert!(budget.owner == tx_context::sender(ctx), E_NOT_OWNER);
         assert!(budget.is_active, E_BUDGET_INACTIVE);
 
         balance::join(&mut budget.balance, coin::into_balance(deposit));
@@ -299,6 +365,80 @@ module baram::budget {
         });
     }
 
+    /// Set time-windowed spending limits (owner only)
+    /// Pass 0 for any limit to disable it. All limits are in NUSDC (6 decimals).
+    public entry fun set_spending_limits(
+        budget: &mut Budget,
+        daily_limit: u64,
+        weekly_limit: u64,
+        monthly_limit: u64,
+        min_interval_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(budget.owner == tx_context::sender(ctx), E_NOT_OWNER);
+        assert!(budget.is_active, E_BUDGET_INACTIVE);
+
+        let now = clock.timestamp_ms();
+        let limits = SpendingLimits {
+            daily_limit,
+            weekly_limit,
+            monthly_limit,
+            daily_spent: 0,
+            weekly_spent: 0,
+            monthly_spent: 0,
+            daily_reset_at: now + DAY_MS,
+            weekly_reset_at: now + WEEK_MS,
+            monthly_reset_at: now + MONTH_MS,
+            min_interval_ms,
+            last_request_at: 0,
+        };
+
+        let budget_id = object::uid_to_address(&budget.id);
+
+        // Add or replace dynamic field
+        if (dynamic_field::exists_(&budget.id, SpendingLimitsKey {})) {
+            *dynamic_field::borrow_mut(&mut budget.id, SpendingLimitsKey {}) = limits;
+        } else {
+            dynamic_field::add(&mut budget.id, SpendingLimitsKey {}, limits);
+        };
+
+        event::emit(SpendingLimitsUpdated {
+            budget_id,
+            owner: budget.owner,
+            daily_limit,
+            weekly_limit,
+            monthly_limit,
+            min_interval_ms,
+        });
+    }
+
+    /// Set allowed spending categories (owner only)
+    /// Empty vector = all categories allowed
+    public entry fun set_categories(
+        budget: &mut Budget,
+        allowed_categories: vector<String>,
+        ctx: &mut TxContext
+    ) {
+        assert!(budget.owner == tx_context::sender(ctx), E_NOT_OWNER);
+        assert!(budget.is_active, E_BUDGET_INACTIVE);
+
+        let cat_limits = CategoryLimits { allowed_categories };
+        let budget_id = object::uid_to_address(&budget.id);
+
+        if (dynamic_field::exists_(&budget.id, CategoryLimitsKey {})) {
+            *dynamic_field::borrow_mut(&mut budget.id, CategoryLimitsKey {}) = cat_limits;
+        } else {
+            dynamic_field::add(&mut budget.id, CategoryLimitsKey {}, cat_limits);
+        };
+
+        event::emit(CategoryLimitsUpdated {
+            budget_id,
+            owner: budget.owner,
+            categories_count: vector::length(&cat_limits.allowed_categories),
+        });
+    }
+
     // ========== Agent Functions ==========
 
     /// Spend from budget (agent only) - returns Balance for use with baram::create_request
@@ -350,6 +490,137 @@ module baram::budget {
         });
 
         spent
+    }
+
+    /// Spend from budget with category + time-windowed limit enforcement (agent only)
+    /// Enhanced version of spend_from_budget that checks SpendingLimits and CategoryLimits.
+    /// Returns Balance for use with baram::create_request_with_budget_v2
+    public fun spend_from_budget_with_category(
+        budget: &mut Budget,
+        amount: u64,
+        model: String,
+        executor: address,
+        request_id: u64,
+        category: String,
+        clock: &Clock,
+        ctx: &TxContext
+    ): Balance<NUSDC> {
+        let sender = tx_context::sender(ctx);
+        let now = clock.timestamp_ms();
+
+        // Basic validations (same as spend_from_budget)
+        assert!(budget.agent == sender, E_NOT_AGENT);
+        assert!(budget.is_active, E_BUDGET_INACTIVE);
+        assert!(budget.expires_at == 0 || now < budget.expires_at, E_BUDGET_EXPIRED);
+        assert!(balance::value(&budget.balance) >= amount, E_INSUFFICIENT_BALANCE);
+        assert!(amount <= budget.max_per_request, E_EXCEEDS_MAX_PER_REQUEST);
+
+        // Check model allowlist
+        if (!vector::is_empty(&budget.allowed_models)) {
+            assert!(vector::contains(&budget.allowed_models, &model), E_MODEL_NOT_ALLOWED);
+        };
+
+        // Check executor allowlist
+        if (!vector::is_empty(&budget.allowed_executors)) {
+            assert!(vector::contains(&budget.allowed_executors, &executor), E_EXECUTOR_NOT_ALLOWED);
+        };
+
+        // Check category allowlist (if CategoryLimits exist)
+        if (dynamic_field::exists_(&budget.id, CategoryLimitsKey {})) {
+            let cat_limits: &CategoryLimits = dynamic_field::borrow(&budget.id, CategoryLimitsKey {});
+            if (!vector::is_empty(&cat_limits.allowed_categories)) {
+                assert!(
+                    vector::contains(&cat_limits.allowed_categories, &category),
+                    E_CATEGORY_NOT_ALLOWED
+                );
+            };
+        };
+
+        // Check and enforce time-windowed spending limits
+        if (dynamic_field::exists_(&budget.id, SpendingLimitsKey {})) {
+            let limits: &mut SpendingLimits = dynamic_field::borrow_mut(
+                &mut budget.id, SpendingLimitsKey {}
+            );
+
+            // Reset expired windows
+            maybe_reset_limits(limits, now);
+
+            // Rate limiting: minimum interval between requests
+            if (limits.min_interval_ms > 0 && limits.last_request_at > 0) {
+                assert!(
+                    now >= limits.last_request_at + limits.min_interval_ms,
+                    E_RATE_LIMITED
+                );
+            };
+
+            // Check daily limit
+            if (limits.daily_limit > 0) {
+                assert!(
+                    limits.daily_spent + amount <= limits.daily_limit,
+                    E_DAILY_LIMIT_EXCEEDED
+                );
+            };
+
+            // Check weekly limit
+            if (limits.weekly_limit > 0) {
+                assert!(
+                    limits.weekly_spent + amount <= limits.weekly_limit,
+                    E_WEEKLY_LIMIT_EXCEEDED
+                );
+            };
+
+            // Check monthly limit
+            if (limits.monthly_limit > 0) {
+                assert!(
+                    limits.monthly_spent + amount <= limits.monthly_limit,
+                    E_MONTHLY_LIMIT_EXCEEDED
+                );
+            };
+
+            // Update accumulators
+            limits.daily_spent = limits.daily_spent + amount;
+            limits.weekly_spent = limits.weekly_spent + amount;
+            limits.monthly_spent = limits.monthly_spent + amount;
+            limits.last_request_at = now;
+        };
+
+        // Deduct from budget
+        let spent = balance::split(&mut budget.balance, amount);
+        budget.total_spent = budget.total_spent + amount;
+        budget.request_count = budget.request_count + 1;
+
+        let budget_id = object::uid_to_address(&budget.id);
+
+        event::emit(BudgetSpentWithCategory {
+            budget_id,
+            agent: sender,
+            amount,
+            request_id,
+            model,
+            executor,
+            category,
+            remaining_balance: balance::value(&budget.balance),
+        });
+
+        spent
+    }
+
+    // ========== Internal Functions ==========
+
+    /// Reset expired time windows in SpendingLimits
+    fun maybe_reset_limits(limits: &mut SpendingLimits, now: u64) {
+        if (now >= limits.daily_reset_at) {
+            limits.daily_spent = 0;
+            limits.daily_reset_at = now + DAY_MS;
+        };
+        if (now >= limits.weekly_reset_at) {
+            limits.weekly_spent = 0;
+            limits.weekly_reset_at = now + WEEK_MS;
+        };
+        if (now >= limits.monthly_reset_at) {
+            limits.monthly_spent = 0;
+            limits.monthly_reset_at = now + MONTH_MS;
+        };
     }
 
     // ========== View Functions ==========
@@ -421,6 +692,64 @@ module baram::budget {
             true
         } else {
             vector::contains(&budget.allowed_executors, &executor)
+        }
+    }
+
+    /// Check if spending limits are configured
+    public fun has_spending_limits(budget: &Budget): bool {
+        dynamic_field::exists_(&budget.id, SpendingLimitsKey {})
+    }
+
+    /// Check if category limits are configured
+    public fun has_category_limits(budget: &Budget): bool {
+        dynamic_field::exists_(&budget.id, CategoryLimitsKey {})
+    }
+
+    /// Get spending limits: (daily_limit, weekly_limit, monthly_limit, daily_spent, weekly_spent, monthly_spent)
+    /// Returns all zeros if no spending limits are set
+    public fun get_spending_limits(budget: &Budget): (u64, u64, u64, u64, u64, u64) {
+        if (!dynamic_field::exists_(&budget.id, SpendingLimitsKey {})) {
+            return (0, 0, 0, 0, 0, 0)
+        };
+        let limits: &SpendingLimits = dynamic_field::borrow(&budget.id, SpendingLimitsKey {});
+        (
+            limits.daily_limit,
+            limits.weekly_limit,
+            limits.monthly_limit,
+            limits.daily_spent,
+            limits.weekly_spent,
+            limits.monthly_spent
+        )
+    }
+
+    /// Get spending limits rate config: (min_interval_ms, last_request_at)
+    public fun get_rate_limits(budget: &Budget): (u64, u64) {
+        if (!dynamic_field::exists_(&budget.id, SpendingLimitsKey {})) {
+            return (0, 0)
+        };
+        let limits: &SpendingLimits = dynamic_field::borrow(&budget.id, SpendingLimitsKey {});
+        (limits.min_interval_ms, limits.last_request_at)
+    }
+
+    /// Get allowed categories (empty vector if no category limits set)
+    public fun get_allowed_categories(budget: &Budget): vector<String> {
+        if (!dynamic_field::exists_(&budget.id, CategoryLimitsKey {})) {
+            return vector::empty()
+        };
+        let cat_limits: &CategoryLimits = dynamic_field::borrow(&budget.id, CategoryLimitsKey {});
+        cat_limits.allowed_categories
+    }
+
+    /// Check if a category is allowed
+    public fun is_category_allowed(budget: &Budget, category: &String): bool {
+        if (!dynamic_field::exists_(&budget.id, CategoryLimitsKey {})) {
+            return true
+        };
+        let cat_limits: &CategoryLimits = dynamic_field::borrow(&budget.id, CategoryLimitsKey {});
+        if (vector::is_empty(&cat_limits.allowed_categories)) {
+            true
+        } else {
+            vector::contains(&cat_limits.allowed_categories, category)
         }
     }
 

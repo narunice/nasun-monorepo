@@ -1,13 +1,16 @@
-# CLAUDE.md (Baram App)
+# CLAUDE.md (Baram AER App — ACTIVE)
 
-> 이 문서는 baram 앱 전용 가이드입니다.
+> 이 문서는 **baram-aer** 앱 전용 가이드입니다 (활발히 개발 중).
 > 공통 원칙은 [루트 CLAUDE.md](../../CLAUDE.md)를 참조하세요.
+>
+> **주의**: `apps/baram`은 TEE 프라이버시 추론 프로토타입으로 **Legacy 상태**입니다.
+> baram의 코드는 절대 수정하지 마세요. 모든 새 개발은 이 `apps/baram-aer`에서 진행합니다.
 
 ---
 
 ## Overview
 
-**Baram**은 나선 네트워크의 AI Compliance Settlement Layer다.
+**Baram AER**은 나선 네트워크의 AI Compliance Settlement Layer다.
 
 | 요소 | 설명 |
 |------|------|

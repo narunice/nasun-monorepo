@@ -57,3 +57,49 @@ export function formatMessageTime(ms: number): string {
     minute: '2-digit',
   });
 }
+
+/** Format timestamp as time with seconds (for AER timeline) */
+export function formatTimeDetailed(ms: number): string {
+  if (!ms) return '-';
+  return new Date(ms).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+/** Format timestamp as short time (month + day + hour:minute) */
+export function formatTimeShort(ms: number): string {
+  if (!ms) return '-';
+  return new Date(ms).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Format timestamp as date only (month + day + year) */
+export function formatDate(ms: number): string {
+  if (!ms) return '-';
+  return new Date(ms).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Parse a Move Option<T> field from JSON RPC response.
+ * Move Option is serialized as { vec: [value] } or { vec: [] }.
+ */
+export function parseOptionField<T>(field: unknown): T | null {
+  if (field == null) return null;
+  if (typeof field === 'object' && 'vec' in (field as Record<string, unknown>)) {
+    const vec = (field as { vec: T[] }).vec;
+    return vec.length > 0 ? vec[0] : null;
+  }
+  return field as T;
+}
