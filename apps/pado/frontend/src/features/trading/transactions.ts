@@ -477,17 +477,23 @@ export function buildRequestNusdc(): Transaction {
  * 10 NETH per claim
  */
 export function buildRequestNeth(): Transaction {
-  if (!NETWORK_CONFIG.tokensV2Package || !NETWORK_CONFIG.tokenFaucetV2 || !NETWORK_CONFIG.claimRecordV2) {
-    throw new Error('NETH faucet not configured: tokensV2 contract addresses missing');
+  // NETH uses a separate re-published package (8 decimals)
+  const nethFaucetObj = NETWORK_CONFIG.nethFaucetV2 || NETWORK_CONFIG.tokenFaucetV2;
+  const nethClaimRecord = NETWORK_CONFIG.nethClaimRecordV2 || NETWORK_CONFIG.claimRecordV2;
+  // Derive package from NETH type (e.g., "0xabc...::neth::NETH" → "0xabc...")
+  const nethPkg = NETWORK_CONFIG.nethType ? NETWORK_CONFIG.nethType.split('::')[0] : NETWORK_CONFIG.tokensV2Package;
+
+  if (!nethPkg || !nethFaucetObj || !nethClaimRecord) {
+    throw new Error('NETH faucet not configured: NETH contract addresses missing');
   }
 
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${NETWORK_CONFIG.tokensV2Package}::faucet_v2::request_neth_with_cooldown`,
+    target: `${nethPkg}::faucet_v2::request_neth_with_cooldown`,
     arguments: [
-      tx.object(NETWORK_CONFIG.tokenFaucetV2),
-      tx.object(NETWORK_CONFIG.claimRecordV2),
+      tx.object(nethFaucetObj),
+      tx.object(nethClaimRecord),
       tx.object(CLOCK_ID),
     ],
   });

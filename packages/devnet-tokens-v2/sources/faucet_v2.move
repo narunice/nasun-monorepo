@@ -8,7 +8,7 @@ module devnet_tokens_v2::faucet_v2 {
     use devnet_tokens_v2::nsol::NSOL;
 
     // Faucet amounts (reduced to prevent u64 supply overflow)
-    const NETH_FAUCET_AMOUNT: u64 = 100_000_000_000_000_000; // 0.1 NETH (18 decimals, ~184 mints before u64 overflow)
+    const NETH_FAUCET_AMOUNT: u64 = 10_000_000; // 0.1 NETH (8 decimals)
     const NSOL_FAUCET_AMOUNT: u64 = 10_000_000_000;          // 10 NSOL (9 decimals)
 
     // Rate limiting

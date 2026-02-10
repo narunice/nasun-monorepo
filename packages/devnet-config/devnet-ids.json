@@ -1,6 +1,6 @@
 {
   "version": "V7",
-  "lastUpdated": "2026-02-08",
+  "lastUpdated": "2026-02-10",
   "admin": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
   "network": {
     "chainId": "272218f1",
@@ -41,11 +41,11 @@
     "proposalTypeRegistry": "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b"
   },
   "baram": {
-    "packageId": "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6",
-    "originalPackageId": "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
+    "packageId": "0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1",
+    "originalPackageId": "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6",
     "registry": "0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833",
     "upgradeCap": "0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291",
-    "budgetPackageId": "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6",
+    "budgetPackageId": "0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1",
     "budgetTypeOrigin": "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7",
     "executorPackageId": "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd",
     "executorRegistry": "0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656",
@@ -64,10 +64,13 @@
     "complianceRegistry": "0x884af83cb0b9d5dc1f584a29018e812e777fb36ea99b8b0d96a8645188a4bec0",
     "complianceAdminCap": "0xd0ea98aa3eac954c0edb4218ceab9c9d3c1c8d4f8082efcbdd54ac1347253cbe",
     "complianceUpgradeCap": "0x57af57b0be77ddb9a85fafb7cab68b2387e80785874fa1198cf73d12638804a5",
-    "aerPackageId": "0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0",
+    "aerPackageId": "0x809f22f2262fd4211e51c1d890addfaeadb21e4bbf61748d7714306272427692",
     "aerRegistry": "0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583",
     "aerAdminCap": "0x5d74e5e8bf827b95c6c19ee6697e3edac706aeb2cf3870a39100a06a12c73c7d",
     "aerUpgradeCap": "0x9179431462d03a1ae337ba5bff9bfe0de7cfec5854436f119b4c56b2bcd95af4",
+    "agentPackageId": "0x05edb7edec6e69af66e5d2564e6ca7cb46b60469a0897291c51f8d5c949424de",
+    "agentProfileRegistry": "0x1e236dfab7e4c3df21651fa4b5dc846d8d1bed314a2615474dd1b805445b9f11",
+    "agentUpgradeCap": "0xa78f6958f57c63f99fa237556769c9f21be1a315d90c9ef380502ad4a9f273f9",
     "betaAccessRegistry": "0xaf2fd2a1ccfd1f41afe51071981047860b81f9cfaa775fc12acadf099577e4f7",
     "betaAccessAdmin": "0x7daa09decafcfa78b712308a13e8c8204eb89de8434df806df51f4cec076d6c2"
   },
@@ -75,12 +78,16 @@
     "packageId": "0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2",
     "tokenFaucetV2": "0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2",
     "claimRecordV2": "0x2c2dbaa8d08b04119f5a8459aba2ab4d71b887d55bb5c1d987af1f501a52c38a",
-    "upgradeCap": "0x4b70e4d8a5bd8dc9976082d8d16eb014303b3000cc6d52a9de19c6b3a7cdb755"
+    "upgradeCap": "0x4b70e4d8a5bd8dc9976082d8d16eb014303b3000cc6d52a9de19c6b3a7cdb755",
+    "nethPackageId": "0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31",
+    "nethFaucetV2": "0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e",
+    "nethClaimRecordV2": "0xf70689c14ce0752e209e8939c2628c4f3ce4fab08b800c2c7d691b5f0454d80e",
+    "nethUpgradeCap": "0x8acd186da618ae5be49ce4ca98b6467ed7891f67b50125e7ff282631665ed10b"
   },
   "pools": {
     "nbtcNusdc": "0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0",
     "nsnNusdc": "0x5953740daf54d767f2cd71a8372db75c7277f2907b55e0bdf7c172d96e033b1e",
-    "nethNusdc": "0x531fed7acf9f5f7fe3a206bc079d69d39db0bf8e22ff703c3fe0817edf9c0714",
+    "nethNusdc": "0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7",
     "nsolNusdc": "0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769"
   },
   "oracle": {
