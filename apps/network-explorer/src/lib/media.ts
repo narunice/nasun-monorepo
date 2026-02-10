@@ -14,12 +14,20 @@ const SAFE_DATA_PREFIXES = [
   'data:video/webm',
 ];
 
+// IPFS gateways with fallback (primary → secondary → tertiary)
+const IPFS_GATEWAYS = [
+  'https://ipfs.io/ipfs/',
+  'https://dweb.link/ipfs/',
+  'https://cloudflare-ipfs.com/ipfs/',
+] as const;
+
 /**
  * IPFS URL을 HTTP 게이트웨이로 변환 + 프로토콜 allowlist 적용
  * @param url - 원본 URL (ipfs://, data:, https:// 등)
+ * @param gatewayIndex - IPFS gateway index for fallback (0 = primary)
  * @returns 변환된 안전한 URL, 또는 undefined (차단된 scheme)
  */
-export function resolveMediaUrl(url: string | undefined): string | undefined {
+export function resolveMediaUrl(url: string | undefined, gatewayIndex = 0): string | undefined {
   if (!url) return undefined;
 
   const lower = url.toLowerCase().trim();
@@ -32,10 +40,15 @@ export function resolveMediaUrl(url: string | undefined): string | undefined {
     return undefined;
   }
 
-  // IPFS URL 변환 → https
+  // IPFS URL 변환 → https (with gateway fallback)
   if (lower.startsWith('ipfs://')) {
     const hash = url.slice(7); // preserve original casing
-    return `https://ipfs.io/ipfs/${hash}`;
+    // Reject path traversal, query injection, and suspicious characters
+    if (!hash || /[?#\s]/.test(hash) || hash.includes('..')) {
+      return undefined;
+    }
+    const gw = IPFS_GATEWAYS[gatewayIndex] ?? IPFS_GATEWAYS[0];
+    return `${gw}${hash}`;
   }
 
   // Only allow http(s) schemes
@@ -45,6 +58,14 @@ export function resolveMediaUrl(url: string | undefined): string | undefined {
 
   // Block everything else (javascript:, vbscript:, blob:, file:, etc.)
   return undefined;
+}
+
+/** Number of available IPFS gateways for fallback */
+export const IPFS_GATEWAY_COUNT = IPFS_GATEWAYS.length;
+
+/** Check if a URL is an IPFS URL */
+export function isIpfsUrl(url: string | undefined): boolean {
+  return !!url && url.toLowerCase().trim().startsWith('ipfs://');
 }
 
 /**
