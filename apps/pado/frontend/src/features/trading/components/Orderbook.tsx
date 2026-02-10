@@ -305,6 +305,9 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
     return { maxQty, avgQty };
   }, [displayedBids, displayedAsks]);
 
+  // Spread bar ref for tooltip positioning
+  const spreadBarRef = useRef<HTMLDivElement>(null);
+
   // Hover fill preview state
   const [hoverPreview, setHoverPreview] = useState<{
     type: 'ask' | 'bid';
@@ -427,7 +430,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
       {/* Error banner */}
       {isError && (
         <div className="px-2 py-1 text-xs text-yellow-300 bg-yellow-900/30 border-b border-yellow-700/40" role="alert">
@@ -544,7 +547,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
 
           {/* Spread / Mid Price */}
           {showSpread && spreadInfo && (
-            <div className="flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded">
+            <div ref={spreadBarRef} className="flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded">
               <span className="text-trading-xl xl:text-trading-2xl font-bold font-mono flex items-center gap-1">
                 {priceDirection === 'up' && (
                   <svg width="12" height="12" viewBox="0 0 12 12" className="text-trading-bid"><path d="M6 2L10 8H2L6 2Z" fill="currentColor" /></svg>
@@ -623,8 +626,15 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           </div>
           {/* Hover Fill Preview Tooltip */}
           {hoverPreview && (
-            <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ bottom: hoverPreview.type === 'ask' ? undefined : 0, top: hoverPreview.type === 'ask' ? 0 : undefined }}>
-              <div className="mx-2 p-2 rounded bg-theme-bg-tertiary border border-theme-border shadow-lg text-[11px]">
+            <div
+              className="absolute left-0 right-0 z-30 pointer-events-none"
+              style={spreadBarRef.current ? (
+                hoverPreview.type === 'ask'
+                  ? { top: spreadBarRef.current.offsetTop + spreadBarRef.current.offsetHeight }
+                  : { top: spreadBarRef.current.offsetTop, transform: 'translateY(-100%)' }
+              ) : { top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <div className="mx-2 p-2 rounded bg-theme-bg-tertiary/95 border border-theme-border shadow-lg text-[11px] backdrop-blur-sm">
                 <div className="font-semibold text-theme-text-primary mb-1">
                   Market {hoverPreview.type === 'ask' ? 'Buy' : 'Sell'} to {hoverPreview.price.toFixed(priceDecimals)}
                 </div>
