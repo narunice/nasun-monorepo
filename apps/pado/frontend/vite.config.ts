@@ -73,6 +73,11 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@nasun/wallet', '@scure/bip39', '@scure/bip39/wordlists/english.js'],
   },
+  // Strip console.log and console.debug in production builds (keep console.warn/error)
+  esbuild: {
+    drop: ['debugger'],
+    pure: ['console.log', 'console.debug'],
+  },
   build: {
     commonjsOptions: {
       include: [/node_modules/],

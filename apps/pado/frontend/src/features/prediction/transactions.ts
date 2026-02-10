@@ -86,7 +86,7 @@ export function buildMintOutcomeTokensWithAmount(
   marketId: string,
   nusdcCoinId: string,
   amount: bigint,
-  _senderAddress: string,
+  _senderAddress: string, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Transaction {
   validateAmount(amount);
 

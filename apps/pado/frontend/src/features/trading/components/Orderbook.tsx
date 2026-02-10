@@ -73,18 +73,24 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
   const rowHeight = compact ? 'py-px' : 'py-0.5';
 
   // Track seen trade IDs to only animate genuinely new trades
-  const seenIdsRef = useRef(new Set<string>());
+  const [seenIds, setSeenIds] = useState(new Set<string>());
   const newTradeIds = useMemo(() => {
     const newIds = new Set<string>();
     for (const t of trades) {
-      if (!seenIdsRef.current.has(t.id)) newIds.add(t.id);
+      if (!seenIds.has(t.id)) newIds.add(t.id);
     }
     return newIds;
-  }, [trades]);
+  }, [trades, seenIds]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    for (const t of trades) seenIdsRef.current.add(t.id);
+    setSeenIds(prev => {
+      const next = new Set(prev);
+      for (const t of trades) next.add(t.id);
+      return next;
+    });
   }, [trades]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <>

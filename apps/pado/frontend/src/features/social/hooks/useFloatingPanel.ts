@@ -49,7 +49,7 @@ export function useFloatingPanel(storageKey: string, defaults: PanelState) {
     clampToViewport(loadState(storageKey, defaults))
   );
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => { stateRef.current = state; });
 
   // Persist on change
   useEffect(() => { saveState(storageKey, state); }, [storageKey, state]);

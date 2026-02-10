@@ -4,6 +4,7 @@ import { useLotteryActions } from "../hooks";
 import { useToast } from "@/components/common/Toast";
 import { generateQuickPick, formatNusdc } from "../lib/lottery-client";
 import { MAX_NUMBER, TICKET_PRICE, NUMBERS_COUNT } from "../constants";
+import { useNow } from "@/hooks/useNow";
 import type { LotteryRound } from "../types";
 
 interface TicketPurchaseFormProps {
@@ -20,7 +21,8 @@ export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseF
 
   // Detect both regular wallet and zkLogin connection
   const isConnected = isZkLoggedIn || (status === "unlocked" && !!account);
-  const isRoundOpen = Date.now() < round.closeTime;
+  const now = useNow();
+  const isRoundOpen = now < round.closeTime;
   const canPurchase =
     isConnected && isRoundOpen && selectedNumbers.size === NUMBERS_COUNT && !isBuying;
 

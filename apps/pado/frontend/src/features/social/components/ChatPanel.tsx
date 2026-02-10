@@ -40,7 +40,7 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
     sendMessage(content);
   }, [needsNickname, sendMessage]);
 
-  const handleNicknameSuccess = useCallback((_name: string) => {
+  const handleNicknameSuccess = useCallback(() => {
     const wasFirstTime = nicknameModalMode === 'first';
     setNicknameModalMode(false);
     // Send the pending message that triggered the modal (first-time only)

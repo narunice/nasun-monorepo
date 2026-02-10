@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { ROUND_STATUS, formatNusdc } from '../../index';
+import { useNow } from '@/hooks/useNow';
 import type { LotteryRound } from '../../types';
 import { StatusBadge } from './StatusBadge';
 
@@ -28,7 +29,7 @@ export function RoundCard({ round, isLoading, onClose, onDraw, onSettle }: Round
   const [tier1Winners, setTier1Winners] = useState(0);
   const [tier2Winners, setTier2Winners] = useState(0);
   const [tier3Winners, setTier3Winners] = useState(0);
-  const now = Date.now();
+  const now = useNow();
 
   const canClose = round.status === ROUND_STATUS.OPEN && now >= round.closeTime;
   const canDraw = round.status === ROUND_STATUS.CLOSED && now >= round.drawTime;

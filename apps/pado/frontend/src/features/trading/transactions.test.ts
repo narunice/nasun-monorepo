@@ -3,7 +3,7 @@
  * Covers: validation, security checks, BalanceManager ops, order building, faucet, edge cases
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock network config before importing transactions (which depends on it)
 // vi.mock factory is hoisted — cannot reference top-level variables
@@ -52,8 +52,6 @@ import {
   buildRequestTokens,
   buildRequestNbtc,
   buildRequestNusdc,
-  buildRequestNeth,
-  buildRequestNsol,
   buildWithdrawAll,
 } from './transactions';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';

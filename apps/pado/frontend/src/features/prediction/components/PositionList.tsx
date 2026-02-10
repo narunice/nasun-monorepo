@@ -98,19 +98,6 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     }
   }, [market.id, claimWinnings, startSync]);
 
-  if (status !== 'unlocked' && !isZkConnected) {
-    return null;
-  }
-
-  if (positions.length === 0) {
-    return (
-      <div className="bg-theme-bg-secondary rounded-xl p-4">
-        <h3 className="text-lg font-semibold text-theme-text-primary mb-2">My Positions</h3>
-        <p className="text-sm text-theme-text-muted">No positions in this market</p>
-      </div>
-    );
-  }
-
   // Calculate sell order summary for modal
   const sellOrderSummary = useMemo(() => {
     if (!sellingPosition || !sellPriceNusdc) return null;
@@ -137,6 +124,19 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
       probabilityPercent: Math.round(priceNusdc * 100),
     };
   }, [sellingPosition, sellPriceNusdc, positions]);
+
+  if (status !== 'unlocked' && !isZkConnected) {
+    return null;
+  }
+
+  if (positions.length === 0) {
+    return (
+      <div className="bg-theme-bg-secondary rounded-xl p-4">
+        <h3 className="text-lg font-semibold text-theme-text-primary mb-2">My Positions</h3>
+        <p className="text-sm text-theme-text-muted">No positions in this market</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4">

@@ -4,7 +4,7 @@
  * The filter logic is extracted here to test independently of React rendering.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // ========================================
 // Filter Logic (extracted from TradeHistory.tsx useMemo)

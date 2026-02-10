@@ -28,7 +28,7 @@ export function useTradeEvents(
   const { currentPool } = useMarket();
   const { showToast } = useToast();
   const showToastRef = useRef(showToast);
-  showToastRef.current = showToast;
+  useEffect(() => { showToastRef.current = showToast; });
   const [trades, setTrades] = useState<Trade[]>([]);
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>('polling');
   const [realTradeCount, setRealTradeCount] = useState(0);

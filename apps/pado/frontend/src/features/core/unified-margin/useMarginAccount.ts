@@ -62,6 +62,7 @@ export function useMarginAccount(): UseMarginAccountResult {
   const [marginAccountId, setMarginAccountId] = useState<string | null>(null);
 
   // Reset marginAccountId when activeAddress changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (activeAddress) {
       const storedId = getStoredMarginAccountId(activeAddress);
@@ -70,6 +71,7 @@ export function useMarginAccount(): UseMarginAccountResult {
       setMarginAccountId(null);
     }
   }, [activeAddress]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Find or use stored account ID
   const { data: foundAccountId, isLoading: isFinding } = useQuery({
@@ -95,12 +97,14 @@ export function useMarginAccount(): UseMarginAccountResult {
   });
 
   // Update local state when account is found
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (foundAccountId && foundAccountId !== marginAccountId && activeAddress) {
       setMarginAccountId(foundAccountId);
       storeMarginAccountId(activeAddress, foundAccountId);
     }
   }, [foundAccountId, marginAccountId, activeAddress]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Fetch account data with owner verification
   const {
