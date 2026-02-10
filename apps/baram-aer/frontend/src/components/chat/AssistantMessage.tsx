@@ -14,7 +14,7 @@ interface AssistantMessageProps {
   metadata?: MessageMetadata;
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
-  autoShowAuditTrail?: boolean;
+  autoShowReport?: boolean;
   failed?: boolean;
 }
 
@@ -24,7 +24,7 @@ export function AssistantMessage({
   metadata,
   isProcessing = false,
   isTeeExecutor = false,
-  autoShowAuditTrail = false,
+  autoShowReport = false,
   failed = false,
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
@@ -32,13 +32,13 @@ export function AssistantMessage({
 
   // Auto-open Execution Report modal on first TEE response (once per component lifetime)
   useEffect(() => {
-    if (!autoShowAuditTrail || autoShownRef.current) return;
+    if (!autoShowReport || autoShownRef.current) return;
     if (!metadata?.teeVerified || metadata.requestId === undefined) return;
 
     autoShownRef.current = true;
     const timer = setTimeout(() => setShowReceipt(true), 800);
     return () => clearTimeout(timer);
-  }, [autoShowAuditTrail, metadata]);
+  }, [autoShowReport, metadata]);
 
   const timeString = timestamp ? formatMessageTime(timestamp) : undefined;
 

@@ -13,7 +13,7 @@ interface AssistantMessageProps {
   metadata?: MessageMetadata;
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
-  autoShowAuditTrail?: boolean;
+  autoShowReport?: boolean;
   failed?: boolean;
 }
 
@@ -23,21 +23,21 @@ export function AssistantMessage({
   metadata,
   isProcessing = false,
   isTeeExecutor = false,
-  autoShowAuditTrail = false,
+  autoShowReport = false,
   failed = false,
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
   const autoShownRef = useRef(false);
 
-  // Auto-open Audit Trail modal on first TEE response (once per component lifetime)
+  // Auto-open Execution Report modal on first TEE response (once per component lifetime)
   useEffect(() => {
-    if (!autoShowAuditTrail || autoShownRef.current) return;
+    if (!autoShowReport || autoShownRef.current) return;
     if (!metadata?.teeVerified || metadata.requestId === undefined) return;
 
     autoShownRef.current = true;
     const timer = setTimeout(() => setShowReceipt(true), 800);
     return () => clearTimeout(timer);
-  }, [autoShowAuditTrail, metadata]);
+  }, [autoShowReport, metadata]);
 
   const timeString = timestamp
     ? new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -162,7 +162,7 @@ export function AssistantMessage({
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Audit Trail
+                      Execution Report
                     </button>
                   ) : (
                     <span className="relative group inline-flex">
@@ -170,7 +170,7 @@ export function AssistantMessage({
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Audit Trail
+                        Execution Report
                       </span>
                       <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 text-xs rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
                         Only created for TEE-protected executions

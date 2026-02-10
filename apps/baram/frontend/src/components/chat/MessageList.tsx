@@ -7,7 +7,7 @@ import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
 import type { Message } from '@/types/chat';
 
-const AUDIT_TRAIL_SHOWN_KEY = 'baram_audit_trail_shown';
+const REPORT_SHOWN_KEY = 'baram_report_shown';
 
 interface MessageListProps {
   messages: Message[];
@@ -24,16 +24,16 @@ export function MessageList({ messages, isProcessing, isTeeExecutor }: MessageLi
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
 
-  // Auto-expand Audit Trail for the first TEE-verified response (once per tab)
+  // Auto-expand Execution Report for the first TEE-verified response (once per tab)
   useEffect(() => {
-    if (sessionStorage.getItem(AUDIT_TRAIL_SHOWN_KEY)) return;
+    if (sessionStorage.getItem(REPORT_SHOWN_KEY)) return;
 
     const firstTeeMessage = messages.find(
       (m) => m.role === 'assistant' && m.metadata?.teeVerified && m.metadata.requestId !== undefined,
     );
     if (firstTeeMessage) {
       setAutoExpandMessageId(firstTeeMessage.id);
-      sessionStorage.setItem(AUDIT_TRAIL_SHOWN_KEY, '1');
+      sessionStorage.setItem(REPORT_SHOWN_KEY, '1');
     }
   }, [messages]);
 
@@ -57,7 +57,7 @@ export function MessageList({ messages, isProcessing, isTeeExecutor }: MessageLi
             content={message.content}
             timestamp={message.timestamp}
             metadata={message.metadata}
-            autoShowAuditTrail={message.id === autoExpandMessageId}
+            autoShowReport={message.id === autoExpandMessageId}
             failed={message.failed}
           />
         )

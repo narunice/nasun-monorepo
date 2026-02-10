@@ -57,7 +57,7 @@ export function MessageList({ messages, isProcessing, isTeeExecutor }: MessageLi
             content={message.content}
             timestamp={message.timestamp}
             metadata={message.metadata}
-            autoShowAuditTrail={message.id === autoExpandMessageId}
+            autoShowReport={message.id === autoExpandMessageId}
             failed={message.failed}
           />
         )
