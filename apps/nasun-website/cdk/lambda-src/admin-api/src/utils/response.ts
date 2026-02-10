@@ -11,8 +11,8 @@ function getCorsOrigin(requestOrigin: string | undefined): string {
 export function corsHeaders(requestOrigin?: string): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": getCorsOrigin(requestOrigin),
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Identity-Id",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Credentials": "true",
   };
 }

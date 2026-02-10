@@ -69,7 +69,7 @@ const LoginButton = () => {
   ) => {
     try {
       console.log("MetaMask login successful:", { identityId, walletAddress });
-      await signInWithMetaMask(identityId, walletAddress);
+      await signInWithMetaMask(identityId, token, walletAddress);
       const currentPath = window.location.pathname;
       navigate(currentPath === '/' ? '/my-account' : currentPath);
     } catch (error) {

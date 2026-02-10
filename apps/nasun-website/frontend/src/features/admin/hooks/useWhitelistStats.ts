@@ -8,8 +8,8 @@ export function useWhitelistStats() {
 
   return useQuery<WhitelistStats>({
     queryKey: ['whitelist-stats', user?.identityId],
-    queryFn: () => getWhitelistStats(user!.identityId),
-    enabled: isAuthenticated && !!user?.identityId,
+    queryFn: () => getWhitelistStats(user!.cognitoToken!),
+    enabled: isAuthenticated && !!user?.cognitoToken,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });

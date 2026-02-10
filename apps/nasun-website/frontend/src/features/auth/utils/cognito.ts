@@ -1,4 +1,4 @@
-import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
+import { CognitoIdentityClient, GetIdCommand, GetOpenIdTokenCommand } from "@aws-sdk/client-cognito-identity";
 import logger from "@/lib/logger";
 
 export const getCognitoIdentityId = async (
@@ -25,4 +25,29 @@ export const getCognitoIdentityId = async (
     }
   }
   return undefined;
+};
+
+/**
+ * Get a signed OIDC token from Cognito Identity Pool for an already-authenticated identity.
+ * Used for Google OAuth where GetIdCommand only returns identityId but no OIDC token.
+ */
+export const getCognitoOidcToken = async (
+  identityId: string,
+  googleIdToken: string
+): Promise<string | undefined> => {
+  const region = import.meta.env.VITE_AWS_REGION;
+
+  try {
+    const cognitoClient = new CognitoIdentityClient({ region });
+    const result = await cognitoClient.send(
+      new GetOpenIdTokenCommand({
+        IdentityId: identityId,
+        Logins: { "accounts.google.com": googleIdToken },
+      })
+    );
+    return result.Token ?? undefined;
+  } catch (error) {
+    logger.error("Failed to get Cognito OIDC token for Google.", error);
+    return undefined;
+  }
 };
