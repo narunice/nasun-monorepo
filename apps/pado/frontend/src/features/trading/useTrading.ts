@@ -129,7 +129,7 @@ export function useTrading(): UseTrading {
 
     if (result.success && result.objectChanges) {
       const created = result.objectChanges.find(
-        (change: any) => change.type === 'created' &&
+        (change) => change.type === 'created' &&
           change.objectType?.includes('BalanceManager')
       );
 

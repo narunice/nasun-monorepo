@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 import { generateCsv, downloadCsv } from '../../../lib/csv-export';
+import { useNow } from '@/hooks/useNow';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -273,6 +274,7 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
   const [marketFilter, setMarketFilter] = useState<string>('all');
   const [sideFilter, setSideFilter] = useState<SideFilter>('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const now = useNow();
 
   const isConnected = status === 'unlocked' || isZkConnected;
 
@@ -284,14 +286,14 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
 
   // Apply filters
   const filteredTrades = useMemo(() => {
-    const cutoff = periodFilter === 'all' ? 0 : Date.now() - PERIOD_MS[periodFilter];
+    const cutoff = periodFilter === 'all' ? 0 : now - PERIOD_MS[periodFilter];
     return trades.filter((t) => {
       if (marketFilter !== 'all' && t.poolName !== marketFilter) return false;
       if (sideFilter !== 'all' && t.side !== sideFilter) return false;
       if (t.timestamp < cutoff) return false;
       return true;
     });
-  }, [trades, marketFilter, sideFilter, periodFilter]);
+  }, [trades, marketFilter, sideFilter, periodFilter, now]);
 
   const displayedTrades = filteredTrades.slice(0, displayCount);
   const hasMore = displayCount < filteredTrades.length;

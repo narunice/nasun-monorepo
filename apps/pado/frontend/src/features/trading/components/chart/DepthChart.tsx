@@ -52,19 +52,19 @@ export function DepthChart({ bids, asks, midPrice, className = '' }: DepthChartP
   const { bidData, askData, maxQty, minPrice, maxPrice } = useMemo(() => {
     // Bids: sorted best (highest) first → cumulate downward
     const sortedBids = [...bids].sort((a, b) => b.price - a.price).slice(0, MAX_DEPTH_LEVELS);
-    let cumBid = 0;
-    const bidData = sortedBids.map((l) => {
-      cumBid += l.quantity;
-      return { price: l.price, cumQty: cumBid };
-    });
+    const bidData = sortedBids.reduce<Array<{ price: number; cumQty: number }>>((acc, l) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].cumQty : 0;
+      acc.push({ price: l.price, cumQty: prev + l.quantity });
+      return acc;
+    }, []);
 
     // Asks: sorted best (lowest) first → cumulate upward
     const sortedAsks = [...asks].sort((a, b) => a.price - b.price).slice(0, MAX_DEPTH_LEVELS);
-    let cumAsk = 0;
-    const askData = sortedAsks.map((l) => {
-      cumAsk += l.quantity;
-      return { price: l.price, cumQty: cumAsk };
-    });
+    const askData = sortedAsks.reduce<Array<{ price: number; cumQty: number }>>((acc, l) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].cumQty : 0;
+      acc.push({ price: l.price, cumQty: prev + l.quantity });
+      return acc;
+    }, []);
 
     const maxBidQty = bidData.length > 0 ? bidData[bidData.length - 1].cumQty : 0;
     const maxAskQty = askData.length > 0 ? askData[askData.length - 1].cumQty : 0;
@@ -231,7 +231,7 @@ export function DepthChart({ bids, asks, midPrice, className = '' }: DepthChartP
 
   // Stable ref for ResizeObserver to avoid disconnect/reconnect churn on data updates
   const drawRef = useRef(draw);
-  drawRef.current = draw;
+  useEffect(() => { drawRef.current = draw; });
 
   // ResizeObserver for responsive sizing (runs once, reads draw via ref)
   useEffect(() => {

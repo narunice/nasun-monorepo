@@ -9,6 +9,7 @@ import { useTradeHistory } from '../hooks/useTradeHistory';
 import { useCostBasis } from '../hooks/useCostBasis';
 import { getUnifiedPrice, type TokenSymbol } from '@/lib/prices';
 import { computeRiskMetrics } from '../lib/risk-metrics';
+import { useNow } from '@/hooks/useNow';
 
 type Period = '24h' | '7d' | '30d' | 'all';
 
@@ -60,6 +61,7 @@ export function TradeStats() {
   const { trades, isLoading } = useTradeHistory();
   const { entries: costBasisEntries } = useCostBasis();
   const [period, setPeriod] = useState<Period>('all');
+  const now = useNow();
 
   const isConnected = status === 'unlocked' || isZkConnected;
 
@@ -75,9 +77,9 @@ export function TradeStats() {
   // Filter trades by period
   const filteredTrades = useMemo(() => {
     if (period === 'all') return trades;
-    const cutoff = Date.now() - getPeriodMs(period);
+    const cutoff = now - getPeriodMs(period);
     return trades.filter((t) => t.timestamp >= cutoff);
-  }, [trades, period]);
+  }, [trades, period, now]);
 
   // Compute volume stats
   const stats = useMemo(() => {

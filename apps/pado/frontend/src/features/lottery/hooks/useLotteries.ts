@@ -4,6 +4,7 @@ import {
   fetchLotteryRegistry,
 } from '../lib/lottery-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
+import { useNow } from '../../../hooks/useNow';
 import type { LotteryRound, LotteryRegistry } from '../types';
 import { ROUND_STATUS } from '../constants';
 
@@ -44,7 +45,7 @@ export function useLotteries(): UseLotteriesResult {
   });
 
   // Find the current active round (OPEN status and not expired)
-  const now = Date.now();
+  const now = useNow(30_000);
   const currentRound =
     rounds.find(
       (round) => round.status === ROUND_STATUS.OPEN && round.closeTime > now

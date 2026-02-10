@@ -86,7 +86,7 @@ export function calculateProbability(yesSupply: bigint, noSupply: bigint): numbe
 // Only uses REAL orders (excludes simulated data)
 export function calculateProbabilityFromOrderbook(
   yesOrderbook: Orderbook | null,
-  _noOrderbook: Orderbook | null
+  _noOrderbook: Orderbook | null // eslint-disable-line @typescript-eslint/no-unused-vars
 ): { yesProbability: number; noProbability: number; hasRealOrders: boolean } {
   // Filter to only real orders (exclude simulated)
   const realBids = yesOrderbook?.bids.filter((l) => !l.isSimulated) ?? [];

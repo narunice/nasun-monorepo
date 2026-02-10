@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { BADGES, BADGE_CONDITIONS } from '../constants';
 import type { BadgeDefinition, UnlockedBadge, BadgeEvalContext } from '../types';
 
@@ -70,25 +70,23 @@ function evaluateBadges(
 }
 
 export function useBadges(context: BadgeEvalContext): UseBadgesResult {
-  // Initialize synchronously to avoid race condition
-  const prevUnlockedRef = useRef<Set<string> | null>(null);
-  if (prevUnlockedRef.current === null) {
-    prevUnlockedRef.current = new Set(loadUnlocked().keys());
-  }
-
+  // Capture previously unlocked badges once on mount
+  const [prevUnlocked] = useState<Set<string>>(() => new Set(loadUnlocked().keys()));
   const [newlyUnlocked, setNewlyUnlocked] = useState<BadgeDefinition[]>([]);
 
   // Pure computation -- no side effects
   const { badges, changed, unlocked, newBadges } = useMemo(
-    () => evaluateBadges(context, prevUnlockedRef.current!),
-    [context],
+    () => evaluateBadges(context, prevUnlocked),
+    [context, prevUnlocked],
   );
 
   // Side effects in useEffect, not useMemo
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (changed) saveUnlocked(unlocked);
     if (newBadges.length > 0) setNewlyUnlocked(newBadges);
   }, [changed, unlocked, newBadges]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
     badges,

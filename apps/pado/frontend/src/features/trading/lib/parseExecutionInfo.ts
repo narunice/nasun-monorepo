@@ -3,7 +3,7 @@
  */
 
 import { NETWORK_CONFIG } from '../../../config/network';
-import type { OrderExecutionInfo } from '../types';
+import type { OrderExecutionInfo, SuiEvent } from '../types';
 
 /**
  * Parse execution info from DeepBook OrderInfo/OrderFilled events
@@ -14,7 +14,7 @@ import type { OrderExecutionInfo } from '../types';
  * @param quoteDecimals - Quote token decimals
  */
 export function parseExecutionInfo(
-  events: any[],
+  events: SuiEvent[],
   quantity: number,
   isBid: boolean,
   baseDecimals: number = 8,
@@ -26,7 +26,7 @@ export function parseExecutionInfo(
   const orderFilledType = `${NETWORK_CONFIG.deepbookPackage}::order_info::OrderFilled`;
 
   // Extract execution info from OrderInfo event
-  const orderInfoEvent = events.find((e: any) => e.type === orderInfoType);
+  const orderInfoEvent = events.find((e) => e.type === orderInfoType);
   if (orderInfoEvent?.parsedJson) {
     const json = orderInfoEvent.parsedJson;
     const executedQty = Number(json.executed_quantity || 0) / Math.pow(10, baseDecimals);
@@ -53,11 +53,11 @@ export function parseExecutionInfo(
   }
 
   // Fallback: extract from OrderFilled events
-  const filledEvents = events.filter((e: any) => e.type === orderFilledType);
+  const filledEvents = events.filter((e) => e.type === orderFilledType);
   if (filledEvents.length > 0) {
     let totalBase = 0;
     let totalQuote = 0;
-    filledEvents.forEach((e: any) => {
+    filledEvents.forEach((e) => {
       if (e.parsedJson) {
         totalBase += Number(e.parsedJson.base_quantity || 0);
         totalQuote += Number(e.parsedJson.quote_quantity || 0);

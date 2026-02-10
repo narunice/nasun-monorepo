@@ -31,9 +31,11 @@ export function OrderConfirmModal({
   const [skipConfirm, setSkipConfirm] = useState(false);
 
   // Reset checkbox when modal closes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isOpen) setSkipConfirm(false);
   }, [isOpen]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!isOpen) return null;
 

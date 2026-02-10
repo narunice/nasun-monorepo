@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computeBadges, computeBadgesFromLeaderboard, type Badge, type EarnedBadge } from './badges';
+import { computeBadges, computeBadgesFromLeaderboard, type EarnedBadge } from './badges';
 import type { TraderStatsResponse, LeaderboardTrader, TraderPeriodStats } from '../types';
 
 // ========================================
