@@ -21,19 +21,27 @@ export function formatObjectType(type: string | undefined): string {
 // SOE 단위 잔액 포맷 (SOE -> NSN 변환)
 export function formatBalance(balance: string | undefined): string {
   if (!balance) return '0';
-  const value = BigInt(balance);
-  const nasun = value / BigInt(1_000_000_000);
-  const remainder = value % BigInt(1_000_000_000);
-  if (remainder === BigInt(0)) {
-    return nasun.toLocaleString();
+  try {
+    const value = BigInt(balance);
+    const nasun = value / BigInt(1_000_000_000);
+    const remainder = value % BigInt(1_000_000_000);
+    if (remainder === BigInt(0)) {
+      return nasun.toLocaleString('en-US');
+    }
+    return `${nasun.toLocaleString('en-US')}.${remainder.toString().padStart(9, '0').replace(/0+$/, '')}`;
+  } catch {
+    return balance;
   }
-  return `${nasun.toLocaleString()}.${remainder.toString().padStart(9, '0').replace(/0+$/, '')}`;
 }
 
 // SOE 단위로 포맷 (가스 등)
 export function formatSoe(value: string | number | bigint | undefined): string {
   if (value === undefined || value === null) return '-';
-  return `${BigInt(value).toLocaleString()} SOE`;
+  try {
+    return `${BigInt(value).toLocaleString('en-US')} SOE`;
+  } catch {
+    return `${value} SOE`;
+  }
 }
 
 // 긴 타입 문자열 축약
@@ -111,28 +119,32 @@ export function formatPercentage(value: number): string {
 // Token Balance Format (considering decimals)
 // Known decimals: NSN=9, NUSDC=6, NBTC=8
 export function formatTokenBalance(balance: string, coinType: string): string {
-  const value = BigInt(balance);
+  try {
+    const value = BigInt(balance);
 
-  // Known decimals
-  let decimals = 9; // Default (NSN/SUI)
-  if (coinType.includes('::nusdc::')) decimals = 6;
-  else if (coinType.includes('::nbtc::')) decimals = 8;
+    // Known decimals
+    let decimals = 9; // Default (NSN/SUI)
+    if (coinType.includes('::nusdc::')) decimals = 6;
+    else if (coinType.includes('::nbtc::')) decimals = 8;
 
-  const divisor = BigInt(10 ** decimals);
-  const integerPart = value / divisor;
-  const remainder = value % divisor;
+    const divisor = BigInt(10 ** decimals);
+    const integerPart = value / divisor;
+    const remainder = value % divisor;
 
-  if (remainder === BigInt(0)) {
-    return integerPart.toLocaleString();
+    if (remainder === BigInt(0)) {
+      return integerPart.toLocaleString('en-US');
+    }
+
+    // Max 4 fractional digits
+    const fractionalStr = remainder.toString().padStart(decimals, '0');
+    const trimmed = fractionalStr.slice(0, 4).replace(/0+$/, '');
+
+    if (trimmed === '') {
+      return integerPart.toLocaleString('en-US');
+    }
+
+    return `${integerPart.toLocaleString('en-US')}.${trimmed}`;
+  } catch {
+    return balance;
   }
-
-  // Max 4 fractional digits
-  const fractionalStr = remainder.toString().padStart(decimals, '0');
-  const trimmed = fractionalStr.slice(0, 4).replace(/0+$/, '');
-
-  if (trimmed === '') {
-    return integerPart.toLocaleString();
-  }
-
-  return `${integerPart.toLocaleString()}.${trimmed}`;
 }

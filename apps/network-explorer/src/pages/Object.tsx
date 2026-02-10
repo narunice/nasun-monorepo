@@ -56,7 +56,7 @@ export default function ObjectPage() {
             </div>
           )}
         </Card>
-      ) : isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content)) && !isCoinType(obj.data?.type) ? (
+      ) : isNFT ? (
         <NFTDetailView object={obj} />
       ) : (
         <div className="space-y-6">

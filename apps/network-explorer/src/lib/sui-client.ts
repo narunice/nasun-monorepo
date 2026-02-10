@@ -1,6 +1,9 @@
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiClient } from '@mysten/sui/client';
 
-const RPC_URL = import.meta.env.VITE_SUI_RPC_URL || getFullnodeUrl('devnet');
+const RPC_URL = import.meta.env.VITE_SUI_RPC_URL;
+if (!RPC_URL) {
+  throw new Error('VITE_SUI_RPC_URL environment variable is required. Cannot fall back to Sui public devnet.');
+}
 
 export const suiClient = new SuiClient({ url: RPC_URL });
 
