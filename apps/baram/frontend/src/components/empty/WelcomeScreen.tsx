@@ -63,7 +63,7 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
       </h2>
       <p className="text-[var(--color-text-secondary)] text-center max-w-md mb-8">
         Every request is processed in hardware isolation.
-        Every response gets a tamper-proof audit trail on-chain.
+        Every response gets a tamper-proof execution report on-chain.
       </p>
 
       {/* Suggestion Cards */}
@@ -88,7 +88,7 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
           Regular AI providers can read, store, and train on your prompts.
           Baram processes inference inside a Trusted Execution Environment
           and records every execution as an on-chain Compliance Record —
-          a verifiable audit trail that no party can tamper with.
+          a verifiable execution report that no party can tamper with.
         </p>
       </div>
     </div>
