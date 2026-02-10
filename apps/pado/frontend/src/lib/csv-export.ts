@@ -3,36 +3,58 @@
  * Generates CSV files from trade data for download.
  */
 
-interface CsvColumn<T> {
+export interface CsvColumn<T> {
   header: string;
   accessor: (row: T) => string | number;
+}
+
+export interface CsvSection {
+  title: string;
+  csv: string;
+}
+
+// Characters that trigger formula evaluation in Excel/Sheets
+const FORMULA_PREFIX_RE = /^[=+\-@\t\r|]/;
+
+function sanitizeCell(val: string): string {
+  let safe = val;
+  if (FORMULA_PREFIX_RE.test(safe)) {
+    safe = "'" + safe;
+  }
+  if (/[,"\n\r]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
+  }
+  return safe;
 }
 
 /**
  * Generate a CSV string from typed data using column definitions.
  */
 export function generateCsv<T>(data: T[], columns: CsvColumn<T>[]): string {
-  const header = columns.map((c) => c.header).join(',');
+  const header = columns.map((c) => sanitizeCell(c.header)).join(',');
   const rows = data.map((row) =>
     columns
       .map((col) => {
         const val = col.accessor(row);
         if (typeof val === 'string') {
-          let safe = val;
-          // Guard against CSV formula injection
-          if (/^[=+\-@\t\r]/.test(safe)) {
-            safe = "'" + safe;
-          }
-          if (/[,"\n\r]/.test(safe)) {
-            return `"${safe.replace(/"/g, '""')}"`;
-          }
-          return safe;
+          return sanitizeCell(val);
         }
-        return String(val);
+        const num = Number(val);
+        return isFinite(num) ? String(val) : '0';
       })
       .join(','),
   );
   return [header, ...rows].join('\n');
+}
+
+/**
+ * Generate a multi-section CSV string for portfolio exports.
+ * Sections are separated by blank lines and titled headers.
+ */
+export function generateMultiSectionCsv(sections: CsvSection[]): string {
+  return sections
+    .map((section) => `--- ${sanitizeCell(section.title)} ---\n${section.csv}`)
+    .join('\n\n');
 }
 
 /**

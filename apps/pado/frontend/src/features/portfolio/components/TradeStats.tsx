@@ -8,6 +8,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory } from '../hooks/useTradeHistory';
 import { useCostBasis } from '../hooks/useCostBasis';
 import { getUnifiedPrice, type TokenSymbol } from '@/lib/prices';
+import { computeRiskMetrics } from '../lib/risk-metrics';
 
 type Period = '24h' | '7d' | '30d' | 'all';
 
@@ -136,6 +137,22 @@ export function TradeStats() {
     };
   }, [filteredTrades, avgBuyPrices]);
 
+  // Compute advanced risk metrics
+  const riskMetrics = useMemo(() => {
+    const tradePnls = filteredTrades.map((trade) => {
+      const baseSymbol = trade.poolName.split('/')[0] as TokenSymbol;
+      const avgBuy = avgBuyPrices.get(baseSymbol) ?? 0;
+      if (!avgBuy) return { pnl: 0, timestamp: trade.timestamp };
+
+      const currentPrice = getUnifiedPrice(baseSymbol);
+      const pnl = trade.side === 'buy'
+        ? (currentPrice - trade.price) * trade.quantity
+        : (trade.price - avgBuy) * trade.quantity;
+      return { pnl, timestamp: trade.timestamp };
+    });
+    return computeRiskMetrics(tradePnls);
+  }, [filteredTrades, avgBuyPrices]);
+
   if (!isConnected) {
     return (
       <div className="bg-theme-bg-secondary rounded-lg p-6">
@@ -249,6 +266,36 @@ export function TradeStats() {
           color="red"
         />
       </div>
+
+      {/* Risk metrics row */}
+      {stats.totalTrades > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-3 mt-2 xl:mt-3">
+          <StatCard
+            label="Sharpe Ratio"
+            value={riskMetrics.sharpeRatio.toFixed(2)}
+            subValue="Annualized"
+            color={riskMetrics.sharpeRatio > 1 ? 'green' : riskMetrics.sharpeRatio < 0 ? 'red' : 'default'}
+          />
+          <StatCard
+            label="Profit Factor"
+            value={riskMetrics.profitFactor >= 99.9 ? '99.9+' : riskMetrics.profitFactor.toFixed(2)}
+            subValue={riskMetrics.profitFactor >= 1.5 ? 'Strong' : riskMetrics.profitFactor >= 1 ? 'Moderate' : 'Weak'}
+            color={riskMetrics.profitFactor >= 1.5 ? 'green' : riskMetrics.profitFactor < 1 ? 'red' : 'default'}
+          />
+          <StatCard
+            label="Avg Win / Loss"
+            value={`$${riskMetrics.avgWin.toFixed(2)}`}
+            subValue={`Loss: $${riskMetrics.avgLoss.toFixed(2)}`}
+            color={riskMetrics.avgWin > riskMetrics.avgLoss ? 'green' : 'red'}
+          />
+          <StatCard
+            label="Expectancy"
+            value={`${riskMetrics.expectancy >= 0 ? '+' : ''}$${riskMetrics.expectancy.toFixed(2)}`}
+            subValue="Per trade"
+            color={riskMetrics.expectancy > 0 ? 'green' : riskMetrics.expectancy < 0 ? 'red' : 'default'}
+          />
+        </div>
+      )}
 
       <div className="mt-3 xl:mt-4 pt-3 border-t border-theme-border text-xs xl:text-sm text-theme-text-secondary">
         Last trade: {formatTime(stats.lastTradeTime)}
