@@ -9,6 +9,7 @@ import { useTotalValue } from '../hooks';
 import { useCostBasis } from '../hooks/useCostBasis';
 import { useTradeHistory } from '../hooks/useTradeHistory';
 import { generateCsv, generateMultiSectionCsv, downloadCsv } from '@/lib/csv-export';
+import { SharePortfolioButton } from '../../social/components/SharePortfolioButton';
 
 export function AssetOverview() {
   const { status } = useWallet();
@@ -126,13 +127,25 @@ export function AssetOverview() {
     <div className="bg-theme-bg-secondary rounded-lg p-6">
       <div className="flex items-center justify-between">
         <div className="text-sm text-theme-text-secondary">My Assets</div>
-        <button
-          onClick={handleExport}
-          className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors px-2 py-1 rounded hover:bg-theme-bg-tertiary"
-          title="Export portfolio as CSV"
-        >
-          Export
-        </button>
+        <div className="flex items-center gap-1">
+          {!isLoading && totalValue > 0 && (
+            <SharePortfolioButton
+              totalValue={totalValue}
+              pnl24h={totalPnl24h}
+              change24h={totalChange24h}
+              tokens={tokens.map(t => ({ symbol: t.symbol, value: t.value }))}
+              totalTrades={trades.length}
+              totalVolume={trades.reduce((s, t) => s + t.total, 0)}
+            />
+          )}
+          <button
+            onClick={handleExport}
+            className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors px-2 py-1 rounded hover:bg-theme-bg-tertiary"
+            title="Export portfolio as CSV"
+          >
+            Export
+          </button>
+        </div>
       </div>
       <div className="text-3xl font-bold mt-2">
         {isLoading ? (

@@ -10,6 +10,7 @@ import { useCostBasis } from '../hooks/useCostBasis';
 import { getUnifiedPrice, type TokenSymbol } from '@/lib/prices';
 import { computeRiskMetrics } from '../lib/risk-metrics';
 import { useNow } from '@/hooks/useNow';
+import { SharePnlButton } from '../../social/components/SharePnlButton';
 
 type Period = '24h' | '7d' | '30d' | 'all';
 
@@ -209,7 +210,20 @@ export function TradeStats() {
       {/* Header with period filter */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold">Trading Statistics</h2>
-        <div className="flex gap-1 bg-theme-bg-tertiary rounded-lg p-0.5">
+        <div className="flex items-center gap-2">
+          {stats.totalTrades > 0 && (
+            <SharePnlButton
+              period={PERIOD_LABELS[period]}
+              totalPnl={pnlStats.totalPnl}
+              totalPnlPct={stats.totalVolume > 0 ? (pnlStats.totalPnl / stats.totalVolume) * 100 : 0}
+              winRate={pnlStats.winRate}
+              totalTrades={stats.totalTrades}
+              totalVolume={stats.totalVolume}
+              bestTrade={pnlStats.bestTrade}
+              worstTrade={pnlStats.worstTrade}
+            />
+          )}
+          <div className="flex gap-1 bg-theme-bg-tertiary rounded-lg p-0.5">
           {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
             <button
               key={p}
@@ -223,6 +237,7 @@ export function TradeStats() {
               {PERIOD_LABELS[p]}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
