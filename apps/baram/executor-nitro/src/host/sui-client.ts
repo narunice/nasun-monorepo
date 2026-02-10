@@ -5,7 +5,7 @@
  * after the Enclave returns execution results.
  */
 
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, type SuiObjectResponse } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { createHash } from 'crypto';
@@ -82,6 +82,36 @@ export function getExecutorAddress(): string {
   return getKeypair().getPublicKey().toSuiAddress();
 }
 
+// ========== On-chain field parsing helpers ==========
+// Sui SDK returns dynamic Move object fields as Record<string, unknown>.
+// These helpers extract common patterns used across all registry lookups.
+
+/** Sui Move object fields - a dictionary of field name to unknown value */
+type SuiFields = Record<string, unknown>;
+
+/** Extract Move object fields from a Sui getObject response */
+function extractMoveFields(obj: SuiObjectResponse): SuiFields | null {
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    return null;
+  }
+  return obj.data.content.fields as SuiFields;
+}
+
+/** Extract Table object ID from a Move struct's Table<K,V> field */
+function extractTableId(fields: SuiFields, tableName: string): string | null {
+  const table = fields[tableName] as { fields?: { id?: { id: string } } } | undefined;
+  return table?.fields?.id?.id ?? null;
+}
+
+/** Unwrap a dynamic field's value wrapper (handles both { fields: {...} } and raw object) */
+function unwrapDynamicFieldValue(dfFields: SuiFields): SuiFields {
+  const wrapper = dfFields['value'] as { fields?: SuiFields } | SuiFields;
+  if ('fields' in wrapper && wrapper.fields) {
+    return wrapper.fields as SuiFields;
+  }
+  return wrapper as SuiFields;
+}
+
 /**
  * Verify that EXECUTOR_PRIVATE_KEY derives to an address registered
  * in the on-chain ExecutorRegistry. Prevents silent settlement failures
@@ -102,14 +132,13 @@ export async function verifyExecutorRegistration(): Promise<void> {
     options: { showContent: true },
   });
 
-  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
+  const fields = extractMoveFields(registry);
+  if (!fields) {
     console.warn('[Sui] Could not read ExecutorRegistry, skipping registration check');
     return;
   }
 
-  const fields = registry.data.content.fields as Record<string, unknown>;
-  const executorsTable = fields['executors'] as { fields?: { id?: { id: string } } };
-  const tableId = executorsTable?.fields?.id?.id;
+  const tableId = extractTableId(fields, 'executors');
   if (!tableId) {
     console.warn('[Sui] ExecutorRegistry has no executors table');
     return;
@@ -151,13 +180,10 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
       options: { showContent: true },
     });
 
-    if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-      return null;
-    }
+    const fields = extractMoveFields(registry);
+    if (!fields) return null;
 
-    const fields = registry.data.content.fields as Record<string, unknown>;
-    const requestsTable = fields['requests'] as { fields?: { id?: { id: string } } };
-    const tableId = requestsTable?.fields?.id?.id;
+    const tableId = extractTableId(fields, 'requests');
     if (!tableId) return null;
 
     // Retry: on-chain state may not have propagated yet
@@ -168,12 +194,9 @@ export async function getRequest(requestId: number): Promise<ComputeRequestOnCha
           name: { type: 'u64', value: requestId.toString() },
         });
 
-        if (dynamicField.data?.content && dynamicField.data.content.dataType === 'moveObject') {
-          const dfFields = dynamicField.data.content.fields as Record<string, unknown>;
-          const valueWrapper = dfFields['value'] as { fields?: Record<string, unknown> } | Record<string, unknown>;
-          const v = ('fields' in valueWrapper && valueWrapper.fields)
-            ? valueWrapper.fields as Record<string, unknown>
-            : valueWrapper as Record<string, unknown>;
+        const dfFields = extractMoveFields(dynamicField);
+        if (dfFields) {
+          const v = unwrapDynamicFieldValue(dfFields);
 
           return {
             requestId: Number(v['request_id']),
@@ -260,13 +283,10 @@ async function fetchExecutorRegistryStats(
     options: { showContent: true },
   });
 
-  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-    return null;
-  }
+  const fields = extractMoveFields(registry);
+  if (!fields) return null;
 
-  const fields = registry.data.content.fields as Record<string, unknown>;
-  const executorsTable = fields['executors'] as { fields?: { id?: { id: string } } };
-  const tableId = executorsTable?.fields?.id?.id;
+  const tableId = extractTableId(fields, 'executors');
   if (!tableId) return null;
 
   const fieldData = await sui.getDynamicFieldObject({
@@ -274,15 +294,10 @@ async function fetchExecutorRegistryStats(
     name: { type: 'address', value: executorAddress },
   });
 
-  if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
-    return null;
-  }
+  const dfFields = extractMoveFields(fieldData);
+  if (!dfFields) return null;
 
-  const content = fieldData.data.content.fields as Record<string, unknown>;
-  const valueWrapper = content['value'] as { fields?: Record<string, unknown> } | Record<string, unknown>;
-  const v = ('fields' in valueWrapper && valueWrapper.fields)
-    ? valueWrapper.fields as Record<string, unknown>
-    : valueWrapper as Record<string, unknown>;
+  const v = unwrapDynamicFieldValue(dfFields);
 
   return {
     reputation: Number(v['reputation'] || 0),
@@ -306,13 +321,10 @@ async function fetchStakeAmount(
     options: { showContent: true },
   });
 
-  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-    return 0;
-  }
+  const fields = extractMoveFields(registry);
+  if (!fields) return 0;
 
-  const fields = registry.data.content.fields as Record<string, unknown>;
-  const stakesTable = fields['stakes'] as { fields?: { id?: { id: string } } };
-  const tableId = stakesTable?.fields?.id?.id;
+  const tableId = extractTableId(fields, 'stakes');
   if (!tableId) return 0;
 
   // Table<address, ID> — value is the object ID of ExecutorStake
@@ -321,11 +333,9 @@ async function fetchStakeAmount(
     name: { type: 'address', value: executorAddress },
   });
 
-  if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
-    return 0;
-  }
+  const dfFields = extractMoveFields(fieldData);
+  if (!dfFields) return 0;
 
-  const dfFields = fieldData.data.content.fields as Record<string, unknown>;
   const stakeObjectId = dfFields['value'] as string;
   if (!stakeObjectId) return 0;
 
@@ -335,11 +345,8 @@ async function fetchStakeAmount(
     options: { showContent: true },
   });
 
-  if (!stakeObj.data?.content || stakeObj.data.content.dataType !== 'moveObject') {
-    return 0;
-  }
-
-  const stakeFields = stakeObj.data.content.fields as Record<string, unknown>;
+  const stakeFields = extractMoveFields(stakeObj);
+  if (!stakeFields) return 0;
   // Balance<SUI> is represented as { value: u64 } on-chain
   const stakedAmount = stakeFields['staked_amount'] as { fields?: { value?: string } } | string | number;
   if (typeof stakedAmount === 'object' && stakedAmount !== null) {
@@ -364,13 +371,10 @@ async function fetchTier(
     options: { showContent: true },
   });
 
-  if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-    return 0;
-  }
+  const fields = extractMoveFields(registry);
+  if (!fields) return 0;
 
-  const fields = registry.data.content.fields as Record<string, unknown>;
-  const tiersTable = fields['tiers'] as { fields?: { id?: { id: string } } };
-  const tableId = tiersTable?.fields?.id?.id;
+  const tableId = extractTableId(fields, 'tiers');
   if (!tableId) return 0;
 
   const fieldData = await sui.getDynamicFieldObject({
@@ -378,11 +382,9 @@ async function fetchTier(
     name: { type: 'address', value: executorAddress },
   });
 
-  if (!fieldData.data?.content || fieldData.data.content.dataType !== 'moveObject') {
-    return 0;
-  }
+  const dfFields = extractMoveFields(fieldData);
+  if (!dfFields) return 0;
 
-  const dfFields = fieldData.data.content.fields as Record<string, unknown>;
   return Number(dfFields['value'] || 0);
 }
 
@@ -407,11 +409,9 @@ export async function getAttestationBaseline(): Promise<{
       options: { showContent: true },
     });
 
-    if (!registry.data?.content || registry.data.content.dataType !== 'moveObject') {
-      return null;
-    }
+    const fields = extractMoveFields(registry);
+    if (!fields) return null;
 
-    const fields = registry.data.content.fields as Record<string, unknown>;
     const currentVersion = Number(fields['current_version'] || 0);
     if (currentVersion === 0) {
       console.log('[Sui] No active attestation baseline (version=0)');
@@ -419,8 +419,7 @@ export async function getAttestationBaseline(): Promise<{
     }
 
     // Fetch baseline from Table<u64, PCRBaseline>
-    const baselinesTable = fields['baselines'] as { fields?: { id?: { id: string } } };
-    const tableId = baselinesTable?.fields?.id?.id;
+    const tableId = extractTableId(fields, 'baselines');
     if (!tableId) return null;
 
     const baselineField = await sui.getDynamicFieldObject({
@@ -428,15 +427,10 @@ export async function getAttestationBaseline(): Promise<{
       name: { type: 'u64', value: currentVersion.toString() },
     });
 
-    if (!baselineField.data?.content || baselineField.data.content.dataType !== 'moveObject') {
-      return null;
-    }
+    const bfFields = extractMoveFields(baselineField);
+    if (!bfFields) return null;
 
-    const bfFields = baselineField.data.content.fields as Record<string, unknown>;
-    const valueWrapper = bfFields['value'] as { fields?: Record<string, unknown> } | Record<string, unknown>;
-    const v = ('fields' in valueWrapper && valueWrapper.fields)
-      ? valueWrapper.fields as Record<string, unknown>
-      : valueWrapper as Record<string, unknown>;
+    const v = unwrapDynamicFieldValue(bfFields);
 
     const bytesToHex = (bytes: unknown): string => {
       if (Array.isArray(bytes)) return Buffer.from(bytes).toString('hex');

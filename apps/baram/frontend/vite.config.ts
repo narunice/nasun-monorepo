@@ -12,6 +12,10 @@ export default defineConfig({
     preserveSymlinks: true,
     dedupe: ['react', 'react-dom', 'zustand', '@nasun/wallet', '@tanstack/react-query'],
   },
+  esbuild: {
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
+    pure: process.env.NODE_ENV === 'production' ? ['console.log', 'console.debug'] : [],
+  },
   build: {
     commonjsOptions: {
       include: [/node_modules/],
