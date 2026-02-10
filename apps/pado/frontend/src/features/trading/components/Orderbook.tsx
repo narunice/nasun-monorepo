@@ -10,6 +10,8 @@ import { useMarket } from '../context/MarketContext';
 import { UnderlineTabs } from '@/components/common';
 import { ConnectionStatusDot } from '@/components/common/ConnectionStatus';
 import { useTradeEvents } from '../hooks/useTradeEvents';
+import { SHORTCUT_TOGGLE_BOOK_TAB_EVENT } from '../hooks/useKeyboardShortcuts';
+import { ORDER_FILL_EVENT, type OrderFillDetail } from '../hooks/useOrderFillNotifier';
 import type { Trade } from '../types/trade';
 import type { ConnectionMode } from '../types/events';
 
@@ -154,6 +156,43 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   });
   const [activeTab, setActiveTab] = useState<OrderbookTab>('book');
 
+  // Keyboard shortcut: T toggles Book/Trades tab
+  useEffect(() => {
+    const handler = () => setActiveTab(prev => prev === 'book' ? 'trades' : 'book');
+    document.addEventListener(SHORTCUT_TOGGLE_BOOK_TAB_EVENT, handler);
+    return () => document.removeEventListener(SHORTCUT_TOGGLE_BOOK_TAB_EVENT, handler);
+  }, []);
+
+  // Order fill highlight: briefly flash the filled price level
+  const [fillFlashes, setFillFlashes] = useState<Map<number, 'buy' | 'sell'>>(new Map());
+  const fillFlashKeyRef = useRef(0);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { price, side } = (e as CustomEvent<OrderFillDetail>).detail;
+      setFillFlashes(prev => new Map(prev).set(price, side));
+      fillFlashKeyRef.current += 1;
+      setTimeout(() => {
+        setFillFlashes(prev => {
+          const next = new Map(prev);
+          next.delete(price);
+          return next;
+        });
+      }, 2000);
+    };
+    document.addEventListener(ORDER_FILL_EVENT, handler);
+    return () => document.removeEventListener(ORDER_FILL_EVENT, handler);
+  }, []);
+
+  // Match fill price to grouped orderbook level
+  const getFillClass = useCallback((levelPrice: number): string => {
+    for (const [fillPrice, side] of fillFlashes) {
+      if (Math.abs(fillPrice - levelPrice) < groupSize) {
+        return side === 'buy' ? 'animate-fill-flash-buy' : 'animate-fill-flash-sell';
+      }
+    }
+    return '';
+  }, [fillFlashes, groupSize]);
+
   useEffect(() => { localStorage.setItem('pado:orderbook:depth', String(depthLevel)); }, [depthLevel]);
   useEffect(() => { localStorage.setItem('pado:orderbook:group', String(groupSize)); }, [groupSize]);
 
@@ -234,6 +273,81 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
 
   // Reversed ask cumulatives for display
   const reversedAskCumulatives = useMemo(() => [...askCumulatives].reverse(), [askCumulatives]);
+
+  // Cumulative cost arrays for hover fill preview (VWAP calculation)
+  const { askCumCosts, bidCumCosts } = useMemo(() => {
+    let askCost = 0;
+    const askCumCosts = displayedAsks.map((level) => {
+      askCost += level.price * level.quantity;
+      return askCost;
+    });
+    let bidCost = 0;
+    const bidCumCosts = displayedBids.map((level) => {
+      bidCost += level.price * level.quantity;
+      return bidCost;
+    });
+    return { askCumCosts, bidCumCosts };
+  }, [displayedAsks, displayedBids]);
+  const reversedAskCumCosts = useMemo(() => [...askCumCosts].reverse(), [askCumCosts]);
+
+  // Heatmap intensity data: per-level quantity relative to max
+  const heatmapData = useMemo(() => {
+    const allLevels = [...displayedBids, ...displayedAsks];
+    if (allLevels.length === 0) return { maxQty: 0, avgQty: 0 };
+    const quantities = allLevels.map(l => l.quantity);
+    const maxQty = Math.max(...quantities);
+    const avgQty = quantities.reduce((a, b) => a + b, 0) / quantities.length;
+    return { maxQty, avgQty };
+  }, [displayedBids, displayedAsks]);
+
+  // Hover fill preview state
+  const [hoverPreview, setHoverPreview] = useState<{
+    type: 'ask' | 'bid';
+    index: number;
+    avgPrice: number;
+    totalQty: number;
+    totalCost: number;
+    impactPct: number;
+    price: number;
+  } | null>(null);
+
+  const handleAskHover = useCallback((displayIndex: number) => {
+    const cumQty = reversedAskCumulatives[displayIndex];
+    const cumCost = reversedAskCumCosts[displayIndex];
+    if (!cumQty || !cumCost) return;
+    const avgPrice = cumCost / cumQty;
+    const mid = spreadInfo?.midPrice ?? 0;
+    const impactPct = mid > 0 ? Math.abs(avgPrice - mid) / mid * 100 : 0;
+    setHoverPreview({
+      type: 'ask',
+      index: displayIndex,
+      avgPrice,
+      totalQty: cumQty,
+      totalCost: cumCost,
+      impactPct,
+      price: reversedAsks[displayIndex]?.price ?? 0,
+    });
+  }, [reversedAskCumulatives, reversedAskCumCosts, reversedAsks, spreadInfo]);
+
+  const handleBidHover = useCallback((displayIndex: number) => {
+    const cumQty = bidCumulatives[displayIndex];
+    const cumCost = bidCumCosts[displayIndex];
+    if (!cumQty || !cumCost) return;
+    const avgPrice = cumCost / cumQty;
+    const mid = spreadInfo?.midPrice ?? 0;
+    const impactPct = mid > 0 ? Math.abs(avgPrice - mid) / mid * 100 : 0;
+    setHoverPreview({
+      type: 'bid',
+      index: displayIndex,
+      avgPrice,
+      totalQty: cumQty,
+      totalCost: cumCost,
+      impactPct,
+      price: displayedBids[displayIndex]?.price ?? 0,
+    });
+  }, [bidCumulatives, bidCumCosts, displayedBids, spreadInfo]);
+
+  const clearHoverPreview = useCallback(() => setHoverPreview(null), []);
 
   // Determine price decimal places from groupSize
   const priceDecimals = useMemo(() => {
@@ -371,7 +485,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           </div>
 
           {/* Asks (reversed - best ask at bottom) */}
-          <div ref={asksContainerRef} className="flex-1 overflow-y-auto flex flex-col">
+          <div ref={asksContainerRef} className="relative flex-1 overflow-y-auto flex flex-col" onMouseLeave={clearHoverPreview}>
             {reversedAsks.length > 0 ? (
               <div className="mt-auto space-y-px">
                 {reversedAsks.map((level, i) => {
@@ -379,26 +493,40 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                   const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
                   const change = changedPrices.get(level.price);
                   const pulseClass = change === 'up' ? 'animate-pulse-up' : change === 'down' ? 'animate-pulse-down' : '';
+                  const fillClass = getFillClass(level.price);
+                  const isInHoverRange = hoverPreview?.type === 'ask' && i >= hoverPreview.index;
+                  const intensity = heatmapData.maxQty > 0 ? level.quantity / heatmapData.maxQty : 0;
+                  const isWall = level.quantity > heatmapData.avgQty * 3;
 
                   return (
                     <div
-                      key={change ? `${i}-${pulseKey}` : i}
-                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${pulseClass} ${
-                        onPriceClick ? 'cursor-pointer hover:bg-trading-ask-bg' : ''
-                      }`}
+                      key={fillClass ? `fill-${i}-${fillFlashKeyRef.current}` : change ? `${i}-${pulseKey}` : i}
+                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${fillClass || pulseClass} ${
+                        isInHoverRange ? 'bg-trading-ask-bg' : ''
+                      } ${onPriceClick ? 'cursor-pointer hover:bg-trading-ask-bg' : ''}`}
                       onClick={() => handlePriceClick(level.price)}
+                      onMouseEnter={() => handleAskHover(i)}
                     >
+                      {/* Heatmap intensity bar (left edge) */}
+                      <div
+                        className={`absolute left-0 top-0 bottom-0 rounded-r ${isWall ? 'w-1.5' : 'w-1'}`}
+                        style={{
+                          backgroundColor: 'var(--color-ask)',
+                          opacity: 0.1 + intensity * 0.55,
+                        }}
+                      />
                       {/* Depth Bar (right-aligned, gradient for asks) */}
                       <div
                         className="absolute right-0 top-0 bottom-0"
                         style={{
                           width: `${depthPercent}%`,
                           background: 'linear-gradient(to left, var(--color-ask-bg), transparent)',
+                          opacity: 0.6 + intensity * 0.4,
                         }}
                       />
                       {/* Content */}
                       <span className="relative z-10 font-mono text-trading-ask">{level.price.toFixed(priceDecimals)}</span>
-                      <span className="relative z-10 font-mono text-right text-theme-text-secondary">{level.quantity.toFixed(4)}</span>
+                      <span className={`relative z-10 font-mono text-right ${isWall ? 'text-trading-ask font-semibold' : 'text-theme-text-secondary'}`}>{level.quantity.toFixed(4)}</span>
                       <span className="relative z-10 font-mono text-right text-theme-text-muted">{cumulative.toFixed(4)}</span>
                     </div>
                   );
@@ -437,7 +565,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
           )}
 
           {/* Bids (best bid at top) */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" onMouseLeave={clearHoverPreview}>
             {displayedBids.length > 0 ? (
               <div className="space-y-px">
                 {displayedBids.map((level, i) => {
@@ -445,26 +573,40 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                   const depthPercent = maxCumulative > 0 ? (cumulative / maxCumulative) * 100 : 0;
                   const change = changedPrices.get(level.price);
                   const pulseClass = change === 'up' ? 'animate-pulse-up' : change === 'down' ? 'animate-pulse-down' : '';
+                  const fillClass = getFillClass(level.price);
+                  const isInHoverRange = hoverPreview?.type === 'bid' && i <= hoverPreview.index;
+                  const intensity = heatmapData.maxQty > 0 ? level.quantity / heatmapData.maxQty : 0;
+                  const isWall = level.quantity > heatmapData.avgQty * 3;
 
                   return (
                     <div
-                      key={change ? `${i}-${pulseKey}` : i}
-                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${pulseClass} ${
-                        onPriceClick ? 'cursor-pointer hover:bg-trading-bid-bg' : ''
-                      }`}
+                      key={fillClass ? `fill-${i}-${fillFlashKeyRef.current}` : change ? `${i}-${pulseKey}` : i}
+                      className={`relative grid grid-cols-3 gap-1 ${fontSize} ${rowHeight} ${fillClass || pulseClass} ${
+                        isInHoverRange ? 'bg-trading-bid-bg' : ''
+                      } ${onPriceClick ? 'cursor-pointer hover:bg-trading-bid-bg' : ''}`}
                       onClick={() => handlePriceClick(level.price)}
+                      onMouseEnter={() => handleBidHover(i)}
                     >
+                      {/* Heatmap intensity bar (left edge) */}
+                      <div
+                        className={`absolute left-0 top-0 bottom-0 rounded-r ${isWall ? 'w-1.5' : 'w-1'}`}
+                        style={{
+                          backgroundColor: 'var(--color-bid)',
+                          opacity: 0.1 + intensity * 0.55,
+                        }}
+                      />
                       {/* Depth Bar (right-aligned, gradient for bids) */}
                       <div
                         className="absolute right-0 top-0 bottom-0"
                         style={{
                           width: `${depthPercent}%`,
                           background: 'linear-gradient(to left, var(--color-bid-bg), transparent)',
+                          opacity: 0.6 + intensity * 0.4,
                         }}
                       />
                       {/* Content */}
                       <span className="relative z-10 font-mono text-trading-bid">{level.price.toFixed(priceDecimals)}</span>
-                      <span className="relative z-10 font-mono text-right text-theme-text-secondary">{level.quantity.toFixed(4)}</span>
+                      <span className={`relative z-10 font-mono text-right ${isWall ? 'text-trading-bid font-semibold' : 'text-theme-text-secondary'}`}>{level.quantity.toFixed(4)}</span>
                       <span className="relative z-10 font-mono text-right text-theme-text-muted">{cumulative.toFixed(4)}</span>
                     </div>
                   );
@@ -474,6 +616,40 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
               <div className={`text-center text-theme-text-muted ${fontSize} py-4`}>No bids</div>
             )}
           </div>
+          {/* Hover Fill Preview Tooltip */}
+          {hoverPreview && (
+            <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ bottom: hoverPreview.type === 'ask' ? undefined : 0, top: hoverPreview.type === 'ask' ? 0 : undefined }}>
+              <div className="mx-2 p-2 rounded bg-theme-bg-tertiary border border-theme-border shadow-lg text-[11px]">
+                <div className="font-semibold text-theme-text-primary mb-1">
+                  Market {hoverPreview.type === 'ask' ? 'Buy' : 'Sell'} to {hoverPreview.price.toFixed(priceDecimals)}
+                </div>
+                <div className="space-y-0.5 font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">Avg Price</span>
+                    <span className="text-theme-text-secondary">{hoverPreview.avgPrice.toFixed(priceDecimals)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">Total Qty</span>
+                    <span className="text-theme-text-secondary">{hoverPreview.totalQty.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">Total Cost</span>
+                    <span className="text-theme-text-secondary">{hoverPreview.totalCost.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-theme-text-muted">Impact</span>
+                    <span className={`font-medium ${
+                      hoverPreview.impactPct < 0.5 ? 'text-green-400' :
+                      hoverPreview.impactPct < 2 ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`}>
+                      {hoverPreview.impactPct < 0.01 ? '<0.01' : hoverPreview.impactPct.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

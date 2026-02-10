@@ -2,20 +2,25 @@
  * ShortcutHelpTooltip
  * Hoverable keyboard shortcut help indicator (Pro mode only).
  * CSS-only tooltip, no external dependencies.
+ * Optionally accepts onClick to open the full shortcuts panel.
  */
 
 const SHORTCUTS = [
-  { key: 'B', description: 'Buy side' },
-  { key: 'S', description: 'Sell side' },
-  { key: 'L', description: 'Limit order' },
-  { key: 'M', description: 'Market order' },
-  { key: 'Esc', description: 'Close modal' },
+  { key: 'B / S', description: 'Buy / Sell' },
+  { key: 'L / M', description: 'Limit / Market' },
+  { key: '1-9', description: 'Amount %' },
+  { key: '?', description: 'All shortcuts' },
 ] as const;
 
-export function ShortcutHelpTooltip() {
+interface ShortcutHelpTooltipProps {
+  onClick?: () => void;
+}
+
+export function ShortcutHelpTooltip({ onClick }: ShortcutHelpTooltipProps) {
   return (
     <div className="relative group inline-block">
       <button
+        onClick={onClick}
         className="w-5 h-5 rounded-full bg-theme-bg-tertiary text-theme-text-muted
           hover:text-theme-text-secondary hover:bg-theme-bg-secondary
           flex items-center justify-center text-[10px] font-medium transition-colors"
@@ -29,7 +34,7 @@ export function ShortcutHelpTooltip() {
         className="absolute bottom-full right-0 mb-2 w-44 p-2.5 rounded-lg
           bg-theme-bg-secondary border border-theme-border shadow-lg
           opacity-0 invisible group-hover:opacity-100 group-hover:visible
-          transition-all duration-150 z-50"
+          transition-all duration-150 z-50 pointer-events-none"
       >
         <div className="text-[10px] font-semibold text-theme-text-secondary mb-1.5 flex items-center gap-1">
           <span className="text-xs">&#9000;</span> Keyboard Shortcuts

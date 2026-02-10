@@ -12,6 +12,7 @@ import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
 import { calcLockedAmounts } from '../types';
 import { OrderForm, OrderConfirmModal, SwapOrderForm } from '../components';
+import type { ScaleOrderItem } from '../components/ScaleOrderForm';
 import type { PriceLevel } from '../../../lib/deepbook';
 
 // Stable empty array reference to avoid useMemo invalidation
@@ -352,6 +353,32 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     }
   };
 
+  // Scale order handler — places multiple limit orders sequentially with error tracking
+  const handleScaleOrders = useCallback(async (orders: ScaleOrderItem[], orderSide: 'buy' | 'sell') => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const order of orders) {
+      const result = await handleLimitOrder(orderSide, order.price, order.quantity);
+      if (result.success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    if (failCount > 0 && successCount > 0) {
+      showToast(`Scale order: ${successCount}/${orders.length} placed, ${failCount} failed`, 'warning');
+    } else if (failCount > 0 && successCount === 0) {
+      showToast(`Scale order: all ${failCount} orders failed`, 'error');
+    }
+
+    // Only reset form if at least one order succeeded
+    if (successCount > 0) {
+      resetForm();
+    }
+  }, [handleLimitOrder, resetForm, showToast]);
+
   // Simple mode market buy handler (receives baseAmount directly)
   const handleSimpleMarketBuy = async (baseAmount: number) => {
     const result = await handleMarketOrder('buy', baseAmount);
@@ -460,6 +487,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onSideChange={setSide}
           bids={bids}
           asks={asks}
+          onScaleOrder={handleScaleOrders}
         />
 
         {/* Order Confirmation Modal */}
