@@ -9,6 +9,7 @@ import {
   PnlChart,
   TokenBalanceList,
   TradeStats,
+  MarketPerformance,
   ActivityTabs,
 } from '../features/portfolio/components';
 
@@ -31,6 +32,9 @@ export function PortfolioPage() {
 
       {/* Trading Statistics */}
       <TradeStats />
+
+      {/* Per-Market Performance */}
+      <MarketPerformance />
 
       {/* Activity History (Trades + Transfers) */}
       <ActivityTabs />
