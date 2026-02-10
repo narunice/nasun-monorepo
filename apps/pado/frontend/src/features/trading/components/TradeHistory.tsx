@@ -17,7 +17,7 @@ import { useOrderActions } from "../hooks";
 import { SkeletonTable } from '@/components/common';
 import { type TokenSymbol, getUnifiedPrice } from '@/lib/prices';
 import { useCostBasis } from '@/features/portfolio/hooks/useCostBasis';
-import { downloadPnlCard, copyPnlCardToClipboard, type PnlCardData } from '@/lib/pnl-share-card';
+import { renderTradeCard, downloadShareCard, copyShareCardToClipboard, type TradeCardData } from '@/features/social/utils/canvasRenderer';
 import { generateCsv, downloadCsv } from '@/lib/csv-export';
 import { getChatService } from '@/lib/chat-service';
 
@@ -70,25 +70,22 @@ function computePnl(
   };
 }
 
-function buildPnlCardData(
+function buildTradeCardData(
   trade: MyTradeItem,
   pair: string,
-  baseSymbol: string,
-  avgBuyPrice: number,
   pnl: number,
   pnlPercent: number,
-): PnlCardData {
-  const currentPrice = getUnifiedPrice(baseSymbol as TokenSymbol);
+): TradeCardData {
+  const total = Math.round(trade.price * trade.quantity * 100) / 100;
   return {
     side: trade.isBid ? 'BUY' : 'SELL',
     pair,
-    pnl,
-    pnlPercent,
-    entryPrice: trade.isBid ? trade.price : avgBuyPrice,
-    exitPrice: trade.isBid ? undefined : trade.price,
-    currentPrice: trade.isBid ? currentPrice : undefined,
+    price: trade.price,
     quantity: trade.quantity,
-    baseSymbol,
+    total,
+    pnl,
+    pnlPct: pnlPercent,
+    txDigest: trade.txDigest,
     timestamp: trade.timestamp,
   };
 }
@@ -159,13 +156,10 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
 
     setSharingId(trade.id);
     try {
-      const cardData = buildPnlCardData(trade, pair, baseSymbol, avgBuyPrice, pnlData.pnl, pnlData.pnlPercent);
-      const copied = await copyPnlCardToClipboard(cardData);
-      if (copied) {
-        // Brief visual feedback — sharingId resets below
-      }
+      const cardData = buildTradeCardData(trade, pair, pnlData.pnl, pnlData.pnlPercent);
+      const canvas = renderTradeCard(cardData);
+      await copyShareCardToClipboard(canvas);
     } finally {
-      // Reset after a short delay for visual feedback
       setTimeout(() => setSharingId(null), 1500);
     }
   };
@@ -173,8 +167,10 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const handleDownloadTrade = async (trade: MyTradeItem) => {
     const pnlData = computePnl(trade, baseSymbol, avgBuyPrice);
     if (!pnlData) return;
-    const cardData = buildPnlCardData(trade, pair, baseSymbol, avgBuyPrice, pnlData.pnl, pnlData.pnlPercent);
-    await downloadPnlCard(cardData);
+    const cardData = buildTradeCardData(trade, pair, pnlData.pnl, pnlData.pnlPercent);
+    const canvas = renderTradeCard(cardData);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    await downloadShareCard(canvas, `pado-trade-${pair.replace('/', '-')}-${dateStr}.png`);
   };
 
   const handleExportCsv = () => {
