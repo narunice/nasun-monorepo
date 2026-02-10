@@ -12,6 +12,11 @@ export function useMinDuration(value: boolean, minDurationMs = 600): boolean {
   const [extended, setExtended] = useState(value);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const extendedRef = useRef(value);
+
+  useEffect(() => {
+    extendedRef.current = extended;
+  }, [extended]);
 
   useEffect(() => {
     if (value) {
@@ -24,7 +29,7 @@ export function useMinDuration(value: boolean, minDurationMs = 600): boolean {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-    } else if (extended && startTimeRef.current) {
+    } else if (extendedRef.current && startTimeRef.current) {
       // Value became false - calculate remaining time
       const elapsed = Date.now() - startTimeRef.current;
       const remaining = Math.max(0, minDurationMs - elapsed);
@@ -47,7 +52,7 @@ export function useMinDuration(value: boolean, minDurationMs = 600): boolean {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [value, minDurationMs, extended]);
+  }, [value, minDurationMs]);
 
   return extended;
 }

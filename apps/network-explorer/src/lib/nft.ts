@@ -139,19 +139,6 @@ export function getModuleName(type: string | null | undefined): string | undefin
 }
 
 /**
- * Extract package ID from NFT type
- * e.g., "0x1234...::suipunks::SuiPunk" -> "0x1234..."
- */
-export function getPackageId(type: string | null | undefined): string | undefined {
-  if (!type) return undefined;
-
-  const parts = type.split('::');
-  if (parts.length < 1) return undefined;
-
-  return parts[0];
-}
-
-/**
  * Shorten address/ID for display
  */
 export function shortenId(id: string, chars: number = 6): string {

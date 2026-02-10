@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { ErrorBoundary, Layout } from './components/layout';
 import Home from './pages/Home';
 import Transaction from './pages/Transaction';
@@ -11,6 +11,17 @@ import Checkpoints from './pages/Checkpoints';
 import Checkpoint from './pages/Checkpoint';
 import Package from './pages/Package';
 import AuthCallback from './pages/AuthCallback';
+import { Card } from './components/ui/Card';
+
+function NotFound() {
+  return (
+    <Card variant="default" className="p-8 text-center">
+      <h1 className="text-2xl font-bold text-foreground mb-2">Page Not Found</h1>
+      <p className="text-muted-foreground mb-4">The page you are looking for does not exist.</p>
+      <Link to="/" className="text-primary hover:underline">Back to Home</Link>
+    </Card>
+  );
+}
 
 function App() {
   return (
@@ -30,6 +41,7 @@ function App() {
           <Route path="/checkpoints" element={<Checkpoints />} />
           <Route path="/checkpoint/:sequence" element={<Checkpoint />} />
           <Route path="/package/:id" element={<Package />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </ErrorBoundary>
