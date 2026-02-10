@@ -78,6 +78,7 @@ export interface ChatSigner {
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const RECONNECT_MULTIPLIER = 2;
+const RECONNECT_MAX_ATTEMPTS = 5;
 const CONNECTION_TIMEOUT_MS = 10_000;
 
 let instance: ChatService | null = null;
@@ -145,7 +146,10 @@ export class ChatService {
     }
     this.stopKeepalive();
     if (this.ws) {
-      this.ws.close(1000, 'User disconnect');
+      // Only close if already open; a CONNECTING socket triggers a noisy browser error
+      if (this.ws.readyState === WebSocket.OPEN) {
+        this.ws.close(1000, 'User disconnect');
+      }
       this.ws = null;
     }
     this.currentNickname = null;
@@ -453,6 +457,12 @@ export class ChatService {
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts < 0) return;
+
+    if (this.reconnectAttempts >= RECONNECT_MAX_ATTEMPTS) {
+      console.warn(`[ChatService] Gave up after ${RECONNECT_MAX_ATTEMPTS} attempts. Chat server may be offline.`);
+      this.setStatus('disconnected');
+      return;
+    }
 
     const delay = Math.min(
       RECONNECT_BASE_MS * Math.pow(RECONNECT_MULTIPLIER, this.reconnectAttempts),
