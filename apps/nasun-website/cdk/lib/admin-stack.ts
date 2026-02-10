@@ -13,11 +13,13 @@ interface AdminStackProps extends cdk.StackProps {
   genesisTableName?: string;
   battalionTableName?: string;
   hiddenProposalsTableName?: string;
+  nftCollectionsTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
   public readonly api: apigateway.RestApi;
   public readonly exportFunction: lambda.Function;
+  public readonly nftCollectionsFunction: lambda.Function;
 
   constructor(scope: Construct, id: string, props?: AdminStackProps) {
     super(scope, id, props);
@@ -26,6 +28,16 @@ export class AdminStack extends cdk.Stack {
     const genesisTableName = props?.genesisTableName || "GenesisNftWhitelist";
     const battalionTableName = props?.battalionTableName || "nasun-nft-whitelist";
     const hiddenProposalsTableName = props?.hiddenProposalsTableName || "HiddenProposals";
+    const nftCollectionsTableName = props?.nftCollectionsTableName || "nasun-nft-collections";
+
+    // Create NFT Collections DynamoDB table
+    const nftCollectionsTable = new dynamodb.Table(this, "NftCollectionsTable", {
+      tableName: nftCollectionsTableName,
+      partitionKey: { name: "collectionId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: true,
+    });
 
     // Reference existing HiddenProposals DynamoDB table
     const hiddenProposalsTable = dynamodb.Table.fromTableName(
@@ -93,6 +105,66 @@ export class AdminStack extends cdk.Stack {
       })
     );
 
+    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID || '';
+
+    // NFT Collections Lambda
+    this.nftCollectionsFunction = new NodejsFunction(this, "NftCollectionsFunction", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "handler",
+      entry: path.join(__dirname, "../lambda-src/admin-api/src/handlers/nft-collections.ts"),
+      timeout: cdk.Duration.seconds(15),
+      memorySize: 256,
+      depsLockFilePath: path.join(__dirname, "../pnpm-lock.yaml"),
+      environment: {
+        NFT_COLLECTIONS_TABLE: nftCollectionsTableName,
+        USER_PROFILES_TABLE: userProfilesTableName,
+        ALLOWED_ORIGINS: allowedOrigins,
+        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
+      },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: "node20",
+        format: OutputFormat.ESM,
+        mainFields: ["module", "main"],
+      },
+    });
+
+    // Grant NFT Collections Lambda permissions
+    nftCollectionsTable.grantReadWriteData(this.nftCollectionsFunction);
+    userProfilesTable.grantReadData(this.nftCollectionsFunction);
+
+    // Lambda Token Authorizer for Cognito OIDC token verification
+    const authorizerFunction = new NodejsFunction(this, "AdminApiAuthorizer", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "handler",
+      entry: path.join(__dirname, "../lambda-src/admin-api/src/authorizer/tokenAuthorizer.ts"),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      depsLockFilePath: path.join(__dirname, "../pnpm-lock.yaml"),
+      environment: {
+        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
+      },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: "node20",
+        format: OutputFormat.ESM,
+        mainFields: ["module", "main"],
+      },
+    });
+
+    const tokenAuthorizer = new apigateway.TokenAuthorizer(this, "AdminTokenAuthorizer", {
+      handler: authorizerFunction,
+      resultsCacheTtl: cdk.Duration.seconds(300),
+      identitySource: "method.request.header.Authorization",
+    });
+
+    const authorizedMethodOptions: apigateway.MethodOptions = {
+      authorizer: tokenAuthorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    };
+
     // API Gateway
     this.api = new apigateway.RestApi(this, "AdminApi", {
       restApiName: "Nasun Admin API",
@@ -100,7 +172,7 @@ export class AdminStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ["Content-Type", "Authorization", "X-Identity-Id"],
+        allowHeaders: ["Content-Type", "Authorization"],
         allowCredentials: true,
       },
       deployOptions: {
@@ -118,28 +190,42 @@ export class AdminStack extends cdk.Stack {
     // API Routes
     const exportResource = this.api.root.addResource("export");
 
-    // GET /export/genesis
+    // GET /export/genesis (admin only)
     const genesisResource = exportResource.addResource("genesis");
-    genesisResource.addMethod("GET", exportIntegration);
+    genesisResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
-    // GET /export/battalion
+    // GET /export/battalion (admin only)
     const battalionResource = exportResource.addResource("battalion");
-    battalionResource.addMethod("GET", exportIntegration);
+    battalionResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
-    // GET /export/stats
+    // GET /export/stats (admin only)
     const statsResource = exportResource.addResource("stats");
-    statsResource.addMethod("GET", exportIntegration);
+    statsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
     // Hidden Proposals API Routes
     const hiddenProposalsResource = this.api.root.addResource("hidden-proposals");
-    // GET /hidden-proposals - List all hidden proposal IDs
+    // GET /hidden-proposals - Public: list hidden proposal IDs
     hiddenProposalsResource.addMethod("GET", exportIntegration);
-    // POST /hidden-proposals - Hide a proposal
-    hiddenProposalsResource.addMethod("POST", exportIntegration);
+    // POST /hidden-proposals - Admin: hide a proposal
+    hiddenProposalsResource.addMethod("POST", exportIntegration, authorizedMethodOptions);
 
-    // DELETE /hidden-proposals/{proposalId} - Unhide a proposal
+    // DELETE /hidden-proposals/{proposalId} - Admin: unhide a proposal
     const hiddenProposalIdResource = hiddenProposalsResource.addResource("{proposalId}");
-    hiddenProposalIdResource.addMethod("DELETE", exportIntegration);
+    hiddenProposalIdResource.addMethod("DELETE", exportIntegration, authorizedMethodOptions);
+
+    // NFT Collections API Routes
+    const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);
+    const nftCollectionsResource = this.api.root.addResource("nft-collections");
+    // GET /nft-collections - Public (enabled only) + admin (?admin=true, manual token check in Lambda)
+    nftCollectionsResource.addMethod("GET", nftCollectionsIntegration);
+    // POST /nft-collections - Admin: create collection
+    nftCollectionsResource.addMethod("POST", nftCollectionsIntegration, authorizedMethodOptions);
+
+    const nftCollectionIdResource = nftCollectionsResource.addResource("{id}");
+    // PUT /nft-collections/{id} - Admin: update collection
+    nftCollectionIdResource.addMethod("PUT", nftCollectionsIntegration, authorizedMethodOptions);
+    // DELETE /nft-collections/{id} - Admin: delete collection
+    nftCollectionIdResource.addMethod("DELETE", nftCollectionsIntegration, authorizedMethodOptions);
 
     // Outputs
     new cdk.CfnOutput(this, "AdminApiUrl", {

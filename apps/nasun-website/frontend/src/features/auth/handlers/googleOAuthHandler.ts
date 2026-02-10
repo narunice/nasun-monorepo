@@ -1,9 +1,10 @@
 import { parseJwt } from "@/utils/authUtils";
-import { getCognitoIdentityId } from "@/features/auth/utils/cognito";
+import { getCognitoIdentityId, getCognitoOidcToken } from "@/features/auth/utils/cognito";
 import logger from "@/lib/logger";
 
 export interface GoogleOAuthResult {
   identityId: string;
+  cognitoToken?: string;
   userInfo: { name: string; email: string };
 }
 
@@ -27,8 +28,14 @@ export async function handleGoogleOAuthRedirect(
   if (!payload) throw new Error("Failed to parse Google ID token");
 
   const identityId = await getCognitoIdentityId("Google", idToken);
+  if (!identityId) throw new Error("Failed to get Cognito Identity ID");
+
+  // Get signed OIDC token for authenticated API calls
+  const cognitoToken = await getCognitoOidcToken(identityId, idToken);
+
   return {
     identityId,
+    cognitoToken,
     userInfo: {
       name: payload.name as string,
       email: payload.email as string,

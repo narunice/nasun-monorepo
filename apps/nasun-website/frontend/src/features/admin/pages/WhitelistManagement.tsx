@@ -27,7 +27,7 @@ export function WhitelistManagement() {
   const { data: stats, isLoading: isLoadingStats, error: statsError } = useWhitelistStats();
 
   const handleExport = async (format: "default" | "opensea" = "default") => {
-    if (!user?.identityId) {
+    if (!user?.cognitoToken) {
       setError("User not authenticated");
       return;
     }
@@ -38,7 +38,7 @@ export function WhitelistManagement() {
     try {
       if (activeTab === "genesis") {
         const blob = await exportGenesisWhitelist({
-          identityId: user.identityId,
+          cognitoToken: user.cognitoToken,
           status: "ACTIVE",
           format,
         });
@@ -47,7 +47,7 @@ export function WhitelistManagement() {
         downloadBlob(blob, `${prefix}-active-${date}.csv`);
       } else {
         const blob = await exportBattalionAllowlist({
-          identityId: user.identityId,
+          cognitoToken: user.cognitoToken,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           format,

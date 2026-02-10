@@ -19,6 +19,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
   { path: '/admin/leaderboard-v3', label: 'Leaderboard V3', icon: '🏆' },
   { path: '/admin/users', label: 'Blacklist', icon: '🚫' },
+  { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
@@ -49,6 +50,13 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🚫',
     link: '/admin/users',
     linkText: 'Manage Users',
+  },
+  {
+    title: 'NFT Collections',
+    description: 'Manage which NFT collections appear in MY ASSETS. Control contract addresses, chains, and enable/disable visibility.',
+    icon: '🖼️',
+    link: '/admin/nft-collections',
+    linkText: 'Manage NFTs',
   },
   {
     title: 'Coming Soon',

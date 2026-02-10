@@ -1,4 +1,5 @@
 import type { ExportOptions, WhitelistStats, HiddenProposalsResponse } from '../types';
+import { authHeaders } from '../utils';
 
 const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL;
 
@@ -9,7 +10,7 @@ export type { ExportOptions, WhitelistStats, HiddenProposalsResponse } from '../
  * Export Genesis NFT Whitelist as CSV
  */
 export async function exportGenesisWhitelist(options: ExportOptions): Promise<Blob> {
-  const { identityId, status = 'ACTIVE', format } = options;
+  const { cognitoToken, status = 'ACTIVE', format } = options;
 
   const params = new URLSearchParams({ status });
   if (format) params.append('format', format);
@@ -17,9 +18,7 @@ export async function exportGenesisWhitelist(options: ExportOptions): Promise<Bl
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'X-Identity-Id': identityId,
-    },
+    headers: authHeaders(cognitoToken),
   });
 
   if (!response.ok) {
@@ -34,7 +33,7 @@ export async function exportGenesisWhitelist(options: ExportOptions): Promise<Bl
  * Export Battalion NFT Allowlist as CSV
  */
 export async function exportBattalionAllowlist(options: ExportOptions): Promise<Blob> {
-  const { identityId, startDate, endDate, batchId, format } = options;
+  const { cognitoToken, startDate, endDate, batchId, format } = options;
 
   const params = new URLSearchParams();
   if (startDate) params.append('startDate', startDate);
@@ -46,9 +45,7 @@ export async function exportBattalionAllowlist(options: ExportOptions): Promise<
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'X-Identity-Id': identityId,
-    },
+    headers: authHeaders(cognitoToken),
   });
 
   if (!response.ok) {
@@ -62,14 +59,12 @@ export async function exportBattalionAllowlist(options: ExportOptions): Promise<
 /**
  * Get whitelist statistics
  */
-export async function getWhitelistStats(identityId: string): Promise<WhitelistStats> {
+export async function getWhitelistStats(cognitoToken: string): Promise<WhitelistStats> {
   const url = `${ADMIN_API_URL}/export/stats`;
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'X-Identity-Id': identityId,
-    },
+    headers: authHeaders(cognitoToken),
   });
 
   if (!response.ok) {
@@ -101,14 +96,12 @@ export function downloadBlob(blob: Blob, filename: string): void {
 /**
  * Get list of hidden proposal IDs
  */
-export async function getHiddenProposals(identityId: string): Promise<string[]> {
+export async function getHiddenProposals(cognitoToken: string): Promise<string[]> {
   const url = `${ADMIN_API_URL}/hidden-proposals`;
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'X-Identity-Id': identityId,
-    },
+    headers: authHeaders(cognitoToken),
   });
 
   if (!response.ok) {
@@ -123,14 +116,14 @@ export async function getHiddenProposals(identityId: string): Promise<string[]> 
 /**
  * Hide a proposal
  */
-export async function hideProposal(identityId: string, proposalId: string): Promise<void> {
+export async function hideProposal(cognitoToken: string, proposalId: string): Promise<void> {
   const url = `${ADMIN_API_URL}/hidden-proposals`;
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Identity-Id': identityId,
+      ...authHeaders(cognitoToken),
     },
     body: JSON.stringify({ proposalId }),
   });
@@ -144,14 +137,12 @@ export async function hideProposal(identityId: string, proposalId: string): Prom
 /**
  * Unhide a proposal
  */
-export async function unhideProposal(identityId: string, proposalId: string): Promise<void> {
+export async function unhideProposal(cognitoToken: string, proposalId: string): Promise<void> {
   const url = `${ADMIN_API_URL}/hidden-proposals/${encodeURIComponent(proposalId)}`;
 
   const response = await fetch(url, {
     method: 'DELETE',
-    headers: {
-      'X-Identity-Id': identityId,
-    },
+    headers: authHeaders(cognitoToken),
   });
 
   if (!response.ok) {

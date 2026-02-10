@@ -2,6 +2,7 @@ import { handleTwitterCallback } from "@/features/auth/utils/authApi";
 
 export interface TwitterOAuthResult {
   identityId: string;
+  cognitoToken?: string;
   userInfo: { name: string };
   twitterHandle?: string;
   twitterId?: string;
@@ -26,6 +27,7 @@ export async function handleTwitterOAuthRedirect(
 
   return {
     identityId: twitterUserData.identityId,
+    cognitoToken: twitterUserData.cognitoToken,
     userInfo: { name: twitterUserData.username || "Twitter User" },
     twitterHandle: twitterUserData.twitterHandle,
     twitterId: twitterUserData.twitterId,

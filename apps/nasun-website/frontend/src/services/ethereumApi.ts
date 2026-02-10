@@ -101,7 +101,8 @@ const logError = (...args: unknown[]): void => {
  */
 export const getAlchemyNFTs = async (
   walletAddress: string,
-  chain: NFTChain = 'ethereum'
+  chain: NFTChain = 'ethereum',
+  contractAddresses?: string[]
 ): Promise<AlchemyNFT[]> => {
   if (!ALCHEMY_API_KEY || ALCHEMY_API_KEY === 'your_alchemy_api_key_here') {
     throw new Error('Alchemy API key not configured');
@@ -112,7 +113,15 @@ export const getAlchemyNFTs = async (
     throw new Error(`Alchemy URL not configured for ${chain}`);
   }
 
-  const url = `${baseUrl}${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true`;
+  let url = `${baseUrl}${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true`;
+
+  // Alchemy supports contractAddresses[] query param for server-side filtering
+  if (contractAddresses && contractAddresses.length > 0) {
+    const addressParams = contractAddresses
+      .map((addr) => `contractAddresses[]=${encodeURIComponent(addr)}`)
+      .join('&');
+    url += `&${addressParams}`;
+  }
 
   logDebug(`Fetching NFTs from Alchemy (${chain}):`, { walletAddress, url });
 
@@ -336,7 +345,8 @@ const deduplicateNFTs = (nfts: EthereumNFT[]): EthereumNFT[] => {
  * ```
  */
 export const getEthereumNFTs = async (
-  walletAddress: string
+  walletAddress: string,
+  contractAddresses?: string[]
 ): Promise<EthereumNFT[]> => {
   if (!walletAddress || !walletAddress.startsWith('0x')) {
     throw new Error('Invalid wallet address');
@@ -349,7 +359,7 @@ export const getEthereumNFTs = async (
 
   // Try Alchemy first (Primary)
   try {
-    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress, 'ethereum');
+    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress, 'ethereum', contractAddresses);
     const normalizedNFTs = alchemyNFTs.map((nft) => normalizeAlchemyNFT(nft, 'ethereum'));
 
     logDebug('✅ Alchemy API succeeded:', {
@@ -394,7 +404,8 @@ export const getEthereumNFTs = async (
  * Get Polygon NFTs owned by a wallet address (Alchemy only, no Etherscan fallback)
  */
 export const getPolygonNFTs = async (
-  walletAddress: string
+  walletAddress: string,
+  contractAddresses?: string[]
 ): Promise<EthereumNFT[]> => {
   if (!walletAddress || !walletAddress.startsWith('0x')) {
     throw new Error('Invalid wallet address');
@@ -409,7 +420,7 @@ export const getPolygonNFTs = async (
   logDebug('Getting Polygon NFTs for:', normalizedAddress);
 
   try {
-    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress, 'polygon');
+    const alchemyNFTs = await getAlchemyNFTs(normalizedAddress, 'polygon', contractAddresses);
     const normalizedNFTs = alchemyNFTs.map((nft) => normalizeAlchemyNFT(nft, 'polygon'));
 
     logDebug('Polygon NFTs fetched:', { count: normalizedNFTs.length });
@@ -427,16 +438,22 @@ export const getPolygonNFTs = async (
 /**
  * Get NFTs from all supported chains (Ethereum + Polygon) in parallel
  */
+export interface ChainContractFilter {
+  ethereum?: string[];
+  polygon?: string[];
+}
+
 export const getAllChainNFTs = async (
-  walletAddress: string
+  walletAddress: string,
+  contractFilter?: ChainContractFilter
 ): Promise<EthereumNFT[]> => {
   if (!walletAddress || !walletAddress.startsWith('0x')) {
     throw new Error('Invalid wallet address');
   }
 
   const [ethNFTs, polygonNFTs] = await Promise.all([
-    getEthereumNFTs(walletAddress),
-    getPolygonNFTs(walletAddress),
+    getEthereumNFTs(walletAddress, contractFilter?.ethereum),
+    getPolygonNFTs(walletAddress, contractFilter?.polygon),
   ]);
 
   return [...ethNFTs, ...polygonNFTs];

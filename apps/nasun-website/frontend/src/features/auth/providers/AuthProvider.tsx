@@ -69,12 +69,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Dispatch to provider-specific handlers
       let identityId: string;
+      let cognitoToken: string | undefined;
       let userInfo: { name: string; email?: string };
       let twitterData: { twitterHandle?: string; twitterId?: string; profileImageUrl?: string } | null = null;
 
       if (provider === "Google") {
         const result = await handleGoogleOAuthRedirect(url);
         identityId = result.identityId;
+        cognitoToken = result.cognitoToken;
         userInfo = result.userInfo;
       } else {
         const sessionId =
@@ -83,6 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             : localStorage.getItem("twitter_oauth_session") || "";
         const result = await handleTwitterOAuthRedirect(url, sessionId);
         identityId = result.identityId;
+        cognitoToken = result.cognitoToken;
         userInfo = result.userInfo;
         twitterData = result;
       }
@@ -113,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           provider: provider as "Google" | "Twitter",
           username: userInfo.name,
           email: userInfo.email,
+          cognitoToken,
           ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
           ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
           ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
@@ -120,7 +124,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         logger.log("Ensuring user profile exists in DynamoDB...");
         const dbProfile = await ensureUserProfile(finalUserData);
-        const userDataToStore = dbProfile || finalUserData;
+        // Preserve cognitoToken from auth flow (not stored in DynamoDB)
+        const userDataToStore = dbProfile
+          ? { ...dbProfile, cognitoToken }
+          : finalUserData;
 
         sessionStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
         setUser(userDataToStore);
@@ -186,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithMetaMask = async (identityId: string, walletAddress: string) => {
+  const signInWithMetaMask = async (identityId: string, cognitoToken: string | undefined, walletAddress: string) => {
     clearError();
     setIsLoading(true);
     localStorage.setItem("auth_provider_preference", "MetaMask");
@@ -212,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           `${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}`,
         provider: "MetaMask",
         walletAddress: walletAddress.toLowerCase(),
+        cognitoToken,
         profileImageUrl: profileData.profileImageUrl,
         linkedAccounts: profileData.linkedAccounts || {},
       };

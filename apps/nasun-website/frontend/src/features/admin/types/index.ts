@@ -34,6 +34,7 @@ export interface AdminAuthState {
   isLoading: boolean;
   error: Error | null;
   profile: UserProfile | null;
+  cognitoToken: string | null;
 }
 
 // Governance types (moved from GovernanceManagement.tsx)
@@ -68,7 +69,7 @@ export interface WhitelistStats {
 }
 
 export interface ExportOptions {
-  identityId: string;
+  cognitoToken: string;
   status?: string;
   startDate?: string;
   endDate?: string;
@@ -78,6 +79,37 @@ export interface ExportOptions {
 
 export interface HiddenProposalsResponse {
   proposalIds: string[];
+}
+
+// NFT Collection types
+export type NFTChain = 'ethereum' | 'polygon';
+
+export interface NftCollection {
+  collectionId: string;
+  contractAddress: string;
+  chain: NFTChain;
+  collectionName: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
+export interface NftCollectionsResponse {
+  collections: NftCollection[];
+}
+
+export interface CreateNftCollectionRequest {
+  contractAddress: string;
+  chain: NFTChain;
+  collectionName: string;
+}
+
+export interface UpdateNftCollectionRequest {
+  collectionName?: string;
+  enabled?: boolean;
+  contractAddress?: string;
+  chain?: NFTChain;
 }
 
 // Blacklist types

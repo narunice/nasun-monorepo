@@ -45,11 +45,11 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
 
   const handleMetaMaskSuccess = async (
     identityId: string,
-    _token: string,
+    token: string,
     walletAddress: string,
   ) => {
     try {
-      await signInWithMetaMask(identityId, walletAddress);
+      await signInWithMetaMask(identityId, token, walletAddress);
       onClose();
       navigate("/my-account");
     } catch (error) {
