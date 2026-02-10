@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { resolveMediaUrl, getMediaType } from '../lib/media';
+import { useState, useCallback, useEffect } from 'react';
+import { resolveMediaUrl, getMediaType, isIpfsUrl, IPFS_GATEWAY_COUNT } from '../lib/media';
 
 interface NFTMediaProps {
   url: string;
@@ -10,16 +10,34 @@ interface NFTMediaProps {
 /**
  * NFT 미디어 렌더링 컴포넌트
  * - 이미지/비디오 자동 감지
- * - IPFS URL 자동 변환
+ * - IPFS URL 자동 변환 (gateway fallback 지원)
  * - 로드 실패 시 placeholder 표시
  * - lazy loading 지원
  */
 export default function NFTMedia({ url, name, className = '' }: NFTMediaProps) {
+  const [gatewayIndex, setGatewayIndex] = useState(0);
   const [error, setError] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const resolvedUrl = resolveMediaUrl(url);
+  // Reset state when url prop changes (e.g., navigating between NFTs)
+  useEffect(() => {
+    setGatewayIndex(0);
+    setError(false);
+    setLoaded(false);
+  }, [url]);
+
+  const resolvedUrl = resolveMediaUrl(url, gatewayIndex);
   const mediaType = resolvedUrl ? getMediaType(resolvedUrl) : 'unknown';
+
+  const handleError = useCallback(() => {
+    // Try next IPFS gateway before giving up
+    if (isIpfsUrl(url) && gatewayIndex + 1 < IPFS_GATEWAY_COUNT) {
+      setGatewayIndex((prev) => prev + 1);
+      setLoaded(false);
+    } else {
+      setError(true);
+    }
+  }, [url, gatewayIndex]);
 
   if (!resolvedUrl || error) {
     return (
@@ -58,11 +76,8 @@ export default function NFTMedia({ url, name, className = '' }: NFTMediaProps) {
         muted
         playsInline
         onLoadedData={() => setLoaded(true)}
-        onError={() => setError(true)}
-      >
-        <source src={resolvedUrl} />
-        Your browser does not support the video tag.
-      </video>
+        onError={handleError}
+      />
     );
   }
 
@@ -73,7 +88,7 @@ export default function NFTMedia({ url, name, className = '' }: NFTMediaProps) {
       loading="lazy"
       className={`${className} ${!loaded ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
       onLoad={() => setLoaded(true)}
-      onError={() => setError(true)}
+      onError={handleError}
     />
   );
 }
