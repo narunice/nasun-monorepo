@@ -4,6 +4,7 @@
  */
 
 import { usePerpMarketContext } from '../context/PerpMarketContext';
+import { useNow } from '@/hooks/useNow';
 
 export function PerpMarketInfo() {
   const {
@@ -12,6 +13,7 @@ export function PerpMarketInfo() {
     isPriceStale,
     isLoading,
   } = usePerpMarketContext();
+  const now = useNow(60_000);
 
   if (isLoading) {
     return (
@@ -49,7 +51,7 @@ export function PerpMarketInfo() {
     takerFee,
   } = selectedMarketDisplay;
 
-  const timeUntilFunding = nextFundingTime.getTime() - Date.now();
+  const timeUntilFunding = nextFundingTime.getTime() - now;
   const hoursUntilFunding = Math.max(0, Math.floor(timeUntilFunding / 3600000));
   const minutesUntilFunding = Math.max(
     0,

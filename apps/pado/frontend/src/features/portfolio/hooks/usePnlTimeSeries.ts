@@ -6,6 +6,7 @@
 
 import { useMemo } from 'react';
 import { useTradeHistory, type UserTrade } from './useTradeHistory';
+import { useNow } from '@/hooks/useNow';
 
 export type PnlPeriod = '24h' | '7d' | '30d' | 'all';
 
@@ -91,14 +92,15 @@ export function buildPnlSeries(trades: UserTrade[]): PnlDataPoint[] {
 
 export function usePnlTimeSeries(period: PnlPeriod): UsePnlTimeSeriesResult {
   const { trades, isLoading } = useTradeHistory();
+  const now = useNow();
 
   const allData = useMemo(() => buildPnlSeries(trades), [trades]);
 
   const data = useMemo(() => {
     if (period === 'all') return allData;
-    const cutoff = Date.now() - PERIOD_MS[period];
+    const cutoff = now - PERIOD_MS[period];
     return allData.filter((d) => d.time >= cutoff);
-  }, [allData, period]);
+  }, [allData, period, now]);
 
   const totalRealized = data.length > 0 ? data[data.length - 1].cumulativePnl : 0;
   const maxDrawdown = useMemo(() => calcMaxDrawdown(data), [data]);

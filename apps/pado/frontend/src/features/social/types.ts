@@ -53,7 +53,7 @@ export function parseTradeShare(content: string): TradeShareData | null {
       typeof data.qty !== 'number' || !isFinite(data.qty) || data.qty < 0 ||
       typeof data.total !== 'number' || !isFinite(data.total) || data.total < 0 ||
       typeof data.tx !== 'string' || data.tx.length > 64 ||
-      !/^[a-zA-Z0-9+/=.\-]+$/.test(data.tx)
+      !/^[a-zA-Z0-9+/=.-]+$/.test(data.tx)
     ) {
       return null;
     }

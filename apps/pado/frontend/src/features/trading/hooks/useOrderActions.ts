@@ -445,7 +445,7 @@ export function useOrderActions(): UseOrderActionsResult {
     }
 
     return result;
-  }, [depositAllTokens, showToast, refreshData]);
+  }, [depositAllTokens, showToast, refreshData, formatUserFriendlyError]);
 
   // 지갑으로 반환
   const handleWithdraw = useCallback(async (): Promise<TradeResult> => {
@@ -459,7 +459,7 @@ export function useOrderActions(): UseOrderActionsResult {
     }
 
     return result;
-  }, [withdrawAllTokens, showToast, refreshData]);
+  }, [withdrawAllTokens, showToast, refreshData, formatUserFriendlyError]);
 
   // Per-token deposit
   const handleDepositToken = useCallback(async (

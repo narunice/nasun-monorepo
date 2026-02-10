@@ -32,13 +32,17 @@ export function useOrderFillNotifier({
 
   // Use refs to avoid re-subscribing when params change
   const bmIdRef = useRef(balanceManagerId);
-  bmIdRef.current = balanceManagerId;
   const quoteDecRef = useRef(quoteDecimals);
-  quoteDecRef.current = quoteDecimals;
   const baseDecRef = useRef(baseDecimals);
-  baseDecRef.current = baseDecimals;
   const toastRef = useRef(showToast);
-  toastRef.current = showToast;
+
+  // Sync refs in effect to avoid mutating during render
+  useEffect(() => {
+    bmIdRef.current = balanceManagerId;
+    quoteDecRef.current = quoteDecimals;
+    baseDecRef.current = baseDecimals;
+    toastRef.current = showToast;
+  });
 
   useEffect(() => {
     const eventService = getEventService();

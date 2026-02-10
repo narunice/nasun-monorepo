@@ -99,6 +99,7 @@ export function Header() {
     if (isActive(path)) {
       e.preventDefault();
       // Navigate with new state to trigger remount
+      // eslint-disable-next-line react-hooks/purity -- Date.now() is safe in event handlers
       navigate(path, { state: { key: Date.now() }, replace: true });
     }
   };

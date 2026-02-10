@@ -79,14 +79,26 @@ export interface OrderExecutionInfo {
   status: 'filled' | 'partial' | 'placed'; // 완전체결, 부분체결, 미체결
 }
 
+// Minimal Sui types used in trade results
+export interface SuiEvent {
+  type: string;
+  parsedJson?: Record<string, unknown>;
+}
+
+export interface SuiObjectChange {
+  type: string;
+  objectType?: string;
+  objectId?: string;
+}
+
 export interface TradeResult {
   success: boolean;
   digest?: string;
   error?: string;
-  objectChanges?: any[]; // SuiObjectChange[]
-  events?: any[];        // SuiEvent[]
-  depositInfo?: DepositInfo; // 입금 금액 정보
-  executionInfo?: OrderExecutionInfo; // 체결 정보
+  objectChanges?: SuiObjectChange[];
+  events?: SuiEvent[];
+  depositInfo?: DepositInfo;
+  executionInfo?: OrderExecutionInfo;
 }
 
 // Locked amount calculation: buy orders lock quote token, sell orders lock base token

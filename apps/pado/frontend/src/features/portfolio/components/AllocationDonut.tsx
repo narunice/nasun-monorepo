@@ -115,14 +115,13 @@ export function AllocationDonut() {
   }
 
   // Calculate stroke offsets for each segment
-  let accumulatedOffset = 0;
-  const arcs = segments.map((seg) => {
+  const arcs = segments.reduce<Array<DonutSegment & { dashArray: string; dashOffset: number }>>((result, seg) => {
+    const prevOffset = result.reduce((sum, a) => sum + (a.percent / 100) * CIRCUMFERENCE, 0);
     const dashLength = (seg.percent / 100) * CIRCUMFERENCE;
     const gap = CIRCUMFERENCE - dashLength;
-    const offset = -accumulatedOffset;
-    accumulatedOffset += dashLength;
-    return { ...seg, dashArray: `${dashLength} ${gap}`, dashOffset: offset };
-  });
+    result.push({ ...seg, dashArray: `${dashLength} ${gap}`, dashOffset: -prevOffset });
+    return result;
+  }, []);
 
   const cx = CHART_SIZE / 2;
   const cy = CHART_SIZE / 2;

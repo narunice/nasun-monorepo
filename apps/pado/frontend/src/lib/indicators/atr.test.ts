@@ -89,7 +89,7 @@ describe('calculateATR', () => {
 
   it('timestamps are correctly offset', () => {
     const candles = makeCandles(
-      Array.from({ length: 20 }, (_) => ({
+      Array.from({ length: 20 }, () => ({
         open: 100,
         high: 110,
         low: 90,

@@ -17,6 +17,7 @@ import {
   AdminResolveModal,
   generateSimulatedOrderbook,
 } from '../features/prediction';
+import { useNow } from '@/hooks/useNow';
 import { Spinner } from '../components/common';
 
 export function PredictMarketPage() {
@@ -25,6 +26,7 @@ export function PredictMarketPage() {
   const { yesOrderbook: realYesOrderbook, noOrderbook: realNoOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);
   const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
   const { isResolver } = usePredictionAdmin();
+  const now = useNow();
   const [showResolveModal, setShowResolveModal] = useState(false);
 
   // Use real orderbook data, with simulated fallback for empty orderbooks
@@ -196,15 +198,15 @@ export function PredictMarketPage() {
             </div>
             <button
               onClick={() => setShowResolveModal(true)}
-              disabled={market.status === 'open' && Date.now() < market.closeTime}
+              disabled={market.status === 'open' && now < market.closeTime}
               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {market.status === 'open' && Date.now() < market.closeTime
+              {market.status === 'open' && now < market.closeTime
                 ? 'Wait for Close Time'
                 : 'Resolve Market'}
             </button>
           </div>
-          {market.status === 'open' && Date.now() < market.closeTime && (
+          {market.status === 'open' && now < market.closeTime && (
             <p className="text-xs text-yellow-500 mt-2">
               Market can be resolved after {new Date(market.closeTime).toLocaleString('en-US')}
             </p>

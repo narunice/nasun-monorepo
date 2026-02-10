@@ -359,7 +359,7 @@ export class PadoDatafeed implements IDatafeedChartApi {
     resolution: string,
     onTick: SubscribeBarsCallback,
     listenerGuid: string,
-    _onResetCacheNeededCallback: () => void,
+    _onResetCacheNeededCallback: () => void, // eslint-disable-line @typescript-eslint/no-unused-vars
   ): void {
     const market = parseSymbolName(symbolInfo.name);
     if (!market) return;

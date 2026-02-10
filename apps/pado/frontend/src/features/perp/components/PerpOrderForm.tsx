@@ -3,7 +3,7 @@
  * Long/Short position entry form
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useWallet } from '@nasun/wallet';
 import { LeverageSlider } from './LeverageSlider';
 import { usePerpMarketContext } from '../context/PerpMarketContext';
@@ -82,15 +82,6 @@ export function PerpOrderForm({
     availableBalance,
     calculatePreview,
   ]);
-
-  // Update collateral when size or leverage changes
-  useEffect(() => {
-    const size = parseFloat(formState.size) || 0;
-    if (size > 0 && formState.leverage > 0) {
-      const collateral = (size / formState.leverage).toFixed(2);
-      setFormState((prev) => ({ ...prev, collateral }));
-    }
-  }, [formState.size, formState.leverage]);
 
   // Handle side change
   const handleSideChange = useCallback(

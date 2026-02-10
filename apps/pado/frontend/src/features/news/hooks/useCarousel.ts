@@ -6,11 +6,13 @@ export function useCarousel(itemCount: number, intervalMs = 5000) {
   const [skipTransition, setSkipTransition] = useState(false);
 
   // Reset index when item count changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (currentIndex > itemCount) {
       setCurrentIndex(0);
     }
   }, [itemCount, currentIndex]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Auto-advance timer — advances up to itemCount (clone position)
   useEffect(() => {
