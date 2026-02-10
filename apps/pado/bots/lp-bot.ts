@@ -269,19 +269,30 @@ async function initialize(
   const totalBase = walletBalance.base + bmBalance.base;
   const totalQuote = walletBalance.quote + bmBalance.quote;
 
-  if (totalBase < config.refillThresholdBase || totalQuote < config.refillThresholdQuote) {
-    console.log(`[${timestamp()}] Insufficient funds, requesting from faucet...`);
-    const faucetSuccess = await requestTokens(client, keypair);
+  // Calculate minimum inventory needed for the full order grid
+  const minBaseNeeded = config.orderSize * config.orderLevels;
+  const minQuoteNeeded = config.refillThresholdQuote;
 
-    if (faucetSuccess) {
-      const newWalletBalance = await getWalletBalances(client, address);
-      console.log(`[${timestamp()}] Wallet after faucet: ${newWalletBalance.base.toFixed(4)} ${MARKET.name}, ${newWalletBalance.quote.toLocaleString()} NUSDC`);
+  if (totalBase < minBaseNeeded || totalQuote < minQuoteNeeded) {
+    const deficit = Math.max(0, minBaseNeeded - totalBase);
+    const faucetRounds = Math.min(
+      Math.max(1, Math.ceil(deficit / MARKET.faucetBaseAmount)),
+      10, // Max 10 faucet calls to prevent infinite loop
+    );
+    console.log(`[${timestamp()}] Insufficient funds (have ${totalBase.toFixed(4)}, need ~${minBaseNeeded.toFixed(4)} ${MARKET.name}), accumulating via faucet (${faucetRounds} rounds)...`);
 
-      if (newWalletBalance.base > 0 || newWalletBalance.quote > 0) {
-        console.log(`[${timestamp()}] Depositing faucet tokens to BalanceManager...`);
-        await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
-        state.justInitialized = true;
-      }
+    for (let i = 0; i < faucetRounds; i++) {
+      const faucetSuccess = await requestTokens(client, keypair);
+      if (!faucetSuccess) break;
+    }
+
+    const newWalletBalance = await getWalletBalances(client, address);
+    console.log(`[${timestamp()}] Wallet after faucet: ${newWalletBalance.base.toFixed(4)} ${MARKET.name}, ${newWalletBalance.quote.toLocaleString()} NUSDC`);
+
+    if (newWalletBalance.base > 0 || newWalletBalance.quote > 0) {
+      console.log(`[${timestamp()}] Depositing faucet tokens to BalanceManager...`);
+      await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
+      state.justInitialized = true;
     }
   } else if (walletBalance.base > 0 || walletBalance.quote > 0) {
     console.log(`[${timestamp()}] Depositing wallet tokens to BalanceManager...`);
@@ -355,6 +366,12 @@ async function main() {
 
   console.log(`[${timestamp()}] Bot address: ${address.slice(0, 16)}...`);
   console.log('');
+
+  // Stagger bot startup to avoid gas coin contention when running multiple bots
+  if (MARKET.startupDelayMs > 0) {
+    console.log(`[${timestamp()}] Waiting ${MARKET.startupDelayMs / 1000}s before starting (staggered startup)...`);
+    await new Promise((resolve) => setTimeout(resolve, MARKET.startupDelayMs));
+  }
 
   const state: BotState = {
     lastQuotedPrice: 0,

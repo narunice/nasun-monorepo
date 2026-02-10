@@ -23,15 +23,18 @@ EC2_USER="ec2-user"
 EC2_HOST="43.200.67.52"
 REMOTE_DIR="/var/www/pado.finance"
 BACKUP_DIR="/var/www/pado.finance-backups"
+BOTS_DIR="$MONOREPO_ROOT/apps/pado/bots"
+BOTS_REMOTE_DIR="/home/ec2-user/pado-bots"
 HEALTH_CHECK_URL="https://pado.finance"
 
-TOTAL_STEPS=7
+TOTAL_STEPS=9
 START_TIME=$(date +%s)
 
 # --- 옵션 파싱 ---
 DRY_RUN=false
 FORCE=false
 ROLLBACK=false
+SKIP_BOTS=false
 
 for arg in "$@"; do
   case $arg in
@@ -47,14 +50,19 @@ for arg in "$@"; do
       ROLLBACK=true
       shift
       ;;
+    --skip-bots)
+      SKIP_BOTS=true
+      shift
+      ;;
     --help|-h)
       echo "사용법: ./scripts/deploy-pado-production.sh [옵션]"
       echo ""
       echo "옵션:"
-      echo "  --dry-run    배포 없이 빌드만 수행"
-      echo "  --force      확인 프롬프트 건너뛰기"
-      echo "  --rollback   이전 백업으로 롤백"
-      echo "  --help, -h   도움말 표시"
+      echo "  --dry-run      배포 없이 빌드만 수행"
+      echo "  --force        확인 프롬프트 건너뛰기"
+      echo "  --rollback     이전 백업으로 롤백"
+      echo "  --skip-bots    LP 봇 배포 건너뛰기"
+      echo "  --help, -h     도움말 표시"
       exit 0
       ;;
   esac
@@ -121,6 +129,8 @@ fi
 if [ "$DRY_RUN" = true ]; then
   log_warning "드라이런 모드: 빌드만 수행하고 배포는 건너뜁니다."
   TOTAL_STEPS=3
+elif [ "$SKIP_BOTS" = true ]; then
+  TOTAL_STEPS=7
 fi
 
 # --- Phase 1: 환경 검증 ---
@@ -232,6 +242,66 @@ log_step 7 $TOTAL_STEPS "헬스 체크"
 
 health_check "$HEALTH_CHECK_URL"
 
+# --- Phase 8-9: LP 봇 배포 ---
+if [ "$SKIP_BOTS" = false ]; then
+  log_step 8 $TOTAL_STEPS "LP 봇 코드 동기화"
+
+  log_info "원격 봇 디렉토리 생성 중..."
+  ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "mkdir -p ${BOTS_REMOTE_DIR}"
+
+  log_info "봇 코드 동기화 중..."
+  rsync -avz --progress -e "ssh -i $PEM_KEY_EXPANDED" \
+    --exclude 'node_modules' \
+    --exclude '.env' \
+    --exclude '.env.*' \
+    --exclude '.lp-bot-state-*.json' \
+    --exclude 'data' \
+    --exclude 'logs' \
+    --exclude '*.log' \
+    "$BOTS_DIR/" "${EC2_USER}@${EC2_HOST}:${BOTS_REMOTE_DIR}/"
+
+  log_success "봇 코드 동기화 완료"
+
+  log_step 9 $TOTAL_STEPS "LP 봇 PM2 시작"
+
+  log_info "봇 의존성 설치 중..."
+  ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "cd ${BOTS_REMOTE_DIR} && pnpm install --prod"
+
+  # Check .env
+  ENV_CHECK=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "
+    if [ -f ${BOTS_REMOTE_DIR}/.env ] && grep -qE 'LP_PRIVATE_KEY=.+' ${BOTS_REMOTE_DIR}/.env 2>/dev/null; then
+      echo 'OK'
+    else
+      echo 'MISSING'
+    fi
+  ")
+
+  if [ "$ENV_CHECK" != "OK" ]; then
+    log_warning "봇 .env에 LP_PRIVATE_KEY가 설정되지 않았습니다."
+    log_warning "서버에서 설정 후 수동으로 PM2를 시작하세요:"
+    echo "  echo 'LP_PRIVATE_KEY=your_key' > ${BOTS_REMOTE_DIR}/.env"
+  else
+    log_info "PM2로 봇 시작 중..."
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "
+      cd ${BOTS_REMOTE_DIR}
+      set -a && source .env && set +a
+      if pm2 list 2>/dev/null | grep -q 'lp-bot-nbtc'; then
+        pm2 restart ecosystem.config.cjs
+      else
+        pm2 start ecosystem.config.cjs
+      fi
+      pm2 save
+    "
+    log_success "LP 봇 시작됨 (NBTC, NETH, NSOL + price-updater + tpsl-keeper)"
+
+    echo ""
+    log_info "봇 상태:"
+    ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "pm2 status"
+  fi
+else
+  log_info "LP 봇 배포 건너뜀 (--skip-bots)"
+fi
+
 # --- 완료 ---
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -239,8 +309,13 @@ echo -e "${GREEN}║  🎉 프로덕션 배포 완료!                          
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║  URL: ${CYAN}https://pado.finance${NC}"
 echo -e "${GREEN}║  백업: ${CYAN}${BACKUP_NAME}${NC}"
+if [ "$SKIP_BOTS" = false ]; then
+echo -e "${GREEN}║  봇: ${CYAN}PM2 (3 LP bots + price-updater + tpsl-keeper)${NC}"
+fi
 echo -e "${GREEN}║  소요 시간: ${CYAN}$(get_elapsed_time $START_TIME)${NC}"
 echo -e "${GREEN}║${NC}"
 echo -e "${GREEN}║  롤백: ${CYAN}pnpm deploy:pado:prod -- --rollback${NC}"
+echo -e "${GREEN}║  봇 로그: ${CYAN}pnpm deploy:pado:bots:prod -- --logs${NC}"
+echo -e "${GREEN}║  봇 상태: ${CYAN}pnpm deploy:pado:bots:prod -- --status${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
