@@ -11,7 +11,7 @@ module devnet_tokens_v2::neth {
     fun init(witness: NETH, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency<NETH>(
             witness,
-            18,                             // decimals (Ethereum standard)
+            8,                              // decimals (matches Sui mainnet WETH convention)
             b"NETH",                        // symbol
             b"Nasun ETH",                   // name
             b"Nasun Network Test ETH",      // description

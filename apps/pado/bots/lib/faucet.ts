@@ -11,8 +11,6 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   TOKENS_PACKAGE,
   TOKEN_FAUCET,
-  TOKENS_V2_FAUCET_PACKAGE,
-  TOKEN_FAUCET_V2,
   FAUCET_URL,
   MARKET,
   timestamp,
@@ -41,14 +39,19 @@ function buildRequestNusdcOnly(): Transaction {
 }
 
 // ========================================
-// V2 Faucet (NETH + NSOL, no cooldown)
+// V2 Faucet (per-market package/object)
 // ========================================
 
 function buildRequestTokensV2(): Transaction {
+  const pkg = MARKET.faucetV2Package;
+  const obj = MARKET.faucetV2Object;
+  if (!pkg || !obj) {
+    throw new Error(`V2 faucet not configured for market ${MARKET.name}`);
+  }
   const tx = new Transaction();
   tx.moveCall({
-    target: `${TOKENS_V2_FAUCET_PACKAGE}::faucet_v2::request_tokens`,
-    arguments: [tx.object(TOKEN_FAUCET_V2)],
+    target: `${pkg}::faucet_v2::request_tokens`,
+    arguments: [tx.object(obj)],
   });
   return tx;
 }

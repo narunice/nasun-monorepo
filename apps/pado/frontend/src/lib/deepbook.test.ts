@@ -45,10 +45,10 @@ const NASUN_POOL: PoolConfig = {
 
 const NETH_POOL: PoolConfig = {
   id: '0x' + 'c'.repeat(64),
-  baseToken: { symbol: 'NETH', name: 'Nasun ETH', decimals: 18, type: '0x::neth::NETH' },
+  baseToken: { symbol: 'NETH', name: 'Nasun ETH', decimals: 8, type: '0x::neth::NETH' },
   quoteToken: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x::nusdc::NUSDC' },
-  tickSize: 10000,            // $0.01 raw
-  lotSize: 1000000000000000,  // 0.001 ETH (10^15 at 18 decimals)
+  tickSize: 100000,           // $0.10 raw
+  lotSize: 1000,              // 0.00001 ETH (10^3 at 8 decimals)
   makerFeeBps: 5,
   takerFeeBps: 10,
 };
@@ -138,8 +138,8 @@ describe('quantityToRaw', () => {
     expect(quantityToRaw(1, 9)).toBe(1000000000n);
   });
 
-  it('handles NETH decimals (18)', () => {
-    expect(quantityToRaw(0.001, 18)).toBe(1000000000000000n);
+  it('handles NETH decimals (8)', () => {
+    expect(quantityToRaw(0.001, 8)).toBe(100000n);
   });
 
   it('round-trips correctly: quantityToRaw(formatQuantity(x)) == x', () => {
@@ -354,8 +354,8 @@ describe('getMinQuantity', () => {
     expect(getMinQuantity(NASUN_POOL)).toBeCloseTo(1.0, 2);
   });
 
-  it('NETH: 0.001 ETH (lotSize=10^15, 18 decimals)', () => {
-    expect(getMinQuantity(NETH_POOL)).toBeCloseTo(0.001, 6);
+  it('NETH: 0.00001 ETH (lotSize=1000, 8 decimals)', () => {
+    expect(getMinQuantity(NETH_POOL)).toBeCloseTo(0.00001, 8);
   });
 });
 

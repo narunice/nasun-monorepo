@@ -38,9 +38,9 @@ const POOLS = [
     name: 'NETH/NUSDC',
     baseType: () => `${TOKENS_V2_PACKAGE}::neth::NETH`,
     quoteType: NUSDC_TYPE,
-    tickSize: 10_000,        // $0.01 in NUSDC (6 decimals) → 10^4
-    lotSize: 1_000_000_000_000_000, // 0.001 ETH (18 decimals) → 10^15
-    minSize: 1_000_000_000_000_000, // 0.001 ETH minimum
+    tickSize: 100_000,       // $0.10 in NUSDC (8 decimals, same as NBTC)
+    lotSize: 1_000,          // 0.00001 ETH (8 decimals)
+    minSize: 1_000,          // 0.00001 ETH minimum
   },
   {
     name: 'NSOL/NUSDC',

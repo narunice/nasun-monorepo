@@ -78,7 +78,6 @@ export interface ChatSigner {
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const RECONNECT_MULTIPLIER = 2;
-const RECONNECT_MAX_ATTEMPTS = 5;
 const CONNECTION_TIMEOUT_MS = 10_000;
 
 let instance: ChatService | null = null;
@@ -127,6 +126,18 @@ export class ChatService {
 
     this.wsUrl = wsUrl;
     this.signer = signer;
+    this.reconnectAttempts = 0;
+    this.doConnect();
+  }
+
+  /**
+   * Request reconnection if disconnected.
+   * Called by useChat periodic check to recover from transient failures.
+   */
+  reconnect(): void {
+    if (this.status !== 'disconnected') return;
+    if (!this.wsUrl || !this.signer) return;
+    if (this.reconnectTimer) return; // Already scheduled
     this.reconnectAttempts = 0;
     this.doConnect();
   }
@@ -458,15 +469,9 @@ export class ChatService {
   private scheduleReconnect(): void {
     if (this.reconnectAttempts < 0) return;
 
-    if (this.reconnectAttempts >= RECONNECT_MAX_ATTEMPTS) {
-      console.warn(`[ChatService] Gave up after ${RECONNECT_MAX_ATTEMPTS} attempts. Chat server may be offline.`);
-      this.setStatus('disconnected');
-      return;
-    }
-
     const delay = Math.min(
       RECONNECT_BASE_MS * Math.pow(RECONNECT_MULTIPLIER, this.reconnectAttempts),
-      RECONNECT_MAX_MS
+      RECONNECT_MAX_MS,
     );
     this.reconnectAttempts++;
 

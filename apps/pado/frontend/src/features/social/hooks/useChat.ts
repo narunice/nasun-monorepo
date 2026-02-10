@@ -123,6 +123,23 @@ export function useChat(roomId: number = 0): UseChatResult {
     };
   }, []);
 
+  // Periodic reconnection check: if we should be connected but aren't,
+  // nudge the ChatService to retry. Handles dev server restarts, transient
+  // network failures, and race conditions during page load.
+  useEffect(() => {
+    const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
+    if (!wsUrl || !signerAddress || !signerType) return;
+
+    const checkInterval = setInterval(() => {
+      const chatService = getChatService();
+      if (chatService.getStatus() === 'disconnected') {
+        chatService.reconnect();
+      }
+    }, 30_000);
+
+    return () => clearInterval(checkInterval);
+  }, [signerAddress, signerType]);
+
   // Poll chat history via HTTP when not authenticated (e.g. wallet locked)
   // so users can still read messages without a WebSocket connection.
   useEffect(() => {
