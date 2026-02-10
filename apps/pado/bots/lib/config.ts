@@ -61,6 +61,9 @@ export interface MarketConfig {
   defaultMinPrice: number;
   defaultMaxPrice: number;
   defaultOrderSize: number;
+  defaultLevelSpacing: number; // Default level spacing in bps (per-market)
+  defaultSpreadBps: number;    // Default spread in bps (per-market)
+  defaultMaxArbQuantity: number; // Default max arb quantity (per-market)
   faucetType: 'v1' | 'v2'; // Which faucet module to use for base token
 }
 
@@ -79,6 +82,9 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMinPrice: 50000,
     defaultMaxPrice: 200000,
     defaultOrderSize: 0.01,
+    defaultLevelSpacing: 8,
+    defaultSpreadBps: 20,
+    defaultMaxArbQuantity: 0.01,
     faucetType: 'v1',
   },
   NETH: {
@@ -95,6 +101,9 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMinPrice: 1000,
     defaultMaxPrice: 10000,
     defaultOrderSize: 0.1,
+    defaultLevelSpacing: 12,
+    defaultSpreadBps: 30,
+    defaultMaxArbQuantity: 0.5,
     faucetType: 'v2',
   },
   NSOL: {
@@ -111,6 +120,9 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMinPrice: 10,
     defaultMaxPrice: 1000,
     defaultOrderSize: 10,
+    defaultLevelSpacing: 15,
+    defaultSpreadBps: 40,
+    defaultMaxArbQuantity: 10,
     faucetType: 'v2',
   },
 };
@@ -164,8 +176,8 @@ export interface LPConfig {
 
 export function loadConfig(): LPConfig {
   const config = {
-    spreadBps: parseInt(process.env.LP_SPREAD_BPS || '30', 10),
-    levelSpacingBps: parseInt(process.env.LP_LEVEL_SPACING_BPS || '10', 10),
+    spreadBps: parseInt(process.env.LP_SPREAD_BPS || String(MARKET.defaultSpreadBps), 10),
+    levelSpacingBps: parseInt(process.env.LP_LEVEL_SPACING_BPS || String(MARKET.defaultLevelSpacing), 10),
     orderLevels: parseInt(process.env.LP_ORDER_LEVELS || '30', 10),
 
     orderSize: parseFloat(process.env.LP_ORDER_SIZE || String(MARKET.defaultOrderSize)),
@@ -186,7 +198,7 @@ export function loadConfig(): LPConfig {
 
     enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false',
     minArbitrageProfitBps: parseInt(process.env.LP_MIN_ARB_PROFIT_BPS || '10', 10),
-    maxArbitrageQuantity: parseFloat(process.env.LP_MAX_ARB_QUANTITY || '0.5'),
+    maxArbitrageQuantity: parseFloat(process.env.LP_MAX_ARB_QUANTITY || String(MARKET.defaultMaxArbQuantity)),
   };
 
   // Validate configuration bounds
@@ -210,6 +222,12 @@ export function loadConfig(): LPConfig {
   }
   if (config.orderLevels < 1 || config.orderLevels > 50) {
     throw new Error('LP_ORDER_LEVELS must be between 1 and 50');
+  }
+  if (config.levelSpacingBps < 1 || config.levelSpacingBps > 1000) {
+    throw new Error('LP_LEVEL_SPACING_BPS must be between 1 and 1000');
+  }
+  if (config.maxArbitrageQuantity <= 0) {
+    throw new Error('LP_MAX_ARB_QUANTITY must be positive');
   }
 
   return config;

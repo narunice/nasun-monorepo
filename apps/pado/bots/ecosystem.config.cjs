@@ -17,11 +17,9 @@
 
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
-  // Spread and order settings
-  LP_SPREAD_BPS: '30',           // 0.3% spread
-  LP_ORDER_LEVELS: '5',          // 5 orders per side
+  // Order depth (30 levels per side = 60 total orders)
+  LP_ORDER_LEVELS: '30',
   LP_UPDATE_INTERVAL: '10000',   // 10 seconds
-  LP_REQUOTE_THRESHOLD: '50',    // Re-quote at 0.5% price move
   // Risk controls
   LP_MIN_SPREAD_BPS: '10',
   LP_MAX_FAILURES: '5',
@@ -53,10 +51,15 @@ module.exports = {
       env: {
         ...COMMON_LP_ENV,
         LP_MARKET: 'NBTC',
-        LP_ORDER_SIZE: '0.01',          // 0.01 BTC per level
-        LP_MAX_ORDER_SIZE: '0.1',
-        LP_REFILL_THRESHOLD_BASE: '0.5',
-        LP_REFILL_THRESHOLD_QUOTE: '50000',
+        // Tight spread for main market (~$485/level)
+        LP_SPREAD_BPS: '20',
+        LP_REQUOTE_THRESHOLD: '30',
+        LP_LEVEL_SPACING_BPS: '8',
+        LP_ORDER_SIZE: '0.005',
+        LP_MAX_ORDER_SIZE: '0.05',
+        LP_MAX_ARB_QUANTITY: '0.01',
+        LP_REFILL_THRESHOLD_BASE: '0.2',
+        LP_REFILL_THRESHOLD_QUOTE: '20000',
         LP_MIN_PRICE: '50000',
         LP_MAX_PRICE: '200000',
       },
@@ -69,10 +72,15 @@ module.exports = {
       env: {
         ...COMMON_LP_ENV,
         LP_MARKET: 'NETH',
-        LP_ORDER_SIZE: '0.1',           // 0.1 ETH per level
-        LP_MAX_ORDER_SIZE: '1.0',
-        LP_REFILL_THRESHOLD_BASE: '5',
-        LP_REFILL_THRESHOLD_QUOTE: '50000',
+        // Standard spread (~$540/level)
+        LP_SPREAD_BPS: '30',
+        LP_REQUOTE_THRESHOLD: '40',
+        LP_LEVEL_SPACING_BPS: '12',
+        LP_ORDER_SIZE: '0.2',
+        LP_MAX_ORDER_SIZE: '2.0',
+        LP_MAX_ARB_QUANTITY: '0.5',
+        LP_REFILL_THRESHOLD_BASE: '8',
+        LP_REFILL_THRESHOLD_QUOTE: '20000',
         LP_MIN_PRICE: '1000',
         LP_MAX_PRICE: '10000',
       },
@@ -85,10 +93,15 @@ module.exports = {
       env: {
         ...COMMON_LP_ENV,
         LP_MARKET: 'NSOL',
-        LP_ORDER_SIZE: '10',            // 10 SOL per level
-        LP_MAX_ORDER_SIZE: '100',
-        LP_REFILL_THRESHOLD_BASE: '50',
-        LP_REFILL_THRESHOLD_QUOTE: '50000',
+        // Wide spread for volatile asset (~$600/level)
+        LP_SPREAD_BPS: '40',
+        LP_REQUOTE_THRESHOLD: '50',
+        LP_LEVEL_SPACING_BPS: '15',
+        LP_ORDER_SIZE: '3',
+        LP_MAX_ORDER_SIZE: '30',
+        LP_MAX_ARB_QUANTITY: '10',
+        LP_REFILL_THRESHOLD_BASE: '100',
+        LP_REFILL_THRESHOLD_QUOTE: '20000',
         LP_MIN_PRICE: '10',
         LP_MAX_PRICE: '1000',
       },
