@@ -18,7 +18,6 @@ import {
   Route,
   Layers,
   Brain,
-  Globe,
   Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";

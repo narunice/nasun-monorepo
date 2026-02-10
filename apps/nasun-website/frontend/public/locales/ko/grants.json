@@ -1,0 +1,147 @@
+{
+  "title": "어워즈",
+  "heading1": "한국 공공기관의 검증",
+  "heading2": "업계 전문가와 리더들의 인정",
+  "paragraph1": "Nasun의 사업 모델과 콘텐츠 기획은 정식 출범 전에 한국 정부 및 관련 기관의 다양한 지원사업과 경진대회에서 10건 이상의 선정 및 수상을 통해 검증받았습니다. 콘텐츠, 엔터테인먼트, 게임, 비즈니스 분야의 전문가들이 Nasun의 가능성을 인정했습니다.",
+  "paragraph2": "이 많은 상과 지원금을 수상하게 되어 자랑스럽게 생각합니다. 저희와 같은 소규모 팀에게는 쉽지 않은 일이었고, 이미 업계에서 자리잡은 많은 콘텐츠 및 기술 전문가들과 경쟁해야 했습니다. 더욱 의미 있었던 점은 저희가 항상 유일한 Web3 프로젝트였다는 것입니다. 저희가 단순한 암호화폐 프로젝트나 스캠이 아니라, 콘텐츠와 게임의 미래에 대해 진지한 비전을 제시하는 팀이라는 것을 전문가들에게 설득해야 했습니다.",
+  "paragraph3": "지원서를 작성하고, 정부 공무원들과의 인터뷰 및 사무실 실사, 피치 준비와 발표, 그리고 긴 결과 대기까지, 저희에게는 시간과 에너지가 부족한 상황이었지만 이 모든 과정을 거치며 Nasun의 서사 콘텐츠와 게임뿐 아니라 비즈니스 모델까지 인정받을 수 있었기에 충분히 가치가 있었다고 생각합니다.",
+  "paragraph4": "2025년에는 Nasun의 정식 출범에 집중하기로 하여 올해는 새로운 지원사업이나 공모전에 참여하지 않기로 결정했습니다. 하지만 출시 이후에는 더욱 규모가 큰 수상 및 지원사업에도 도전할 계획입니다.",
+  "list": "RECOGNITION",
+  "grants": {
+    "list": [
+      {
+        "date": "9월 2025년",
+        "event_name": "2025 웹3 게임 오디션",
+        "prize": "지원 사업 선정으로 글로벌 파트너사들의 교육 및 자문, 네트워킹, 데모데이 및 지원금 7백만원",
+        "amount": "",
+        "project": "커뮤니티 주도의 재정적으로 지속가능한 IP 창작 및 관리를 위한 L1 네트워크 Nasun 위에 구축된 슈터 게임 Spectra",
+        "host": ["주관: 부산정보산업진흥원", "파트너: Solana, Metis, GSR, PG Labs"],
+        "logos": {
+          "dark": [
+            "Metis-Blue-White-Horizontal-A.png",
+            "GSRlogo.svg",
+            "PGLabs-dark.png",
+            "solanaLogo.png",
+            "BusanITAgency.png"
+          ]
+        }
+      },
+      {
+        "date": "11월 2024년",
+        "event_name": "부산 콘텐츠기업 액셀러레이팅 사업 데모 데이",
+        "prize": "최우수상 (1위), 상금 500만원",
+        "amount": "",
+        "project": "웹3 커뮤니티 주도의, 재정적으로 지속가능한 콘텐츠 제작 및 관리 사업으로서의 젠솔",
+        "host": [
+          "주최: 한국콘텐츠진흥원",
+          "주관: 부산정보산업진흥원, 부산 콘텐츠기업지원센터",
+          "운영: 제피러스 랩"
+        ],
+        "logos": {
+          "dark": ["kocca_dark.jpg", "BIPA-negative.jpg", "BusanContentCenter.png", "zephyrus.png"]
+        }
+      },
+      {
+        "date": "9월 2024년",
+        "event_name": "게임 콘텐츠 멀티부스팅 지원 사업",
+        "prize": "13백만원 상당 용역 지원",
+        "amount": "",
+        "project": "젠솔 IP 기반의 웹3 기능을 포함한 멀티플레이어 슈터 게임 '아크스타'",
+        "host": ["주최: 부산정보산업진흥원", "주관: 비에이블 랩", "파트너: 비주얼 다트"],
+        "logos": {
+          "dark": ["BIPA-negative.jpg", "BeAbleLab-logo.png", "VisualDart.png"]
+        }
+      },
+      {
+        "date": "8월 2024년",
+        "event_name": "부산 콘텐츠기업 액셀러레이팅 사업",
+        "prize": "지원 사업 선정으로 사업 진단, 맞춤형 컨설팅, IR 피치 트레이닝, 데모데이 네트워킹, 사후 프로그램 지원 등 수혜",
+        "amount": "",
+        "project": "웹3 커뮤니티 주도의, 재정적으로 지속가능한 콘텐츠 IP 제작 및 관리 사업으로써의 '젠솔'",
+        "host": [
+          "주최: 한국콘텐츠진흥원",
+          "주관: 부산정보산업진흥원, 부산 콘텐츠기업지원센터",
+          "운영: 제피러스 랩"
+        ],
+        "logos": {
+          "dark": ["kocca_dark.jpg", "BIPA-negative.jpg", "BusanContentCenter.png", "zephyrus.png"]
+        }
+      },
+      {
+        "date": "6월 2024년",
+        "event_name": "콘텐츠 기업 글로벌 마케팅 지원사업",
+        "prize": "지원금 1천만원",
+        "amount": "",
+        "project": "웹3 커뮤니티가 주도하고 재정적으로 지속가능한 SF 콘텐츠 IP '젠솔'",
+        "host": ["주최: 문화체육관광부, 한국콘텐츠진흥원", "주관: 부산정보산업진흥원"],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "BIPA-negative.jpg"]
+        }
+      },
+      {
+        "date": "6월 2024년",
+        "event_name": "B-CON 스타트업 사업화 지원 사업",
+        "prize": "지원금 1.25천만원",
+        "amount": "",
+        "project": "웹3 콘텐츠 IP 젠솔 기반의 애니메이션 시리즈 '스펙트라 하이스트'",
+        "host": ["주최: 문화체육관광부, 한국콘텐츠진흥원, 부산광역시", "주관: 부산정보산업진흥원"],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+        }
+      },
+      {
+        "date": "5월 2024년",
+        "event_name": "소상공인 IP 역량강화 지원 사업",
+        "prize": "상표 출원 지원 1건",
+        "amount": "",
+        "project": "디지털 콘텐츠 상품 '젠솔'",
+        "host": ["주최: 한국발명진흥회", "주관: 지역지식재산센터", "파트너: 브릿지 특허법률사무소"],
+        "logos": {
+          "dark": ["kipa_logo.png", "ripc_dark.jpg", "Bridge-logo.png"]
+        }
+      },
+      {
+        "date": "10월 2023년",
+        "event_name": "제4회 ICT 비즈니스 모델 아이디어 경진대회",
+        "prize": "최우수상 (공동 2위), 상금 2백만원",
+        "amount": "",
+        "project": "웹3 커뮤니티가 주도하고 재정적으로 지속 가능한 콘텐츠 IP 제작 및 관리 사업 '아크스타 (워킹 타이틀)'",
+        "host": [
+          "주최: 정보통신산업진흥원",
+          "주관: 부산정보산업진흥원, 울산정보산업진흥원, 경남테크노파크, 한국정보통신진흥협회"
+        ],
+        "logos": {
+          "dark": [
+            "nipaLogo.png",
+            "BIPA-negative.jpg",
+            "uipa_logo.png",
+            "kntechno-ci-dark.png",
+            "kait-logo-dark.png"
+          ]
+        }
+      },
+      {
+        "date": "9월 2023년",
+        "event_name": "B-CON 스타트업 사업화 지원 사업",
+        "prize": "지원금 9백만원",
+        "amount": "",
+        "project": "웹3 콘텐츠 IP 젠솔 기반의 애니메이션 시리즈 '스펙트라 하이스트'",
+        "host": ["주최: 문화체육관광부, 한국콘텐츠진흥원, 부산광역시", "주관: 부산정보산업진흥원"],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg", "Busan.png", "BIPA-negative.jpg"]
+        }
+      },
+      {
+        "date": "8월 2023년",
+        "event_name": "금융지원사업: K콘텐츠 혁신성장보증-글로벌",
+        "prize": "보증지원 선정",
+        "amount": "",
+        "project": "웹3 커뮤니티가 주도하고 재정적으로 지속가능한 SF 콘텐츠 IP '젠솔'",
+        "host": ["주최: 문화체육관광부", "주관: 한국콘텐츠진흥원"],
+        "logos": {
+          "dark": ["MinistryofCulture.png", "kocca_dark.jpg"]
+        }
+      }
+    ]
+  }
+}

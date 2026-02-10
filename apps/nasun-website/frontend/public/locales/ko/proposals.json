@@ -1,0 +1,26 @@
+{
+  "title": "커뮤니티 거버넌스",
+  "none_found": "현재 진행 중인 제안이 없습니다. 곧 새로운 제안이 등록될 예정입니다!",
+  "wallet": {
+    "connect_required": "투표를 위해 Nasun Wallet을 연결하세요",
+    "connected": "연결됨",
+    "locked": "잠김"
+  },
+  "vote": {
+    "vote_yes": "찬성",
+    "vote_no": "반대",
+    "processing": "트랜잭션 처리 중...",
+    "success": "투표가 성공적으로 제출되었습니다!",
+    "error": "트랜잭션 실패",
+    "already_voted": "투표 완료",
+    "not_voted_yet": "미투표",
+    "close": "닫기"
+  },
+  "proposal": {
+    "status_active": "진행 중",
+    "status_expired": "만료됨",
+    "yes_votes": "찬성",
+    "no_votes": "반대",
+    "expires": "마감"
+  }
+}

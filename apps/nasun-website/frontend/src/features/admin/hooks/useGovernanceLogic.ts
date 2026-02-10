@@ -69,7 +69,7 @@ export function useGovernanceLogic() {
       const filename = `proposal-votes-${selectedProposal.id.slice(0, 8)}-${date}.csv`;
       downloadBlob(blob, filename);
       toast.success('CSV export started');
-    } catch (err) {
+    } catch {
       toast.error('Failed to export CSV');
     } finally {
       setIsExporting(false);

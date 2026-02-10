@@ -143,6 +143,12 @@ export default defineConfig(({ mode }) => {
 
     publicDir: "public",
 
+    // Strip console.log and console.debug in production builds (keep console.warn/error)
+    esbuild: {
+      drop: mode === "production" ? ["debugger"] : [],
+      pure: mode === "production" ? ["console.log", "console.debug"] : [],
+    },
+
     build: {
       outDir: "dist",
       assetsDir: "assets",

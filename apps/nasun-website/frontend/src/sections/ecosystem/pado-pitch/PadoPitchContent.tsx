@@ -14,7 +14,6 @@ import {
   Package,
   Users,
   Shield,
-  Zap,
   DollarSign,
   BarChart3,
   Ticket,

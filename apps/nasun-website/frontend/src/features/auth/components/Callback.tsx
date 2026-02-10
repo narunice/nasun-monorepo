@@ -92,7 +92,7 @@ export default function Callback() {
 
     // Otherwise, we are still loading, so the component will just keep showing the spinner.
 
-  }, [navigate, searchParams, isAuthenticated, isLoading, user, error]);
+  }, [navigate, searchParams, isAuthenticated, isLoading, user, error, isZkLogin]);
 
   if (isZkLogin) {
     return (

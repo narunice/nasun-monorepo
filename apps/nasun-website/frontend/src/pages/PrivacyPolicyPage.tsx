@@ -7,25 +7,6 @@ import { PageTitle } from "../components/ui/PageTitle";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { AlertTriangle } from "lucide-react";
 
-type Subsection = {
-  title: string;
-  items: string[];
-};
-
-type PrivacySection = {
-  title: string;
-  content?: string[];
-  intro?: string;
-  items?: string[];
-  subsections?: Subsection[];
-  note?: string;
-};
-
-type DevnetNotice = {
-  title: string;
-  content: string;
-};
-
 const PRIVACY_CONTENT = {
   title: "Privacy Policy",
   lastUpdated: "Last Updated: January 18, 2026",

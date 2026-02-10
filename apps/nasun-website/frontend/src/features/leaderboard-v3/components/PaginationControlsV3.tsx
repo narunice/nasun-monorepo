@@ -29,7 +29,6 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
   ({
     currentPage,
     totalPages,
-    totalEntries,
     pageInput,
     paginationRange,
     hasPrev,

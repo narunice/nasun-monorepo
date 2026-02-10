@@ -1,0 +1,181 @@
+{
+  "title": "내 계정",
+  "userInfo": {
+    "userInfo": "사용자 정보",
+    "email": "이메일",
+    "suiWalletAddress": "SUI 지갑 주소",
+    "infoWallet": "향후 에어드롭 및 선물 NFT를 받으시려면 SUI 지갑을 연결하고 주소를 등록하세요.",
+    "xHandle": "X 핸들",
+    "handle": "핸들",
+    "xHandleOptIn": "X 리더보드에 참여하시려면 X 핸들을 입력하세요.",
+    "xHandleOptOut": "X 리더보드에 참여하지 않으시려면 X 핸들을 삭제하세요.",
+    "xHandlePlaceholder": "예: @username",
+    "xHandleNotProvided": "X 리더보드에 참여하시려면 필요합니다.",
+    "notLinked": "연결되지 않음",
+    "addXHandle": "입력",
+    "update": "업데이트",
+    "delete": "삭제",
+    "linkAccount": "계정 연결하기",
+    "currentlyLoggedIn": "현재 로그인 중",
+    "linked": "연결됨",
+    "clickToUnlink": "연결 해제하기",
+    "linkGoogleAccount": "Google 계정 연결",
+    "linkTwitterAccount": "X 계정 연결",
+    "linkMetaMaskAccount": "MetaMask 연결",
+    "linkMetaMaskSuccess": "MetaMask 지갑이 성공적으로 연결되었습니다!",
+    "confirmUnlinkGoogle": "정말 Google 계정 연결을 해제하시겠습니까?",
+    "confirmUnlinkTwitter": "정말 X 계정 연결을 해제하시겠습니까?",
+    "confirmUnlinkMetaMask": "정말 메타마스크 지갑 연결을 해제하시겠습니까? 본인 확인을 위해 서명이 필요합니다.",
+    "unlinkGoogleSuccess": "Google 계정 연결이 해제되었습니다!",
+    "unlinkTwitterSuccess": "X 계정 연결이 해제되었습니다!",
+    "unlinkMetaMaskSuccess": "메타마스크 지갑 연결이 해제되었습니다!",
+    "unlinkGoogleError": "Google 계정 연결 해제에 실패했습니다",
+    "unlinkTwitterError": "X 계정 연결 해제에 실패했습니다",
+    "unlinkMetaMaskError": "메타마스크 지갑 연결 해제에 실패했습니다",
+    "accountLinkingCancelled": "{{provider}} 계정 연결이 취소되었습니다."
+  },
+  "myWalletStatus": {
+    "myWalletStatus": "내 지갑 상태",
+    "chains": "체인",
+    "status": "상태",
+    "connectDisconnect": "연결/해제",
+    "connected": "연결됨",
+    "notConnected": "연결되지 않음",
+    "notSupported": "아직 지원되지 않음"
+  },
+  "whitelist": {
+    "title": "제너시스 NFT 화이트리스트 상태",
+    "connectWallet": "화이트리스트 상태를 확인하려면 MetaMask 지갑을 연결하세요.",
+    "registered": "등록됨",
+    "notRegistered": "아직 화이트리스트에 등록되지 않았습니다.",
+    "join": "화이트리스트 참여",
+    "withdraw": "화이트리스트 철회하기",
+    "joinedAt": "등록일: {{date}}",
+    "joinedAtLabel": "등록일",
+    "statusLabel": "상태",
+    "walletAddress": "지갑 주소",
+    "modal": {
+      "withdrawSuccess": {
+        "message": "화이트리스트에서 정상적으로 철회되었습니다.",
+        "wallet": "지갑 주소"
+      }
+    }
+  },
+  "battalionNftAllowlist": {
+    "title": "배틀리온 NFT 허용리스트 상태",
+    "connectWallet": "배틀리온 NFT 상태를 확인하려면 MetaMask 지갑을 연결하세요.",
+    "registered": "등록됨",
+    "withdrawn": "철회됨",
+    "notRegistered": "배틀리온 NFT 허용리스트에 등록되지 않았습니다.",
+    "notRegisteredHint": "배틀리온 NFT 페이지를 방문하여 등록하세요.",
+    "verifiedAt": "등록일: {{date}}",
+    "verifiedAtLabel": "등록일",
+    "handle": "핸들",
+    "status": "상태",
+    "walletAddress": "지갑 주소",
+    "withdraw": "허용리스트에서 철회",
+    "confirmWithdraw": "정말 배틀리온 NFT 허용리스트에서 철회하시겠습니까? 마음이 바뀌시면 나중에라도 이벤트 페이지에서 재등록하실 수 있습니다.",
+    "withdrawSuccess": "배틀리온 NFT 허용리스트에서 성공적으로 철회되었습니다.",
+    "withdrawError": "배틀리온 NFT 허용리스트 철회에 실패했습니다. 다시 시도해주세요.",
+    "alreadyWithdrawn": "이미 배틀리온 NFT에서 철회되었습니다.",
+    "signatureError": "서명 검증에 실패했습니다. 다시 시도해주세요."
+  },
+  "myAssets": {
+    "myAssets": "내 자산",
+    "noObject": "보유한 NASUN 오브젝트가 없습니다.",
+    "ethereumNFTs": "이더리움 NFT",
+    "suiObjects": "Nasun NFT"
+  },
+  "nft": {
+    "tier": "등급",
+    "name": "이름",
+    "description": "설명",
+    "network": "네트워크",
+    "claim_status": "클레임 상태",
+    "claimed": "클레임됨",
+    "unclaimed": "클레임하지 않음",
+    "projectUrl": "프로젝트 웹사이트",
+    "ipUrl": "브랜드 웹사이트",
+    "tokenId": "토큰 ID",
+    "contract": "컨트랙트",
+    "collection": "컬렉션",
+    "tokenType": "토큰 타입",
+    "balance": "보유 수량",
+    "floorPrice": "플로어 프라이스",
+    "attributes": "속성",
+    "viewOnEtherscan": "Etherscan에서 보기",
+    "viewOnOpenSea": "OpenSea에서 보기"
+  },
+  "rankHistory": {
+    "title": "순위 히스토리",
+    "description": "일자별 랭킹 변화를 그래프로 확인하세요",
+    "loginRequired": "순위 히스토리를 보려면 로그인하세요",
+    "twitterRequired": "순위 히스토리를 보려면 X 계정을 연결하세요",
+    "notConnected": "X 계정을 연결하고 커뮤니티 리더보드에 참여하세요.",
+    "notParticipating": "아직 리더보드에 참여하지 않으셨습니다. @{{targetAccount}}와 상호작용하시면 랭킹이 기록됩니다.",
+    "notParticipatingInPeriodOngoing": "아직 {{periodName}}에 참여하지 않으셨습니다. @{{targetAccount}}와 상호작용하시면 랭킹이 기록됩니다.",
+    "notParticipatingInPeriodEnded": "{{periodName}}에 참여하지 않으셨습니다. 이 이벤트는 종료되었습니다.",
+    "periods": {
+      "cumulative": "전체 리더보드",
+      "event1": "시즌 1",
+      "event2": "시즌 2",
+      "event3": "시즌 3"
+    },
+    "leaderboardTitles": {
+      "cumulative": "누적 리더보드",
+      "event1": "시즌 1 리더보드",
+      "event2": "시즌 2 리더보드",
+      "event3": "시즌 3 리더보드"
+    },
+    "dateRange": "기간",
+    "loading": "히스토리 데이터를 불러오는 중...",
+    "error": "히스토리 데이터 로드 실패",
+    "unknownError": "알 수 없는 오류가 발생했습니다.",
+    "noData": "아직 순위 히스토리가 없습니다",
+    "noDataDescription": "선택한 기간 동안 랭킹 데이터가 없습니다.",
+    "viewLeaderboard": "리더보드 보기",
+    "chart": {
+      "rank": "순위",
+      "score": "점수",
+      "yAxisLabel": "순위",
+      "noData": "데이터가 없습니다"
+    },
+    "stats": {
+      "current": "현재",
+      "best": "최상위",
+      "worst": "최하위",
+      "change": "변화",
+      "bestRank": "최고 순위",
+      "averageRank": "평균 순위",
+      "scoreIncrease": "점수 증가",
+      "rankImprovement": "순위 변화",
+      "totalDays": "총 {{days}}일 활동"
+    },
+    "share": {
+      "button": "X에 공유",
+      "processing": "처리 중...",
+      "message": "NASUN에서 나의 랭킹 히스토리를 확인해보세요! 📊\n\n#{{hashtag}}",
+      "hashtag": "웹3",
+      "success": "📋 이미지가 클립보드에 복사되었습니다! X를 여는 중...",
+      "instruction": "💡 Ctrl+V (Mac은 Cmd+V)로 이미지를 붙여넣으세요",
+      "error": {
+        "noChart": "차트를 찾을 수 없습니다",
+        "clipboardNotSupported": "이 브라우저에서는 클립보드 API가 지원되지 않습니다",
+        "captureFailed": "차트 이미지 캡처에 실패했습니다",
+        "generic": "공유에 실패했습니다. 다시 시도해주세요."
+      }
+    }
+  },
+  "accountDeletion": {
+    "title": "계정 삭제",
+    "description": "이 작업은 되돌릴 수 없습니다. 계정 비활성화 후 7일이 지나면 모든 관련 데이터가 영구적으로 삭제됩니다.",
+    "button": "회원 탈퇴 신청",
+    "confirm": "회원 탈퇴를 신청하시겠습니까?\n\n신청 시 계정은 즉시 비활성화되며, 7일의 유예 기간이 주어집니다. 7일 후에는 모든 데이터가 영구적으로 삭제됩니다.",
+    "success": "탈퇴 신청이 정상적으로 처리되었습니다. 7일 후에 계정이 영구적으로 삭제됩니다.",
+    "error": "오류가 발생하여 회원 탈퇴에 실패했습니다: {{error}}"
+  },
+  "loading": "로딩 중...",
+  "loadingSui": "Nasun NFT를 불러오는 중 오류가 발생했습니다:",
+  "loadingEthereum": "이더리움 NFT를 불러오는 중 오류가 발생했습니다:",
+  "walletNotConnected": "지갑이 연결되지 않았습니다."
+}

@@ -1,6 +1,5 @@
 import { memo } from "react";
 import { useMyRank } from "../../../hooks/useMyRank";
-import { useAuth } from "@/features/auth";
 import { RankedCard } from "./RankedCard";
 import { ConnectTwitterCard } from "./ConnectTwitterCard";
 import { NotRankedCard } from "./NotRankedCard";
