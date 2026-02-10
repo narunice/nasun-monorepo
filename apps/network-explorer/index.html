@@ -5,7 +5,7 @@
     <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nasun Explorer</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://ipfs.io https://*.ipfs.io https://*.googleusercontent.com data:; media-src 'self' https://ipfs.io data:; font-src 'self'; connect-src 'self' https://rpc.devnet.nasun.io https://faucet.devnet.nasun.io https://*.execute-api.ap-northeast-2.amazonaws.com https://accounts.google.com https://www.googleapis.com https://*.walletconnect.com wss://*.walletconnect.com wss://*.walletconnect.org; frame-src 'none'; object-src 'none';">
+    <!-- CSP enforced via nginx HTTP header (/etc/nginx/snippets/explorer-security-headers.conf) -->
   </head>
   <body>
     <div id="root"></div>
