@@ -11,6 +11,7 @@ import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useMarginAccount, useRiskEngine } from '../../core/unified-margin';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
+import { waitForTxIndexing } from '../../../lib/tx-helpers';
 import type { PredictionMarket } from '../types';
 import { calculateProbability } from '../types';
 
@@ -167,11 +168,9 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const handleNusdcFaucet = useCallback(async () => {
     const result = await requestNusdc();
     if (result.success) {
+      if (result.digest) await waitForTxIndexing(result.digest);
+      queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
       setSuccess('100,000 NUSDC received!');
-      // Refresh balance after 2 seconds
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
-      }, 2000);
     } else {
       setError(result.error || 'Failed to get NUSDC');
     }

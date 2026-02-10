@@ -9,6 +9,7 @@ import { MnemonicBackup } from '@nasun/wallet-ui';
 import { Header, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { useTrading } from './features/trading/useTrading';
+import { waitForTxIndexing } from './lib/tx-helpers';
 import { OfflineBanner } from './components/common/OfflineBanner';
 
 // ============================================
@@ -60,16 +61,23 @@ export default function App() {
   const { requestNbtc, requestNusdc } = useTrading();
 
   // Register NBTC/NUSDC faucet handlers (requires wallet signing)
+  // waitForTxIndexing ensures RPC has indexed the tx before wallet-ui refreshes balance
   useEffect(() => {
     registerTokenFaucet('NBTC', {
       request: async () => {
         const result = await requestNbtc();
+        if (result.success && result.digest) {
+          await waitForTxIndexing(result.digest);
+        }
         return result.success;
       },
     });
     registerTokenFaucet('NUSDC', {
       request: async () => {
         const result = await requestNusdc();
+        if (result.success && result.digest) {
+          await waitForTxIndexing(result.digest);
+        }
         return result.success;
       },
     });
