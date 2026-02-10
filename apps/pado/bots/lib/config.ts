@@ -64,6 +64,9 @@ export interface MarketConfig {
   defaultLevelSpacing: number; // Default level spacing in bps (per-market)
   defaultSpreadBps: number;    // Default spread in bps (per-market)
   defaultMaxArbQuantity: number; // Default max arb quantity (per-market)
+  defaultMaxOrderSize: number; // Default max order size (per-market)
+  faucetBaseAmount: number;    // Base tokens received per faucet call (for accumulation calc)
+  startupDelayMs: number;      // Staggered startup delay to avoid gas coin contention
   faucetType: 'v1' | 'v2'; // Which faucet module to use for base token
 }
 
@@ -85,6 +88,9 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultLevelSpacing: 8,
     defaultSpreadBps: 20,
     defaultMaxArbQuantity: 0.01,
+    defaultMaxOrderSize: 0.1,
+    faucetBaseAmount: 1.0,   // V1 faucet: 1 NBTC per call
+    startupDelayMs: 0,
     faucetType: 'v1',
   },
   NETH: {
@@ -100,10 +106,13 @@ export const MARKETS: Record<string, MarketConfig> = {
     binanceSymbol: 'ETHUSDT',
     defaultMinPrice: 1000,
     defaultMaxPrice: 10000,
-    defaultOrderSize: 0.1,
+    defaultOrderSize: 0.01,
     defaultLevelSpacing: 12,
     defaultSpreadBps: 30,
     defaultMaxArbQuantity: 0.5,
+    defaultMaxOrderSize: 1.0,
+    faucetBaseAmount: 0.1,   // V2 faucet: 0.1 NETH per call
+    startupDelayMs: 5000,
     faucetType: 'v2',
   },
   NSOL: {
@@ -119,10 +128,13 @@ export const MARKETS: Record<string, MarketConfig> = {
     binanceSymbol: 'SOLUSDT',
     defaultMinPrice: 10,
     defaultMaxPrice: 1000,
-    defaultOrderSize: 10,
+    defaultOrderSize: 1,
     defaultLevelSpacing: 15,
     defaultSpreadBps: 40,
     defaultMaxArbQuantity: 10,
+    defaultMaxOrderSize: 100,
+    faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call
+    startupDelayMs: 10000,
     faucetType: 'v2',
   },
 };
@@ -188,7 +200,7 @@ export function loadConfig(): LPConfig {
     refillThresholdBase: parseFloat(process.env.LP_REFILL_THRESHOLD_BASE || '0.5'),
     refillThresholdQuote: parseFloat(process.env.LP_REFILL_THRESHOLD_QUOTE || '50000'),
 
-    maxOrderSize: parseFloat(process.env.LP_MAX_ORDER_SIZE || '0.1'),
+    maxOrderSize: parseFloat(process.env.LP_MAX_ORDER_SIZE || String(MARKET.defaultMaxOrderSize)),
     minSpreadBps: parseInt(process.env.LP_MIN_SPREAD_BPS || '10', 10),
     maxConsecutiveFailures: parseInt(process.env.LP_MAX_FAILURES || '5', 10),
     minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || String(MARKET.defaultMinPrice)),
@@ -213,6 +225,12 @@ export function loadConfig(): LPConfig {
   }
   if (config.orderSize <= 0) {
     throw new Error('LP_ORDER_SIZE must be positive');
+  }
+  if (config.maxOrderSize <= 0) {
+    throw new Error('LP_MAX_ORDER_SIZE must be positive');
+  }
+  if (config.maxOrderSize < config.orderSize) {
+    throw new Error('LP_MAX_ORDER_SIZE must be >= LP_ORDER_SIZE');
   }
   if (config.minPriceUsd >= config.maxPriceUsd) {
     throw new Error('LP_MIN_PRICE must be less than LP_MAX_PRICE');

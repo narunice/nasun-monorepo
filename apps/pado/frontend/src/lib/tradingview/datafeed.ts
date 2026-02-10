@@ -57,12 +57,12 @@ const PRICESCALE_MAP: Record<string, number> = {
   NASUN: 10000, // 4 decimal places for NASUN
 };
 
-// Approximate prices for fallback when Binance API is unavailable
+// Approximate prices for fallback when Binance API is unavailable (updated 2026-02)
 const FALLBACK_PRICES: Record<string, number> = {
-  NBTC: 95000,
-  NETH: 3500,
-  NSOL: 200,
-  NASUN: 0.15,
+  NBTC: 69000,
+  NETH: 2000,
+  NSOL: 85,
+  NASUN: 0.10,
 };
 
 const BINANCE_API = 'https://api.binance.com/api/v3';
@@ -341,7 +341,7 @@ export class PadoDatafeed implements IDatafeedChartApi {
         });
     } else {
       // Generate simulated data for unsupported tokens
-      const basePrice = market.baseSymbol === 'NASUN' ? 0.15 : 100;
+      const basePrice = FALLBACK_PRICES[market.baseSymbol] ?? 100;
       const bars = generateSimulatedBars(from, to, resolution, basePrice);
 
       if (bars.length > 0) {

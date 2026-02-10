@@ -41,10 +41,10 @@ const priceCache: Map<TokenSymbol, CachedPrice> = new Map();
 // Fallback prices when oracle is unavailable or stale
 const SIMULATED_PRICES: Record<TokenSymbol, number> = {
   NASUN: 0.10,    // $0.10 per NASUN
-  NBTC: 97000,    // $97,000 per BTC
+  NBTC: 69000,    // ~$69,000 per BTC (updated 2026-02)
   NUSDC: 1.00,    // $1.00 per USDC (stablecoin)
-  NETH: 3500,     // $3,500 per ETH
-  NSOL: 200,      // $200 per SOL
+  NETH: 2000,     // ~$2,000 per ETH (updated 2026-02)
+  NSOL: 85,       // ~$85 per SOL (updated 2026-02)
 };
 
 // Fallback 24h changes (used only when no real data is available)

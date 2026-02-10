@@ -147,6 +147,8 @@ case $ACTION in
     log_info "봇 코드 동기화 중..."
     rsync -avz --progress -e "ssh -i $PEM_KEY_EXPANDED" \
       --exclude 'node_modules' \
+      --exclude '.env' \
+      --exclude '.env.*' \
       --exclude '.lp-bot-state-*.json' \
       --exclude 'data' \
       --exclude 'logs' \
