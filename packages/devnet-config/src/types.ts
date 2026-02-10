@@ -89,6 +89,10 @@ export interface BaramConfig {
   aerUpgradeCap: ObjectId;
   // Budget type origin (package ID where budget module was first introduced)
   budgetTypeOrigin: ObjectId;
+  // Agent Profile
+  agentPackageId: ObjectId;
+  agentProfileRegistry: ObjectId;
+  agentUpgradeCap: ObjectId;
   // Beta Access NFT
   betaAccessRegistry: ObjectId | '';
   betaAccessAdmin: ObjectId | '';
