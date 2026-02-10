@@ -72,16 +72,9 @@ export class EventService {
     this.poolFilter = poolId || null;
 
     try {
-      // Try WebSocket first
-      const wsSuccess = await this.tryWebSocket();
-      if (wsSuccess) {
-        this.setMode('websocket');
-        console.log('[EventService] Connected via WebSocket');
-        this.isConnecting = false;
-        return this.mode;
-      }
-
-      // Fall back to polling
+      // Nasun devnet does not support WebSocket subscriptions.
+      // Skip WS to avoid reconnect spam from the Sui SDK.
+      // Fall back to polling directly.
       const pollingSuccess = await this.tryPolling();
       if (pollingSuccess) {
         this.setMode('polling');

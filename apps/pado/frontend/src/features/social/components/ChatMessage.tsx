@@ -23,6 +23,33 @@ function formatTime(timestamp: number): string {
   return date.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+/** Date key for grouping (YYYY-MM-DD in user's local timezone) */
+export function getDateKey(timestamp: number): string {
+  const d = new Date(timestamp);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Date label for divider: "Today", "Yesterday", or "Wed, Feb 5, 2026" */
+export function formatDateLabel(timestamp: number): string {
+  const msgDate = new Date(timestamp);
+  const now = new Date();
+
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+
+  if (msgDay.getTime() === today.getTime()) return 'Today';
+  if (msgDay.getTime() === yesterday.getTime()) return 'Yesterday';
+
+  return msgDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: msgDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+}
+
 function formatSender(message: ChatMessageType): string {
   const suffix = message.sender.slice(-4);
   if (message.senderNickname) {

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { ChatMessage } from './ChatMessage';
+import { Fragment, useEffect, useRef } from 'react';
+import { ChatMessage, getDateKey, formatDateLabel } from './ChatMessage';
 import type { ChatMessage as ChatMessageType } from '../types';
 import type { ChatTextSize } from '../hooks/useChatTextSize';
 
@@ -63,16 +63,31 @@ export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore,
           Load older messages
         </button>
       )}
-      {messages.map((msg) => (
-        <ChatMessage
-          key={msg.id}
-          message={msg}
-          isOwnMessage={
-            !!currentAddress && msg.sender.toLowerCase() === currentAddress.toLowerCase()
-          }
-          textSize={textSize}
-        />
-      ))}
+      {messages.map((msg, i) => {
+        const prevMsg = i > 0 ? messages[i - 1] : null;
+        const showDateDivider = !prevMsg || getDateKey(msg.timestamp) !== getDateKey(prevMsg.timestamp);
+
+        return (
+          <Fragment key={msg.id}>
+            {showDateDivider && (
+              <div className="flex items-center gap-2 py-2">
+                <div className="flex-1 border-t border-theme-border/40" />
+                <span className="text-[10px] text-theme-text-muted shrink-0">
+                  {formatDateLabel(msg.timestamp)}
+                </span>
+                <div className="flex-1 border-t border-theme-border/40" />
+              </div>
+            )}
+            <ChatMessage
+              message={msg}
+              isOwnMessage={
+                !!currentAddress && msg.sender.toLowerCase() === currentAddress.toLowerCase()
+              }
+              textSize={textSize}
+            />
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
