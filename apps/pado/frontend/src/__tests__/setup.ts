@@ -64,6 +64,73 @@ Object.defineProperty(window, 'Notification', {
   },
 });
 
+// Mock Canvas 2D context (jsdom doesn't support Canvas API)
+function createMockCanvasContext(): Record<string, unknown> {
+  const mockGradient = {
+    addColorStop: vi.fn(),
+  };
+  return {
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+    font: '',
+    textAlign: 'left',
+    textBaseline: 'alphabetic',
+    globalAlpha: 1,
+    fillRect: vi.fn(),
+    strokeRect: vi.fn(),
+    clearRect: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    beginPath: vi.fn(),
+    closePath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    arc: vi.fn(),
+    arcTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    bezierCurveTo: vi.fn(),
+    rect: vi.fn(),
+    fillText: vi.fn(),
+    strokeText: vi.fn(),
+    measureText: vi.fn(() => ({ width: 50 })),
+    createLinearGradient: vi.fn(() => mockGradient),
+    createRadialGradient: vi.fn(() => mockGradient),
+    save: vi.fn(),
+    restore: vi.fn(),
+    scale: vi.fn(),
+    rotate: vi.fn(),
+    translate: vi.fn(),
+    setTransform: vi.fn(),
+    drawImage: vi.fn(),
+    clip: vi.fn(),
+    getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+    putImageData: vi.fn(),
+  };
+}
+
+const originalGetContext = HTMLCanvasElement.prototype.getContext;
+HTMLCanvasElement.prototype.getContext = function (contextId: string, ...args: unknown[]) {
+  if (contextId === '2d') {
+    return createMockCanvasContext() as unknown as CanvasRenderingContext2D;
+  }
+  return originalGetContext.call(this, contextId, ...args) as null;
+} as typeof HTMLCanvasElement.prototype.getContext;
+
+// Mock canvas.toBlob (jsdom doesn't support it)
+HTMLCanvasElement.prototype.toBlob = function (
+  callback: BlobCallback,
+  type?: string,
+) {
+  const blob = new Blob(['mock-canvas-data'], { type: type || 'image/png' });
+  callback(blob);
+};
+
+// Mock canvas.toDataURL
+HTMLCanvasElement.prototype.toDataURL = function () {
+  return 'data:image/png;base64,mockdata';
+};
+
 // Clear localStorage and mocks between tests
 beforeEach(() => {
   localStorageMock.clear();

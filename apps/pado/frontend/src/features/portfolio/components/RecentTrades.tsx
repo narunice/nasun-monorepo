@@ -8,6 +8,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 import { generateCsv, downloadCsv } from '../../../lib/csv-export';
 import { useNow } from '@/hooks/useNow';
+import { ShareTradeButton } from '../../social/components/ShareTradeButton';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -81,11 +82,22 @@ function TradeCard({ trade }: TradeRowProps) {
         </div>
         <span className="text-xs text-theme-text-muted">{formatTime(trade.timestamp)}</span>
       </div>
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between items-center text-sm">
         <span className="text-theme-text-secondary">
           {formatQuantity(trade.quantity)} @ {formatPrice(trade.price)}
         </span>
-        <span className="font-medium">${trade.total.toFixed(2)}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-medium">${trade.total.toFixed(2)}</span>
+          <ShareTradeButton
+            pair={trade.poolName}
+            side={trade.side === 'buy' ? 'BUY' : 'SELL'}
+            price={trade.price}
+            quantity={trade.quantity}
+            total={trade.total}
+            txDigest={trade.txDigest.slice(0, 8) + '...' + trade.txDigest.slice(-4)}
+            timestamp={trade.timestamp}
+          />
+        </div>
       </div>
     </div>
   );
@@ -122,6 +134,17 @@ function TradeRow({ trade }: TradeRowProps) {
       </td>
       <td className="py-2.5 px-3 text-right text-xs text-theme-text-muted">
         {formatTime(trade.timestamp)}
+      </td>
+      <td className="py-2.5 px-1 text-center">
+        <ShareTradeButton
+          pair={trade.poolName}
+          side={trade.side === 'buy' ? 'BUY' : 'SELL'}
+          price={trade.price}
+          quantity={trade.quantity}
+          total={trade.total}
+          txDigest={trade.txDigest.slice(0, 8) + '...' + trade.txDigest.slice(-4)}
+          timestamp={trade.timestamp}
+        />
       </td>
     </tr>
   );
@@ -223,6 +246,7 @@ function TradeListContent({ filteredTrades, displayedTrades, hasMore, isExpanded
               <th className="py-2 px-3 text-right font-medium">Amount</th>
               <th className="py-2 px-3 text-right font-medium">Total</th>
               <th className="py-2 px-3 text-right font-medium">Time</th>
+              <th className="py-2 px-1 w-8"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-theme-border">
