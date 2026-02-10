@@ -9,7 +9,11 @@
     "liquidation-keeper": "tsx liquidation-keeper.ts",
     "liquidation-keeper:once": "tsx liquidation-keeper.ts --once",
     "lp-bot": "node --env-file=.env --import tsx lp-bot.ts",
-    "lp-bot:once": "node --env-file=.env --import tsx lp-bot.ts --once"
+    "lp-bot:once": "node --env-file=.env --import tsx lp-bot.ts --once",
+    "lp-bot:nbtc": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts",
+    "lp-bot:neth": "LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts",
+    "lp-bot:nsol": "LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts",
+    "lp-bot:all": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts & wait"
   },
   "dependencies": {
     "@mysten/sui": "^1.21.1"
