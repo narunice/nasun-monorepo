@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useToast } from '@/components/common';
 import { useOrderbook, useOpenOrders, useOrderActions, useOrderFillNotifier, type TradeMode } from '../hooks';
 import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
@@ -135,6 +136,7 @@ interface TradingPanelProps {
 
 export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const isSimple = mode === 'simple';
+  const { showToast } = useToast();
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
