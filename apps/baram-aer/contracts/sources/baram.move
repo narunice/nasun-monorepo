@@ -6,6 +6,7 @@
 /// 1. Executor submits proof -> payment released to executor
 /// 2. Timeout reached -> user can claim refund
 /// 3. User cancels before execution -> user gets refund
+#[allow(lint(self_transfer))]
 module baram::baram {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
@@ -27,6 +28,7 @@ module baram::baram {
     const E_TIMEOUT_NOT_REACHED: u64 = 7;
     const E_TIMEOUT_REACHED: u64 = 8;
     const E_INVALID_RESULT_HASH: u64 = 9;
+    const E_INVALID_PRICE: u64 = 10;
 
     // ========== Constants ==========
     const STATUS_PENDING: u8 = 0;
@@ -90,6 +92,20 @@ module baram::baram {
         model: String,
         created_at: u64,
         timeout_at: u64,
+    }
+
+    /// Hot-potato receipt proving a settlement occurred.
+    /// Has NO `drop` ability — must be consumed by AER module.
+    /// Ensures every settlement generates an audit report.
+    public struct SettlementReceipt {
+        request_id: u64,
+        requester: address,
+        executor: address,
+        price: u64,
+        model: String,
+        result_hash: vector<u8>,
+        execution_time_ms: u64,
+        settled_at: u64,
     }
 
     // ========== Events ==========
@@ -373,6 +389,90 @@ module baram::baram {
         transfer::public_transfer(payout_coin, sender);
     }
 
+    /// Submit execution proof and receive payment + SettlementReceipt.
+    /// The receipt MUST be consumed by AER module (hot-potato pattern).
+    /// Use in a PTB: submit_proof_with_receipt -> aer::create_report_with_receipt
+    public fun submit_proof_with_receipt(
+        registry: &mut BaramRegistry,
+        request_id: u64,
+        result_hash: vector<u8>,
+        execution_time_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): SettlementReceipt {
+        assert!(table::contains(&registry.requests, request_id), E_REQUEST_NOT_FOUND);
+        let request = table::borrow_mut(&mut registry.requests, request_id);
+
+        // Validations
+        let sender = tx_context::sender(ctx);
+        assert!(request.executor == sender, E_NOT_EXECUTOR);
+        assert!(
+            request.status == STATUS_PENDING || request.status == STATUS_EXECUTING,
+            E_ALREADY_SETTLED
+        );
+        assert!(vector::length(&result_hash) == PROMPT_HASH_LENGTH, E_INVALID_RESULT_HASH);
+
+        let now = clock.timestamp_ms();
+        assert!(now < request.timeout_at, E_TIMEOUT_REACHED);
+
+        // Update request
+        request.status = STATUS_COMPLETED;
+        request.result_hash = result_hash;
+        request.execution_time_ms = execution_time_ms;
+        request.completed_at = now;
+
+        // Update registry stats
+        registry.total_completed = registry.total_completed + 1;
+
+        // Transfer payment to executor
+        let payout = balance::value(&request.escrow);
+        let payout_balance = balance::withdraw_all(&mut request.escrow);
+        let payout_coin = coin::from_balance(payout_balance, ctx);
+
+        // Emit event
+        event::emit(RequestSettled {
+            request_id,
+            executor: sender,
+            result_hash,
+            execution_time_ms,
+            payout,
+        });
+
+        transfer::public_transfer(payout_coin, sender);
+
+        // Return hot-potato receipt (MUST be consumed by AER module)
+        SettlementReceipt {
+            request_id,
+            requester: request.requester,
+            executor: sender,
+            price: request.price,
+            model: request.model,
+            result_hash,
+            execution_time_ms,
+            settled_at: now,
+        }
+    }
+
+    /// Consume a SettlementReceipt and return its fields.
+    /// Called by the AER module to create an AIExecutionReport.
+    /// This destroys the hot-potato, satisfying Move's linearity requirement.
+    public fun consume_receipt(
+        receipt: SettlementReceipt
+    ): (u64, address, address, u64, String, vector<u8>, u64, u64) {
+        let SettlementReceipt {
+            request_id,
+            requester,
+            executor,
+            price,
+            model,
+            result_hash,
+            execution_time_ms,
+            settled_at,
+        } = receipt;
+
+        (request_id, requester, executor, price, model, result_hash, execution_time_ms, settled_at)
+    }
+
     // ========== View Functions ==========
 
     /// Get request status (returns 255 if not found)
@@ -436,8 +536,9 @@ module baram::baram {
 
     // ========== Budget Integration ==========
 
-    /// Create a request using Budget delegation (for AI agents)
-    /// The agent must be authorized by the Budget owner
+    /// DEPRECATED: Use create_request_with_budget_v2 instead.
+    /// This v1 function always charges max_per_request regardless of actual cost,
+    /// leading to systematic overcharging. Kept for signature compatibility only.
     public entry fun create_request_with_budget(
         registry: &mut BaramRegistry,
         budget: &mut baram::budget::Budget,
@@ -465,6 +566,93 @@ module baram::baram {
             model,
             executor,
             request_id,
+            clock,
+            ctx
+        );
+
+        // Increment counters
+        registry.next_request_id = request_id + 1;
+        registry.total_requests = registry.total_requests + 1;
+        registry.total_volume = registry.total_volume + price;
+
+        // Create request with budget owner as requester (not the agent)
+        let requester = baram::budget::get_owner(budget);
+
+        let request = ComputeRequest {
+            request_id,
+            requester,
+            executor,
+            escrow: payment_balance,
+            price,
+            prompt_hash,
+            model,
+            created_at: now,
+            timeout_at: now + DEFAULT_TIMEOUT_MS,
+            completed_at: 0,
+            status: STATUS_PENDING,
+            result_hash: vector::empty(),
+            execution_time_ms: 0,
+        };
+
+        // Store request
+        table::add(&mut registry.requests, request_id, request);
+
+        // Create receipt NFT for requester (budget owner)
+        let receipt = RequestReceipt {
+            id: object::new(ctx),
+            request_id,
+            requester,
+            executor,
+            price,
+            prompt_hash,
+            model,
+            created_at: now,
+            timeout_at: now + DEFAULT_TIMEOUT_MS,
+        };
+
+        // Emit event
+        event::emit(RequestCreated {
+            request_id,
+            requester,
+            executor,
+            price,
+            prompt_hash,
+            model,
+            timeout_at: now + DEFAULT_TIMEOUT_MS,
+        });
+
+        // Transfer receipt to requester (budget owner)
+        transfer::transfer(receipt, requester);
+    }
+
+    /// Create a request using Budget with category + time-windowed limit enforcement
+    /// Enhanced version of create_request_with_budget that uses SpendingLimits
+    public entry fun create_request_with_budget_v2(
+        registry: &mut BaramRegistry,
+        budget: &mut baram::budget::Budget,
+        prompt_hash: vector<u8>,
+        model: String,
+        executor: address,
+        price: u64,
+        category: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        // Validations
+        assert!(vector::length(&prompt_hash) == PROMPT_HASH_LENGTH, E_INVALID_PROMPT_HASH);
+        assert!(price >= MIN_PRICE, E_INVALID_PRICE);
+
+        let now = clock.timestamp_ms();
+        let request_id = registry.next_request_id;
+
+        // Spend from budget with category + limit enforcement
+        let payment_balance = baram::budget::spend_from_budget_with_category(
+            budget,
+            price,
+            model,
+            executor,
+            request_id,
+            category,
             clock,
             ctx
         );

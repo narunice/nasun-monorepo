@@ -39,6 +39,13 @@ export const EXECUTOR_CONFIG = {
 // AER (AI Execution Report) Configuration
 export const AER_CONFIG = {
   packageId: import.meta.env.VITE_AER_PACKAGE_ID || BARAM.aerPackageId,
+  registryId: BARAM.aerRegistry,
+} as const;
+
+// Agent Profile Configuration
+export const AGENT_CONFIG = {
+  packageId: BARAM.agentPackageId,
+  registryId: BARAM.agentProfileRegistry,
 } as const;
 
 // AER status names — mirrors aer.move constants

@@ -32,6 +32,9 @@ module baram_aer::aer {
     const E_INVALID_INPUT_HASH: u64 = 401;
     const E_INVALID_OUTPUT_HASH: u64 = 402;
     const E_DELEGATION_PATH_TOO_LONG: u64 = 403;
+    const E_EXECUTOR_MISMATCH: u64 = 404;
+    const E_DEPRECATED: u64 = 405;
+    const E_INVALID_INITIATOR: u64 = 406;
 
     // ========== Constants ==========
     const HASH_LENGTH: u64 = 32;          // SHA-256
@@ -205,9 +208,10 @@ module baram_aer::aer {
 
     /// Create an AI Execution Report after settlement.
     ///
-    /// Called by the executor in the same PTB as submit_proof for atomicity.
-    /// All data is passed as parameters — no cross-package reads.
-    /// The report is transferred to the initiator as proof.
+    /// DEPRECATED: Always aborts with E_DEPRECATED (405).
+    /// Use create_report_with_receipt instead for receipt-verified audit trails.
+    /// Signature preserved for Sui compatible upgrade policy.
+    #[allow(unused_variable)]
     public fun create_report(
         registry: &mut AERRegistry,
         // 1. WHO — Requester
@@ -250,6 +254,64 @@ module baram_aer::aer {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // DEPRECATED: Use create_report_with_receipt instead.
+        // This function has no access control — anyone can forge fake AER records.
+        abort E_DEPRECATED
+    }
+
+    /// Create an AI Execution Report by consuming a SettlementReceipt (hot-potato).
+    ///
+    /// Ensures every settlement produces an audit trail. The receipt is destroyed
+    /// here, satisfying Move's linearity requirement.
+    ///
+    /// PTB flow: submit_proof_with_receipt -> create_report_with_receipt
+    ///
+    /// Fields extracted from receipt: request_id, requester (-> authorizer),
+    /// executor, price (-> payment_amount), model (-> model_name),
+    /// result_hash (-> output_hash), execution_time_ms, settled_at
+    public fun create_report_with_receipt(
+        registry: &mut AERRegistry,
+        receipt: baram::baram::SettlementReceipt,
+        // 1. WHO — Requester (authorizer comes from receipt as requester)
+        initiator: address,
+        delegation_path: vector<address>,
+        // 2. WHO — Executor (executor comes from receipt; principal is optional)
+        executor_principal: Option<address>,
+        // 3. HOW MUCH (payment_amount comes from receipt price)
+        fee_detail: Option<String>,
+        budget_id: Option<ID>,
+        budget_remaining: Option<u64>,
+        // 4. WHAT (model_name, output_hash, execution_time_ms from receipt)
+        model_metadata: Option<String>,
+        input_hash: vector<u8>,
+        // 5. WHY
+        purpose: Option<String>,
+        constraints: Option<String>,
+        // 6. HOW TRUSTWORTHY
+        executor_tier: u8,
+        executor_reputation: u64,
+        executor_stake_amount: u64,
+        tee_verified: bool,
+        tee_attestation_hash: Option<vector<u8>>,
+        // 7. WHEN (settled_at from receipt)
+        requested_at: u64,
+        // 8. CHAIN
+        triggered_by: Option<ID>,
+        triggered_action: Option<ID>,
+        // System
+        ctx: &mut TxContext,
+    ) {
+        // Consume receipt — destroys the hot potato
+        let (request_id, requester, executor, price, model_name, output_hash, execution_time_ms, settled_at) =
+            baram::baram::consume_receipt(receipt);
+
+        // Validate: caller must be the executor from the receipt
+        assert!(executor == tx_context::sender(ctx), E_EXECUTOR_MISMATCH);
+
+        // Validate: initiator must match the receipt's requester to prevent
+        // sending AER reports to arbitrary addresses
+        assert!(initiator == requester, E_INVALID_INITIATOR);
+
         // Validate hashes
         assert!(
             vector::length(&input_hash) == HASH_LENGTH,
@@ -260,28 +322,26 @@ module baram_aer::aer {
             E_INVALID_OUTPUT_HASH,
         );
 
-        // Validate delegation path depth (D-6)
+        // Validate delegation path depth
         assert!(
             vector::length(&delegation_path) <= MAX_DELEGATION_DEPTH,
             E_DELEGATION_PATH_TOO_LONG,
         );
-
-        let now = clock.timestamp_ms();
 
         let report = AIExecutionReport {
             id: object::new(ctx),
             request_id,
             // 1. WHO — Requester
             initiator,
-            authorizer,
+            authorizer: requester,  // Budget owner or direct requester
             delegation_path,
             // 2. WHO — Executor
             executor,
             executor_principal,
             // 3. HOW MUCH
-            payment_amount,
-            payment_token,
-            executor_received,
+            payment_amount: price,
+            payment_token: TOKEN_NUSDC,  // Always NUSDC from baram escrow
+            executor_received: price,     // Full amount (no fee split yet)
             fee_detail,
             budget_id,
             budget_remaining,
@@ -293,7 +353,7 @@ module baram_aer::aer {
             execution_time_ms,
             // 5. WHY
             purpose,
-            policy_version,
+            policy_version: option::some(registry.policy_version),
             constraints,
             // 6. HOW TRUSTWORTHY
             executor_tier,
@@ -303,7 +363,7 @@ module baram_aer::aer {
             tee_attestation_hash,
             // 7. WHEN
             requested_at,
-            settled_at: now,
+            settled_at,
             status: STATUS_SETTLED,
             // 8. CHAIN
             triggered_by,
@@ -318,17 +378,17 @@ module baram_aer::aer {
             table::add(&mut registry.record_ids, request_id, record_id);
         };
 
-        // Emit event for off-chain indexing
+        // Emit event
         event::emit(ExecutionReportCreated {
             request_id,
             record_id,
             initiator,
             executor,
             model_name,
-            payment_amount,
+            payment_amount: price,
             executor_tier,
             tee_verified,
-            settled_at: now,
+            settled_at,
         });
 
         // Transfer to initiator as immutable proof

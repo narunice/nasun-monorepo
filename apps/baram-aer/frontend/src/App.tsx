@@ -1,31 +1,44 @@
 /**
- * Baram - Main App Component (Chat UI)
+ * Baram AER - Main App Component
  *
- * Uses ChatLayout with left sidebar for session management
- * and model selection. Executor is auto-assigned via weighted random.
+ * Dashboard-based layout with sidebar navigation:
+ * - / → Dashboard Overview
+ * - /agents → Agent List
+ * - /agents/:id → Agent Detail
+ * - /aer → Execution Report Timeline
+ * - /chat → Chat Interface (original Baram UI)
+ * - /callback → zkLogin OAuth callback
  */
 
-import { useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
-import { WalletConnect } from "@nasun/wallet-ui";
-import { ThemeProvider } from "./components/theme/ThemeProvider";
-import { ThemeToggle } from "./components/theme/ThemeToggle";
-import { ChatLayout } from "./layouts/ChatLayout";
-import { ChatInput } from "./components/input/ChatInput";
-import { WelcomeScreen } from "./components/empty/WelcomeScreen";
-import { LandingScreen } from "./components/empty/LandingScreen";
-import { MessageList } from "./components/chat/MessageList";
-import { AttestationDisplay } from "./features/request/components/AttestationDisplay";
-import { useWalletSession } from "./hooks/useWalletSession";
-import { useNFTGate } from "./hooks/useNFTGate";
-import { NFTGateScreen } from "./components/empty/NFTGateScreen";
-import { useRequestWithRetry } from "./features/request/hooks/useRequestWithRetry";
-import { NETWORK_CONFIG, ModelId, MODEL_PRICING } from "./config/network";
-import { useChatStore } from "./stores/chatStore";
-import AuthCallback from "./pages/AuthCallback";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { WalletConnect } from '@nasun/wallet-ui';
+import { ThemeProvider } from './components/theme/ThemeProvider';
+import { ThemeToggle } from './components/theme/ThemeToggle';
+import { DashboardLayout } from './layouts/DashboardLayout';
+import { ChatLayout } from './layouts/ChatLayout';
+import { ChatInput } from './components/input/ChatInput';
+import { WelcomeScreen } from './components/empty/WelcomeScreen';
+import { LandingScreen } from './components/empty/LandingScreen';
+import { MessageList } from './components/chat/MessageList';
+import { AttestationDisplay } from './features/request/components/AttestationDisplay';
+import { useWalletSession } from './hooks/useWalletSession';
+import { useNFTGate } from './hooks/useNFTGate';
+import { NFTGateScreen } from './components/empty/NFTGateScreen';
+import { useRequestWithRetry } from './features/request/hooks/useRequestWithRetry';
+import { NETWORK_CONFIG, ModelId, MODEL_PRICING } from './config/network';
+import { useChatStore } from './stores/chatStore';
+import AuthCallback from './pages/AuthCallback';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { DashboardOverview } from './pages/DashboardOverview';
+import { AgentList } from './pages/AgentList';
+import { AgentDetail } from './pages/AgentDetail';
+import { AERTimeline } from './pages/AERTimeline';
 
-function AppContent() {
+/**
+ * Chat page — preserves original Baram chat interface
+ */
+function ChatPage() {
   const { isConnected, walletAddress } = useWalletSession();
   const { hasAccess, isLoading: nftLoading } = useNFTGate(walletAddress);
   const {
@@ -39,7 +52,6 @@ function AppContent() {
     attestation,
   } = useRequestWithRetry();
 
-  // Chat store
   const messages = useChatStore((state) => state.messages);
   const createSession = useChatStore((state) => state.createSession);
   const activeSessionId = useChatStore((state) => state.activeSessionId);
@@ -47,14 +59,12 @@ function AppContent() {
   const privacyMode = useChatStore((state) => state.privacyMode);
   const setPrivacyMode = useChatStore((state) => state.setPrivacyMode);
 
-  // Auto-select model from privacy mode on mount
   useEffect(() => {
     if (!selectedModel) {
       setPrivacyMode(privacyMode);
     }
   }, [selectedModel, privacyMode, setPrivacyMode]);
 
-  // Create session if none exists
   useEffect(() => {
     if (isConnected && !activeSessionId) {
       createSession();
@@ -63,15 +73,10 @@ function AppContent() {
 
   const hasMessages = messages.length > 0 || isProcessing;
 
-  // Header
   const header = (
     <header className="border-b border-[var(--color-border)] px-4 py-3">
       <div className="max-w-3xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-[var(--color-text-primary)] md:hidden">
-            Baram
-          </span>
-        </div>
+        <span className="text-sm font-medium text-[var(--color-text-primary)] md:hidden">Baram</span>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <span className="text-xs text-[var(--color-text-muted)] px-2 py-1 rounded bg-[var(--color-bg-secondary)]">
@@ -83,7 +88,6 @@ function AppContent() {
     </header>
   );
 
-  // Input Area
   const inputArea = (
     <div className="space-y-2">
       <ChatInput
@@ -91,29 +95,25 @@ function AppContent() {
         disabled={isProcessing || !isConnected || !selectedExecutor || !hasAccess}
         placeholder={
           !isConnected
-            ? "Connect wallet to start..."
+            ? 'Connect wallet to start...'
             : executorsLoading
-              ? "Loading executors..."
+              ? 'Loading executors...'
               : executorsError
-                ? "Failed to load executors"
+                ? 'Failed to load executors'
                 : !selectedExecutor
-                  ? "No eligible executors available"
-                  : "Ask anything..."
+                  ? 'No eligible executors available'
+                  : 'Ask anything...'
         }
         privacyMode={privacyMode}
         onTogglePrivacy={(mode) => setPrivacyMode(mode)}
         modelName={selectedModel ? MODEL_PRICING[selectedModel as ModelId]?.name : undefined}
       />
-
-      {/* Request stats (only shown after a request) */}
       {(result?.requestId !== undefined || result?.executionTimeMs !== undefined) && (
         <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] px-1">
           {result?.requestId !== undefined && <span>Request #{result.requestId}</span>}
           {result?.executionTimeMs !== undefined && <span>{(result.executionTimeMs / 1000).toFixed(2)}s</span>}
         </div>
       )}
-
-      {/* Error Display */}
       {error && (
         <div className="p-2 bg-[var(--color-error)]/10 border border-[var(--color-error)]/30 rounded-lg">
           <p className="text-xs text-[var(--color-error)]">{error}</p>
@@ -148,7 +148,7 @@ function AppContent() {
             isProcessing={isProcessing}
             isTeeExecutor={
               (selectedExecutor?.teeType ?? 0) > 0 &&
-              MODEL_PRICING[selectedModel as ModelId]?.provider === "tee"
+              MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee'
             }
           />
           {selectedExecutor && attestation.isVerified && (
@@ -178,7 +178,21 @@ export default function App() {
       <ThemeProvider>
         <Routes>
           <Route path="/callback" element={<AuthCallback />} />
-          <Route path="*" element={<AppContent />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route
+            path="*"
+            element={
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<DashboardOverview />} />
+                  <Route path="/agents" element={<AgentList />} />
+                  <Route path="/agents/:id" element={<AgentDetail />} />
+                  <Route path="/aer" element={<AERTimeline />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </DashboardLayout>
+            }
+          />
         </Routes>
       </ThemeProvider>
     </ErrorBoundary>

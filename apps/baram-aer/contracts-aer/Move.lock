@@ -10,14 +10,38 @@ use_environment = "devnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
+[pinned.devnet.MoveStdlib_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "22f9fc9781732d651e18384c9a8eb1dabddf73a6" }
+use_environment = "devnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
 [pinned.devnet.Sui]
 source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 use_environment = "devnet"
 manifest_digest = "E2EF92175C2575B1EA85274B70A9CFD8DE08662B35A68669746BBE7BAC06C17A"
 deps = { MoveStdlib = "MoveStdlib" }
 
+[pinned.devnet.Sui_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "22f9fc9781732d651e18384c9a8eb1dabddf73a6" }
+use_environment = "devnet"
+manifest_digest = "E2EF92175C2575B1EA85274B70A9CFD8DE08662B35A68669746BBE7BAC06C17A"
+deps = { MoveStdlib = "MoveStdlib_1" }
+
+[pinned.devnet.baram]
+source = { local = "../contracts" }
+use_environment = "devnet"
+manifest_digest = "DCE7F3D99FFC9D98B7620FDBC2C2E8A867C6252D240B34D6FDD9F15A4F88BC45"
+deps = { devnet_tokens = "devnet_tokens", std = "MoveStdlib_1", sui = "Sui_1" }
+
 [pinned.devnet.baram_aer]
 source = { root = true }
+use_environment = "devnet"
+manifest_digest = "97F2E83A7A5539E2CF9554FFBEC456CB792A1C16FC36DC7FFE300D98AA24D1F1"
+deps = { MoveStdlib = "MoveStdlib", Sui = "Sui", baram = "baram" }
+
+[pinned.devnet.devnet_tokens]
+source = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tokens" }
 use_environment = "devnet"
 manifest_digest = "D753EFE50789161503BEDFF442C2F3653AE256963623AA8BF35DD0142DB99258"
 deps = { Sui = "Sui" }
