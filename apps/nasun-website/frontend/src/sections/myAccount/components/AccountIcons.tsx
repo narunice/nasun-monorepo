@@ -1,5 +1,3 @@
-import { FC } from "react";
-
 // Account icons
 export const AccountIcons: Record<string, React.ReactNode> = {
   twitter: <img src="/X_logo_2023.svg.png" alt="X" className="w-4 h-4 dark:invert" />,

@@ -2,7 +2,6 @@ import { useSuiClientQueries, useSuiClientQuery } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { VoteHistory, ProposalFields, ProposalStatus } from "../types/voting";
-import { SuiObjectData } from "@mysten/sui/client";
 
 interface VoteNftFields {
   proposal_id: string;

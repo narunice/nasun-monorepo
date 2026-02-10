@@ -1,0 +1,235 @@
+{
+  "hero": {
+    "title": "Baram",
+    "subtitle": "AI Compliance Settlement Layer",
+    "tagline": "감사 가능한 AI.",
+    "description": "모든 프롬프트는 암호화됩니다. 모든 응답도 암호화됩니다. 모든 실행은 기록됩니다. 모든 결제는 보장됩니다.",
+    "target": "감사 가능한 AI가 필요한 개발자, 기업, 규제 환경을 위해."
+  },
+  "problem": {
+    "sectionTitle": "문제",
+    "headline": "오늘날의 AI는 블랙박스입니다.",
+    "cards": {
+      "privacy": {
+        "title": "프라이버시 없음",
+        "description": "프롬프트와 응답이 평문으로 통제할 수 없는 서버를 통해 전송됩니다."
+      },
+      "payment": {
+        "title": "결제 보장 없음",
+        "description": "AI가 실패하거나 응답하지 않아도 결제는 돌아오지 않습니다."
+      },
+      "audit": {
+        "title": "감사 추적 없음",
+        "description": "누가, 어떤 모델로, 언제 처리했는지 증명할 수 없습니다."
+      }
+    },
+    "detail": {
+      "title": "기존 AI vs Baram",
+      "headers": {
+        "aspect": "항목",
+        "traditional": "기존 AI",
+        "baram": "Baram"
+      },
+      "rows": {
+        "privacy": {
+          "aspect": "E2E 프라이버시",
+          "traditional": "서버에 평문 전송",
+          "baram": "E2E 암호화 — 프롬프트와 응답 모두 사용자와 TEE만 복호화"
+        },
+        "payment": {
+          "aspect": "결제",
+          "traditional": "선결제, 실패 시 환불 불가",
+          "baram": "NUSDC 에스크로, 타임아웃 시 자동 환불"
+        },
+        "audit": {
+          "aspect": "감사 추적",
+          "traditional": "서버 로그 (변경 가능, 비공개)",
+          "baram": "온체인 컴플라이언스 레코드 (불변)"
+        },
+        "executor": {
+          "aspect": "실행자 신원",
+          "traditional": "불명 / 불투명",
+          "baram": "등록, 스테이킹, 온체인 티어"
+        },
+        "compliance": {
+          "aspect": "컴플라이언스 리스크",
+          "traditional": "증명 불가",
+          "baram": "암호학적으로 감사 가능"
+        }
+      }
+    }
+  },
+  "solution": {
+    "sectionTitle": "솔루션",
+    "headline": "암호화. 실행. 정산. 기록.",
+    "steps": {
+      "prompt": { "title": "프롬프트 입력", "subtitle": "사용자" },
+      "encrypt": { "title": "암호화", "subtitle": "E2E AES+RSA" },
+      "select": { "title": "자동 선택", "subtitle": "가중 랜덤" },
+      "tee": { "title": "TEE 추론", "subtitle": "Nitro Enclave" },
+      "settle": { "title": "정산", "subtitle": "NUSDC 지급" },
+      "record": { "title": "컴플라이언스 기록", "subtitle": "ECR 생성" }
+    },
+    "onChainBar": "온체인 레이어",
+    "contracts": {
+      "baram": "baram.move — 에스크로 & 정산",
+      "executor": "executor.move — 레지스트리 & 평판",
+      "compliance": "compliance.move — 감사 기록"
+    },
+    "detail": {
+      "title": "시스템 아키텍처",
+      "layers": {
+        "frontend": {
+          "title": "프론트엔드 레이어",
+          "items": ["React + Zustand UI", "E2E 암호화 (AES-256-GCM + RSA-OAEP)", "트랜잭션 빌더", "자동 Executor 선택"]
+        },
+        "blockchain": {
+          "title": "블록체인 레이어 (Nasun L1)",
+          "items": ["에스크로 & 정산 — 결제 잠금 및 지급", "Executor 레지스트리 — 신원 및 평판 관리", "스테이킹 & 슬래싱 — 경제적 보안 강제", "티어 시스템 — 자격 관리", "증명 레지스트리 — TEE 검증 베이스라인", "컴플라이언스 레코드 — 불변 감사 추적"]
+        },
+        "tee": {
+          "title": "TEE Executor 레이어",
+          "items": ["EC2 Host — HTTP 서버 + vsock 프록시", "Nitro Enclave — E2E 복호화, LLM 추론, E2E 응답 암호화", "NSM Attestation — COSE_Sign1 + PCR 해시", "로컬 LLaMA 3.2 3B — 완전 프라이버시 모드"]
+        }
+      }
+    }
+  },
+  "trust": {
+    "sectionTitle": "신뢰 모델",
+    "headline": "신뢰하지 마세요. 검증하세요.",
+    "pillars": {
+      "hardware": {
+        "title": "하드웨어 격리",
+        "description": "프롬프트와 응답 모두 E2E 암호화됩니다. TEE와 브라우저에서만 복호화됩니다. 호스트는 평문을 볼 수 없습니다."
+      },
+      "escrow": {
+        "title": "에스크로 정산",
+        "description": "실행 전 NUSDC가 잠깁니다. 타임아웃 시 자동 환불. 관리자 개입 없음."
+      },
+      "stake": {
+        "title": "Skin in the Game",
+        "description": "Executor는 NASUN 토큰을 스테이킹합니다. 사기 = 100% 슬래싱. 타임아웃 = 5% 슬래싱."
+      },
+      "compliance": {
+        "title": "컴플라이언스 레코드",
+        "description": "모든 실행은 불변의 온체인 기록을 생성합니다: executor 티어, 모델, TEE 유형, 타임스탬프."
+      }
+    },
+    "detail": {
+      "hardware": {
+        "title": "신뢰 경계",
+        "zones": ["브라우저 (신뢰) — AES 키 생성, 프롬프트 암호화, 응답 복호화", "네트워크 (비신뢰) — HTTPS를 통한 암호문만 전송", "호스트 (비신뢰) — HTTP 서버 + vsock 프록시, 암호문만 통과", "Enclave (신뢰) — 프롬프트 복호화, LLM 추론, 동일 AES 키로 응답 암호화"],
+        "note": "E2E 암호화로 사용자의 브라우저와 TEE만 평문을 볼 수 있습니다. 호스트, 네트워크, 블록체인은 프롬프트와 응답 내용에 접근할 수 없습니다."
+      },
+      "escrow": {
+        "title": "에스크로 상태 머신",
+        "states": {
+          "pending": "NUSDC 잠김, Executor 할당 대기",
+          "executing": "TEE 처리 중, 5분 타임아웃",
+          "completed": "증명 검증 완료, NUSDC를 Executor에게 지급",
+          "cancelled": "환불 — 사용자 취소 또는 실행 실패 시 자동 취소",
+          "timedOut": "Executor 실패, 전액 환불 + 슬래싱"
+        }
+      },
+      "stake": {
+        "title": "Executor 티어 & 스테이킹",
+        "formula": "tier = min(stake_tier, reputation_tier)",
+        "tiers": {
+          "open": "Tier 0 — 스테이킹/평판 불필요",
+          "bronze": "Tier 1 — 1,000+ NASUN 스테이킹, 300+ 평판",
+          "silver": "Tier 2 — 5,000+ NASUN 스테이킹, 500+ 평판",
+          "gold": "Tier 3 — 10,000+ NASUN 스테이킹, 700+ 평판"
+        },
+        "slashing": {
+          "timeout": "스테이킹의 5%",
+          "attestation": "스테이킹의 10%",
+          "fraud": "스테이킹의 100%"
+        },
+        "philosophy": "티어는 품질 보증이 아닙니다. 책임 신호입니다."
+      },
+      "compliance": {
+        "title": "실행 컴플라이언스 레코드 (ECR)",
+        "fields": ["request_id", "executor_address", "executor_tier (실행 시점 스냅샷)", "model_name", "tee_type", "timestamp", "status"],
+        "note": "컴플라이언스 레코드는 요청에 의해서가 아니라, 기본으로 생성됩니다."
+      }
+    }
+  },
+  "executor": {
+    "sectionTitle": "Executor 인프라",
+    "headline": "소프트웨어가 아닙니다. 인프라입니다.",
+    "cards": {
+      "teeWorkers": {
+        "title": "TEE Workers",
+        "description": "AI는 Nitro Enclave 내부에서 실행됩니다. 호스트조차 프롬프트와 응답을 볼 수 없습니다."
+      },
+      "stakeEarn": {
+        "title": "Stake & Earn",
+        "description": "NASUN을 스테이킹하여 자격을 얻고, 정산된 요청마다 NUSDC를 받습니다. 스테이킹은 자격 기준이지, 선택 빈도가 아닙니다."
+      },
+      "tierSystem": {
+        "title": "티어 시스템",
+        "description": "Bronze / Silver / Gold — 스테이킹과 평판 모두 충족해야 합니다. 티어는 자격 필터이지 우선순위가 아닙니다."
+      },
+      "autoSelection": {
+        "title": "공정한 선택",
+        "description": "가중치 상한이 있는 가중 랜덤 배정. 신규 Executor도 평판 500에서 시작하여 첫날부터 경쟁력이 있습니다."
+      }
+    },
+    "detail": {
+      "lifecycle": {
+        "title": "Executor 라이프사이클"
+      },
+      "tiers": {
+        "title": "티어 기준",
+        "formula": "tier = min(stake_tier, reputation_tier)",
+        "headers": {
+          "tier": "티어",
+          "stake": "최소 스테이킹",
+          "reputation": "최소 평판",
+          "eligible": "자격"
+        },
+        "rows": {
+          "open": { "tier": "Open (0)", "stake": "—", "reputation": "—", "eligible": "불가" },
+          "bronze": { "tier": "Bronze (1)", "stake": "1,000 NASUN", "reputation": "300", "eligible": "가능" },
+          "silver": { "tier": "Silver (2)", "stake": "5,000 NASUN", "reputation": "500", "eligible": "가능" },
+          "gold": { "tier": "Gold (3)", "stake": "10,000 NASUN", "reputation": "700", "eligible": "가능" }
+        },
+        "note": "티어는 자격 필터이지 선택 우선순위가 아닙니다. 같은 평판의 Gold Executor와 Bronze Executor는 동일한 선택 가중치를 가집니다."
+      },
+      "selection": {
+        "title": "선택 알고리즘",
+        "formula": "weight = min(0.3 + (reputation / 1000), 1.0)",
+        "items": [
+          "Bronze 이상만 자격 풀에 진입 — 스테이킹은 자격 기준이지 가중치가 아닙니다",
+          "가중치 상한 1.0 — 어떤 Executor도 평판만으로 독점할 수 없습니다",
+          "신규 Executor는 평판 500에서 시작 (가중치 0.8) — 첫날부터 경쟁력 있음",
+          "기본 가중치 0.3이 모든 자격 있는 Executor에게 공정한 기회를 보장합니다",
+          "사용자는 Executor를 선택할 수 없습니다 — 시스템이 가중 랜덤으로 배정합니다"
+        ]
+      },
+      "slashing": {
+        "title": "슬래싱 규칙",
+        "headers": {
+          "violation": "위반 유형",
+          "penalty": "스테이킹 패널티",
+          "reputation": "평판"
+        },
+        "rows": {
+          "timeout": { "violation": "실행 타임아웃", "penalty": "5%", "reputation": "-20" },
+          "attestation": { "violation": "증명 실패", "penalty": "10%", "reputation": "-20" },
+          "fraud": { "violation": "사기 / 조작", "penalty": "100%", "reputation": "-20" }
+        },
+        "dormancy": "30일간 비활성 Executor는 기간당 평판 50이 감소합니다. 누구나 이 감쇠를 permissionless로 트리거할 수 있습니다."
+      }
+    }
+  },
+  "architecture": {
+    "sectionTitle": "아키텍쳐",
+    "headline": "온체인 기반 구조",
+    "onChainLabel": "온체인 레이어 (Nasun L1)"
+  },
+  "common": {
+    "viewDetails": "기술 상세 보기",
+    "hideDetails": "상세 닫기"
+  }
+}

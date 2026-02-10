@@ -5,7 +5,7 @@
  * Challenge-response 인증 플로우를 위한 요청/응답 타입 포함
  */
 
-import { BrowserProvider, Eip1193Provider } from 'ethers';
+import { Eip1193Provider } from 'ethers';
 
 /**
  * MetaMask Challenge 요청
@@ -68,9 +68,9 @@ declare global {
   interface Window {
     ethereum?: Eip1193Provider & {
       isMetaMask?: boolean;
-      request: (args: { method: string; params?: any[] }) => Promise<any>;
-      on: (event: string, callback: (...args: any[]) => void) => void;
-      removeListener: (event: string, callback: (...args: any[]) => void) => void;
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, callback: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
     };
   }
 }

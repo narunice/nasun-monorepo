@@ -1,0 +1,234 @@
+{
+  "title": "Nasun",
+  "navigation": {
+    "home": "Home",
+    "protocol": "Protocol",
+    "network": "Protocol",
+    "nasunNetwork": "Nasun Network",
+    "devnetWallet": "Devnet & Wallet",
+    "protocolOverview": "Overview",
+    "governance": "Governance",
+    "identity": "Identity",
+    "litepaper": "Litepaper",
+    "infra": "Infra",
+    "infraOverview": "Infra Overview",
+    "aiExecutors": "AI Executors",
+    "compute": "Compute",
+    "storage": "Storage",
+    "streaming": "Streaming",
+    "gameServers": "Game Servers",
+    "ecosystem": "Ecosystem",
+    "baramAi": "Baram - AI",
+    "padoFinance": "Pado - Finance",
+    "financePado": "Pado - Finance",
+    "aiEconomy": "Baram - AI",
+    "genSol": "Gen Sol",
+    "genSolMain": "Main",
+    "genSolPlan": "Plan",
+    "genSolShooter": "Multiplayer Shooter",
+    "genSolAnimation": "Animation Series",
+    "riderStudio": "Rider Studio",
+    "oneLight": "1Light",
+    "updates": "Updates",
+    "about": "About",
+    "aboutOverview": "Overview",
+    "strategy": "Strategy",
+    "products": "Products & Services",
+    "web3": "Web3",
+    "nsnNetwork": "NSN Network",
+    "ip": "IP",
+    "pado": "Pado",
+    "padoNew": "Pado",
+    "padoNew2": "Pado Tech",
+    "padoNew3": "Pado Pitch",
+    "padoMain": "Main",
+    "padoSpotPerps": "Spot & Perps",
+    "padoPrediction": "Prediction Markets",
+    "padoLending": "Lending",
+    "padoTokenization": "Tokenization",
+    "padoStablecoins": "Stablecoins",
+    "walden": "Walden (Coming Soon)",
+    "mbase": "Mbase (Coming Soon)",
+    "verdan": "Verdan (Coming Soon)",
+    "wePop": "WePop",
+    "riderStudioMain": "Main",
+    "riderStudioFramework": "Framework",
+    "manifesto": "Manifesto",
+    "story": "Story",
+    "roadmap": "Roadmap",
+    "awards": "Awards",
+    "news": "News",
+    "opportunities": "Opportunities",
+    "team": "Team",
+    "founders": "Founders",
+    "genesisNft": "Genesis Event",
+    "genesisEvent": "Genesis Event",
+    "leaderboard": "Leaderboard",
+    "wave1Campaign": "Wave 1",
+    "battalionNft": "Battalion NFT",
+    "earlyContributors": "Early Contributors",
+    "leaderboardInfo": "Leaderboard Info",
+    "contests": "Contests",
+    "aboutTeam": "Team"
+  },
+  "auth": {
+    "login": "Login/Register",
+    "logout": "Logout",
+    "loading": "Loading...",
+    "signingOut": "Signing out...",
+    "loggedout": "You have been logged out successfully.",
+    "thankyou": "Thank you for visiting. We hope to see you again soon!",
+    "home": "Go to Home",
+    "processing_title": "Processing Login",
+    "processing_message": "Completing your login..."
+  },
+  "logout": {
+    "successMessage": "You are safely logged out",
+    "description": "Thank you for using our service.",
+    "backToHome": "Back to Home",
+    "loginAgain": "Log In Again"
+  },
+  "error": {
+    "generic": "An error occurred. Please try again later.",
+    "notAuthenticated": "User authentication information is missing. Please log in again.",
+    "content_load_failed": "Failed to load content. Please try again later."
+  },
+  "info": {
+    "loading": "Loading...",
+    "noData": "No posts found.",
+    "noMorePosts": "No more posts available."
+  },
+  "actions": {
+    "retry": "Retry"
+  },
+  "myAccount": "My Account",
+  "wallet": {
+    "connect_metamask_wallet": "Connect MetaMask",
+    "connecting": "Connecting...",
+    "metamask_not_installed": "MetaMask is not installed. Please install MetaMask extension.",
+    "cannot_disconnect_only_method": "Cannot disconnect. This is your only login method. Use the Logout button in the navigation bar to sign out.",
+    "confirm_disconnect": "Are you sure you want to disconnect your MetaMask wallet?",
+    "disconnect_feature_coming_soon": "Wallet disconnect feature will be implemented soon. For now, please use the account unlinking feature in the Account Linking section.",
+    "disconnect_error": "Failed to disconnect wallet. Please try again.",
+    "signature_rejected": "Signature request was rejected. Unlink cancelled."
+  },
+  "post": {
+    "previousPost": "Previous Post",
+    "nextPost": "Next Post"
+  },
+  "whitelist": {
+    "button": "Join Whitelist",
+    "modal": {
+      "intro": {
+        "title": "How to Join",
+        "description": "Follow these steps to register for the whitelist.",
+        "step1": {
+          "title": "Connect MetaMask Wallet",
+          "description": "MetaMask browser extension is required."
+        },
+        "step2": {
+          "title": "Approve Signature Request",
+          "description": "Free, no gas fees. Only your wallet address is registered."
+        },
+        "notice": "No funds will be transferred. Signing is for submitting a valid address. ",
+        "noMetaMask": "Don't have MetaMask?",
+        "installLink": "Install MetaMask",
+        "cancel": "Cancel",
+        "proceed": "Connect & Sign"
+      },
+      "connecting": {
+        "title": "Connecting MetaMask",
+        "description": "Please connect your MetaMask wallet to continue.",
+        "checking": "Checking whitelist status..."
+      },
+      "signing": {
+        "title": "Waiting for Signature",
+        "description": "Please sign the message in MetaMask."
+      },
+      "submitting": {
+        "title": "Submitting...",
+        "description": "Processing your request. Please wait."
+      },
+      "success": {
+        "title": "Successfully Joined!",
+        "description": "You have successfully joined the Genesis NFT whitelist.",
+        "walletAddress": "Wallet Address",
+        "joinedAt": "Joined At",
+        "withdraw": "Withdraw",
+        "close": "Close"
+      },
+      "alreadyJoined": {
+        "title": "Already Joined",
+        "description": "This wallet address is already registered in the Genesis NFT whitelist.",
+        "walletAddress": "Wallet Address",
+        "joinedAt": "Joined At",
+        "withdraw": "Withdraw",
+        "close": "Close"
+      },
+      "error": {
+        "title": "Error Occurred",
+        "description": "An error occurred while processing your request.",
+        "errorMessage": "Error Message",
+        "close": "Close"
+      },
+      "alreadyWithdrawn": {
+        "title": "Already Withdrawn",
+        "description": "This wallet address has already been withdrawn from the whitelist.",
+        "walletAddress": "Wallet Address",
+        "withdrawnAt": "Withdrawn At",
+        "close": "Close"
+      },
+      "withdrawSuccess": {
+        "message": "Successfully withdrawn from whitelist.",
+        "wallet": "Wallet"
+      }
+    }
+  },
+  "signatures": {
+    "login": {
+      "title": "Login to NASUN",
+      "securityNotice": "⚠️ Important Notice:",
+      "noTransaction": "• This signature does NOT transfer any funds",
+      "ownershipVerification": "• This is only to verify you own this wallet",
+      "officialSiteOnly": "• Only sign on the official NASUN website"
+    },
+    "joinWhitelist": {
+      "title": "Join Nasun Genesis NFT Whitelist",
+      "securityNotice": "",
+      "noTransaction": "⚠️ This signature does NOT transfer any funds",
+      "ownershipVerification": "⚠️ This is only to verify you own this wallet"
+    },
+    "withdrawWhitelist": {
+      "title": "Withdraw from Nasun Genesis NFT Whitelist",
+      "securityNotice": "",
+      "noTransaction": "⚠️ This signature does NOT transfer any funds",
+      "ownershipVerification": "⚠️ This is only to verify you own this wallet"
+    },
+    "withdrawBattalionNft": {
+      "title": "Withdraw from NASUN Battalion NFT",
+      "securityNotice": "⚠️ Important Notice:",
+      "noTransaction": "• This signature does NOT transfer any funds",
+      "ownershipVerification": "• This is only to verify you own this wallet"
+    }
+  },
+  "footer": {
+    "ai": "Please note: no AI was involved in the content of this website except for translating English. AI will be an integral component of Nasun, but we feel whoever comes here and reads our words should know that Nasun comes from our hearts. It is important for us that you feel our personal passion for this endeavor to create a vibrant community rooted in the principles of mutual creative, financial freedom and shared prosperity.",
+    "copyright1": "Nasun and any associated logos are registered trademarks.",
+    "copyright2": "All rights reserved.",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "stayConnected": "STAY CONNECTED",
+    "title": "Nasun",
+    "supportedBy": "Supported By",
+    "poweredBy": "Powered By"
+  },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "description": "This feature is currently under development. Stay tuned for updates!"
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Refreshing the page may resolve the issue.",
+    "reload": "Refresh Page"
+  }
+}

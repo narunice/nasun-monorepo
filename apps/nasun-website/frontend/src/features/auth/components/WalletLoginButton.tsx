@@ -68,7 +68,7 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
           try {
             await switchNetwork(expectedChainId);
             console.log(`Switched to ${networkName} (Chain ID: ${expectedChainId})`);
-          } catch (switchError: any) {
+          } catch {
             throw new Error(
               `Please switch to ${networkName} network in MetaMask. Current network is not supported.`,
             );
@@ -95,18 +95,19 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         if (onSuccess) {
           onSuccess(authResult.identityId, authResult.token, walletAddress);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("MetaMask login failed:", error);
         setStatus("ERROR" as MetaMaskAuthStatus);
 
         // 사용자 친화적인 에러 메시지
-        let userMessage = error.message || "An unknown error occurred";
+        const errorMsg = error instanceof Error ? error.message : "An unknown error occurred";
+        let userMessage = errorMsg;
 
-        if (error.message?.includes("User rejected")) {
+        if (errorMsg.includes("User rejected")) {
           userMessage = "You rejected the request. Please try again.";
-        } else if (error.message?.includes("not installed")) {
+        } else if (errorMsg.includes("not installed")) {
           userMessage = "MetaMask is not installed. Please install MetaMask extension.";
-        } else if (error.message?.includes("network")) {
+        } else if (errorMsg.includes("network")) {
           userMessage = `Please connect to ${networkName} network in MetaMask.`;
         }
 
@@ -115,22 +116,23 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         // 에러 콜백 호출
         if (onError) {
           const errorType = getErrorType(error);
-          onError(error, errorType);
+          onError(error instanceof Error ? error : new Error(errorMsg), errorType);
         }
       }
     };
 
-    const getErrorType = (error: any): MetaMaskErrorType => {
-      if (error.message?.includes("not installed")) {
+    const getErrorType = (error: unknown): MetaMaskErrorType => {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("not installed")) {
         return "NO_METAMASK" as MetaMaskErrorType;
       }
-      if (error.message?.includes("rejected")) {
+      if (message.includes("rejected")) {
         return "USER_REJECTED" as MetaMaskErrorType;
       }
-      if (error.message?.includes("network")) {
+      if (message.includes("network")) {
         return "WRONG_NETWORK" as MetaMaskErrorType;
       }
-      if (error.message?.includes("signature")) {
+      if (message.includes("signature")) {
         return "SIGNATURE_FAILED" as MetaMaskErrorType;
       }
       return "UNKNOWN" as MetaMaskErrorType;

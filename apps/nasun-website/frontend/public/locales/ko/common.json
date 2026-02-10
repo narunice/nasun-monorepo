@@ -1,0 +1,229 @@
+{
+  "title": "나선",
+  "navigation": {
+    "home": "홈",
+    "protocol": "프로토콜",
+    "network": "프로토콜",
+    "nasunNetwork": "나선 네트워크",
+    "devnetWallet": "데브넷 & 지갑",
+    "protocolOverview": "개요",
+    "governance": "거버넌스",
+    "identity": "아이덴티티",
+    "litepaper": "라이트페이퍼",
+    "infra": "인프라",
+    "infraOverview": "인프라 개요",
+    "aiExecutors": "AI 실행자",
+    "compute": "컴퓨트",
+    "storage": "스토리지",
+    "streaming": "스트리밍",
+    "gameServers": "게임 서버",
+    "finance": "금융",
+    "ecosystem": "에코시스템",
+    "baramAi": "바람 - AI",
+    "padoFinance": "파도 - 금융",
+    "financePado": "파도 - 금융",
+    "aiEconomy": "바람 - AI",
+    "genSol": "젠솔",
+    "genSolMain": "메인",
+    "genSolPlan": "플랜",
+    "genSolShooter": "멀티플레이어 슈터",
+    "genSolAnimation": "애니메이션 시리즈",
+    "riderStudio": "라이더 스튜디오",
+    "oneLight": "1Light",
+    "updates": "업데이트",
+    "about": "소개",
+    "aboutOverview": "개요",
+    "strategy": "전략",
+    "products": "제품 및 서비스",
+    "web3": "웹3",
+    "nsnNetwork": "NSN 네트워크",
+    "ip": "IP",
+    "padoNew": "파도",
+    "padoNew2": "파도 테크",
+    "padoNew3": "파도 피치",
+    "pado": "파도 이니셔티브",
+    "walden": "월든 (출시 예정)",
+    "mbase": "엠베이스 (출시 예정)",
+    "verdan": "버던 (출시 예정)",
+    "wePop": "위팝",
+    "riderStudioMain": "메인",
+    "riderStudioFramework": "프레임워크",
+    "manifesto": "나선 선언문",
+    "story": "스토리",
+    "roadmap": "로드맵",
+    "awards": "어워즈",
+    "news": "뉴스",
+    "opportunities": "기회",
+    "team": "팀",
+    "founders": "창립자",
+    "genesisNft": "제너시스 이벤트",
+    "genesisEvent": "제너시스 이벤트",
+    "leaderboard": "리더보드",
+    "wave1Campaign": "웨이브 1",
+    "battalionNft": "배틀리온 NFT",
+    "earlyContributors": "얼리 컨트리뷰터",
+    "leaderboardInfo": "리더보드 안내",
+    "contests": "콘테스트",
+    "aboutTeam": "팀"
+  },
+  "auth": {
+    "login": "로그인/회원가입",
+    "logout": "로그아웃",
+    "loading": "로딩...",
+    "signingOut": "로그아웃 중...",
+    "loggedout": "성공적으로 로그아웃되었습니다.",
+    "thankyou": "방문해 주셔서 고맙습니다. 곧 다시 만나요!",
+    "home": "홈으로 가기",
+    "processing_title": "로그인 처리 중",
+    "processing_message": "로그인을 완료하고 있습니다..."
+  },
+  "logout": {
+    "successMessage": "안전하게 로그아웃되었습니다",
+    "description": "저희 서비스를 이용해주셔서 감사합니다.",
+    "backToHome": "홈으로 돌아가기",
+    "loginAgain": "다시 로그인하기"
+  },
+  "error": {
+    "generic": "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+    "notAuthenticated": "사용자 인증 정보가 없습니다. 다시 로그인해 주세요.",
+    "failedToFetch": "데이터를 불러오는 데 실패했습니다."
+  },
+  "info": {
+    "loading": "로딩 중...",
+    "noData": "게시물이 없습니다.",
+    "noMorePosts": "더 이상 게시물이 없습니다."
+  },
+  "actions": {
+    "retry": "다시 시도"
+  },
+  "myAccount": "내 계정",
+  "wallet": {
+    "connect_metamask_wallet": "메타마스크 연결",
+    "connecting": "연결 중...",
+    "metamask_not_installed": "메타마스크가 설치되어 있지 않습니다. 메타마스크 확장 프로그램을 설치해주세요.",
+    "cannot_disconnect_only_method": "연결을 해제할 수 없습니다. 이것이 유일한 로그인 방법입니다. 로그아웃하려면 상단 메뉴의 로그아웃 버튼을 사용하세요.",
+    "confirm_disconnect": "정말 메타마스크 지갑 연결을 해제하시겠습니까?",
+    "disconnect_feature_coming_soon": "지갑 연결 해제 기능은 곧 구현될 예정입니다. 현재는 계정 연결 섹션의 연결 해제 기능을 사용해주세요.",
+    "disconnect_error": "지갑 연결 해제에 실패했습니다. 다시 시도해주세요.",
+    "signature_rejected": "서명이 거부되었습니다. 연결 해제가 취소되었습니다."
+  },
+  "post": {
+    "previousPost": "이전 포스트",
+    "nextPost": "다음 포스트"
+  },
+  "whitelist": {
+    "button": "화이트리스트 참여",
+    "modal": {
+      "intro": {
+        "title": "참여 방법",
+        "description": "아래 절차에 따라 화이트리스트에 등록합니다.",
+        "step1": {
+          "title": "MetaMask 지갑 연결",
+          "description": "브라우저에 MetaMask가 설치되어 있어야 합니다."
+        },
+        "step2": {
+          "title": "서명 요청 승인",
+          "description": "가스비 없이 무료입니다. 지갑 주소만 등록됩니다."
+        },
+        "notice": "서명은 유효한 주소 제출용이며, 자산 이동은 발생하지 않습니다.",
+        "noMetaMask": "MetaMask가 없으신가요?",
+        "installLink": "MetaMask 설치하기",
+        "cancel": "취소",
+        "proceed": "연결 및 서명"
+      },
+      "connecting": {
+        "title": "MetaMask 연결 중",
+        "description": "MetaMask 지갑을 연결하여 계속 진행해주세요.",
+        "checking": "화이트리스트 상태 확인 중..."
+      },
+      "signing": {
+        "title": "서명 대기 중",
+        "description": "MetaMask에서 메시지에 서명해주세요."
+      },
+      "submitting": {
+        "title": "제출 중...",
+        "description": "요청을 처리하고 있습니다. 잠시만 기다려주세요."
+      },
+      "success": {
+        "title": "등록 완료!",
+        "description": "Genesis NFT 화이트리스트에 성공적으로 등록되었습니다.",
+        "walletAddress": "지갑 주소",
+        "joinedAt": "등록 시각",
+        "withdraw": "등록 취소",
+        "close": "닫기"
+      },
+      "alreadyJoined": {
+        "title": "이미 등록됨",
+        "description": "이 지갑 주소는 이미 Genesis NFT 화이트리스트에 등록되어 있습니다.",
+        "walletAddress": "지갑 주소",
+        "joinedAt": "등록 시각",
+        "withdraw": "등록 취소",
+        "close": "닫기"
+      },
+      "error": {
+        "title": "오류 발생",
+        "description": "요청을 처리하는 중에 오류가 발생했습니다.",
+        "errorMessage": "오류 메시지",
+        "close": "닫기"
+      },
+      "alreadyWithdrawn": {
+        "title": "이미 철회됨",
+        "description": "이 지갑 주소는 이미 화이트리스트에서 철회되었습니다.",
+        "walletAddress": "지갑 주소",
+        "withdrawnAt": "철회 시각",
+        "close": "닫기"
+      },
+      "withdrawSuccess": {
+        "message": "화이트리스트에서 성공적으로 철회되었습니다.",
+        "wallet": "지갑"
+      }
+    }
+  },
+  "signatures": {
+    "login": {
+      "title": "NASUN 로그인",
+      "securityNotice": "⚠️ 중요 안내:",
+      "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
+      "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다",
+      "officialSiteOnly": "• NASUN 공식 사이트에서만 서명하세요"
+    },
+    "joinWhitelist": {
+      "title": "Nasun Genesis NFT 화이트리스트 참여",
+      "securityNotice": "",
+      "noTransaction": "⚠️ 이 서명으로 자금이 이체되지 않습니다",
+      "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
+    },
+    "withdrawWhitelist": {
+      "title": "Nasun Genesis NFT 화이트리스트 철회",
+      "securityNotice": "",
+      "noTransaction": "⚠️ 이 서명으로 자금이 이체되지 않습니다",
+      "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
+    },
+    "withdrawBattalionNft": {
+      "title": "NASUN 배틀리온 NFT 참여 취소",
+      "securityNotice": "⚠️ 중요 안내:",
+      "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
+      "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"
+    }
+  },
+  "footer": {
+    "ai": "참고: 별도로 *표시된 부분을 제외하면 이 웹사이트의 콘텐츠에는 생성형 AI를 사용하지 않았습니다. AI는 나선의 핵심적인 도구가 될 것이지만, 이곳을 찾아와 우리의 글을 읽는 여러분에게는 나선이 우리의 진심에서 비롯된 것임을 알리고 싶습니다. 나선은 창의성과 경제적 자유, 그리고 공동 번영이라는 가치를 바탕으로 한 활기찬 커뮤니티를 만들고자 하는 우리의 열정에서 시작되었습니다. 그 진심이 여러분께 전해지기를 바랍니다.",
+    "copyright1": "나선 및 관련 로고는 등록된 상표입니다.",
+    "copyright2": "나선. 무단 전채 및 재배포 금지.",
+    "terms": "사용약관",
+    "privacy": "개인정보보호정책",
+    "stayConnected": "소식 받기",
+    "title": "나선",
+    "supportedBy": "아래 기관의 지원을 받았습니다.",
+    "poweredBy": "아래의 기술에 기반합니다."
+  },
+  "comingSoon": {
+    "title": "준비 중",
+    "description": "이 기능은 현재 개발 중입니다. 업데이트를 기대해 주세요!"
+  },
+  "errorPage": {
+    "title": "문제가 발생했습니다",
+    "description": "예기치 않은 오류가 발생했습니다. 페이지를 새로고침하면 해결될 수 있습니다.",
+    "reload": "새로고침"
+  }
+}

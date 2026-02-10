@@ -1,0 +1,176 @@
+{
+  "foundersHero": {
+    "title": "제너시스 NFT",
+    "subtitleHighlight": "초기 기여자, 창작자, 비전을 품은 여러분은",
+    "subtitleDimmed": "나선 커뮤니티의 심장입니다.",
+    "description1": "여정의 초기에 함께해 주신 여러분은 나선의 비전이 성장할 토대를 함께 만들어 갑니다.",
+    "description2": "나선 제너시스 NFT는 여러분의 초기 참여를 인정하며, 나선 생태계 전반에 걸친 독점적인 접근 권한, 특권, 그리고 자격을 부여합니다.",
+    "visionTitle": "우리의 비전과 약속을 담아",
+    "visionDescription1": "모든 작품은 첫 번째 IP인 Gen Sol의 SF 세계관에서 영감을 받았으며, Blender, ZBrush, Substance Painter, Photoshop과 같은 도구를 사용하여 제작되었습니다.",
+    "visionDescription2": "이 NFT를 소유한다는 것은 예술, 금융, 기술의 경계를 넘어 우리와 함께하는 것을 의미합니다. 우리의 상상력이 한계 없는 미래로의 여정을 이끕니다.",
+    "ctaButton": "화이트리스트 참여 & 우리와 함께 여정을 시작하세요 >>"
+  },
+
+  "keyBenefits": {
+    "title": "주요 혜택",
+    "tokensCard": {
+      "title": "토큰 / 멀티플라이어",
+      "nsnToken": {
+        "label": "NSN 토큰",
+        "description": "메인넷 출시 시 NSN 토큰을 받을 자격을 얻습니다. NSN 토큰의 용도: 거버넌스, 네트워크 사용료 결제, 네트워크 보안을 위한 스테이킹."
+      },
+      "genSolToken": {
+        "label": "GEN SOL 토큰",
+        "description": "나선의 첫 번째 플래그십 IP인 Gen Sol의 거버넌스 및 창작 개발에 참여할 수 있는 GEN SOL 토큰(TBD)을 받을 자격을 얻습니다."
+      },
+      "tiersOfRarity": {
+        "label": "4단계 희소성",
+        "description": "4종의 파운더스 NFT + 바탈리온 NFT + 얼리 컨트리뷰터 NFT (지갑당 6개 NFT)가 참여도와 멀티플라이어로 인정됩니다. 수량과 희소성이 각 지갑의 파워를 결정합니다."
+      }
+    },
+    "earlyAccessCard": {
+      "title": "얼리 액세스",
+      "first": {
+        "label": "First",
+        "description": "프로토타입, 비공개 테스트 환경, 창작 협업 프로그램에 조기 참여할 수 있습니다."
+      },
+      "directCommunication": {
+        "label": "다이렉트 커뮤니케이션",
+        "description": "홀더들이 아이디어와 피드백을 제공하여 플랫폼 전반의 생태계를 형성할 수 있는 프라이빗 채널에 입장할 수 있습니다."
+      },
+      "vip": {
+        "label": "VIP",
+        "description": "프리미어, 쇼케이스, 커뮤니티 또는 업계 이벤트 초청."
+      },
+      "whitelists": {
+        "label": "화이트리스트",
+        "description": "나선 시드 세일 및 파트너 이니셔티브를 포함한 향후 프로그램에 우선 접근권을 누리세요."
+      }
+    },
+    "ctaButton": "오픈씨: 나선 제너시스 NFT 컬렉션"
+  },
+
+  "title": "제너시스 엔에프티 컬렉션",
+  "tagline": "아크 유니버스에서 계급을 상승시키세요. 상위 티어일수록 우리 스페이스 오페라 서사에서 전례 없는 접근 권한이 열립니다.",
+  "tier": "등급",
+  "max_supply": "최대 발행량",
+  "benefits": "혜택",
+  "token_allocation": {
+    "title": "토큰 할당량",
+    "description": "(전체 공급량 중)"
+  },
+  "select_chain": "선호하는 체인 선택",
+  "switch": "지갑전환/연결끊기",
+  "status": "지갑상태",
+  "mint": "지금 민팅하기",
+  "go_to_mint": "민팅하러 가기",
+
+  "toast": {
+    "connected_well": "지갑이 성공적으로 연결되었습니다.",
+    "unsupported_chain": "이 체인은 아직 지원되지 않습니다.",
+    "wallet_required": "먼저 지갑을 연결해주세요."
+  },
+  "message": {
+    "loading_nft": "NFT 데이터를 불러오는 중...",
+    "unsupported_chain": "선택한 네트워크는 현재 지원되지 않습니다.",
+    "processing": "처리 중...",
+    "failed": "민팅에 실패했습니다.",
+    "loading_supply": "발행 수량을 불러오는 중이에요...",
+    "sold_out": "매진",
+    "supply_unavailable": "발행 정보를 불러올 수 없습니다",
+    "minted_label": "누적 민팅량"
+  },
+
+  "minted_modal": {
+    "minting_successful": "민팅 완료",
+    "loading_nft_details": "NFT 세부 정보를 불러오는 중...",
+    "your_nft_details": "당신의 NFT 정보",
+    "network": "네트워크:",
+    "tier": "등급:",
+    "minter": "민팅 지갑:",
+    "count": "누적 민팅 수량:",
+    "price": "가격:",
+    "object_id": "오브젝트 ID:",
+    "view_on_explorer": "익스플로러에서 보기",
+    "close": "닫기",
+    "sr_only_description": "NFT 민팅 진행 상황"
+  },
+
+  "payAndMintNFT": {
+    "errors": {
+      "InsufficientCoinBalance": "토큰 잔액이 부족합니다",
+      "EInsufficientFunds": "지불 금액이 부족합니다",
+      "EAlreadyClaimed": "이미 수령되었습니다",
+      "EInvalidPrice": "잘못된 가격입니다",
+      "failed": "실패:",
+      "walletRequired": "먼저 지갑을 연결해주세요",
+      "walletNotConnected": "지갑이 연결되지 않았습니다",
+      "fetchPriceFailed": "토큰 가격 정보를 불러오는 데 실패했습니다",
+      "priceConversionFailed": "가격 변환에 실패했습니다",
+      "supplyExceeded": "해당 등급의 NFT는 모두 민팅되었습니다",
+      "insufficientFunds": "이 거래를 위한 자금이 부족합니다",
+      "userRejected": "사용자가 요청을 취소하였습니다."
+    },
+    "messages": {
+      "fetchingImage": "이미지를 선택 중입니다...",
+      "minting": "{{tier}} NFT를 민팅 중입니다...",
+      "success": "{{tier}} NFT가 성공적으로 민팅되었습니다!"
+    }
+  },
+  "comparison": "당신의 등급을 관리하세요",
+
+  "tiers": {
+    "tier1": {
+      "name": "보렉스 더 디스트로이어",
+      "description": "모든 독점 특권을 지닌 궁극의 엘리트 등급... 플레이스홀더 설명 추가 예정. 도라켄 제국의 거대 SF 로봇입니다.",
+      "benefits": [
+        "거버넌스 투표 권한 (20배 가중치)",
+        "핵심 제작진과의 프라이빗 시사회",
+        "서명된 실물 컬렉터블 세트",
+        "하위 티어 혜택 모두 포함",
+        "총괄 프로듀서 톱 크레딧",
+        "모든 이벤트 VIP 입장"
+      ]
+    },
+    "tier2": {
+      "name": "AERIO",
+      "description": "VIP 경험이 포함된 프리미엄 멤버십. 플레이스홀더 설명 추가 예정. 도라켄 제국 출신의 여성 외계 용병입니다.",
+      "benefits": [
+        "거버넌스 투표 권한 (10배 가중치)",
+        "주요 제작진과의 저녁 식사",
+        "한정판 전용 굿즈 패키지",
+        "VIP 이벤트 우선 입장"
+      ]
+    },
+    "tier3": {
+      "name": "DREADNOUGHT",
+      "description": "특별 혜택이 포함된 향상된 멤버십. 플레이스홀더 설명 추가 예정. 도라켄 제국의 거대 SF 전함입니다.",
+      "benefits": [
+        "거버넌스 투표 권한 (5배 가중치)",
+        "영화관 시사회 초청",
+        "서명된 디지털 아트 컬렉션",
+        "미스터리 기프트 박스"
+      ]
+    },
+    "tier4": {
+      "name": "TRAKKER",
+      "description": "제작 인사이트가 포함된 표준 멤버십. 플레이스홀더 설명 추가 예정. 도라켄 제국의 정찰선입니다.",
+      "benefits": [
+        "거버넌스 투표 권한 (2배 가중치)",
+        "제작 크레딧에 이름 등재",
+        "두 번째 NFT 10% 할인",
+        "퍼스트 룩 디스코드 채널 이용"
+      ]
+    },
+    "tier5": {
+      "name": "SERHADE",
+      "description": "커뮤니티 접근 권한이 포함된 기본 멤버십. 플레이스홀더 설명 추가 예정. 도라켄 제국의 레이저 펄스 라이플입니다.",
+      "benefits": [
+        "거버넌스 투표 권한 (1배 가중치)",
+        "디스코드 커뮤니티 이용 가능",
+        "두 번째 NFT 10% 할인",
+        "보너스 티저 프레임 NFT"
+      ]
+    }
+  }
+}

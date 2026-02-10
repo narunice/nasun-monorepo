@@ -1,0 +1,123 @@
+{
+  "ips": {
+    "title": "OUR INTELLECTUAL PROPERTIES",
+    "subtitle": "Nasun's expanding universe of original content",
+    "list": [
+      {
+        "id": "gensol",
+        "name": "GEN SOL",
+        "tagline": "Sci-Fi Universe for Games & Media",
+        "description1": "We are proud to present Nasun’s first IP – Gen Sol. It is a sci-fi concept around which we will initially produce popular games, narrative content and merchandising. We will build an exciting universe with a dramatic backdrop so that all the stories and games will have inherent conflict, suspense and great characters with strong motivations. Nasun has vetted Gen Sol by winning 10 pitch contests and grants.",
+        "description2": "Gen Sol's prospects of success will depend on the community coming together to create popular, commercial media content and games to form streams of revenue. Beyond movies, live-action shows and AAA games, we will explore new forms of entertainment, pioneering what is possible both in the digital and real world.",
+        "power": {
+          "title": "THE POWER OF STORIES",
+          "paragraph1": "Although there are other projects with similar aspirations, what sets Gen Sol apart is its intense focus on storytelling. Following  the core values of Nasun, Gen Sol will not only engage the user as a technological experience, but it will give them an emotional one. By populating its Ark Galaxy with good stories and strong characters, the user will develop a relationship with the project that will capture their imaginations.",
+          "paragraph2": "Gaming has already made great strides in the web3 space by innovative projects, so the question arises: why the inclusion of narrative content in Gen Sol's model? ",
+          "paragraph3": "Engaging narrative content has always been a powerful economic driver for many other markets like merchandising as well as games. Gen Sol will provide the fertile ground for the development of these products to be offered in various marketplaces under one umbrella IP.",
+          "paragraph4": "People love good stories and all things connected to it. Whether it be a piece of art, toy or game, they become more meaningful and valuable because of the association. Deep emotional ties with these stories develop, and it’s these strong connections that will create value for not only the traditional markets but also new ones.",
+          "paragraph5": "Narrative content is also a powerful tool for marketing, because it provides many unique, dramatic moments to share and capture the public’s attention. For instance, movie and show trailers are probably some of the best marketing material one can come up with, and they become possible by editing down longer format content to the most visually spectacular and emotionally resonant moments. Gen Sol intends to focus heavily on creating compelling trailers effective for marketing and promotional purposes.",
+          "paragraph6": "Because the live-action and feature film projects will be casting famous actors and actresses, it will afford many marketing potentialities beyond the Web3-sphere by accessing entertainment news sites and social media communities like Youtube channels and Twitter accounts focused on movies and narrative content."
+        },
+        "korean": {
+          "title": "THE KOREAN CONNECTION",
+          "paragraph1": "The core team’s experience and strong relationships in the Korean entertainment industry will be pivotal in producing high quality content and paving the way for the project’s success during the first phases of the roadmap. In producing the initial games, animation series, live-action show and movie, Nasun will initially collaborate with the top South Korean filmmakers, famous Hallyu actors, writers as well as gaming and animation studios.  Eventually expanding to collaborate with the top filmmakers and actors from around the world.",
+          "paragraph2": "The Korean film industry also gives us access to their professional tv and film crews and streamlined production processes using the latest technologies capable of delivering high quality products on tight schedules and competitive budgets. World-renowned animation and CGI studios are also located in South Korea",
+          "paragraph3": "We believe working with the Korean entertainment industry can be a springboard to later gain access to other global A-list talents and platforms because Hallyu(the Korean Wave) popularity is continually growing."
+        },
+        "global": {
+          "title": "GLOBAL MARKET",
+          "paragraph1": "It is important to note that even though the project will initially collaborate with filmmakers from South Korea, Gen Sol is a sci-fi project, so its premise will be culturally neutral, meaning there will be no limitations in the scope of its intended audience. ",
+          "paragraph2": "Narrative content and games will be in English, all except the first live-action series which will cast Korean stars for some of the main roles and so could be a mix of English and Korean(subtitled). The point of first producing content in South Korea is to use its resources, talent and streamlined production processes while leveraging the ongoing Hallyuwood global popularity to create buzz and achieve cultural relevance to eventually springboard to work with major actors, filmmakers and game developers from all over the world."
+        },
+        "overarching": {
+          "title": "OVERARCHING NARRATIVE",
+          "paragraph1": "Everything will revolve around the main sci-fi setting. The feature film and flagship game will deal directly with an overarching narrative of competing in the Spectra Games for control of the Vertex Zone.",
+          "paragraph2": "The live-action series and the first tournament games will reveal not only the dramatic and suspenseful competition leading up to the Spectra Games but also the political power plays behind the scenes.",
+          "paragraph3": "The animation series and the first third person multiplayer game will be the b-sides, telling smaller but no less compelling stories of outlaws, ronins and bounty hunters operating on the fringes of the main narrative.",
+          "paragraph4": "All the various mediums will share many crossover elements like favorite characters, weapons, spaceships, robots, locations and plot-lines.",
+          "paragraph5": "Because of the unified narrative and aesthetic ambitions of Gen Sol, both the narrative content and games will grow from the same seeds of story ideations and visual conceptualizations."
+        },
+        "categories": {
+          "narrative": "NARRATIVE",
+          "animation": "ANIMATION SERIES",
+          "live": "LIVE-ACTION SHOW",
+          "movie": "MOVIES",
+          "games": "GAMES",
+          "shooters": "SHOOTERS",
+          "spectra": "THE SPECTRA GAMES",
+          "arkverse": "ARKVERSE"
+        },
+        "way": {
+          "title": "THE WAY",
+          "description": "The spiritual heart of Gen Sol will always be its passionate community. Its charter, power and guidelines will develop in sync with the community as it matures and becomes more involved in the success of the project. Sci-fi films and games have always formed die-hard fans and communities with strong passions and stronger opinions, Gen Sol's own sci-fi community will be no different."
+        },
+        "animation_description": {
+          "paragraph1": "Designed to tell the ‘small’ intimate stories against the vast backdrop of the Ark Galaxy, the animation series will consist of a set number of 20-25 minute episodes, each focused on giving the audience high-stakes drama with emotional resonance, ending on a suspenseful cliffhanger.",
+          "paragraph2": "‘The Spectra Heist’, the first animated series will offer an initial peek into the Ark Galaxy, its vision of alluring beauty and also terrifying horror. The series will reveal secrets and lore of the Ark Galaxy to be explored further in the live-action series and feature films.",
+          "paragraph3": "Josen embarks on a desperate mission to save his little girl who has been kidnapped by sinister forces in order to blackmail him into stealing a rare form of Spectra energy from the Dorakken Empire. To accomplish this, Josen must enlist the help of the most infamous criminal in the Ark Galaxy, known as the Notorious Kid.",
+          "paragraph4": "In a thrilling, suspenseful story following the footsteps of classic action films like 'Man from Nowhere,’ Josen and the Kid become interlocked in a battle of wits and strength spiraling into a shocking conclusion as they attempt to pull off the ultimate heist."
+        },
+        "live_description": {
+          "paragraph1": "The first live-action series will tell one of the most pivotal moments in the Dorakken Empire’s reign over the Ark Galaxy. They have won 29 consecutive Spectra Games, control the Vertex Zone and have an iron grip on every planetary system.",
+          "paragraph2": "While following this dramatic power struggle, the series will delve into the political, technological and mystical aspects of the Ark Galaxy. It will give insight into how the galaxy is run by Spectra energy, and how it gave rise to the alliances and rivalries between the different alien races, intergalactic empires and space fleets.",
+          "paragraph3": "More so than the animated series, the live-action series will reveal the real power players in the Ark Galaxy, and the ruthless lengths they will go to maintain their power and the humanity they are willing to lose.",
+          "paragraph4": "The story centers on the power play between three siblings who vie to be crowned the Dorakken Emperor as their father, who was one of the greatest drivers of robots, is dying from injuries incurred competing in the last Spectra Games. Two brothers and a sister plot, connive and fight to take the throne as each fantasizes of becoming the victorious driver for the next Spectra Games. This would seal their power over the entire Ark Galaxy."
+        },
+        "movie_description": {
+          "paragraph1": "The feature film will tell the unlikely tale of how a poor kid named Moonoak from a neglected region of the Ark Galaxy fights against all odds to become one of the greatest robot drivers. Moonoak’s meteoric rise ignites a fierce obsession from the one true heir of the Dorakken Empire, and their rivalry becomes the stuff of legends as their destinies collide in a climactic finale."
+        },
+        "shooters_description": {
+          "paragraph1": "Like the initial work of the pre-visualization for the animated series, the Nasun community will collaborate together on the first game beta release, developing on the completed prototype. The first Gen Sol game will be a third person multiplayer shooter set in a smaller narrative setting in the Ark Galaxy initially delivering 5 maps. This limitation in scale will let the community focus on delivering a fleshed out, innovative game that is fun and competitive. By launching on only a few maps with limited scope, Nasun will deliver a triple-A quality gaming experience on a realistic timeline and budget, in turn creating enthusiasm and momentum. ",
+          "paragraph2": "The current prototype is a stripped down version of the third person multiplayer shooter game. The game will exist in corners of the Gen Sol Universe involving raiders, trackers and soldiers that will have overlapping story elements with the first animated series. It will offer the first look into Gen Sol’s gaming universe while getting feedback from the community, generating opportunities for greater engagement and participation."
+        },
+        "spectra_description": {
+          "paragraph1": "The Spectra Games held every three years will be the crown jewel competitive gaming experience in Gen Sol. The games and narrative content will interweave and build up to the first feature film and the Spectra Games, the event will become a spectacle drawing in millions of players and spectators."
+        },
+        "arkverse": {
+          "paragraph1": "As the project grows and more of the narrative is revealed, we envision the gaming environment becoming more expansive as the maps interconnect allowing players to travel freely between them. They can then interact with each other for different purposes, either participate in the main narrative arcs or go off on their own side stories, from operating legitimate businesses, getting involved in criminal activities, forming interstellar civilizations or even starting invasions to engage in inter-planetery wars.",
+          "paragraph2": "Each iteration of the game will build on the previous version, evolving into an open world setting that will include the whole Ark Galaxy known as the Arkverse, the interface between our everyday reality and the fictional universe of Gen Sol. At this point, the gaming will blend seamlessly with the narratives that drive everything forward.",
+          "paragraph3": "Eventually, the tournaments and even the Spectra Games would become events that unfold in real-time within the Arkverse, the users would form communities that would represent civilizations and alien races in the Ark Galaxy, incorporating complex economic systems and various forms of political structures/governance operating inside it. The vision is to build a place where people will want to visit to have an adventure, enjoy financial gains and form friendships with others in the community.",
+          "paragraph4": "The Nasun community will create new Gen Sol storylines, expanding on previous ones. We will dream up intergalactic civilizations that will all have their own origin tales, culture, physiology and technology. The community participating in the development of the Arkverse as a powerful and entertaining experience will be by far the most exciting aspect of Gen Sol."
+        },
+        "highlights": [
+          "Winner of over 10 pitch contests and grants",
+          "Story-driven transmedia IP development (games, animation, live-action content)",
+          "Strong network and production experience within the Korean entertainment industry",
+          "Community-driven worldbuilding through the expansive open-world game 'Arkverse'"
+        ],
+        "links": {
+          "homepage": "#",
+          "trailer": "#"
+        }
+      },
+      {
+        "id": "wepop",
+        "name": "WePOP",
+        "tagline": "$1M Global Singing Competition",
+        "description": "WePOP is a $1 million dollar singing competition... (전체 텍스트 생략)",
+        "highlights": [
+          "Community-driven voting system",
+          "AI-powered content creation",
+          "Global talent discovery"
+        ],
+        "links": {
+          "audition": "#"
+        }
+      },
+      {
+        "id": "rider-studio",
+        "name": "RIDER STUDIO",
+        "tagline": "Web3 Film Production Collective",
+        "description": "This is a conceptual approach to how Rider Studio... (전체 텍스트 생략)",
+        "highlights": [
+          "$250K screenplay competition",
+          "Community-led production",
+          "Korean film industry access"
+        ],
+        "links": {
+          "screenplay_contest": "#"
+        }
+      }
+    ]
+  }
+}
