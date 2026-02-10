@@ -11,7 +11,13 @@ export { useOrderHistory, type OrderHistoryItem, type OrderType, type OrderStatu
 export { useMyTrades, type MyTradeItem } from './useMyTrades';
 export { useTradeMode, type TradeMode } from './useTradeMode';
 export { useBalanceManagerBalance } from './useBalanceManagerBalance';
-export { useKeyboardShortcuts } from './useKeyboardShortcuts';
+export {
+  useKeyboardShortcuts,
+  SHORTCUT_PERCENT_EVENT,
+  SHORTCUT_PRICE_STEP_EVENT,
+  SHORTCUT_SUBMIT_EVENT,
+  SHORTCUT_TOGGLE_BOOK_TAB_EVENT,
+} from './useKeyboardShortcuts';
 export { useTransactionExecutor } from './useTransactionExecutor';
 export {
   useAutoDeposit,
@@ -21,4 +27,8 @@ export {
 } from './useAutoDeposit';
 export { useTradeCap, type UseTradeCapResult, type TradeCapStatus } from './useTradeCap';
 export { useOnboardingTour, isTourCompleted, type OnboardingTourState } from './useOnboardingTour';
-export { useOrderFillNotifier } from './useOrderFillNotifier';
+export {
+  useOrderFillNotifier,
+  ORDER_FILL_EVENT,
+  type OrderFillDetail,
+} from './useOrderFillNotifier';

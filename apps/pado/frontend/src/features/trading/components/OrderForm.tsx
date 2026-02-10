@@ -7,6 +7,12 @@ import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick, type PriceLevel } from '../../../lib/deepbook';
 import { TPSLInputs } from './TPSLInputs';
+import { ScaleOrderForm, type ScaleOrderItem } from './ScaleOrderForm';
+import {
+  SHORTCUT_PERCENT_EVENT,
+  SHORTCUT_PRICE_STEP_EVENT,
+  SHORTCUT_SUBMIT_EVENT,
+} from '../hooks/useKeyboardShortcuts';
 
 // Execution Option descriptions
 const EXECUTION_OPTIONS: { value: ExecutionOption; label: string; description: string }[] = [
@@ -41,6 +47,7 @@ interface OrderFormProps {
   onSideChange: (side: 'buy' | 'sell') => void;
   bids?: PriceLevel[];
   asks?: PriceLevel[];
+  onScaleOrder?: (orders: ScaleOrderItem[], side: 'buy' | 'sell') => void;
 }
 
 export function OrderForm({
@@ -68,6 +75,7 @@ export function OrderForm({
   onSideChange,
   bids = [],
   asks = [],
+  onScaleOrder,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
   const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled } = useOrderForm();
@@ -80,6 +88,7 @@ export function OrderForm({
   const isMarket = orderMode === 'market';
   const isStopLimit = orderMode === 'stop-limit';
   const isTrailingStop = orderMode === 'trailing-stop';
+  const isScale = orderMode === 'scale';
   const isBuy = side === 'buy';
 
   const effectivePrice = useMemo(
@@ -114,13 +123,13 @@ export function OrderForm({
   const minQuantity = useMemo(() => getMinQuantity(currentPool), [currentPool]);
   const minPrice = useMemo(() => getMinPrice(currentPool), [currentPool]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (isMarket) {
       onMarketOrder(side);
     } else {
       onOrder(side);
     }
-  };
+  }, [isMarket, side, onMarketOrder, onOrder]);
 
   // Price suggestion helpers
   const handlePriceSelect = useCallback((p: number) => {
@@ -200,6 +209,34 @@ export function OrderForm({
     }
   }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate]);
 
+  // Keyboard shortcut: percentage amount (1-9 = 10%-90%, 0 = 100%)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const raw = (e as CustomEvent).detail;
+      const pct = Math.max(0, Math.min(100, Number(raw) || 0));
+      if (pct <= 0) return;
+      handlePercentAmount(pct);
+    };
+    document.addEventListener(SHORTCUT_PERCENT_EVENT, handler);
+    return () => document.removeEventListener(SHORTCUT_PERCENT_EVENT, handler);
+  }, [handlePercentAmount]);
+
+  // Keyboard shortcut: price tick step (+/- keys)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const direction = (e as CustomEvent).detail;
+      if (direction !== 'up' && direction !== 'down') return;
+      const currentPrice = parseFloat(price) || 0;
+      const tick = getMinPrice(currentPool);
+      const newPrice = direction === 'up'
+        ? currentPrice + tick
+        : Math.max(tick, currentPrice - tick);
+      onPriceChange(snapToTick(newPrice, currentPool).toString());
+    };
+    document.addEventListener(SHORTCUT_PRICE_STEP_EVENT, handler);
+    return () => document.removeEventListener(SHORTCUT_PRICE_STEP_EVENT, handler);
+  }, [price, currentPool, onPriceChange]);
+
   // Current amount as percentage of max (for slider)
   const currentPct = useMemo(() => {
     if (isBuy) {
@@ -255,6 +292,17 @@ export function OrderForm({
         ? disabled || isLoading || isAutoDepositing || trailingStopMissing || trailingStopInvalid || !quantityValidation.valid
         : disabled || isLoading || isAutoDepositing || hasValidationError;
 
+  // Keyboard shortcut: submit order (Enter key)
+  useEffect(() => {
+    const handler = () => {
+      if (!isButtonDisabled && !isInsufficient) {
+        handleSubmit();
+      }
+    };
+    document.addEventListener(SHORTCUT_SUBMIT_EVENT, handler);
+    return () => document.removeEventListener(SHORTCUT_SUBMIT_EVENT, handler);
+  }, [isButtonDisabled, isInsufficient, handleSubmit]);
+
   return (
     <div className="space-y-2 flex-1 flex flex-col">
       {/* A. Underline Tabs: Limit / Market / Stop-Limit */}
@@ -264,11 +312,12 @@ export function OrderForm({
           { id: 'market' as const, label: 'Market' },
           { id: 'stop-limit' as const, label: 'Stop' },
           { id: 'trailing-stop' as const, label: 'Trail' },
+          { id: 'scale' as const, label: 'Scale' },
         ]}
         activeTab={orderMode}
         onTabChange={setOrderMode}
         rightContent={
-          !isMarket && !isStopLimit && !isTrailingStop && executionOption !== 'GTC' ? (
+          !isMarket && !isStopLimit && !isTrailingStop && !isScale && executionOption !== 'GTC' ? (
             <span className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm bg-pd1/30 text-pd3 rounded">
               {executionOption}
             </span>
@@ -300,6 +349,19 @@ export function OrderForm({
         </button>
       </div>
 
+      {isScale ? (
+        <ScaleOrderForm
+          side={side}
+          availableQuote={availableQuote}
+          availableBase={availableBase}
+          midPrice={midPrice || 0}
+          feeRate={feeRate}
+          onSubmit={onScaleOrder || (() => {})}
+          disabled={disabled}
+          isLoading={isLoading}
+        />
+      ) : (
+      <>
       {/* C. Available Balance + In Orders */}
       <div className="text-trading-xs xl:text-trading-sm space-y-0.5">
         <div className="flex items-center justify-between">
@@ -708,6 +770,8 @@ export function OrderForm({
             ? '...'
             : `${isMarket ? 'Market ' : isStopLimit ? 'Stop-Limit ' : isTrailingStop ? 'Trail ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
       </button>
+      </>
+      )}
     </div>
   );
 }

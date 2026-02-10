@@ -13,6 +13,15 @@ import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
 import type { DeepBookEvent, OrderFilledEvent } from '../types/events';
 
+// Custom event for cross-component fill notification (Orderbook highlight, chart markers)
+export const ORDER_FILL_EVENT = 'pado:order-filled';
+export interface OrderFillDetail {
+  price: number;
+  quantity: number;
+  side: 'buy' | 'sell';
+  timestamp: number;
+}
+
 interface UseOrderFillNotifierParams {
   balanceManagerId: string | null;
   quoteDecimals: number;
@@ -76,6 +85,16 @@ export function useOrderFillNotifier({
         body,
         tag: `order-fill-${data.txDigest}`,
       });
+
+      // Broadcast fill to Orderbook (highlight) and chart (markers)
+      document.dispatchEvent(new CustomEvent<OrderFillDetail>(ORDER_FILL_EVENT, {
+        detail: {
+          price,
+          quantity: qty,
+          side: side.toLowerCase() as 'buy' | 'sell',
+          timestamp: Date.now(),
+        },
+      }));
     };
 
     const unsubscribe = eventService.subscribe('OrderFilled', handleOrderFilled);
