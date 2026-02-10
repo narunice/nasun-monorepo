@@ -187,12 +187,38 @@ async function runBot(
     return;
   }
 
-  const bids = validOrders.filter((o) => o.isBid);
-  const asks = validOrders.filter((o) => !o.isBid);
+  let bids = validOrders.filter((o) => o.isBid);
+  let asks = validOrders.filter((o) => !o.isBid);
+
+  // Cap order count to available inventory to prevent withdraw_with_proof failures.
+  // DeepBook V3 reserves maker fees upfront per order, so use 95% of balance as safe limit.
+  const safeBase = inventory.base * 0.95;
+  const safeQuote = inventory.quote * 0.95;
+  const maxAsks = safeBase > 0
+    ? Math.floor(safeBase / config.orderSize)
+    : 0;
+  const maxBids = (safeQuote > 0 && price > 0)
+    ? Math.floor(safeQuote / (config.orderSize * price))
+    : 0;
+
+  if (maxAsks < asks.length || maxBids < bids.length) {
+    bids = bids.slice(0, Math.max(0, maxBids));
+    asks = asks.slice(0, Math.max(0, maxAsks));
+
+    if (bids.length === 0 && asks.length === 0) {
+      console.error(`[${timestamp()}] Insufficient inventory for any orders (base: ${inventory.base.toFixed(4)}, quote: ${inventory.quote.toFixed(0)})`);
+      state.consecutiveFailures++;
+      return;
+    }
+
+    console.log(`[${timestamp()}] Inventory limited: capped to ${bids.length} bids + ${asks.length} asks`);
+  }
+
+  const finalOrders = [...bids, ...asks];
   console.log(`[${timestamp()}] Generating ${bids.length} bids + ${asks.length} asks around $${price.toLocaleString()}`);
 
   // Step 8: Atomic cancel+place
-  const result = await syncOrders(client, keypair, state.balanceManagerId, validOrders, state);
+  const result = await syncOrders(client, keypair, state.balanceManagerId, finalOrders, state);
 
   if (result.success) {
     state.lastQuotedPrice = price;
@@ -253,10 +279,21 @@ async function initialize(
 
   if (!state.balanceManagerId) {
     console.log(`[${timestamp()}] No BalanceManager found, creating one...`);
-    state.balanceManagerId = await createBalanceManager(client, keypair);
+
+    // Retry with backoff for transient gas coin contention
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      state.balanceManagerId = await createBalanceManager(client, keypair);
+      if (state.balanceManagerId) break;
+
+      if (attempt < 3) {
+        const waitSec = attempt * 5;
+        console.log(`[${timestamp()}] Retrying BalanceManager creation in ${waitSec}s (attempt ${attempt}/3)...`);
+        await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
+      }
+    }
 
     if (!state.balanceManagerId) {
-      console.error(`[${timestamp()}] Failed to create BalanceManager`);
+      console.error(`[${timestamp()}] Failed to create BalanceManager after 3 attempts`);
       return false;
     }
   } else {
@@ -269,8 +306,8 @@ async function initialize(
   const totalBase = walletBalance.base + bmBalance.base;
   const totalQuote = walletBalance.quote + bmBalance.quote;
 
-  // Calculate minimum inventory needed for the full order grid
-  const minBaseNeeded = config.orderSize * config.orderLevels;
+  // Calculate minimum inventory needed for the full order grid (20% buffer for maker fees)
+  const minBaseNeeded = config.orderSize * config.orderLevels * 1.2;
   const minQuoteNeeded = config.refillThresholdQuote;
 
   if (totalBase < minBaseNeeded || totalQuote < minQuoteNeeded) {
@@ -281,9 +318,17 @@ async function initialize(
     );
     console.log(`[${timestamp()}] Insufficient funds (have ${totalBase.toFixed(4)}, need ~${minBaseNeeded.toFixed(4)} ${MARKET.name}), accumulating via faucet (${faucetRounds} rounds)...`);
 
+    let faucetFailures = 0;
     for (let i = 0; i < faucetRounds; i++) {
       const faucetSuccess = await requestTokens(client, keypair);
-      if (!faucetSuccess) break;
+      if (!faucetSuccess) {
+        faucetFailures++;
+        if (faucetFailures >= 2) break; // Give up after 2 consecutive failures
+        console.log(`[${timestamp()}] Faucet round ${i + 1} failed, retrying in 5s...`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      faucetFailures = 0;
     }
 
     const newWalletBalance = await getWalletBalances(client, address);
@@ -389,11 +434,16 @@ async function main() {
 
   const runOnce = process.argv.includes('--once');
 
-  const update = async () => {
+  const runCycle = async () => {
+    // Circuit breaker with auto-recovery (cooldown instead of permanent pause)
     if (state.consecutiveFailures >= config.maxConsecutiveFailures) {
-      console.error(`[${timestamp()}] Circuit breaker: ${state.consecutiveFailures} consecutive failures`);
-      console.error(`[${timestamp()}] Bot paused. Restart to continue.`);
-      return;
+      const cooldownMs = Math.min(
+        60000,
+        config.updateIntervalMs * (state.consecutiveFailures - config.maxConsecutiveFailures + 1),
+      );
+      console.log(`[${timestamp()}] Circuit breaker: ${state.consecutiveFailures} failures, cooling down ${cooldownMs / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, cooldownMs));
+      console.log(`[${timestamp()}] Circuit breaker: attempting recovery...`);
     }
 
     try {
@@ -416,7 +466,7 @@ async function main() {
     }
   };
 
-  await update();
+  await runCycle();
 
   if (runOnce) {
     console.log('');
@@ -450,7 +500,14 @@ async function main() {
   console.log(`[${timestamp()}] Running every ${config.updateIntervalMs / 1000}s... (Ctrl+C to stop)`);
   console.log('');
 
-  setInterval(update, config.updateIntervalMs);
+  // Use setTimeout loop instead of setInterval to prevent concurrent execution
+  // and naturally stagger timing across bot processes (each cycle starts only
+  // after the previous one completes + interval delay)
+  const loop = async () => {
+    await runCycle();
+    setTimeout(loop, config.updateIntervalMs);
+  };
+  setTimeout(loop, config.updateIntervalMs);
 }
 
 main().catch((error) => {

@@ -33,9 +33,13 @@ export const NETWORK_CONFIG = {
   faucetPackage: import.meta.env.VITE_FAUCET_PACKAGE,
   tokenFaucet: import.meta.env.VITE_TOKEN_FAUCET,
 
-  // Token Faucet V2 (NETH, NSOL)
+  // Token Faucet V2 — NSOL (original V2 package)
   tokenFaucetV2: import.meta.env.VITE_TOKEN_FAUCET_V2 || '',
   claimRecordV2: import.meta.env.VITE_CLAIM_RECORD_V2 || '',
+
+  // Token Faucet V2 — NETH (re-published V2 package, 8 decimals)
+  nethFaucetV2: import.meta.env.VITE_NETH_FAUCET_V2 || '',
+  nethClaimRecordV2: import.meta.env.VITE_NETH_CLAIM_RECORD_V2 || '',
 
   // zkLogin Configuration
   zkLoginSaltApiUrl: import.meta.env.VITE_ZKLOGIN_SALT_API_URL || '',
@@ -73,7 +77,7 @@ export const TOKENS = {
   NETH: {
     symbol: 'NETH',
     name: 'Nasun ETH',
-    decimals: 18,
+    decimals: 8,
     type: NETWORK_CONFIG.nethType,
   },
   NSOL: {
@@ -135,8 +139,8 @@ export const POOLS = {
     id: NETWORK_CONFIG.poolNethNusdc,
     baseToken: TOKENS.NETH,
     quoteToken: TOKENS.NUSDC,
-    tickSize: 10000,    // $0.01
-    lotSize: 1000000000000000, // 0.001 ETH (18 decimals)
+    tickSize: 100000,   // $0.10 (8 decimals, same as NBTC)
+    lotSize: 1000,      // 0.00001 ETH (8 decimals)
     makerFeeBps: 5,
     takerFeeBps: 10,
   },

@@ -146,12 +146,13 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   const tickSizeUsd = currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals);
   const groupOptions = useMemo(() => getGroupOptions(tickSizeUsd), [tickSizeUsd]);
 
+  const poolKey = `${currentPool.baseToken.symbol}_${currentPool.quoteToken.symbol}`;
   const [depthLevel, setDepthLevel] = useState<DepthLevel>(() => {
     const stored = parseInt(localStorage.getItem('pado:orderbook:depth') || '');
     return ([5, 10, 20] as DepthLevel[]).includes(stored as DepthLevel) ? stored as DepthLevel : 10;
   });
   const [groupSize, setGroupSize] = useState<number>(() => {
-    const stored = parseFloat(localStorage.getItem('pado:orderbook:group') || '');
+    const stored = parseFloat(localStorage.getItem(`pado:orderbook:group:${currentPool.baseToken.symbol}_${currentPool.quoteToken.symbol}`) || '');
     return stored > 0 ? stored : tickSizeUsd;
   });
   const [activeTab, setActiveTab] = useState<OrderbookTab>('book');
@@ -194,14 +195,18 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   }, [fillFlashes, groupSize]);
 
   useEffect(() => { localStorage.setItem('pado:orderbook:depth', String(depthLevel)); }, [depthLevel]);
-  useEffect(() => { localStorage.setItem('pado:orderbook:group', String(groupSize)); }, [groupSize]);
+  useEffect(() => { localStorage.setItem(`pado:orderbook:group:${poolKey}`, String(groupSize)); }, [groupSize, poolKey]);
 
-  // Reset groupSize when pool changes and stored value is not in the new options
+  // Load pool-specific groupSize when pool changes; reset to tick size if stored value is invalid
   useEffect(() => {
-    if (!groupOptions.includes(groupSize)) {
+    const stored = parseFloat(localStorage.getItem(`pado:orderbook:group:${poolKey}`) || '');
+    if (stored > 0 && groupOptions.includes(stored)) {
+      setGroupSize(stored);
+    } else {
       setGroupSize(groupOptions[0]);
     }
-  }, [groupOptions, groupSize]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poolKey]);
 
   // Cycle through group options on click
   const cycleGroupSize = useCallback(() => {

@@ -28,16 +28,20 @@ export const DEEPBOOK_REGISTRY = '0x0a6ba6378a30598f1487e193865bfa387f177f826604
 export const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
 
-// Tokens V2 (NETH, NSOL)
+// Tokens V2 - NSOL (original package, 9 decimals)
 export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-// V2 faucet upgraded package (reduced mint amounts to prevent u64 supply overflow)
 export const TOKENS_V2_FAUCET_PACKAGE = '0x3887377706f0307d22f1d0b04e0c4fa72b2cbbf0315502a0b8ecba9cba5216f8';
 export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
+
+// Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention)
+export const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
+export const NETH_FAUCET_PACKAGE = NETH_PACKAGE;
+export const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
 
 // Token Types
 const NBTC_TYPE = `${TOKENS_PACKAGE}::nbtc::NBTC`;
 const NUSDC_TYPE = `${TOKENS_PACKAGE}::nusdc::NUSDC`;
-const NETH_TYPE = `${TOKENS_V2_PACKAGE}::neth::NETH`;
+const NETH_TYPE = `${NETH_PACKAGE}::neth::NETH`;
 const NSOL_TYPE = `${TOKENS_V2_PACKAGE}::nsol::NSOL`;
 
 // System
@@ -68,6 +72,8 @@ export interface MarketConfig {
   faucetBaseAmount: number;    // Base tokens received per faucet call (for accumulation calc)
   startupDelayMs: number;      // Staggered startup delay to avoid gas coin contention
   faucetType: 'v1' | 'v2'; // Which faucet module to use for base token
+  faucetV2Package?: string;  // Package to call for V2 faucet (per-market)
+  faucetV2Object?: string;   // Shared faucet object for V2 (per-market)
 }
 
 export const MARKETS: Record<string, MarketConfig> = {
@@ -97,12 +103,12 @@ export const MARKETS: Record<string, MarketConfig> = {
     name: 'NETH',
     baseType: NETH_TYPE,
     quoteType: NUSDC_TYPE,
-    poolId: '0x531fed7acf9f5f7fe3a206bc079d69d39db0bf8e22ff703c3fe0817edf9c0714',
-    baseDecimals: 18,
+    poolId: '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7',
+    baseDecimals: 8,      // 8 decimals (matches Sui mainnet WETH convention)
     quoteDecimals: 6,
-    tickSize: 10000n,                // $0.01
-    lotSize: 1000000000000000n,      // 0.001 ETH (10^15)
-    minSize: 1000000000000000n,
+    tickSize: 100000n,    // $0.10 (same as NBTC — both 8 dec)
+    lotSize: 1000n,       // 0.00001 ETH
+    minSize: 1000n,
     binanceSymbol: 'ETHUSDT',
     defaultMinPrice: 1000,
     defaultMaxPrice: 10000,
@@ -112,8 +118,10 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxArbQuantity: 0.5,
     defaultMaxOrderSize: 1.0,
     faucetBaseAmount: 0.1,   // V2 faucet: 0.1 NETH per call
-    startupDelayMs: 5000,
+    startupDelayMs: 20000,
     faucetType: 'v2',
+    faucetV2Package: NETH_FAUCET_PACKAGE,
+    faucetV2Object: NETH_FAUCET_V2,
   },
   NSOL: {
     name: 'NSOL',
@@ -134,8 +142,10 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxArbQuantity: 10,
     defaultMaxOrderSize: 100,
     faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call
-    startupDelayMs: 10000,
+    startupDelayMs: 40000,
     faucetType: 'v2',
+    faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
+    faucetV2Object: TOKEN_FAUCET_V2,
   },
 };
 

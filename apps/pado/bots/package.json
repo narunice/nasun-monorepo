@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "price-updater": "tsx price-updater.ts",
-    "price-updater:once": "tsx price-updater.ts --once",
+    "price-updater": "node --env-file=.env --import tsx price-updater.ts",
+    "price-updater:once": "node --env-file=.env --import tsx price-updater.ts --once",
     "liquidation-keeper": "tsx liquidation-keeper.ts",
     "liquidation-keeper:once": "tsx liquidation-keeper.ts --once",
     "lp-bot": "node --env-file=.env --import tsx lp-bot.ts",

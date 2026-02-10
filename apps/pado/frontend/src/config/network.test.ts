@@ -21,10 +21,10 @@ describe('TOKENS', () => {
     expect(TOKENS.NUSDC.decimals).toBe(6);
   });
 
-  it('defines NETH token with 18 decimals', () => {
+  it('defines NETH token with 8 decimals', () => {
     expect(TOKENS.NETH.symbol).toBe('NETH');
     expect(TOKENS.NETH.name).toBe('Nasun ETH');
-    expect(TOKENS.NETH.decimals).toBe(18);
+    expect(TOKENS.NETH.decimals).toBe(8);
   });
 
   it('defines NSOL token with 9 decimals', () => {
@@ -64,8 +64,8 @@ describe('POOLS', () => {
   it('defines NETH_NUSDC pool (Sprint 3B)', () => {
     expect(POOLS.NETH_NUSDC.baseToken).toBe(TOKENS.NETH);
     expect(POOLS.NETH_NUSDC.quoteToken).toBe(TOKENS.NUSDC);
-    expect(POOLS.NETH_NUSDC.tickSize).toBe(10000);
-    expect(POOLS.NETH_NUSDC.lotSize).toBe(1000000000000000); // 0.001 ETH
+    expect(POOLS.NETH_NUSDC.tickSize).toBe(100000);   // $0.10
+    expect(POOLS.NETH_NUSDC.lotSize).toBe(1000);       // 0.00001 ETH (8 dec)
   });
 
   it('defines NSOL_NUSDC pool (Sprint 3B)', () => {
