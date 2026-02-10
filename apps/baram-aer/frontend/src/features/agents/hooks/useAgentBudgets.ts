@@ -38,8 +38,11 @@ export interface SpendingLimits {
 
 function parseBudgetFields(fields: Record<string, unknown>): BudgetInfo | null {
   try {
-    const balanceField = fields.balance as Record<string, string> | undefined;
-    const balanceValue = Number(balanceField?.value ?? 0);
+    // Balance<T> is serialized as a plain string by Sui JSON-RPC, not { value: "..." }
+    const rawBalance = fields.balance;
+    const balanceValue = typeof rawBalance === 'object' && rawBalance !== null
+      ? Number((rawBalance as Record<string, string>).value ?? 0)
+      : Number(rawBalance ?? 0);
 
     return {
       id: (fields.id as Record<string, string>)?.id ?? '',
@@ -107,7 +110,7 @@ export async function fetchSpendingLimits(budgetId: string): Promise<SpendingLim
     const result = await suiClient.getDynamicFieldObject({
       parentId: budgetId,
       name: {
-        type: `${BARAM_CONFIG.packageId}::budget::SpendingLimitsKey`,
+        type: `${BARAM_CONFIG.budgetTypeOrigin}::budget::SpendingLimitsKey`,
         value: { dummy_field: false },
       },
     });
