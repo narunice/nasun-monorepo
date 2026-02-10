@@ -1,0 +1,210 @@
+{
+  "featureDisabled": {
+    "title": "NFT 이벤트가 현재 비활성화되었습니다",
+    "description": "NFT 이벤트 기능이 현재 비활성화되었습니다. 나중에 다시 확인해주세요."
+  },
+  "header": {
+    "title": "Wave 1 Battalion NFT 프리민팅 이벤트",
+    "description": "아래의 미션을 완료하고 허용리스트에 등록하여 당신의 NFT를 민팅하세요."
+  },
+  "errors": {
+    "missingInfo": "필수 정보가 누락되었습니다. 이전 단계를 모두 완료해주세요.",
+    "registrationFailed": "등록에 실패했습니다",
+    "registerFailed": "등록에 실패했습니다. 다시 시도해주세요."
+  },
+  "shareOnX": "X에 공유",
+  "share": "공유하기",
+  "goToHome": "홈으로 가기",
+  "goToMyAccount": "내 계정 대시보드로 가기",
+  "step1": {
+    "title": "Wave 1 Battalion NFT 프리민팅 이벤트에 오신 것을 환영합니다!",
+    "description": "아래의 미션을 완료하고 허용리스트에 등록하여 당신의 NFT를 민팅하세요.",
+    "requirements": {
+      "title": "참여 조건",
+      "item1": "X @Nasun_io 계정 팔로우",
+      "item2": "이벤트 게시물에 좋아요",
+      "item3": "이벤트 게시물 리트윗"
+    },
+    "links": {
+      "officialAccount": "나선 공식 X 계정",
+      "eventPost": "이벤트 포스트"
+    },
+    "rewards": {
+      "title": "보상",
+      "item1": "1인당 Wave 1 Battalion NFT 1개 무료 민팅",
+      "item2": "향후 에어드랍 및 이벤트 우선 참여권",
+      "item3": "랜덤 추첨 참여 자격",
+      "item4": "모든 Battalion NFT + Genesis NFT 수집 시 멀티플라이어 증가",
+      "item5": "독점 커뮤니티 멤버십"
+    },
+    "button": "시작하기"
+  },
+  "step2": {
+    "title": "X 계정 연결",
+    "description": "이벤트 참여를 확인하기 위해 X 계정을 연결해주세요.",
+    "infoSimplified": "이벤트 참여 조건 검증을 위한 1회성 인증입니다.",
+    "privacyNote": "사용자명과 ID만 수집되며 이벤트 검증 목적으로만 사용됩니다",
+    "authenticationRequired": "⚠️ X 계정 인증이 필요합니다",
+    "authenticationPurpose": "다음 이벤트 태스크 완료 여부를 확인하기 위해 X OAuth 인증이 필요합니다:",
+    "verifyLikes": "타겟 트윗에 좋아요를 눌렀는지 확인",
+    "verifyRetweets": "타겟 트윗을 리트윗했는지 확인",
+    "notSignUp": "이것은 검증 절차일 뿐, 웹사이트 가입이 아닙니다",
+    "tokenAutoDelete": "🔒 본 인증은 이벤트 참여 조건 검증을 위한 1회성 인증입니다.",
+    "infoTitle": "왜 X 연동이 필요한가요?",
+    "infoDescription": "이벤트 참여 조건(팔로우, 좋아요, 리트윗)을 확인하기 위해 X 계정 연동이 필요합니다. 읽기 권한만 사용하며, 어떠한 글도 작성하지 않습니다.",
+    "privacyTitle": "개인정보 보호:",
+    "privacyDescription": "X 계정 연동 시 사용자명과 ID만 수집되며, 이벤트 참여 확인 목적으로만 사용됩니다.",
+    "followRecommended": "커뮤니티와 함께하세요 (권장)",
+    "followDescription": "팔로우하시면 향후 이벤트 소식과 독점 혜택을 가장 먼저 받으실 수 있습니다!",
+    "followButton": "@Nasun_io 팔로우하기",
+    "connecting": "연결 중...",
+    "button": "X로 연결",
+    "errors": {
+      "callbackFailed": "Twitter OAuth 콜백에 실패했습니다",
+      "noUserInfo": "Twitter에서 사용자 정보를 가져오지 못했습니다",
+      "authFailed": "X 인증에 실패했습니다",
+      "initFailed": "X OAuth 초기화에 실패했습니다",
+      "connectFailed": "X 연결에 실패했습니다"
+    }
+  },
+  "step3": {
+    "title": "이벤트 미션 확인",
+    "description": "아래 미션을 모두 완료했는지 확인합니다.",
+    "infoPrefix": "태스크를 완료하지 않았나요?",
+    "eventPostLink": "먼저 이벤트 게시물을 방문하세요!",
+    "recommended": "권장",
+    "followButton": "팔로우",
+    "tasks": {
+      "follow": "@{{account}} 팔로우",
+      "like": "이벤트 게시물 좋아요",
+      "retweet": "이벤트 게시물 리트윗"
+    },
+    "status": {
+      "completed": "완료",
+      "incomplete": "미완료",
+      "pending": "대기 중",
+      "checking": "확인 중..."
+    },
+    "fallbackTitle": "미션 확인 안내",
+    "fallbackDescription": "자동 확인이 일시적으로 불가능합니다. 아래 미션을 직접 확인해주세요:",
+    "fallbackInstructions": {
+      "title": "다음 사항을 직접 확인해주세요:",
+      "item1": "@Nasun_io 계정을 팔로우 했는지 확인",
+      "item2": "이벤트 게시물에 좋아요를 눌렀는지 확인",
+      "item3": "이벤트 게시물을 리트윗 했는지 확인"
+    },
+    "fallbackNote": "💡 <strong>모든 태스크를 완료했다면</strong> \"다시 확인하기\" 버튼을 눌러보거나, 다음 단계로 진행하셔도 됩니다.",
+    "goToTweet": "이벤트 게시물 보기",
+    "retry": "다시 확인하기",
+    "button": "미션 확인하기",
+    "nextButton": "다음 단계로",
+    "verifying": "확인 중...",
+    "errors": {
+      "verificationFailed": "미션 확인에 실패했습니다",
+      "incomplete": "일부 미션이 완료되지 않았습니다. 모든 미션을 완료한 후 다시 시도해주세요.",
+      "failed": "미션 확인에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      "tokenExpired": "X 인증이 만료되었습니다. X 계정을 다시 연결해주세요.",
+      "reconnectX": "X 계정 다시 연결"
+    }
+  },
+  "step4": {
+    "title": "지갑 연결",
+    "description": "NFT를 받을 MetaMask 지갑을 연결해주세요.",
+    "infoTitle": "MetaMask 지갑 연결 안내",
+    "infoDescription": "NFT를 받을 MetaMask 지갑 주소를 연결해주세요. MetaMask 팝업이 나타나면 연결을 승인하세요.",
+    "signatureNote": "서명은 유효한 주소 수집을 위한 지갑 소유권 확인입니다. 거래나 자금 이동은 발생하지 않습니다.",
+    "connected": "연결됨",
+    "success": "지갑 연결 성공",
+    "connecting": "연결 중...",
+    "button": "MetaMask 연결",
+    "nextButton": "다음 단계로",
+    "installLink": "MetaMask 설치하기",
+    "installing": "MetaMask 설치 후 이 페이지를 새로고침해주세요.",
+    "errors": {
+      "connectionFailed": "지갑 연결에 실패했습니다",
+      "noMetaMask": "MetaMask가 설치되지 않았습니다. 설치 후 다시 시도해주세요.",
+      "accountsError": "계정을 가져오는 데 실패했습니다",
+      "switchNetworkError": "네트워크 전환에 실패했습니다"
+    }
+  },
+  "step5": {
+    "title": "허용리스트 등록",
+    "description": "모든 미션을 완료했습니다! 아래 정보를 확인하고 허용리스트에 등록하세요.",
+    "labels": {
+      "xAccount": "X 계정",
+      "walletAddress": "지갑 주소",
+      "tasksCompleted": "완료된 미션"
+    },
+    "walletNotConnected": "연결되지 않음",
+    "allTasksCompleted": "✅ 모든 미션 완료",
+    "registering": "등록 중...",
+    "button": "허용리스트 등록하기"
+  },
+  "step6": {
+    "title": "🎉 허용리스트 등록 완료!",
+    "description": "축하합니다! Wave 1 Battalion NFT 허용리스트에 성공적으로 등록되었습니다.",
+    "shareMessage": "Wave 1 Battalion NFT 허용리스트에 등록했어요! 🎉 #NASUN #NFT",
+    "shareEventOnX": "이 이벤트를 공유하기",
+    "mintingGuide": {
+      "title": "OpenSea 민팅 가이드",
+      "step1": "OpenSea 컬렉션 페이지로 이동하세요",
+      "step2": "등록한 지갑(MetaMask)으로 OpenSea에 로그인하세요",
+      "step3": "'Mint' 버튼을 클릭하여 NFT를 민팅하세요",
+      "step4": "가스비를 확인하고 트랜잭션을 승인하세요",
+      "note": "민팅 시작일은 별도로 공지됩니다",
+      "button": "OpenSea Battalion Collection"
+    },
+    "tip": "💡 Tip: OpenSea 민팅 페이지를 북마크해두세요!",
+    "sharePrompt": "이벤트를 친구들에게 공유하세요!",
+    "summary": {
+      "title": "등록 정보",
+      "xAccount": "X 계정",
+      "wallet": "지갑 주소",
+      "registeredAt": "등록 시간"
+    },
+    "actions": {
+      "share": "X에 공유하기",
+      "viewOnX": "내 프로필 보기",
+      "goHome": "홈으로 돌아가기"
+    },
+    "walletDisconnected": {
+      "title": "Wallet Disconnected",
+      "description": "등록 정보는 저장되었지만 MetaMask 지갑 연결이 해제되었습니다.",
+      "instruction": "등록 상태를 확인하고 NFT 민팅에 참여하려면 지갑을 다시 연결해주세요.",
+      "reconnectButton": "MetaMask 재연결",
+      "resetButton": "등록 초기화",
+      "resetConfirm": "등록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "helpText": "동일한 지갑을 다시 연결하면 백엔드에서 자동으로 등록 정보가 복원됩니다."
+    },
+    "walletDisconnectedWarning": "지갑 연결이 해제되었습니다. 민팅에 참여하려면 지갑을 다시 연결해주세요.",
+    "goToMyAccount": "My Account에서 재연결",
+    "info": {
+      "title": "등록 정보",
+      "allowlistBatch": "허용리스트 배치",
+      "wallet": "지갑 주소",
+      "username": "X 계정",
+      "registeredAt": "등록 시간",
+      "item1": "민팅 시작일에 이메일 알림을 받게 됩니다",
+      "item2": "등록한 지갑 주소로 NFT를 민팅할 수 있습니다",
+      "item3": "민팅 가격: 무료 (가스비만 부담)",
+      "dataPreserved": "등록 정보가 저장되었습니다",
+      "registrationSaved": "허용리스트 등록 정보가 백엔드에 저장되었습니다",
+      "xAccountSaved": "X 계정 인증 정보가 보존되었습니다",
+      "walletNeeded": "민팅에 참여하려면 지갑을 다시 연결해야 합니다"
+    }
+  },
+  "stepper": {
+    "step1": "소개",
+    "step2": "X 연결",
+    "step3": "미션 확인",
+    "step4": "지갑 연결",
+    "step5": "등록",
+    "step6": "완료",
+    "statusCurrent": "진행중",
+    "statusCompleted": "완료"
+  },
+  "reset": {
+    "confirm": "정말로 처음부터 다시 시작하시겠습니까? 모든 진행 상황이 초기화됩니다.",
+    "button": "🔄 진행상황 초기화 (개발용)"
+  }
+}

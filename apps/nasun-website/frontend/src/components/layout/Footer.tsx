@@ -45,8 +45,6 @@ export default function Footer() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isHomePage = location.pathname === "/";
-
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     window.scrollTo(0, 0);

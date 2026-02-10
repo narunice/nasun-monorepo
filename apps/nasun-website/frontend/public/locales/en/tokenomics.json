@@ -1,0 +1,139 @@
+{
+  "tokenomics": "TOKENOMICS",
+  "network": {
+    "title": "NASUN NETWORK",
+    "mainTitle": "Use the best out there or build it.",
+    "subtitle": "Ideas, Tech and Process",
+    "nsnTitle": "NSN NETWORK",
+    "visionTitle": "THE VISION",
+    "visionDescription": "NASUN Network is built on a high-performance Layer 1 blockchain utilizing Move—a next-generation programming language designed for security, speed, and scalability.\n\nBy integrating cutting-edge technology with creator-focused infrastructure, we're empowering artists and fans to build, share, and own their digital experiences like never before.",
+    "layer1": "Layer 1 Protocol",
+    "description": "Nasun Network is a Layer-1 protocol that utilizes Delegated Proof-of-Stake (DPoS) and the Mysticeti consensus mechanism. Through the network, users can transfer, create, and evolve digital assets, or interact with smart contracts.\n\nThe native token of the Nasun Network, NSN, powers all activity within the ecosystem. Transaction costs (gas) are paid in NSN, and users can delegate their tokens to validators to help secure the network and earn rewards. Validators, in turn, must stake a minimum amount of NSN to align their incentives with the community and uphold the network’s security and growth.",
+    "buttonText": "LEARN MORE"
+  },
+  "token": {
+    "title": "NASUN TOKEN",
+    "description": "The total supply of NASUN tokens will be 10 billion.",
+    "heading": "The NSN token serves four primary functions within the Nasun Network:",
+    "subtitle": "Open Communication\nFair Representation\nfor Growth",
+    "uses": {
+      "staking": {
+        "heading": "Staking",
+        "description": "Stake NSN to participate in securing the Delegated Proof-of-Stake (DPoS) consensus mechanism and earn rewards."
+      },
+      "fee": {
+        "heading": "Gas & Computation",
+        "description": "Use NSN to pay gas fees for transactions, store data on-chain, and execute smart contracts."
+      },
+      "transfer": {
+        "heading": "Value Exchange",
+        "description": "Transfer or store value, or use NSN in more complex on-chain operations and decentralized applications."
+      },
+      "governance": {
+        "heading": "Governance",
+        "description": "Use NSN to vote on proposals, protocol upgrades, and other decisions shaping the future of the Nasun ecosystem."
+      }
+    }
+  },
+  "moveTogether": {
+    "title": "Move together into our shared future.",
+    "heading": "MOVE TOGETHER",
+    "subtitle": "Transparency, Decentralization and Ownership",
+    "description": "Nasun Network will utilize the Move programming language for all programmable logic on the network. We believe Move’s resource-oriented architecture represents the next evolution of Web3—fast, scalable, and inherently secure.\n\nAt launch, Nasun will draw from the strengths of other leading Move-based networks such as Sui, Aptos, and IOTA, while investing significant resources to research, innovate, and contribute to the ongoing growth of the Move ecosystem.",
+    "keyword1": {
+      "title": "Fast",
+      "description": "Efficient execution with minimal overhead"
+    },
+    "keyword2": {
+      "title": "Scalable",
+      "description": "Built for high throughput blockchain operations"
+    },
+    "keyword3": {
+      "title": "Secure",
+      "description": "Formally verified language designed for asset safety"
+    },
+    "keyword4": {
+      "title": "Resource-Oriented",
+      "description": "Move's ownership model ensures assets behave like physical resources"
+    }
+  },
+  "key_facts": {
+    "title": "KEY FACTS",
+    "points": [
+      "Total supply: 10 billion NASUN",
+      "Consensus: Delegated Proof-of-Stake (DPoS)",
+      "Smart contract language: Move",
+      "Gas fees paid in NASUN"
+    ]
+  },
+  "distribution": {
+    "title": "NASUN TOKEN DISTRIBUTION",
+    "heading": "NASUN TOKEN DISTRIBUTION",
+    "description_top": "The total supply of NSN tokens will be 10 billion.",
+    "subheading": "Preliminary allocation",
+    "supply": "Total Supply",
+    "description_bottom": "This represents an initial breakdown, with further details to follow — including specific program allocations, governance models for token distribution, and lock-up and vesting schedules. We plan to finalize these details after launch, incorporating community feedback to ensure Nasun’s tokenomics evolve in line with the values, sentiment, and goodwill of our ecosystem.",
+    "community_treasury": {
+      "title": "Community Treasury & Ecosystem"
+    },
+    "team_advisors": {
+      "title": "Team and Advisors"
+    },
+    "public_sales": {
+      "title": "Public Sales and Liquidity"
+    },
+    "early_contributors": {
+      "title": "Early Contributors, Testers & Campaigns"
+    },
+    "strategic_partners": {
+      "title": "Strategic Partners"
+    },
+    "foundation": {
+      "title": "Foundation"
+    }
+  },
+  "network_details": {
+    "defi": {
+      "title": "NASUN DEFI",
+      "subtitle": "At Nasun, we are transparent about our DeFi ambitions. Our goal is to develop one of the most robust DeFi ecosystems — committing significant resources because decentralized finance will be central to realizing Nasun’s creative and technological vision.",
+      "body1": "We will leverage our network and partnerships in South Korea to bootstrap a vibrant, engaged community active in decentralized financial platforms. South Korea remains one of the world’s most dynamic markets for digital assets — with over 20% of the population registered on exchanges, a virtual asset market capitalization exceeding $75 billion in 2024, and daily trading volumes that often surpass traditional stock exchanges.",
+      "body2": "The country’s openness to technology and innovation makes it a key environment for the growth of Real-World Asset (RWA) tokenization and Security Token Offerings (STOs), with forecasts projecting the market to reach $287 billion by 2030.",
+      "body3": "Our initial focus is to launch Nasun’s DeFi ecosystem in South Korea, cultivating a strong and active community, before expanding into other key global markets.",
+      "listTitle": "Core Research and Development Areas:",
+      "list_items": [
+        "Fully On-Chain DEXs and Liquidity Solutions",
+        "AI-Powered Tools for DeFi Automation and Efficiency",
+        "Real-World Asset (RWA) Tokenization",
+        "Decentralized Prediction Markets",
+        "Perpetuals and Derivatives (subject to local regulations)"
+      ]
+    },
+    "depin": {
+      "title": "NASUN DEPIN",
+      "intro": "Nasun views technology as a tool for creating value for everyone who engages with its IPs and network. A key long-term focus is developing a decentralized compute infrastructure, encompassing:",
+      "list_items": [
+        "CPU and GPU processing for rendering",
+        "AI compute — from AGI to ASI applications",
+        "Data storage and verification",
+        "Internet bandwidth"
+      ],
+      "body1": "We will initially focus on scaling this infrastructure and integrating it with our IPs to enable real-world adoption — driving commercial viability in global markets and improving efficiency across all levels of production pipelines and workflows.",
+      "body2": "Through this expansion, the utility and demand for the NSN token will naturally grow alongside participation in Nasun’s digital economy."
+    },
+    "reinvesting": {
+      "title": "REINVESTING REVENUE STREAMS",
+      "body1": "90% of all profits generated by Nasun will be allocated to the Nasun Community Treasury, while the remaining 10% will be burned to support token value and deflationary dynamics. Revenue generated in fiat or other cryptocurrencies will be periodically used to purchase NSN tokens from exchanges before being burned or added to the Treasury.",
+      "body2": "Funds within the Nasun Community Treasury will be strategically deployed to support validator programs, IP management, grants, incentive initiatives, research, and network development — ensuring continuous growth and value creation across the Nasun ecosystem."
+    },
+    "inflation": {
+      "title": "INFLATION DEFLATION",
+      "body1": "For the first few years, funding for key initiatives—such as the validator reward program, IP management, and technology development—will come equally from two sources:",
+      "list_items": [
+        "A fixed allocation of approximately 10% of the total token supply, and",
+        "An annual inflation rate of 2–5%, determined through quarterly community consensus."
+      ],
+      "body2": "During this phase, inflation will not exceed deflation by more than 2% in any given quarter. To eventually balance the system, 10% of all revenue converted to NSN tokens will be burned, while the remaining 90%, along with transaction fees, will fund validator rewards and ecosystem operations.",
+      "body3": "As network usage and revenue streams grow, inflation will be phased out. If organic revenue and transaction fees are insufficient to replace the inflation-funded budget, inflation will be modulated within a 2% range—or within whatever bounds the community deems healthy for the Nasun ecosystem."
+    }
+  }
+}

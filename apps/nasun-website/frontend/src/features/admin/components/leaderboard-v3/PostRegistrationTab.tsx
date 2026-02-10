@@ -82,6 +82,7 @@ export function PostRegistrationTab() {
       // New user detected
       form.setIsNewUser(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- form setters are stable, adding form object would cause infinite re-renders
   }, [accountData, extractedUsername, isLoadingAccount]);
 
   const handleSubmit = useCallback(async () => {

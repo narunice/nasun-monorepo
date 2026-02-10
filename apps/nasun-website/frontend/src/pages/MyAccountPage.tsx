@@ -67,12 +67,6 @@ const MyAccountPage = () => {
       ? user.walletAddress
       : user?.linkedAccounts?.metamask?.walletAddress;
 
-  // Get Twitter username from either primary account or linked accounts
-  const twitterUsername =
-    user?.provider === "Twitter"
-      ? user.twitterHandle
-      : user?.linkedAccounts?.twitter?.twitterHandle;
-
   return (
     <PageLayout>
       <SectionLayout className="!max-w-7xl">

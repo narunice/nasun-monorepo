@@ -86,8 +86,8 @@ export function NftCollectionManagement() {
       });
       setContractAddress("");
       setCollectionName("");
-    } catch (err: any) {
-      setFormError(err.message || "Failed to create collection");
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Failed to create collection");
     }
   };
 

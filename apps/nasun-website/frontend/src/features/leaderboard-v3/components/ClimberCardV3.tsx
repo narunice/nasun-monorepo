@@ -7,7 +7,6 @@
 
 import React from 'react';
 import type { TopClimberEntry } from '../types';
-import { RankChangeIndicatorV3 } from './RankChangeIndicatorV3';
 
 interface ClimberCardV3Props {
   climber: TopClimberEntry;

@@ -7,26 +7,6 @@ import { PageTitle } from "../components/ui/PageTitle";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { AlertTriangle } from "lucide-react";
 
-type TermSection = {
-  title: string;
-  content?: string[];
-  intro?: string;
-  items?: string[];
-  warrantyHeader?: string;
-  warranties?: string[];
-  liabilityHeader?: string;
-  liabilities?: string[];
-  limits?: string[];
-};
-
-type Disclaimer = {
-  title: string;
-  subtitle: string;
-  intro: string;
-  header: string;
-  items: string[];
-};
-
 const TERMS_CONTENT = {
   title: "Terms of Use",
   lastUpdated: "Last Updated: January 18, 2026",

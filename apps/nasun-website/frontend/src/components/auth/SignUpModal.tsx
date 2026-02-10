@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,6 @@ interface SignUpModalProps {
 }
 
 export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
-  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { isAuthenticated, signInWithGoogle, signInWithTwitter, signInWithMetaMask } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);

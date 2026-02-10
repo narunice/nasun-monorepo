@@ -43,9 +43,9 @@ const usePostBySlug = (slug: string | undefined) => {
           console.warn("No post found for slug:", slug);
           setError("Post not found");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching post:", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : "Failed to fetch post");
       } finally {
         setLoading(false);
       }

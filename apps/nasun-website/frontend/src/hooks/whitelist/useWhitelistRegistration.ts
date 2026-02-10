@@ -205,7 +205,7 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
     try {
       setModalData({ ...modalData, state: "signing" });
 
-      const response = await withdrawWhitelistWithSignature(modalData.walletAddress, (message) => {
+      await withdrawWhitelistWithSignature(modalData.walletAddress, (message) => {
         return signMessage(message, modalData.walletAddress!);
       });
 
