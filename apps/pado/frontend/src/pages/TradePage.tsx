@@ -23,6 +23,7 @@ import {
   TradingToggles,
   PoolInfo,
   ShortcutHelpTooltip,
+  KeyboardShortcutsPanel,
   MobileTradeLayoutV2,
   OnboardingTour,
   FavoriteStrip,
@@ -39,7 +40,7 @@ import { usePrices } from "../features/core/usePrices";
 import { type TokenSymbol, set24hChange } from "../lib/prices";
 import type { PriceLevel } from "../lib/deepbook";
 import { fetchBinance24hTicker, getBinanceSymbol } from "../lib/indicators";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from "../features/social";
 import { NewsCarousel } from "../features/news";
 
@@ -184,7 +185,9 @@ function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
 
 function TradePageContent() {
   const { mode, toggleMode, isSimple } = useTradeMode();
-  useKeyboardShortcuts(!isSimple); // Pro mode only
+  const [shortcutsPanelOpen, setShortcutsPanelOpen] = useState(false);
+  const toggleShortcutsPanel = useCallback(() => setShortcutsPanelOpen(prev => !prev), []);
+  useKeyboardShortcuts(!isSimple, { onToggleShortcutsPanel: toggleShortcutsPanel }); // Pro mode only
   const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
   const [chatFloating, setChatFloating] = useState(false);
   const [newsVisible, setNewsVisible] = useState(true);
@@ -421,7 +424,7 @@ function TradePageContent() {
               <div className="relative" style={{ height: `${CHAT_HEIGHT}px` }}>
                 <NewsCarousel onMinimize={() => setNewsVisible(false)} />
                 <div className="absolute bottom-2 right-2">
-                  <ShortcutHelpTooltip />
+                  <ShortcutHelpTooltip onClick={toggleShortcutsPanel} />
                 </div>
               </div>
             ) : (
@@ -513,6 +516,14 @@ function TradePageContent() {
 
       {/* Onboarding tour overlay */}
       <OnboardingTour tour={tour} />
+
+      {/* Keyboard shortcuts panel (Pro mode, ? key) */}
+      {!isSimple && (
+        <KeyboardShortcutsPanel
+          isOpen={shortcutsPanelOpen}
+          onClose={() => setShortcutsPanelOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -42,12 +42,29 @@ module.exports = {
           '0%': { backgroundColor: 'rgba(239, 68, 68, 0.2)' },
           '100%': { backgroundColor: 'transparent' },
         },
+        'fill-flash-buy': {
+          '0%': { backgroundColor: 'rgba(34, 197, 94, 0.45)', boxShadow: '0 0 8px rgba(34, 197, 94, 0.3)' },
+          '50%': { backgroundColor: 'rgba(34, 197, 94, 0.2)' },
+          '100%': { backgroundColor: 'transparent', boxShadow: 'none' },
+        },
+        'fill-flash-sell': {
+          '0%': { backgroundColor: 'rgba(239, 68, 68, 0.45)', boxShadow: '0 0 8px rgba(239, 68, 68, 0.3)' },
+          '50%': { backgroundColor: 'rgba(239, 68, 68, 0.2)' },
+          '100%': { backgroundColor: 'transparent', boxShadow: 'none' },
+        },
+        'checkmark-draw': {
+          '0%': { strokeDashoffset: '24' },
+          '100%': { strokeDashoffset: '0' },
+        },
       },
       animation: {
         'flash-buy': 'flash-buy 1s ease-out',
         'flash-sell': 'flash-sell 1s ease-out',
         'pulse-up': 'pulse-up 0.5s ease-out',
         'pulse-down': 'pulse-down 0.5s ease-out',
+        'fill-flash-buy': 'fill-flash-buy 2s ease-out',
+        'fill-flash-sell': 'fill-flash-sell 2s ease-out',
+        'checkmark-draw': 'checkmark-draw 0.4s ease-out forwards',
       },
       colors: {
         // Pado brand colors (Teal → Mint/Lime gradient)

@@ -18,8 +18,9 @@ import { TransferModal } from './TransferModal';
 import { getActiveTPSLOrders, getTPSLOrders, cancelTPSLOrder, removeTPSLOrder, clearTPSLHistory } from '../lib/tpsl-storage';
 import { TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
 import type { TPSLOrder } from '../lib/tpsl-types';
+import { MiniPortfolioWidget } from '../../portfolio/components/MiniPortfolioWidget';
 
-export type TabType = 'openOrders' | 'tpsl' | 'orderHistory' | 'tradeHistory' | 'assets';
+export type TabType = 'openOrders' | 'tpsl' | 'orderHistory' | 'tradeHistory' | 'assets' | 'portfolio';
 
 type TabConfig = TabItem<TabType>;
 
@@ -48,6 +49,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
     { id: 'orderHistory', label: 'Order History' },
     { id: 'tradeHistory', label: 'Trade History' },
     { id: 'assets', label: 'Assets' },
+    { id: 'portfolio', label: 'Portfolio' },
   ];
 
   return (
@@ -75,6 +77,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
         {activeTab === 'orderHistory' && <OrderHistoryTab />}
         {activeTab === 'tradeHistory' && <TradeHistoryTab />}
         {activeTab === 'assets' && <AssetsTab />}
+        {activeTab === 'portfolio' && <MiniPortfolioWidget />}
       </div>
     </div>
   );

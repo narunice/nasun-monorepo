@@ -619,6 +619,18 @@ export function snapToTick(price: number, pool: PoolConfig): number {
   return snapped / Math.pow(10, decimals);
 }
 
+/** Snap quantity down to nearest lot-size multiple (integer arithmetic to avoid float errors) */
+export function snapToLot(quantity: number, pool: PoolConfig): number {
+  if (quantity <= 0) return 0;
+  const decimals = pool.baseToken.decimals;
+  const qtyRaw = Math.round(quantity * Math.pow(10, decimals));
+  const snapped = qtyRaw - (qtyRaw % pool.lotSize);
+  if (snapped === 0 && qtyRaw > 0) {
+    return pool.lotSize / Math.pow(10, decimals);
+  }
+  return snapped / Math.pow(10, decimals);
+}
+
 /**
  * 최소 수량을 사람이 읽기 좋은 형태로 포맷
  * @example "0.01 NASUN"

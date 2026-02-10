@@ -18,7 +18,7 @@ export const EXECUTION_OPTION_MAP: Record<ExecutionOption, OrderType> = {
   POST_ONLY: ORDER_TYPE.POST_ONLY,
 };
 
-export type OrderModeType = 'limit' | 'market' | 'stop-limit' | 'trailing-stop';
+export type OrderModeType = 'limit' | 'market' | 'stop-limit' | 'trailing-stop' | 'scale';
 export type TrailMode = 'amount' | 'percent';
 
 export interface OrderFormContextType {
