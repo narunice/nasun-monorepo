@@ -177,7 +177,8 @@ Security expectations:
 
 | 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
 | ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
-| `apps/baram`                   | @nasun/baram            | ✅ 완료   | AWS CDK      | AI Settlement Layer (TEE + Escrow)                    |
+| `apps/baram`                   | @nasun/baram            | ⛔ Legacy | AWS CDK      | AI Settlement Layer (TEE + Escrow) — 코드 변경 금지   |
+| `apps/baram-aer`               | @nasun/baram-aer        | 🔨 Active | TBD          | Baram AER — AI Compliance Settlement Layer (활발히 개발 중) |
 | `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
 | `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`          | @nasun/gensol-website   | ✅ 완료   | EC2 스크립트 | GenSol 웹사이트                                       |
@@ -241,12 +242,22 @@ VITE_GOOGLE_CLIENT_ID=<optional>
 ```
 nasun-monorepo/
 ├── apps/
-│   ├── baram/                     # @nasun/baram - AI Settlement Layer
+│   ├── baram/                     # @nasun/baram - AI Settlement Layer (⛔ LEGACY — 코드 변경 금지)
 │   │   ├── frontend/              # Vite React 앱
 │   │   ├── contracts/             # baram.move (에스크로)
 │   │   ├── contracts-executor/    # executor.move (Executor 등록)
 │   │   ├── executor-nitro/        # TEE Executor (AWS Nitro)
 │   │   └── cdk/                   # AWS CDK 인프라
+│   ├── baram-aer/                 # @nasun/baram-aer - AI Compliance Settlement Layer (🔨 ACTIVE)
+│   │   ├── frontend/              # Vite React 앱
+│   │   ├── contracts/             # baram.move (에스크로)
+│   │   ├── contracts-aer/         # aer.move (AIExecutionReport)
+│   │   ├── contracts-executor/    # executor.move (Executor 등록)
+│   │   ├── contracts-attestation/ # attestation_registry.move
+│   │   ├── contracts-compliance/  # compliance.move (FROZEN)
+│   │   ├── executor-nitro/        # TEE Executor (AWS Nitro)
+│   │   ├── cdk/                   # AWS CDK 인프라
+│   │   └── scripts/               # 유틸리티 스크립트
 │   ├── network-explorer/          # @nasun/network-explorer - 블록 탐색기
 │   ├── nasun-website/             # @nasun/nasun-website - 공식 웹사이트
 │   │   └── frontend/              # Vite React 앱
@@ -275,7 +286,8 @@ nasun-monorepo/
 
 | 앱               | 구조              | package.json 위치                           |
 | ---------------- | ----------------- | ------------------------------------------- |
-| baram            | frontend 서브폴더 | `apps/baram/frontend/package.json`          |
+| baram (Legacy)   | frontend 서브폴더 | `apps/baram/frontend/package.json`          |
+| baram-aer        | frontend 서브폴더 | `apps/baram-aer/frontend/package.json`      |
 | network-explorer | 단일 레벨         | `apps/network-explorer/package.json`        |
 | nasun-website    | frontend 서브폴더 | `apps/nasun-website/frontend/package.json`  |
 | gensol-website   | frontend 서브폴더 | `apps/gensol-website/frontend/package.json` |
@@ -430,7 +442,8 @@ pnpm deploy:pado:bots:prod       # LP Bot to pado.finance
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
 | ---------------- | ------------ | --------- | -------------------------------- |
-| baram            | AWS CDK      | 수동 실행 | Lambda API                       |
+| baram (Legacy)   | AWS CDK      | -         | Lambda API (코드 변경 금지)      |
+| baram-aer        | TBD          | 수동 실행 | TBD                              |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
@@ -521,8 +534,13 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 | 디렉토리                          | 설명                                 |
 | --------------------------------- | ------------------------------------ |
-| `apps/baram/contracts/`           | Baram 에스크로 + 정산 + Budget + BetaAccess |
-| `apps/baram/contracts-executor/`  | Executor 등록 시스템                 |
+| `apps/baram/contracts/`           | (Legacy) Baram 에스크로 + 정산 + Budget + BetaAccess |
+| `apps/baram/contracts-executor/`  | (Legacy) Executor 등록 시스템                 |
+| `apps/baram-aer/contracts/`       | Baram AER 에스크로 + 정산 + Budget + BetaAccess |
+| `apps/baram-aer/contracts-aer/`   | AIExecutionReport (8카테고리, 31필드) |
+| `apps/baram-aer/contracts-executor/` | Executor 등록 + Staking + Tier    |
+| `apps/baram-aer/contracts-attestation/` | PCR baseline 등록/검증         |
+| `apps/baram-aer/contracts-compliance/`  | ECR (FROZEN — 기존 보존)       |
 | `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet            |
 | `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                   |
 | `apps/pado/contracts-oracle/`     | DevOracle 가격 피드                  |
