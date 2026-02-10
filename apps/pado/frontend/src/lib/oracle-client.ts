@@ -129,7 +129,7 @@ async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
     const tableId = getNestedField(fields, 'feeds.id.id') as string | undefined;
     if (tableId) {
       feedsTableId = tableId;
-      console.log(`[Oracle] Resolved feeds table: ${tableId.slice(0, 16)}...`);
+      logOnce('oracle-feeds-resolved', 'info', `[Oracle] Resolved feeds table: ${tableId.slice(0, 16)}...`);
     }
     return feedsTableId;
   } catch (error) {

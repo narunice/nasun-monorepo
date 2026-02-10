@@ -128,6 +128,16 @@ function resolveMoveAbort(parsed: { module: string; code: number }): ParsedError
 export function parseError(error: unknown): ParsedError {
   const errorStr = error instanceof Error ? error.message : String(error);
 
+  // Detect already-formatted errors (e.g. "Order below minimum size [ORDER_INFO-1]")
+  // This happens when an upstream layer (useTransactionExecutor) pre-formats via formatErrorMessage
+  // and a downstream layer (useOrderActions) calls parseError again.
+  const alreadyFormatted = errorStr.match(/\[([A-Z_]+-\d+)\]\s*$/);
+  if (alreadyFormatted) {
+    const code = alreadyFormatted[1];
+    const message = errorStr.replace(/\s*\[[A-Z_]+-\d+\]\s*$/, '').trim();
+    return { message, code, isKnown: true };
+  }
+
   // MoveAbort 에러 파싱 (both direct and Dry run wrapped)
   if (errorStr.includes('MoveAbort')) {
     const parsed = parseMoveAbort(errorStr);
