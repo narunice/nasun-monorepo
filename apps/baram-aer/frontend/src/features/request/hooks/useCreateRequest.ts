@@ -149,11 +149,13 @@ export function useCreateRequest(): UseCreateRequestReturn {
       // 6. Call executor's backend to execute
       setStatus('executing');
 
-      const executorUrl = executor.endpointUrl || BARAM_CONFIG.backendUrl;
-
-      // TEE executors: RSA-OAEP + AES-256-GCM E2E encryption
-      // Cloud executors: Base64 encoding only (no TEE encryption)
-      const needsTeeEncryption = executor.teeType > 0;
+      // TEE models: RSA-OAEP + AES-256-GCM E2E encryption via TEE executor
+      // Cloud models (Groq): Base64 encoding only, routed through Lambda backend
+      const isTeeModel = modelConfig.provider === 'tee';
+      const executorUrl = isTeeModel
+        ? (executor.endpointUrl || BARAM_CONFIG.backendUrl)
+        : BARAM_CONFIG.backendUrl;
+      const needsTeeEncryption = isTeeModel && executor.teeType > 0;
       const promptPayload = needsTeeEncryption
         ? await encryptPromptForTEE(textToSend, executorUrl, requestId)
         : encodePrompt(textToSend);

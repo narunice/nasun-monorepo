@@ -93,7 +93,8 @@ function parseExecutorInfo(
     failedJobs: Number(fields.failed_jobs || 0),
     registeredAt: Number(fields.registered_at || 0),
     lastActiveAt,
-    isActive: Boolean(fields.is_active) && hasValidEndpoint,
+    // Cloud executors (teeType=0) route through BARAM_CONFIG.backendUrl; endpoint not required
+    isActive: Boolean(fields.is_active) && (teeType === 0 || hasValidEndpoint),
     tier,
     tierName: TIER_NAMES[tier],
     effectiveScore: calculateEffectiveScore(0, reputation), // Stake data not in ExecutorInfo
