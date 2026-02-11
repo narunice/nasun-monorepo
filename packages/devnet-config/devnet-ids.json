@@ -47,6 +47,7 @@
     "upgradeCap": "0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291",
     "budgetPackageId": "0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1",
     "budgetTypeOrigin": "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7",
+    "budgetV2TypeOrigin": "0x6e61bf5e77da096616071308e9b53f96b34431135e9dbea7dd42465690266a8e",
     "executorPackageId": "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd",
     "executorRegistry": "0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656",
     "executorAdminCap": "0x5e3dca938ff22ec2445a9de84029924b37a5bc5e2fc815c9547c547235d8c522",
