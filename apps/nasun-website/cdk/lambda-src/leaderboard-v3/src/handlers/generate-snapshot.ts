@@ -230,7 +230,7 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
     console.log(`Previous day snapshot has ${previousRanks.size} entries`);
 
     // Create snapshot entries (limit to top 500)
-    const MAX_SNAPSHOT_ENTRIES = 500;
+    const MAX_SNAPSHOT_ENTRIES = 2000;
     const snapshotTime = new Date().toISOString();
 
     // Check if this is a final snapshot (today >= season endDate)
