@@ -40,6 +40,8 @@ export function ChatPage() {
   const selectedModel = useChatStore((state) => state.selectedModel);
   const privacyMode = useChatStore((state) => state.privacyMode);
   const setPrivacyMode = useChatStore((state) => state.setPrivacyMode);
+  const isLoading = useChatStore((state) => state.isLoading);
+  const currentWalletAddress = useChatStore((state) => state.currentWalletAddress);
 
   useEffect(() => {
     if (!selectedModel) {
@@ -48,10 +50,10 @@ export function ChatPage() {
   }, [selectedModel, privacyMode, setPrivacyMode]);
 
   useEffect(() => {
-    if (isConnected && !activeSessionId) {
+    if (isConnected && currentWalletAddress && !activeSessionId && !isLoading) {
       createSession();
     }
-  }, [isConnected, activeSessionId, createSession]);
+  }, [isConnected, currentWalletAddress, activeSessionId, createSession, isLoading]);
 
   const hasMessages = messages.length > 0 || isProcessing;
 
