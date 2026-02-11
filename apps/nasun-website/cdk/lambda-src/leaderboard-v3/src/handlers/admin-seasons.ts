@@ -281,16 +281,20 @@ async function updateSeason(
   updateParts.push('updatedAt = :updatedAt');
   expressionValues[':updatedAt'] = new Date().toISOString();
 
+  // Only include ExpressionAttributeNames that are actually used
+  const expressionNames: Record<string, string> = {};
+  if (updates.name !== undefined) expressionNames['#n'] = 'name';
+  if (updates.status !== undefined) expressionNames['#s'] = 'status';
+
   const result = await docClient.send(
     new UpdateCommand({
       TableName: SEASONS_TABLE,
       Key: { seasonId, sk: 'METADATA' },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeValues: expressionValues,
-      ExpressionAttributeNames: {
-        '#n': 'name',
-        '#s': 'status',
-      },
+      ...(Object.keys(expressionNames).length > 0 && {
+        ExpressionAttributeNames: expressionNames,
+      }),
       ReturnValues: 'ALL_NEW',
     })
   );
@@ -334,17 +338,22 @@ async function activateSeason(seasonId: string): Promise<Season> {
     throw new Error(`Cannot activate season with status ${season.status}`);
   }
 
-  // Deactivate current default season
+  // End the currently active season and remove its default flag
   const allSeasons = await getAllSeasons();
-  const currentDefault = allSeasons.find((s) => s.isDefault && s.seasonId !== seasonId);
-  if (currentDefault) {
+  const currentActive = allSeasons.find((s) => s.status === 'active' && s.seasonId !== seasonId);
+  if (currentActive) {
     await docClient.send(
       new UpdateCommand({
         TableName: SEASONS_TABLE,
-        Key: { seasonId: currentDefault.seasonId, sk: 'METADATA' },
-        UpdateExpression: 'SET isDefault = :isDefault',
+        Key: { seasonId: currentActive.seasonId, sk: 'METADATA' },
+        UpdateExpression: 'SET #s = :status, isDefault = :isDefault, updatedAt = :updatedAt',
         ExpressionAttributeValues: {
+          ':status': 'ended',
           ':isDefault': false,
+          ':updatedAt': new Date().toISOString(),
+        },
+        ExpressionAttributeNames: {
+          '#s': 'status',
         },
       })
     );
@@ -441,7 +450,13 @@ export const handler = async (
   const method = event.httpMethod;
   const pathParams = event.pathParameters || {};
   const seasonId = pathParams.seasonId;
-  const action = pathParams.action; // For /activate or /end
+  // Extract action from resource path since activate/end are fixed resources, not path params
+  const resource = event.resource || '';
+  const action = resource.endsWith('/activate')
+    ? 'activate'
+    : resource.endsWith('/end')
+      ? 'end'
+      : undefined;
 
   try {
     // POST /v3/admin/seasons - Create season
