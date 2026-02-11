@@ -44,6 +44,8 @@ export const AER_UPGRADE_CAP = config.baram.aerUpgradeCap as ObjectId;
 
 // Budget type origin (runtime type origin for budget module types)
 export const BUDGET_TYPE_ORIGIN = config.baram.budgetTypeOrigin as ObjectId;
+// Budget V2 type origin (SpendingLimits/Categories added in upgrade)
+export const BUDGET_V2_TYPE_ORIGIN = config.baram.budgetV2TypeOrigin as ObjectId;
 
 // Agent Profile
 export const AGENT_PACKAGE_ID = config.baram.agentPackageId as ObjectId;
@@ -82,6 +84,7 @@ export const BARAM: BaramConfig = {
   aerAdminCap: AER_ADMIN_CAP,
   aerUpgradeCap: AER_UPGRADE_CAP,
   budgetTypeOrigin: BUDGET_TYPE_ORIGIN,
+  budgetV2TypeOrigin: BUDGET_V2_TYPE_ORIGIN,
   agentPackageId: AGENT_PACKAGE_ID,
   agentProfileRegistry: AGENT_PROFILE_REGISTRY,
   agentUpgradeCap: AGENT_UPGRADE_CAP,

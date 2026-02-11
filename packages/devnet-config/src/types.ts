@@ -89,6 +89,8 @@ export interface BaramConfig {
   aerUpgradeCap: ObjectId;
   // Budget type origin (package ID where budget module was first introduced)
   budgetTypeOrigin: ObjectId;
+  // Budget V2 type origin (SpendingLimits/Categories structs added in upgrade)
+  budgetV2TypeOrigin: ObjectId;
   // Agent Profile
   agentPackageId: ObjectId;
   agentProfileRegistry: ObjectId;
