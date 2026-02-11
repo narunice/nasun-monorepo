@@ -15,6 +15,8 @@ import {
   getAllChains,
   getEVMChains,
   getMoveChains,
+  getNasunChains,
+  getExternalMoveChains,
 } from '../config/chains';
 
 /**
@@ -76,6 +78,10 @@ export interface UseChainResult {
   evmChains: ChainConfig[];
   /** Move chains only */
   moveChains: ChainConfig[];
+  /** Nasun Move chains (always visible) */
+  nasunChains: ChainConfig[];
+  /** External Move chains like Sui/IOTA (Pro Mode only) */
+  externalMoveChains: ChainConfig[];
   /** Switch to a different chain */
   switchChain: (chainId: string) => void;
   /** Switch to an EVM chain by its numeric chain ID */
@@ -123,6 +129,8 @@ export function useChain(): UseChainResult {
     chains: getAllChains(),
     evmChains: getEVMChains(),
     moveChains: getMoveChains(),
+    nasunChains: getNasunChains(),
+    externalMoveChains: getExternalMoveChains(),
     switchChain: setChain,
     switchChainByEvmId,
   };

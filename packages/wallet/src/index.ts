@@ -115,6 +115,7 @@ export {
   configureWallet,
   getWalletConfig,
   getSuiClient,
+  getMoveClient,
   getBalance,
   formatBalance,
   parseAmount,
@@ -489,6 +490,9 @@ export {
   getAllChains,
   getEVMChains,
   getMoveChains,
+  getNasunChains,
+  getExternalMoveChains,
+  isNasunChain,
   getChainByEvmId,
 } from './config/chains';
 export type {
