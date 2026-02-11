@@ -4,6 +4,8 @@
  * Toggled by ? key or clicking the shortcut help button.
  */
 
+import { useRef, useEffect } from 'react';
+
 interface KeyboardShortcutsPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,6 +60,19 @@ const SHORTCUT_GROUPS = [
 ];
 
 export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPanelProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) dialogRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -66,11 +81,16 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
       onClick={onClose}
     >
       <div
-        className="bg-theme-bg-secondary border border-theme-border rounded-xl p-5 shadow-2xl w-[400px] max-w-[90vw]"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
+        tabIndex={-1}
+        className="bg-theme-bg-secondary border border-theme-border rounded-xl p-5 shadow-2xl w-[400px] max-w-[90vw] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-theme-text-primary">Keyboard Shortcuts</h3>
+          <h3 id="shortcuts-title" className="text-sm font-semibold text-theme-text-primary">Keyboard Shortcuts</h3>
           <button
             onClick={onClose}
             className="text-theme-text-muted hover:text-theme-text-primary transition-colors"

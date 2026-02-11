@@ -31,7 +31,7 @@ export function ShortcutHelpTooltip({ onClick }: ShortcutHelpTooltipProps) {
 
       {/* Tooltip (bottom-right anchor, opens upward) */}
       <div
-        className="absolute bottom-full right-0 mb-2 w-44 p-2.5 rounded-lg
+        className="absolute bottom-full right-0 mb-2 w-44 max-w-[calc(100vw-1rem)] p-2.5 rounded-lg
           bg-theme-bg-secondary border border-theme-border shadow-lg
           opacity-0 invisible group-hover:opacity-100 group-hover:visible
           transition-all duration-150 z-50 pointer-events-none"

@@ -86,6 +86,11 @@ export function ScaleOrderForm({
   const minPrice = useMemo(() => getMinPrice(currentPool), [currentPool]);
   const minQuantity = useMemo(() => getMinQuantity(currentPool), [currentPool]);
 
+  const tickSizeUsd = currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals);
+  const priceDecimals = Math.max(0, -Math.floor(Math.log10(tickSizeUsd)));
+  const lotSizeBase = currentPool.lotSize / Math.pow(10, currentPool.baseToken.decimals);
+  const qtyDecimals = Math.max(0, -Math.floor(Math.log10(lotSizeBase)));
+
   const [fromPrice, setFromPrice] = useState('');
   const [toPrice, setToPrice] = useState('');
   const [numOrders, setNumOrders] = useState(5);
@@ -266,10 +271,10 @@ export function ScaleOrderForm({
             {snappedOrders.map((order, i) => (
               <div key={i} className="flex justify-between text-[11px] font-mono">
                 <span className="text-theme-text-muted">#{i + 1}</span>
-                <span className="text-theme-text-secondary">{order.quantity.toFixed(4)} {baseSymbol}</span>
+                <span className="text-theme-text-secondary">{order.quantity.toFixed(qtyDecimals)} {baseSymbol}</span>
                 <span className="text-theme-text-muted">@</span>
                 <span className={isBuy ? 'text-trading-bid' : 'text-trading-ask'}>
-                  {order.price.toFixed(2)}
+                  {order.price.toFixed(priceDecimals)}
                 </span>
               </div>
             ))}
@@ -277,7 +282,7 @@ export function ScaleOrderForm({
           <div className="flex justify-between text-[11px] font-mono mt-1 pt-1 border-t border-theme-border/50">
             <span className="text-theme-text-muted">Total</span>
             <span className="text-theme-text-secondary">
-              {amountNum.toFixed(4)} {baseSymbol} / ~{totalCost.toFixed(2)} {quoteSymbol}
+              {amountNum.toFixed(qtyDecimals)} {baseSymbol} / ~{totalCost.toFixed(priceDecimals)} {quoteSymbol}
             </span>
           </div>
         </div>
