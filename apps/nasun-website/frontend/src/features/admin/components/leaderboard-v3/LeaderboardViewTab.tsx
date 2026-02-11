@@ -44,13 +44,13 @@ export function LeaderboardViewTab() {
   // Season leaderboard (for season mode)
   const { data: seasonLeaderboard, isLoading: isSeasonLoading } = useSeasonLeaderboard({
     seasonId: selectedSeasonId,
-    limit: 100,
+    limit: 1000,
     breakdown: true,
   });
 
   // Cumulative leaderboard (for cumulative mode)
   const { data: cumulativeLeaderboard, isLoading: isCumulativeLoading } = useCumulativeLeaderboard({
-    limit: 100,
+    limit: 1000,
     breakdown: true,
     enabled: viewMode === "cumulative",
   });
