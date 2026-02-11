@@ -120,6 +120,18 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
   const sizes = SIZE_PRESETS[textSize];
 
   if (message.messageType === 'system') {
+    const isBot = message.content.startsWith('[BOT] ');
+
+    if (isBot) {
+      const botContent = message.content.slice(6);
+      return (
+        <div className="flex items-start gap-1.5 py-1 px-2">
+          <span className={`${sizes.system} font-semibold text-theme-accent shrink-0`}>BOT</span>
+          <span className={`${sizes.system} text-theme-text-secondary`}>{botContent}</span>
+        </div>
+      );
+    }
+
     return (
       <div className="text-center py-1">
         <span className={`${sizes.system} text-theme-text-muted italic`}>
