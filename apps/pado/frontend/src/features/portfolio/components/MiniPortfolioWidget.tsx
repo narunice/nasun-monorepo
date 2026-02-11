@@ -11,8 +11,9 @@ import { usePnlTimeSeries, type PnlDataPoint } from '../hooks/usePnlTimeSeries';
 
 // Pure SVG sparkline — no external library needed
 function Sparkline({ data, width = 200, height = 32 }: { data: PnlDataPoint[]; width?: number; height?: number }) {
+  const svgWidth = width;
   if (data.length < 2) {
-    return <div style={{ width, height }} className="bg-theme-bg-tertiary/30 rounded" />;
+    return <div style={{ height }} className="w-full bg-theme-bg-tertiary/30 rounded" />;
   }
 
   const values = data.map(d => d.cumulativePnl);
@@ -21,7 +22,7 @@ function Sparkline({ data, width = 200, height = 32 }: { data: PnlDataPoint[]; w
   const range = max - min || 1;
 
   const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * width;
+    const x = (i / (data.length - 1)) * svgWidth;
     const y = height - ((d.cumulativePnl - min) / range) * (height - 4) - 2;
     return `${x},${y}`;
   }).join(' ');
@@ -30,7 +31,7 @@ function Sparkline({ data, width = 200, height = 32 }: { data: PnlDataPoint[]; w
   const color = isPositive ? 'var(--color-bid)' : 'var(--color-ask)';
 
   return (
-    <svg width={width} height={height} className="block">
+    <svg viewBox={`0 0 ${svgWidth} ${height}`} width="100%" height={height} preserveAspectRatio="none" className="block">
       <polyline
         points={points}
         fill="none"
@@ -92,7 +93,7 @@ export function MiniPortfolioWidget() {
               {totalRealized >= 0 ? '+' : ''}{totalRealized.toFixed(2)}
             </span>
           </div>
-          <Sparkline data={pnlData} width={280} height={28} />
+          <Sparkline data={pnlData} height={28} />
         </div>
       )}
 

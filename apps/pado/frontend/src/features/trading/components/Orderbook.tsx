@@ -75,6 +75,7 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
   const rowHeight = compact ? 'py-px' : 'py-0.5';
 
   // Track seen trade IDs to only animate genuinely new trades
+  const MAX_SEEN = 200;
   const [seenIds, setSeenIds] = useState(new Set<string>());
   const newTradeIds = useMemo(() => {
     const newIds = new Set<string>();
@@ -89,6 +90,10 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
     setSeenIds(prev => {
       const next = new Set(prev);
       for (const t of trades) next.add(t.id);
+      if (next.size > MAX_SEEN) {
+        const arr = Array.from(next);
+        return new Set(arr.slice(arr.length - MAX_SEEN));
+      }
       return next;
     });
   }, [trades]);
