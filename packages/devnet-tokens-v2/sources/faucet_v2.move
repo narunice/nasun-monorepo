@@ -7,9 +7,9 @@ module devnet_tokens_v2::faucet_v2 {
     use devnet_tokens_v2::neth::NETH;
     use devnet_tokens_v2::nsol::NSOL;
 
-    // Faucet amounts (reduced to prevent u64 supply overflow)
-    const NETH_FAUCET_AMOUNT: u64 = 10_000_000; // 0.1 NETH (8 decimals)
-    const NSOL_FAUCET_AMOUNT: u64 = 10_000_000_000;          // 10 NSOL (9 decimals)
+    // Faucet amounts per claim (24h cooldown)
+    const NETH_FAUCET_AMOUNT: u64 = 250_000_000; // 2.5 NETH (8 decimals)
+    const NSOL_FAUCET_AMOUNT: u64 = 50_000_000_000; // 50 NSOL (9 decimals)
 
     // Rate limiting
     const COOLDOWN_MS: u64 = 86400000; // 24 hours
