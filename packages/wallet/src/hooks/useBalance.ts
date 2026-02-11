@@ -6,6 +6,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBalance } from '../sui/client';
 import type { BalanceInfo } from '../types';
+import { getChain, isNasunChain } from '../config/chains';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { useChainStore } from './useChain';
@@ -45,7 +46,10 @@ export function useBalance(
       if (!targetAddress) {
         throw new Error('No address provided');
       }
-      return getBalance(targetAddress);
+      // Use chain-specific RPC for external Move chains (Sui, IOTA)
+      const chain = getChain(chainId);
+      const rpcUrl = chain && !isNasunChain(chainId) ? chain.rpcUrl : undefined;
+      return getBalance(targetAddress, rpcUrl);
     },
     enabled: isEnabled,
     refetchInterval: options?.pollingInterval ?? POLLING_INTERVAL,

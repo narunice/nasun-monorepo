@@ -19,7 +19,7 @@ export interface NetworkSelectorModalProps {
  * Shows Move chains always, EVM chains only in Pro Mode
  */
 export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
-  const { chain: currentChain, moveChains, evmChains } = useChain();
+  const { chain: currentChain, nasunChains, externalMoveChains, evmChains } = useChain();
   const isAdvancedMode = useAdvancedMode();
   const [search, setSearch] = useState('');
 
@@ -63,9 +63,9 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
     return chains.filter((c) => c.name.toLowerCase().includes(searchLower));
   };
 
-  // Separate mainnets and testnets
-  const moveMainnets = filterChains(moveChains.filter((c) => !c.testnet));
-  const moveTestnets = filterChains(moveChains.filter((c) => c.testnet));
+  // Separate chain groups
+  const filteredNasunChains = filterChains(nasunChains);
+  const filteredExternalMoveChains = filterChains(externalMoveChains);
   const evmMainnets = filterChains(evmChains.filter((c) => !c.testnet));
   const evmTestnets = filterChains(evmChains.filter((c) => c.testnet));
 
@@ -258,8 +258,21 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           {/* Nasun Networks - Always enabled */}
           {renderSection(
             'Nasun Networks',
-            [...moveMainnets, ...moveTestnets],
+            filteredNasunChains,
             true
+          )}
+
+          {/* External Move Testnets (Sui, IOTA) - Pro Mode only */}
+          {filteredExternalMoveChains.length > 0 && (
+            <>
+              <div className="border-t border-gray-100 dark:border-zinc-700 my-2" />
+              {renderSection(
+                'Move Testnets',
+                filteredExternalMoveChains,
+                isAdvancedMode,
+                'Pro Mode'
+              )}
+            </>
           )}
 
           {/* EVM Mainnets - Hidden for development wallet to avoid real asset deposits */}
@@ -289,19 +302,19 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
           )}
 
           {/* Hint when Pro Mode is off */}
-          {!isAdvancedMode && evmChains.length > 0 && (
+          {!isAdvancedMode && (evmChains.length > 0 || externalMoveChains.length > 0) && (
             <div className="mx-4 mt-2 px-4 py-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
               <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
                 Enable <span className="font-medium">Pro Mode</span> in
-                Settings to access EVM networks.
+                Settings to access external Move and EVM networks.
               </p>
             </div>
           )}
 
           {/* No results */}
           {search &&
-            moveMainnets.length === 0 &&
-            moveTestnets.length === 0 &&
+            filteredNasunChains.length === 0 &&
+            filteredExternalMoveChains.length === 0 &&
             evmMainnets.length === 0 &&
             evmTestnets.length === 0 && (
               <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-500">
