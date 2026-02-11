@@ -8,13 +8,16 @@ import config from '../../devnet-ids.json';
 import type { ObjectId, CoinType, TokensConfig, TokensV2Config } from '../types';
 
 export const TOKENS_PACKAGE_ID = config.tokens.packageId as ObjectId;
+export const TOKENS_ORIGINAL_PACKAGE_ID = config.tokens.originalPackageId as ObjectId | undefined;
 export const TOKEN_FAUCET = config.tokens.tokenFaucet as ObjectId;
 export const CLAIM_RECORD = config.tokens.claimRecord as ObjectId;
-export const TOKENS_UPGRADE_CAP = (config.tokens as { upgradeCap?: string }).upgradeCap as ObjectId | undefined;
+export const PER_TOKEN_CLAIM_RECORD = config.tokens.perTokenClaimRecord as ObjectId;
+export const TOKENS_UPGRADE_CAP = config.tokens.upgradeCap as ObjectId | undefined;
 
-// Unified coin types for all apps
-export const NBTC_TYPE: CoinType = `${TOKENS_PACKAGE_ID}::nbtc::NBTC`;
-export const NUSDC_TYPE: CoinType = `${TOKENS_PACKAGE_ID}::nusdc::NUSDC`;
+// Coin types use original package ID (types don't change after upgrade)
+const coinTypePackage = TOKENS_ORIGINAL_PACKAGE_ID || TOKENS_PACKAGE_ID;
+export const NBTC_TYPE: CoinType = `${coinTypePackage}::nbtc::NBTC`;
+export const NUSDC_TYPE: CoinType = `${coinTypePackage}::nusdc::NUSDC`;
 
 export const TOKENS: TokensConfig = {
   packageId: TOKENS_PACKAGE_ID,

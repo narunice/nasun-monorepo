@@ -9,9 +9,11 @@
     "explorerUrl": "https://explorer.nasun.io/devnet"
   },
   "tokens": {
-    "packageId": "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731",
+    "packageId": "0xc796470ec865fa753188082365594411734507879c04e52ee2ae523873805f5d",
+    "originalPackageId": "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731",
     "tokenFaucet": "0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92",
     "claimRecord": "0x6416304b56cd61238fe552ddb3d07ecc4c12c749fc7038b04d20de3e52953fe1",
+    "perTokenClaimRecord": "0x0cff18cdc3ac0c9221ad346cf4b0dee5be02d64dd0550421dfdf07b93b6f2c33",
     "upgradeCap": "0xef52338fb8b2f564938f830ae2822818dfce49491508d95bcc85c0e3e7ddf269"
   },
   "deepbook": {
