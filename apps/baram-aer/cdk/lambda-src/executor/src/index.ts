@@ -273,17 +273,14 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
   const executorStats = await getExecutorStats(executorAddress);
 
   const aerData: AERReportData = {
-    authorizer: verification.request!.requester,
+    initiator: verification.request!.requester,
     delegationPath: [],
     executorPrincipal: null,
-    paymentToken: 0, // NUSDC
-    executorReceived: verification.request!.price,
     feeDetail: null,
     budgetId: null,
     budgetRemaining: null,
     modelMetadata: null,
     purpose: null,
-    policyVersion: null,
     constraints: null,
     executorTier: executorStats.tier,
     executorReputation: executorStats.reputation,

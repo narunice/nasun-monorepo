@@ -120,16 +120,12 @@ export function ChatInput({
           </button>
         </div>
 
-        {/* Mode & model label */}
-        <span className="text-xs text-[var(--color-text-muted)]">
-          {privacyMode ? "Private" : "Standard"}
-          {modelName && (
-            <>
-              <span className="mx-1.5 text-[var(--color-border)]">&middot;</span>
-              <span>{modelName}</span>
-            </>
-          )}
-        </span>
+        {/* Model label */}
+        {modelName && (
+          <span className="text-xs text-[var(--color-text-muted)]">
+            {modelName}
+          </span>
+        )}
       </div>
 
       {/* Textarea wrapper — overflow-hidden preserves rounded corners when scrollbar appears */}
