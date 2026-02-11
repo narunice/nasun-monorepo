@@ -4,37 +4,41 @@
  * Provides transaction builders for requesting test tokens on Nasun Devnet.
  * All faucet functions use rate-limited (_with_cooldown) variants
  * enforced by the Move smart contract (24h cooldown per address).
+ *
+ * V1 tokens (NBTC/NUSDC) use PerTokenClaimRecord for independent cooldowns.
+ * V2 tokens (NETH/NSOL) have separate packages with independent cooldowns.
  */
 
 import {
-  TOKENS_PACKAGE_ID, TOKEN_FAUCET, CLAIM_RECORD,
+  TOKENS_PACKAGE_ID, TOKEN_FAUCET, PER_TOKEN_CLAIM_RECORD,
   NETH_PACKAGE_ID, NETH_FAUCET_V2, NETH_CLAIM_RECORD_V2,
   TOKENS_V2_PACKAGE_ID, TOKEN_FAUCET_V2, CLAIM_RECORD_V2,
 } from '@nasun/devnet-config';
 import { Transaction } from '@mysten/sui/transactions';
 import type { TokenFaucetHandler } from '../types';
+import { getCooldownRemaining } from './faucetCooldown';
 
 const CLOCK_ID = '0x6';
 
 // Devnet Token Faucet Configuration (V1)
-// IDs are imported from @nasun/devnet-config for centralized management
 export const DEVNET_TOKEN_FAUCET = {
   package: TOKENS_PACKAGE_ID,
   faucet: TOKEN_FAUCET,
-  claimRecord: CLAIM_RECORD,
+  perTokenClaimRecord: PER_TOKEN_CLAIM_RECORD,
 };
 
 /**
- * Build transaction to request NBTC from faucet (24h cooldown)
+ * Build transaction to request NBTC only (24h independent cooldown).
+ * Uses PerTokenClaimRecord — does NOT affect NUSDC cooldown.
  */
 export function buildNbtcFaucetTx(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${DEVNET_TOKEN_FAUCET.package}::faucet::request_nbtc_with_cooldown`,
+    target: `${DEVNET_TOKEN_FAUCET.package}::faucet::request_nbtc_individual`,
     arguments: [
       tx.object(DEVNET_TOKEN_FAUCET.faucet),
-      tx.object(DEVNET_TOKEN_FAUCET.claimRecord),
+      tx.object(DEVNET_TOKEN_FAUCET.perTokenClaimRecord),
       tx.object(CLOCK_ID),
     ],
   });
@@ -43,16 +47,17 @@ export function buildNbtcFaucetTx(): Transaction {
 }
 
 /**
- * Build transaction to request NUSDC from faucet (24h cooldown)
+ * Build transaction to request NUSDC only (24h independent cooldown).
+ * Uses PerTokenClaimRecord — does NOT affect NBTC cooldown.
  */
 export function buildNusdcFaucetTx(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${DEVNET_TOKEN_FAUCET.package}::faucet::request_nusdc_with_cooldown`,
+    target: `${DEVNET_TOKEN_FAUCET.package}::faucet::request_nusdc_individual`,
     arguments: [
       tx.object(DEVNET_TOKEN_FAUCET.faucet),
-      tx.object(DEVNET_TOKEN_FAUCET.claimRecord),
+      tx.object(DEVNET_TOKEN_FAUCET.perTokenClaimRecord),
       tx.object(CLOCK_ID),
     ],
   });
@@ -97,7 +102,19 @@ export function buildNsolFaucetTx(): Transaction {
 }
 
 // Faucet handlers for wallet-ui TokenFaucetButton
-export const nbtcFaucetHandler: TokenFaucetHandler = { buildTransaction: buildNbtcFaucetTx };
-export const nusdcFaucetHandler: TokenFaucetHandler = { buildTransaction: buildNusdcFaucetTx };
-export const nethFaucetHandler: TokenFaucetHandler = { buildTransaction: buildNethFaucetTx };
-export const nsolFaucetHandler: TokenFaucetHandler = { buildTransaction: buildNsolFaucetTx };
+export const nbtcFaucetHandler: TokenFaucetHandler = {
+  buildTransaction: buildNbtcFaucetTx,
+  getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NBTC'),
+};
+export const nusdcFaucetHandler: TokenFaucetHandler = {
+  buildTransaction: buildNusdcFaucetTx,
+  getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NUSDC'),
+};
+export const nethFaucetHandler: TokenFaucetHandler = {
+  buildTransaction: buildNethFaucetTx,
+  getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NETH'),
+};
+export const nsolFaucetHandler: TokenFaucetHandler = {
+  buildTransaction: buildNsolFaucetTx,
+  getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NSOL'),
+};

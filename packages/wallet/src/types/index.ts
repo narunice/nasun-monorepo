@@ -149,10 +149,14 @@ export interface TokenConfig {
 // 1. request() - Simple HTTP API call (NASUN native faucet)
 // 2. buildTransaction() - Move transaction that requires wallet signing (NBTC/NUSDC)
 export interface TokenFaucetHandler {
-  /** Request tokens via HTTP API. Returns true on success, false on failure. */
+  /** Request tokens via HTTP API. Returns true on success, throws on cooldown. */
   request?: (address: string) => Promise<boolean>;
   /** Build a Move transaction for faucet. Used for tokens that require signing. */
   buildTransaction?: () => import('@mysten/sui/transactions').Transaction;
+  /** Custom success message */
+  successMessage?: string;
+  /** Check remaining cooldown in ms (0 = can claim). For pre-flight UI display. */
+  getCooldownRemaining?: (address: string) => number;
 }
 
 // Individual token balance
