@@ -3,59 +3,13 @@
  * App 컴포넌트: 레이아웃 + 라우팅만 담당
  */
 
-import { useEffect, useSyncExternalStore, useCallback } from 'react';
-import { registerTokenFaucet, consumePendingMnemonic, hasPendingMnemonic } from '@nasun/wallet';
-import { MnemonicBackup } from '@nasun/wallet-ui';
+import { useEffect } from 'react';
+import { registerTokenFaucet } from '@nasun/wallet';
 import { Header, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { useTrading } from './features/trading/useTrading';
 import { waitForTxIndexing } from './lib/tx-helpers';
 import { OfflineBanner } from './components/common/OfflineBanner';
-
-// ============================================
-// Mnemonic Backup Modal (App-level)
-// Renders independently of WalletConnect lifecycle.
-// useWallet stores mnemonic in memory on creation;
-// this modal reads it once and shows the backup screen.
-// ============================================
-const BACKUP_KEY = "nasun_wallet_backup_pending";
-
-function subscribeBackup(cb: () => void) {
-  const id = setInterval(cb, 100);
-  return () => clearInterval(id);
-}
-
-function getBackupSnapshot(): string | null {
-  try {
-    if (localStorage.getItem(BACKUP_KEY) !== "true") return null;
-    return hasPendingMnemonic() ? "pending" : null;
-  } catch {
-    return null;
-  }
-}
-
-function MnemonicBackupModal() {
-  const hasMnemonic = useSyncExternalStore(subscribeBackup, getBackupSnapshot);
-  const mnemonic = hasMnemonic ? consumePendingMnemonic() : null;
-
-  const handleConfirm = useCallback(() => {
-    try {
-      localStorage.removeItem(BACKUP_KEY);
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
-
-  if (!mnemonic) return null;
-
-  return (
-    <div className="fixed inset-0 z-[99999] bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-pd5 dark:bg-pd0s rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-        <MnemonicBackup mnemonic={mnemonic} onConfirm={handleConfirm} />
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const { requestNbtc, requestNusdc } = useTrading();
@@ -96,9 +50,6 @@ export default function App() {
 
       {/* Mobile bottom navigation bar (< md) */}
       <MobileBottomNav />
-
-      {/* App-level mnemonic backup modal - independent of page/component lifecycle */}
-      <MnemonicBackupModal />
     </div>
   );
 }
