@@ -151,22 +151,24 @@ function WhatWeBuildingSection() {
     };
   }, []);
 
-  // Before transition: sync clone currentTime to original and start playback.
-  // Setting currentTime on a paused video completes synchronously for buffered regions.
-  const syncAndPlayClones = useCallback(() => {
+  // Before transition: reset clone to the next slide's videoStartTime and start playback.
+  // This prevents frame jumps when looping (e.g., Protocol → GenSol).
+  const syncAndPlayClones = useCallback((_current: number, next: number) => {
     const container = containerRef.current;
     if (!container) return;
-    const originals = container.querySelectorAll<HTMLVideoElement>(
-      ".slick-slide:not(.slick-cloned) video",
+
+    const nextSlide = SLIDES[next];
+    const originalVideo = container.querySelector<HTMLVideoElement>(
+      `.slick-slide[data-index="${next}"]:not(.slick-cloned) video`,
     );
+    if (!originalVideo?.currentSrc) return;
+
     const clones = container.querySelectorAll<HTMLVideoElement>(".slick-cloned video");
     clones.forEach((clone) => {
-      originals.forEach((original) => {
-        if (clone.currentSrc && clone.currentSrc === original.currentSrc) {
-          clone.currentTime = original.currentTime;
-          clone.play().catch(() => {});
-        }
-      });
+      if (clone.currentSrc === originalVideo.currentSrc) {
+        clone.currentTime = nextSlide?.videoStartTime ?? 0;
+        clone.play().catch(() => {});
+      }
     });
   }, []);
 
