@@ -45,7 +45,10 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
 
   const assignedExecutor = useMemo(() => {
     if (executors.length === 0) return null;
-    const pool = needsAttestation ? executors.filter(e => e.teeType > 0) : executors;
+    // TEE models: only TEE executors | Cloud models: only non-TEE executors
+    const pool = needsAttestation
+      ? executors.filter(e => e.teeType > 0)
+      : executors.filter(e => e.teeType === 0);
     return selectExecutorWeightedRandom(pool, failedExecutorIds, requiredMinTier, selectedModel ?? undefined);
   }, [executors, failedExecutorIds, requiredMinTier, selectedModel, needsAttestation]);
 
@@ -115,7 +118,10 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
         lastError = err instanceof Error ? err.message : 'Unknown error';
         console.warn(`[RequestWithRetry] Attempt ${attempt + 1}/${MAX_RETRIES} failed:`, lastError);
         excluded.add(currentExecutor.id);
-        currentExecutor = selectExecutorWeightedRandom(executors, excluded, requiredMinTier, selectedModel ?? undefined);
+        const retryPool = needsAttestation
+          ? executors.filter(e => e.teeType > 0)
+          : executors.filter(e => e.teeType === 0);
+        currentExecutor = selectExecutorWeightedRandom(retryPool, excluded, requiredMinTier, selectedModel ?? undefined);
         if (currentExecutor) {
           setSelectedExecutor(currentExecutor);
         }
@@ -132,7 +138,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
       failed: true,
     });
     setFailedExecutorIds(excluded);
-  }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, executors, requiredMinTier, updateMessage]);
+  }, [isProcessing, selectedExecutor, selectedModel, createRequest, addMessage, executors, requiredMinTier, updateMessage, needsAttestation]);
 
   return {
     submit,

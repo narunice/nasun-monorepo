@@ -174,6 +174,44 @@ function sha256(content: string): string {
 }
 
 /**
+ * Classify error messages into user-actionable categories.
+ */
+function classifyError(err: Error): { status: number; message: string } {
+  const msg = err.message || '';
+
+  // Gas / funding issues
+  if (msg.includes('No valid gas coins') || msg.includes('InsufficientGas') || msg.includes('Cannot find gas coin')) {
+    return { status: 503, message: 'Executor wallet has insufficient gas. Please contact the operator.' };
+  }
+
+  // Groq API issues
+  if (msg.includes('rate_limit') || msg.includes('429')) {
+    return { status: 429, message: 'AI provider rate limit exceeded. Please try again later.' };
+  }
+  if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid_api_key')) {
+    return { status: 502, message: 'AI provider authentication failed. Please contact the operator.' };
+  }
+
+  // On-chain verification issues
+  if (msg.includes('Executor mismatch')) {
+    return { status: 400, message: 'Executor assignment mismatch. This request is assigned to a different executor.' };
+  }
+  if (msg.includes('Request not found')) {
+    return { status: 400, message: 'Request not found on-chain. It may have expired or been cancelled.' };
+  }
+  if (msg.includes('already completed') || msg.includes('already cancelled')) {
+    return { status: 409, message: 'Request has already been completed or cancelled.' };
+  }
+
+  // RPC / network issues
+  if (msg.includes('ECONNREFUSED') || msg.includes('ETIMEDOUT') || msg.includes('fetch failed')) {
+    return { status: 502, message: 'Network error connecting to blockchain RPC. Please try again later.' };
+  }
+
+  return { status: 500, message: 'Internal server error' };
+}
+
+/**
  * Handle execute request
  */
 async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
@@ -218,7 +256,20 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
   }
 
   // Generate AI completion
-  const completion = await generateCompletion(prompt, model);
+  let completion;
+  try {
+    completion = await generateCompletion(prompt, model);
+  } catch (err) {
+    const e = err as Error;
+    console.error('[Execute] AI completion failed:', e.message);
+    const classified = classifyError(e);
+    return {
+      success: false,
+      requestId,
+      error: classified.message,
+    };
+  }
+
   const result = completion.content;
   const resultHash = sha256(result);
 
@@ -251,20 +302,31 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     triggeredAction: null,
   };
 
-  const txDigest = await submitProofWithAER(
-    requestId, resultHash, executionTimeMs, verification.request!, aerData,
-  );
+  try {
+    const txDigest = await submitProofWithAER(
+      requestId, resultHash, executionTimeMs, verification.request!, aerData,
+    );
 
-  console.log(`[Execute] Proof + AER submitted, tx: ${txDigest}`);
+    console.log(`[Execute] Proof + AER submitted, tx: ${txDigest}`);
 
-  return {
-    success: true,
-    requestId,
-    result,
-    resultHash,
-    txDigest,
-    executionTimeMs,
-  };
+    return {
+      success: true,
+      requestId,
+      result,
+      resultHash,
+      txDigest,
+      executionTimeMs,
+    };
+  } catch (err) {
+    const e = err as Error;
+    console.error('[Execute] Proof submission failed:', e.message);
+    const classified = classifyError(e);
+    return {
+      success: false,
+      requestId,
+      error: classified.message,
+    };
+  }
 }
 
 /**
@@ -386,10 +448,11 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     const err = error as Error;
     console.error('[Error]', err.message, err.stack);
 
+    const classified = classifyError(err);
     return {
-      statusCode: 500,
+      statusCode: classified.status,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Internal server error' }),
+      body: JSON.stringify({ error: classified.message }),
     };
   }
 };
