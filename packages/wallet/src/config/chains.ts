@@ -104,6 +104,35 @@ export const CHAINS: Record<string, ChainConfig> = {
     devnet: true,
   },
 
+  // External Move chains (Pro Mode only)
+  'sui-testnet': {
+    id: 'sui-testnet',
+    name: 'Sui Testnet',
+    type: 'move',
+    rpcUrl: 'https://fullnode.testnet.sui.io:443',
+    nativeCurrency: {
+      name: 'SUI',
+      symbol: 'SUI',
+      decimals: 9,
+    },
+    blockExplorer: 'https://testnet.suivision.xyz',
+    testnet: true,
+  },
+
+  'iota-testnet': {
+    id: 'iota-testnet',
+    name: 'IOTA Testnet',
+    type: 'move',
+    rpcUrl: 'https://api.testnet.iota.cafe',
+    nativeCurrency: {
+      name: 'IOTA',
+      symbol: 'IOTA',
+      decimals: 9,
+    },
+    blockExplorer: 'https://explorer.iota.org/iota-testnet',
+    testnet: true,
+  },
+
   // EVM chains
   'ethereum': {
     id: 'ethereum',
@@ -306,6 +335,27 @@ export function getTestnetChains(): ChainConfig[] {
  */
 export function getChainByEvmId(chainId: number): ChainConfig | undefined {
   return Object.values(CHAINS).find((c) => c.chainId === chainId);
+}
+
+/**
+ * Get Nasun Move chains (always visible in network selector)
+ */
+export function getNasunChains(): ChainConfig[] {
+  return Object.values(CHAINS).filter((c) => c.type === 'move' && c.id.startsWith('nasun-'));
+}
+
+/**
+ * Get external Move chains (Pro Mode only)
+ */
+export function getExternalMoveChains(): ChainConfig[] {
+  return Object.values(CHAINS).filter((c) => c.type === 'move' && !c.id.startsWith('nasun-'));
+}
+
+/**
+ * Check if a chain is a Nasun chain
+ */
+export function isNasunChain(chainId: string): boolean {
+  return chainId.startsWith('nasun-');
 }
 
 /**
