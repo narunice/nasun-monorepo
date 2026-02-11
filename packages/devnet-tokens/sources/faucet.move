@@ -9,8 +9,8 @@ module devnet_tokens::faucet {
     use devnet_tokens::nusdc::NUSDC;
 
     // Faucet amounts
-    const NBTC_FAUCET_AMOUNT: u64 = 100_000_000; // 1 NBTC (8 decimals)
-    const NUSDC_FAUCET_AMOUNT: u64 = 100_000_000_000; // 100,000 NUSDC (6 decimals)
+    const NBTC_FAUCET_AMOUNT: u64 = 10_000_000; // 0.1 NBTC (8 decimals)
+    const NUSDC_FAUCET_AMOUNT: u64 = 10_000_000_000; // 10,000 NUSDC (6 decimals)
 
     // Rate limiting
     const COOLDOWN_MS: u64 = 86400000; // 24 hours in milliseconds
