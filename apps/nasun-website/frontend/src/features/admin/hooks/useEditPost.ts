@@ -19,6 +19,8 @@ interface EditPostParams {
     postScore?: number;
     contentSignals?: string[];
     accountRole?: string;
+    language?: string;
+    followerCount?: number;
   };
 }
 
@@ -32,6 +34,7 @@ export function useEditPost() {
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['season-leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['cumulative-leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard-v3', 'account'] });
     },
   });
 }

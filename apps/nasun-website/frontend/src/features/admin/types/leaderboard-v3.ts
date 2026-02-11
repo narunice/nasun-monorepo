@@ -32,6 +32,8 @@ export interface LeaderboardV3Account {
   profileImageUrl?: string;
   isRegistered?: boolean;
   lastKnownRole: AccountRole;
+  language?: AccountLanguage;
+  followerCount?: number;
   totalPostScore: number;
   postCount: number;
   uniqueActiveDays: number;
