@@ -25,6 +25,7 @@ import {
 } from './leaderboard-store.js';
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
+import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
 import { VALID_PERIODS, VALID_MODES } from './leaderboard-types.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { LeaderboardConfig, Period, CompetitionStatus } from './leaderboard-types.js';
@@ -129,7 +130,7 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
   }
 
   // Block reserved prefixes (only system can send structured messages)
-  if (content.startsWith('[TRADE]') || content.startsWith('[SYSTEM]')) {
+  if (content.startsWith('[TRADE]') || content.startsWith('[SYSTEM]') || content.startsWith('[BOT]')) {
     send(ws, { type: 'error', code: 'RESERVED_PREFIX', message: 'This message prefix is reserved' });
     return;
   }
@@ -960,9 +961,17 @@ function start(): void {
       excludedAddresses: new Set(CONFIG.excludedAddresses),
     };
     const largeTradeThresholdRaw = BigInt(CONFIG.largeTradeThresholdNusdc) * 1_000_000n; // NUSDC 6 decimals
+
+    // Initialize market narrator (rule-based + optional AI commentary)
+    initNarrator({
+      broadcast: broadcastSystemMessage,
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
     startIndexer(lbConfig, {
       thresholdRaw: largeTradeThresholdRaw,
       onLargeTrade: (msg: string) => broadcastSystemMessage(msg),
+      onTradeFill,
     });
     startAggregator(lbConfig);
   } else {
@@ -1039,6 +1048,7 @@ function start(): void {
     clearInterval(rateLimitCleanupTimer);
     clearInterval(retentionTimer);
     if (leaderboardEnabled) {
+      stopNarrator();
       stopIndexer();
       stopAggregator();
     }
