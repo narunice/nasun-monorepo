@@ -24,17 +24,17 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
     if (viewState.password !== viewState.confirmPassword) return;
 
     try {
-      await createWalletWithBackup(viewState.password);
+      const { mnemonic } = await createWalletWithBackup(viewState.password);
       resetSettings();
       useChainStore.getState().resetToDefault();
       viewState.setPassword("");
       viewState.setConfirmPassword("");
-      viewState.setViewMode("main");
-      viewState.setShowDropdown(false);
+      viewState.setMnemonic(mnemonic);
+      viewState.setViewMode("create-backup");
     } catch {
       // Error is stored in state
     }
-  }, [viewState.password, viewState.confirmPassword, createWalletWithBackup, resetSettings, viewState.setPassword, viewState.setConfirmPassword, viewState.setViewMode, viewState.setShowDropdown]);
+  }, [viewState.password, viewState.confirmPassword, createWalletWithBackup, resetSettings, viewState.setPassword, viewState.setConfirmPassword, viewState.setMnemonic, viewState.setViewMode]);
 
   const handleBackupConfirmed = useCallback(() => {
     try {
