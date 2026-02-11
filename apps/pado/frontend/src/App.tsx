@@ -12,9 +12,9 @@ import { waitForTxIndexing } from './lib/tx-helpers';
 import { OfflineBanner } from './components/common/OfflineBanner';
 
 export default function App() {
-  const { requestNbtc, requestNusdc } = useTrading();
+  const { requestNbtc, requestNusdc, requestNeth, requestNsol } = useTrading();
 
-  // Register NBTC/NUSDC faucet handlers (requires wallet signing)
+  // Register token faucet handlers (requires wallet signing, 24h cooldown)
   // waitForTxIndexing ensures RPC has indexed the tx before wallet-ui refreshes balance
   useEffect(() => {
     registerTokenFaucet('NBTC', {
@@ -35,7 +35,25 @@ export default function App() {
         return result.success;
       },
     });
-  }, [requestNbtc, requestNusdc]);
+    registerTokenFaucet('NETH', {
+      request: async () => {
+        const result = await requestNeth();
+        if (result.success && result.digest) {
+          await waitForTxIndexing(result.digest);
+        }
+        return result.success;
+      },
+    });
+    registerTokenFaucet('NSOL', {
+      request: async () => {
+        const result = await requestNsol();
+        if (result.success && result.digest) {
+          await waitForTxIndexing(result.digest);
+        }
+        return result.success;
+      },
+    });
+  }, [requestNbtc, requestNusdc, requestNeth, requestNsol]);
 
   return (
     <div className="min-h-screen bg-theme-bg-primary text-theme-text-primary">
