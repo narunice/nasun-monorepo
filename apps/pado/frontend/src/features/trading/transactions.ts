@@ -3,7 +3,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { CLAIM_RECORD } from '@nasun/devnet-config';
+import { TOKENS_PACKAGE_ID, TOKEN_FAUCET, PER_TOKEN_CLAIM_RECORD } from '@nasun/devnet-config';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../../config/network';
 import { ORDER_TYPE, SELF_MATCHING, CLOCK_ID, NATIVE_TOKEN_TYPE, GAS_RESERVE_RAW } from './constants';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';
@@ -425,35 +425,17 @@ export function buildSwapExactQuoteForBase(
 }
 
 /**
- * 테스트 토큰 요청 (Token Faucet, 24h cooldown)
- * 1 NBTC + 100,000 NUSDC
- */
-export function buildRequestTokens(): Transaction {
-  const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_tokens_with_cooldown`,
-    arguments: [
-      tx.object(NETWORK_CONFIG.tokenFaucet!),
-      tx.object(CLAIM_RECORD),
-      tx.object(CLOCK_ID),
-    ],
-  });
-
-  return tx;
-}
-
-/**
- * NBTC 요청 (24h cooldown)
+ * NBTC 요청 — independent 24h cooldown (does NOT affect NUSDC)
+ * Uses PerTokenClaimRecord for per-token cooldown tracking.
  */
 export function buildRequestNbtc(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_nbtc_with_cooldown`,
+    target: `${TOKENS_PACKAGE_ID}::faucet::request_nbtc_individual`,
     arguments: [
-      tx.object(NETWORK_CONFIG.tokenFaucet!),
-      tx.object(CLAIM_RECORD),
+      tx.object(TOKEN_FAUCET),
+      tx.object(PER_TOKEN_CLAIM_RECORD),
       tx.object(CLOCK_ID),
     ],
   });
@@ -462,16 +444,17 @@ export function buildRequestNbtc(): Transaction {
 }
 
 /**
- * NUSDC 요청 (24h cooldown)
+ * NUSDC 요청 — independent 24h cooldown (does NOT affect NBTC)
+ * Uses PerTokenClaimRecord for per-token cooldown tracking.
  */
 export function buildRequestNusdc(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_nusdc_with_cooldown`,
+    target: `${TOKENS_PACKAGE_ID}::faucet::request_nusdc_individual`,
     arguments: [
-      tx.object(NETWORK_CONFIG.tokenFaucet!),
-      tx.object(CLAIM_RECORD),
+      tx.object(TOKEN_FAUCET),
+      tx.object(PER_TOKEN_CLAIM_RECORD),
       tx.object(CLOCK_ID),
     ],
   });
