@@ -13,7 +13,7 @@ import {
   buildPlaceAskOrder,
   buildClaimWinnings,
 } from '../transactions';
-import { buildRequestNusdc } from '../../trading/transactions';
+import { buildNusdcFaucetTx } from '@nasun/wallet';
 import { NUSDC_TYPE, NUSDC_DECIMALS } from '../constants';
 
 /**
@@ -397,7 +397,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     setIsFaucetLoading(true);
 
     try {
-      const tx = buildRequestNusdc();
+      const tx = buildNusdcFaucetTx();
       const result = await signAndExecute(tx);
       return { success: true, digest: result.digest };
     } catch (err) {

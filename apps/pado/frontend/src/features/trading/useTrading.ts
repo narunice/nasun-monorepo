@@ -11,15 +11,12 @@ import {
   buildCancelOrder,
   buildCreateBalanceManager,
   buildDeposit,
-  buildRequestNbtc,
-  buildRequestNusdc,
-  buildRequestNeth,
-  buildRequestNsol,
   buildDepositAll,
   buildWithdrawAll,
   buildDepositExact,
   buildWithdraw,
 } from './transactions';
+import { buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx } from '@nasun/wallet';
 import {
   getStoredBalanceManagerId,
   storeBalanceManagerId,
@@ -286,22 +283,22 @@ export function useTrading(): UseTrading {
   // --- Faucet Operations ---
 
   const requestNbtc = useCallback(async (): Promise<TradeResult> => {
-    const tx = buildRequestNbtc();
+    const tx = buildNbtcFaucetTx();
     return executeTransaction(tx);
   }, [executeTransaction]);
 
   const requestNusdc = useCallback(async (): Promise<TradeResult> => {
-    const tx = buildRequestNusdc();
+    const tx = buildNusdcFaucetTx();
     return executeTransaction(tx);
   }, [executeTransaction]);
 
   const requestNeth = useCallback(async (): Promise<TradeResult> => {
-    const tx = buildRequestNeth();
+    const tx = buildNethFaucetTx();
     return executeTransaction(tx);
   }, [executeTransaction]);
 
   const requestNsol = useCallback(async (): Promise<TradeResult> => {
-    const tx = buildRequestNsol();
+    const tx = buildNsolFaucetTx();
     return executeTransaction(tx);
   }, [executeTransaction]);
 

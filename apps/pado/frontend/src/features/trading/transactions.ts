@@ -3,7 +3,6 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { TOKENS_PACKAGE_ID, TOKEN_FAUCET, PER_TOKEN_CLAIM_RECORD } from '@nasun/devnet-config';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../../config/network';
 import { ORDER_TYPE, SELF_MATCHING, CLOCK_ID, NATIVE_TOKEN_TYPE, GAS_RESERVE_RAW } from './constants';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';
@@ -420,96 +419,6 @@ export function buildSwapExactQuoteForBase(
 
   // Transfer outputs back to sender
   tx.transferObjects([baseOut, quoteOut, deepOut], tx.pure.address(senderAddress));
-
-  return tx;
-}
-
-/**
- * NBTC 요청 — independent 24h cooldown (does NOT affect NUSDC)
- * Uses PerTokenClaimRecord for per-token cooldown tracking.
- */
-export function buildRequestNbtc(): Transaction {
-  const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${TOKENS_PACKAGE_ID}::faucet::request_nbtc_individual`,
-    arguments: [
-      tx.object(TOKEN_FAUCET),
-      tx.object(PER_TOKEN_CLAIM_RECORD),
-      tx.object(CLOCK_ID),
-    ],
-  });
-
-  return tx;
-}
-
-/**
- * NUSDC 요청 — independent 24h cooldown (does NOT affect NBTC)
- * Uses PerTokenClaimRecord for per-token cooldown tracking.
- */
-export function buildRequestNusdc(): Transaction {
-  const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${TOKENS_PACKAGE_ID}::faucet::request_nusdc_individual`,
-    arguments: [
-      tx.object(TOKEN_FAUCET),
-      tx.object(PER_TOKEN_CLAIM_RECORD),
-      tx.object(CLOCK_ID),
-    ],
-  });
-
-  return tx;
-}
-
-/**
- * NETH 요청 (Faucet V2 - 24h cooldown)
- * 10 NETH per claim
- */
-export function buildRequestNeth(): Transaction {
-  // NETH uses a separate re-published package (8 decimals)
-  const nethFaucetObj = NETWORK_CONFIG.nethFaucetV2 || NETWORK_CONFIG.tokenFaucetV2;
-  const nethClaimRecord = NETWORK_CONFIG.nethClaimRecordV2 || NETWORK_CONFIG.claimRecordV2;
-  // Derive package from NETH type (e.g., "0xabc...::neth::NETH" → "0xabc...")
-  const nethPkg = NETWORK_CONFIG.nethType ? NETWORK_CONFIG.nethType.split('::')[0] : NETWORK_CONFIG.tokensV2Package;
-
-  if (!nethPkg || !nethFaucetObj || !nethClaimRecord) {
-    throw new Error('NETH faucet not configured: NETH contract addresses missing');
-  }
-
-  const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${nethPkg}::faucet_v2::request_neth_with_cooldown`,
-    arguments: [
-      tx.object(nethFaucetObj),
-      tx.object(nethClaimRecord),
-      tx.object(CLOCK_ID),
-    ],
-  });
-
-  return tx;
-}
-
-/**
- * NSOL 요청 (Faucet V2 - 24h cooldown)
- * 100 NSOL per claim
- */
-export function buildRequestNsol(): Transaction {
-  if (!NETWORK_CONFIG.tokensV2Package || !NETWORK_CONFIG.tokenFaucetV2 || !NETWORK_CONFIG.claimRecordV2) {
-    throw new Error('NSOL faucet not configured: tokensV2 contract addresses missing');
-  }
-
-  const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${NETWORK_CONFIG.tokensV2Package}::faucet_v2::request_nsol_with_cooldown`,
-    arguments: [
-      tx.object(NETWORK_CONFIG.tokenFaucetV2),
-      tx.object(NETWORK_CONFIG.claimRecordV2),
-      tx.object(CLOCK_ID),
-    ],
-  });
 
   return tx;
 }

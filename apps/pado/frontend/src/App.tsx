@@ -3,58 +3,11 @@
  * App 컴포넌트: 레이아웃 + 라우팅만 담당
  */
 
-import { useEffect } from 'react';
-import { registerTokenFaucet } from '@nasun/wallet';
 import { Header, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
-import { useTrading } from './features/trading/useTrading';
-import { waitForTxIndexing } from './lib/tx-helpers';
 import { OfflineBanner } from './components/common/OfflineBanner';
 
 export default function App() {
-  const { requestNbtc, requestNusdc, requestNeth, requestNsol } = useTrading();
-
-  // Register token faucet handlers (requires wallet signing, 24h cooldown)
-  // waitForTxIndexing ensures RPC has indexed the tx before wallet-ui refreshes balance
-  useEffect(() => {
-    registerTokenFaucet('NBTC', {
-      request: async () => {
-        const result = await requestNbtc();
-        if (result.success && result.digest) {
-          await waitForTxIndexing(result.digest);
-        }
-        return result.success;
-      },
-    });
-    registerTokenFaucet('NUSDC', {
-      request: async () => {
-        const result = await requestNusdc();
-        if (result.success && result.digest) {
-          await waitForTxIndexing(result.digest);
-        }
-        return result.success;
-      },
-    });
-    registerTokenFaucet('NETH', {
-      request: async () => {
-        const result = await requestNeth();
-        if (result.success && result.digest) {
-          await waitForTxIndexing(result.digest);
-        }
-        return result.success;
-      },
-    });
-    registerTokenFaucet('NSOL', {
-      request: async () => {
-        const result = await requestNsol();
-        if (result.success && result.digest) {
-          await waitForTxIndexing(result.digest);
-        }
-        return result.success;
-      },
-    });
-  }, [requestNbtc, requestNusdc, requestNeth, requestNsol]);
-
   return (
     <div className="min-h-screen bg-theme-bg-primary text-theme-text-primary">
       <OfflineBanner />
