@@ -9,12 +9,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     const savedTheme = localStorage.getItem("pado-theme") as Theme | null;
     if (savedTheme) return savedTheme;
 
-    // 2. Check system preference
-    if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      return "light";
-    }
-
-    // 3. Default: dark (trading apps use dark mode by default)
+    // 2. Default: dark (trading apps use dark mode by default)
     return "dark";
   };
 
