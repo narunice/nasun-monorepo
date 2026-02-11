@@ -136,7 +136,10 @@ export function WalletConnect({
             {/* Mobile overlay backdrop */}
             <div
               className="fixed inset-0 bg-black/50 z-[99998]"
-              onClick={() => s.setShowDropdown(false)}
+              onClick={() => {
+                if (s.viewMode === "create-backup") return;
+                s.setShowDropdown(false);
+              }}
             />
             <div
               ref={s.mobileDropdownRef}

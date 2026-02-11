@@ -30,24 +30,21 @@ let currentKeypair: Ed25519Keypair | null = null;
 // Auto-lock interval ID
 let autoLockIntervalId: ReturnType<typeof setInterval> | null = null;
 
-// In-memory mnemonic for backup modal (never persisted to storage)
-let pendingMnemonic: string | null = null;
+// Pending mnemonic for backup display (module-level to survive component unmount/remount)
+let pendingBackupMnemonic: string | null = null;
 
 /**
- * Get the pending mnemonic for backup display, then clear it from memory.
- * One-shot read: subsequent calls return null.
+ * Get the pending mnemonic for backup display (non-destructive read).
  */
-export function consumePendingMnemonic(): string | null {
-  const mnemonic = pendingMnemonic;
-  pendingMnemonic = null;
-  return mnemonic;
+export function getPendingBackupMnemonic(): string | null {
+  return pendingBackupMnemonic;
 }
 
 /**
- * Check if a mnemonic backup is pending (without consuming it).
+ * Clear the pending mnemonic after user confirms backup.
  */
-export function hasPendingMnemonic(): boolean {
-  return pendingMnemonic !== null;
+export function clearPendingBackupMnemonic(): void {
+  pendingBackupMnemonic = null;
 }
 
 interface WalletStore extends WalletState, WalletActions {
@@ -232,6 +229,7 @@ export const useWallet = create<WalletStore>((set, get) => ({
   // Lock wallet
   lockWallet: () => {
     currentKeypair = null;
+    pendingBackupMnemonic = null;
     clearSessionPassword();
     // Reset chain to default (Nasun Devnet) on lock
     useChainStore.getState().resetToDefault();
@@ -272,18 +270,18 @@ export const useWallet = create<WalletStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { address, mnemonic } = await createWalletWithMnemonic(password);
-      await _unlockAndActivate(set, address, password, mnemonic);
 
-      // Store mnemonic in memory for App-level backup modal
-      pendingMnemonic = mnemonic;
-      try {
-        localStorage.setItem('nasun_wallet_backup_pending', 'true');
-      } catch {
-        console.warn('[Wallet] Failed to persist backup pending flag');
-      }
+      // Store mnemonic BEFORE status change — React may re-render immediately
+      // when _unlockAndActivate sets status to "unlocked", causing WalletConnect
+      // to unmount (e.g., Pado homepage WelcomeBanner) and remount in Header.
+      // The new instance reads this on mount to restore the backup flow.
+      pendingBackupMnemonic = mnemonic;
+
+      await _unlockAndActivate(set, address, password, mnemonic);
 
       return { address, mnemonic };
     } catch (error) {
+      pendingBackupMnemonic = null;
       const message = error instanceof Error ? error.message : 'Failed to create wallet';
       set({ isLoading: false, error: message });
       throw error;
