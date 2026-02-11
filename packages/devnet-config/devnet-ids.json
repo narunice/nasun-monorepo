@@ -79,10 +79,12 @@
   },
   "tokensV2": {
     "packageId": "0x5e56cc65a071bf37323015e379bd6ad3b8df895a316edd564eb35ae9380bca53",
+    "originalPackageId": "0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2",
     "tokenFaucetV2": "0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2",
     "claimRecordV2": "0x2c2dbaa8d08b04119f5a8459aba2ab4d71b887d55bb5c1d987af1f501a52c38a",
     "upgradeCap": "0x4b70e4d8a5bd8dc9976082d8d16eb014303b3000cc6d52a9de19c6b3a7cdb755",
     "nethPackageId": "0x2e08785948d44afb14f912a6bfd6bca0dc83f0d623b290ed1b7d0f57a7dced5d",
+    "nethOriginalPackageId": "0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31",
     "nethFaucetV2": "0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e",
     "nethClaimRecordV2": "0xf70689c14ce0752e209e8939c2628c4f3ce4fab08b800c2c7d691b5f0454d80e",
     "nethUpgradeCap": "0x8acd186da618ae5be49ce4ca98b6467ed7891f67b50125e7ff282631665ed10b"
