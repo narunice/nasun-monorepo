@@ -2,16 +2,11 @@
  * AppRoutes
  * Application route definitions with lazy-loaded pages.
  *
- * Navigation Structure (Menu Restructure v2):
- * - Home (/) - Dashboard
- * - Markets (/markets) - Spot + Perp trading
- *   - Spot (/markets/spot) - Spot trading
- *   - Perp (/markets/perp) - Perpetual futures (Coming Soon)
- * - Predict (/predict) - Prediction markets
- * - Lottery (/lottery) - Weekly lottery
- * - Earn (/earn) - Staking + Lending (Phase 12-13)
- * - Wallet (/wallet) - Send/Receive
- * - Admin (/admin) - Unified admin dashboard
+ * Navigation Structure (Menu Restructure v3):
+ * Desktop: Trade v (Spot, Perp) | Predict | Lottery | Earn | Social v (Leaderboard, Competitions) | Portfolio
+ * Mobile:  Home | Trade | Predict | Social | More (Lottery, Earn, Perp, Portfolio, Wallet)
+ * - Wallet (/wallet) - accessible via header button (desktop) or More sheet (mobile)
+ * - Admin (/admin) - conditional, admin-only
  */
 
 import { lazy, Suspense } from 'react';
@@ -36,6 +31,7 @@ const TraderProfilePage = lazy(() => import('../pages/TraderProfilePage').then(m
 const CompetitionsPage = lazy(() => import('../pages/CompetitionsPage').then(m => ({ default: m.CompetitionsPage })));
 const CompetitionDetailPage = lazy(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
 const EarnPage = lazy(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
+const PortfolioPage = lazy(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
 export function AppRoutes() {
   return (
@@ -73,6 +69,9 @@ export function AppRoutes() {
 
         {/* Earn (Staking + Lending) */}
         <Route path="/earn" element={<EarnPage />} />
+
+        {/* Portfolio */}
+        <Route path="/portfolio" element={<PortfolioPage />} />
 
         {/* Auth (zkLogin callback) */}
         <Route path="/callback" element={<AuthCallbackPage />} />
