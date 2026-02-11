@@ -52,10 +52,10 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
     VITE_LOTTERY_REGISTRY: () => config.lottery.registry,
     VITE_LOTTERY_ADMIN_CAP: () => config.lottery.adminCap,
 
-    // Tokens V2 (NETH uses nethPackageId, NSOL uses packageId)
+    // Tokens V2 (coin types use original package IDs, moveCall targets use upgraded)
     VITE_TOKENS_V2_PACKAGE: () => config.tokensV2?.packageId || '',
-    VITE_NETH_TYPE: () => config.tokensV2?.nethPackageId ? `${config.tokensV2.nethPackageId}::neth::NETH` : (config.tokensV2 ? `${config.tokensV2.packageId}::neth::NETH` : ''),
-    VITE_NSOL_TYPE: () => config.tokensV2 ? `${config.tokensV2.packageId}::nsol::NSOL` : '',
+    VITE_NETH_TYPE: () => { const pkg = config.tokensV2?.nethOriginalPackageId || config.tokensV2?.nethPackageId; return pkg ? `${pkg}::neth::NETH` : ''; },
+    VITE_NSOL_TYPE: () => { const pkg = config.tokensV2?.originalPackageId || config.tokensV2?.packageId; return pkg ? `${pkg}::nsol::NSOL` : ''; },
     VITE_TOKEN_FAUCET_V2: () => config.tokensV2?.tokenFaucetV2 || '',
     VITE_CLAIM_RECORD_V2: () => config.tokensV2?.claimRecordV2 || '',
     VITE_NETH_FAUCET_V2: () => config.tokensV2?.nethFaucetV2 || '',
