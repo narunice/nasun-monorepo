@@ -2,11 +2,26 @@
  * DashboardTab - Dashboard statistics for Leaderboard V3 Admin
  */
 
+import { useState } from "react";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { useAdminDashboard } from "../../hooks/useAdminDashboard";
+import { PostEditModal } from "./PostEditModal";
+
+interface EditablePost {
+  postId: string;
+  platform?: string;
+  username?: string;
+  originalUsername?: string;
+  postUrl?: string;
+  postScore?: number;
+  accountRole?: string;
+  contentSignals?: string[];
+}
 
 export function DashboardTab() {
   const { data: stats, isLoading, error } = useAdminDashboard();
+  const [editingPost, setEditingPost] = useState<EditablePost | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -62,8 +77,33 @@ export function DashboardTab() {
                     <div className="text-nasun-white truncate">{activity.description}</div>
                     <div className="text-nasun-white/40 text-xs">
                       {formatTimestamp(activity.timestamp)}
+                      {activity.postScore !== undefined && (
+                        <span className="ml-2 text-nasun-c3">
+                          Score: {activity.postScore.toFixed(2)}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  {activity.postId && (
+                    <button
+                      onClick={() => {
+                        setEditingPost({
+                          postId: activity.postId!,
+                          platform: activity.platform,
+                          username: activity.username,
+                          originalUsername: activity.originalUsername,
+                          postUrl: activity.postUrl,
+                          postScore: activity.postScore,
+                          accountRole: activity.accountRole,
+                          contentSignals: activity.contentSignals,
+                        });
+                        setEditModalOpen(true);
+                      }}
+                      className="shrink-0 px-2 py-1 text-xs text-nasun-white/60 hover:text-nasun-white bg-gray-700/50 hover:bg-gray-700 rounded-sm transition-all"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -132,6 +172,13 @@ export function DashboardTab() {
           Last updated: {new Date(stats.calculatedAt).toLocaleString()}
         </div>
       )}
+
+      {/* Post Edit Modal */}
+      <PostEditModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        post={editingPost}
+      />
     </div>
   );
 }
