@@ -3,6 +3,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
+import { CLAIM_RECORD } from '@nasun/devnet-config';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../../config/network';
 import { ORDER_TYPE, SELF_MATCHING, CLOCK_ID, NATIVE_TOKEN_TYPE, GAS_RESERVE_RAW } from './constants';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';
@@ -424,16 +425,18 @@ export function buildSwapExactQuoteForBase(
 }
 
 /**
- * 테스트 토큰 요청 (Token Faucet)
- * 1 NBTC + 100,000 NUSDC를 요청
+ * 테스트 토큰 요청 (Token Faucet, 24h cooldown)
+ * 1 NBTC + 100,000 NUSDC
  */
 export function buildRequestTokens(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_tokens`,
+    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_tokens_with_cooldown`,
     arguments: [
       tx.object(NETWORK_CONFIG.tokenFaucet!),
+      tx.object(CLAIM_RECORD),
+      tx.object(CLOCK_ID),
     ],
   });
 
@@ -441,15 +444,17 @@ export function buildRequestTokens(): Transaction {
 }
 
 /**
- * NBTC만 요청
+ * NBTC 요청 (24h cooldown)
  */
 export function buildRequestNbtc(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_nbtc`,
+    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_nbtc_with_cooldown`,
     arguments: [
       tx.object(NETWORK_CONFIG.tokenFaucet!),
+      tx.object(CLAIM_RECORD),
+      tx.object(CLOCK_ID),
     ],
   });
 
@@ -457,15 +462,17 @@ export function buildRequestNbtc(): Transaction {
 }
 
 /**
- * NUSDC만 요청
+ * NUSDC 요청 (24h cooldown)
  */
 export function buildRequestNusdc(): Transaction {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_nusdc`,
+    target: `${NETWORK_CONFIG.faucetPackage}::faucet::request_nusdc_with_cooldown`,
     arguments: [
       tx.object(NETWORK_CONFIG.tokenFaucet!),
+      tx.object(CLAIM_RECORD),
+      tx.object(CLOCK_ID),
     ],
   });
 
