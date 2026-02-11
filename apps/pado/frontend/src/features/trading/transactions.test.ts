@@ -50,10 +50,9 @@ import {
   buildSwapExactBaseForQuote,
   buildSwapExactQuoteForBase,
   buildRequestTokens,
-  buildRequestNbtc,
-  buildRequestNusdc,
   buildWithdrawAll,
 } from './transactions';
+import { buildNbtcFaucetTx, buildNusdcFaucetTx } from '@nasun/wallet';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';
 import { calcLockedAmounts } from './types';
 
@@ -466,13 +465,13 @@ describe('Faucet Transaction Builders', () => {
     expect(tx).toBeDefined();
   });
 
-  it('buildRequestNbtc returns transaction', () => {
-    const tx = buildRequestNbtc();
+  it('buildNbtcFaucetTx returns transaction', () => {
+    const tx = buildNbtcFaucetTx();
     expect(tx).toBeDefined();
   });
 
-  it('buildRequestNusdc returns transaction', () => {
-    const tx = buildRequestNusdc();
+  it('buildNusdcFaucetTx returns transaction', () => {
+    const tx = buildNusdcFaucetTx();
     expect(tx).toBeDefined();
   });
 });
