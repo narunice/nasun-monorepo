@@ -3,7 +3,7 @@
  * Centralized token configuration management for multi-token support
  */
 
-import { NBTC_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
+import { NBTC_TYPE, NUSDC_TYPE, NETH_TYPE, NSOL_TYPE } from '@nasun/devnet-config';
 import type { TokenConfig, TokenFaucetHandler } from '../types';
 
 // Token registry storage
@@ -41,6 +41,18 @@ export const DEVNET_TOKENS: TokenConfig[] = [
     name: 'Nasun USDC',
     decimals: 6,
     type: NUSDC_TYPE,
+  },
+  {
+    symbol: 'NETH',
+    name: 'Nasun ETH',
+    decimals: 8,
+    type: NETH_TYPE,
+  },
+  {
+    symbol: 'NSOL',
+    name: 'Nasun SOL',
+    decimals: 9,
+    type: NSOL_TYPE,
   },
 ];
 
