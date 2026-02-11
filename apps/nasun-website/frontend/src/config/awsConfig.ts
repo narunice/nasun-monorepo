@@ -7,7 +7,7 @@ const awsConfig: ResourcesConfig = {
   Auth: {
     Cognito: {
       identityPoolId: import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID as string,
-      allowGuestAccess: true,
+      allowGuestAccess: false,
     }
   }
 };
