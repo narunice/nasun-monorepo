@@ -11,7 +11,6 @@ import {
   buildCancelOrder,
   buildCreateBalanceManager,
   buildDeposit,
-  buildRequestTokens,
   buildRequestNbtc,
   buildRequestNusdc,
   buildRequestNeth,
@@ -71,7 +70,6 @@ interface UseTrading {
   placeSellOrder: (price: number, amount: number, orderType?: OrderType) => Promise<TradeResult>;
 
   // Token Faucet
-  requestTokens: () => Promise<TradeResult>;
   requestNbtc: () => Promise<TradeResult>;
   requestNusdc: () => Promise<TradeResult>;
   requestNeth: () => Promise<TradeResult>;
@@ -287,11 +285,6 @@ export function useTrading(): UseTrading {
 
   // --- Faucet Operations ---
 
-  const requestTokens = useCallback(async (): Promise<TradeResult> => {
-    const tx = buildRequestTokens();
-    return executeTransaction(tx);
-  }, [executeTransaction]);
-
   const requestNbtc = useCallback(async (): Promise<TradeResult> => {
     const tx = buildRequestNbtc();
     return executeTransaction(tx);
@@ -372,7 +365,6 @@ export function useTrading(): UseTrading {
     cancelOrder,
     placeBuyOrder,
     placeSellOrder,
-    requestTokens,
     requestNbtc,
     requestNusdc,
     requestNeth,

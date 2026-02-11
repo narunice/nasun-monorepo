@@ -4,20 +4,26 @@
  * Keeps loading spinner active until balance is actually refreshed.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { requestFaucet } from "../../../lib/sui-client";
 import { waitForTxIndexing } from "../../../lib/tx-helpers";
 import { useTrading } from "../useTrading";
 import { useToast } from "@/components/common";
-import { useWalletAccount, useZkLogin } from "@nasun/wallet";
+import {
+  useWalletAccount,
+  useZkLogin,
+  getCooldownRemaining,
+  setCooldownTimestamp,
+  formatCooldownRemaining,
+} from "@nasun/wallet";
 
 // Must match the query key in @nasun/wallet useMultiBalance
 const MULTI_BALANCE_QUERY_KEY = "wallet-multi-balance";
 
-const COOLDOWN_MS = 5_000;
 const NASUN_POLL_INTERVAL_MS = 800;
 const NASUN_POLL_MAX_ATTEMPTS = 10;
+const COOLDOWN_POLL_INTERVAL_MS = 60_000;
 
 /**
  * Format faucet errors into user-friendly messages
@@ -52,6 +58,7 @@ export interface UseFaucetResult {
   isNethLoading: boolean;
   isNsolLoading: boolean;
   isCooldown: (token: string) => boolean;
+  getCooldownFormatted: (token: string) => string;
   handleNasunFaucet: () => Promise<void>;
   handleNbtcFaucet: () => Promise<void>;
   handleNusdcFaucet: () => Promise<void>;
@@ -73,23 +80,25 @@ export function useFaucet(): UseFaucetResult {
   const [isNethLoading, setIsNethLoading] = useState(false);
   const [isNsolLoading, setIsNsolLoading] = useState(false);
 
-  // Per-token cooldown (prevents rapid re-clicks after success)
-  const [cooldownTokens, setCooldownTokens] = useState<Set<string>>(new Set());
-  const cooldownRef = useRef(cooldownTokens);
-  cooldownRef.current = cooldownTokens;
+  // localStorage-based 24h cooldown (persists across page refresh)
+  const [, setTick] = useState(0);
 
-  const startCooldown = useCallback((token: string) => {
-    setCooldownTokens(prev => new Set(prev).add(token));
-    setTimeout(() => {
-      setCooldownTokens(prev => {
-        const next = new Set(prev);
-        next.delete(token);
-        return next;
-      });
-    }, COOLDOWN_MS);
-  }, []);
+  // Poll cooldown state every 60s to update UI
+  useEffect(() => {
+    if (!address) return;
+    const id = setInterval(() => setTick(t => t + 1), COOLDOWN_POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [address]);
 
-  const isCooldown = useCallback((token: string) => cooldownTokens.has(token), [cooldownTokens]);
+  const isCooldown = useCallback((token: string) => {
+    if (!address) return false;
+    return getCooldownRemaining(address, token) > 0;
+  }, [address]);
+
+  const getCooldownFormattedCb = useCallback((token: string) => {
+    if (!address) return '';
+    return formatCooldownRemaining(getCooldownRemaining(address, token));
+  }, [address]);
 
   /**
    * Wait for RPC indexing (Move tx with digest), then invalidate balance cache.
@@ -126,15 +135,23 @@ export function useFaucet(): UseFaucetResult {
 
   // NASUN Faucet (HTTP API — no digest available)
   const handleNasunFaucet = useCallback(async () => {
-    if (!address || cooldownRef.current.has('NASUN')) return;
+    if (!address) return;
+
+    // Check 24h localStorage cooldown
+    const remaining = getCooldownRemaining(address, 'NSN');
+    if (remaining > 0) {
+      const formatted = formatCooldownRemaining(remaining);
+      showToast(`NASUN faucet: cooldown active. Try again in ${formatted}.`, "warning");
+      return;
+    }
 
     setIsNasunLoading(true);
     try {
       const success = await requestFaucet(address);
       if (success) {
+        setCooldownTimestamp(address, 'NSN');
         await pollAndRefresh();
         showToast("NASUN received!", "success");
-        startCooldown('NASUN');
       } else {
         showToast("Faucet request failed", "error");
       }
@@ -143,95 +160,135 @@ export function useFaucet(): UseFaucetResult {
     } finally {
       setIsNasunLoading(false);
     }
-  }, [address, showToast, pollAndRefresh, startCooldown]);
+  }, [address, showToast, pollAndRefresh]);
 
-  // NBTC Faucet (Move contract)
+  // NBTC Faucet (Move contract — 24h per-token cooldown)
   const handleNbtcFaucet = useCallback(async () => {
-    if (cooldownRef.current.has('NBTC')) return;
+    if (!address) return;
+
+    const remaining = getCooldownRemaining(address, 'NBTC');
+    if (remaining > 0) {
+      const formatted = formatCooldownRemaining(remaining);
+      showToast(`NBTC faucet: cooldown active. Try again in ${formatted}.`, "warning");
+      return;
+    }
 
     setIsNbtcLoading(true);
     try {
       const result = await requestNbtc();
       if (result.success) {
+        setCooldownTimestamp(address, 'NBTC');
         if (result.digest) await waitAndRefresh(result.digest);
         showToast("1 NBTC received!", "success");
-        startCooldown('NBTC');
       } else {
-        showToast(formatFaucetError(result.error, "NBTC"), "error");
+        const formatted = formatFaucetError(result.error, "NBTC");
+        if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NBTC');
+        showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
       }
     } catch (error) {
-      showToast(formatFaucetError(error, "NBTC"), "error");
+      const formatted = formatFaucetError(error, "NBTC");
+      if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NBTC');
+      showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
     } finally {
       setIsNbtcLoading(false);
     }
-  }, [requestNbtc, showToast, waitAndRefresh, startCooldown]);
+  }, [address, requestNbtc, showToast, waitAndRefresh]);
 
-  // NUSDC Faucet (Move contract)
+  // NUSDC Faucet (Move contract — 24h per-token cooldown)
   const handleNusdcFaucet = useCallback(async () => {
-    if (cooldownRef.current.has('NUSDC')) return;
+    if (!address) return;
+
+    const remaining = getCooldownRemaining(address, 'NUSDC');
+    if (remaining > 0) {
+      const formatted = formatCooldownRemaining(remaining);
+      showToast(`NUSDC faucet: cooldown active. Try again in ${formatted}.`, "warning");
+      return;
+    }
 
     setIsNusdcLoading(true);
     try {
       const result = await requestNusdc();
       if (result.success) {
+        setCooldownTimestamp(address, 'NUSDC');
         if (result.digest) await waitAndRefresh(result.digest);
         showToast("100,000 NUSDC received!", "success");
-        startCooldown('NUSDC');
       } else {
-        showToast(formatFaucetError(result.error, "NUSDC"), "error");
+        const formatted = formatFaucetError(result.error, "NUSDC");
+        if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NUSDC');
+        showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
       }
     } catch (error) {
-      showToast(formatFaucetError(error, "NUSDC"), "error");
+      const formatted = formatFaucetError(error, "NUSDC");
+      if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NUSDC');
+      showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
     } finally {
       setIsNusdcLoading(false);
     }
-  }, [requestNusdc, showToast, waitAndRefresh, startCooldown]);
+  }, [address, requestNusdc, showToast, waitAndRefresh]);
 
   // NETH Faucet (V2 Move contract — 24h cooldown)
   const handleNethFaucet = useCallback(async () => {
-    if (cooldownRef.current.has('NETH')) return;
+    if (!address) return;
+
+    const remaining = getCooldownRemaining(address, 'NETH');
+    if (remaining > 0) {
+      const formatted = formatCooldownRemaining(remaining);
+      showToast(`NETH faucet: cooldown active. Try again in ${formatted}.`, "warning");
+      return;
+    }
 
     setIsNethLoading(true);
     try {
       const result = await requestNeth();
       if (result.success) {
+        setCooldownTimestamp(address, 'NETH');
         if (result.digest) await waitAndRefresh(result.digest);
         showToast("10 NETH received!", "success");
-        startCooldown('NETH');
       } else {
         const formatted = formatFaucetError(result.error, "NETH");
-        const isCd = formatted.includes('cooldown');
-        showToast(formatted, isCd ? "warning" : "error");
+        if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NETH');
+        showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
       }
     } catch (error) {
-      showToast(formatFaucetError(error, "NETH"), "error");
+      const formatted = formatFaucetError(error, "NETH");
+      if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NETH');
+      showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
     } finally {
       setIsNethLoading(false);
     }
-  }, [requestNeth, showToast, waitAndRefresh, startCooldown]);
+  }, [address, requestNeth, showToast, waitAndRefresh]);
 
   // NSOL Faucet (V2 Move contract — 24h cooldown)
   const handleNsolFaucet = useCallback(async () => {
-    if (cooldownRef.current.has('NSOL')) return;
+    if (!address) return;
+
+    const remaining = getCooldownRemaining(address, 'NSOL');
+    if (remaining > 0) {
+      const formatted = formatCooldownRemaining(remaining);
+      showToast(`NSOL faucet: cooldown active. Try again in ${formatted}.`, "warning");
+      return;
+    }
 
     setIsNsolLoading(true);
     try {
       const result = await requestNsol();
       if (result.success) {
+        setCooldownTimestamp(address, 'NSOL');
         if (result.digest) await waitAndRefresh(result.digest);
         showToast("100 NSOL received!", "success");
-        startCooldown('NSOL');
       } else {
         const formatted = formatFaucetError(result.error, "NSOL");
-        const isCd = formatted.includes('cooldown');
-        showToast(formatted, isCd ? "warning" : "error");
+        if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NSOL');
+        showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
       }
     } catch (error) {
-      showToast(formatFaucetError(error, "NSOL"), "error");
+      const formatted = formatFaucetError(error, "NSOL");
+      if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NSOL');
+      showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
     } finally {
       setIsNsolLoading(false);
     }
-  }, [requestNsol, showToast, waitAndRefresh, startCooldown]);
+  }, [address, requestNsol, showToast, waitAndRefresh]);
 
   return {
     isNasunLoading,
@@ -240,6 +297,7 @@ export function useFaucet(): UseFaucetResult {
     isNethLoading,
     isNsolLoading,
     isCooldown,
+    getCooldownFormatted: getCooldownFormattedCb,
     handleNasunFaucet,
     handleNbtcFaucet,
     handleNusdcFaucet,
