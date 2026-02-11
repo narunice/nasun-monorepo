@@ -33,9 +33,9 @@ export {
   useSecuritySettings,
   initializeAutoLock,
   cleanupAutoLock,
-  // Mnemonic backup (memory-only, never persisted)
-  consumePendingMnemonic,
-  hasPendingMnemonic,
+  // Mnemonic backup (module-level, survives component unmount)
+  getPendingBackupMnemonic,
+  clearPendingBackupMnemonic,
 } from './hooks/useWallet';
 
 export {

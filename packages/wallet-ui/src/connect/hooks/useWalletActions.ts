@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from "react";
-import { useWallet, useChainStore } from "@nasun/wallet";
+import { useWallet, useChainStore, clearPendingBackupMnemonic } from "@nasun/wallet";
 import { useUISettingsStore } from "../../stores";
 import type { WalletViewStateReturn } from "./useWalletViewState";
 
@@ -37,6 +37,7 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
   }, [viewState.password, viewState.confirmPassword, createWalletWithBackup, resetSettings, viewState.setPassword, viewState.setConfirmPassword, viewState.setMnemonic, viewState.setViewMode]);
 
   const handleBackupConfirmed = useCallback(() => {
+    clearPendingBackupMnemonic();
     try {
       localStorage.removeItem("nasun_wallet_backup_pending");
     } catch {
