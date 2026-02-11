@@ -12,32 +12,36 @@ interface NavItem {
   enabled: boolean;
 }
 
-interface MarketsSubItem {
+interface DropdownItem {
   label: string;
   path: string;
   enabled: boolean;
 }
 
-const MARKETS_ITEMS: MarketsSubItem[] = [
+const TRADE_ITEMS: DropdownItem[] = [
   { label: 'Spot', path: '/markets/spot', enabled: true },
-  { label: 'Perp', path: '/markets/perp', enabled: true },
+  { label: 'Perpetuals', path: '/markets/perp', enabled: true },
 ];
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Predict', path: '/predict', enabled: true },
   { label: 'Lottery', path: '/lottery', enabled: true },
   { label: 'Earn', path: '/earn', enabled: true },
+];
+
+const SOCIAL_ITEMS: DropdownItem[] = [
   { label: 'Leaderboard', path: '/leaderboard', enabled: true },
-  { label: 'Compete', path: '/competitions', enabled: true },
-  { label: 'Wallet', path: '/wallet', enabled: true },
+  { label: 'Competitions', path: '/competitions', enabled: true },
 ];
 
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMarketsOpen, setIsMarketsOpen] = useState(false);
+  const [isTradeOpen, setIsTradeOpen] = useState(false);
+  const [isSocialOpen, setIsSocialOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const marketsRef = useRef<HTMLDivElement>(null);
+  const tradeRef = useRef<HTMLDivElement>(null);
+  const socialRef = useRef<HTMLDivElement>(null);
 
   // Detect mobile viewport for address shortening
   useEffect(() => {
@@ -61,25 +65,29 @@ export function Header() {
 
   // Close dropdowns on route change
   useEffect(() => {
-    setIsMarketsOpen(false);
+    setIsTradeOpen(false);
+    setIsSocialOpen(false);
   }, [location.pathname]);
 
-  // Close markets dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (marketsRef.current && !marketsRef.current.contains(event.target as Node)) {
-        setIsMarketsOpen(false);
+      if (tradeRef.current && !tradeRef.current.contains(event.target as Node)) {
+        setIsTradeOpen(false);
+      }
+      if (socialRef.current && !socialRef.current.contains(event.target as Node)) {
+        setIsSocialOpen(false);
       }
     };
 
-    if (isMarketsOpen) {
+    if (isTradeOpen || isSocialOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMarketsOpen]);
+  }, [isTradeOpen, isSocialOpen]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -90,6 +98,9 @@ export function Header() {
     }
     if (path === '/markets') {
       return location.pathname.startsWith('/markets') || location.pathname === '/trade';
+    }
+    if (path === '/social') {
+      return location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/competitions');
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
@@ -104,6 +115,16 @@ export function Header() {
     }
   };
 
+  const toggleTrade = () => {
+    setIsTradeOpen((prev) => !prev);
+    setIsSocialOpen(false);
+  };
+
+  const toggleSocial = () => {
+    setIsSocialOpen((prev) => !prev);
+    setIsTradeOpen(false);
+  };
+
   return (
     <header className="border-b border-theme-border px-3 sm:px-4 md:px-6 py-3 md:py-4">
       <div className={`flex items-center justify-between gap-2 ${isHomePage ? 'max-w-7xl mx-auto' : ''}`}>
@@ -114,19 +135,19 @@ export function Header() {
 
         {/* Desktop Navigation Menu */}
         <nav className="hidden md:flex items-center gap-1">
-          {/* Markets Dropdown */}
-          <div className="relative" ref={marketsRef}>
+          {/* Trade Dropdown */}
+          <div className="relative" ref={tradeRef}>
             <button
-              onClick={() => setIsMarketsOpen(!isMarketsOpen)}
+              onClick={toggleTrade}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
                 isActive('/markets')
                   ? 'text-pd3 bg-pd3/10'
                   : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
               }`}
             >
-              Markets
+              Trade
               <svg
-                className={`w-3 h-3 transition-transform ${isMarketsOpen ? 'rotate-180' : ''}`}
+                className={`w-3 h-3 transition-transform ${isTradeOpen ? 'rotate-180' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -135,17 +156,16 @@ export function Header() {
               </svg>
             </button>
 
-            {/* Markets Dropdown Menu */}
-            {isMarketsOpen && (
+            {isTradeOpen && (
               <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {MARKETS_ITEMS.map((item) =>
+                {TRADE_ITEMS.map((item) =>
                   item.enabled ? (
                     <Link
                       key={item.path}
                       to={item.path}
                       onClick={(e) => {
                         handleNavClick(e, item.path);
-                        setIsMarketsOpen(false);
+                        setIsTradeOpen(false);
                       }}
                       className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                         isActive(item.path)
@@ -169,7 +189,7 @@ export function Header() {
             )}
           </div>
 
-          {/* Other Nav Items */}
+          {/* Direct Nav Items: Predict, Lottery, Earn */}
           {NAV_ITEMS.map((item) =>
             item.enabled ? (
               <Link
@@ -194,6 +214,75 @@ export function Header() {
               </span>
             )
           )}
+
+          {/* Social Dropdown */}
+          <div className="relative" ref={socialRef}>
+            <button
+              onClick={toggleSocial}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
+                isActive('/social')
+                  ? 'text-pd3 bg-pd3/10'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+              }`}
+            >
+              Social
+              <svg
+                className={`w-3 h-3 transition-transform ${isSocialOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isSocialOpen && (
+              <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                {SOCIAL_ITEMS.map((item) =>
+                  item.enabled ? (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={(e) => {
+                        handleNavClick(e, item.path);
+                        setIsSocialOpen(false);
+                      }}
+                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isActive(item.path)
+                          ? 'text-pd3 bg-pd3/10'
+                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <span
+                      key={item.path}
+                      className="block px-4 py-2.5 text-sm text-theme-text-muted cursor-not-allowed"
+                    >
+                      {item.label}
+                      <span className="text-xs ml-1 text-purple-400">(Soon)</span>
+                    </span>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Portfolio */}
+          <Link
+            to="/portfolio"
+            onClick={(e) => handleNavClick(e, '/portfolio')}
+            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/portfolio')
+                ? 'text-pd3 bg-pd3/10'
+                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+            }`}
+          >
+            Portfolio
+          </Link>
+
+          {/* Admin (conditional) */}
           {isAdmin && (
             <Link
               to="/admin"
@@ -209,22 +298,16 @@ export function Header() {
           )}
         </nav>
 
-        {/* Right side: Theme Toggle + Wallet (+ Mobile Menu) */}
+        {/* Right side: Theme Toggle + Wallet */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Theme Toggle Switch */}
           <ThemeToggle />
-
-          {/* Net Value (visible when connected, hidden on mobile) */}
           <HeaderNetValue />
-
           {showWalletButton && (
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}
               addressEndChars={3}
             />
           )}
-
-          {/* Mobile hamburger menu removed -- MobileBottomNav replaces it */}
         </div>
       </div>
     </header>
