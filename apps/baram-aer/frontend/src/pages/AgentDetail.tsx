@@ -98,7 +98,7 @@ export function AgentDetail() {
 }
 
 function OverviewTab({ agent, budget }: {
-  agent: { role: string; capabilities: string[]; createdAt: number; totalRequests: number; totalSpent: number; agentAddress: string };
+  agent: { role: string; capabilities: string[]; createdAt: number; totalExecutions: number; totalSpent: number; agentAddress: string };
   budget: { balance: number; totalSpent: number; requestCount: number; isActive: boolean } | null;
 }) {
   return (
@@ -137,8 +137,8 @@ function OverviewTab({ agent, budget }: {
         <h4 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Statistics</h4>
         <dl className="space-y-2 text-xs">
           <div className="flex justify-between">
-            <dt className="text-[var(--color-text-muted)]">Total Requests</dt>
-            <dd className="text-[var(--color-text-primary)]">{agent.totalRequests}</dd>
+            <dt className="text-[var(--color-text-muted)]">Executions</dt>
+            <dd className="text-[var(--color-text-primary)]">{agent.totalExecutions}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-[var(--color-text-muted)]">Total Spent</dt>
@@ -249,11 +249,11 @@ function LimitGauge({ label, spent, limit }: { label: string; spent: number; lim
   );
 }
 
-function ActivityTab({ agent }: { agent: { totalRequests: number; lastActiveAt: number } }) {
+function ActivityTab({ agent }: { agent: { totalExecutions: number; lastActiveAt: number } }) {
   return (
     <div className="text-center py-8">
       <p className="text-sm text-[var(--color-text-muted)]">
-        {agent.totalRequests} total requests
+        {agent.totalExecutions} executions
       </p>
       <p className="text-xs text-[var(--color-text-muted)] mt-1">
         Last active: {agent.lastActiveAt ? formatTimestamp(agent.lastActiveAt) : 'Never'}

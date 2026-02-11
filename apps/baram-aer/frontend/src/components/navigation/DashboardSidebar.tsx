@@ -1,21 +1,43 @@
 /**
- * DashboardSidebar - Left navigation for the AER dashboard
+ * DashboardSidebar - Left navigation with Dashboard/Chat tab split
+ *
+ * Dashboard tab: Overview, Agents, Execution Reports navigation
+ * Chat tab: Session management (NewChat, SessionList, ClearHistory)
+ *
+ * Tab selection is derived from the current URL:
+ *   /chat -> Chat tab
+ *   everything else -> Dashboard tab
  */
 
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NewChatButton } from '../sidebar/NewChatButton';
+import { SessionList } from '../sidebar/SessionList';
+import { SidebarSettings } from '../sidebar/SidebarSettings';
 
 interface DashboardSidebarProps {
   isOpen: boolean;
 }
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Overview', icon: GridIcon, end: true },
+  { to: '/', label: 'Dashboard', icon: GridIcon, end: true },
   { to: '/agents', label: 'Agents', icon: AgentIcon },
   { to: '/aer', label: 'Execution Reports', icon: ReportIcon },
-  { to: '/chat', label: 'Chat', icon: ChatIcon },
 ] as const;
 
 export function DashboardSidebar({ isOpen }: DashboardSidebarProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isChatTab = location.pathname === '/chat';
+
+  const handleTabClick = (tab: 'dashboard' | 'chat') => {
+    if (tab === 'chat' && !isChatTab) navigate('/chat');
+    if (tab === 'dashboard' && isChatTab) navigate('/');
+  };
+
+  const tabBaseStyle = 'flex-1 py-2 text-xs font-medium transition-colors text-center';
+  const tabActiveStyle = 'text-[var(--color-text-primary)] border-b-2 border-[var(--color-accent)]';
+  const tabInactiveStyle = 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]';
+
   return (
     <aside
       className={`
@@ -26,7 +48,7 @@ export function DashboardSidebar({ isOpen }: DashboardSidebarProps) {
       `}
     >
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-[var(--color-border)]">
+      <div className="px-4 py-4 border-b border-[var(--color-border)] shrink-0">
         <h1 className="text-base font-semibold text-[var(--color-text-primary)]">
           Baram AER
         </h1>
@@ -35,29 +57,73 @@ export function DashboardSidebar({ isOpen }: DashboardSidebarProps) {
         </p>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, ...rest }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={'end' in rest}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
-                isActive
-                  ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
-              }`
-            }
-          >
-            <Icon />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+      {/* Tab bar */}
+      <div className="flex border-b border-[var(--color-border)] shrink-0">
+        <button
+          onClick={() => handleTabClick('dashboard')}
+          className={`${tabBaseStyle} ${isChatTab ? tabInactiveStyle : tabActiveStyle}`}
+        >
+          <span className="flex items-center justify-center gap-1.5">
+            <GridIcon />
+            Dashboard
+          </span>
+        </button>
+        <button
+          onClick={() => handleTabClick('chat')}
+          className={`${tabBaseStyle} ${isChatTab ? tabActiveStyle : tabInactiveStyle}`}
+        >
+          <span className="flex items-center justify-center gap-1.5">
+            <ChatIcon />
+            Chat
+          </span>
+        </button>
+      </div>
+
+      {/* Tab content */}
+      {isChatTab ? (
+        <>
+          {/* New Chat button */}
+          <div className="p-3 shrink-0">
+            <NewChatButton />
+          </div>
+
+          {/* Session list (scrollable) */}
+          <div className="flex-1 overflow-y-auto">
+            <SessionList />
+          </div>
+
+          {/* Clear history */}
+          <div className="border-t border-[var(--color-border)] shrink-0">
+            <SidebarSettings />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Dashboard navigation */}
+          <nav className="flex-1 px-2 py-3 space-y-0.5">
+            {NAV_ITEMS.map(({ to, label, icon: Icon, ...rest }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={'end' in rest}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+                    isActive
+                      ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                  }`
+                }
+              >
+                <Icon />
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </>
+      )}
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-[var(--color-border)]">
+      <div className="px-4 py-3 border-t border-[var(--color-border)] shrink-0">
         <p className="text-[10px] text-[var(--color-text-muted)]">
           Nasun Devnet
         </p>
