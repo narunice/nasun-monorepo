@@ -101,6 +101,17 @@ export interface BaramConfig {
   nusdcType: CoinType;
 }
 
+export interface TokensV2Config {
+  packageId: ObjectId;          // NSOL package
+  tokenFaucetV2: ObjectId;      // NSOL faucet shared object
+  claimRecordV2: ObjectId;      // NSOL claim record
+  nethPackageId: ObjectId;      // NETH package (separate re-publish)
+  nethFaucetV2: ObjectId;       // NETH faucet shared object
+  nethClaimRecordV2: ObjectId;  // NETH claim record
+  nethType: CoinType;
+  nsolType: CoinType;
+}
+
 export interface PoolsConfig {
   nbtcNusdc: ObjectId | '';
   nsnNusdc: ObjectId | '';
@@ -123,6 +134,7 @@ export interface DevnetConfig {
   lottery: LotteryConfig;
   governance: GovernanceConfig;
   baram: Omit<BaramConfig, 'nusdcType'>;
+  tokensV2: Omit<TokensV2Config, 'nethType' | 'nsolType'>;
   pools: PoolsConfig;
   oracle: OracleConfig;
 }
