@@ -419,6 +419,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Edit Post Lambda (post editing from dashboard)
+    const adminEditPostLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdminEditPostFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-admin-edit-post`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'admin-edit-post.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Admin edit post fields and adjust scores',
+      }
+    );
+
     // Grant DynamoDB permissions
     this.postsTable.grantReadWriteData(createPostLambda);
     this.postsTable.grantReadData(getLeaderboardLambda);
@@ -455,6 +470,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
 
     // Admin Blacklist permissions (Phase 11)
     this.accountsTable.grantReadWriteData(adminBlacklistLambda);
+
+    // Admin Edit Post permissions
+    this.postsTable.grantReadWriteData(adminEditPostLambda);
+    this.accountsTable.grantReadWriteData(adminEditPostLambda);
+    this.seasonAccountsTable.grantReadWriteData(adminEditPostLambda);
 
     // Featured Feed permissions (Phase 10)
     this.postsTable.grantReadData(getFeaturedFeedLambda);
@@ -609,6 +629,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // DELETE /v3/admin/blacklist/{accountId} - Unban account
     const adminBlacklistIdResource = adminBlacklistResource.addResource('{accountId}');
     adminBlacklistIdResource.addMethod('DELETE', adminBlacklistIntegration);
+
+    // PATCH /v3/admin/posts/{postId} - Edit post
+    const adminPostsResource = adminResource.addResource('posts');
+    const adminPostIdResource = adminPostsResource.addResource('{postId}');
+    adminPostIdResource.addMethod('PATCH', new apigw.LambdaIntegration(adminEditPostLambda));
 
     // ============================================
     // Outputs

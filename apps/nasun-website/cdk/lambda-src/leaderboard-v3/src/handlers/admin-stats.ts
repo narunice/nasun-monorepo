@@ -209,12 +209,22 @@ async function getTopFive(seasonId: string): Promise<
 
 /**
  * Get recent activity (last 10 posts)
+ * Includes postId and editable fields for admin post editing
  */
 async function getRecentActivity(): Promise<
   Array<{
     type: 'post_created' | 'account_created' | 'snapshot_generated';
     description: string;
     timestamp: string;
+    postId?: string;
+    seasonId?: string;
+    platform?: string;
+    username?: string;
+    originalUsername?: string;
+    postUrl?: string;
+    postScore?: number;
+    accountRole?: string;
+    contentSignals?: string[];
   }>
 > {
   // Get recent posts
@@ -236,6 +246,14 @@ async function getRecentActivity(): Promise<
     type: 'post_created' as const,
     description: `@${post.username} - ${post.accountRole.toUpperCase()} post registered`,
     timestamp: post.createdAt,
+    postId: post.postId,
+    seasonId: post.seasonId,
+    platform: post.platform,
+    username: post.username,
+    postUrl: post.postUrl,
+    postScore: post.postScore,
+    accountRole: post.accountRole,
+    contentSignals: post.contentSignals,
   }));
 }
 
