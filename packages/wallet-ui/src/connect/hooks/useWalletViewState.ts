@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useWallet } from "@nasun/wallet";
+import { useWallet, getPendingBackupMnemonic } from "@nasun/wallet";
 import type { ViewMode } from "../types";
 import type { TabMode } from "../TabBar";
 import type { NFTInfo } from "@nasun/wallet";
@@ -14,13 +14,18 @@ export type ViewportTier = "mobile" | "tablet" | "desktop";
 export function useWalletViewState() {
   const { clearError } = useWallet();
 
+  // Check for pending mnemonic backup on mount — uses initial state so the
+  // backup view shows from the very first render (no effect delay).
+  // This handles WalletConnect unmount/remount mid-backup (e.g., Pado homepage).
+  const pendingBackup = getPendingBackupMnemonic();
+
   // View & form state
-  const [viewMode, setViewMode] = useState<ViewMode>("main");
+  const [viewMode, setViewMode] = useState<ViewMode>(pendingBackup ? "create-backup" : "main");
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [mnemonic, setMnemonic] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(!!pendingBackup);
+  const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup);
   const [activeTab, setActiveTab] = useState<TabMode>("assets");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [sendRecipient, setSendRecipient] = useState<string | undefined>(undefined);
@@ -78,13 +83,14 @@ export function useWalletViewState() {
         !isInsideMobileDropdown &&
         !isInsideModal
       ) {
+        // Keep dropdown open during mnemonic backup — user must confirm before closing
+        if (viewMode === "create-backup") return;
+
         setShowDropdown(false);
-        if (viewMode !== "create-backup") {
-          setViewMode("main");
-          setPassword("");
-          setConfirmPassword("");
-          clearError();
-        }
+        setViewMode("main");
+        setPassword("");
+        setConfirmPassword("");
+        clearError();
       }
     }
 
