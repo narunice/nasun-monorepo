@@ -311,6 +311,15 @@ export interface DashboardStats {
     type: 'post_created' | 'account_created' | 'snapshot_generated';
     description: string;
     timestamp: string;
+    postId?: string;
+    seasonId?: string;
+    platform?: string;
+    username?: string;
+    originalUsername?: string;
+    postUrl?: string;
+    postScore?: number;
+    accountRole?: string;
+    contentSignals?: string[];
   }>;
   calculatedAt: string;
 }

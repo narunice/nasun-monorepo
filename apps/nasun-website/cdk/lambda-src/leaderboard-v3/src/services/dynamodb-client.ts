@@ -246,6 +246,145 @@ export async function createPost(params: {
 }
 
 /**
+ * Get a post by its ID
+ */
+export async function getPostById(postId: string): Promise<Post | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: POSTS_TABLE,
+      Key: { postId },
+    })
+  );
+
+  return (result.Item as Post) || null;
+}
+
+/**
+ * Update a post's editable fields and adjust season/cumulative account aggregates
+ * When postScore changes, adjusts totalPostScore and per-type scores via delta
+ */
+export async function updatePostAndAdjustScores(params: {
+  postId: string;
+  updates: {
+    platform?: Platform;
+    username?: string;
+    originalUsername?: string;
+    postScore?: number;
+    contentSignals?: ContentSignal[];
+    accountRole?: AccountRole;
+  };
+}): Promise<Post> {
+  const { postId, updates } = params;
+
+  const existingPost = await getPostById(postId);
+  if (!existingPost) {
+    throw new Error(`Post ${postId} not found`);
+  }
+
+  // Build update expression
+  const updateParts: string[] = [];
+  const expressionValues: Record<string, unknown> = {};
+  const expressionNames: Record<string, string> = {};
+
+  if (updates.contentSignals !== undefined) {
+    updateParts.push('contentSignals = :contentSignals');
+    expressionValues[':contentSignals'] = updates.contentSignals;
+  }
+  if (updates.accountRole !== undefined) {
+    updateParts.push('accountRole = :accountRole');
+    expressionValues[':accountRole'] = updates.accountRole;
+  }
+  if (updates.postScore !== undefined) {
+    updateParts.push('postScore = :postScore');
+    expressionValues[':postScore'] = updates.postScore;
+  }
+  if (updates.platform !== undefined) {
+    updateParts.push('platform = :platform');
+    expressionValues[':platform'] = updates.platform;
+  }
+  if (updates.username !== undefined) {
+    updateParts.push('#u = :username');
+    expressionNames['#u'] = 'username';
+    expressionValues[':username'] = updates.username;
+  }
+  if (updates.originalUsername !== undefined) {
+    updateParts.push('originalUsername = :originalUsername');
+    expressionValues[':originalUsername'] = updates.originalUsername;
+  }
+
+  updateParts.push('updatedAt = :updatedAt');
+  expressionValues[':updatedAt'] = new Date().toISOString();
+
+  if (updateParts.length <= 1) {
+    return existingPost;
+  }
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: POSTS_TABLE,
+      Key: { postId },
+      UpdateExpression: `SET ${updateParts.join(', ')}`,
+      ExpressionAttributeValues: expressionValues,
+      ...(Object.keys(expressionNames).length > 0 && {
+        ExpressionAttributeNames: expressionNames,
+      }),
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  const updatedPost = result.Attributes as Post;
+
+  // If postScore changed, adjust aggregates via delta
+  if (updates.postScore !== undefined && updates.postScore !== existingPost.postScore) {
+    const scoreDelta = updates.postScore - existingPost.postScore;
+    const postType = existingPost.postType || 'original';
+
+    // Adjust season account aggregates
+    if (existingPost.seasonId) {
+      const pk = `SEASON#${existingPost.seasonId}#ACCOUNT#${existingPost.accountId}`;
+      const sk = 'SCORE';
+
+      const perTypeField =
+        postType === 'original' ? 'originalTotalScore'
+        : postType === 'quote' ? 'quoteTotalScore'
+        : 'replyTotalScore';
+
+      await docClient.send(
+        new UpdateCommand({
+          TableName: SEASON_ACCOUNTS_TABLE,
+          Key: { pk, sk },
+          UpdateExpression: `SET totalPostScore = totalPostScore + :delta, ${perTypeField} = if_not_exists(${perTypeField}, :zero) + :delta`,
+          ExpressionAttributeValues: {
+            ':delta': scoreDelta,
+            ':zero': 0,
+          },
+        })
+      );
+    }
+
+    // Adjust cumulative account aggregates
+    const cumulativePerTypeField =
+      postType === 'original' ? 'originalTotalScore'
+      : postType === 'quote' ? 'quoteTotalScore'
+      : 'replyTotalScore';
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: ACCOUNTS_TABLE,
+        Key: { accountId: existingPost.accountId },
+        UpdateExpression: `SET totalPostScore = totalPostScore + :delta, ${cumulativePerTypeField} = if_not_exists(${cumulativePerTypeField}, :zero) + :delta`,
+        ExpressionAttributeValues: {
+          ':delta': scoreDelta,
+          ':zero': 0,
+        },
+      })
+    );
+  }
+
+  return updatedPost;
+}
+
+/**
  * Get recent posts for an account
  */
 export async function getPostsByAccountId(

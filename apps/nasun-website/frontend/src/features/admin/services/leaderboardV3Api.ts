@@ -231,6 +231,41 @@ export async function getDashboardStats(adminPassword: string): Promise<Dashboar
 }
 
 /**
+ * Edit a post (Admin only)
+ * Updates post fields and adjusts season/cumulative score aggregates
+ */
+export async function editPost(
+  adminPassword: string,
+  postId: string,
+  updates: {
+    platform?: string;
+    username?: string;
+    originalUsername?: string;
+    postScore?: number;
+    contentSignals?: string[];
+    accountRole?: string;
+  }
+): Promise<{ success: boolean; post: unknown }> {
+  const url = `${LEADERBOARD_V3_API_URL}/v3/admin/posts/${encodeURIComponent(postId)}`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+    },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to edit post: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Calculate post score preview (client-side calculation) - Legacy discrete version
  * Kept for backwards compatibility
  */
