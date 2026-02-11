@@ -4,7 +4,9 @@
  * React hook for requesting tokens from faucet.
  * Supports two modes:
  * 1. HTTP API faucet (NASUN) - uses request() handler
- * 2. Move contract faucet (NBTC/NUSDC) - uses buildTransaction() + wallet signing
+ * 2. Move contract faucet (NBTC/NUSDC/NETH/NSOL) - uses buildTransaction() + wallet signing
+ *
+ * All tokens enforce 24h cooldown via localStorage + on-chain enforcement.
  */
 
 import { useState, useCallback } from 'react';
@@ -14,11 +16,18 @@ import { useZkLogin } from './useZkLogin';
 import { useRefreshMultiBalance } from './useMultiBalance';
 import { getTokenFaucet, hasTokenFaucet } from '../config/tokens';
 import { getSuiClient } from '../sui/client';
+import {
+  getCooldownRemaining as getRawCooldownRemaining,
+  setCooldownTimestamp,
+  formatCooldownRemaining,
+} from '../sui/faucetCooldown';
 
 export interface FaucetResult {
   success: boolean;
   /** Error message for display (e.g., "24h cooldown active") */
   error?: string;
+  /** Custom success message from handler */
+  successMessage?: string;
 }
 
 export interface UseTokenFaucetResult {
@@ -26,8 +35,12 @@ export interface UseTokenFaucetResult {
   requestFaucet: (symbol: string) => Promise<FaucetResult>;
   /** Check if a specific token is currently loading */
   isLoading: (symbol: string) => boolean;
-  /** Check if a specific token is in cooldown after successful request */
+  /** Check if a specific token is in cooldown */
   isCooldown: (symbol: string) => boolean;
+  /** Get remaining cooldown in ms for a specific token (0 = can claim) */
+  getCooldownRemaining: (symbol: string) => number;
+  /** Get formatted remaining cooldown string (e.g., "~23h 15m") */
+  getCooldownFormatted: (symbol: string) => string;
   /** Set of tokens currently loading */
   loadingTokens: Set<string>;
   /** Whether faucet can be used (devnet/testnet + wallet connected) */
@@ -44,9 +57,6 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   const refreshBalance = useRefreshMultiBalance();
 
   const [loadingTokens, setLoadingTokens] = useState<Set<string>>(new Set());
-  const [cooldownTokens, setCooldownTokens] = useState<Set<string>>(new Set());
-
-  const COOLDOWN_MS = 5000;
 
   const address = account?.address || zkState?.address;
   const canUseFaucet = (isDevnet || isTestnet) && !!address;
@@ -58,6 +68,15 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
       const handler = getTokenFaucet(symbol);
       if (!handler) return { success: false, error: 'No faucet handler' };
+
+      // Pre-check cooldown from handler or localStorage
+      if (handler.getCooldownRemaining) {
+        const remaining = handler.getCooldownRemaining(address!);
+        if (remaining > 0) {
+          const formatted = formatCooldownRemaining(remaining);
+          return { success: false, error: `Faucet cooldown active (24h). Try again in ${formatted}.` };
+        }
+      }
 
       setLoadingTokens((prev) => new Set(prev).add(symbol));
 
@@ -112,21 +131,21 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
         if (result) {
           await refreshBalance();
-
-          // Start cooldown to prevent rapid re-clicks
-          setCooldownTokens((prev) => new Set(prev).add(symbol));
-          setTimeout(() => {
-            setCooldownTokens((prev) => {
-              const next = new Set(prev);
-              next.delete(symbol);
-              return next;
-            });
-          }, COOLDOWN_MS);
+          // Record cooldown in localStorage for UI display
+          setCooldownTimestamp(address!, symbol);
         }
-        return { success: result, error: result ? undefined : 'Transaction failed' };
+        return {
+          success: result,
+          error: result ? undefined : 'Transaction failed',
+          successMessage: result ? handler.successMessage : undefined,
+        };
       } catch (err) {
         console.error(`Faucet request failed for ${symbol}:`, err);
         const errorMsg = parseFaucetError(err);
+        // If contract returned cooldown error, cache it in localStorage
+        if (errorMsg.includes('cooldown')) {
+          setCooldownTimestamp(address!, symbol);
+        }
         return { success: false, error: errorMsg };
       } finally {
         setLoadingTokens((prev) => {
@@ -148,12 +167,45 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
   const isCooldown = useCallback(
     (symbol: string) => {
-      return cooldownTokens.has(symbol);
+      if (!address) return false;
+      const handler = getTokenFaucet(symbol);
+      if (handler?.getCooldownRemaining) {
+        return handler.getCooldownRemaining(address) > 0;
+      }
+      return getRawCooldownRemaining(address, symbol) > 0;
     },
-    [cooldownTokens]
+    [address]
   );
 
-  return { requestFaucet, isLoading, isCooldown, loadingTokens, canUseFaucet };
+  const getCooldownRemaining = useCallback(
+    (symbol: string) => {
+      if (!address) return 0;
+      const handler = getTokenFaucet(symbol);
+      if (handler?.getCooldownRemaining) {
+        return handler.getCooldownRemaining(address);
+      }
+      return getRawCooldownRemaining(address, symbol);
+    },
+    [address]
+  );
+
+  const getCooldownFormatted = useCallback(
+    (symbol: string) => {
+      const remaining = getCooldownRemaining(symbol);
+      return formatCooldownRemaining(remaining);
+    },
+    [getCooldownRemaining]
+  );
+
+  return {
+    requestFaucet,
+    isLoading,
+    isCooldown,
+    getCooldownRemaining,
+    getCooldownFormatted,
+    loadingTokens,
+    canUseFaucet,
+  };
 }
 
 /**
@@ -163,11 +215,13 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 function parseFaucetError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
 
+  // Cooldown error from nativeFaucetHandler or contract
+  if (msg.includes('cooldown')) {
+    return msg;
+  }
+
   // MoveAbort with function_name containing "cooldown" and status code 1
   if (msg.includes('MoveAbort') || msg.includes('moveAbort')) {
-    if (msg.includes('1') && (msg.includes('cooldown') || msg.includes('faucet'))) {
-      return 'Faucet cooldown active (24h). Try again later.';
-    }
     return 'Faucet cooldown active (24h). Try again later.';
   }
 

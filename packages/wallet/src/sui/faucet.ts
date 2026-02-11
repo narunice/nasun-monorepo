@@ -59,17 +59,29 @@ export async function checkFaucetAvailable(): Promise<boolean> {
   }
 }
 
+import { getCooldownRemaining, setCooldownTimestamp } from './faucetCooldown';
+
 /**
- * Native NSN faucet handler
+ * Native NSN faucet handler with 24h localStorage cooldown.
  * Use this with registerTokenFaucet('NSN', nativeFaucetHandler)
  */
 export const nativeFaucetHandler: TokenFaucetHandler = {
   request: async (address: string): Promise<boolean> => {
+    // Check localStorage cooldown before HTTP request
+    const remaining = getCooldownRemaining(address, 'NSN');
+    if (remaining > 0) {
+      const hours = Math.ceil(remaining / 3_600_000);
+      throw new Error(`Faucet cooldown active (24h). Try again in ~${hours}h.`);
+    }
+
     try {
       await requestFaucet(address);
+      setCooldownTimestamp(address, 'NSN');
       return true;
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('cooldown')) throw err;
       return false;
     }
   },
+  getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NSN'),
 };

@@ -1,9 +1,10 @@
 /**
  * Token-specific Faucet Button
- * Displays only on devnet/testnet when a faucet handler is registered for the token
+ * Displays only on devnet/testnet when a faucet handler is registered for the token.
+ * Shows remaining cooldown time when 24h cooldown is active.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTokenFaucet, hasTokenFaucet, useNetwork, useMultiBalance } from '@nasun/wallet';
 
 interface TokenFaucetButtonProps {
@@ -27,12 +28,21 @@ export function TokenFaucetButton({
   onError,
 }: TokenFaucetButtonProps) {
   const { isDevnet, isTestnet } = useNetwork();
-  const { requestFaucet, isLoading, isCooldown, canUseFaucet } = useTokenFaucet();
+  const { requestFaucet, isLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
   const { data: balances } = useMultiBalance({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string; detail?: string } | null>(null);
+  const [cooldownText, setCooldownText] = useState('');
 
   const loading = isLoading(symbol);
   const cooldown = isCooldown(symbol);
+
+  // Poll cooldown remaining time every 60s
+  useEffect(() => {
+    const update = () => setCooldownText(getCooldownFormatted(symbol));
+    update();
+    const interval = setInterval(update, 60_000);
+    return () => clearInterval(interval);
+  }, [symbol, getCooldownFormatted]);
 
   // Check if NSN is needed for gas fee (for non-NSN tokens)
   const nsnBalance = balances?.native?.balance ?? 0n;
@@ -48,10 +58,9 @@ export function TokenFaucetButton({
     try {
       const result = await requestFaucet(symbol);
       if (result.success) {
-        setMessage({ type: 'success', text: 'Received!' });
+        setMessage({ type: 'success', text: result.successMessage || 'Received!' });
         onSuccess?.();
       } else {
-        // Show cooldown-specific short text, full message in title
         const shortText = result.error?.includes('cooldown') ? 'Cooldown' : 'Failed';
         setMessage({ type: 'error', text: shortText, detail: result.error });
         onError?.(new Error(result.error || 'Faucet request failed'));
@@ -61,7 +70,7 @@ export function TokenFaucetButton({
       onError?.(err instanceof Error ? err : new Error('Unknown error'));
     }
 
-    // Auto-hide message after 5s (longer for errors so user can read)
+    // Auto-hide message after 5s
     setTimeout(() => setMessage(null), 5000);
   }, [disabled, requestFaucet, symbol, onSuccess, onError]);
 
@@ -74,6 +83,15 @@ export function TokenFaucetButton({
   // Only show if faucet handler is registered
   if (!hasTokenFaucet(symbol)) return null;
 
+  // Determine button label
+  const getLabel = () => {
+    if (loading) return null; // spinner handled separately
+    if (cooldown && cooldownText) return cooldownText;
+    if (cooldown) return 'Cooldown';
+    if (message) return message.text;
+    return 'Faucet';
+  };
+
   if (compact) {
     return (
       <button
@@ -84,13 +102,15 @@ export function TokenFaucetButton({
             ? 'bg-green-500/20 text-green-400'
             : message?.type === 'error'
             ? 'bg-red-500/20 text-red-400'
+            : cooldown
+            ? 'bg-yellow-500/10 text-yellow-500/70'
             : needsNsnFirst
             ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-500 opacity-50'
             : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-500 disabled:opacity-50'
           }
           disabled:cursor-not-allowed
           ${className}`}
-        title={needsNsnFirst ? nsnRequiredMessage : message?.detail || `Get ${symbol} from Faucet`}
+        title={needsNsnFirst ? nsnRequiredMessage : message?.detail || (cooldown ? `Cooldown: ${cooldownText}` : `Get ${symbol} from Faucet`)}
       >
         {loading ? (
           <span className="flex items-center gap-1">
@@ -99,12 +119,8 @@ export function TokenFaucetButton({
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
           </span>
-        ) : cooldown ? (
-          'Wait...'
-        ) : message ? (
-          message.text
         ) : (
-          'Faucet'
+          getLabel()
         )}
       </button>
     );
@@ -120,6 +136,8 @@ export function TokenFaucetButton({
             ? 'bg-green-500/20 text-green-400'
             : message?.type === 'error'
             ? 'bg-red-500/20 text-red-400'
+            : cooldown
+            ? 'bg-yellow-500/10 text-yellow-500/70'
             : needsNsnFirst
             ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-500 opacity-50'
             : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-500 disabled:opacity-50'
@@ -127,7 +145,7 @@ export function TokenFaucetButton({
           disabled:cursor-not-allowed
           flex items-center gap-1.5
           ${className}`}
-        title={needsNsnFirst ? nsnRequiredMessage : undefined}
+        title={needsNsnFirst ? nsnRequiredMessage : message?.detail || undefined}
       >
       {loading ? (
         <>
@@ -138,7 +156,7 @@ export function TokenFaucetButton({
           <span>Requesting...</span>
         </>
       ) : cooldown ? (
-        <span>Wait...</span>
+        <span>{cooldownText || 'Cooldown'}</span>
       ) : message ? (
         <span>{message.text}</span>
       ) : (
