@@ -7,11 +7,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Transaction } from '@mysten/sui/transactions';
-import { configureWallet, registerTokens, registerTokenFaucet, initZkLogin } from '@nasun/wallet';
+import { configureWallet, registerTokens, initZkLogin } from '@nasun/wallet';
 import { WalletProvider } from '@nasun/wallet-ui';
 
-import { NETWORK_CONFIG, TOKENS, FAUCET_CONFIG, ZKLOGIN_CONFIG } from './config/network';
+import { NETWORK_CONFIG, TOKENS, ZKLOGIN_CONFIG } from './config/network';
 import App from './App';
 import './index.css';
 
@@ -24,22 +23,6 @@ registerTokens([
     type: TOKENS.NUSDC.type,
   },
 ]);
-
-// Register NUSDC faucet handler for unified devnet_tokens package
-if (FAUCET_CONFIG.tokenFaucetId && FAUCET_CONFIG.packageId) {
-  registerTokenFaucet('NUSDC', {
-    buildTransaction: () => {
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${FAUCET_CONFIG.packageId}::faucet::request_nusdc`,
-        arguments: [
-          tx.object(FAUCET_CONFIG.tokenFaucetId),
-        ],
-      });
-      return tx;
-    },
-  });
-}
 
 // Configure wallet with Nasun network
 configureWallet({
