@@ -14,8 +14,8 @@
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { AccountRole, ContentSignal, Platform } from '../types';
-import { updatePostAndAdjustScores } from '../services/dynamodb-client';
+import { AccountLanguage, AccountRole, ContentSignal, Platform, Post } from '../types';
+import { getAccountById, getPostById, updateAccountLanguageData, updatePostAndAdjustScores } from '../services/dynamodb-client';
 import { corsHeaders } from '../utils/cors';
 
 let _requestOrigin: string | undefined;
@@ -40,6 +40,7 @@ function validateAdmin(event: APIGatewayProxyEvent): boolean {
 const VALID_PLATFORMS: Platform[] = ['twitter', 'discord', 'farcaster'];
 const VALID_ROLES: AccountRole[] = ['kol', 'proactive_ct', 'default'];
 const VALID_SIGNALS: ContentSignal[] = ['standard', 'insight', 'creative', 'high_reach'];
+const VALID_LANGUAGES: AccountLanguage[] = ['en', 'zh', 'ja', 'ko'];
 
 interface EditPostRequest {
   platform?: Platform;
@@ -48,6 +49,9 @@ interface EditPostRequest {
   postScore?: number;
   contentSignals?: ContentSignal[];
   accountRole?: AccountRole;
+  // Account-level fields (updates Account record, not Post)
+  language?: AccountLanguage;
+  followerCount?: number;
 }
 
 function validateEditRequest(body: unknown): { valid: boolean; data?: EditPostRequest; error?: string } {
@@ -96,6 +100,16 @@ function validateEditRequest(body: unknown): { valid: boolean; data?: EditPostRe
     }
   }
 
+  if (req.language !== undefined && !VALID_LANGUAGES.includes(req.language as AccountLanguage)) {
+    return { valid: false, error: `Invalid language. Must be one of: ${VALID_LANGUAGES.join(', ')}` };
+  }
+
+  if (req.followerCount !== undefined) {
+    if (typeof req.followerCount !== 'number' || !Number.isInteger(req.followerCount) || req.followerCount < 0 || req.followerCount > 100_000_000) {
+      return { valid: false, error: 'followerCount must be a non-negative integer (max 100,000,000)' };
+    }
+  }
+
   return {
     valid: true,
     data: {
@@ -105,6 +119,8 @@ function validateEditRequest(body: unknown): { valid: boolean; data?: EditPostRe
       postScore: req.postScore as number | undefined,
       contentSignals: req.contentSignals as ContentSignal[] | undefined,
       accountRole: req.accountRole as AccountRole | undefined,
+      language: req.language as AccountLanguage | undefined,
+      followerCount: req.followerCount as number | undefined,
     },
   };
 }
@@ -145,13 +161,51 @@ export const handler = async (
       return createResponse(400, { error: validation.error });
     }
 
-    // updatePostAndAdjustScores handles existence check + update + score delta
-    const updatedPost = await updatePostAndAdjustScores({
-      postId,
-      updates: validation.data!,
-    });
+    // Separate account-level fields from post-level fields
+    const { language, followerCount, ...postUpdates } = validation.data!;
+    const hasPostUpdates = Object.keys(postUpdates).some(k => postUpdates[k as keyof typeof postUpdates] !== undefined);
+    const hasAccountUpdates = language !== undefined || followerCount !== undefined;
 
-    return createResponse(200, { success: true, post: updatedPost });
+    let updatedPost: Post;
+    if (hasPostUpdates) {
+      // updatePostAndAdjustScores handles existence check + update + score delta
+      updatedPost = await updatePostAndAdjustScores({ postId, updates: postUpdates });
+    } else {
+      // Account-only update: just fetch the post for accountId reference
+      const existingPost = await getPostById(postId);
+      if (!existingPost) {
+        return createResponse(404, { error: `Post ${postId} not found` });
+      }
+      updatedPost = existingPost;
+    }
+
+    // Update Account-level fields if provided
+    let updatedAccount;
+    if (hasAccountUpdates) {
+      try {
+        const account = await getAccountById(updatedPost.accountId);
+        if (account) {
+          updatedAccount = await updateAccountLanguageData({
+            accountId: updatedPost.accountId,
+            language: language ?? account.language ?? 'en',
+            followerCount: followerCount ?? account.followerCount ?? 0,
+          });
+        }
+      } catch (accountError) {
+        console.error('Account update failed (post update succeeded):', accountError);
+        return createResponse(207, {
+          success: true,
+          post: updatedPost,
+          warning: 'Post updated but account update failed. Retry the account fields.',
+        });
+      }
+    }
+
+    return createResponse(200, {
+      success: true,
+      post: updatedPost,
+      ...(updatedAccount && { account: updatedAccount }),
+    });
   } catch (error) {
     console.error('Admin Edit Post error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';

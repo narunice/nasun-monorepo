@@ -244,8 +244,10 @@ export async function editPost(
     postScore?: number;
     contentSignals?: string[];
     accountRole?: string;
+    language?: string;
+    followerCount?: number;
   }
-): Promise<{ success: boolean; post: unknown }> {
+): Promise<{ success: boolean; post: unknown; account?: unknown }> {
   const url = `${LEADERBOARD_V3_API_URL}/v3/admin/posts/${encodeURIComponent(postId)}`;
 
   const response = await fetch(url, {

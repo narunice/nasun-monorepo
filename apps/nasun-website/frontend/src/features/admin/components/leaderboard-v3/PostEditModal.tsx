@@ -2,7 +2,7 @@
  * PostEditModal - Modal for editing post fields from Dashboard Recent Activity
  *
  * Allows admins to fix incorrectly entered fields before the next snapshot.
- * Editable: postScore, accountRole, contentSignals, platform, username
+ * Editable: postScore, accountRole, contentSignals, platform, username, language, followerCount
  */
 
 import { useState, useEffect } from "react";
@@ -16,11 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useEditPost } from "../../hooks/useEditPost";
+import { useLeaderboardV3Account } from "../../hooks/useLeaderboardV3";
 import {
   ROLE_LABELS,
   SIGNAL_LABELS,
+  LANGUAGE_LABELS,
   type ContentSignal,
   type AccountRole,
+  type AccountLanguage,
   type Platform,
 } from "../../types/leaderboard-v3";
 
@@ -44,6 +47,7 @@ interface PostEditModalProps {
 const PLATFORMS: Platform[] = ["twitter", "discord", "farcaster"];
 const ROLES: AccountRole[] = ["default", "proactive_ct", "kol"];
 const SIGNALS: ContentSignal[] = ["standard", "insight", "creative", "high_reach"];
+const LANGUAGES: AccountLanguage[] = ["en", "zh", "ja", "ko"];
 
 export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) {
   const editPost = useEditPost();
@@ -55,6 +59,21 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
   const [contentSignals, setContentSignals] = useState<string[]>(["standard"]);
   const [scoreError, setScoreError] = useState("");
 
+  // Account-level fields
+  const [language, setLanguage] = useState<AccountLanguage>("en");
+  const [followerCount, setFollowerCount] = useState("");
+
+  // Fetch account data when modal opens
+  const { data: accountData, isLoading: accountLoading } = useLeaderboardV3Account(
+    post?.username ?? null,
+    post?.platform ?? "twitter",
+    open && !!post
+  );
+
+  // Track original account values for change detection
+  const [originalLanguage, setOriginalLanguage] = useState<AccountLanguage>("en");
+  const [originalFollowerCount, setOriginalFollowerCount] = useState("");
+
   // Reset form when post changes
   useEffect(() => {
     if (post) {
@@ -63,8 +82,25 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
       setPostScore(post.postScore?.toString() || "0");
       setAccountRole(post.accountRole || "default");
       setContentSignals(post.contentSignals || ["standard"]);
+      // Reset account fields to defaults until fresh data loads
+      setLanguage("en");
+      setFollowerCount("0");
+      setOriginalLanguage("en");
+      setOriginalFollowerCount("0");
     }
   }, [post]);
+
+  // Populate account fields when account data loads
+  useEffect(() => {
+    if (accountData?.found && accountData.account) {
+      const lang = accountData.account.language ?? "en";
+      const fc = accountData.account.followerCount?.toString() ?? "0";
+      setLanguage(lang);
+      setFollowerCount(fc);
+      setOriginalLanguage(lang);
+      setOriginalFollowerCount(fc);
+    }
+  }, [accountData]);
 
   const handleSignalToggle = (signal: string) => {
     if (signal === "standard") return; // standard is always included
@@ -85,6 +121,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
     const updates: Record<string, unknown> = {};
 
+    // Post-level changes
     if (platform !== post.platform) updates.platform = platform;
     if (username !== post.username) updates.username = username.toLowerCase();
     if (username !== post.username) updates.originalUsername = username;
@@ -92,6 +129,17 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
     if (accountRole !== post.accountRole) updates.accountRole = accountRole;
     if (JSON.stringify(contentSignals.sort()) !== JSON.stringify((post.contentSignals || []).sort())) {
       updates.contentSignals = contentSignals;
+    }
+
+    // Account-level changes
+    if (language !== originalLanguage) updates.language = language;
+    const fcNum = parseInt(followerCount, 10);
+    if (!isNaN(fcNum) && followerCount !== originalFollowerCount) {
+      if (fcNum < 0 || fcNum > 100_000_000) {
+        setScoreError("Follower count must be between 0 and 100,000,000");
+        return;
+      }
+      updates.followerCount = fcNum;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -122,6 +170,60 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
+          {/* Account Fields Section */}
+          <div className="text-[10px] uppercase tracking-wider text-nasun-white/40 font-medium">
+            Account
+          </div>
+
+          {/* Language */}
+          <div>
+            <label className="text-xs text-nasun-white/60 mb-1 block">Language</label>
+            {accountLoading ? (
+              <div className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white/30">
+                Loading...
+              </div>
+            ) : (
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as AccountLanguage)}
+                className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l} value={l}>
+                    {LANGUAGE_LABELS[l]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Follower Count */}
+          <div>
+            <label className="text-xs text-nasun-white/60 mb-1 block">Follower Count</label>
+            {accountLoading ? (
+              <div className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white/30">
+                Loading...
+              </div>
+            ) : (
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={followerCount}
+                onChange={(e) => setFollowerCount(e.target.value)}
+                className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+              />
+            )}
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-nasun-c5/20" />
+
+          {/* Post Fields Section */}
+          <div className="text-[10px] uppercase tracking-wider text-nasun-white/40 font-medium">
+            Post
+          </div>
+
           {/* Platform */}
           <div>
             <label className="text-xs text-nasun-white/60 mb-1 block">Platform</label>
@@ -218,7 +320,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
             Cancel
           </Button>
           <Button
-            variant="default"
+            variant="c4"
             size="sm"
             onClick={handleSave}
             disabled={editPost.isPending || !username.trim()}
