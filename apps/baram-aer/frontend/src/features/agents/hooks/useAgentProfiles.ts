@@ -15,7 +15,7 @@ export interface AgentProfile {
   capabilities: string[];
   isActive: boolean;
   createdAt: number;
-  totalRequests: number;
+  totalExecutions: number;
   totalSpent: number;
   lastActiveAt: number;
 }
@@ -32,7 +32,7 @@ function parseAgentProfile(obj: Record<string, unknown>): AgentProfile | null {
       capabilities: fields.capabilities as string[] ?? [],
       isActive: fields.is_active as boolean,
       createdAt: Number(fields.created_at ?? 0),
-      totalRequests: Number(fields.total_executions ?? 0),
+      totalExecutions: Number(fields.total_executions ?? 0),
       totalSpent: Number(fields.total_spent ?? 0),
       lastActiveAt: Number(fields.last_active_at ?? 0),
     };

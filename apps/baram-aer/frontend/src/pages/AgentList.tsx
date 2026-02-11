@@ -20,7 +20,7 @@ function AgentCard({
     capabilities: string[];
     isActive: boolean;
     createdAt: number;
-    totalRequests: number;
+    totalExecutions: number;
     totalSpent: number;
   };
   budget?: BudgetInfo;
@@ -99,7 +99,7 @@ function AgentCard({
           Created {formatDate(agent.createdAt)}
         </span>
         <span className="text-[10px] text-[var(--color-text-muted)]">
-          {agent.totalRequests} total requests
+          {agent.totalExecutions} executions
         </span>
       </div>
     </Link>

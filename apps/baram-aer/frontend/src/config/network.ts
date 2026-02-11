@@ -23,6 +23,7 @@ export const BARAM_CONFIG = {
   packageId: import.meta.env.VITE_BARAM_PACKAGE_ID || BARAM.packageId,
   registryId: import.meta.env.VITE_BARAM_REGISTRY_ID || BARAM.registry,
   budgetTypeOrigin: BARAM.budgetTypeOrigin,
+  budgetV2TypeOrigin: BARAM.budgetV2TypeOrigin,
   executorAddress: import.meta.env.VITE_EXECUTOR_ADDRESS || '',
   backendUrl: import.meta.env.VITE_BACKEND_URL || '',
   apiKey: import.meta.env.VITE_BARAM_API_KEY || '',

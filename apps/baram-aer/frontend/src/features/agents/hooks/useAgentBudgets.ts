@@ -110,14 +110,16 @@ export async function fetchSpendingLimits(budgetId: string): Promise<SpendingLim
     const result = await suiClient.getDynamicFieldObject({
       parentId: budgetId,
       name: {
-        type: `${BARAM_CONFIG.budgetTypeOrigin}::budget::SpendingLimitsKey`,
+        type: `${BARAM_CONFIG.budgetV2TypeOrigin}::budget::SpendingLimitsKey`,
         value: { dummy_field: false },
       },
     });
 
     if (result.data?.content?.dataType === 'moveObject') {
       const wrapper = result.data.content.fields as Record<string, unknown>;
-      const fields = (wrapper.value ?? wrapper) as Record<string, unknown>;
+      // Dynamic field: fields.value is { type, fields: { ...actual data } }
+      const valueWrapper = wrapper.value as Record<string, unknown>;
+      const fields = (valueWrapper?.fields ?? valueWrapper ?? wrapper) as Record<string, unknown>;
       return {
         dailyLimit: Number(fields.daily_limit ?? 0),
         weeklyLimit: Number(fields.weekly_limit ?? 0),
