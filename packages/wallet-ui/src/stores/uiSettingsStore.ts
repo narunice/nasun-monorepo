@@ -11,7 +11,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useChainStore, getChain, DEFAULT_CHAIN_ID } from '@nasun/wallet';
+import { useChainStore, getChain, isNasunChain, DEFAULT_CHAIN_ID } from '@nasun/wallet';
 import type {
   Section,
   View,
@@ -21,13 +21,17 @@ import type {
 import { DEFAULT_VIEWS } from '../types/navigation';
 
 /**
- * Helper to auto-switch to Nasun Devnet when disabling Advanced Mode
- * Called when user is on EVM chain and turns off Advanced Mode
+ * Helper to auto-switch to Nasun Devnet when disabling Advanced Mode.
+ * Called when user is on an external chain (EVM or non-Nasun Move) and turns off Advanced Mode.
  */
-function switchToNasunIfOnEVM(): void {
+function switchToNasunIfExternal(): void {
   const chainStore = useChainStore.getState();
   const currentChain = getChain(chainStore.currentChainId);
-  if (currentChain?.type === 'evm') {
+  if (!currentChain) return;
+
+  const isExternal = currentChain.type === 'evm' ||
+    (currentChain.type === 'move' && !isNasunChain(currentChain.id));
+  if (isExternal) {
     chainStore.setChain(DEFAULT_CHAIN_ID);
   }
 }
@@ -103,7 +107,7 @@ export const useUISettingsStore = create<UISettingsStore>()(
           const newAdvancedMode = !state.isAdvancedMode;
           // Auto-switch to Nasun Devnet when disabling Advanced Mode on EVM chain
           if (!newAdvancedMode) {
-            switchToNasunIfOnEVM();
+            switchToNasunIfExternal();
           }
           return { isAdvancedMode: newAdvancedMode };
         });
@@ -112,7 +116,7 @@ export const useUISettingsStore = create<UISettingsStore>()(
       setAdvancedMode: (enabled: boolean) => {
         // Auto-switch to Nasun Devnet when disabling Advanced Mode on EVM chain
         if (!enabled) {
-          switchToNasunIfOnEVM();
+          switchToNasunIfExternal();
         }
         set({ isAdvancedMode: enabled });
       },

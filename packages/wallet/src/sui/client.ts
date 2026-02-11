@@ -38,8 +38,11 @@ let walletConfig: WalletConfig = {
   explorerUrl: 'https://explorer.nasun.io/devnet',
 };
 
-// Cached SUI client
+// Cached SUI client (Nasun default)
 let suiClient: SuiClient | null = null;
+
+// Cached Move clients keyed by RPC URL (for external chains like Sui/IOTA)
+const moveClients = new Map<string, SuiClient>();
 
 /**
  * Configure wallet
@@ -67,11 +70,26 @@ export function getSuiClient(): SuiClient {
 }
 
 /**
- * Get NASUN balance for address
+ * Get a Move-compatible client for a specific RPC URL (cached).
+ * Used for external Move chains (Sui testnet, IOTA testnet, etc.)
  */
-export async function getBalance(address: string): Promise<BalanceInfo> {
+export function getMoveClient(rpcUrl: string): SuiClient {
+  let client = moveClients.get(rpcUrl);
+  if (!client) {
+    client = new SuiClient({ url: rpcUrl });
+    moveClients.set(rpcUrl, client);
+  }
+  return client;
+}
+
+/**
+ * Get native token balance for a Move chain address.
+ * @param address Wallet address
+ * @param rpcUrl Optional RPC URL for external chains. If omitted, uses Nasun default.
+ */
+export async function getBalance(address: string, rpcUrl?: string): Promise<BalanceInfo> {
   try {
-    const client = getSuiClient();
+    const client = rpcUrl ? getMoveClient(rpcUrl) : getSuiClient();
     const rawBalance = await client.getBalance({ owner: address });
 
     // Validate RPC response
