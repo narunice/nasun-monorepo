@@ -148,6 +148,13 @@ export {
   nativeFaucetHandler,
 } from './sui/faucet';
 
+// Faucet Cooldown Utilities (localStorage-based 24h cooldown)
+export {
+  getCooldownRemaining,
+  setCooldownTimestamp,
+  formatCooldownRemaining,
+} from './sui/faucetCooldown';
+
 // Token Registry
 export {
   NATIVE_TOKEN,
@@ -181,7 +188,7 @@ export type { UseNetworkResult } from './hooks/useNetwork';
 
 // Token Faucet Hook
 export { useTokenFaucet } from './hooks/useTokenFaucet';
-export type { UseTokenFaucetResult } from './hooks/useTokenFaucet';
+export type { FaucetResult, UseTokenFaucetResult } from './hooks/useTokenFaucet';
 
 // Crypto utilities
 export {
