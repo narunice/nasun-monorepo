@@ -8,7 +8,7 @@
  * - CSV Export
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { Button } from "@/components/ui/button";
 import { useSeasons } from "@/features/leaderboard-v3/hooks/useSeasons";
@@ -18,6 +18,8 @@ import { RankChangeIndicatorV3 } from "@/features/leaderboard-v3/components/Rank
 import { useCumulativeLeaderboard } from "../../hooks/useCumulativeLeaderboard";
 import { cn } from "../../../../utils/utils";
 import type { RankChange } from "@/features/leaderboard-v3/types";
+
+const PAGE_SIZE = 50;
 
 type ViewMode = "season" | "cumulative";
 
@@ -44,13 +46,13 @@ export function LeaderboardViewTab() {
   // Season leaderboard (for season mode)
   const { data: seasonLeaderboard, isLoading: isSeasonLoading } = useSeasonLeaderboard({
     seasonId: selectedSeasonId,
-    limit: 1000,
+    limit: 500,
     breakdown: true,
   });
 
   // Cumulative leaderboard (for cumulative mode)
   const { data: cumulativeLeaderboard, isLoading: isCumulativeLoading } = useCumulativeLeaderboard({
-    limit: 1000,
+    limit: 500,
     breakdown: true,
     enabled: viewMode === "cumulative",
   });
@@ -71,6 +73,13 @@ export function LeaderboardViewTab() {
 
   const calculatedAt =
     viewMode === "season" ? seasonLeaderboard?.calculatedAt : cumulativeLeaderboard?.calculatedAt;
+
+  // Client-side pagination
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [viewMode, selectedSeasonId]);
+  const visibleEntries = entries.slice(0, visibleCount);
+  const hasMore = visibleCount < entries.length;
+  const remaining = entries.length - visibleCount;
 
   // Export to CSV
   const handleExportCsv = () => {
@@ -189,7 +198,7 @@ export function LeaderboardViewTab() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                   <tr
                     key={`${entry.username}-${entry.platform}`}
                     className="border-b border-nasun-c5/10 hover:bg-gray-700/30 transition-colors"
@@ -239,11 +248,21 @@ export function LeaderboardViewTab() {
 
         {/* Footer */}
         {entries.length > 0 && (
-          <div className="mt-4 flex items-center justify-between text-xs text-nasun-white/50">
-            <span>
-              Showing {entries.length} of {totalCount}
-            </span>
-            {calculatedAt && <span>Last updated: {new Date(calculatedAt).toLocaleString()}</span>}
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between text-xs text-nasun-white/50">
+              <span>
+                Showing {visibleEntries.length} of {totalCount}
+              </span>
+              {calculatedAt && <span>Last updated: {new Date(calculatedAt).toLocaleString()}</span>}
+            </div>
+            {hasMore && (
+              <button
+                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                className="w-full py-2 text-sm text-nasun-c4 hover:text-nasun-white bg-gray-700/30 hover:bg-gray-700/50 rounded-sm transition-colors"
+              >
+                View More ({remaining} remaining)
+              </button>
+            )}
           </div>
         )}
       </OuterBox>
