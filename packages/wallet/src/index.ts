@@ -708,15 +708,19 @@ export type { UseSessionKeyResult } from './hooks/useSessionKey';
 // without needing to manually call registerTokenFaucet()
 
 import { nativeFaucetHandler } from './sui/faucet';
-import { nbtcFaucetHandler, nusdcFaucetHandler } from './sui/tokenFaucet';
+import { nbtcFaucetHandler, nusdcFaucetHandler, nethFaucetHandler, nsolFaucetHandler } from './sui/tokenFaucet';
 import { registerTokenFaucet } from './config/tokens';
 
 // NSN - Native token faucet (HTTP API)
 registerTokenFaucet('NSN', nativeFaucetHandler);
 
-// NBTC/NUSDC - Token faucet (Move contract, requires signing)
+// NBTC/NUSDC - Token faucet (Move contract, requires signing, 24h cooldown)
 registerTokenFaucet('NBTC', nbtcFaucetHandler);
 registerTokenFaucet('NUSDC', nusdcFaucetHandler);
+
+// NETH/NSOL - V2 token faucet (Move contract, requires signing, 24h cooldown)
+registerTokenFaucet('NETH', nethFaucetHandler);
+registerTokenFaucet('NSOL', nsolFaucetHandler);
 
 // ============================================
 // Nasun Link v2 (P1)

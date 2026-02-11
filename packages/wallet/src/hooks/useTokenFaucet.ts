@@ -15,9 +15,15 @@ import { useRefreshMultiBalance } from './useMultiBalance';
 import { getTokenFaucet, hasTokenFaucet } from '../config/tokens';
 import { getSuiClient } from '../sui/client';
 
+export interface FaucetResult {
+  success: boolean;
+  /** Error message for display (e.g., "24h cooldown active") */
+  error?: string;
+}
+
 export interface UseTokenFaucetResult {
   /** Request tokens from faucet for a specific token */
-  requestFaucet: (symbol: string) => Promise<boolean>;
+  requestFaucet: (symbol: string) => Promise<FaucetResult>;
   /** Check if a specific token is currently loading */
   isLoading: (symbol: string) => boolean;
   /** Check if a specific token is in cooldown after successful request */
@@ -46,12 +52,12 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   const canUseFaucet = (isDevnet || isTestnet) && !!address;
 
   const requestFaucet = useCallback(
-    async (symbol: string): Promise<boolean> => {
-      if (!canUseFaucet) return false;
-      if (!hasTokenFaucet(symbol)) return false;
+    async (symbol: string): Promise<FaucetResult> => {
+      if (!canUseFaucet) return { success: false, error: 'Wallet not connected' };
+      if (!hasTokenFaucet(symbol)) return { success: false, error: 'No faucet available' };
 
       const handler = getTokenFaucet(symbol);
-      if (!handler) return false;
+      if (!handler) return { success: false, error: 'No faucet handler' };
 
       setLoadingTokens((prev) => new Set(prev).add(symbol));
 
@@ -63,7 +69,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         if (handler.request) {
           result = await handler.request(address!);
         }
-        // Mode 2: Move contract faucet (NBTC/NUSDC)
+        // Mode 2: Move contract faucet (NBTC/NUSDC/NETH/NSOL)
         else if (handler.buildTransaction) {
           const tx = handler.buildTransaction();
 
@@ -117,10 +123,11 @@ export function useTokenFaucet(): UseTokenFaucetResult {
             });
           }, COOLDOWN_MS);
         }
-        return result;
+        return { success: result, error: result ? undefined : 'Transaction failed' };
       } catch (err) {
         console.error(`Faucet request failed for ${symbol}:`, err);
-        return false;
+        const errorMsg = parseFaucetError(err);
+        return { success: false, error: errorMsg };
       } finally {
         setLoadingTokens((prev) => {
           const next = new Set(prev);
@@ -147,4 +154,27 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   );
 
   return { requestFaucet, isLoading, isCooldown, loadingTokens, canUseFaucet };
+}
+
+/**
+ * Parse Move contract faucet errors into user-friendly messages.
+ * E_COOLDOWN_NOT_MET (error code 1) = 24h cooldown still active.
+ */
+function parseFaucetError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+
+  // MoveAbort with function_name containing "cooldown" and status code 1
+  if (msg.includes('MoveAbort') || msg.includes('moveAbort')) {
+    if (msg.includes('1') && (msg.includes('cooldown') || msg.includes('faucet'))) {
+      return 'Faucet cooldown active (24h). Try again later.';
+    }
+    return 'Faucet cooldown active (24h). Try again later.';
+  }
+
+  // InsufficientGas
+  if (msg.includes('InsufficientGas') || msg.includes('insufficient gas')) {
+    return 'Not enough NSN for gas fees. Get NSN first.';
+  }
+
+  return 'Faucet request failed. Try again later.';
 }

@@ -29,7 +29,7 @@ export function TokenFaucetButton({
   const { isDevnet, isTestnet } = useNetwork();
   const { requestFaucet, isLoading, isCooldown, canUseFaucet } = useTokenFaucet();
   const { data: balances } = useMultiBalance({});
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string; detail?: string } | null>(null);
 
   const loading = isLoading(symbol);
   const cooldown = isCooldown(symbol);
@@ -46,21 +46,23 @@ export function TokenFaucetButton({
     setMessage(null);
 
     try {
-      const success = await requestFaucet(symbol);
-      if (success) {
+      const result = await requestFaucet(symbol);
+      if (result.success) {
         setMessage({ type: 'success', text: 'Received!' });
         onSuccess?.();
       } else {
-        setMessage({ type: 'error', text: 'Failed' });
-        onError?.(new Error('Faucet request failed'));
+        // Show cooldown-specific short text, full message in title
+        const shortText = result.error?.includes('cooldown') ? 'Cooldown' : 'Failed';
+        setMessage({ type: 'error', text: shortText, detail: result.error });
+        onError?.(new Error(result.error || 'Faucet request failed'));
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Error' });
       onError?.(err instanceof Error ? err : new Error('Unknown error'));
     }
 
-    // Auto-hide message
-    setTimeout(() => setMessage(null), 3000);
+    // Auto-hide message after 5s (longer for errors so user can read)
+    setTimeout(() => setMessage(null), 5000);
   }, [disabled, requestFaucet, symbol, onSuccess, onError]);
 
   // Tooltip message for when NSN is needed
@@ -88,7 +90,7 @@ export function TokenFaucetButton({
           }
           disabled:cursor-not-allowed
           ${className}`}
-        title={needsNsnFirst ? nsnRequiredMessage : `Get ${symbol} from Faucet`}
+        title={needsNsnFirst ? nsnRequiredMessage : message?.detail || `Get ${symbol} from Faucet`}
       >
         {loading ? (
           <span className="flex items-center gap-1">
