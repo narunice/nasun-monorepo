@@ -37,9 +37,11 @@ export const NETH_PACKAGE_ID = config.tokensV2.nethPackageId as ObjectId;
 export const NETH_FAUCET_V2 = config.tokensV2.nethFaucetV2 as ObjectId;
 export const NETH_CLAIM_RECORD_V2 = config.tokensV2.nethClaimRecordV2 as ObjectId;
 
-// V2 Coin types
-export const NETH_TYPE: CoinType = `${NETH_PACKAGE_ID}::neth::NETH`;
-export const NSOL_TYPE: CoinType = `${TOKENS_V2_PACKAGE_ID}::nsol::NSOL`;
+// V2 Coin types use original package ID (types don't change after upgrade)
+const nethCoinTypePkg = config.tokensV2.nethOriginalPackageId as ObjectId || NETH_PACKAGE_ID;
+const nsolCoinTypePkg = config.tokensV2.originalPackageId as ObjectId || TOKENS_V2_PACKAGE_ID;
+export const NETH_TYPE: CoinType = `${nethCoinTypePkg}::neth::NETH`;
+export const NSOL_TYPE: CoinType = `${nsolCoinTypePkg}::nsol::NSOL`;
 
 export const TOKENS_V2: TokensV2Config = {
   packageId: TOKENS_V2_PACKAGE_ID,
