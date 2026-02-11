@@ -134,8 +134,80 @@ module devnet_tokens::faucet {
     }
 
     // =========================================
+    // Per-token rate-limited functions (V2)
+    // Each token has independent 24h cooldown
+    // =========================================
+
+    /// Per-token claim record with independent cooldown per token type
+    public struct PerTokenClaimRecord has key {
+        id: UID,
+        nbtc_claims: Table<address, u64>,
+        nusdc_claims: Table<address, u64>,
+    }
+
+    /// Create shared per-token claim record (call once after upgrade)
+    public fun create_per_token_claim_record(ctx: &mut TxContext) {
+        let record = PerTokenClaimRecord {
+            id: object::new(ctx),
+            nbtc_claims: table::new(ctx),
+            nusdc_claims: table::new(ctx),
+        };
+        transfer::share_object(record);
+    }
+
+    /// Request NBTC with independent 24h cooldown (does NOT affect NUSDC cooldown)
+    public fun request_nbtc_individual(
+        faucet: &mut TokenFaucet,
+        record: &mut PerTokenClaimRecord,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let now = clock.timestamp_ms();
+
+        check_and_update_per_token_cooldown(&mut record.nbtc_claims, sender, now);
+
+        let coin = coin::mint(&mut faucet.nbtc_cap, NBTC_FAUCET_AMOUNT, ctx);
+        transfer::public_transfer(coin, sender);
+    }
+
+    /// Request NUSDC with independent 24h cooldown (does NOT affect NBTC cooldown)
+    public fun request_nusdc_individual(
+        faucet: &mut TokenFaucet,
+        record: &mut PerTokenClaimRecord,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let now = clock.timestamp_ms();
+
+        check_and_update_per_token_cooldown(&mut record.nusdc_claims, sender, now);
+
+        let coin = coin::mint(&mut faucet.nusdc_cap, NUSDC_FAUCET_AMOUNT, ctx);
+        transfer::public_transfer(coin, sender);
+    }
+
+    /// Check remaining NBTC cooldown (returns 0 if can claim)
+    public fun get_nbtc_remaining_cooldown(
+        record: &PerTokenClaimRecord,
+        user: address,
+        clock: &Clock
+    ): u64 {
+        get_per_token_remaining_cooldown(&record.nbtc_claims, user, clock)
+    }
+
+    /// Check remaining NUSDC cooldown (returns 0 if can claim)
+    public fun get_nusdc_remaining_cooldown(
+        record: &PerTokenClaimRecord,
+        user: address,
+        clock: &Clock
+    ): u64 {
+        get_per_token_remaining_cooldown(&record.nusdc_claims, user, clock)
+    }
+
+    // =========================================
     // Legacy functions (no rate limiting)
-    // Kept for backward compatibility
+    // Kept for backward compatibility and bot usage
     // =========================================
 
     /// Request test tokens (anyone can call) - LEGACY, no rate limiting
@@ -178,7 +250,7 @@ module devnet_tokens::faucet {
     // Internal functions
     // =========================================
 
-    /// Check cooldown and update last claim time
+    /// Check cooldown and update last claim time (shared ClaimRecord)
     fun check_and_update_cooldown(
         record: &mut ClaimRecord,
         sender: address,
@@ -191,5 +263,41 @@ module devnet_tokens::faucet {
         } else {
             table::add(&mut record.last_claims, sender, now);
         };
+    }
+
+    /// Check cooldown and update last claim time (per-token table)
+    fun check_and_update_per_token_cooldown(
+        claims: &mut Table<address, u64>,
+        sender: address,
+        now: u64
+    ) {
+        if (table::contains(claims, sender)) {
+            let last_claim = *table::borrow(claims, sender);
+            assert!(now - last_claim >= COOLDOWN_MS, E_COOLDOWN_NOT_MET);
+            *table::borrow_mut(claims, sender) = now;
+        } else {
+            table::add(claims, sender, now);
+        };
+    }
+
+    /// Get remaining cooldown for a per-token claim table
+    fun get_per_token_remaining_cooldown(
+        claims: &Table<address, u64>,
+        user: address,
+        clock: &Clock
+    ): u64 {
+        if (!table::contains(claims, user)) {
+            return 0
+        };
+
+        let last_claim = *table::borrow(claims, user);
+        let now = clock.timestamp_ms();
+        let elapsed = now - last_claim;
+
+        if (elapsed >= COOLDOWN_MS) {
+            0
+        } else {
+            COOLDOWN_MS - elapsed
+        }
     }
 }

@@ -20,8 +20,10 @@ export interface NetworkConfig {
 
 export interface TokensConfig {
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
   tokenFaucet: ObjectId;
   claimRecord: ObjectId;
+  perTokenClaimRecord?: ObjectId;
   upgradeCap?: ObjectId;
   nbtcType: CoinType;
   nusdcType: CoinType;
