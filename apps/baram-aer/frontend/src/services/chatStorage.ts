@@ -156,12 +156,34 @@ export async function loadSessions(walletAddress: string, password?: string): Pr
 
   // Decrypt all sessions
   const sessions: ChatSession[] = [];
+  const failedIds: string[] = [];
   for (const encrypted of encryptedSessions) {
     try {
       const session = await decryptObject<ChatSession>(key, encrypted.encrypted, encrypted.iv);
       sessions.push(session);
-    } catch (error) {
-      console.warn('[ChatStorage] Failed to decrypt session:', encrypted.id, error);
+    } catch {
+      console.warn('[ChatStorage] Removing undecryptable session:', encrypted.id);
+      failedIds.push(encrypted.id);
+    }
+  }
+
+  // Clean up corrupted sessions and their messages from IndexedDB
+  if (failedIds.length > 0) {
+    try {
+      const tx = database.transaction([SESSIONS_STORE, MESSAGES_STORE], 'readwrite');
+      const sessionsStore = tx.objectStore(SESSIONS_STORE);
+      const messagesStore = tx.objectStore(MESSAGES_STORE);
+      const messagesIndex = messagesStore.index('sessionId');
+      for (const id of failedIds) {
+        sessionsStore.delete(id);
+        const cursorReq = messagesIndex.openCursor(IDBKeyRange.only(id));
+        cursorReq.onsuccess = (e) => {
+          const cursor = (e.target as IDBRequest).result;
+          if (cursor) { cursor.delete(); cursor.continue(); }
+        };
+      }
+    } catch (err) {
+      console.warn('[ChatStorage] Failed to clean up corrupted sessions:', err);
     }
   }
 
