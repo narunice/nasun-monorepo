@@ -15,7 +15,7 @@ import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
-import { initSui, verifyRequest, submitProofWithAER, markExecuting, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
+import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
 import { ExecuteRequest, ExecuteResponse, DEFAULT_MODEL } from './types';
 
 // AWS Secrets Manager client
@@ -246,14 +246,6 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
   }
 
   console.log(`[Execute] Request verified, executor: ${getExecutorAddress()}`);
-
-  // Mark request as executing (optional - for status tracking)
-  try {
-    await markExecuting(requestId);
-  } catch (error) {
-    // Non-fatal: status might already be EXECUTING
-    console.warn('[Execute] Failed to mark as executing (continuing):', error);
-  }
 
   // Generate AI completion
   let completion;
