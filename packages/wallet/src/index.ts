@@ -715,7 +715,10 @@ export type { UseSessionKeyResult } from './hooks/useSessionKey';
 // without needing to manually call registerTokenFaucet()
 
 import { nativeFaucetHandler } from './sui/faucet';
-import { nbtcFaucetHandler, nusdcFaucetHandler, nethFaucetHandler, nsolFaucetHandler } from './sui/tokenFaucet';
+import { nbtcFaucetHandler, nusdcFaucetHandler, nethFaucetHandler, nsolFaucetHandler, buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx } from './sui/tokenFaucet';
+
+// Re-export faucet transaction builders for direct use by apps
+export { buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx };
 import { registerTokenFaucet } from './config/tokens';
 
 // NSN - Native token faucet (HTTP API)
