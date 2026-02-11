@@ -175,3 +175,14 @@ export interface OrderFilledParsedJson {
   timestamp: string;
   [key: string]: unknown;
 }
+
+// ===== Market Narrator Types =====
+
+export interface TradeFillData {
+  poolId: string;
+  price: number;        // USD (converted from 9 decimals)
+  baseQuantity: number; // base token amount (converted from 9 decimals)
+  quoteQuantity: number; // NUSDC amount (converted from 6 decimals)
+  takerIsBid: boolean;
+  timestampMs: number;
+}

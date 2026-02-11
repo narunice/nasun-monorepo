@@ -1,5 +1,5 @@
 import { SuiClient } from '@mysten/sui/client';
-import type { LeaderboardConfig, OrderFilledParsedJson } from './leaderboard-types.js';
+import type { LeaderboardConfig, OrderFilledParsedJson, TradeFillData } from './leaderboard-types.js';
 import {
   getIndexerState, setIndexerState,
   getBalanceManagerOwner, setBalanceManagerOwner,
@@ -22,6 +22,7 @@ function setBmCache(key: string, value: string): void {
 export interface LargeTradeOptions {
   thresholdRaw: bigint;
   onLargeTrade: (message: string) => void;
+  onTradeFill?: (fill: TradeFillData) => void;
 }
 
 let client: SuiClient | null = null;
@@ -173,6 +174,22 @@ async function pollOrderFilled(): Promise<number> {
             }
           } catch {
             // Ignore formatting errors in broadcast — never block indexing
+          }
+        }
+
+        // Notify market narrator of every fill
+        if (largeTradeOpts?.onTradeFill) {
+          try {
+            largeTradeOpts.onTradeFill({
+              poolId: json.pool_id,
+              price: Number(json.price) / 1e9,
+              baseQuantity: Number(json.base_quantity) / 1e9,
+              quoteQuantity: Number(json.quote_quantity) / 1e6,
+              takerIsBid: json.taker_is_bid,
+              timestampMs: Number(json.timestamp) || Number(event.timestampMs) || Date.now(),
+            });
+          } catch {
+            // Never block indexing for narrator failures
           }
         }
 
