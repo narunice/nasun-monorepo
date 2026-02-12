@@ -51,9 +51,12 @@ export interface ConnectedViewProps {
 
   // Assets tab data
   isEVM: boolean;
+  isExternalMove: boolean;
   storedEVMAddress: string | null;
   evmBalance: { display: string } | null | undefined;
   evmBalanceLoading: boolean;
+  moveNativeBalance: { formattedBalance: string } | undefined;
+  moveNativeLoading: boolean;
   balances: { native?: { formatted: string }; tokens?: Record<string, { formatted: string }> } | undefined;
   balancesLoading: boolean;
   networkType: string;
@@ -103,9 +106,12 @@ export function ConnectedView(props: ConnectedViewProps) {
     activeTab,
     setActiveTab,
     isEVM,
+    isExternalMove,
     storedEVMAddress,
     evmBalance,
     evmBalanceLoading,
+    moveNativeBalance,
+    moveNativeLoading,
     balances,
     balancesLoading,
     networkType,
@@ -262,10 +268,13 @@ export function ConnectedView(props: ConnectedViewProps) {
         {activeTab === "assets" && (
           <AssetsTabContent
             isEVM={isEVM}
+            isExternalMove={isExternalMove}
             chain={chain}
             storedEVMAddress={storedEVMAddress}
             evmBalance={evmBalance}
             evmBalanceLoading={evmBalanceLoading}
+            moveNativeBalance={moveNativeBalance}
+            moveNativeLoading={moveNativeLoading}
             balances={balances}
             balancesLoading={balancesLoading}
             networkType={networkType}

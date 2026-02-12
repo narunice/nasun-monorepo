@@ -17,6 +17,7 @@ import {
   getMoveChains,
   getNasunChains,
   getExternalMoveChains,
+  isNasunChain,
 } from '../config/chains';
 
 /**
@@ -68,6 +69,10 @@ export interface UseChainResult {
   isEVM: boolean;
   /** Whether current chain is a Move chain (Nasun/Sui) */
   isMove: boolean;
+  /** Whether current chain is a Nasun chain */
+  isNasun: boolean;
+  /** Whether current chain is an external Move chain (Sui/IOTA, not Nasun) */
+  isExternalMove: boolean;
   /** Whether current chain is a testnet */
   isTestnet: boolean;
   /** Whether current chain supports Account Abstraction */
@@ -124,6 +129,8 @@ export function useChain(): UseChainResult {
     chainId: currentChainId,
     isEVM: chain.type === 'evm',
     isMove: chain.type === 'move',
+    isNasun: isNasunChain(currentChainId),
+    isExternalMove: chain.type === 'move' && !isNasunChain(currentChainId),
     isTestnet: chain.testnet ?? false,
     supportsAA: !!chain.aa,
     chains: getAllChains(),

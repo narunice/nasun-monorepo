@@ -1,6 +1,11 @@
 /**
  * Shared assets tab content: token balances + NFT preview.
  * Used by both zkLogin and self-custody connected views.
+ *
+ * Three display modes:
+ * - EVM chains: native token only (ETH, MATIC, etc.)
+ * - External Move chains (Sui/IOTA): native token only (SUI, IOTA)
+ * - Nasun chains: NSN + registered tokens + Faucet buttons + NFTs
  */
 
 import { type NFTInfo } from "@nasun/wallet";
@@ -9,10 +14,13 @@ import { TokenFaucetButton } from "../../balance/TokenFaucetButton";
 
 export function AssetsTabContent({
   isEVM,
+  isExternalMove,
   chain,
   storedEVMAddress,
   evmBalance,
   evmBalanceLoading,
+  moveNativeBalance,
+  moveNativeLoading,
   balances,
   balancesLoading,
   networkType,
@@ -22,10 +30,13 @@ export function AssetsTabContent({
   onSelectNFT,
 }: {
   isEVM: boolean;
+  isExternalMove: boolean;
   chain: { name: string; nativeCurrency: { symbol: string } };
   storedEVMAddress: string | null;
   evmBalance: { display: string } | null | undefined;
   evmBalanceLoading: boolean;
+  moveNativeBalance: { formattedBalance: string } | undefined;
+  moveNativeLoading: boolean;
   balances: { native?: { formatted: string }; tokens?: Record<string, { formatted: string }> } | undefined;
   balancesLoading: boolean;
   networkType: string;
@@ -39,7 +50,7 @@ export function AssetsTabContent({
       {/* Token Balances Section */}
       <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
         <p className="text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-2">
-          Token Balances {isEVM && `(${chain.name})`}
+          Token Balances {(isEVM || isExternalMove) && `(${chain.name})`}
         </p>
         {isEVM ? (
           // EVM chain balance display
@@ -57,6 +68,22 @@ export function AssetsTabContent({
                 </span>
                 <span className="font-mono text-gray-900 dark:text-white">
                   {evmBalance?.display || "0"}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : isExternalMove ? (
+          // External Move chain: native token only (SUI, IOTA)
+          <div className="space-y-1.5">
+            {moveNativeLoading ? (
+              <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+            ) : (
+              <div className="flex items-center justify-between text-sm xl:text-base">
+                <span className="text-gray-700 dark:text-zinc-300">
+                  {chain.nativeCurrency.symbol}
+                </span>
+                <span className="font-mono text-gray-900 dark:text-white">
+                  {moveNativeBalance?.formattedBalance || "0"}
                 </span>
               </div>
             )}
@@ -109,8 +136,8 @@ export function AssetsTabContent({
         )}
       </div>
 
-      {/* NFT Preview Section */}
-      {!isEVM && (
+      {/* NFT Preview Section - only on Nasun chains */}
+      {!isEVM && !isExternalMove && (
         <div className="px-3 py-2">
           <p className="text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-2">
             NFTs {accumulatedNfts.length > 0 && `(${accumulatedNfts.length})`}

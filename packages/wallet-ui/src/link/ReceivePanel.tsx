@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { usePaymentQR, usePaymentLink, getAllTokens, useSigner } from '@nasun/wallet';
+import { usePaymentQR, usePaymentLink, getAllTokens, useSigner, useChain } from '@nasun/wallet';
 import { CopyableAddress } from '../address/CopyableAddress';
 import { TokenSelector } from '../balance/TokenSelector';
 import { PanelHeader } from '../shared';
@@ -15,8 +15,10 @@ interface ReceivePanelProps {
 
 export function ReceivePanel({ onClose }: ReceivePanelProps) {
   const { address } = useSigner();
+  const { chain, isEVM, isExternalMove } = useChain();
+  const defaultToken = (isEVM || isExternalMove) ? chain.nativeCurrency.symbol : 'NSN';
   const [amount, setAmount] = useState('');
-  const [selectedToken, setSelectedToken] = useState('NSN');
+  const [selectedToken, setSelectedToken] = useState(defaultToken);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -27,7 +29,20 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
 
   const { generateLink, isGenerating, error: linkError } = usePaymentLink();
 
-  const tokens = getAllTokens();
+  // Chain-aware token list
+  const tokens = (isEVM || isExternalMove)
+    ? [{
+        symbol: chain.nativeCurrency.symbol,
+        name: chain.nativeCurrency.name,
+        decimals: chain.nativeCurrency.decimals,
+        type: isEVM ? 'native' : '0x2::sui::SUI',
+      }]
+    : getAllTokens();
+
+  // Reset selected token when chain changes
+  useEffect(() => {
+    setSelectedToken(defaultToken);
+  }, [defaultToken]);
 
   // Generate QR code for current address on mount
   useEffect(() => {

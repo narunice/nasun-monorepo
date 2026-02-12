@@ -458,30 +458,48 @@ export function clearSessionPassword(): void {
 // Explorer URL Functions
 // ============================================
 
+import { getChain, isNasunChain } from '../config/chains';
+
+/**
+ * Resolve the block explorer base URL for the given chain.
+ * External chains (Sui, IOTA, EVM) use their own blockExplorer URL.
+ * Nasun chains use the configured wallet explorer URL.
+ */
+function resolveExplorerBase(chainId?: string): string {
+  if (chainId && !isNasunChain(chainId)) {
+    const chain = getChain(chainId);
+    if (chain?.blockExplorer) return chain.blockExplorer;
+  }
+  return walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
+}
+
 /**
  * Get Explorer URL for a transaction
  * @param digest Transaction digest
+ * @param chainId Optional chain ID (defaults to Nasun explorer)
  */
-export function getExplorerTxUrl(digest: string): string {
-  const baseUrl = walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
+export function getExplorerTxUrl(digest: string, chainId?: string): string {
+  const baseUrl = resolveExplorerBase(chainId);
   return `${baseUrl}/tx/${digest}`;
 }
 
 /**
  * Get Explorer URL for an address
  * @param address Wallet address
+ * @param chainId Optional chain ID (defaults to Nasun explorer)
  */
-export function getExplorerAddressUrl(address: string): string {
-  const baseUrl = walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
+export function getExplorerAddressUrl(address: string, chainId?: string): string {
+  const baseUrl = resolveExplorerBase(chainId);
   return `${baseUrl}/address/${address}`;
 }
 
 /**
  * Get Explorer URL for an object
  * @param objectId Object ID
+ * @param chainId Optional chain ID (defaults to Nasun explorer)
  */
-export function getExplorerObjectUrl(objectId: string): string {
-  const baseUrl = walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
+export function getExplorerObjectUrl(objectId: string, chainId?: string): string {
+  const baseUrl = resolveExplorerBase(chainId);
   return `${baseUrl}/object/${objectId}`;
 }
 

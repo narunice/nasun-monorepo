@@ -9,6 +9,7 @@ import {
   getExplorerTxUrl,
   getExplorerAddressUrl,
   getExplorerObjectUrl,
+  useCurrentChainId,
 } from '@nasun/wallet';
 
 export interface CopyableAddressProps {
@@ -31,18 +32,18 @@ export interface CopyableAddressProps {
 }
 
 /**
- * Get explorer URL based on type
+ * Get explorer URL based on type and chain
  */
-function getExplorerUrl(value: string, type: 'address' | 'object' | 'tx'): string {
+function getExplorerUrl(value: string, type: 'address' | 'object' | 'tx', chainId?: string): string {
   switch (type) {
     case 'address':
-      return getExplorerAddressUrl(value);
+      return getExplorerAddressUrl(value, chainId);
     case 'object':
-      return getExplorerObjectUrl(value);
+      return getExplorerObjectUrl(value, chainId);
     case 'tx':
-      return getExplorerTxUrl(value);
+      return getExplorerTxUrl(value, chainId);
     default:
-      return getExplorerTxUrl(value);
+      return getExplorerTxUrl(value, chainId);
   }
 }
 
@@ -56,6 +57,7 @@ export function CopyableAddress({
   size = 'sm',
   className = '',
 }: CopyableAddressProps) {
+  const chainId = useCurrentChainId();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
@@ -145,7 +147,7 @@ export function CopyableAddress({
         {/* Explorer link */}
         {showExplorer && (
           <a
-            href={getExplorerUrl(value, explorerType)}
+            href={getExplorerUrl(value, explorerType, chainId)}
             target="_blank"
             rel="noopener noreferrer"
             className="p-0.5 text-gray-400 dark:text-zinc-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors shrink-0"
