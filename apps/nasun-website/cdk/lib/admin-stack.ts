@@ -182,6 +182,29 @@ export class AdminStack extends cdk.Stack {
       },
     });
 
+    // Gateway Responses: ensure CORS headers on API Gateway-level errors (4xx/5xx)
+    // Without these, preflight failures or gateway errors won't include CORS headers,
+    // causing browsers to report opaque "CORS error" instead of the actual status code.
+    // Use primary production origin (not wildcard) to avoid CWE-942 and
+    // incompatibility with allowCredentials: true on preflight responses.
+    this.api.addGatewayResponse("Default4xx", {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'https://nasun.io'",
+        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS'",
+      },
+    });
+
+    this.api.addGatewayResponse("Default5xx", {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'https://nasun.io'",
+        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS'",
+      },
+    });
+
     // Lambda integration
     const exportIntegration = new apigateway.LambdaIntegration(this.exportFunction, {
       requestTemplates: { "application/json": '{ "statusCode": "200" }' },
