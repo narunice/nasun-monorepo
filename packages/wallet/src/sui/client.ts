@@ -43,6 +43,7 @@ let suiClient: SuiClient | null = null;
 
 // Cached Move clients keyed by RPC URL (for external chains like Sui/IOTA)
 const moveClients = new Map<string, SuiClient>();
+const MAX_MOVE_CLIENTS = 20;
 
 /**
  * Configure wallet
@@ -75,10 +76,19 @@ export function getSuiClient(): SuiClient {
  */
 export function getMoveClient(rpcUrl: string): SuiClient {
   let client = moveClients.get(rpcUrl);
-  if (!client) {
-    client = new SuiClient({ url: rpcUrl });
+  if (client) {
+    // LRU: move to end to prevent eviction of frequently used clients
+    moveClients.delete(rpcUrl);
     moveClients.set(rpcUrl, client);
+    return client;
   }
+  // Evict oldest entry when at capacity
+  if (moveClients.size >= MAX_MOVE_CLIENTS) {
+    const oldest = moveClients.keys().next().value;
+    if (oldest) moveClients.delete(oldest);
+  }
+  client = new SuiClient({ url: rpcUrl });
+  moveClients.set(rpcUrl, client);
   return client;
 }
 

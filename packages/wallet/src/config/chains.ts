@@ -50,6 +50,8 @@ export interface ChainConfig {
   disabled?: boolean;
   /** Chain icon URL */
   iconUrl?: string;
+  /** Native coin type for Move chains (e.g., '0x2::sui::SUI', '0x2::iota::IOTA') */
+  nativeCoinType?: string;
 }
 
 /**
@@ -70,6 +72,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       symbol: 'NSN',
       decimals: 9,
     },
+    nativeCoinType: '0x2::sui::SUI', // Sui fork — same framework coin module
     blockExplorer: 'https://explorer.nasun.io',
     disabled: true,
   },
@@ -84,6 +87,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       symbol: 'NSN',
       decimals: 9,
     },
+    nativeCoinType: '0x2::sui::SUI',
     blockExplorer: 'https://explorer.testnet.nasun.io',
     testnet: true,
     disabled: true,
@@ -99,6 +103,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       symbol: 'NSN',
       decimals: 9,
     },
+    nativeCoinType: '0x2::sui::SUI',
     blockExplorer: 'https://explorer.nasun.io/devnet',
     testnet: true,
     devnet: true,
@@ -115,6 +120,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       symbol: 'SUI',
       decimals: 9,
     },
+    nativeCoinType: '0x2::sui::SUI',
     blockExplorer: 'https://testnet.suivision.xyz',
     testnet: true,
   },
@@ -129,6 +135,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       symbol: 'IOTA',
       decimals: 9,
     },
+    nativeCoinType: '0x2::iota::IOTA',
     blockExplorer: 'https://explorer.iota.org/iota-testnet',
     testnet: true,
   },
