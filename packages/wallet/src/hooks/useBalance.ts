@@ -39,6 +39,12 @@ export function useBalance(
   // Prefer signer address (chain-aware) over wallet store address (always Sui-derived)
   const targetAddress = address ?? signerAddress ?? account?.address ?? zkState?.address;
 
+  if (process.env.NODE_ENV === 'development') {
+    // Debug: trace which address source is used for balance queries
+    const source = address ? 'explicit' : signerAddress ? 'signer' : account?.address ? 'account' : 'zkLogin';
+    console.log(`[useBalance] chain=${chainId} source=${source} address=${targetAddress?.slice(0, 10)}...`);
+  }
+
   // Enable query when mnemonic wallet unlocked OR zkLogin connected
   const isWalletConnected = status === 'unlocked' || isZkConnected;
   const isEnabled = options?.enabled !== false && !!targetAddress && isWalletConnected;

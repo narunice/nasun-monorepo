@@ -19,7 +19,7 @@ import { useNsaStore } from '../stores/nsaStore';
 import { hasEVMWallet, unlockEVMWallet } from '../core/evm/keystore';
 import { getSessionPassword } from '../sui/client';
 import { deriveChainAddress } from '../core/crypto';
-import { getAddressScheme } from '../config/chains';
+import { getAddressScheme, isNasunChain } from '../config/chains';
 import type { SignerAdapter, SignerType } from '../core/signer/types';
 
 /**
@@ -84,9 +84,23 @@ export function useSigner(): UseSignerResult {
     if (status === 'unlocked' && account) {
       const keypair = getKeypair();
       if (keypair) {
-        const scheme = getAddressScheme(chain.id);
-        const chainAddress = deriveChainAddress(keypair, scheme);
-        SignerManager.register(new LocalSigner(keypair, chainAddress));
+        try {
+          const scheme = getAddressScheme(chain.id);
+          const chainAddress = deriveChainAddress(keypair, scheme);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[useSigner] chain=${chain.id} scheme=${scheme} address=${chainAddress}`);
+          }
+          SignerManager.register(new LocalSigner(keypair, chainAddress));
+        } catch (err) {
+          console.error('[useSigner] Failed to derive chain address:', err);
+          // Only fall back to default Sui address for Sui-compatible chains.
+          // For external chains (IOTA etc.), wrong address = potential fund loss.
+          if (isNasunChain(chain.id)) {
+            SignerManager.register(new LocalSigner(keypair));
+          } else if (SignerManager.has('local')) {
+            SignerManager.unregister('local');
+          }
+        }
       }
     } else {
       // Only unregister if we had registered before

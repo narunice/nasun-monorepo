@@ -12,6 +12,7 @@ import {
   useNasunSmartAccount,
   useWalletConnect,
   useWalletLabel,
+  useSignerAddress,
   shortenAddressResponsive,
   type ZkLoginProvider,
 } from "@nasun/wallet";
@@ -60,6 +61,9 @@ export function useWalletConnectState() {
     logout: zkLogout,
     state: zkState,
   } = useZkLogin();
+
+  // Chain-aware signer address (e.g., IOTA-derived vs Sui-derived)
+  const signerAddress = useSignerAddress();
 
   // Wallet label (alias for self-custody)
   const { label: walletLabel } = useWalletLabel(account?.address);
@@ -161,7 +165,8 @@ export function useWalletConnectState() {
     if (status === "locked") return "Locked";
     if (status === "unlocked" && account) {
       if (walletLabel) return viewState.isMobile ? truncateText(walletLabel, 10) : walletLabel;
-      return shortenAddressResponsive(account.address, viewState.isMobile);
+      const addr = signerAddress ?? account.address;
+      return shortenAddressResponsive(addr, viewState.isMobile);
     }
     return "Wallet";
   };
@@ -193,6 +198,9 @@ export function useWalletConnectState() {
     zkState,
     loadingProvider,
     handleSocialLogin,
+
+    // Chain-aware signer address
+    signerAddress,
 
     // Wallet label
     walletLabel,

@@ -191,7 +191,9 @@ function renderByWalletStatus(
 
   // Unlocked state (self-custody)
   if (s.status === "unlocked" && s.account) {
-    const displayAddress = s.isEVM && s.storedEVMAddress ? s.storedEVMAddress : s.account.address;
+    const displayAddress = s.isEVM && s.storedEVMAddress
+      ? s.storedEVMAddress
+      : s.signerAddress ?? s.account.address;
     const addressLabel = s.isEVM
       ? s.storedEVMAddress
         ? `${s.chain.name} Address`
