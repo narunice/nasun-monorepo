@@ -105,15 +105,6 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-3 pt-2">
-            <button
-              onClick={() => handleSignIn("google")}
-              disabled={isSigningIn}
-              className={providerBtnClass}
-            >
-              <img src="/Google__G__logo.svg" alt="Google" className="w-5 h-5" />
-              {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
-            </button>
-
             {isTwitterAuthAvailable && (
               <button
                 onClick={() => handleSignIn("twitter")}
@@ -124,6 +115,15 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
                 {isSigningIn ? <InlineLoading size="sm" /> : "Continue with X"}
               </button>
             )}
+
+            <button
+              onClick={() => handleSignIn("google")}
+              disabled={isSigningIn}
+              className={providerBtnClass}
+            >
+              <img src="/Google__G__logo.svg" alt="Google" className="w-5 h-5" />
+              {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
+            </button>
 
             {isMetaMaskEnabled && (
               <MetaMaskLoginButton

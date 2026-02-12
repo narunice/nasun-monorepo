@@ -142,15 +142,6 @@ const LoginButton = () => {
                 </button>
               </DropdownMenu.Item>
             )}
-            {isMetaMaskEnabled && (
-              <DropdownMenu.Item asChild>
-                <MetaMaskLoginButton
-                  className={loginMenuItemClass}
-                  onSuccess={handleMetaMaskSuccess}
-                  onError={handleMetaMaskError}
-                />
-              </DropdownMenu.Item>
-            )}
             <DropdownMenu.Item asChild>
               <button
                 onClick={() => handleSignIn("google")}
@@ -160,6 +151,15 @@ const LoginButton = () => {
                 {t("auth.login")} with Google
               </button>
             </DropdownMenu.Item>
+            {isMetaMaskEnabled && (
+              <DropdownMenu.Item asChild>
+                <MetaMaskLoginButton
+                  className={loginMenuItemClass}
+                  onSuccess={handleMetaMaskSuccess}
+                  onError={handleMetaMaskError}
+                />
+              </DropdownMenu.Item>
+            )}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
