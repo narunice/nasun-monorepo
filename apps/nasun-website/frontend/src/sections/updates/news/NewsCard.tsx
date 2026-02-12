@@ -57,7 +57,7 @@ export default function NewsCard({ post }: NewsCardProps) {
   const excerpt = stripHtml(post.excerpt.rendered);
 
   return (
-    <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }}>
+    <Link to={`/news-events/${post.slug}`}>
       <article className="group bg-nasun-black rounded-sm overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 h-full flex flex-col">
         {/* Image: 16:9 aspect ratio */}
         <div className="aspect-video overflow-hidden">
