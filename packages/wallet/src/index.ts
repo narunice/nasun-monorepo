@@ -522,11 +522,19 @@ export type {
   UseEVMBalanceResult,
 } from './hooks/useEVMBalance';
 
+// ERC-20 Balance Hook
+export {
+  useERC20Balances,
+  useRefreshERC20Balances,
+} from './hooks/useERC20Balances';
+export type { UseERC20BalancesResult } from './hooks/useERC20Balances';
+
 // EVM Transaction Hook
 export { useEVMTransaction } from './hooks/useEVMTransaction';
 export type {
   EVMTransferRequest,
   EVMContractCallRequest,
+  EVMERC20TransferRequest,
   EVMTransactionResult,
   UseEVMTransactionResult,
 } from './hooks/useEVMTransaction';
@@ -1180,3 +1188,12 @@ export {
   getERC20Metadata,
 } from './core/evm/erc20';
 export type { ERC20Balance } from './core/evm/erc20';
+
+// ERC-20 Token Registry
+export { getKnownERC20Tokens } from './config/erc20-tokens';
+export {
+  getCustomERC20Tokens,
+  addCustomERC20Token,
+  removeCustomERC20Token,
+  getAllERC20Tokens,
+} from './config/custom-erc20-tokens';
