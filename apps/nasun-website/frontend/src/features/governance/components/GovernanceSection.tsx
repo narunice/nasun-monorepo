@@ -44,7 +44,7 @@ const GovernanceSection = () => {
           {/* Header with Wallet and Toggle */}
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <Button
-              variant="filledOutlineC4"
+              variant="filledOutlineNw1"
               size="lg"
               onClick={() => setIsInfoOpen(!isInfoOpen)}
               className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
@@ -169,7 +169,7 @@ const ProposalList = () => {
             onClick={() => setFilter(value)}
             className={`px-4 py-1.5 text-sm rounded-sm border transition-colors ${
               filter === value
-                ? "bg-nasun-c4/20 text-nasun-c4 border-nasun-c4/40"
+                ? "bg-nasun-nw1/20 text-nasun-nw1 border-nasun-nw1/40"
                 : "bg-transparent text-nasun-white/50 border-nasun-white/10 hover:text-nasun-white/80 hover:border-nasun-white/20"
             }`}
           >

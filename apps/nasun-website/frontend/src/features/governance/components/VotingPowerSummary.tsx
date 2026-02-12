@@ -86,13 +86,13 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
         </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c4 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-nw1 border-t-transparent"></div>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Total Power */}
-          <DividerBox color="w2" padding="sm" className="text-center">
-            <div className="text-4xl font-bold text-nasun-c1">
+          <DividerBox color="nw1" padding="sm" className="text-center">
+            <div className="text-4xl font-bold text-nasun-nw4">
               {totalPower.toLocaleString()}
             </div>
             <div className="text-sm text-nasun-white/50 mt-1">Total Voting Power</div>
@@ -120,7 +120,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 {!hasLinkedX ? (
                   <button
                     onClick={handleLinkX}
-                    className="text-xs text-nasun-c4 hover:text-nasun-c5 hover:underline transition-colors"
+                    className="text-xs text-nasun-nw1 hover:text-nasun-nw2 hover:underline transition-colors"
                   >
                     Verify X Account
                   </button>
@@ -128,7 +128,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                   <CheckCircledIcon className="w-4 h-4 text-green-400" />
                 )}
               </div>
-              <span className={`font-medium ${(breakdown?.leaderboard ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${(breakdown?.leaderboard ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.leaderboard ?? 0) > 0 ? `+${breakdown!.leaderboard}` : "\u2014"}
               </span>
             </div>
@@ -139,7 +139,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 <span className="text-nasun-white/80">On-Chain Activity</span>
                 <InfoTooltip content="Trade, bet, lend, and use AI on Nasun Devnet to earn more voting power." />
               </div>
-              <span className={`font-medium ${(breakdown?.onChain ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${(breakdown?.onChain ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.onChain ?? 0) > 0 ? `+${breakdown!.onChain}` : "\u2014"}
               </span>
             </div>
@@ -150,7 +150,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 <span className="text-nasun-white/80">Battalion Allowlist</span>
                 <InfoTooltip content="Battalion NFT allowlist registrants receive +20 bonus voting power." />
               </div>
-              <span className={`font-medium ${(breakdown?.battalionAllowlist ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${(breakdown?.battalionAllowlist ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.battalionAllowlist ?? 0) > 0 ? `+${breakdown!.battalionAllowlist}` : "\u2014"}
               </span>
             </div>
@@ -161,7 +161,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 <span className="text-nasun-white/80">Genesis Whitelist</span>
                 <InfoTooltip content="Genesis NFT whitelist registrants receive +20 bonus voting power." />
               </div>
-              <span className={`font-medium ${(breakdown?.genesisAllowlist ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${(breakdown?.genesisAllowlist ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.genesisAllowlist ?? 0) > 0 ? `+${breakdown!.genesisAllowlist}` : "\u2014"}
               </span>
             </div>
@@ -173,7 +173,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                 <InfoTooltip content="Link your X (Twitter) account to receive +10 bonus voting power." />
                 {hasLinkedX && <CheckCircledIcon className="w-4 h-4 text-green-400" />}
               </div>
-              <span className={`font-medium ${(breakdown?.xLinked ?? 0) > 0 ? "text-nasun-c1" : "text-nasun-white/50"}`}>
+              <span className={`font-medium ${(breakdown?.xLinked ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.xLinked ?? 0) > 0 ? `+${breakdown!.xLinked}` : "\u2014"}
               </span>
             </div>
@@ -216,7 +216,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                     <p className="mt-0.5 text-xs">Link your X (Twitter) account to receive a small participation bonus.</p>
                   </li>
                   <li className="pt-2 border-t border-nasun-white/10">
-                    <span className="text-nasun-c1 font-medium flex items-center gap-1">
+                    <span className="text-nasun-nw4 font-medium flex items-center gap-1">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>

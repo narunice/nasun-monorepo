@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { Post } from "../../types/post.d";
 import { Tag } from "@/components/ui/tag";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface FeaturedPostProps {
   post: Post;
@@ -71,7 +72,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
                 className="block w-full h-64 md:h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
               />
             ) : (
-              <div className="w-full h-64 md:h-full min-h-[300px] bg-gradient-to-br from-nasun-c4/30 to-nasun-c5/20 flex items-center justify-center">
+              <div className="w-full h-64 md:h-full min-h-[300px] bg-gradient-to-br from-nasun-nw1/30 to-nasun-nw2/20 flex items-center justify-center">
                 <span className="text-white/40 text-lg">No Image</span>
               </div>
             )}
@@ -81,16 +82,16 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
           <div className="md:w-1/2 p-6 md:p-10 flex flex-col justify-center">
             {/* Featured badge */}
             <div className="flex items-center gap-3 mb-4">
-              <Tag variant="filledC1" size="sm" className="font-medium uppercase tracking-wider !border-none !bg-nasun-c1 text-nasun-black">
+              <Tag variant="filledNw4" size="sm" className="font-medium uppercase tracking-wider !border-none !bg-nasun-nw4 text-nasun-black">
                 Featured
               </Tag>
-              <Tag variant="outlineC1" size="sm" className="font-medium uppercase tracking-wider">
+              <Tag variant="outlineNw4" size="sm" className="font-medium uppercase tracking-wider">
                 {category}
               </Tag>
             </div>
 
             {/* Title */}
-            <h2 className="text-2xl md:text-3xl font-semibold mb-4 line-clamp-3 group-hover:text-nasun-white transition-colors">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4 line-clamp-3 group-hover:text-nasun-nw4 transition-colors">
               {title}
             </h2>
 
@@ -103,14 +104,12 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
             <p className="text-nasun-white/80 mb-6 line-clamp-3">{excerpt}</p>
 
             {/* Read More indicator (visual only, card is clickable) */}
-            <Tag
-              variant="filledC1"
-              size="sm"
-              className="self-end !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
-            >
-              Read More
-              <ArrowTopRightIcon className="ml-2 w-4 h-4" />
-            </Tag>
+            <div className="flex justify-end">
+              <ButtonV3 variant="gradient" size="sm" className="capitalize">
+                Read More
+                <ArrowTopRightIcon className="ml-2 w-4 h-4" />
+              </ButtonV3>
+            </div>
           </div>
         </div>
       </article>

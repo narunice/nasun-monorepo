@@ -120,6 +120,20 @@ export const buttonVariants = cva(
         // Action Dark:  (밝은 배경용)
         //  actionDark: "bg-nasun-c4/70 hover:bg-nasun-c5/30 text-black capitalize",
 
+        // NW Solid
+        nw1: "bg-nasun-nw1 text-white hover:bg-nasun-nw2",
+        nw2: "bg-nasun-nw2 text-white hover:bg-nasun-nw3",
+
+        // NW Outline (outlineNw2 uses nw1 text for contrast on dark bg)
+        outlineNw1:
+          "ring-1 ring-inset ring-nasun-nw1/70 bg-transparent text-nasun-nw1 hover:bg-nasun-nw1/10",
+        outlineNw2:
+          "ring-1 ring-inset ring-nasun-nw2/70 bg-transparent text-nasun-nw1 hover:bg-nasun-nw2/10",
+
+        // NW Filled Outline
+        filledOutlineNw1:
+          "ring-1 ring-inset ring-nasun-nw1/70 bg-nasun-nw1/10 text-nasun-nw1 hover:bg-transparent hover:ring-nasun-nw1",
+
         // Destructive: 위험한 동작용 빨간색 버튼 (Unlink, Delete 등)
         destructive:
           "ring-1 ring-inset ring-red-500 bg-red-500/10 text-red-500 hover:bg-transparent",

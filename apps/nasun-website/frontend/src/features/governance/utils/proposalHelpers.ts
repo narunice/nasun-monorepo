@@ -61,7 +61,7 @@ export function getStatusBadge(isDelisted: boolean, isExpired: boolean, hasPasse
   }
   if (isExpired) {
     return hasPassed
-      ? { bg: "bg-nasun-c4/20 border-nasun-c4/30", text: "text-nasun-c4", label: "Passed" }
+      ? { bg: "bg-nasun-nw1/20 border-nasun-nw1/30", text: "text-nasun-nw1", label: "Passed" }
       : { bg: "bg-red-500/20 border-red-500/30", text: "text-red-400", label: "Failed" };
   }
   return { bg: "bg-green-500/20 border-green-500/30", text: "text-green-400", label: "Active" };

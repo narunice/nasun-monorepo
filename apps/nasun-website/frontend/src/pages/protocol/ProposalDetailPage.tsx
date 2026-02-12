@@ -14,7 +14,12 @@ import { VoteNft } from "@/features/governance/types/voting";
 import { VoteModal } from "@/features/governance/components/VoteModal";
 import { useProposalType } from "@/features/governance/hooks/useProposalType";
 import { useVoteNfts } from "@/features/governance/hooks/useVoteNfts";
-import { parseProposal, isUnixTimeExpired, formatTimeRemaining, getStatusBadge } from "@/features/governance/utils/proposalHelpers";
+import {
+  parseProposal,
+  isUnixTimeExpired,
+  formatTimeRemaining,
+  getStatusBadge,
+} from "@/features/governance/utils/proposalHelpers";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox, Button, PageTitle } from "@/components/ui";
 import { toast } from "react-toastify";
@@ -49,7 +54,11 @@ const ProposalDetailPage: FC = () => {
   const voteNft = voteNftsRes?.data
     ?.map((obj) => {
       if (obj.data?.content?.dataType !== "moveObject") return null;
-      const fields = obj.data.content.fields as { proposal_id: string; url: string; id: { id: string } };
+      const fields = obj.data.content.fields as {
+        proposal_id: string;
+        url: string;
+        id: { id: string };
+      };
       return { proposalId: fields.proposal_id, url: fields.url, id: fields.id };
     })
     .find((nft): nft is VoteNft => nft?.proposalId === proposalId);
@@ -59,7 +68,7 @@ const ProposalDetailPage: FC = () => {
       <SectionLayout className="!max-w-4xl">
         <div className="text-center py-20">
           <p className="text-red-400 mb-4">Invalid proposal ID</p>
-          <Button variant="outlineC5" onClick={() => navigate("/network/governance")}>
+          <Button variant="outlineNw2" onClick={() => navigate("/network/governance")}>
             Back to Governance
           </Button>
         </div>
@@ -71,7 +80,7 @@ const ProposalDetailPage: FC = () => {
     return (
       <SectionLayout className="!max-w-4xl">
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c4 border-t-transparent" />
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-nw1 border-t-transparent" />
         </div>
       </SectionLayout>
     );
@@ -82,7 +91,7 @@ const ProposalDetailPage: FC = () => {
       <SectionLayout className="!max-w-4xl">
         <div className="text-center py-20">
           <p className="text-red-400 mb-4">Proposal not found</p>
-          <Button variant="outlineC5" onClick={() => navigate("/network/governance")}>
+          <Button variant="outlineNw2" onClick={() => navigate("/network/governance")}>
             Back to Governance
           </Button>
         </div>
@@ -118,7 +127,8 @@ const ProposalDetailPage: FC = () => {
     toast.success("URL copied to clipboard");
   };
 
-  const explorerUrl = import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
+  const explorerUrl =
+    import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
 
   return (
     <SectionLayout className="!max-w-6xl gap-4 !pt-24">
@@ -126,22 +136,24 @@ const ProposalDetailPage: FC = () => {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate("/network/governance")}
-          className="flex items-center gap-2 text-nasun-white/60 hover:text-nasun-white transition-colors"
+          className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors text-xs md:text-sm lg:text-base uppercase tracking-[0.2em] font-medium"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Governance</span>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Governance
         </button>
         <div className="flex items-center gap-2">
           {proposal.proposalType === "Poll" ? (
-            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30">
+            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
               Poll
             </span>
           ) : (
-            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-c1/20 text-nasun-c1 border border-nasun-c1/30">
+            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
               Governance
             </span>
           )}
-          <span className={`px-3 py-1 text-xs uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}>
+          <span
+            className={`px-3 py-1 text-xs uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}
+          >
             {statusBadge.label}
           </span>
           {voteNft && (
@@ -158,19 +170,25 @@ const ProposalDetailPage: FC = () => {
       {/* Two-column layout: Description (left) + Sidebar (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
         {/* Left: Description */}
-        <OuterBox color="w2" padding="md" className="flex flex-col min-h-[300px] max-h-[55vh]">
+        <OuterBox color="nw2" padding="md" className="flex flex-col min-h-[300px] max-h-[55vh]">
           <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-            <p className="text-nasun-white/85 whitespace-pre-wrap leading-relaxed">{proposal.description}</p>
+            <p className="text-nasun-white/85 whitespace-pre-wrap leading-relaxed">
+              {proposal.description}
+            </p>
           </div>
         </OuterBox>
 
         {/* Right: Sidebar */}
         <div className="flex flex-col gap-4 lg:min-h-[300px]">
           {/* Vote Results */}
-          <OuterBox color="w2" padding="md">
-            <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">Vote Results</h3>
+          <OuterBox color="nw2" padding="md">
+            <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">
+              Vote Results
+            </h3>
             <div className="mb-3">
-              <div className={`w-full h-3 rounded-full overflow-hidden ${isExpired ? "bg-red-500/15" : "bg-red-500/30"}`}>
+              <div
+                className={`w-full h-3 rounded-full overflow-hidden ${isExpired ? "bg-red-500/15" : "bg-red-500/30"}`}
+              >
                 <div
                   className={`h-full transition-all ${isExpired ? "bg-green-500/60" : "bg-green-500"}`}
                   style={{ width: `${yesPercent}%` }}
@@ -185,7 +203,9 @@ const ProposalDetailPage: FC = () => {
                 <div className="text-[10px] text-nasun-white/30">voting power</div>
               </div>
               <div className="bg-red-500/10 border border-red-500/20 rounded-sm p-3 text-center">
-                <div className="text-xl font-bold text-red-400">{(100 - yesPercent).toFixed(1)}%</div>
+                <div className="text-xl font-bold text-red-400">
+                  {(100 - yesPercent).toFixed(1)}%
+                </div>
                 <div className="text-xs text-nasun-white/50">No</div>
                 <div className="text-sm font-medium text-red-400 mt-1">{proposal.noVotes}</div>
                 <div className="text-[10px] text-nasun-white/30">voting power</div>
@@ -194,8 +214,10 @@ const ProposalDetailPage: FC = () => {
           </OuterBox>
 
           {/* Details */}
-          <OuterBox color="w2" padding="md" className="flex-1">
-            <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">Details</h3>
+          <OuterBox color="nw2" padding="md" className="flex-1">
+            <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">
+              Details
+            </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-nasun-white/50">Proposal ID</span>
@@ -203,7 +225,7 @@ const ProposalDetailPage: FC = () => {
                   href={`${explorerUrl}/object/${proposalId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-nasun-c4 hover:text-nasun-c5 flex items-center gap-1 font-mono text-xs"
+                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-xs"
                 >
                   {proposalId?.slice(0, 6)}...{proposalId?.slice(-4)}
                   <ExternalLink className="w-3 h-3" />
@@ -215,7 +237,7 @@ const ProposalDetailPage: FC = () => {
                   href={`${explorerUrl}/address/${proposal.creator}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-nasun-c4 hover:text-nasun-c5 flex items-center gap-1 font-mono text-xs"
+                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-xs"
                 >
                   {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}
                   <ExternalLink className="w-3 h-3" />
@@ -234,7 +256,9 @@ const ProposalDetailPage: FC = () => {
               <div className="flex justify-between">
                 <span className="text-nasun-white/50">Type</span>
                 <span className="text-nasun-white/80 text-xs">
-                  {proposal.proposalType === "Poll" ? "Poll (Zero Gas)" : "Governance (Gas Required)"}
+                  {proposal.proposalType === "Poll"
+                    ? "Poll (Zero Gas)"
+                    : "Governance (Gas Required)"}
                 </span>
               </div>
             </div>
@@ -242,10 +266,10 @@ const ProposalDetailPage: FC = () => {
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
-            {!isExpired && (
-              isConnected ? (
+            {!isExpired &&
+              (isConnected ? (
                 <Button
-                  variant="c4"
+                  variant="nw1"
                   onClick={() => setIsModalOpen(true)}
                   disabled={!!voteNft}
                   className="w-full"
@@ -256,9 +280,12 @@ const ProposalDetailPage: FC = () => {
                 <div className="flex justify-center">
                   <WalletConnect />
                 </div>
-              )
-            )}
-            <Button variant="outlineC5" onClick={handleCopyUrl} className="w-full flex items-center justify-center gap-2">
+              ))}
+            <Button
+              variant="outlineNw2"
+              onClick={handleCopyUrl}
+              className="w-full flex items-center justify-center gap-2"
+            >
               <Copy className="w-4 h-4" />
               Share
             </Button>
@@ -286,4 +313,3 @@ const ProposalDetailPage: FC = () => {
 };
 
 export default ProposalDetailPage;
-

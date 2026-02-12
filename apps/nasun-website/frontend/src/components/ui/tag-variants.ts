@@ -26,6 +26,10 @@ export const tagVariants = cva(
         outlineC5: "border border-nasun-c5/70 bg-transparent text-nasun-c5",
         outlineC7: "border border-nasun-c7/70 bg-transparent text-nasun-c7",
         outlineGensolRed: "border border-nasun-gensol-red/70 bg-transparent text-nasun-gensol-red",
+
+        // NW variants
+        filledNw4: "border border-nasun-nw4/80 bg-nasun-nw4/10 text-nasun-nw4",
+        outlineNw4: "border border-nasun-nw4/70 bg-transparent text-nasun-nw4",
       },
       size: {
         xs: "text-xs px-5 py-1",
@@ -36,7 +40,7 @@ export const tagVariants = cva(
       },
     },
     defaultVariants: {
-      variant: "filledC1",
+      variant: "filledNw4",
       size: "default",
     },
   },
