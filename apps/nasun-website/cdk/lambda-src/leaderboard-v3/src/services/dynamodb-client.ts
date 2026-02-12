@@ -497,32 +497,60 @@ export async function unbanAccount(accountId: string): Promise<Account> {
  * Get all banned accounts (full data)
  */
 export async function getBannedAccounts(): Promise<Account[]> {
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: ACCOUNTS_TABLE,
-      FilterExpression: 'isBanned = :banned',
-      ExpressionAttributeValues: { ':banned': true },
-    })
-  );
-  return (result.Items || []) as Account[];
+  const accounts: Account[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+  const MAX_PAGES = 20;
+  let pageCount = 0;
+
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: ACCOUNTS_TABLE,
+        FilterExpression: 'isBanned = :banned',
+        ExpressionAttributeValues: { ':banned': true },
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
+
+    if (result.Items) {
+      accounts.push(...(result.Items as Account[]));
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+    pageCount++;
+  } while (lastEvaluatedKey && pageCount < MAX_PAGES);
+
+  return accounts;
 }
 
 /**
  * Get banned account IDs only (lightweight, for public endpoint filtering)
  */
 export async function getBannedAccountIds(): Promise<Set<string>> {
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: ACCOUNTS_TABLE,
-      FilterExpression: 'isBanned = :banned',
-      ExpressionAttributeValues: { ':banned': true },
-      ProjectionExpression: 'accountId',
-    })
-  );
   const ids = new Set<string>();
-  for (const item of result.Items || []) {
-    ids.add((item as { accountId: string }).accountId);
-  }
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+  const MAX_PAGES = 20;
+  let pageCount = 0;
+
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: ACCOUNTS_TABLE,
+        FilterExpression: 'isBanned = :banned',
+        ExpressionAttributeValues: { ':banned': true },
+        ProjectionExpression: 'accountId',
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
+
+    for (const item of result.Items || []) {
+      ids.add((item as { accountId: string }).accountId);
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+    pageCount++;
+  } while (lastEvaluatedKey && pageCount < MAX_PAGES);
+
   return ids;
 }
 

@@ -25,7 +25,7 @@ import {
   DYNAMO_KEYS,
   SCORE_CONSTANTS,
 } from '../types';
-import { getActiveSeason, getSeasonAccountScores } from '../services/dynamodb-client';
+import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds } from '../services/dynamodb-client';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -212,10 +212,18 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
       return;
     }
 
-    console.log(`Found ${scores.length} accounts for snapshot`);
+    // Filter banned accounts from snapshot
+    const bannedIds = await getBannedAccountIds();
+    const filteredScores = scores.filter(
+      (score) => !bannedIds.has(score.accountId)
+    );
+
+    console.log(
+      `Found ${scores.length} accounts, ${scores.length - filteredScores.length} banned, ${filteredScores.length} included in snapshot`
+    );
 
     // Recalculate scores with current timestamp and sort by userScore
-    const scoredAccounts = scores
+    const scoredAccounts = filteredScores
       .map((score) => ({
         ...score,
         ...recalculateUserScore(score),
@@ -288,7 +296,7 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
     console.log(`Wrote ${snapshots.length} snapshot entries`);
 
     // Update season metadata
-    await updateSeasonMetadata(activeSeason.seasonId, scores.length);
+    await updateSeasonMetadata(activeSeason.seasonId, filteredScores.length);
 
     console.log('Snapshot generation completed successfully');
   } catch (error) {

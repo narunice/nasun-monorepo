@@ -74,23 +74,34 @@ async function searchAccounts(
     return [];
   }
 
-  // Scan with filter for username substring matching
-  // Note: In production with large datasets, consider using OpenSearch or a GSI
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: ACCOUNTS_TABLE,
-      FilterExpression: 'contains(username, :query)',
-      ExpressionAttributeValues: {
-        ':query': normalizedQuery,
-      },
-      Limit: limit * 10, // Scan more to account for filtering
-    })
-  );
+  // Paginated scan — DynamoDB Limit controls items *evaluated*, not items *returned*.
+  // Without pagination, matches beyond the first batch are missed.
+  const allMatches: Account[] = [];
+  let lastKey: Record<string, unknown> | undefined;
+  const MAX_SCANS = 10;
+  let scanCount = 0;
 
-  const accounts = (result.Items || []) as Account[];
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: ACCOUNTS_TABLE,
+        FilterExpression: 'contains(username, :query)',
+        ExpressionAttributeValues: {
+          ':query': normalizedQuery,
+        },
+        Limit: 500,
+        ...(lastKey && { ExclusiveStartKey: lastKey }),
+      })
+    );
+
+    const items = (result.Items || []) as Account[];
+    allMatches.push(...items);
+    lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    scanCount++;
+  } while (lastKey && allMatches.length < limit * 3 && scanCount < MAX_SCANS);
 
   // Filter banned accounts, then sort: exact matches first, then substring matches
-  return accounts
+  return allMatches
     .filter((a) => a.username.includes(normalizedQuery) && !a.isBanned)
     .sort((a, b) => {
       // Exact match first
