@@ -90,5 +90,15 @@ export function useInvalidateProposals() {
   const queryClient = useQueryClient();
   const dashboardId = useNetworkVariable('dashboardId');
 
-  return () => queryClient.invalidateQueries({ queryKey: [PROPOSALS_QUERY_KEY, dashboardId] });
+  return () => {
+    // Invalidate the proposals list cache
+    queryClient.invalidateQueries({ queryKey: [PROPOSALS_QUERY_KEY, dashboardId] });
+    // Also invalidate the underlying Dashboard object cache (dapp-kit key: [network, 'getObject', params])
+    // so that new proposal IDs are fetched from chain
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[1] === 'getObject' &&
+        (query.queryKey[2] as Record<string, unknown> | undefined)?.id === dashboardId,
+    });
+  };
 }
