@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { useHiddenProposals } from '../hooks/useHiddenProposals';
 import { useAdminProposals } from '../hooks/useAdminProposals';
 import { useProposalVoters } from '../hooks/useProposalVoters';

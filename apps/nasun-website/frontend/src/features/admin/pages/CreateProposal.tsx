@@ -13,6 +13,7 @@ import {
 } from "@/constants/suiPackageConstants";
 import { GOVERNANCE } from "@nasun/devnet-config";
 import { toast } from "react-toastify";
+import { useInvalidateProposals } from "../hooks/useAdminProposals";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -39,6 +40,7 @@ export function CreateProposal() {
   const adminCapId = NASUN_DEVNET_ADMIN_CAP;
 
   const { isConnected: isZkConnected } = useZkLogin();
+  const invalidateProposals = useInvalidateProposals();
 
   const [formData, setFormData] = useState<ProposalFormData>({
     title: "",
@@ -126,6 +128,7 @@ export function CreateProposal() {
       });
 
       if (result.effects?.status?.status === "success") {
+        invalidateProposals();
         toast.success("Proposal created successfully!");
         navigate("/admin/governance");
       } else {
