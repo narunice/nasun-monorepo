@@ -9,6 +9,7 @@ export { LedgerConnectView, LedgerSelectView, LedgerConnectedView } from "./Ledg
 export { NsaViewRouter } from "./NsaViews";
 export {
   BackupView,
+  AutoLockSetupView,
   ImportView,
   ExportView,
   SendView,

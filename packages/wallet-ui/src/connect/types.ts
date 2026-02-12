@@ -7,6 +7,7 @@ export type CoreViewMode =
   | "main"
   | "create"
   | "create-backup"
+  | "create-auto-lock"
   | "import"
   | "export"
   | "send"

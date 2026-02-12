@@ -83,8 +83,8 @@ export function useWalletViewState() {
         !isInsideMobileDropdown &&
         !isInsideModal
       ) {
-        // Keep dropdown open during mnemonic backup — user must confirm before closing
-        if (viewMode === "create-backup") return;
+        // Keep dropdown open during wallet creation flow — user must complete before closing
+        if (viewMode === "create-backup" || viewMode === "create-auto-lock") return;
 
         setShowDropdown(false);
         setViewMode("main");

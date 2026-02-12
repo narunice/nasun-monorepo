@@ -590,6 +590,40 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                 : 'border-gray-300 dark:border-zinc-600 focus:ring-2 focus:ring-blue-500'
             }`}
           />
+          {/* Percentage amount buttons */}
+          <div className="flex gap-1.5 mt-1.5">
+            {([25, 50, 75] as const).map((pct) => (
+              <button
+                key={pct}
+                type="button"
+                disabled={availableBalance <= 0}
+                onClick={() => {
+                  // Floor to 4 decimals to prevent sending more than available
+                  const value = Math.floor(availableBalance * pct / 100 * 10000) / 10000;
+                  setAmount(value.toString());
+                }}
+                className="flex-1 py-1 text-xs xl:text-sm bg-gray-100 dark:bg-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-zinc-300 rounded transition-colors"
+              >
+                {pct}%
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={availableBalance <= 0}
+              onClick={() => {
+                const isNative = selectedToken === nativeSymbol;
+                const raw = isNative
+                  ? Math.max(0, availableBalance - MIN_GAS_BALANCE)
+                  : availableBalance;
+                // Floor to 4 decimals to prevent sending more than available
+                const maxAmount = Math.floor(raw * 10000) / 10000;
+                setAmount(maxAmount.toString());
+              }}
+              className="flex-1 py-1 text-xs xl:text-sm bg-gray-100 dark:bg-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-zinc-300 rounded transition-colors font-medium"
+            >
+              MAX
+            </button>
+          </div>
           {!isValidAmount && (
             <p className="text-xs xl:text-sm text-red-400 mt-1">Please enter a valid amount</p>
           )}
