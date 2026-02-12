@@ -88,7 +88,7 @@ export function useSigner(): UseSignerResult {
           const scheme = getAddressScheme(chain.id);
           const chainAddress = deriveChainAddress(keypair, scheme);
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[useSigner] chain=${chain.id} scheme=${scheme} address=${chainAddress}`);
+            console.log(`[useSigner] chain=${chain.id} scheme=${scheme} address=${chainAddress.slice(0, 10)}...`);
           }
           SignerManager.register(new LocalSigner(keypair, chainAddress));
         } catch (err) {
