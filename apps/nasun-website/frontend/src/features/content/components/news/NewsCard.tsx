@@ -39,7 +39,7 @@ export default function NewsCard({ post }: NewsCardProps) {
   const excerpt = stripHtml(post.excerpt.rendered);
 
   return (
-    <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }}>
+    <Link to={`/news-events/${post.slug}`}>
       <article className="group bg-black backdrop-blur-md rounded-2xl overflow-hidden border border-nasun-c3/30 hover:border-nasun-c3 transition-all duration-300 h-full flex flex-col">
         {/* Image: 16:9 aspect ratio */}
         <div className="aspect-video overflow-hidden">
@@ -78,7 +78,7 @@ export default function NewsCard({ post }: NewsCardProps) {
 
           {/* Read More button */}
           <Button asChild variant="action" className="self-end mt-4 px-4 py-2">
-            <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }}>
+            <Link to={`/news-events/${post.slug}`}>
               Read More
             </Link>
           </Button>
