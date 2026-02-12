@@ -11,6 +11,7 @@ import {
   useNetwork,
   useChain,
   useEVMBalance,
+  useERC20Balances,
   getStoredEVMAddress,
   getAllTokens,
   type NFTInfo,
@@ -101,6 +102,9 @@ export function useConnectedViewData() {
   const evmAddressForHook: string | undefined = storedEVMAddress ?? undefined;
   const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(evmAddressForHook);
 
+  // ERC-20 token balances (EVM only)
+  const { balances: erc20Balances, isLoading: erc20Loading } = useERC20Balances(evmAddressForHook);
+
   // External Move native balance (Sui/IOTA)
   const { data: moveNativeBalance, isLoading: moveNativeLoading } = useBalance(undefined, {
     enabled: isExternalMove,
@@ -118,6 +122,8 @@ export function useConnectedViewData() {
     storedEVMAddress,
     evmBalance,
     evmBalanceLoading,
+    erc20Balances,
+    erc20Loading,
     moveNativeBalance,
     moveNativeLoading,
     getAllTokens,

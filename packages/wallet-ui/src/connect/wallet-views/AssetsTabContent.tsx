@@ -3,14 +3,22 @@
  * Used by both zkLogin and self-custody connected views.
  *
  * Three display modes:
- * - EVM chains: native token only (ETH, MATIC, etc.)
+ * - EVM chains: native token + ERC-20 tokens
  * - External Move chains (Sui/IOTA): native token only (SUI, IOTA)
  * - Nasun chains: NSN + registered tokens + Faucet buttons + NFTs
  */
 
-import { type NFTInfo } from "@nasun/wallet";
+import { type NFTInfo, type ERC20Balance } from "@nasun/wallet";
 import { NFTCard } from "../../nft/NFTCard";
 import { TokenFaucetButton } from "../../balance/TokenFaucetButton";
+
+/** Format ERC-20 balance for display (max 6 decimals) */
+function formatERC20Display(balance: ERC20Balance): string {
+  const num = parseFloat(balance.formattedBalance);
+  if (num === 0) return "0.000000";
+  const displayDecimals = Math.min(6, balance.decimals);
+  return num.toFixed(displayDecimals);
+}
 
 export function AssetsTabContent({
   isEVM,
@@ -19,6 +27,9 @@ export function AssetsTabContent({
   storedEVMAddress,
   evmBalance,
   evmBalanceLoading,
+  erc20Balances,
+  erc20Loading,
+  onAddToken,
   moveNativeBalance,
   moveNativeLoading,
   balances,
@@ -35,6 +46,9 @@ export function AssetsTabContent({
   storedEVMAddress: string | null;
   evmBalance: { display: string } | null | undefined;
   evmBalanceLoading: boolean;
+  erc20Balances: ERC20Balance[];
+  erc20Loading: boolean;
+  onAddToken?: () => void;
   moveNativeBalance: { formattedBalance: string } | undefined;
   moveNativeLoading: boolean;
   balances: { native?: { formatted: string }; tokens?: Record<string, { formatted: string }> } | undefined;
@@ -62,14 +76,41 @@ export function AssetsTabContent({
             ) : evmBalanceLoading ? (
               <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
             ) : (
-              <div className="flex items-center justify-between text-sm xl:text-base">
-                <span className="text-gray-700 dark:text-zinc-300">
-                  {chain.nativeCurrency.symbol}
-                </span>
-                <span className="font-mono text-gray-900 dark:text-white">
-                  {evmBalance?.display || "0"}
-                </span>
-              </div>
+              <>
+                {/* Native token (ETH, MATIC, etc.) */}
+                <div className="flex items-center justify-between text-sm xl:text-base">
+                  <span className="text-gray-700 dark:text-zinc-300">
+                    {chain.nativeCurrency.symbol}
+                  </span>
+                  <span className="font-mono text-gray-900 dark:text-white">
+                    {evmBalance?.display || "0"}
+                  </span>
+                </div>
+
+                {/* ERC-20 tokens */}
+                {erc20Loading ? (
+                  <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                ) : (
+                  erc20Balances.map((token) => (
+                    <div key={token.address} className="flex items-center justify-between text-sm xl:text-base">
+                      <span className="text-gray-700 dark:text-zinc-300">{token.symbol}</span>
+                      <span className="font-mono text-gray-900 dark:text-white">
+                        {formatERC20Display(token)}
+                      </span>
+                    </div>
+                  ))
+                )}
+
+                {/* Add Token button */}
+                {onAddToken && (
+                  <button
+                    onClick={onAddToken}
+                    className="w-full mt-1 py-1 text-xs xl:text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+                  >
+                    + Add Token
+                  </button>
+                )}
+              </>
             )}
           </div>
         ) : isExternalMove ? (
