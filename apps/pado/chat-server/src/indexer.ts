@@ -5,6 +5,7 @@ import {
   getBalanceManagerOwner, setBalanceManagerOwner,
   insertTradeFill,
 } from './leaderboard-store.js';
+import { getPoolSymbol } from './rooms.js';
 
 // In-memory cache for balance_manager_id -> owner address (LRU-bounded)
 const BM_CACHE_MAX = 10_000;
@@ -21,7 +22,7 @@ function setBmCache(key: string, value: string): void {
 
 export interface LargeTradeOptions {
   thresholdRaw: bigint;
-  onLargeTrade: (message: string) => void;
+  onLargeTrade: (message: string, poolId?: string) => void;
   onTradeFill?: (fill: TradeFillData) => void;
 }
 
@@ -169,8 +170,9 @@ async function pollOrderFilled(): Promise<number> {
               const baseQty = Number(json.base_quantity) / 1_000_000_000; // 9 decimals for base
               const side = json.taker_is_bid ? 'bought' : 'sold';
               const priceNum = Number(json.price) / 1_000_000_000; // price uses 9 decimals
-              const msg = `Large trade: ${baseQty.toFixed(4)} NBTC ${side} at $${priceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })} ($${quoteUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })})`;
-              largeTradeOpts.onLargeTrade(msg);
+              const symbol = getPoolSymbol(json.pool_id) ?? 'tokens';
+              const msg = `Large trade: ${baseQty.toFixed(4)} ${symbol} ${side} at $${priceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })} ($${quoteUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })})`;
+              largeTradeOpts.onLargeTrade(msg, json.pool_id);
             }
           } catch {
             // Ignore formatting errors in broadcast — never block indexing

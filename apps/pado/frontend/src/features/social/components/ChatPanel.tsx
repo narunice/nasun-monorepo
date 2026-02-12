@@ -4,6 +4,7 @@ import { useChat } from '../hooks/useChat';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
 import { SetNicknameModal } from './SetNicknameModal';
+import { ChatRoomTabs } from './ChatRoomTabs';
 import { useChatTextSize } from '../hooks/useChatTextSize';
 
 interface Props {
@@ -24,6 +25,7 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
   const {
     messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore,
     nickname, needsNickname, nicknameRateLimit,
+    rooms, activeRoomId, setActiveRoom, unreadCounts,
   } = useChat();
 
   // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
@@ -138,6 +140,16 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
           )}
         </div>
       </div>
+
+      {/* Room tabs */}
+      {rooms.length > 1 && (
+        <ChatRoomTabs
+          rooms={rooms}
+          activeRoomId={activeRoomId}
+          unreadCounts={unreadCounts}
+          onSelectRoom={setActiveRoom}
+        />
+      )}
 
       {/* Messages */}
       <ChatMessageList

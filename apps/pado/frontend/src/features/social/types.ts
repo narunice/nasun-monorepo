@@ -13,6 +13,12 @@ export interface ChatMessage {
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'authenticating' | 'connected';
 
+export interface RoomInfo {
+  id: number;
+  name: string;
+  description: string;
+}
+
 export interface ChatState {
   messages: ChatMessage[];
   status: ChatConnectionStatus;

@@ -6,7 +6,7 @@ import {
   getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
   getNicknameRateLimit,
 } from './store.js';
-import { roomExists } from './rooms.js';
+import { roomExists, getAllRooms, getPoolRoom, setPoolRoomMapping } from './rooms.js';
 import type {
   AuthenticatedClient,
   ClientMessage,
@@ -96,6 +96,17 @@ function broadcastSystemMessage(content: string, roomId: number = 0): void {
   };
 
   broadcast(chatMsg);
+}
+
+/**
+ * Broadcast a system message to a pool-specific room AND Global (room 0).
+ * If poolRoomId is already 0, sends only once.
+ */
+function broadcastSystemMessageMultiRoom(content: string, poolRoomId: number): void {
+  broadcastSystemMessage(content, poolRoomId);
+  if (poolRoomId !== 0) {
+    broadcastSystemMessage(content, 0);
+  }
 }
 
 function getClientIp(ws: WebSocket, req: { socket: { remoteAddress?: string }; headers: Record<string, string | string[] | undefined> }): string {
@@ -205,6 +216,7 @@ function handleLoadHistory(ws: WebSocket, msg: ClientMessage & { type: 'load_his
 
   send(ws, {
     type: 'history',
+    roomId,
     messages: result.map((m) => ({
       type: 'chat_message' as const,
       id: m.id,
@@ -312,6 +324,9 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       const rateLimit = existingNickname ? getNicknameRateLimit(verifiedAddress) : undefined;
       send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname, rateLimit });
 
+      // Send available rooms list
+      send(ws, { type: 'rooms_list', rooms: getAllRooms() });
+
       // Send recent messages as initial history
       handleLoadHistory(ws, { type: 'load_history', roomId: 0, limit: 50 });
 
@@ -358,6 +373,9 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
         send(ws, { type: 'nickname_check', available, nickname });
         break;
       }
+      case 'list_rooms':
+        send(ws, { type: 'rooms_list', rooms: getAllRooms() });
+        break;
       default:
         send(ws, { type: 'error', code: 'UNKNOWN_TYPE', message: `Unknown message type: ${(msg as { type: string }).type}` });
     }
@@ -962,15 +980,34 @@ function start(): void {
     };
     const largeTradeThresholdRaw = BigInt(CONFIG.largeTradeThresholdNusdc) * 1_000_000n; // NUSDC 6 decimals
 
+    // Configure pool-to-room mappings from environment
+    const poolMappings: [string | undefined, number][] = [
+      [process.env.POOL_NBTC_NUSDC, 1],
+      [process.env.POOL_NASUN_NUSDC, 2],
+      [process.env.POOL_NETH_NUSDC, 3],
+      [process.env.POOL_NSOL_NUSDC, 4],
+    ];
+    for (const [poolId, roomId] of poolMappings) {
+      if (poolId) setPoolRoomMapping(poolId, roomId);
+    }
+
     // Initialize market narrator (rule-based + optional AI commentary)
     initNarrator({
-      broadcast: broadcastSystemMessage,
+      broadcast: (content: string) => broadcastSystemMessage(content),
+      broadcastToRoom: broadcastSystemMessageMultiRoom,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     });
 
     startIndexer(lbConfig, {
       thresholdRaw: largeTradeThresholdRaw,
-      onLargeTrade: (msg: string) => broadcastSystemMessage(msg),
+      onLargeTrade: (msg: string, poolId?: string) => {
+        const poolRoomId = poolId ? getPoolRoom(poolId) : null;
+        if (poolRoomId !== null) {
+          broadcastSystemMessageMultiRoom(msg, poolRoomId);
+        } else {
+          broadcastSystemMessage(msg);
+        }
+      },
       onTradeFill,
     });
     startAggregator(lbConfig);
