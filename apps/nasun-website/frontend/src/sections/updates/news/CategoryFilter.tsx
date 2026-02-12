@@ -20,7 +20,7 @@ export default function CategoryFilter({ activeCategory, onCategoryChange }: Cat
           className="focus:outline-none rounded-full"
         >
           <Tag
-            variant={activeCategory === cat.key ? "filledC1" : "outlineC1"}
+            variant={activeCategory === cat.key ? "filledNw4" : "outlineNw4"}
             size="sm"
             className="cursor-pointer hover:opacity-80 transition-opacity uppercase"
           >

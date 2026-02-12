@@ -1,7 +1,9 @@
 // sections/news/NewsCard.tsx
 import { Link } from "react-router-dom";
-import { Post } from "../../types/post.d";
+import { ArrowTopRightIcon } from "@radix-ui/react-icons";
+import { Post } from "../../../types/post.d";
 import { Tag } from "@/components/ui/tag";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface NewsCardProps {
   post: Post;
@@ -68,7 +70,7 @@ export default function NewsCard({ post }: NewsCardProps) {
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-nasun-c4/30 to-nasun-c5/20 flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-br from-nasun-nw1/30 to-nasun-nw2/20 flex items-center justify-center">
               <span className="text-white/40 text-lg">No Image</span>
             </div>
           )}
@@ -78,7 +80,7 @@ export default function NewsCard({ post }: NewsCardProps) {
         <div className="p-6 flex flex-col flex-grow">
           {/* Category badge and date */}
           <div className="flex items-center justify-between mb-3">
-            <Tag variant="outlineC1" size="sm" className="font-medium uppercase tracking-wider">
+            <Tag variant="outlineNw4" size="sm" className="font-medium uppercase tracking-wider">
               {category}
             </Tag>
             <time className="text-sm text-gray-400" dateTime={post.date}>
@@ -87,7 +89,7 @@ export default function NewsCard({ post }: NewsCardProps) {
           </div>
 
           {/* Title */}
-          <h3 className="text-lg font-semibold line-clamp-2 mb-2 group-hover:text-nasun-white transition-colors">
+          <h3 className="text-lg font-semibold line-clamp-2 mb-2 group-hover:text-nasun-nw4 transition-colors">
             {title}
           </h3>
 
@@ -95,13 +97,12 @@ export default function NewsCard({ post }: NewsCardProps) {
           <p className="text-gray-400 text-sm line-clamp-3 flex-grow">{excerpt}</p>
 
           {/* Read More button (visual only, card is clickable) */}
-          <Tag
-            variant="filledC1"
-            size="sm"
-            className="self-end mt-4 !border-none !bg-nasun-c1 text-nasun-black hover:!bg-nasun-c2 transition-all capitalize px-8"
-          >
-            Read More
-          </Tag>
+          <div className="flex justify-end mt-4">
+            <ButtonV3 variant="gradientDark" size="sm" className="capitalize">
+              Read More
+              <ArrowTopRightIcon className="ml-2 w-4 h-4" />
+            </ButtonV3>
+          </div>
         </div>
       </article>
     </Link>

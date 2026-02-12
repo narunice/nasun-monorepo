@@ -18,7 +18,7 @@ export const buttonV3Variants = cva(
         gradient:
           "bg-gradient-to-r from-[#6697b7] to-[#9CC0D8] text-white hover:from-[#5a87a5] hover:to-[#8EB4CE]",
         gradientDark:
-          "bg-gradient-to-r from-[#4c7d9a] to-[#6697b7] text-white hover:from-[#416d87] hover:to-[#5a87a5]",
+          "bg-gradient-to-r from-[#4c7d9a] to-[#85B3CC] text-white hover:from-[#416d87] hover:to-[#78A5BD]",
       },
       outline: {
         true: "bg-transparent bg-none border",
