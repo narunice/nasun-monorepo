@@ -172,6 +172,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     localStorage.setItem("auth_provider_preference", "Google");
     localStorage.setItem("auth_return_to", window.location.pathname);
+    // Clear any stale zkLogin session so /callback won't misdetect this as zkLogin
+    sessionStorage.removeItem("nasun:zklogin:session");
     window.location.href = buildGoogleAuthUrl();
   };
 
