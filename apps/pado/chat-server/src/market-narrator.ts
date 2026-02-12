@@ -45,27 +45,29 @@ let cachedAiClient: unknown = null; // Cached Anthropic client instance
 
 // ===== Rate Limiting =====
 
-function canSendMessage(): boolean {
-  if (!config) return false;
-
-  const now = Date.now();
-  const minInterval = config.minIntervalMs ?? DEFAULT_MIN_INTERVAL_MS;
-  const maxPerHour = config.maxMessagesPerHour ?? DEFAULT_MAX_PER_HOUR;
-
-  // Reset hourly counter
+function maybeResetHourlyCounter(now: number): void {
   if (now - hourlyResetMs >= 3_600_000) {
     hourlyCount = 0;
     hourlyResetMs = now;
   }
+}
 
-  if (now - lastMessageMs < minInterval) return false;
-  if (hourlyCount >= maxPerHour) return false;
+function canSendMessage(): boolean {
+  if (!config) return false;
+
+  const now = Date.now();
+  maybeResetHourlyCounter(now);
+
+  if (now - lastMessageMs < (config.minIntervalMs ?? DEFAULT_MIN_INTERVAL_MS)) return false;
+  if (hourlyCount >= (config.maxMessagesPerHour ?? DEFAULT_MAX_PER_HOUR)) return false;
 
   return true;
 }
 
 function recordMessageSent(): void {
-  lastMessageMs = Date.now();
+  const now = Date.now();
+  maybeResetHourlyCounter(now);
+  lastMessageMs = now;
   hourlyCount++;
 }
 
