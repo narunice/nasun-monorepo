@@ -13,7 +13,7 @@ export type CoreViewMode =
   | "send"
   | "receive";
 
-export type AssetViewMode = "staking" | "portfolio";
+export type AssetViewMode = "staking" | "portfolio" | "add-token";
 
 export type SettingsViewMode = "settings" | "address-book";
 

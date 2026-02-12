@@ -10,13 +10,36 @@ import { getKnownERC20Tokens } from './erc20-tokens';
 
 const STORAGE_KEY = 'nasun_custom_erc20_tokens';
 
+/** Validate a single token config object from untrusted storage */
+function isValidTokenConfig(t: unknown): t is ERC20TokenConfig {
+  if (typeof t !== 'object' || t === null) return false;
+  const obj = t as Record<string, unknown>;
+  return (
+    typeof obj.address === 'string' &&
+    /^0x[a-fA-F0-9]{40}$/.test(obj.address) &&
+    typeof obj.symbol === 'string' &&
+    obj.symbol.length > 0 &&
+    obj.symbol.length <= 12 &&
+    typeof obj.name === 'string' &&
+    obj.name.length <= 64 &&
+    typeof obj.decimals === 'number' &&
+    Number.isInteger(obj.decimals) &&
+    obj.decimals >= 0 &&
+    obj.decimals <= 18
+  );
+}
+
 /** Get user-added custom ERC-20 tokens for a chain */
 export function getCustomERC20Tokens(chainId: string): ERC20TokenConfig[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const all: Record<string, ERC20TokenConfig[]> = JSON.parse(raw);
-    return all[chainId] ?? [];
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return [];
+    const all = parsed as Record<string, unknown>;
+    const chain = all[chainId];
+    if (!Array.isArray(chain)) return [];
+    return chain.filter(isValidTokenConfig);
   } catch {
     return [];
   }

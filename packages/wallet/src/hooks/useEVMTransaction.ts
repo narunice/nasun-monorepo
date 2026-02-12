@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { parseEther } from 'viem';
+import { parseEther, parseUnits, encodeFunctionData, erc20Abi } from 'viem';
 import { useChain } from './useChain';
 import { useRefreshEVMBalance } from './useEVMBalance';
 import { getEVMClient } from '../core/evm/client';
@@ -34,6 +34,20 @@ export interface EVMContractCallRequest {
   data: `0x${string}`;
   /** Optional value to send (in wei) */
   value?: bigint;
+}
+
+/**
+ * EVM ERC-20 token transfer request
+ */
+export interface EVMERC20TransferRequest {
+  /** Recipient address */
+  to: string;
+  /** Token contract address */
+  tokenAddress: string;
+  /** Amount in human-readable units (e.g., "25.5") */
+  amount: string;
+  /** Token decimals */
+  decimals: number;
 }
 
 /**
@@ -66,6 +80,8 @@ export interface UseEVMTransactionResult {
   sendTransfer: (request: EVMTransferRequest) => Promise<EVMTransactionResult>;
   /** Send contract call */
   sendContractCall: (request: EVMContractCallRequest) => Promise<EVMTransactionResult>;
+  /** Send ERC-20 token transfer */
+  sendERC20Transfer: (request: EVMERC20TransferRequest) => Promise<EVMTransactionResult>;
   /** Clear error state */
   clearError: () => void;
   /** Clear last result */
@@ -325,6 +341,67 @@ export function useEVMTransaction(): UseEVMTransactionResult {
     [isEVM, chain, getEVMSigner, refreshBalance]
   );
 
+  /**
+   * Send ERC-20 token transfer (convenience wrapper around sendContractCall)
+   */
+  const sendERC20Transfer = useCallback(
+    async (request: EVMERC20TransferRequest): Promise<EVMTransactionResult> => {
+      // Validate chain
+      if (!isEVM || !chain.chainId) {
+        const err = 'Current chain is not an EVM chain';
+        setError(err);
+        throw new Error(err);
+      }
+
+      // Validate recipient
+      if (!isValidEVMAddress(request.to)) {
+        const err = 'Invalid recipient address';
+        setError(err);
+        throw new Error(err);
+      }
+
+      // Validate token address
+      if (!isValidEVMAddress(request.tokenAddress)) {
+        const err = 'Invalid token contract address';
+        setError(err);
+        throw new Error(err);
+      }
+
+      // Validate decimals range
+      if (!Number.isInteger(request.decimals) || request.decimals < 0 || request.decimals > 18) {
+        const err = 'Invalid token decimals';
+        setError(err);
+        throw new Error(err);
+      }
+
+      // Parse amount
+      let parsedAmount: bigint;
+      try {
+        parsedAmount = parseUnits(request.amount, request.decimals);
+        if (parsedAmount <= 0n) {
+          throw new Error('Amount must be positive');
+        }
+      } catch {
+        const err = 'Invalid amount';
+        setError(err);
+        throw new Error(err);
+      }
+
+      // Encode ERC-20 transfer call
+      const data = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [request.to as `0x${string}`, parsedAmount],
+      });
+
+      return sendContractCall({
+        to: request.tokenAddress,
+        data,
+      });
+    },
+    [isEVM, chain, sendContractCall]
+  );
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -339,6 +416,7 @@ export function useEVMTransaction(): UseEVMTransactionResult {
     lastResult,
     sendTransfer,
     sendContractCall,
+    sendERC20Transfer,
     clearError,
     clearResult,
   };

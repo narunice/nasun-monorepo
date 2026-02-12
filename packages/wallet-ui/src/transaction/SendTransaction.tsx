@@ -16,10 +16,12 @@ import {
   useChain,
   useEVMBalance,
   useEVMGasEstimate,
+  useERC20Balances,
   getStoredEVMAddress,
   isValidAddress,
   getAllTokens,
   getTokenByType,
+  getAllERC20Tokens,
   NATIVE_TOKEN,
   useAddressStatus,
   useAddressBook,
@@ -64,6 +66,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   // EVM chain transaction hook
   const {
     sendTransfer: sendEVMTransfer,
+    sendERC20Transfer,
     isPending: isEVMPending,
     error: evmError,
     lastResult: evmLastResult,
@@ -102,16 +105,26 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   // EVM gas estimate (real-time gas price)
   const { data: gasEstimate, isLoading: isGasLoading } = useEVMGasEstimate();
 
+  // ERC-20 balances (only fetched on EVM chains)
+  const { balances: erc20Balances } = useERC20Balances(evmAddressForBalance);
+
   // Get chain-specific tokens
   const getChainTokens = (): TokenConfig[] => {
     if (isEVM) {
-      // EVM chain: show native currency (ETH, MATIC, etc.)
-      return [{
+      // EVM chain: native currency + ERC-20 tokens
+      const nativeToken: TokenConfig = {
         symbol: chain.nativeCurrency.symbol,
         name: chain.nativeCurrency.name,
         decimals: chain.nativeCurrency.decimals,
-        type: 'native', // EVM native token marker
-      }];
+        type: 'native',
+      };
+      const erc20Tokens = getAllERC20Tokens(chain.id).map((t) => ({
+        symbol: t.symbol,
+        name: t.name,
+        decimals: t.decimals,
+        type: t.address, // Use contract address as type identifier
+      }));
+      return [nativeToken, ...erc20Tokens];
     }
     if (isExternalMove) {
       // External Move chain: native token only (SUI, IOTA)
@@ -162,9 +175,19 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   // Get selected token config
   const tokenConfig = tokens.find((t) => t.symbol === selectedToken) || tokens[0] || NATIVE_TOKEN;
 
+  // Check if selected token is an ERC-20 (not native)
+  const isERC20Selected = isEVM && tokenConfig.type !== 'native';
+
   // Get balance for selected token (chain-aware)
   const getSelectedBalance = (): string => {
     if (isEVM) {
+      if (isERC20Selected) {
+        // Look up ERC-20 balance
+        const erc20 = erc20Balances.find(
+          (b) => b.address.toLowerCase() === tokenConfig.type.toLowerCase()
+        );
+        return erc20?.formattedBalance || '0';
+      }
       return evmBalance?.formatted || '0';
     }
     if (isExternalMove) {
@@ -405,6 +428,14 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                     </span>
                   </div>
                 )}
+                {isERC20Selected && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-zinc-400">Contract</span>
+                    <span className="text-gray-900 dark:text-white font-mono text-[10px] xl:text-xs truncate max-w-[180px]">
+                      {tokenConfig.type}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-zinc-400">Sender</span>
                   <span className="text-gray-900 dark:text-white font-mono">
@@ -451,11 +482,18 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                 }
 
                 if (isEVM) {
-                  // EVM chain: use EVM transaction
-                  const result = await sendEVMTransfer({
-                    to: recipient,
-                    amount,
-                  });
+                  // EVM chain: native or ERC-20 transfer
+                  const result = isERC20Selected
+                    ? await sendERC20Transfer({
+                        to: recipient,
+                        tokenAddress: tokenConfig.type,
+                        amount,
+                        decimals: tokenConfig.decimals,
+                      })
+                    : await sendEVMTransfer({
+                        to: recipient,
+                        amount,
+                      });
                   if (result.status === 'success') {
                     recordTransaction(recipient);
                     onSuccess?.(result.hash);

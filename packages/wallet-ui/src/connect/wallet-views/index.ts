@@ -19,6 +19,7 @@ export {
   SettingsView,
   AddressBookView,
   ReceiveView,
+  AddTokenView,
 } from "./SubViews";
 export { NetworkSelector } from "./NetworkSelector";
 export { AssetsTabContent } from "./AssetsTabContent";
