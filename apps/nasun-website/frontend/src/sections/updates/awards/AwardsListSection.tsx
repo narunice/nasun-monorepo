@@ -46,7 +46,7 @@ function AwardsListSection() {
                 viewport={{ once: true, margin: "-50px" }}
                 className="ml-14 md:ml-0 md:px-6"
               >
-                <DividerBox color="n4" className="">
+                <DividerBox color="nw3" className="">
                   {/* Date */}
                   <p className="text-sm font-medium text-nasun-white/60 mb-2">{item.date}</p>
 
@@ -54,7 +54,7 @@ function AwardsListSection() {
                   <h5 className=" font-semibold text-nasun-white">{item.event_name}</h5>
 
                   {/* Prize & Amount */}
-                  <p className=" text-nasun-c3 font-medium">
+                  <p className=" text-nasun-nw1 font-medium">
                     {item.prize}
                     {item.amount && ` · ${item.amount}`}
                   </p>

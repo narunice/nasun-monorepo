@@ -11,7 +11,7 @@ function AwardsSection() {
       <OuterBox color="n1" className=" ">
         <div className="text-left mb-6 md:mb-8">
           <h4 className="font-medium text-nasun-white -mb-1">{t("heading1")}</h4>
-          <h5 className="text-nasun-c4 font-medium">{t("heading2")}</h5>
+          <h5 className="text-nasun-nw1 font-medium">{t("heading2")}</h5>
         </div>
 
         <div className="space-y-4">
