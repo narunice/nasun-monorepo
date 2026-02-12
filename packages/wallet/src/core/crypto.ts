@@ -47,27 +47,25 @@ export function keypairFromMnemonic(mnemonic: string, path?: string): Ed25519Key
 }
 
 /** Address derivation scheme type */
-export type AddressScheme = 'sha3-256' | 'blake2b-256';
+export type AddressScheme = 'sui' | 'iota';
 
 /**
  * Derive a Move chain address from an Ed25519 keypair.
- * Sui/Nasun use SHA3-256; IOTA Rebased uses BLAKE2b-256.
+ *
+ * Sui/Nasun: BLAKE2b-256(flag_byte || pubkey)  — flag byte always included
+ * IOTA Rebased: BLAKE2b-256(pubkey)            — flag byte omitted for Ed25519
  */
 export function deriveChainAddress(
   keypair: Ed25519Keypair,
-  scheme: AddressScheme = 'sha3-256'
+  scheme: AddressScheme = 'sui'
 ): string {
-  if (scheme === 'sha3-256') {
+  if (scheme === 'sui') {
     return keypair.getPublicKey().toSuiAddress();
   }
 
-  // BLAKE2b-256: FLAG_BYTE(0x00 for Ed25519) + 32-byte raw pubkey
+  // IOTA: BLAKE2b-256(raw pubkey only) — no flag byte for Ed25519
   const pubkeyBytes = keypair.getPublicKey().toRawBytes();
-  const payload = new Uint8Array(1 + pubkeyBytes.length);
-  payload[0] = 0x00; // Ed25519 flag byte
-  payload.set(pubkeyBytes, 1);
-
-  const hash = blake2b(payload, { dkLen: 32 });
+  const hash = blake2b(pubkeyBytes, { dkLen: 32 });
   const hex = Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join('');
   return `0x${hex}`;
 }
