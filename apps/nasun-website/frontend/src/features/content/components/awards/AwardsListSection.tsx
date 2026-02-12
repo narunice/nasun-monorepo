@@ -20,7 +20,7 @@ function AwardsListSection() {
 
       <div className="relative ">
         {/* Timeline Line */}
-        <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-nasun-c4 -translate-x-1/2" />
+        <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-nasun-nw1 -translate-x-1/2" />
 
         {grantsList.map((item, idx) => {
           // 다크 테마 로고 사용
@@ -36,7 +36,7 @@ function AwardsListSection() {
                 `}
             >
               {/* Timeline Dot */}
-              <div className="absolute left-4 md:left-1/2 top-4 h-3 w-3 rounded-full bg-nasun-c4 -translate-x-1/2 z-10" />
+              <div className="absolute left-4 md:left-1/2 top-4 h-3 w-3 rounded-full bg-nasun-nw1 -translate-x-1/2 z-10" />
 
               {/* Content Card - Slide Up */}
               <motion.div
@@ -46,7 +46,7 @@ function AwardsListSection() {
                 viewport={{ once: true, margin: "-50px" }}
                 className="ml-14 md:ml-0 md:px-6"
               >
-                <DividerBox color="c3" className="">
+                <DividerBox color="nw1" className="">
                   {/* Date */}
                   <p className="text-sm font-medium text-nasun-white/60 mb-2">{item.date}</p>
 
@@ -54,7 +54,7 @@ function AwardsListSection() {
                   <h5 className=" font-semibold text-nasun-white">{item.event_name}</h5>
 
                   {/* Prize & Amount */}
-                  <p className=" text-nasun-c3 font-medium">
+                  <p className=" text-nasun-nw1 font-medium">
                     {item.prize}
                     {item.amount && ` · ${item.amount}`}
                   </p>
