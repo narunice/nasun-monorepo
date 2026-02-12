@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@nasun/devnet-config": "workspace:*",
+    "@noble/hashes": "^1.0.0",
     "@ledgerhq/hw-app-eth": "^7.1.1",
     "@ledgerhq/hw-transport-webhid": "^6.30.11",
     "@mysten/ledgerjs-hw-app-sui": "^0.7.0",

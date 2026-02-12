@@ -6,6 +6,7 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { generateMnemonic, validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
+import { blake2b } from '@noble/hashes/blake2.js';
 
 // PBKDF2 settings
 const PBKDF2_ITERATIONS = 100000;
@@ -45,8 +46,34 @@ export function keypairFromMnemonic(mnemonic: string, path?: string): Ed25519Key
   return Ed25519Keypair.deriveKeypair(mnemonic.trim().toLowerCase(), path);
 }
 
+/** Address derivation scheme type */
+export type AddressScheme = 'sha3-256' | 'blake2b-256';
+
 /**
- * Get address from keypair
+ * Derive a Move chain address from an Ed25519 keypair.
+ * Sui/Nasun use SHA3-256; IOTA Rebased uses BLAKE2b-256.
+ */
+export function deriveChainAddress(
+  keypair: Ed25519Keypair,
+  scheme: AddressScheme = 'sha3-256'
+): string {
+  if (scheme === 'sha3-256') {
+    return keypair.getPublicKey().toSuiAddress();
+  }
+
+  // BLAKE2b-256: FLAG_BYTE(0x00 for Ed25519) + 32-byte raw pubkey
+  const pubkeyBytes = keypair.getPublicKey().toRawBytes();
+  const payload = new Uint8Array(1 + pubkeyBytes.length);
+  payload[0] = 0x00; // Ed25519 flag byte
+  payload.set(pubkeyBytes, 1);
+
+  const hash = blake2b(payload, { dkLen: 32 });
+  const hex = Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `0x${hex}`;
+}
+
+/**
+ * Get address from keypair (Sui/Nasun format only — used by keystore)
  */
 export function getAddressFromKeypair(keypair: Ed25519Keypair): string {
   return keypair.getPublicKey().toSuiAddress();

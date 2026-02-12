@@ -18,6 +18,8 @@ import { useChain } from './useChain';
 import { useNsaStore } from '../stores/nsaStore';
 import { hasEVMWallet, unlockEVMWallet } from '../core/evm/keystore';
 import { getSessionPassword } from '../sui/client';
+import { deriveChainAddress } from '../core/crypto';
+import { getAddressScheme } from '../config/chains';
 import type { SignerAdapter, SignerType } from '../core/signer/types';
 
 /**
@@ -77,12 +79,14 @@ export function useSigner(): UseSignerResult {
     () => SignerManager.getSnapshot()
   );
 
-  // Register/unregister LocalSigner based on wallet state
+  // Register/unregister LocalSigner based on wallet state and current chain
   useEffect(() => {
     if (status === 'unlocked' && account) {
       const keypair = getKeypair();
       if (keypair) {
-        SignerManager.register(new LocalSigner(keypair));
+        const scheme = getAddressScheme(chain.id);
+        const chainAddress = deriveChainAddress(keypair, scheme);
+        SignerManager.register(new LocalSigner(keypair, chainAddress));
       }
     } else {
       // Only unregister if we had registered before
@@ -90,7 +94,7 @@ export function useSigner(): UseSignerResult {
         SignerManager.unregister('local');
       }
     }
-  }, [status, account, getKeypair]);
+  }, [status, account, getKeypair, chain.id]);
 
   // Register/unregister ZkLoginSigner based on zkLogin state
   useEffect(() => {

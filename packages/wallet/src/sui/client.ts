@@ -3,9 +3,117 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
+import type { SuiTransport, SuiTransportRequestOptions, SuiTransportSubscribeOptions } from '@mysten/sui/client';
 import type { BalanceInfo, WalletConfig, TokenBalance, MultiTokenBalanceInfo } from '../types';
 import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
 import { AllBalancesSchema, CoinBalanceSchema, safeParseRpc } from '../schemas/rpc';
+
+// ============================================
+// CORS-Compatible Transport for External Chains
+// ============================================
+
+/**
+ * Minimal JSON-RPC transport that avoids Sui SDK custom headers.
+ *
+ * The default SuiHTTPTransport sends Client-Request-Method, Client-Sdk-Type,
+ * Client-Sdk-Version, and Client-Target-Api-Version headers. Some external
+ * RPC servers (e.g. IOTA testnet) reject these in CORS preflight.
+ * This transport sends only Content-Type which is sufficient for JSON-RPC.
+ *
+ * Also supports RPC method name remapping for Sui forks that renamed
+ * their JSON-RPC methods (e.g. IOTA: sui_* → iota_*, suix_* → iotax_*).
+ */
+class CorsCompatibleTransport implements SuiTransport {
+  #url: string;
+  #requestId = 0;
+  #remapMethod: (method: string) => string;
+  /** Non-null when the chain's native coin type differs from 0x2::sui::SUI */
+  #nativeCoinType: string | null;
+
+  constructor(url: string, methodPrefix?: string, nativeCoinType?: string) {
+    this.#url = url;
+
+    // Build method remapper: replaces sui_/suix_ prefixes with the chain's prefix
+    if (methodPrefix && methodPrefix !== 'sui') {
+      this.#remapMethod = (m: string) => {
+        if (m.startsWith('suix_')) return `${methodPrefix}x_${m.slice(5)}`;
+        if (m.startsWith('sui_')) return `${methodPrefix}_${m.slice(4)}`;
+        return m;
+      };
+    } else {
+      this.#remapMethod = (m: string) => m;
+    }
+
+    // Coin type remapping: only needed when native coin differs from Sui default.
+    // The Sui SDK hardcodes '0x2::sui::SUI' as the gas coin type when building
+    // transactions (e.g., getCoins calls during tx.build()). Chains like IOTA
+    // that renamed their native coin module need this remapped in params.
+    this.#nativeCoinType =
+      nativeCoinType && nativeCoinType !== '0x2::sui::SUI' ? nativeCoinType : null;
+  }
+
+  async request<T>(input: SuiTransportRequestOptions): Promise<T> {
+    this.#requestId += 1;
+
+    const params = this.#nativeCoinType
+      ? this.#remapCoinType(input.params)
+      : input.params;
+
+    const res = await fetch(this.#url, {
+      method: 'POST',
+      signal: input.signal,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: this.#requestId,
+        method: this.#remapMethod(input.method),
+        params,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`RPC HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const data = await res.json();
+
+    if ('error' in data && data.error != null) {
+      throw new Error(data.error.message);
+    }
+
+    return data.result;
+  }
+
+  /**
+   * Recursively replace '0x2::sui::SUI' with the chain's native coin type
+   * in JSON-RPC request parameters.
+   *
+   * Handles both standalone values (coinType field) and type parameters
+   * embedded in longer strings (e.g., '0x2::coin::Coin<0x2::sui::SUI>').
+   */
+  #remapCoinType(params: unknown): unknown {
+    if (typeof params === 'string') {
+      return params.replaceAll('0x2::sui::SUI', this.#nativeCoinType!);
+    }
+    if (Array.isArray(params)) {
+      return params.map((p) => this.#remapCoinType(p));
+    }
+    if (params !== null && typeof params === 'object') {
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+        result[key] = this.#remapCoinType(value);
+      }
+      return result;
+    }
+    return params;
+  }
+
+  async subscribe<T>(_input: SuiTransportSubscribeOptions<T>): Promise<() => Promise<boolean>> {
+    throw new Error('WebSocket subscriptions not supported for external chains');
+  }
+}
 
 // NASUN token decimals (same as SUI: 9)
 const NASUN_DECIMALS = 9;
@@ -73,13 +181,18 @@ export function getSuiClient(): SuiClient {
 /**
  * Get a Move-compatible client for a specific RPC URL (cached).
  * Used for external Move chains (Sui testnet, IOTA testnet, etc.)
+ * @param rpcUrl RPC endpoint URL
+ * @param chainId Optional chain ID to resolve RPC method prefix (e.g., IOTA remaps sui_* to iota_*)
  */
-export function getMoveClient(rpcUrl: string): SuiClient {
-  let client = moveClients.get(rpcUrl);
+export function getMoveClient(rpcUrl: string, chainId?: string): SuiClient {
+  // Cache key includes chainId because the same URL with different chain configs
+  // produces different transports (method prefix, coin type remapping).
+  const cacheKey = chainId ? `${rpcUrl}::${chainId}` : rpcUrl;
+  let client = moveClients.get(cacheKey);
   if (client) {
     // LRU: move to end to prevent eviction of frequently used clients
-    moveClients.delete(rpcUrl);
-    moveClients.set(rpcUrl, client);
+    moveClients.delete(cacheKey);
+    moveClients.set(cacheKey, client);
     return client;
   }
   // Evict oldest entry when at capacity
@@ -87,8 +200,11 @@ export function getMoveClient(rpcUrl: string): SuiClient {
     const oldest = moveClients.keys().next().value;
     if (oldest) moveClients.delete(oldest);
   }
-  client = new SuiClient({ url: rpcUrl });
-  moveClients.set(rpcUrl, client);
+  const chain = chainId ? getChain(chainId) : undefined;
+  client = new SuiClient({
+    transport: new CorsCompatibleTransport(rpcUrl, chain?.rpcMethodPrefix, chain?.nativeCoinType),
+  });
+  moveClients.set(cacheKey, client);
   return client;
 }
 
@@ -96,10 +212,11 @@ export function getMoveClient(rpcUrl: string): SuiClient {
  * Get native token balance for a Move chain address.
  * @param address Wallet address
  * @param rpcUrl Optional RPC URL for external chains. If omitted, uses Nasun default.
+ * @param chainId Optional chain ID for RPC method prefix resolution
  */
-export async function getBalance(address: string, rpcUrl?: string): Promise<BalanceInfo> {
+export async function getBalance(address: string, rpcUrl?: string, chainId?: string): Promise<BalanceInfo> {
   try {
-    const client = rpcUrl ? getMoveClient(rpcUrl) : getSuiClient();
+    const client = rpcUrl ? getMoveClient(rpcUrl, chainId) : getSuiClient();
     const rawBalance = await client.getBalance({ owner: address });
 
     // Validate RPC response
