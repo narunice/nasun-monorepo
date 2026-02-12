@@ -10,6 +10,8 @@ import { getChain, isNasunChain } from '../config/chains';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { useChainStore } from './useChain';
+import { useSignerAddress } from './useSigner';
+import { SignerManager } from '../core/signer/SignerManager';
 
 // Query key
 const BALANCE_QUERY_KEY = 'wallet-balance';
@@ -32,9 +34,10 @@ export function useBalance(
   const { account, status } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const chainId = useChainStore((s) => s.currentChainId);
+  const signerAddress = useSignerAddress();
 
-  // Determine target address (mnemonic wallet OR zkLogin)
-  const targetAddress = address ?? account?.address ?? zkState?.address;
+  // Prefer signer address (chain-aware) over wallet store address (always Sui-derived)
+  const targetAddress = address ?? signerAddress ?? account?.address ?? zkState?.address;
 
   // Enable query when mnemonic wallet unlocked OR zkLogin connected
   const isWalletConnected = status === 'unlocked' || isZkConnected;
@@ -49,7 +52,7 @@ export function useBalance(
       // Use chain-specific RPC for external Move chains (Sui, IOTA)
       const chain = getChain(chainId);
       const rpcUrl = chain && !isNasunChain(chainId) ? chain.rpcUrl : undefined;
-      return getBalance(targetAddress, rpcUrl);
+      return getBalance(targetAddress, rpcUrl, chainId);
     },
     enabled: isEnabled,
     refetchInterval: options?.pollingInterval ?? POLLING_INTERVAL,
@@ -68,7 +71,8 @@ export function useRefreshBalance() {
   const chainId = useChainStore((s) => s.currentChainId);
 
   return async () => {
-    const address = account?.address ?? zkState?.address;
+    const signerAddr = SignerManager.getCurrent()?.address;
+    const address = signerAddr ?? account?.address ?? zkState?.address;
     if (address) {
       await queryClient.invalidateQueries({
         queryKey: [BALANCE_QUERY_KEY, chainId, address],

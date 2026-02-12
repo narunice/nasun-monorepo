@@ -52,6 +52,10 @@ export interface ChainConfig {
   iconUrl?: string;
   /** Native coin type for Move chains (e.g., '0x2::sui::SUI', '0x2::iota::IOTA') */
   nativeCoinType?: string;
+  /** JSON-RPC method prefix for Move chains that differ from Sui (e.g., 'iota' remaps sui_* to iota_*) */
+  rpcMethodPrefix?: string;
+  /** Address derivation hash scheme for Move chains (default: sha3-256 for Sui/Nasun) */
+  addressScheme?: 'sha3-256' | 'blake2b-256';
 }
 
 /**
@@ -136,6 +140,8 @@ export const CHAINS: Record<string, ChainConfig> = {
       decimals: 9,
     },
     nativeCoinType: '0x2::iota::IOTA',
+    rpcMethodPrefix: 'iota',
+    addressScheme: 'blake2b-256',
     blockExplorer: 'https://explorer.iota.org/iota-testnet',
     testnet: true,
   },
@@ -363,6 +369,15 @@ export function getExternalMoveChains(): ChainConfig[] {
  */
 export function isNasunChain(chainId: string): boolean {
   return chainId.startsWith('nasun-');
+}
+
+/**
+ * Get the address derivation scheme for a chain.
+ * Defaults to sha3-256 (Sui/Nasun standard).
+ */
+export function getAddressScheme(chainId: string): 'sha3-256' | 'blake2b-256' {
+  const chain = getChain(chainId);
+  return chain?.addressScheme ?? 'sha3-256';
 }
 
 /**

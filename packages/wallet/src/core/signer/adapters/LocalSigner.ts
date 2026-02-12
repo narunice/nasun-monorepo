@@ -21,10 +21,11 @@ export class LocalSigner implements SignerAdapter {
   /**
    * Create a LocalSigner from an Ed25519Keypair
    * @param keypair - The Ed25519 keypair to use for signing
+   * @param addressOverride - Chain-specific address (for non-Sui hash schemes like IOTA BLAKE2b-256)
    */
-  constructor(keypair: Ed25519Keypair) {
+  constructor(keypair: Ed25519Keypair, addressOverride?: string) {
     this.keypair = keypair;
-    this.address = keypair.toSuiAddress();
+    this.address = addressOverride ?? keypair.toSuiAddress();
   }
 
   /**

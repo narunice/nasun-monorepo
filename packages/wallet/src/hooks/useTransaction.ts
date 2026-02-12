@@ -72,7 +72,7 @@ export function useTransaction(): UseTransactionReturn {
         const chainId = useChainStore.getState().currentChainId;
         const chainConfig = getChain(chainId);
         const suiClient = chainConfig && !isNasunChain(chainId)
-          ? getMoveClient(chainConfig.rpcUrl)
+          ? getMoveClient(chainConfig.rpcUrl, chainId)
           : getSuiClient();
         const txBytes = await tx.build({ client: suiClient });
 
