@@ -140,8 +140,9 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
     return;
   }
 
-  // Block reserved prefixes (only system can send structured messages)
-  if (content.startsWith('[TRADE]') || content.startsWith('[SYSTEM]') || content.startsWith('[BOT]')) {
+  // Block reserved prefixes (case-insensitive — only system can send structured messages)
+  const upperContent = content.toUpperCase();
+  if (upperContent.startsWith('[TRADE]') || upperContent.startsWith('[SYSTEM]') || upperContent.startsWith('[BOT]')) {
     send(ws, { type: 'error', code: 'RESERVED_PREFIX', message: 'This message prefix is reserved' });
     return;
   }

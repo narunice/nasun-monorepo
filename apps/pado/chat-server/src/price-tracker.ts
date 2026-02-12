@@ -70,9 +70,9 @@ function markAlerted(type: AlertType, poolId: string, now: number): void {
 }
 
 function pruneVolumeWindow(entries: { ts: number; amount: number }[], cutoff: number): void {
-  while (entries.length > 0 && entries[0].ts < cutoff) {
-    entries.shift();
-  }
+  const idx = entries.findIndex((e) => e.ts >= cutoff);
+  if (idx === -1) entries.length = 0;
+  else if (idx > 0) entries.splice(0, idx);
 }
 
 // ===== Public API =====
@@ -211,4 +211,12 @@ export function hasActivity(): boolean {
     if (state.lastUpdateMs > fiveMinAgo) return true;
   }
   return false;
+}
+
+/**
+ * Reset all tracker state. For testing only.
+ */
+export function reset(): void {
+  pools.clear();
+  cooldownMap.clear();
 }

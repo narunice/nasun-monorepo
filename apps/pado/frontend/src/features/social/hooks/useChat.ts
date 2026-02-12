@@ -323,6 +323,8 @@ export function useChat(): UseChatResult {
   }, []);
 
   const setActiveRoom = useCallback((roomId: number) => {
+    // Validate against known rooms (cachedRooms is module-level, updated by server)
+    if (cachedRooms.length > 0 && !cachedRooms.some((r) => r.id === roomId)) return;
     setActiveRoomId(roomId);
     activeRoomIdRef.current = roomId;
     try { localStorage.setItem(ACTIVE_ROOM_KEY, String(roomId)); } catch { /* ignore */ }
