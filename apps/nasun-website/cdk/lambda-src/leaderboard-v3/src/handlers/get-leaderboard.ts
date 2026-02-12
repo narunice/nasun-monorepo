@@ -70,7 +70,7 @@ const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
 function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: { ...corsHeaders(_requestOrigin), 'Cache-Control': 'public, max-age=300' },
+    headers: corsHeaders(_requestOrigin),
     body: JSON.stringify(body),
   };
 }
