@@ -13,6 +13,7 @@ import { AddressBookPanel } from "../../address/AddressBookPanel";
 import { ReceivePanel } from "../../link/ReceivePanel";
 import { PortfolioPanel } from "../../portfolio/PortfolioPanel";
 import { NasunLinkWizard } from "../../link/NasunLinkWizard";
+import { AddERC20Token } from "../../balance/AddERC20Token";
 import type { ViewMode } from "../types";
 
 export function BackupView({
@@ -159,4 +160,12 @@ export function AddressBookView({
 
 export function ReceiveView({ setViewMode }: { setViewMode: (mode: ViewMode) => void }) {
   return <ReceivePanel onClose={() => setViewMode("main")} />;
+}
+
+export function AddTokenView({ setViewMode }: { setViewMode: (mode: ViewMode) => void }) {
+  return (
+    <div className="w-full">
+      <AddERC20Token onClose={() => setViewMode("main")} />
+    </div>
+  );
 }

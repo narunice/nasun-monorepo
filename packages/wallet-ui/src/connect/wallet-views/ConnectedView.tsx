@@ -3,7 +3,7 @@
  * Uses variant prop to handle the differences in header and session actions.
  */
 
-import { type NFTInfo } from "@nasun/wallet";
+import { type NFTInfo, type ERC20Balance } from "@nasun/wallet";
 import { CopyableAddress } from "../../address/CopyableAddress";
 import { WalletLabelEditor } from "../WalletLabelEditor";
 import { NFTDetail } from "../../nft/NFTDetail";
@@ -55,6 +55,9 @@ export interface ConnectedViewProps {
   storedEVMAddress: string | null;
   evmBalance: { display: string } | null | undefined;
   evmBalanceLoading: boolean;
+  erc20Balances: ERC20Balance[];
+  erc20Loading: boolean;
+  onAddToken?: () => void;
   moveNativeBalance: { formattedBalance: string } | undefined;
   moveNativeLoading: boolean;
   balances: { native?: { formatted: string }; tokens?: Record<string, { formatted: string }> } | undefined;
@@ -110,6 +113,9 @@ export function ConnectedView(props: ConnectedViewProps) {
     storedEVMAddress,
     evmBalance,
     evmBalanceLoading,
+    erc20Balances,
+    erc20Loading,
+    onAddToken,
     moveNativeBalance,
     moveNativeLoading,
     balances,
@@ -273,6 +279,9 @@ export function ConnectedView(props: ConnectedViewProps) {
             storedEVMAddress={storedEVMAddress}
             evmBalance={evmBalance}
             evmBalanceLoading={evmBalanceLoading}
+            erc20Balances={erc20Balances}
+            erc20Loading={erc20Loading}
+            onAddToken={onAddToken}
             moveNativeBalance={moveNativeBalance}
             moveNativeLoading={moveNativeLoading}
             balances={balances}
