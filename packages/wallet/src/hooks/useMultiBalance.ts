@@ -9,6 +9,7 @@ import type { MultiTokenBalanceInfo, TokenBalance } from '../types';
 import { useWallet } from './useWallet';
 import { useZkLoginStore } from '../stores/zkLoginStore';
 import { useChainStore } from './useChain';
+import { isNasunChain } from '../config/chains';
 
 // Query key
 const MULTI_BALANCE_QUERY_KEY = 'wallet-multi-balance';
@@ -34,8 +35,9 @@ export function useMultiBalance(options?: UseMultiBalanceOptions) {
   // Determine target address (local wallet or zkLogin)
   const targetAddress = options?.address ?? account?.address ?? zkState?.address;
 
-  // Only query when wallet is connected (local or zkLogin) and address exists
-  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn);
+  // Only query on Nasun chains (external Move chains don't have Nasun tokens)
+  const isNasun = isNasunChain(chainId);
+  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn) && isNasun;
 
   return useQuery<MultiTokenBalanceInfo>({
     queryKey: [MULTI_BALANCE_QUERY_KEY, chainId, targetAddress],

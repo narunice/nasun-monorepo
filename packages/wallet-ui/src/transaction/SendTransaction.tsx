@@ -9,6 +9,7 @@ import {
   useTokenTransaction,
   useEVMTransaction,
   useMultiBalance,
+  useBalance,
   useWallet,
   useZkLogin,
   useLedger,
@@ -46,8 +47,9 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { isConnected: isLedgerConnected } = useLedger();
-  const { chain, isEVM } = useChain();
+  const { chain, isEVM, isExternalMove } = useChain();
   const { data: balances } = useMultiBalance();
+  const { data: moveNativeBalance } = useBalance(undefined, { enabled: isExternalMove });
 
   // Move chain transaction hook
   const {
@@ -111,7 +113,16 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
         type: 'native', // EVM native token marker
       }];
     }
-    // Move chain (Nasun): show registered tokens
+    if (isExternalMove) {
+      // External Move chain: native token only (SUI, IOTA)
+      return [{
+        symbol: chain.nativeCurrency.symbol,
+        name: chain.nativeCurrency.name,
+        decimals: chain.nativeCurrency.decimals,
+        type: '0x2::sui::SUI', // All Move chains use this native coin type
+      }];
+    }
+    // Nasun chain: show registered tokens
     return getAllTokens();
   };
 
@@ -127,7 +138,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   };
 
   const tokens = getChainTokens();
-  const chainDefaultToken = isEVM ? chain.nativeCurrency.symbol : 'NSN';
+  const chainDefaultToken = (isEVM || isExternalMove) ? chain.nativeCurrency.symbol : 'NSN';
 
   const [recipient, setRecipient] = useState(initialRecipient || '');
   const [amount, setAmount] = useState('');
@@ -154,10 +165,12 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   // Get balance for selected token (chain-aware)
   const getSelectedBalance = (): string => {
     if (isEVM) {
-      // EVM chain: use EVM balance
       return evmBalance?.formatted || '0';
     }
-    // Move chain: use multi-balance
+    if (isExternalMove) {
+      return moveNativeBalance?.formattedBalance || '0';
+    }
+    // Nasun chain: use multi-balance
     if (!balances) return '0';
     if (selectedToken === 'NSN') return balances.native.formatted;
     return balances.tokens[selectedToken]?.formatted || '0';
@@ -168,13 +181,15 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
     if (isEVM) {
       return evmBalance ? parseFloat(evmBalance.formatted) : 0;
     }
+    if (isExternalMove) {
+      return moveNativeBalance ? parseFloat(moveNativeBalance.formattedBalance) : 0;
+    }
     if (!balances) return 0;
     return parseFloat(balances.native.formatted);
   };
 
   // Check if we have enough gas for non-native token transfers
-  // EVM: native token is always used for gas, so check is always true for native transfers
-  const nativeSymbol = isEVM ? chain.nativeCurrency.symbol : 'NSN';
+  const nativeSymbol = (isEVM || isExternalMove) ? chain.nativeCurrency.symbol : 'NSN';
   const hasEnoughGas = selectedToken === nativeSymbol || getNativeBalance() >= MIN_GAS_BALANCE;
 
   // Check if connected via traditional wallet OR zkLogin

@@ -7,8 +7,11 @@ import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { useSigner } from './useSigner';
 import { useRefreshMultiBalance } from './useMultiBalance';
-import { getSuiClient, isValidAddress } from '../sui/client';
+import { useRefreshBalance } from './useBalance';
+import { getSuiClient, getMoveClient, isValidAddress } from '../sui/client';
 import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
+import { useChainStore } from './useChain';
+import { getChain, isNasunChain } from '../config/chains';
 import type { TokenTransactionRequest, TransactionResult } from '../types';
 
 interface UseTokenTransactionReturn {
@@ -37,9 +40,23 @@ function parseTokenAmount(amount: string, decimals: number): bigint {
   return BigInt(integerPart + fractionalPart);
 }
 
+/**
+ * Get the appropriate SuiClient for the current chain.
+ * External Move chains use their own RPC; Nasun uses the default.
+ */
+function getChainAwareMoveClient(): import('@mysten/sui/client').SuiClient {
+  const chainId = useChainStore.getState().currentChainId;
+  const chainConfig = getChain(chainId);
+  if (chainConfig && !isNasunChain(chainId)) {
+    return getMoveClient(chainConfig.rpcUrl);
+  }
+  return getSuiClient();
+}
+
 export function useTokenTransaction(): UseTokenTransactionReturn {
   const { signer, address, isConnected } = useSigner();
   const refreshMultiBalance = useRefreshMultiBalance();
+  const refreshBalance = useRefreshBalance();
 
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +98,7 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
       setError(null);
 
       try {
-        const suiClient = getSuiClient();
+        const suiClient = getChainAwareMoveClient();
         const tx = new Transaction();
 
         // For native token (NASUN/SUI), use tx.gas
@@ -178,8 +195,8 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         setLastResult(txResult);
         setIsPending(false);
 
-        // Refresh balances
-        await refreshMultiBalance();
+        // Refresh balances (multi-balance for Nasun, single-balance for external)
+        await Promise.all([refreshMultiBalance(), refreshBalance()]);
 
         return txResult;
       } catch (err) {
@@ -197,7 +214,7 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         throw err;
       }
     },
-    [signer, address, isConnected, refreshMultiBalance]
+    [signer, address, isConnected, refreshMultiBalance, refreshBalance]
   );
 
   const clearError = useCallback(() => {
