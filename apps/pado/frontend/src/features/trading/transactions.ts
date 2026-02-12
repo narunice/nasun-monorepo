@@ -107,12 +107,20 @@ function validateLimitOrderParams(params: PlaceLimitOrderParams, pool: PoolConfi
  * Validate market order parameters
  * @throws Error if parameters are invalid
  */
-function validateMarketOrderParams(params: PlaceMarketOrderParams): void {
+function validateMarketOrderParams(params: PlaceMarketOrderParams, pool: PoolConfig): void {
   if (params.quantity <= 0n) {
     throw new Error('[Security] Quantity must be positive');
   }
   if (params.quantity > MAX_QUANTITY) {
     throw new Error('[Security] Quantity exceeds maximum allowed value');
+  }
+
+  // Lot size validation (same as limit orders)
+  if (pool.lotSize && pool.lotSize > 0) {
+    const lotSizeBn = BigInt(pool.lotSize);
+    if (params.quantity % lotSizeBn !== 0n) {
+      throw new Error(`[Security] Quantity must be multiple of lot size: ${pool.lotSize}`);
+    }
   }
 }
 
@@ -287,7 +295,7 @@ export function buildPlaceMarketOrder(
 ): Transaction {
   // Security: Validate inputs before building transaction
   validatePool(pool, 'NBTC/NUSDC pool');
-  validateMarketOrderParams(params);
+  validateMarketOrderParams(params, pool);
 
   const tx = new Transaction();
 
