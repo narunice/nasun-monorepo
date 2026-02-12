@@ -165,37 +165,6 @@ export class EventService {
   }
 
   /**
-   * Try WebSocket connection
-   */
-  private async tryWebSocket(): Promise<boolean> {
-    const client = getSuiClient();
-    const deepbookPackage = NETWORK_CONFIG.deepbookPackage;
-
-    if (!deepbookPackage) {
-      console.warn('[EventService] DeepBook package not configured');
-      return false;
-    }
-
-    try {
-      // Subscribe to OrderFilled events
-      const unsubscribe = await client.subscribeEvent({
-        filter: {
-          MoveEventType: `${deepbookPackage}::pool::OrderFilled`,
-        },
-        onMessage: (event) => {
-          this.handleWebSocketEvent('OrderFilled', event);
-        },
-      });
-
-      this.wsUnsubscribe = unsubscribe;
-      return true;
-    } catch (error) {
-      console.warn('[EventService] WebSocket subscription failed:', error);
-      return false;
-    }
-  }
-
-  /**
    * Try polling connection
    */
   private async tryPolling(): Promise<boolean> {
@@ -282,16 +251,6 @@ export class EventService {
     } catch (error) {
       this.consecutiveFailures++;
       console.warn(`[EventService] Polling error (attempt ${this.consecutiveFailures}):`, error);
-    }
-  }
-
-  /**
-   * Handle WebSocket event
-   */
-  private handleWebSocketEvent(type: EventType, event: unknown): void {
-    const parsedEvent = this.parseEvent(type, event);
-    if (parsedEvent) {
-      this.notifySubscribers(parsedEvent);
     }
   }
 
