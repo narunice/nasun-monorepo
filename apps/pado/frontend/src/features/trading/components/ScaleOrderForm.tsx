@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { NumberInput } from '@/components/ui/NumberInput';
-import { snapToTick, snapToLot, getMinPrice, getMinQuantity, validatePrice, validateQuantity } from '../../../lib/deepbook';
+import { snapToTick, snapToLot, getMinPrice, getMinQuantity } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
 
 export type Distribution = 'uniform' | 'linear-asc' | 'linear-desc';
