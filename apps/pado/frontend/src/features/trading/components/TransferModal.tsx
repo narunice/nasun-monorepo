@@ -15,7 +15,7 @@ interface TransferModalProps {
   tokenDecimals: number;
   availableBalance: number;
   isLoading: boolean;
-  onConfirm: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<unknown>;
+  onConfirm: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<{ success?: boolean; error?: string }>;
 }
 
 export function TransferModal({

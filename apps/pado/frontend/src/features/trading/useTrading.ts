@@ -128,7 +128,7 @@ export function useTrading(): UseTrading {
           change.objectType?.includes('BalanceManager')
       );
 
-      if (created && 'objectId' in created) {
+      if (created && 'objectId' in created && created.objectId) {
         const managerId = created.objectId;
         storeBalanceManagerId(walletAddress, managerId);
         await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));

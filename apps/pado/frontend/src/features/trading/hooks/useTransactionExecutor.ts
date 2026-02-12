@@ -9,7 +9,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { formatErrorMessage } from '../utils/errorParser';
-import type { TradeResult } from '../types';
+import type { TradeResult, SuiEvent } from '../types';
 
 interface UseTransactionExecutorResult {
   isLoading: boolean;
@@ -78,7 +78,7 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
           success: true,
           digest: result.digest,
           objectChanges: result.objectChanges ?? undefined,
-          events: result.events ?? undefined,
+          events: (result.events ?? undefined) as SuiEvent[] | undefined,
         };
       } else {
         return {
