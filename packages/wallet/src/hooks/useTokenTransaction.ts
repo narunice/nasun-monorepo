@@ -48,7 +48,7 @@ function getChainAwareMoveClient(): import('@mysten/sui/client').SuiClient {
   const chainId = useChainStore.getState().currentChainId;
   const chainConfig = getChain(chainId);
   if (chainConfig && !isNasunChain(chainId)) {
-    return getMoveClient(chainConfig.rpcUrl);
+    return getMoveClient(chainConfig.rpcUrl, chainId);
   }
   return getSuiClient();
 }
@@ -78,8 +78,34 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         throw new Error(err);
       }
 
-      // Get token config
-      const tokenConfig = getTokenByType(request.tokenType);
+      // Resolve token config: external chains use chain config, Nasun uses token registry
+      const chainId = useChainStore.getState().currentChainId;
+      const chainConfig = getChain(chainId);
+      const isExternal = !!chainConfig && !isNasunChain(chainId);
+
+      let tokenConfig: { symbol: string; decimals: number; type: string } | undefined;
+      let isNativeTransfer = false;
+
+      if (isExternal && chainConfig) {
+        const nativeCoinType = chainConfig.nativeCoinType ?? '0x2::sui::SUI';
+        if (request.tokenType === nativeCoinType) {
+          tokenConfig = {
+            symbol: chainConfig.nativeCurrency.symbol,
+            decimals: chainConfig.nativeCurrency.decimals,
+            type: nativeCoinType,
+          };
+          isNativeTransfer = true;
+        } else {
+          // Non-native token transfers on external chains are not yet supported
+          const err = `Token transfers other than ${chainConfig.nativeCurrency.symbol} are not supported on ${chainConfig.name}`;
+          setError(err);
+          throw new Error(err);
+        }
+      } else {
+        tokenConfig = getTokenByType(request.tokenType);
+        isNativeTransfer = request.tokenType === NATIVE_TOKEN.type;
+      }
+
       if (!tokenConfig) {
         const err = `Unknown token type: ${request.tokenType}`;
         setError(err);
@@ -101,18 +127,20 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         const suiClient = getChainAwareMoveClient();
         const tx = new Transaction();
 
-        // For native token (NASUN/SUI), use tx.gas
-        if (request.tokenType === NATIVE_TOKEN.type) {
+        // For native token (NASUN/SUI/IOTA), use tx.gas
+        if (isNativeTransfer) {
           // Check native balance before transfer
           const balance = await suiClient.getBalance({ owner: address });
           const totalNative = BigInt(balance.totalBalance);
-          // Reserve some for gas (0.01 NASUN = 10_000_000 in minimum units)
-          const gasReserve = BigInt(10_000_000);
+          // Reserve 0.01 native tokens for gas, scaled to token's decimals
+          const gasReserve = BigInt(10 ** (tokenConfig.decimals - 2));
           const availableForTransfer = totalNative > gasReserve ? totalNative - gasReserve : BigInt(0);
 
           if (amountInMinUnit > availableForTransfer) {
+            const divisor = BigInt(10 ** tokenConfig.decimals);
+            const displayAvailable = Number(availableForTransfer) / Number(divisor);
             throw new Error(
-              `Insufficient NASUN balance. Available for transfer: ${Number(availableForTransfer) / 1e9} NASUN (after gas reserve)`
+              `Insufficient ${tokenConfig.symbol} balance. Available for transfer: ${displayAvailable} ${tokenConfig.symbol} (after gas reserve)`
             );
           }
 
