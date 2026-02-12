@@ -35,7 +35,7 @@ export function ReceivePanel({ onClose }: ReceivePanelProps) {
         symbol: chain.nativeCurrency.symbol,
         name: chain.nativeCurrency.name,
         decimals: chain.nativeCurrency.decimals,
-        type: isEVM ? 'native' : '0x2::sui::SUI',
+        type: isEVM ? 'native' : (chain.nativeCoinType ?? '0x2::sui::SUI'),
       }]
     : getAllTokens();
 

@@ -119,7 +119,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
         symbol: chain.nativeCurrency.symbol,
         name: chain.nativeCurrency.name,
         decimals: chain.nativeCurrency.decimals,
-        type: '0x2::sui::SUI', // All Move chains use this native coin type
+        type: chain.nativeCoinType ?? '0x2::sui::SUI',
       }];
     }
     // Nasun chain: show registered tokens
