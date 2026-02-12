@@ -3,7 +3,7 @@ import { getChatService } from '../../../lib/chat-service';
 import type { ChatSigner, NicknameRateLimit } from '../../../lib/chat-service';
 import { useSigner, ZkLoginSigner } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../../../config/network';
-import type { ChatMessage, ChatConnectionStatus } from '../types';
+import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../types';
 
 // Module-level: shared across all useChat instances so mode switching
 // (docked ↔ floating) doesn't trigger disconnect/reconnect cycles.
@@ -12,6 +12,25 @@ let connectedAddress: string | null = null;
 // Reference count of active useChat instances.
 // Only disconnect when the last instance unmounts (e.g. page navigation).
 let activeChatInstances = 0;
+
+// Multi-room state (module-level, survives docked↔floating transitions)
+const roomMessages = new Map<number, ChatMessage[]>();
+const roomHasMore = new Map<number, boolean>();
+const roomUnread = new Map<number, number>();
+let cachedRooms: RoomInfo[] = [];
+
+const MAX_ROOM_MESSAGES = 500;
+
+const ACTIVE_ROOM_KEY = 'pado:chat:activeRoom';
+
+function getStoredActiveRoom(): number {
+  try {
+    const stored = localStorage.getItem(ACTIVE_ROOM_KEY);
+    return stored ? parseInt(stored, 10) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export interface UseChatResult {
   messages: ChatMessage[];
@@ -27,6 +46,10 @@ export interface UseChatResult {
   nicknameRateLimit: NicknameRateLimit | null;
   setNickname: (name: string) => void;
   checkNickname: (name: string) => void;
+  rooms: RoomInfo[];
+  activeRoomId: number;
+  setActiveRoom: (roomId: number) => void;
+  unreadCounts: Record<number, number>;
 }
 
 /** Derive HTTP base URL from WebSocket URL (ws:// → http://, wss:// → https://) */
@@ -34,10 +57,11 @@ function wsToHttpUrl(wsUrl: string): string {
   return wsUrl.replace(/^ws(s?):\/\//, 'http$1://');
 }
 
-export function useChat(roomId: number = 0): UseChatResult {
+export function useChat(): UseChatResult {
   const { signer, address: signerAddress } = useSigner();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [activeRoomId, setActiveRoomId] = useState(getStoredActiveRoom);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => roomMessages.get(getStoredActiveRoom()) ?? []);
   // Initialize status and nickname from ChatService so re-mounts see current state
   const [status, setStatus] = useState<ChatConnectionStatus>(
     () => getChatService().getStatus()
@@ -49,10 +73,16 @@ export function useChat(roomId: number = 0): UseChatResult {
     () => getChatService().getNickname()
   );
   const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
+  const [rooms, setRooms] = useState<RoomInfo[]>(cachedRooms);
+  const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
 
   // Keep a stable ref to the signer so async callbacks always read the latest
   const signerRef = useRef(signer);
   signerRef.current = signer;
+
+  // Track active room in a ref so event handlers always read the latest
+  const activeRoomIdRef = useRef(activeRoomId);
+  activeRoomIdRef.current = activeRoomId;
 
   // Memoize signer type to avoid re-triggering on object identity changes
   const signerType = signer?.type ?? null;
@@ -147,7 +177,8 @@ export function useChat(roomId: number = 0): UseChatResult {
     if (!wsUrl || signerAddress) return;
 
     const httpBase = wsToHttpUrl(wsUrl);
-    const url = `${httpBase}/api/messages?roomId=${roomId}&limit=50`;
+    const currentRoom = activeRoomIdRef.current;
+    const url = `${httpBase}/api/messages?roomId=${currentRoom}&limit=50`;
 
     const fetchMessages = () => {
       fetch(url)
@@ -156,8 +187,12 @@ export function useChat(roomId: number = 0): UseChatResult {
           return res.json();
         })
         .then((data: { messages: ChatMessage[]; hasMore: boolean }) => {
-          setMessages(data.messages);
-          setHasMore(data.hasMore);
+          roomMessages.set(currentRoom, data.messages);
+          roomHasMore.set(currentRoom, data.hasMore);
+          if (activeRoomIdRef.current === currentRoom) {
+            setMessages(data.messages);
+            setHasMore(data.hasMore);
+          }
         })
         .catch(() => {
           // Silent fail — chat is non-critical
@@ -171,7 +206,7 @@ export function useChat(roomId: number = 0): UseChatResult {
     const intervalId = setInterval(fetchMessages, 10_000);
 
     return () => clearInterval(intervalId);
-  }, [signerAddress, roomId]);
+  }, [signerAddress, activeRoomId]);
 
   // Subscribe to events.
   // When re-mounting (e.g. docked↔floating switch), request history
@@ -180,19 +215,52 @@ export function useChat(roomId: number = 0): UseChatResult {
     const chatService = getChatService();
 
     const unsubMessage = chatService.on('message', (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      const rid = msg.roomId;
+      const existing = roomMessages.get(rid) ?? [];
+
+      // Dedup: multiple useChat instances share roomMessages —
+      // a prior instance may have already appended this message.
+      if (existing.some((m) => m.id === msg.id)) {
+        // Still sync React state for this instance
+        if (rid === activeRoomIdRef.current) {
+          setMessages([...existing]);
+        }
+        return;
+      }
+
+      const updated = [...existing, msg];
+      // Cap per-room message buffer to prevent unbounded memory growth
+      if (updated.length > MAX_ROOM_MESSAGES) {
+        updated.splice(0, updated.length - MAX_ROOM_MESSAGES);
+      }
+      roomMessages.set(rid, updated);
+
+      if (rid === activeRoomIdRef.current) {
+        setMessages([...roomMessages.get(rid)!]);
+      } else {
+        // Increment unread for non-active rooms
+        roomUnread.set(rid, (roomUnread.get(rid) ?? 0) + 1);
+        setUnreadCounts(Object.fromEntries(roomUnread));
+      }
     });
 
-    const unsubHistory = chatService.on('history', ({ messages: historyMsgs, hasMore: more }) => {
-      setMessages((prev) => {
-        // If we have no messages yet, this is the initial load
-        if (prev.length === 0) return historyMsgs;
-        // Otherwise prepend (load more)
-        const existingIds = new Set(prev.map((m) => m.id));
-        const newMsgs = historyMsgs.filter((m) => !existingIds.has(m.id));
-        return [...newMsgs, ...prev];
-      });
-      setHasMore(more);
+    const unsubHistory = chatService.on('history', ({ roomId: rid, messages: historyMsgs, hasMore: more }) => {
+      // Always dedup-merge to avoid race conditions on rapid room switches
+      const existing = roomMessages.get(rid) ?? [];
+      const existingIds = new Set(existing.map((m) => m.id));
+      const newMsgs = historyMsgs.filter((m) => !existingIds.has(m.id));
+      const merged = [...newMsgs, ...existing];
+      // Cap per-room history to prevent unbounded memory growth
+      if (merged.length > MAX_ROOM_MESSAGES) {
+        merged.splice(0, merged.length - MAX_ROOM_MESSAGES);
+      }
+      roomMessages.set(rid, merged);
+      roomHasMore.set(rid, more);
+
+      if (rid === activeRoomIdRef.current) {
+        setMessages([...roomMessages.get(rid)!]);
+        setHasMore(more);
+      }
     });
 
     const unsubStatus = chatService.on('status', (s) => {
@@ -200,6 +268,13 @@ export function useChat(roomId: number = 0): UseChatResult {
       if (s === 'connected') setError(null);
       if (s === 'disconnected') {
         setNicknameRateLimit(null);
+        // Clear all room state on disconnect to prevent stale data
+        roomMessages.clear();
+        roomHasMore.clear();
+        roomUnread.clear();
+        setMessages([]);
+        setHasMore(false);
+        setUnreadCounts({});
       }
     });
     const unsubOnline = chatService.on('online_count', setOnlineCount);
@@ -218,10 +293,22 @@ export function useChat(roomId: number = 0): UseChatResult {
       }
     });
 
+    const unsubRoomsList = chatService.on('rooms_list', (serverRooms) => {
+      cachedRooms = serverRooms;
+      setRooms(serverRooms);
+      // Validate stored active room against server rooms
+      const validIds = new Set(serverRooms.map((r) => r.id));
+      if (!validIds.has(activeRoomIdRef.current)) {
+        setActiveRoomId(0);
+        activeRoomIdRef.current = 0;
+        try { localStorage.setItem(ACTIVE_ROOM_KEY, '0'); } catch { /* ignore */ }
+      }
+    });
+
     // If already connected (e.g. re-mount after docked↔floating switch),
     // request history to populate the fresh empty messages state.
     if (chatService.getStatus() === 'connected') {
-      chatService.loadHistory(roomId);
+      chatService.loadHistory(activeRoomIdRef.current);
     }
 
     return () => {
@@ -231,26 +318,49 @@ export function useChat(roomId: number = 0): UseChatResult {
       unsubOnline();
       unsubError();
       unsubNickname();
+      unsubRoomsList();
     };
-  }, [roomId]);
+  }, []);
+
+  const setActiveRoom = useCallback((roomId: number) => {
+    setActiveRoomId(roomId);
+    activeRoomIdRef.current = roomId;
+    try { localStorage.setItem(ACTIVE_ROOM_KEY, String(roomId)); } catch { /* ignore */ }
+
+    // Load cached messages for this room
+    setMessages(roomMessages.get(roomId) ?? []);
+    setHasMore(roomHasMore.get(roomId) ?? false);
+
+    // Clear unread for the newly active room
+    roomUnread.set(roomId, 0);
+    setUnreadCounts(Object.fromEntries(roomUnread));
+
+    // If no cached messages, request from server
+    if (!roomMessages.has(roomId) || roomMessages.get(roomId)!.length === 0) {
+      getChatService().loadHistory(roomId);
+    }
+  }, []);
 
   const sendMessage = useCallback((content: string) => {
     const trimmed = content.trim();
     if (!trimmed) return;
-    getChatService().sendMessage(trimmed, roomId);
+    getChatService().sendMessage(trimmed, activeRoomIdRef.current);
     // Increment chat message counter for badge tracking
     try {
       const key = 'pado-chat-message-count';
       const count = parseInt(localStorage.getItem(key) ?? '0', 10) || 0;
       localStorage.setItem(key, String(count + 1));
     } catch { /* ignore storage errors */ }
-  }, [roomId]);
+  }, []);
 
   const loadMore = useCallback(() => {
-    if (!hasMore || messages.length === 0) return;
-    const oldestId = messages[0]?.id;
-    getChatService().loadHistory(roomId, oldestId);
-  }, [roomId, hasMore, messages]);
+    const currentRoom = activeRoomIdRef.current;
+    const currentMessages = roomMessages.get(currentRoom) ?? [];
+    const currentHasMore = roomHasMore.get(currentRoom) ?? false;
+    if (!currentHasMore || currentMessages.length === 0) return;
+    const oldestId = currentMessages[0]?.id;
+    getChatService().loadHistory(currentRoom, oldestId);
+  }, []);
 
   const setNickname = useCallback((name: string) => {
     getChatService().setNickname(name);
@@ -276,5 +386,9 @@ export function useChat(roomId: number = 0): UseChatResult {
     nicknameRateLimit,
     setNickname,
     checkNickname,
+    rooms,
+    activeRoomId,
+    setActiveRoom,
+    unreadCounts,
   };
 }

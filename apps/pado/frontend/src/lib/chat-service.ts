@@ -5,7 +5,7 @@
  * for the Pado global chat feature.
  */
 
-import type { ChatMessage, ChatConnectionStatus } from '../features/social/types';
+import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../features/social/types';
 
 // ===== Protocol types (mirror server types) =====
 
@@ -25,9 +25,11 @@ interface ChatMessageMsg {
 }
 interface HistoryMsg {
   type: 'history';
+  roomId: number;
   messages: ChatMessageMsg[];
   hasMore: boolean;
 }
+interface RoomsListMsg { type: 'rooms_list'; rooms: { id: number; name: string; description: string }[] }
 interface OnlineCountMsg { type: 'online_count'; count: number }
 interface ErrorMsg { type: 'error'; code: string; message: string }
 interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit }
@@ -36,21 +38,22 @@ interface HeartbeatMsg { type: 'heartbeat' }
 
 type ServerMessage =
   | AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg
-  | ChatMessageMsg | HistoryMsg | OnlineCountMsg | ErrorMsg
+  | ChatMessageMsg | HistoryMsg | RoomsListMsg | OnlineCountMsg | ErrorMsg
   | NicknameResultMsg | NicknameCheckMsg | HeartbeatMsg;
 
 // ===== Listener types =====
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list';
 
 export interface ChatEventMap {
   message: ChatMessage;
-  history: { messages: ChatMessage[]; hasMore: boolean };
+  history: { roomId: number; messages: ChatMessage[]; hasMore: boolean };
   status: ChatConnectionStatus;
   online_count: number;
   error: { code: string; message: string };
   nickname: { ok: boolean; nickname?: string | null; error?: string; rateLimit?: NicknameRateLimit };
   nickname_check: { available: boolean; nickname: string };
+  rooms_list: RoomInfo[];
 }
 
 export interface NicknameRateLimit {
@@ -108,7 +111,7 @@ export class ChatService {
   private currentNickname: string | null = null;
 
   constructor() {
-    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check'] as ChatEventType[]) {
+    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
     }
   }
@@ -341,6 +344,10 @@ export class ChatService {
         this.emit('nickname_check', { available: msg.available, nickname: msg.nickname });
         break;
 
+      case 'rooms_list':
+        this.emit('rooms_list', msg.rooms);
+        break;
+
       case 'heartbeat':
         // No-op: lastServerActivity already updated in onmessage handler
         break;
@@ -425,7 +432,7 @@ export class ChatService {
       };
     });
 
-    this.emit('history', { messages, hasMore: msg.hasMore });
+    this.emit('history', { roomId: msg.roomId, messages, hasMore: msg.hasMore });
   }
 
   private setStatus(status: ChatConnectionStatus): void {
