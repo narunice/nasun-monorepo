@@ -32,6 +32,7 @@ import {
   SettingsView,
   AddressBookView,
   ReceiveView,
+  AddTokenView,
 } from "./wallet-views";
 import { WCViewRouter } from "../walletconnect";
 
@@ -85,6 +86,7 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   "nasun-link": (s) => <NasunLinkView setViewMode={s.setViewMode} />,
   "settings": (s) => <SettingsView setViewMode={s.setViewMode} />,
   "receive": (s) => <ReceiveView setViewMode={s.setViewMode} />,
+  "add-token": (s) => <AddTokenView setViewMode={s.setViewMode} />,
 
   "address-book": (s) => (
     <AddressBookView
