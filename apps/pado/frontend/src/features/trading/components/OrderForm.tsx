@@ -5,7 +5,7 @@ import { UnderlineTabs } from '@/components/common';
 import { SlippageSettings } from './SlippageSettings';
 import { InsufficientBalancePrompt } from './InsufficientBalancePrompt';
 import { NumberInput } from '@/components/ui/NumberInput';
-import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick, type PriceLevel } from '../../../lib/deepbook';
+import { validateQuantity, validatePrice, getMinQuantity, getMinPrice, snapToTick, snapToLot, type PriceLevel } from '../../../lib/deepbook';
 import { TPSLInputs } from './TPSLInputs';
 import { ScaleOrderForm, type ScaleOrderItem } from './ScaleOrderForm';
 import {
@@ -153,21 +153,21 @@ export function OrderForm({
     }
   }, [onAmountChange, effectivePrice]);
 
-  // Total change handler with amount reverse-calc
+  // Total change handler with amount reverse-calc (snapped to lot size)
   const handleTotalChange = useCallback((value: string) => {
     setActiveField('total');
     setTotalInput(value);
     const tot = parseFloat(value) || 0;
     if (tot > 0 && effectivePrice > 0) {
-      const amt = tot / effectivePrice;
+      const amt = snapToLot(tot / effectivePrice, currentPool);
       // Guard against astronomical values from tiny prices
       if (Number.isFinite(amt) && amt < 1e12) {
-        onAmountChange(amt.toFixed(4));
+        onAmountChange(amt > 0 ? amt.toFixed(4) : '');
       }
     } else {
       onAmountChange('');
     }
-  }, [onAmountChange, effectivePrice]);
+  }, [onAmountChange, effectivePrice, currentPool]);
 
   // Sync total↔amount when price changes (useEffect, not useMemo)
   const prevPriceRef = useRef(effectivePrice);
@@ -181,9 +181,9 @@ export function OrderForm({
     } else if (activeField === 'total') {
       const tot = parseFloat(totalInput) || 0;
       if (tot > 0 && effectivePrice > 0) {
-        const amt = tot / effectivePrice;
+        const amt = snapToLot(tot / effectivePrice, currentPool);
         if (Number.isFinite(amt) && amt < 1e12) {
-          onAmountChange(amt.toFixed(4));
+          onAmountChange(amt > 0 ? amt.toFixed(4) : '');
         }
       }
     }
@@ -197,17 +197,17 @@ export function OrderForm({
       if (effectivePrice <= 0) return;
       // Reserve fee: usable = balance / (1 + feeRate) so total + fee <= balance
       const usableQuote = availableQuote / (1 + feeRate);
-      const baseAmount = (usableQuote * pct / 100) / effectivePrice;
+      const baseAmount = snapToLot((usableQuote * pct / 100) / effectivePrice, currentPool);
       const newAmount = baseAmount > 0 ? baseAmount.toFixed(4) : '';
       onAmountChange(newAmount);
       if (baseAmount > 0) setTotalInput((baseAmount * effectivePrice).toFixed(2));
     } else {
-      const baseAmount = availableBase * pct / 100;
+      const baseAmount = snapToLot(availableBase * pct / 100, currentPool);
       const newAmount = baseAmount > 0 ? baseAmount.toFixed(4) : '';
       onAmountChange(newAmount);
       if (baseAmount > 0 && effectivePrice > 0) setTotalInput((baseAmount * effectivePrice).toFixed(2));
     }
-  }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate]);
+  }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate, currentPool]);
 
   // Keyboard shortcut: percentage amount (1-9 = 10%-90%, 0 = 100%)
   useEffect(() => {

@@ -297,7 +297,7 @@ export function useOrderActions(): UseOrderActionsResult {
         if (!deposit.success) return { success: false, error: deposit.error };
       }
 
-      const rawQuantity = quantityToRaw(amount);
+      const rawQuantity = quantityToRaw(amount, currentPool.baseToken.decimals);
       const result = await placeMarketOrder({
         quantity: rawQuantity,
         isBid: type === "buy",
