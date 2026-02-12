@@ -142,14 +142,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("twitter_oauth_session");
       setIsLoading(false);
 
-      // Redirect to saved return URL if exists (validated to prevent open redirect)
-      const returnUrl = localStorage.getItem("auth_return_url");
-      if (returnUrl) {
-        localStorage.removeItem("auth_return_url");
-        if (isValidReturnUrl(returnUrl)) {
-          window.location.href = returnUrl;
-        } else {
-          logger.error("Blocked invalid return URL:", returnUrl);
+      // Fallback redirect for non-/callback pages.
+      // When on /callback, Callback.tsx handles post-auth navigation via React Router.
+      if (window.location.pathname !== '/callback') {
+        const savedPath = localStorage.getItem("auth_return_to");
+        if (savedPath) {
+          localStorage.removeItem("auth_return_to");
+          const returnTo = (!savedPath || savedPath === '/') ? '/my-account' : savedPath;
+          if (isValidReturnUrl(returnTo)) {
+            window.location.href = returnTo;
+          }
         }
       }
     }
@@ -185,6 +187,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/login`);
+      if (!response.ok) {
+        throw new Error(`Twitter login request failed: ${response.status}`);
+      }
       const { authUrl, sessionId } = await response.json();
 
       localStorage.setItem("twitter_oauth_session", sessionId);

@@ -47,7 +47,9 @@ export const getCognitoOidcToken = async (
     );
     return result.Token ?? undefined;
   } catch (error) {
-    logger.error("Failed to get Cognito OIDC token for Google.", error);
+    // GetOpenIdToken may fail if Identity Pool's Basic (Classic) Flow is disabled.
+    // cognitoToken is only needed for admin API auth — regular login works without it.
+    logger.debug("Failed to get Cognito OIDC token for Google.", error);
     return undefined;
   }
 };
