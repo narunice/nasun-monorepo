@@ -58,7 +58,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
   const excerpt = stripHtml(post.excerpt.rendered);
 
   return (
-    <Link to={`/news-events/${post.slug}`} state={{ from: "/news" }} className="block group">
+    <Link to={`/news-events/${post.slug}`} className="block group">
       <article className="bg-nasun-black rounded-sm overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300">
         {/* Horizontal card layout */}
         <div className="flex flex-col md:flex-row">
