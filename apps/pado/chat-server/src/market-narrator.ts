@@ -14,11 +14,13 @@ import {
   type PriceAlert,
   type PoolState,
 } from './price-tracker.js';
+import { getPoolRoom, getPoolSymbol } from './rooms.js';
 
 // ===== Configuration =====
 
 export interface NarratorConfig {
   broadcast: (content: string) => void;
+  broadcastToRoom?: (content: string, poolRoomId: number) => void;
   minIntervalMs?: number;         // min gap between messages (default: 30s)
   maxMessagesPerHour?: number;     // hourly cap (default: 10)
   aiSummaryIntervalMs?: number;    // AI summary period (default: 2 hours)
@@ -70,7 +72,9 @@ function recordMessageSent(): void {
 // ===== Message Formatting =====
 
 function formatAlert(alert: PriceAlert): string {
-  const { type, data } = alert;
+  const { type, poolId, data } = alert;
+  const symbol = getPoolSymbol(poolId) ?? 'tokens';
+  const pair = `${symbol}/NUSDC`;
 
   switch (type) {
     case 'price_move': {
@@ -78,19 +82,19 @@ function formatAlert(alert: PriceAlert): string {
       const from = (data.fromPrice as number).toLocaleString('en-US', { maximumFractionDigits: 2 });
       const to = (data.toPrice as number).toLocaleString('en-US', { maximumFractionDigits: 2 });
       const direction = pct > 0 ? '+' : '';
-      return `NBTC price moved ${direction}${pct}% in the last 5 minutes ($${from} → $${to})`;
+      return `${symbol} price moved ${direction}${pct}% in the last 5 minutes ($${from} → $${to})`;
     }
 
     case 'volume_spike': {
       const ratio = data.ratio as number;
-      return `Trading volume surge on NBTC/NUSDC — ${ratio}x above average`;
+      return `Trading volume surge on ${pair} — ${ratio}x above average`;
     }
 
     case 'momentum': {
       const streak = data.streak as number;
       const direction = data.direction as string;
       const sentiment = direction === 'buy' ? 'bulls are pushing' : 'sellers are pressing';
-      return `${streak} consecutive ${direction}s on NBTC — ${sentiment}`;
+      return `${streak} consecutive ${direction}s on ${symbol} — ${sentiment}`;
     }
 
     default:
@@ -197,7 +201,12 @@ export function onTradeFill(fill: TradeFillData): void {
   // Send the highest-priority alert (first in list)
   const msg = formatAlert(alerts[0]);
   if (msg) {
-    config.broadcast(`${BOT_PREFIX}${msg}`);
+    const poolRoomId = getPoolRoom(fill.poolId);
+    if (config.broadcastToRoom && poolRoomId !== null) {
+      config.broadcastToRoom(`${BOT_PREFIX}${msg}`, poolRoomId);
+    } else {
+      config.broadcast(`${BOT_PREFIX}${msg}`);
+    }
     recordMessageSent();
   }
 }

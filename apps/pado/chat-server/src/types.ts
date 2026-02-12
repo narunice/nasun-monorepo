@@ -34,12 +34,17 @@ export interface CheckNicknamePayload {
   nickname: string;
 }
 
+export interface ListRoomsPayload {
+  type: 'list_rooms';
+}
+
 export type ClientMessage =
   | AuthResponseMessage
   | SendMessagePayload
   | LoadHistoryPayload
   | SetNicknamePayload
-  | CheckNicknamePayload;
+  | CheckNicknamePayload
+  | ListRoomsPayload;
 
 // ===== Protocol Messages (Server -> Client) =====
 
@@ -80,8 +85,14 @@ export interface ChatMessagePayload {
 
 export interface HistoryPayload {
   type: 'history';
+  roomId: number;
   messages: ChatMessagePayload[];
   hasMore: boolean;
+}
+
+export interface RoomsListPayload {
+  type: 'rooms_list';
+  rooms: RoomInfo[];
 }
 
 export interface OnlineCountPayload {
@@ -123,7 +134,8 @@ export type ServerMessage =
   | ErrorPayload
   | NicknameResultMessage
   | NicknameCheckMessage
-  | HeartbeatMessage;
+  | HeartbeatMessage
+  | RoomsListPayload;
 
 // ===== Internal Types =====
 
