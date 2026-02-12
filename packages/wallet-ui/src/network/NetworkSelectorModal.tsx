@@ -135,6 +135,12 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
                 Testnet
               </span>
             )}
+            {chain.addressScheme === 'iota' && (
+              <p className="text-[10px] xl:text-xs text-amber-500/80 dark:text-amber-400/70 mt-0.5 leading-tight">
+                Mnemonic not compatible with official IOTA Wallet.
+                Export private key for external recovery.
+              </p>
+            )}
           </div>
         </div>
 

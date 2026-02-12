@@ -3,10 +3,11 @@
  * TanStack Query based server state management
  */
 
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBalance } from '../sui/client';
 import type { BalanceInfo } from '../types';
-import { getChain, isNasunChain } from '../config/chains';
+import { getChain, getAddressScheme, isNasunChain } from '../config/chains';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { useChainStore } from './useChain';
@@ -39,15 +40,24 @@ export function useBalance(
   // Prefer signer address (chain-aware) over wallet store address (always Sui-derived)
   const targetAddress = address ?? signerAddress ?? account?.address ?? zkState?.address;
 
-  if (process.env.NODE_ENV === 'development') {
-    // Debug: trace which address source is used for balance queries
-    const source = address ? 'explicit' : signerAddress ? 'signer' : account?.address ? 'account' : 'zkLogin';
-    console.log(`[useBalance] chain=${chainId} source=${source} address=${targetAddress?.slice(0, 10)}...`);
-  }
+  // Debug: trace address source only when values change (not every render)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && targetAddress) {
+      const source = address ? 'explicit' : signerAddress ? 'signer' : account?.address ? 'account' : 'zkLogin';
+      console.log(`[useBalance] chain=${chainId} source=${source} address=${targetAddress.slice(0, 10)}...`);
+    }
+  }, [chainId, targetAddress]);
 
   // Enable query when mnemonic wallet unlocked OR zkLogin connected
   const isWalletConnected = status === 'unlocked' || isZkConnected;
-  const isEnabled = options?.enabled !== false && !!targetAddress && isWalletConnected;
+
+  // Prevent stale balance query during chain switch: if chain uses non-Sui scheme
+  // but signerAddress hasn't updated yet (still Sui-derived), skip the query.
+  const scheme = getAddressScheme(chainId);
+  const isSignerStale = status === 'unlocked' && scheme !== 'sui'
+    && (!signerAddress || signerAddress === account?.address);
+
+  const isEnabled = options?.enabled !== false && !!targetAddress && isWalletConnected && !isSignerStale;
 
   return useQuery<BalanceInfo>({
     queryKey: [BALANCE_QUERY_KEY, chainId, targetAddress],
