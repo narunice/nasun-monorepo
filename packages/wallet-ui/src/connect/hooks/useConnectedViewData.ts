@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import {
   useNFTs,
   useMultiBalance,
+  useBalance,
   useNetwork,
   useChain,
   useEVMBalance,
@@ -95,10 +96,15 @@ export function useConnectedViewData() {
   const { networkType } = useNetwork();
 
   // Chain selection
-  const { isEVM, chain } = useChain();
+  const { isEVM, isExternalMove, chain } = useChain();
   const storedEVMAddress = isEVM ? getStoredEVMAddress() : null;
   const evmAddressForHook: string | undefined = storedEVMAddress ?? undefined;
   const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(evmAddressForHook);
+
+  // External Move native balance (Sui/IOTA)
+  const { data: moveNativeBalance, isLoading: moveNativeLoading } = useBalance(undefined, {
+    enabled: isExternalMove,
+  });
 
   return {
     accumulatedNfts,
@@ -107,10 +113,13 @@ export function useConnectedViewData() {
     balancesLoading,
     networkType,
     isEVM,
+    isExternalMove,
     chain,
     storedEVMAddress,
     evmBalance,
     evmBalanceLoading,
+    moveNativeBalance,
+    moveNativeLoading,
     getAllTokens,
   };
 }

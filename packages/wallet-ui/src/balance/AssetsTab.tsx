@@ -8,6 +8,7 @@
 import { useState } from "react";
 import {
   useMultiBalance,
+  useBalance,
   useNetwork,
   useChain,
   useEVMBalance,
@@ -55,18 +56,21 @@ export function AssetsTab({
   const [showNfts, setShowNfts] = useState(true);
   const { data: balances, isLoading: balancesLoading } = useMultiBalance({ address });
   const { networkType } = useNetwork();
-  const { chain, isEVM } = useChain();
+  const { chain, isEVM, isExternalMove } = useChain();
   const storedEVMAddress = getStoredEVMAddress();
   const { balance: evmBalance, isLoading: evmBalanceLoading } = useEVMBalance(
     isEVM ? nullToUndefined(storedEVMAddress) : undefined
   );
+  const { data: moveNativeBalance, isLoading: moveNativeLoading } = useBalance(undefined, {
+    enabled: isExternalMove,
+  });
 
   return (
     <div className="max-h-[280px] overflow-y-auto">
       {/* Token Balances Section */}
       <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
         <p className="text-xs xl:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">
-          Tokens {isEVM && `(${chain.name})`}
+          Tokens {(isEVM || isExternalMove) && `(${chain.name})`}
         </p>
         {isEVM ? (
           // EVM chain balance display
@@ -84,6 +88,22 @@ export function AssetsTab({
                 </span>
                 <span className="font-mono text-gray-900 dark:text-white">
                   {evmBalance?.display || "0"}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : isExternalMove ? (
+          // External Move chain: native token only (SUI, IOTA)
+          <div className="space-y-1.5">
+            {moveNativeLoading ? (
+              <div className="h-5 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+            ) : (
+              <div className="flex items-center justify-between text-sm xl:text-base">
+                <span className="text-gray-700 dark:text-zinc-300">
+                  {chain.nativeCurrency.symbol}
+                </span>
+                <span className="font-mono text-gray-900 dark:text-white">
+                  {moveNativeBalance?.formattedBalance || "0"}
                 </span>
               </div>
             )}
@@ -136,8 +156,8 @@ export function AssetsTab({
         )}
       </div>
 
-      {/* NFTs Section - Collapsible */}
-      <div className="px-3 py-2">
+      {/* NFTs Section - Collapsible (Nasun chains only) */}
+      {!isEVM && !isExternalMove && <div className="px-3 py-2">
         <button
           onClick={() => setShowNfts(!showNfts)}
           className="w-full flex items-center justify-between text-xs xl:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2"
@@ -217,7 +237,7 @@ export function AssetsTab({
             )}
           </>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

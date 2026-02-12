@@ -7,7 +7,9 @@ import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { useSigner } from './useSigner';
 import { useRefreshBalance } from './useBalance';
-import { getSuiClient, parseAmount, isValidAddress } from '../sui/client';
+import { getSuiClient, getMoveClient, parseAmount, isValidAddress } from '../sui/client';
+import { useChainStore } from './useChain';
+import { getChain, isNasunChain } from '../config/chains';
 import type { TransactionRequest, TransactionResult } from '../types';
 
 interface UseTransactionReturn {
@@ -66,8 +68,12 @@ export function useTransaction(): UseTransactionReturn {
         const [coin] = tx.splitCoins(tx.gas, [amountInSoe]);
         tx.transferObjects([coin], request.to);
 
-        // Build transaction bytes
-        const suiClient = getSuiClient();
+        // Build transaction bytes (chain-aware client)
+        const chainId = useChainStore.getState().currentChainId;
+        const chainConfig = getChain(chainId);
+        const suiClient = chainConfig && !isNasunChain(chainId)
+          ? getMoveClient(chainConfig.rpcUrl)
+          : getSuiClient();
         const txBytes = await tx.build({ client: suiClient });
 
         // Sign using unified signer interface
