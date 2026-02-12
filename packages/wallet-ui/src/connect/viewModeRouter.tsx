@@ -17,6 +17,7 @@ import {
   type ConnectedViewProps,
   DisconnectedView,
   CreateWalletView,
+  AutoLockSetupView,
   LedgerConnectView,
   LedgerSelectView,
   LedgerConnectedView,
@@ -40,6 +41,10 @@ type ViewRenderer = (s: WalletConnectStateReturn) => ReactNode | null;
 const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   "create-backup": (s) =>
     s.mnemonic ? <BackupView mnemonic={s.mnemonic} onConfirm={s.handleBackupConfirmed} /> : null,
+
+  "create-auto-lock": (s) => (
+    <AutoLockSetupView onComplete={s.handleAutoLockComplete} />
+  ),
 
   "create": (s) => (
     <CreateWalletView

@@ -15,6 +15,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
   const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const [showWords, setShowWords] = useState(false);
   const words = mnemonic.split(' ');
 
   const handleCopy = useCallback(async () => {
@@ -22,7 +23,11 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
       await navigator.clipboard.writeText(mnemonic);
       setCopied(true);
       setCopyError(false);
-      setTimeout(() => setCopied(false), 5000);
+      // Clear clipboard after 30 seconds for security
+      setTimeout(async () => {
+        try { await navigator.clipboard.writeText(''); } catch { /* best-effort */ }
+        setCopied(false);
+      }, 30000);
     } catch {
       setCopyError(true);
       setTimeout(() => setCopyError(false), 5000);
@@ -44,13 +49,36 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
       </p>
 
       {/* Mnemonic word grid */}
-      <div className="grid grid-cols-3 gap-2 mb-4 p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-700">
-        {words.map((word, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm xl:text-base py-1">
-            <span className="text-gray-400 dark:text-zinc-500 w-5 text-right">{i + 1}.</span>
-            <span className="text-gray-900 dark:text-white font-mono">{word}</span>
-          </div>
-        ))}
+      <div className="relative mb-4">
+        <div className="grid grid-cols-3 gap-2 p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-700">
+          {words.map((word, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm xl:text-base py-1">
+              <span className="text-gray-400 dark:text-zinc-500 w-5 text-right">{i + 1}.</span>
+              {showWords ? (
+                <span className="text-gray-900 dark:text-white font-mono">{word}</span>
+              ) : (
+                <span className="text-gray-400 dark:text-zinc-500 font-mono">{'••••'}</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowWords(!showWords)}
+          className="absolute top-2 right-2 p-1.5 bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 rounded transition-colors"
+          aria-label={showWords ? 'Hide recovery phrase' : 'Show recovery phrase'}
+          title={showWords ? 'Hide' : 'Show'}
+        >
+          {showWords ? (
+            <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          )}
+        </button>
       </div>
 
       {/* Copy button */}
@@ -137,7 +165,11 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
           </button>
         )}
         <button
-          onClick={onConfirm}
+          onClick={() => {
+            // Clear clipboard on confirmation for security
+            navigator.clipboard.writeText('').catch(() => {});
+            onConfirm();
+          }}
           disabled={!confirmed}
           className="flex-1 py-2 bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors hover:bg-blue-700 disabled:cursor-not-allowed"
         >

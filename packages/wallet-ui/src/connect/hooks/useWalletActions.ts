@@ -44,9 +44,13 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
       // Ignore localStorage errors
     }
     viewState.setMnemonic(null);
+    viewState.setViewMode("create-auto-lock");
+  }, [viewState.setMnemonic, viewState.setViewMode]);
+
+  const handleAutoLockComplete = useCallback(() => {
     viewState.setViewMode("main");
     viewState.setShowDropdown(false);
-  }, [viewState.setMnemonic, viewState.setViewMode, viewState.setShowDropdown]);
+  }, [viewState.setViewMode, viewState.setShowDropdown]);
 
   const handleUnlock = useCallback(async () => {
     try {
@@ -99,6 +103,7 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
   return {
     handleCreate,
     handleBackupConfirmed,
+    handleAutoLockComplete,
     handleUnlock,
     handleImportMnemonic,
     handleImportPrivateKey,
