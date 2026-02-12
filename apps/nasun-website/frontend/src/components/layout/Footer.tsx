@@ -97,21 +97,34 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-center items-center py-12 md:py-16 ">
           <h3 className="font-medium  md:pr-10">{t("footer.stayConnected")}</h3>
           <div className="flex justify-center items-center gap-6 md:gap-8">
-            {socialIcons.map((icon) => (
-              <a
-                key={icon.platform}
-                href={icon.url}
-                className="text-white hover:text-nasun-white/70 transition-all hover:scale-110"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={icon.alt}
-              >
-                <FontAwesomeIcon
-                  icon={["fab", icon.icon as IconName]}
-                  className="w-5 h-5 md:w-6 md:h-6 hover:scale-110 transition-transform align-middle"
-                />
-              </a>
-            ))}
+            {socialIcons.map((icon) =>
+              icon.disabled ? (
+                <span
+                  key={icon.platform}
+                  className="text-nasun-white/20 cursor-not-allowed"
+                  aria-label={`${icon.alt} (coming soon)`}
+                >
+                  <FontAwesomeIcon
+                    icon={["fab", icon.icon as IconName]}
+                    className="w-5 h-5 md:w-6 md:h-6 align-middle"
+                  />
+                </span>
+              ) : (
+                <a
+                  key={icon.platform}
+                  href={icon.url}
+                  className="text-white hover:text-nasun-white/70 transition-all hover:scale-110"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={icon.alt}
+                >
+                  <FontAwesomeIcon
+                    icon={["fab", icon.icon as IconName]}
+                    className="w-5 h-5 md:w-6 md:h-6 hover:scale-110 transition-transform align-middle"
+                  />
+                </a>
+              )
+            )}
           </div>
         </div>
       </FadeInUp>
@@ -143,6 +156,8 @@ export default function Footer() {
               <a
                 href={routesV2.privacy.path}
                 className="text-nowrap hover:text-white transition-all hover:underline underline-offset-2"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {t("footer.privacy")}
               </a>
