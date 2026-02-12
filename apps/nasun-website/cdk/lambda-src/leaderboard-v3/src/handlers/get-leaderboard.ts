@@ -442,18 +442,33 @@ export const handler = async (
 
     // Past snapshot view
     if (snapshotDate) {
-      const { entries: snapshots, totalCount } = await getSnapshotData(
+      // Fetch all entries to filter banned accounts and re-rank
+      const { entries: allSnapshots } = await getSnapshotData(
         seasonId,
         snapshotDate,
-        limit,
-        offset
+        2000,
+        0
       );
 
-      if (snapshots.length === 0) {
+      if (allSnapshots.length === 0) {
         return createResponse(404, { error: `No snapshot found for ${snapshotDate}` });
       }
 
-      const entries = snapshots.map((s) => snapshotToLeaderboardEntry(s, includeBreakdown));
+      // Filter banned accounts from past snapshots
+      const bannedIds = await getBannedAccountIds();
+      const filteredSnapshots = allSnapshots.filter(
+        (snapshot) => !bannedIds.has(snapshot.accountId)
+      );
+
+      // Re-rank after filtering
+      const rerankedSnapshots = filteredSnapshots.map((snapshot, index) => ({
+        ...snapshot,
+        rank: index + 1,
+      }));
+
+      const snapshotTotalCount = rerankedSnapshots.length;
+      const paginatedSnapshots = rerankedSnapshots.slice(offset, offset + limit);
+      const entries = paginatedSnapshots.map((s) => snapshotToLeaderboardEntry(s, includeBreakdown));
 
       const response: SeasonLeaderboardResponse = {
         season: {
@@ -464,9 +479,9 @@ export const handler = async (
           status: season.status,
         },
         entries,
-        totalCount,
+        totalCount: snapshotTotalCount,
         snapshotDate,
-        calculatedAt: snapshots[0]?.snapshotTime || new Date().toISOString(),
+        calculatedAt: allSnapshots[0]?.snapshotTime || new Date().toISOString(),
       };
 
       return createResponse(200, response);
