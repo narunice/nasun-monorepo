@@ -16,7 +16,10 @@ export default function Callback() {
   const hasHandledRef = useRef(false);
 
   // Check if this is a zkLogin callback (Implicit Flow uses URL hash)
-  const isZkLogin = window.location.hash.includes("id_token=");
+  // Both Cognito auth and zkLogin use Google Implicit Flow with id_token in hash,
+  // so we also check for the zkLogin session key to distinguish between them.
+  const isZkLogin = window.location.hash.includes("id_token=") &&
+    !!sessionStorage.getItem("nasun:zklogin:session");
 
   useEffect(() => {
     // Prevent double execution in React StrictMode
