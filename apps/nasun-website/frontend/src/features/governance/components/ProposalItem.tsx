@@ -59,7 +59,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
   const yesPercent = totalVotes > 0 ? (yesCount / totalVotes) * 100 : 50;
   const hasPassed = yesCount > noCount;
 
-  const bgClass = isExpired ? "bg-nasun-c6/30" : "";
+  const bgClass = isExpired ? "bg-nasun-nw3/30" : "";
 
   const handleCardClick = () => {
     navigate(`/network/governance/proposal/${id}`);
@@ -71,9 +71,9 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
   return (
     <>
       <OuterBox
-        color="w2"
+        color="nw2"
         padding="md"
-        className={`flex flex-col relative h-full min-h-[320px] transition-all duration-200 ${bgClass} cursor-pointer ${!isExpired ? "hover:border-nasun-c4" : "hover:border-nasun-white/20"}`}
+        className={`flex flex-col relative h-full min-h-[320px] transition-all duration-200 ${bgClass} cursor-pointer ${!isExpired ? "hover:border-nasun-nw1" : "hover:border-nasun-white/20"}`}
         onClick={handleCardClick}
       >
         {/* Header: Badges + Title */}
@@ -82,11 +82,11 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
           <div className="flex justify-between items-center mb-2 -mt-2 -mx-2">
             <div className="flex items-center gap-2">
               {proposal.proposalType === "Poll" ? (
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30">
+                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
                   Poll
                 </span>
               ) : (
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-c1/20 text-nasun-c1 border border-nasun-c1/30">
+                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
                   Governance
                 </span>
               )}
@@ -97,7 +97,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
             {!!voteNft && (
               <div title="You have voted">
                 <img
-                  className="w-6 h-6 rounded-full border border-nasun-c1/50"
+                  className="w-6 h-6 rounded-full border border-nasun-nw4/50"
                   src={voteNft?.url}
                   alt="Vote NFT"
                 />
@@ -120,7 +120,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
                 e.stopPropagation();
                 navigate(`/network/governance/proposal/${id}`);
               }}
-              className="mt-1 text-xs text-nasun-c4 hover:text-nasun-c5 flex items-center gap-1"
+              className="mt-1 text-xs text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1"
             >
               Read More <ArrowRight className="w-3 h-3" />
             </button>
@@ -158,7 +158,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
         {/* Vote Button */}
         {!isExpired && (
           <Button
-            variant="c4"
+            variant="nw1"
             onClick={(e) => {
               e.stopPropagation();
               setIsModalOpen(true);

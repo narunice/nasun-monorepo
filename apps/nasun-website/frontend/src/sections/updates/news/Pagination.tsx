@@ -59,7 +59,7 @@ export default function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg border border-white/10 bg-black/30 hover:border-nasun-c3/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+        className="p-2 rounded-lg border border-white/10 bg-black/30 hover:border-nasun-nw1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         aria-label="Previous page"
       >
         <ChevronLeftIcon className="w-5 h-5" />
@@ -78,8 +78,8 @@ export default function Pagination({
               onClick={() => onPageChange(page)}
               className={`min-w-[40px] px-3 py-2 rounded-lg border transition-all ${
                 currentPage === page
-                  ? "border-nasun-c3 bg-nasun-c3/20 text-nasun-c3"
-                  : "border-white/10 bg-black/30 hover:border-nasun-c3/50"
+                  ? "border-nasun-nw1 bg-nasun-nw1/20 text-nasun-nw1"
+                  : "border-white/10 bg-black/30 hover:border-nasun-nw1/50"
               }`}
               aria-label={`Page ${page}`}
               aria-current={currentPage === page ? "page" : undefined}
@@ -94,7 +94,7 @@ export default function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg border border-white/10 bg-black/30 hover:border-nasun-c3/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+        className="p-2 rounded-lg border border-white/10 bg-black/30 hover:border-nasun-nw1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         aria-label="Next page"
       >
         <ChevronRightIcon className="w-5 h-5" />
