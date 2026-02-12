@@ -3,6 +3,7 @@
  */
 
 import { MnemonicBackup } from "../../security/MnemonicBackup";
+import { AutoLockSetup } from "../../security/AutoLockSetup";
 import { ImportWallet } from "../../security/ImportWallet";
 import { ExportPrivateKey } from "../../security/ExportPrivateKey";
 import { SendTransaction } from "../../transaction/SendTransaction";
@@ -24,6 +25,14 @@ export function BackupView({
   return (
     <div className="w-full">
       <MnemonicBackup mnemonic={mnemonic} onConfirm={onConfirm} />
+    </div>
+  );
+}
+
+export function AutoLockSetupView({ onComplete }: { onComplete: () => void }) {
+  return (
+    <div className="w-full">
+      <AutoLockSetup onComplete={onComplete} />
     </div>
   );
 }

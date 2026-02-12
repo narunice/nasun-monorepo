@@ -140,7 +140,7 @@ export function WalletConnect({
             <div
               className="fixed inset-0 bg-black/50 z-[99998]"
               onClick={() => {
-                if (s.viewMode === "create-backup") return;
+                if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
                 s.setShowDropdown(false);
               }}
             />
