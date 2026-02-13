@@ -67,22 +67,6 @@ module.exports = {
         'checkmark-draw': 'checkmark-draw 0.4s ease-out forwards',
       },
       colors: {
-        // Pado brand colors (Teal → Mint/Lime gradient)
-        'pado': {
-          1: '#1a8cbc',  // Primary - deep teal
-          2: '#3bb9d8',  // Secondary - bright teal
-          3: '#5ee1e4',  // Accent - cyan
-          4: '#86f3b7',  // Highlight - mint
-          5: '#d2f6a2',  // Light - lime
-        },
-        // Pado custom palette (dark navy → light gray-blue)
-        pd0: '#0b1120',   // Dark mode page background (derived from pd1 hue)
-        'pd0s': '#131c2b', // Dark mode surface/card (derived from pd1 hue)
-        pd1: '#1f3a61',   // Darkest navy blue
-        pd2: '#3a5f78',   // Dark teal blue
-        pd3: '#7d9dbf',   // Medium steel blue
-        pd4: '#aac9d5',   // Light blue
-        pd5: '#e1e5ea',   // Very light blue-gray
         // Theme-aware colors using CSS variables
         'theme-bg-primary': 'var(--color-bg-primary)',
         'theme-bg-secondary': 'var(--color-bg-secondary)',

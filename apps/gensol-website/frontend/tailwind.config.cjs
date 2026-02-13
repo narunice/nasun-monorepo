@@ -32,16 +32,6 @@ module.exports = {
         font: "font-family",
       },
       colors: {
-        // Gensol Sci-Fi colors
-        "sf-blue": "#2eacd6",
-        "sf-yellow": "#ffd64f",
-        "sf-red": "#d52933",
-        "sf-darkred": "#b22432",
-        "sf-orange": "#f05340",
-        "sf-green": "#6ac17c",
-        "sf-darkblue": "#2b3856",
-        "sf-purple": "#7e1956",
-        "sf-gray": "#7f8c8d",
         // Radix UI variables
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
