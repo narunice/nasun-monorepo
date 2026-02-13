@@ -267,6 +267,9 @@ async function main() {
       });
       console.log(`  YES bid TX: ${yesBidResult.digest}`);
 
+      // Wait for RPC to index the transaction before querying coins again
+      await client.waitForTransaction({ digest: yesBidResult.digest });
+
       const nusdcCoinId2 = await findNusdcCoin(client, senderAddress, SEED_AMOUNT * 2n);
 
       console.log(`  Seeding NO bid at ${market.seedNoBidPrice / 100}%...`);

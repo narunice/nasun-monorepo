@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const SUI_CLI_PATH = '/home/naru/my_apps/nasun-devnet/sui/target/release/sui';
+const SUI_CLI_PATH = process.env.SUI_CLI_PATH || '/home/naru/my_apps/nasun-devnet/sui/target/release/sui';
 
 /**
  * Get the active Sui address from the CLI config.

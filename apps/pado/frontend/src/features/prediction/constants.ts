@@ -15,6 +15,9 @@ export const MARKET_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::Market`
 export const POSITION_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::Position`;
 export const ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::AdminCap`;
 
+// Event types
+export const MARKET_CREATED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::MarketCreated`;
+
 // Price constants
 export const MAX_PRICE = 10000; // 100% in basis points
 export const PRICE_DECIMALS = 4;
@@ -26,7 +29,5 @@ export const NUSDC_TYPE = DEVNET_NUSDC_TYPE;
 // Clock
 export const CLOCK_ID = '0x6';
 
-// Active markets (TODO: Create after V6 deployment)
-export const TEST_MARKETS: string[] = [
-  // Markets will be created after V6 contract deployment
-];
+// Active markets (empty — markets discovered via on-chain events)
+export const TEST_MARKETS: string[] = [];

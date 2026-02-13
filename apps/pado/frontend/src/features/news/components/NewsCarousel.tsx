@@ -5,14 +5,14 @@
  * gradient overlay, and headline text.
  */
 
-import { useNewsFeed } from '../hooks/useNewsFeed';
-import { useCarousel } from '../hooks/useCarousel';
-import type { NewsItem } from '../types';
+import { useNewsFeed } from "../hooks/useNewsFeed";
+import { useCarousel } from "../hooks/useCarousel";
+import type { NewsItem } from "../types";
 
 function formatTimeAgo(publishedAt: string): string {
   const diffMs = Date.now() - new Date(publishedAt).getTime();
   const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return 'just now';
+  if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -29,7 +29,7 @@ function XIcon({ className }: { className?: string }) {
 }
 
 function NewsSlide({ item }: { item: NewsItem }) {
-  const isTweet = item.source === 'twitter';
+  const isTweet = item.source === "twitter";
 
   return (
     <div className="w-full shrink-0 h-full relative">
@@ -42,11 +42,13 @@ function NewsSlide({ item }: { item: NewsItem }) {
           loading="lazy"
         />
       ) : (
-        <div className={`absolute inset-0 pointer-events-none ${
-          isTweet
-            ? 'bg-gradient-to-br from-slate-900 to-slate-800'
-            : 'bg-gradient-to-br from-blue-900/80 to-purple-900/80'
-        }`} />
+        <div
+          className={`absolute inset-0 pointer-events-none ${
+            isTweet
+              ? "bg-gradient-to-br from-slate-900 to-slate-800"
+              : "bg-gradient-to-br from-blue-900/80 to-purple-900/80"
+          }`}
+        />
       )}
 
       {/* Dark gradient overlay (not clickable) */}
@@ -72,9 +74,7 @@ function NewsSlide({ item }: { item: NewsItem }) {
               {item.sourceLabel}
             </span>
           )}
-          <span className="text-[10px] text-white/50">
-            {formatTimeAgo(item.publishedAt)}
-          </span>
+          <span className="text-[10px] text-white/50">{formatTimeAgo(item.publishedAt)}</span>
         </div>
         {/* Title: clickable with hover effect */}
         <a
@@ -94,16 +94,13 @@ const MAX_DISPLAY = 20;
 const MIN_TWEETS = 5;
 
 function balancedSlice(items: NewsItem[]): NewsItem[] {
-  const rss = items.filter(i => i.source === 'rss');
-  const tweets = items.filter(i => i.source === 'twitter');
+  const rss = items.filter((i) => i.source === "rss");
+  const tweets = items.filter((i) => i.source === "twitter");
 
   // Reserve slots for tweets, fill rest with RSS
   const tweetSlots = Math.min(MIN_TWEETS, tweets.length);
   const rssSlots = MAX_DISPLAY - tweetSlots;
-  const selected = [
-    ...rss.slice(0, rssSlots),
-    ...tweets.slice(0, tweetSlots),
-  ];
+  const selected = [...rss.slice(0, rssSlots), ...tweets.slice(0, tweetSlots)];
 
   // Re-sort by timestamp descending
   return selected.sort((a, b) => b.timestamp - a.timestamp);
@@ -117,16 +114,17 @@ export function NewsCarousel({ onMinimize }: NewsCarouselProps) {
   const { data, isLoading } = useNewsFeed(35);
   const items = data?.items ?? [];
   const displayItems = balancedSlice(items);
-  const { currentIndex, goTo, snapTo, setPaused, skipTransition } = useCarousel(displayItems.length, 5000);
+  const { currentIndex, goTo, snapTo, setPaused, skipTransition } = useCarousel(
+    displayItems.length,
+    9000,
+  );
   const displayIndex = currentIndex >= displayItems.length ? 0 : currentIndex;
 
   // Clone first slide at end for seamless infinite loop
-  const slides = displayItems.length > 0
-    ? [...displayItems, displayItems[0]]
-    : [];
+  const slides = displayItems.length > 0 ? [...displayItems, displayItems[0]] : [];
 
   const handleTransitionEnd = (e: React.TransitionEvent) => {
-    if (e.propertyName === 'transform' && currentIndex >= displayItems.length) {
+    if (e.propertyName === "transform" && currentIndex >= displayItems.length) {
       snapTo(0);
     }
   };
@@ -166,7 +164,14 @@ export function NewsCarousel({ onMinimize }: NewsCarouselProps) {
               className="text-theme-text-muted hover:text-theme-text-primary transition-colors"
               title="Minimize"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M6 15l6-6 6 6" />
               </svg>
             </button>
@@ -177,7 +182,7 @@ export function NewsCarousel({ onMinimize }: NewsCarouselProps) {
       {/* Carousel track */}
       <div className="flex-1 relative overflow-hidden">
         <div
-          className={`flex h-full ${skipTransition ? '' : 'transition-transform duration-500 ease-in-out'}`}
+          className={`flex h-full ${skipTransition ? "" : "transition-transform duration-500 ease-in-out"}`}
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
           onTransitionEnd={handleTransitionEnd}
         >
@@ -199,7 +204,13 @@ export function NewsCarousel({ onMinimize }: NewsCarouselProps) {
             className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors"
             aria-label="Previous news"
           >
-            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg
+              className="w-3 h-3 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
             </svg>
           </button>
@@ -212,7 +223,13 @@ export function NewsCarousel({ onMinimize }: NewsCarouselProps) {
             className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors"
             aria-label="Next news"
           >
-            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg
+              className="w-3 h-3 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
             </svg>
           </button>
