@@ -110,16 +110,20 @@ function NarrativeContent() {
             title={t("narrative.category1.title")}
             description={t("narrative.category1.description")}
             color="c1"
+            className="!bg-gray-950/40
+            "
           />
           <DividerBox
             title={t("narrative.category2.title")}
             description={t("narrative.category2.description")}
             color="c1"
+            className="!bg-nasun-black/50"
           />
           <DividerBox
             title={t("narrative.category3.title")}
             description={t("narrative.category3.description")}
             color="c1"
+            className="!bg-nasun-black/50"
           />
         </div>
 
