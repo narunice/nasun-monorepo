@@ -963,6 +963,9 @@ importers:
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
+      '@nasun/devnet-config':
+        specifier: workspace:*
+        version: link:../../../packages/devnet-config
     devDependencies:
       tsx:
         specifier: ^4.19.0
