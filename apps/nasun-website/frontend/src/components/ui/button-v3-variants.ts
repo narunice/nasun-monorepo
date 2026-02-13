@@ -14,6 +14,13 @@ export const buttonV3Variants = cva(
         nw4: "bg-[#afc3cf] text-nasun-black hover:bg-[#9bb3c0]",
         nw5: "bg-[#e6e6e6] text-nasun-black hover:bg-[#d4d4d4]",
 
+        // Brand variants
+        "gensol-red": "bg-[#d52933] text-white hover:bg-[#c0242d]",
+
+        // Semantic variants
+        red: "bg-red-600 text-white hover:bg-red-700",
+        green: "bg-green-600 text-white hover:bg-green-700",
+
         // Gradient variants
         gradient:
           "bg-gradient-to-r from-[#6697b7] to-[#9CC0D8] text-white hover:from-[#5a87a5] hover:to-[#8EB4CE]",
@@ -27,18 +34,38 @@ export const buttonV3Variants = cva(
       size: {
         xs: "text-xs px-6 py-1",
         sm: "text-sm px-8 py-1.5",
-        md: "text-base px-10 py-2",
-        lg: "text-lg px-12 py-2",
-        xl: "text-xl px-14 py-2.5",
+        md: "text-base px-12 py-2",
+        lg: "text-lg px-14 py-2",
+        xl: "text-xl px-16 py-2.5",
       },
     },
     compoundVariants: [
       // Outline variants — only colors with sufficient contrast on dark backgrounds
-      { variant: "nw1", outline: true, class: "border-[#6697b7] text-[#6697b7] hover:bg-[#6697b7]/10" },
-      { variant: "nw2", outline: true, class: "border-[#6697b7] text-[#6697b7] hover:bg-[#6697b7]/10" },
-      { variant: "nw3", outline: true, class: "border-[#6697b7] text-[#6697b7] hover:bg-[#6697b7]/10" },
-      { variant: "nw4", outline: true, class: "border-[#afc3cf] text-[#afc3cf] hover:bg-[#afc3cf]/10" },
-      { variant: "nw5", outline: true, class: "border-[#e6e6e6] text-[#e6e6e6] hover:bg-[#e6e6e6]/10" },
+      {
+        variant: "nw1",
+        outline: true,
+        class: "border-[#6697b7] text-[#6697b7] hover:bg-[#6697b7]/10",
+      },
+      {
+        variant: "nw2",
+        outline: true,
+        class: "border-[#6697b7] text-[#6697b7] hover:bg-[#6697b7]/10",
+      },
+      {
+        variant: "nw3",
+        outline: true,
+        class: "border-[#6697b7] text-[#6697b7] hover:bg-[#6697b7]/10",
+      },
+      {
+        variant: "nw4",
+        outline: true,
+        class: "border-[#afc3cf] text-[#afc3cf] hover:bg-[#afc3cf]/10",
+      },
+      {
+        variant: "nw5",
+        outline: true,
+        class: "border-[#e6e6e6] text-[#e6e6e6] hover:bg-[#e6e6e6]/10",
+      },
     ],
     defaultVariants: {
       variant: "nw1",

@@ -42,7 +42,7 @@ type SlideData = {
   bgColor: string;
   buttonPrefix: string;
   projectName: string;
-  buttonVariant: "red" | "blue" | "white" | "purple" | "gensol-red";
+  buttonVariant: "red" | "blue" | "white" | "purple" | "gensol-red" | "baram" | "pado" | "nasun-network";
   link: string;
   video?: string;
   videoStartTime?: number;
@@ -65,7 +65,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#f7f4ef",
     buttonPrefix: "EXPLORE",
     projectName: "BARAM",
-    buttonVariant: "blue",
+    buttonVariant: "baram",
     link: "/baram",
     video: baramVideo,
     videoStartTime: 15,
@@ -75,7 +75,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#0f4f4f",
     buttonPrefix: "EXPLORE",
     projectName: "PADO",
-    buttonVariant: "white",
+    buttonVariant: "pado",
     link: "/pado-new",
     video: padoVideo,
     videoStartTime: 16,
@@ -85,7 +85,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#1a2744",
     buttonPrefix: "EXPLORE",
     projectName: "NASUN",
-    buttonVariant: "purple",
+    buttonVariant: "nasun-network",
     link: "/about/strategy",
     video: explorerVideo,
   },
@@ -96,6 +96,7 @@ function WhatWeBuildingSection() {
   const sliderRef = useRef<Slider>(null);
   const activeSlideRef = useRef(0);
   const [hasEnteredView, setHasEnteredView] = useState(false);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
   // Start video playback only when the section enters the viewport
   useEffect(() => {
@@ -175,6 +176,7 @@ function WhatWeBuildingSection() {
   // After transition: update active index, reset+play new video, pause others and clones
   const handleAfterChange = useCallback((index: number) => {
     activeSlideRef.current = index;
+    setActiveSlideIndex(index);
     const container = containerRef.current;
     if (!container) return;
 
@@ -202,7 +204,7 @@ function WhatWeBuildingSection() {
   }, []);
 
   const sliderSettings = {
-    dots: true,
+    dots: false,
     infinite: true,
     speed: 500,
     slidesToShow: 1,
@@ -232,12 +234,7 @@ function WhatWeBuildingSection() {
         <FadeInUp delay="0.2s">
           <div
             ref={containerRef}
-            className={[
-              "relative w-full max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto px-0 lg:px-16 xl:px-20",
-              "[&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-6",
-              "[&_.slick-dots_li_button:before]:!text-nasun-white/60",
-              "[&_.slick-dots_li.slick-active_button:before]:!text-nasun-nw1",
-            ].join(" ")}
+            className="relative w-full max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-0 lg:px-16 xl:px-20"
           >
             <Slider ref={sliderRef} {...sliderSettings}>
               {SLIDES.map((slide) => (
@@ -272,31 +269,40 @@ function WhatWeBuildingSection() {
 
                     {/* Dark overlay for readability */}
                     {/* {slide.video && <div className="absolute inset-0 bg-black/30" />} */}
-
-                    {/* Content */}
-                    <div
-                      className={`relative z-10 flex flex-col h-full px-6 md:px-12 lg:px-16 ${
-                        slide.contentPosition === "right-center"
-                          ? "items-center justify-end pr-8 md:pr-16 lg:pr-20 pb-10 md:pb-14 lg:pb-16"
-                          : "items-center justify-end pb-10 md:pb-14 lg:pb-16"
-                      }`}
-                    >
-                      <ButtonV2
-                        variant={slide.buttonVariant}
-                        size="md"
-                        asChild
-                        className={`w-[200px] md:w-[240px] ${slide.id === "gensol" ? "from-[#d5293399] to-[#e85a6299] hover:from-[#c0242d99] hover:to-[#d54a5299]" : ""}`}
-                      >
-                        <Link to={slide.link}>
-                          {slide.buttonPrefix}
-                          <span className="font-medium ml-1">{slide.projectName}</span>
-                        </Link>
-                      </ButtonV2>
-                    </div>
                   </div>
                 </div>
               ))}
             </Slider>
+
+            {/* Button + Navigation Dots (outside card) */}
+            <div className="flex flex-col items-center mt-6 gap-8">
+              <ButtonV2
+                variant={SLIDES[activeSlideIndex].buttonVariant}
+                size="md"
+                asChild
+                className="w-[200px] md:w-[240px]"
+              >
+                <Link to={SLIDES[activeSlideIndex].link}>
+                  {SLIDES[activeSlideIndex].buttonPrefix}
+                  <span className="font-medium ml-1">{SLIDES[activeSlideIndex].projectName}</span>
+                </Link>
+              </ButtonV2>
+
+              <div className="flex items-center gap-6">
+                {SLIDES.map((slide, i) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => sliderRef.current?.slickGoTo(i)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      i === activeSlideIndex
+                        ? "bg-nasun-nw1"
+                        : "bg-nasun-white/40 hover:bg-nasun-white/60"
+                    }`}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </FadeInUp>
       </div>

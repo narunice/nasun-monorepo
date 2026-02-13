@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { Button } from "@/components/ui/button";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 
 // 배경 이미지
 import bgImageDesktop from "@/assets/images/spectra-plant-raid.webp";
 import bgImageMobile from "@/assets/images/spectra-plant-raid-mobile.webp";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 /**
  * NarrativeContent 컴포넌트
@@ -94,15 +94,12 @@ function NarrativeContent() {
       {/* 콘텐츠 */}
       <div className="relative z-20 max-w-8xl w-full min-h-screen h-full flex flex-col mx-auto pt-[60%] sm:pt-[50%] md:pt-[35%] pb-12 md:pb-16 px-10 md:px-12 lg:px-20 justify-start ">
         {/* 제목 + 설명 (우측 정렬) */}
-        <div className="max-w-[1000px] ml-auto text-right ">
+        <div className="max-w-[1000px] ml-auto text-right mb-10">
           <SectionTitle as="h2" className="font-semibold uppercase !mb-0 lg:!mb-1">
             {t("narrative.title")}
           </SectionTitle>
           <p className="text-nasun-white/80  ml-auto">{t("narrative.description")}</p>
         </div>
-
-        {/* 구분선 */}
-        <div className="border-t border-nasun-c1 my-6 lg:my-8 xl:my-10 max-w-8xl mx-auto w-full" />
 
         {/* 3개 카테고리 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-10 max-w-7xl mx-auto w-full">
@@ -110,30 +107,33 @@ function NarrativeContent() {
             title={t("narrative.category1.title")}
             description={t("narrative.category1.description")}
             color="c1"
-            className="!bg-gray-950/40
+            hideDivider={true}
+            className="!bg-gray-950/50 !border-nasun-c1/40
             "
           />
           <DividerBox
             title={t("narrative.category2.title")}
             description={t("narrative.category2.description")}
             color="c1"
-            className="!bg-nasun-black/50"
+            hideDivider={true}
+            className="!bg-gray-950/50 !border-nasun-c1/40"
           />
           <DividerBox
             title={t("narrative.category3.title")}
             description={t("narrative.category3.description")}
             color="c1"
-            className="!bg-nasun-black/50"
+            hideDivider={true}
+            className="!bg-gray-950/50 !border-nasun-c1/40"
           />
         </div>
 
         {/* WEBSITE 버튼 */}
         <div className="flex justify-center mt-8 md:mt-10">
-          <Button variant="c1" size="xl" className="" asChild>
+          <ButtonV3 variant="gensol-red" size="lg" asChild>
             <a href={import.meta.env.VITE_GENSOL_URL} target="_blank" rel="noopener noreferrer">
               {t("narrative.button")}
             </a>
-          </Button>
+          </ButtonV3>
         </div>
       </div>
     </SectionLayout>

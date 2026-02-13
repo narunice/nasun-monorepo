@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { OuterBox } from "@/components/ui/OuterBox";
@@ -36,13 +36,9 @@ function NasunNetworkSection() {
 
             {/* Button */}
             <div className="pt-6 md:pt-8 text-center">
-              <Button
-                variant="c4"
-                size="lg"
-                className="!bg-gradient-to-r !from-nasun-c4 !to-nasun-c3 text-nasun-black"
-              >
+              <ButtonV3 variant="gradientDark" size="md">
                 {t("network.buttonText")}
-              </Button>
+              </ButtonV3>
             </div>
           </OuterBox>
 

@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { Post } from "../../types/post.d";
-import { Tag } from "@/components/ui/tag";
+import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface FeaturedPostProps {
@@ -60,7 +60,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
 
   return (
     <Link to={`/news-events/${post.slug}`} className="block group">
-      <article className="bg-nasun-black rounded-sm overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300">
+      <article className="bg-nasun-white rounded-sm overflow-hidden shadow-lg transition-all duration-300">
         {/* Horizontal card layout */}
         <div className="flex flex-col md:flex-row">
           {/* Left: Image */}
@@ -72,8 +72,8 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
                 className="block w-full h-64 md:h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
               />
             ) : (
-              <div className="w-full h-64 md:h-full min-h-[300px] bg-gradient-to-br from-nasun-nw1/30 to-nasun-nw2/20 flex items-center justify-center">
-                <span className="text-white/40 text-lg">No Image</span>
+              <div className="w-full h-64 md:h-full min-h-[300px] bg-gradient-to-br from-nasun-nw4/30 to-nasun-nw1/20 flex items-center justify-center">
+                <span className="text-nasun-black/30 text-lg">No Image</span>
               </div>
             )}
           </div>
@@ -82,26 +82,26 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
           <div className="md:w-1/2 p-6 md:p-10 flex flex-col justify-center">
             {/* Featured badge */}
             <div className="flex items-center gap-3 mb-4">
-              <Tag variant="filledNw4" size="sm" className="font-medium uppercase tracking-wider !border-none !bg-nasun-nw4 text-nasun-black">
+              <TagV2 variant="filledNw4" size="sm" className="font-medium tracking-wider">
                 Featured
-              </Tag>
-              <Tag variant="outlineNw4" size="sm" className="font-medium uppercase tracking-wider">
+              </TagV2>
+              <TagV2 variant="outlineNw2" size="sm" className="font-medium tracking-wider">
                 {category}
-              </Tag>
+              </TagV2>
             </div>
 
             {/* Title */}
-            <h2 className="text-2xl md:text-3xl font-semibold mb-4 line-clamp-3 group-hover:text-nasun-nw4 transition-colors">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4 line-clamp-3 text-nasun-black">
               {title}
             </h2>
 
             {/* Date */}
-            <time className="text-nasun-white/80 mb-4" dateTime={post.date}>
+            <time className="text-nasun-black/60 mb-4" dateTime={post.date}>
               {formatDate(post.date)}
             </time>
 
             {/* Excerpt */}
-            <p className="text-nasun-white/80 mb-6 line-clamp-3">{excerpt}</p>
+            <p className="text-nasun-black/80 mb-6 line-clamp-3">{excerpt}</p>
 
             {/* Read More indicator (visual only, card is clickable) */}
             <div className="flex justify-end">
