@@ -139,7 +139,7 @@ log_success "Nginx 재시작 완료"
 # --- Phase 6: 헬스 체크 ---
 log_step 6 $TOTAL_STEPS "헬스 체크"
 
-health_check "$HEALTH_CHECK_URL"
+health_check "$HEALTH_CHECK_URL" "$HTACCESS_USER" "$HTACCESS_PASS"
 
 # --- 완료 ---
 echo ""

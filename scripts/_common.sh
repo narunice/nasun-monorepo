@@ -108,3 +108,11 @@ health_check() {
 
 # 모노레포 루트 경로
 MONOREPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Deploy credentials (.credentials 파일에서 로드)
+_CREDENTIALS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.credentials"
+if [ -f "$_CREDENTIALS_FILE" ]; then
+  source "$_CREDENTIALS_FILE"
+else
+  log_warning "credentials 파일 없음: scripts/.credentials (헬스 체크 시 인증 실패 가능)"
+fi
