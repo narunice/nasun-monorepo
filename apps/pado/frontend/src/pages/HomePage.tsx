@@ -27,6 +27,16 @@ import {
 } from "../features/dashboard";
 import { AssetOverview, TokenBalanceList, ActivityTabs } from "../features/portfolio";
 
+function MarketsGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <HotMarketsCard />
+      <PredictionHighlight />
+      <LotteryHighlight />
+    </div>
+  );
+}
+
 export function HomePage() {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
@@ -65,11 +75,7 @@ export function HomePage() {
           </div>
 
           {/* Markets Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 md:mb-0">
-            <HotMarketsCard />
-            <PredictionHighlight />
-            <LotteryHighlight />
-          </div>
+          <MarketsGrid />
 
           {/* Activity (Trades & Transfers) */}
           <div className="mt-4">
@@ -95,11 +101,9 @@ export function HomePage() {
             <QuickActions />
           </div>
 
-          {/* Three-column layout: Hot Markets + Predictions + Lottery */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <HotMarketsCard />
-            <PredictionHighlight />
-            <LotteryHighlight />
+          {/* Markets Section */}
+          <div className="mb-8">
+            <MarketsGrid />
           </div>
 
           {/* Footer Tagline */}
