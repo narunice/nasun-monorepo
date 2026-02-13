@@ -23,7 +23,7 @@ export const MetricCard = ({ value, label, color, icon, delay }: MetricCardProps
       {icon}
     </div>
     <div
-      className={`text-3xl md:text-4xl font-bold ${color
+      className={`text-3xl md:text-4xl font-light ${color
         .replace("bg-", "text-")
         .replace("/20", "")}`}
     >
