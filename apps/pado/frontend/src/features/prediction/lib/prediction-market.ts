@@ -9,13 +9,16 @@ import { parseMarketStatus } from '../types';
 
 /**
  * Fetch all prediction markets
+ * Uses on-chain event discovery when TEST_MARKETS is empty (dynamic, survives chain resets)
  */
 export async function fetchMarkets(): Promise<PredictionMarket[]> {
-  const markets: PredictionMarket[] = [];
+  let marketIds: string[] = TEST_MARKETS;
+  if (marketIds.length === 0) {
+    marketIds = await fetchMarketsByEvents();
+  }
 
-  // For now, fetch test markets by ID
-  // In production, use event indexing or GraphQL
-  for (const marketId of TEST_MARKETS) {
+  const markets: PredictionMarket[] = [];
+  for (const marketId of marketIds) {
     try {
       const market = await fetchMarket(marketId);
       if (market) {

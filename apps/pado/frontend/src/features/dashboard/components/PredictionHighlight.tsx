@@ -25,7 +25,15 @@ export function PredictionHighlight() {
   }
 
   if (markets.length === 0) {
-    return null;
+    return (
+      <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
+        <h2 className="font-bold text-theme-text-primary mb-1">Prediction Markets</h2>
+        <p className="text-xs text-theme-text-muted mb-3">Bet on future events and win rewards</p>
+        <Link to="/predict" className="text-sm text-pd3 hover:text-pd4 font-medium">
+          Explore Markets &rarr;
+        </Link>
+      </div>
+    );
   }
 
   return (

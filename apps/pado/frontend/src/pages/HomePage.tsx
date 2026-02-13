@@ -19,6 +19,7 @@ import {
   QuickActions,
   HotMarketsCard,
   PredictionHighlight,
+  LotteryHighlight,
   WelcomeBanner,
   MobileAssetBar,
   MobileTokenPills,
@@ -64,9 +65,10 @@ export function HomePage() {
           </div>
 
           {/* Markets Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 md:mb-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 md:mb-0">
             <HotMarketsCard />
             <PredictionHighlight />
+            <LotteryHighlight />
           </div>
 
           {/* Activity (Trades & Transfers) */}
@@ -93,10 +95,11 @@ export function HomePage() {
             <QuickActions />
           </div>
 
-          {/* Two-column layout: Hot Markets + Predictions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Three-column layout: Hot Markets + Predictions + Lottery */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <HotMarketsCard />
             <PredictionHighlight />
+            <LotteryHighlight />
           </div>
 
           {/* Footer Tagline */}
