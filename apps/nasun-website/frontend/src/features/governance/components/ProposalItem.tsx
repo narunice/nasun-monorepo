@@ -1,15 +1,19 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { FC, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
 import { VoteModal } from "./VoteModal";
 import { useProposalType } from "../hooks/useProposalType";
-import { OuterBox, Button } from "@/components/ui";
+import { OuterBox } from "@/components/ui";
 import { useNavigate } from "react-router-dom";
-import { parseProposal, isUnixTimeExpired, formatTimeRemaining, getStatusBadge } from "../utils/proposalHelpers";
-
-const DESC_TRUNCATE_LENGTH = 300;
+import {
+  parseProposal,
+  isUnixTimeExpired,
+  formatTimeRemaining,
+  getStatusBadge,
+} from "../utils/proposalHelpers";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface ProposalItemsProps {
   id: string;
@@ -18,7 +22,12 @@ interface ProposalItemsProps {
   onVoteTxSuccess: () => void | Promise<void>;
 }
 
-export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteNft, onVoteTxSuccess }) => {
+export const ProposalItem: FC<ProposalItemsProps> = ({
+  id,
+  filter = "all",
+  voteNft,
+  onVoteTxSuccess,
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const {
@@ -35,6 +44,20 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
 
   // Get proposal type from registry
   const { proposalType, isLoading: isTypeLoading } = useProposalType(id);
+  const descRef = useRef<HTMLParagraphElement>(null);
+  const [isClamped, setIsClamped] = useState(false);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+
+    const check = () => setIsClamped(el.scrollHeight > el.clientHeight);
+    check();
+
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [dataResponse, filter]);
 
   if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
   if (error) return <EcText isError text={`Error: ${error.message}`} />;
@@ -59,21 +82,23 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
   const yesPercent = totalVotes > 0 ? (yesCount / totalVotes) * 100 : 50;
   const hasPassed = yesCount > noCount;
 
-  const bgClass = isExpired ? "bg-nasun-nw3/30" : "";
+  const activeCardClass = isExpired
+    ? "!bg-nasun-white/5 !border-nasun-white/15 hover:!border-nasun-white/30"
+    : "hover:border-nasun-nw1/70";
 
   const handleCardClick = () => {
     navigate(`/network/governance/proposal/${id}`);
   };
 
   const statusBadge = getStatusBadge(isDelisted, isExpired, hasPassed);
-  const isLongDescription = proposal.description.length > DESC_TRUNCATE_LENGTH;
 
   return (
     <>
       <OuterBox
-        color="nw2"
+        color="nw3"
         padding="md"
-        className={`flex flex-col relative h-full min-h-[320px] transition-all duration-200 ${bgClass} cursor-pointer ${!isExpired ? "hover:border-nasun-nw1" : "hover:border-nasun-white/20"}`}
+        className={`flex flex-col relative h-full min-h-[320px] bg-gray-900/50 transition-all duration-200 ${activeCardClass} cursor-pointer`}
+        style={{ order: isExpired ? 1 : 0 }}
         onClick={handleCardClick}
       >
         {/* Header: Badges + Title */}
@@ -90,7 +115,9 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
                   Governance
                 </span>
               )}
-              <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}>
+              <span
+                className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}
+              >
                 {statusBadge.label}
               </span>
             </div>
@@ -104,17 +131,20 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
               </div>
             )}
           </div>
-          <h6 className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white"}`}>
+          <h6 className={`${isExpired ? "text-nasun-white/50" : "text-white font-semibold"}`}>
             {proposal.title}
           </h6>
         </div>
 
         {/* Description */}
         <div className="flex-1 mb-4">
-          <p className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-6`}>
+          <p
+            ref={descRef}
+            className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-6`}
+          >
             {proposal.description}
           </p>
-          {isLongDescription && (
+          {isClamped && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -131,7 +161,9 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
         <div className="mt-auto pt-3 border-t border-nasun-white/5 space-y-2">
           {/* Vote Progress Bar */}
           <div>
-            <div className={`w-full h-2 rounded-full overflow-hidden ${isExpired ? "bg-red-500/15" : "bg-red-500/30"}`}>
+            <div
+              className={`w-full h-2 rounded-full overflow-hidden ${isExpired ? "bg-red-500/15" : "bg-red-500/30"}`}
+            >
               <div
                 className={`h-full transition-all ${isExpired ? "bg-green-500/60" : "bg-green-500"}`}
                 style={{ width: `${yesPercent}%` }}
@@ -157,17 +189,17 @@ export const ProposalItem: FC<ProposalItemsProps> = ({ id, filter = "all", voteN
 
         {/* Vote Button */}
         {!isExpired && (
-          <Button
-            variant="nw1"
+          <ButtonV3
+            variant="gradientDark"
             onClick={(e) => {
               e.stopPropagation();
               setIsModalOpen(true);
             }}
-            className="mt-3 w-full"
+            className="mt-3 w-full uppercase"
             disabled={!!voteNft}
           >
             {voteNft ? "Voted" : "Vote"}
-          </Button>
+          </ButtonV3>
         )}
       </OuterBox>
 

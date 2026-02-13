@@ -3,7 +3,7 @@ import { Proposal } from "../types/voting";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { toast } from "react-toastify";
-import { Button } from "@/components/ui";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { useTranslation } from "react-i18next";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
@@ -23,7 +23,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
-  const toastId = useRef<number | string>();
+  const toastId = useRef<number | string | null>(null);
   const { user } = useAuth();
 
   // Sponsored vote hook (gas-free voting for Poll proposals)
@@ -51,7 +51,15 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
       const walletAddress = isZkConnected ? zkState?.address : account?.address;
       fetchVotingPower(user?.twitterHandle, walletAddress);
     }
-  }, [isOpen, isConnected, isZkConnected, zkState?.address, account?.address, user?.twitterHandle, fetchVotingPower]);
+  }, [
+    isOpen,
+    isConnected,
+    isZkConnected,
+    zkState?.address,
+    account?.address,
+    user?.twitterHandle,
+    fetchVotingPower,
+  ]);
 
   const totalVotingPower = votingPower?.totalVotingPower || 1;
 
@@ -67,7 +75,9 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const showToast = (message: string) => (toastId.current = toast(message, { autoClose: false }));
 
   const dismissToast = (message: string) => {
-    toast.dismiss(toastId.current);
+    if (toastId.current !== null) {
+      toast.dismiss(toastId.current);
+    }
     toast(message, { autoClose: 2400 });
   };
 
@@ -102,7 +112,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
       onClick={onClose}
     >
       <div
-        className="bg-nasun-nw3/80 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg max-h-[90vh] flex flex-col"
+        className="bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -220,7 +230,9 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
               <ul className="text-sm text-nasun-white/80 space-y-2 mb-4">
                 <li className="flex items-start gap-2">
                   <span className="text-nasun-nw4">•</span>
-                  <span>This vote <strong className="text-nasun-white">cannot be undone</strong></span>
+                  <span>
+                    This vote <strong className="text-nasun-white">cannot be undone</strong>
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-nasun-nw4">•</span>
@@ -239,24 +251,25 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                 </li>
               </ul>
               <div className="flex gap-3">
-                <Button
-                  variant="outlineNw2"
-                  size="default"
+                <ButtonV3
+                  variant="nw2"
+                  outline
+                  size="sm"
                   onClick={() => setConfirmStep({ show: false, voteYes: null })}
-                  className="flex-1"
+                  className="flex-1 font-normal"
                   disabled={isPending}
                 >
                   Cancel
-                </Button>
-                <Button
-                  variant={confirmStep.voteYes ? "green" : "destructive"}
-                  size="default"
+                </ButtonV3>
+                <ButtonV3
+                  variant={confirmStep.voteYes ? "green" : "red"}
+                  size="sm"
                   onClick={() => vote(confirmStep.voteYes!)}
-                  className="flex-1"
+                  className="flex-1 font-normal"
                   disabled={isPending}
                 >
                   {isPending ? "Voting..." : "Confirm Vote"}
-                </Button>
+                </ButtonV3>
               </div>
             </div>
           )}
@@ -266,24 +279,24 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
             <div className="flex justify-between gap-3">
               {isConnected ? (
                 <>
-                  <Button
+                  <ButtonV3
                     variant="green"
-                    size="default"
+                    size="sm"
                     disabled={votingDisable}
                     onClick={() => setConfirmStep({ show: true, voteYes: true })}
-                    className="flex-1"
+                    className="flex-1 font-normal"
                   >
                     {t("vote.vote_yes")}
-                  </Button>
-                  <Button
-                    variant="scarlet"
-                    size="default"
+                  </ButtonV3>
+                  <ButtonV3
+                    variant="red"
+                    size="sm"
                     disabled={votingDisable}
                     onClick={() => setConfirmStep({ show: true, voteYes: false })}
-                    className="flex-1"
+                    className="flex-1 font-normal"
                   >
                     {t("vote.vote_no")}
-                  </Button>
+                  </ButtonV3>
                 </>
               ) : (
                 <div className="w-full flex justify-center">
@@ -293,9 +306,9 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
             </div>
           )}
 
-          <Button variant="outlineNw2" size="default" onClick={onClose} className="w-full">
+          <ButtonV3 variant="nw2" outline size="sm" onClick={onClose} className="w-full font-normal">
             {t("vote.close")}
-          </Button>
+          </ButtonV3>
         </div>
       </div>
     </div>

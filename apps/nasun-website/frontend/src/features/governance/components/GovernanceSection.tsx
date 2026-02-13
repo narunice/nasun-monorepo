@@ -10,7 +10,8 @@ import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
-import { SectionLoading, InlineLoading, PageTitle, Button, OuterBox } from "@/components/ui";
+import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { VotingPowerSummary } from "./VotingPowerSummary";
@@ -43,15 +44,16 @@ const GovernanceSection = () => {
         <div className="space-y-4">
           {/* Header with Wallet and Toggle */}
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <Button
-              variant="filledOutlineNw1"
+            <ButtonV3
+              variant="nw1"
+              outline
               size="lg"
               onClick={() => setIsInfoOpen(!isInfoOpen)}
               className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
             >
               <span>My Governance Info</span>
               {isInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </Button>
+            </ButtonV3>
             <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
           </div>
 
@@ -66,21 +68,14 @@ const GovernanceSection = () => {
           )}
         </div>
       ) : (
-        <OuterBox color="w1" padding="md" className="mb-6 relative z-10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-medium text-nasun-white mb-1">
-                {t("proposals:wallet.connect_required")}
-              </h3>
-              <p className="text-sm text-nasun-white/70">
-                {status === "locked"
-                  ? t("proposals:wallet.locked")
-                  : "Connect your wallet to view your voting power and participate"}
-              </p>
-            </div>
-            <WalletConnect />
-          </div>
-        </OuterBox>
+        <div className="flex items-center justify-end gap-3">
+          <p className="text-sm text-nasun-white/50">
+            {status === "locked"
+              ? t("proposals:wallet.locked")
+              : "Connect your wallet to view your voting power and participate"}
+          </p>
+          <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
+        </div>
       )}
 
       {/* Proposals Section */}
