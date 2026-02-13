@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { Post } from "../../../types/post.d";
-import { Tag } from "@/components/ui/tag";
+import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface NewsCardProps {
@@ -60,7 +60,7 @@ export default function NewsCard({ post }: NewsCardProps) {
 
   return (
     <Link to={`/news-events/${post.slug}`}>
-      <article className="group bg-nasun-black rounded-sm overflow-hidden border border-nasun-white/50 hover:border-nasun-white/70 transition-all duration-300 h-full flex flex-col">
+      <article className="group bg-nasun-white rounded-sm overflow-hidden shadow-lg transition-all duration-300 h-full flex flex-col">
         {/* Image: 16:9 aspect ratio */}
         <div className="aspect-video overflow-hidden">
           {imageUrl ? (
@@ -70,8 +70,8 @@ export default function NewsCard({ post }: NewsCardProps) {
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-nasun-nw1/30 to-nasun-nw2/20 flex items-center justify-center">
-              <span className="text-white/40 text-lg">No Image</span>
+            <div className="w-full h-full bg-gradient-to-br from-nasun-nw4/30 to-nasun-nw1/20 flex items-center justify-center">
+              <span className="text-nasun-black/30 text-lg">No Image</span>
             </div>
           )}
         </div>
@@ -80,25 +80,25 @@ export default function NewsCard({ post }: NewsCardProps) {
         <div className="p-6 flex flex-col flex-grow">
           {/* Category badge and date */}
           <div className="flex items-center justify-between mb-3">
-            <Tag variant="outlineNw4" size="sm" className="font-medium uppercase tracking-wider">
+            <TagV2 variant="outlineNw2" size="sm" className="font-medium tracking-wider">
               {category}
-            </Tag>
-            <time className="text-sm text-gray-400" dateTime={post.date}>
+            </TagV2>
+            <time className="text-sm text-nasun-black/60" dateTime={post.date}>
               {formatDate(post.date)}
             </time>
           </div>
 
           {/* Title */}
-          <h3 className="text-lg font-semibold line-clamp-2 mb-2 group-hover:text-nasun-nw4 transition-colors">
+          <h3 className="text-lg font-semibold line-clamp-2 mb-2 text-nasun-black">
             {title}
           </h3>
 
           {/* Excerpt */}
-          <p className="text-gray-400 text-sm line-clamp-3 flex-grow">{excerpt}</p>
+          <p className="text-nasun-black/80 text-sm line-clamp-3 flex-grow">{excerpt}</p>
 
           {/* Read More button (visual only, card is clickable) */}
           <div className="flex justify-end mt-4">
-            <ButtonV3 variant="gradientDark" size="sm" className="capitalize">
+            <ButtonV3 variant="gradient" size="sm" className="capitalize">
               Read More
               <ArrowTopRightIcon className="ml-2 w-4 h-4" />
             </ButtonV3>

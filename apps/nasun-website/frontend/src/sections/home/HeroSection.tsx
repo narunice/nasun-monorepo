@@ -49,10 +49,10 @@ const TIMELINE_RANGES: TimelineRange[] = [
     item: { id: "FINANCE", type: "text", content: "FINANCE", enterDur: 0.3, exitDur: 0.36 },
   },
   {
-    id: "EXECUTION",
+    id: "AI",
     start: 12.0,
     end: 14.16,
-    item: { id: "EXECUTION", type: "text", content: "EXECUTION", enterDur: 0.3, exitDur: 0.3 },
+    item: { id: "AI", type: "text", content: "AI", enterDur: 0.3, exitDur: 0.3 },
   },
   {
     id: "LOGO",

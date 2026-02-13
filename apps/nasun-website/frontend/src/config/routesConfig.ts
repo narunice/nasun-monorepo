@@ -83,7 +83,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       subMenu: [
         {
           name: "navigation.nasunNetwork",
-          path: "/network/nasun",
+          path: "/network/nsn",
           element: Pages.VisionNetwork,
         },
         {

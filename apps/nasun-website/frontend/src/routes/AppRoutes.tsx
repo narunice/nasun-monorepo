@@ -71,7 +71,7 @@ const AppRoutes = () => {
 
         {/* Nested Routes - 7 sections using shared helper */}
         <Route path="/network">
-          {renderNestedRoutes("Network", routesV2.network, "nasun", pageTitleMaps.network)}
+          {renderNestedRoutes("Network", routesV2.network, "nsn", pageTitleMaps.network)}
           <Route path="governance/proposal/:proposalId" element={<Pages.ProposalDetail />} />
         </Route>
 

@@ -1,7 +1,6 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import wave1VideoPcMP4 from "../../assets/videos/home-wave1-wave-light-desktop.mp4";
-import wave1VideoMobileMP4 from "../../assets/videos/home-wave1-wave-light-mobile.mp4";
+import wave1VideoMP4 from "../../assets/videos/Home-Wave1-rf24.mp4";
 import leaderboardImage from "../../assets/images/leaderboard-img.jpg";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -13,24 +12,11 @@ interface Wave1SectionV3Props {
 }
 
 function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV3Props) {
-  const [isMobile, setIsMobile] = useState(false);
-
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Detect mobile/tablet device (< 1024px)
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  const videoSrc = isMobile ? wave1VideoMobileMP4 : wave1VideoPcMP4;
+  const videoSrc = wave1VideoMP4;
 
   // Video autoplay handling (iOS support)
   useEffect(() => {

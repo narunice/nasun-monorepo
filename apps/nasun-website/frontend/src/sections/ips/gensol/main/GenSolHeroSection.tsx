@@ -55,9 +55,11 @@ function GenSolHeroSection() {
       <div className="hidden lg:block absolute inset-x-0 bottom-[14%] z-20 text-center px-12 lg:px-20">
         <div className="items-center mx-auto">
           <FadeInUp>
-            <h1 className="font-bold !font-rubik text-nasun-white mb-6">
-              Our First Original IP - GEN SOL
-            </h1>
+            <img
+              src="/GensolWordmarkWhite.svg"
+              alt="GEN SOL"
+              className="h-16 xl:h-20 w-auto mx-auto mb-12"
+            />
             <p className=" text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
               A bold sci-fi universe designed to power games, films, streaming shows and merchandise
               at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and
@@ -70,7 +72,7 @@ function GenSolHeroSection() {
       </div>
 
       {/* ============ 모바일/태블릿 레이아웃 (lg 미만) ============ */}
-      <div className="lg:hidden flex flex-col pt-[22%] md:pt-[8%]">
+      <div className="lg:hidden flex flex-col pt-[20%] md:pt-[8%]">
         {/* 이미지 영역 */}
         <div className="relative">
           <img
@@ -83,20 +85,22 @@ function GenSolHeroSection() {
             className="absolute inset-0"
             style={{
               background: `
-                linear-gradient(to bottom, #191615 0%, transparent 15%),
-                linear-gradient(to top, #191615 0%, #191615 20%, rgba(25, 22, 21, 0.7) 40%, transparent 65%)
+                linear-gradient(to bottom, #191615 0%, transparent 10%),
+                linear-gradient(to top, #191615 0%, #191615 5%, rgba(25, 22, 21, 0.1) 40%, transparent 65%)
               `,
             }}
           />
         </div>
 
         {/* 텍스트 콘텐츠 - 이미지 하단과 겹치게 배치 */}
-        <div className="relative mt-[10%] md:-mt-[2%] z-20 text-center px-6 md:px-12 pb-16 md:pb-20 mx-auto ">
+        <div className="relative mt-[5%] md:-mt-[2%] z-20 text-center px-6 md:px-12 pb-16 md:pb-20 mx-auto ">
           <div className="">
-            <h1 className="font-bold !font-rubik text-nasun-white mb-6 max-w-md md:max-w-[530px] mx-auto">
-              Our First Original IP - GEN SOL
-            </h1>
-            <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug max-w-[410px] md:max-w-[590px] mx-auto">
+            <img
+              src="/GensolWordmarkWhite.svg"
+              alt="GEN SOL"
+              className="h-10 md:h-12 w-auto mx-auto mb-6"
+            />
+            <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug max-w-[410px] md:max-w-[590px] mx-auto pt-4">
               A bold sci-fi universe designed to power games, films, streaming shows and merchandise
               at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and
               compelling characters driven by purpose and conflict. Beyond traditional mediums, we

@@ -17,9 +17,7 @@ export const MetricCard = ({ value, label, color, icon, delay }: MetricCardProps
     viewport={{ once: true }}
     className="text-center"
   >
-    <div
-      className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${color} mb-3`}
-    >
+    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${color} mb-3`}>
       {icon}
     </div>
     <div
@@ -29,6 +27,6 @@ export const MetricCard = ({ value, label, color, icon, delay }: MetricCardProps
     >
       <CountingNumber value={value} delay={delay + 0.3} />
     </div>
-    <p className="text-nasun-white/60 font-medium mt-1 text-sm md:text-base">{label}</p>
+    <p className="text-nasun-white/60 font-normal mt-1 text-sm md:text-base">{label}</p>
   </motion.div>
 );
