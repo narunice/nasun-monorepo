@@ -40,5 +40,8 @@ coverage/
 # Temporary files
 _tmp/
 
+# Deploy credentials
+scripts/.credentials
+
 # Chat server data (contains plaintext messages)
 apps/pado/chat-server/data/
