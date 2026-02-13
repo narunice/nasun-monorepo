@@ -24,8 +24,6 @@ EC2_HOST="43.200.67.52"
 REMOTE_DIR="/var/www/nasun/dist"
 BACKUP_DIR="/var/www/nasun/backups"
 HEALTH_CHECK_URL="https://nasun.io"
-HEALTH_CHECK_USER="GenSol"
-HEALTH_CHECK_PASS="GenSol2025"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 START_TIME=$(date +%s)
@@ -219,7 +217,7 @@ log_success "Nginx 재시작 완료"
 # --- Phase 7: 헬스 체크 ---
 log_step 7 7 "헬스 체크"
 
-health_check "$HEALTH_CHECK_URL" "$HEALTH_CHECK_USER" "$HEALTH_CHECK_PASS"
+health_check "$HEALTH_CHECK_URL" "$HTACCESS_USER" "$HTACCESS_PASS"
 
 # --- 완료 ---
 echo ""
