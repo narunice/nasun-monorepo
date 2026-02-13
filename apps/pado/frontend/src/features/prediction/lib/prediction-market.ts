@@ -3,7 +3,7 @@
  */
 
 import { getSuiClient } from '../../../lib/sui-client';
-import { MARKET_TYPE, TEST_MARKETS } from '../constants';
+import { MARKET_CREATED_EVENT, TEST_MARKETS } from '../constants';
 import type { PredictionMarket, OrderbookLevel } from '../types';
 import { parseMarketStatus } from '../types';
 
@@ -272,7 +272,7 @@ export async function fetchMarketsByEvents(): Promise<string[]> {
   try {
     const events = await client.queryEvents({
       query: {
-        MoveEventType: `${MARKET_TYPE.replace('::Market', '')}::MarketCreated`,
+        MoveEventType: MARKET_CREATED_EVENT,
       },
       limit: 50,
     });

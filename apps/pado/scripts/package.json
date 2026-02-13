@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "create-perp-market": "tsx create-perp-market.ts"
+    "create-perp-market": "tsx create-perp-market.ts",
+    "seed-prediction": "tsx seed-prediction.ts",
+    "seed-lottery": "tsx seed-lottery.ts"
   },
   "dependencies": {
     "@mysten/sui": "^1.17.0",
