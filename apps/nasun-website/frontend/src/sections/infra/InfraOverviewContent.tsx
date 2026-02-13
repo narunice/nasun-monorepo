@@ -19,7 +19,7 @@ const InfraOverviewContent = () => {
       {/* Page Title */}
       <PageTitle>Nasun Infrastructure</PageTitle>
 
-      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+      <div className="flex flex-col gap-8 md:gap-10 lg:gap-12 xl:gap-14">
         {/* Intro */}
         <section>
           <SectionTitle as="h4">Decentralized compute for the next generation of IP.</SectionTitle>
@@ -37,8 +37,10 @@ const InfraOverviewContent = () => {
 
         {/* Node Types - Table */}
         <section>
-          <SectionTitle as="h4">Node Types</SectionTitle>
-          <DividerBox color="nw1" padding="sm" hideDivider>
+          <SectionTitle as="h4" className="uppercase text-center">
+            Node Types
+          </SectionTitle>
+          <DividerBox color="nw3" padding="sm" hideDivider className="!bg-gray-900/70">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -70,13 +72,15 @@ const InfraOverviewContent = () => {
 
         {/* How It Works */}
         <section>
-          <SectionTitle as="h4">How It Works</SectionTitle>
+          <SectionTitle as="h4" className="uppercase text-center">
+            How It Works
+          </SectionTitle>
 
           {/* Flow Diagram */}
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 py-6">
             {/* Step 1: Stake */}
             <div className="flex flex-col items-center gap-3 text-center flex-1">
-              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/50 bg-nasun-nw2/20 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/60 bg-nasun-nw2/20 flex items-center justify-center">
                 <Coins className="w-7 h-7 text-nasun-nw4" />
               </div>
               <div>
@@ -90,7 +94,7 @@ const InfraOverviewContent = () => {
 
             {/* Step 2: Deliver */}
             <div className="flex flex-col items-center gap-3 text-center flex-1">
-              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/50 bg-nasun-nw2/20 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/60 bg-nasun-nw2/20 flex items-center justify-center">
                 <Server className="w-7 h-7 text-nasun-nw4" />
               </div>
               <div>
@@ -104,7 +108,7 @@ const InfraOverviewContent = () => {
 
             {/* Step 3: Earn */}
             <div className="flex flex-col items-center gap-3 text-center flex-1">
-              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/50 bg-nasun-nw2/20 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/60 bg-nasun-nw2/20 flex items-center justify-center">
                 <TrendingUp className="w-7 h-7 text-nasun-nw4" />
               </div>
               <div>
@@ -120,9 +124,11 @@ const InfraOverviewContent = () => {
 
         {/* Network Participants */}
         <section>
-          <SectionTitle as="h4">Network Participants</SectionTitle>
+          <SectionTitle as="h4" className="uppercase text-center">
+            Network Participants
+          </SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start gap-4 p-5 rounded-sm border border-nasun-nw4/30 bg-nasun-nw2/10">
+            <div className="flex items-start gap-4 p-5 rounded-sm border border-nasun-nw3/40 bg-gray-900/70">
               <div className="w-12 h-12 rounded-full border border-nasun-nw4/50 bg-nasun-nw2/20 flex items-center justify-center shrink-0">
                 <User className="w-5 h-5 text-nasun-nw4" />
               </div>
@@ -133,15 +139,13 @@ const InfraOverviewContent = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-4 p-5 rounded-sm border border-nasun-nw4/30 bg-nasun-nw2/10">
+            <div className="flex items-start gap-4 p-5 rounded-sm border border-nasun-nw3/40 bg-gray-900/70">
               <div className="w-12 h-12 rounded-full border border-nasun-nw4/50 bg-nasun-nw2/20 flex items-center justify-center shrink-0">
                 <Wrench className="w-5 h-5 text-nasun-nw4" />
               </div>
               <div>
                 <p className="font-medium text-nasun-white text-lg mb-1">Operators</p>
-                <p className="text-nasun-white/70">
-                  Access global demand with no intermediaries.
-                </p>
+                <p className="text-nasun-white/70">Access global demand with no intermediaries.</p>
               </div>
             </div>
           </div>

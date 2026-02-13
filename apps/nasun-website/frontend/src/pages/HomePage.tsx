@@ -12,14 +12,12 @@ const HeroSection = lazy(() => import("../sections/home/HeroSection"));
 const VisionSection = lazy(() => import("../sections/home/VisionSection"));
 const WhatWeBuildingSection = lazy(() => import("../sections/home/WhatWeBuildingSection"));
 const Wave1Section = lazy(() => import("../sections/home/Wave1Section"));
-const NftSaleSection = lazy(() => import("../sections/home/NftSaleSection"));
 const AwardsGrantsSection = lazy(() => import("../sections/home/AwardsGrantsSection"));
 const NewsEventsSection = lazy(() => import("../sections/home/NewsEventsSection"));
 
 export default function HomePage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isVisionVideoReady, setIsVisionVideoReady] = useState(false);
-  const [isWave1VideoReady, setIsWave1VideoReady] = useState(false);
   const { setIsPageReady } = useHomePageLoading();
 
   // 홈페이지 마운트 시 페이지 준비 상태가 false임을 보장 (Context에서 자동 처리되지만 명시적 설정)
@@ -51,11 +49,6 @@ export default function HomePage() {
     setIsVisionVideoReady(true);
   }, []);
 
-  // Wave1 비디오 로딩 완료 핸들러
-  const handleWave1VideoReady = useCallback(() => {
-    setIsWave1VideoReady(true);
-  }, []);
-
   // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
   // Suspense fallback: Use HeroSectionSkeleton to prevent layout shift
@@ -72,7 +65,7 @@ export default function HomePage() {
   // This prevents re-mounting and state reset issues
   return (
     <div className="bg-nasun-black">
-      {/* Snap Scroll 섹션들 (Hero ~ NFT Sale) */}
+      {/* Snap Scroll 섹션들 (Hero ~ Wave1) */}
       <ScrollSnapContainer>
         <ErrorBoundary fallback={errorFallback}>
           <Suspense fallback={suspenseFallback}>
@@ -102,15 +95,9 @@ export default function HomePage() {
             <ScrollSnapSection allowTallContent={true} disableSnapBelowLg={true}>
               <Wave1Section
                 shouldLoadVideo={isVisionVideoReady}
-                onVideoReady={handleWave1VideoReady}
               />
             </ScrollSnapSection>
 
-            {/* NftSaleSection - 스냅 스크롤 */}
-            {/* Wave1 비디오 로딩 후 시작 */}
-            <ScrollSnapSection>
-              <NftSaleSection shouldLoadVideo={isWave1VideoReady} />
-            </ScrollSnapSection>
           </Suspense>
         </ErrorBoundary>
       </ScrollSnapContainer>

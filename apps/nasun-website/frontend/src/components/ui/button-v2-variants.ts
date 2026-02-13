@@ -13,6 +13,9 @@ export const buttonV2Variants = cva(
           "from-[#E0DAD0] to-[#FFFFFF] !text-nasun-black hover:from-[#D4CEC4] hover:to-[#F5F0E8]",
         purple: "from-[#7B68AE] to-[#A594D0] hover:from-[#6E5CA0] hover:to-[#9786C2]",
         "gensol-red": "from-[#d52933] to-[#e85a62] hover:from-[#c0242d] hover:to-[#d54a52]",
+        baram: "from-[#5e9e5c] to-[#a2d4a0] hover:from-[#518c50] hover:to-[#90c68e]",
+        pado: "from-[#3a5f78] to-[#aac9d5] hover:from-[#30516a] hover:to-[#9abdc9]",
+        "nasun-network": "from-[#496c9c] to-[#a2c5d8] hover:from-[#3d5e8a] hover:to-[#92b9ce]",
       },
       outline: {
         true: "bg-transparent border",
@@ -51,6 +54,21 @@ export const buttonV2Variants = cva(
         variant: "gensol-red",
         outline: true,
         class: "border-[#d52933] text-[#d52933] hover:bg-[#d52933]/10",
+      },
+      {
+        variant: "baram",
+        outline: true,
+        class: "border-[#5e9e5c] text-[#5e9e5c] hover:bg-[#5e9e5c]/10",
+      },
+      {
+        variant: "pado",
+        outline: true,
+        class: "border-[#3a5f78] text-[#3a5f78] hover:bg-[#3a5f78]/10",
+      },
+      {
+        variant: "nasun-network",
+        outline: true,
+        class: "border-[#496c9c] text-[#496c9c] hover:bg-[#496c9c]/10",
       },
     ],
     defaultVariants: {

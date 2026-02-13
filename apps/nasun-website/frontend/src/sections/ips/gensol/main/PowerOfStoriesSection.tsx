@@ -11,7 +11,7 @@ function PowerOfStoriesSection() {
   const { t } = useTranslation("genSol");
 
   return (
-    <SectionLayout className="!px-8 sm:!px-10 md:!px-12 overflow-hidden bg-nasun-black">
+    <SectionLayout className="!px-8 sm:!px-10 md:!px-12  overflow-hidden bg-nasun-black">
       {/* 배경 이미지 - 섹션 하단에 고정 */}
       <div className="absolute bottom-0 inset-x-0 flex justify-center z-0">
         <div className="relative w-full max-w-[1920px]">
@@ -20,7 +20,10 @@ function PowerOfStoriesSection() {
           <div
             className="absolute inset-0"
             style={{
-              background: `radial-gradient(ellipse 120% 100% at 100% 100%, transparent 0%, transparent 10%, #191615 70%)`,
+              background: `
+                linear-gradient(to bottom, #191615 0%, transparent 30%),
+                radial-gradient(ellipse 120% 100% at 100% 100%, transparent 0%, transparent 10%, #191615 70%)
+              `,
             }}
           />
         </div>
@@ -28,7 +31,7 @@ function PowerOfStoriesSection() {
 
       {/* 콘텐츠 */}
       <div className="relative z-10 w-full max-w-5xl mx-auto ">
-        <OuterBox color="n1" className="w-full bg-nasun-c6/50 mt-10 mb-16 ">
+        <OuterBox color="n1" className="w-full bg-nasun-c6/50 mt-16 mb-24">
           {/* 섹션 타이틀 */}
           <SectionTitle as="h3" className="!font-rubik text-center uppercase mb-8 md:mb-10 ">
             {t("powerOfStories.title")}

@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import visionVideoPcMP4 from "../../assets/videos/home-vision-wave-light-desktop.mp4";
-import visionVideoMobileMP4 from "../../assets/videos/home-vision-wave-light-mobile.mp4";
+import visionVideoMP4 from "../../assets/videos/Home-Vision-rf24.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SignUpModal } from "@/components/auth/SignUpModal";
@@ -14,7 +13,6 @@ interface VisionSectionV2Props {
 }
 
 function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectionV2Props) {
-  const [isMobile, setIsMobile] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,17 +22,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
     setIsVideoPlaying(true);
   };
 
-  // Detect mobile device (< 1024px)
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  const videoSrc = isMobile ? visionVideoMobileMP4 : visionVideoPcMP4;
+  const videoSrc = visionVideoMP4;
 
   // Video autoplay handling for iOS
   useEffect(() => {
@@ -146,7 +134,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             {/* Categories */}
             <FadeInUp delay="0.4s">
               <h6 className="font-medium text-nasun-black/60 mt-4">
-                Finance &bull; AI &bull; Games &bull; Film
+                Finance &bull; AI &bull; Games &bull; Films
               </h6>
             </FadeInUp>
 
