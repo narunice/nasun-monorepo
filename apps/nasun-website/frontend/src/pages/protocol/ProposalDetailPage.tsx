@@ -21,9 +21,10 @@ import {
   getStatusBadge,
 } from "@/features/governance/utils/proposalHelpers";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { OuterBox, Button, PageTitle } from "@/components/ui";
+import { OuterBox, PageTitle } from "@/components/ui";
 import { toast } from "react-toastify";
 import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 const ProposalDetailPage: FC = () => {
   const { proposalId } = useParams<{ proposalId: string }>();
@@ -68,9 +69,9 @@ const ProposalDetailPage: FC = () => {
       <SectionLayout className="!max-w-4xl">
         <div className="text-center py-20">
           <p className="text-red-400 mb-4">Invalid proposal ID</p>
-          <Button variant="outlineNw2" onClick={() => navigate("/network/governance")}>
+          <ButtonV3 variant="nw2" outline onClick={() => navigate("/network/governance")}>
             Back to Governance
-          </Button>
+          </ButtonV3>
         </div>
       </SectionLayout>
     );
@@ -91,9 +92,9 @@ const ProposalDetailPage: FC = () => {
       <SectionLayout className="!max-w-4xl">
         <div className="text-center py-20">
           <p className="text-red-400 mb-4">Proposal not found</p>
-          <Button variant="outlineNw2" onClick={() => navigate("/network/governance")}>
+          <ButtonV3 variant="nw2" outline onClick={() => navigate("/network/governance")}>
             Back to Governance
-          </Button>
+          </ButtonV3>
         </div>
       </SectionLayout>
     );
@@ -170,7 +171,11 @@ const ProposalDetailPage: FC = () => {
       {/* Two-column layout: Description (left) + Sidebar (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
         {/* Left: Description */}
-        <OuterBox color="nw2" padding="md" className="flex flex-col min-h-[300px] max-h-[55vh]">
+        <OuterBox
+          color="nw2"
+          padding="md"
+          className="flex flex-col min-h-[300px] lg:min-h-[500px] max-h-[55vh] !bg-gray-900"
+        >
           <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
             <p className="text-nasun-white/85 whitespace-pre-wrap leading-relaxed">
               {proposal.description}
@@ -214,7 +219,7 @@ const ProposalDetailPage: FC = () => {
           </OuterBox>
 
           {/* Details */}
-          <OuterBox color="nw2" padding="md" className="flex-1">
+          <OuterBox color="nw2" padding="md" className="flex-1 ">
             <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">
               Details
             </h3>
@@ -266,29 +271,30 @@ const ProposalDetailPage: FC = () => {
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
-            {!isExpired &&
-              (isConnected ? (
-                <Button
-                  variant="nw1"
-                  onClick={() => setIsModalOpen(true)}
-                  disabled={!!voteNft}
-                  className="w-full"
-                >
-                  {voteNft ? "Already Voted" : "Vote on this Proposal"}
-                </Button>
-              ) : (
-                <div className="flex justify-center">
-                  <WalletConnect />
-                </div>
-              ))}
-            <Button
-              variant="outlineNw2"
+            <ButtonV3
+              variant="nw2"
+              outline
               onClick={handleCopyUrl}
               className="w-full flex items-center justify-center gap-2"
             >
               <Copy className="w-4 h-4" />
               Share
-            </Button>
+            </ButtonV3>
+            {!isExpired &&
+              (isConnected ? (
+                <ButtonV3
+                  variant="gradientDark"
+                  onClick={() => setIsModalOpen(true)}
+                  disabled={!!voteNft}
+                  className="w-full  "
+                >
+                  {voteNft ? "Already Voted" : "Vote on this Proposal"}
+                </ButtonV3>
+              ) : (
+                <div className="flex justify-center">
+                  <WalletConnect />
+                </div>
+              ))}
           </div>
         </div>
       </div>
