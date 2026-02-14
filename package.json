@@ -32,7 +32,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",
-    "devnet:sync": "pnpm --filter @nasun/devnet-config sync"
+    "devnet:sync": "pnpm --filter @nasun/devnet-config sync",
+    "check:x-tokens": "./scripts/check-x-tokens.sh"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
