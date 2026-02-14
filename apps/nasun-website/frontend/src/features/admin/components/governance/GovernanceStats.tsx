@@ -13,28 +13,28 @@ export function GovernanceStats({ proposals, hiddenCount }: GovernanceStatsProps
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
       <DashboardCard variant="default" className="text-center">
-        <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
+        <span className="text-sm uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Total
         </span>
         <span className="text-2xl font-bold text-nasun-white">{proposals.length}</span>
       </DashboardCard>
 
       <DashboardCard variant="default" className="text-center">
-        <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
+        <span className="text-sm uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Active
         </span>
         <span className="text-2xl font-bold text-nasun-c1">{activeCount}</span>
       </DashboardCard>
 
       <DashboardCard variant="default" className="text-center">
-        <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
+        <span className="text-sm uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Expired
         </span>
         <span className="text-2xl font-bold text-nasun-white/40">{expiredCount}</span>
       </DashboardCard>
 
       <DashboardCard variant="default" className="text-center">
-        <span className="text-xs uppercase tracking-widest text-nasun-white/50 mb-2 block">
+        <span className="text-sm uppercase tracking-widest text-nasun-white/50 mb-2 block">
           Hidden
         </span>
         <span className="text-2xl font-bold text-nasun-c4">{hiddenCount}</span>

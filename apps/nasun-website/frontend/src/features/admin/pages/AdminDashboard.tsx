@@ -32,7 +32,7 @@ export function AdminDashboard() {
               <span className="w-1 h-5 bg-nasun-c4 rounded-full"></span>
               System Information
             </h2>
-            <p className="text-nasun-white/60 text-sm leading-relaxed">
+            <p className="text-nasun-white/60 text-base leading-relaxed">
               This admin panel allows you to manage NFT whitelist exports and governance features
               securely. All actions are logged. Please ensure you are connected with an authorized
               wallet address before proceeding with sensitive operations.

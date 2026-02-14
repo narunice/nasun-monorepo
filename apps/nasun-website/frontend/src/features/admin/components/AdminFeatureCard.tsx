@@ -28,16 +28,16 @@ export function AdminFeatureCard({
         {title}
       </h6>
 
-      <p className="text-nasun-white/60 text-sm mb-6 flex-grow leading-relaxed">{description}</p>
+      <p className="text-nasun-white/60 text-base mb-6 flex-grow leading-relaxed">{description}</p>
 
       {disabled ? (
-        <div className="mt-auto pt-4 border-t border-nasun-c5/20 flex items-center text-nasun-white/30 text-sm font-medium cursor-not-allowed">
+        <div className="mt-auto pt-4 border-t border-nasun-c5/20 flex items-center text-nasun-white/30 text-base font-medium cursor-not-allowed">
           {linkText}
         </div>
       ) : (
         <Link
           to={link}
-          className="mt-auto pt-4 border-t border-nasun-c5/30 flex items-center text-nasun-c4 hover:text-nasun-c1 text-sm font-medium transition-colors"
+          className="mt-auto pt-4 border-t border-nasun-c5/30 flex items-center text-nasun-c4 hover:text-nasun-c1 text-base font-medium transition-colors"
         >
           {linkText}
           <ChevronRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />

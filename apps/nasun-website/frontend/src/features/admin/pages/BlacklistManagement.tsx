@@ -145,11 +145,11 @@ export function BlacklistManagement() {
                         />
                       )}
                       <div>
-                        <span className="text-nasun-white text-sm font-medium">
+                        <span className="text-nasun-white text-base font-medium">
                           @{result.originalUsername || result.username}
                         </span>
                         {result.displayName && (
-                          <span className="text-nasun-white/40 text-xs ml-2">
+                          <span className="text-nasun-white/40 text-sm ml-2">
                             {result.displayName}
                           </span>
                         )}
@@ -177,7 +177,7 @@ export function BlacklistManagement() {
               <p className="text-nasun-white/40 text-center py-8">No banned accounts</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
+                <table className="w-full text-base border-collapse">
                   <thead>
                     <tr className="border-b border-nasun-white/10 text-nasun-white/60">
                       <th className="text-left py-3 px-2 font-medium">Username</th>

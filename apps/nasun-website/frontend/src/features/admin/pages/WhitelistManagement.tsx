@@ -98,32 +98,32 @@ export function WhitelistManagement() {
           ) : stats ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">
+                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
                   Battalion NFT Allowlist
                 </h5>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-nasun-c1">
                     {stats.battalion.active.toLocaleString()}
                   </span>
-                  <span className="text-nasun-white/40 text-sm font-light">Active Users</span>
+                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
+                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
                   Total: {stats.battalion.total.toLocaleString()} registered /{" "}
                   {stats.battalion.withdrawn.toLocaleString()} withdrawn
                 </div>
               </DashboardCard>
 
               <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-xs tracking-wider mb-2">
+                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
                   Genesis NFT Whitelist
                 </h5>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-nasun-c1">
                     {stats.genesis.active.toLocaleString()}
                   </span>
-                  <span className="text-nasun-white/40 text-sm font-light">Active Users</span>
+                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-xs">
+                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
                   Total: {stats.genesis.total.toLocaleString()} registered /{" "}
                   {stats.genesis.withdrawn.toLocaleString()} withdrawn
                 </div>
@@ -133,7 +133,7 @@ export function WhitelistManagement() {
 
           {/* Stats Error */}
           {statsError && (
-            <div className="p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-sm flex items-center gap-3">
+            <div className="p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-base flex items-center gap-3">
               <span className="text-lg">⚠️</span>
               Failed to load stats: {statsError.message}
             </div>
@@ -168,7 +168,7 @@ export function WhitelistManagement() {
               <h3 className="text-xl font-medium text-nasun-white mb-2">
                 {activeTab === "genesis" ? "Genesis NFT Whitelist" : "Battalion NFT Allowlist"}
               </h3>
-              <p className="text-nasun-white/60 text-sm mb-8">
+              <p className="text-nasun-white/60 text-base mb-8">
                 {activeTab === "genesis"
                   ? "Export wallet addresses currently registered for the Genesis NFT whitelist."
                   : "Export wallet addresses for the Battalion NFT allowlist. You can filter by registration date."}
@@ -178,7 +178,7 @@ export function WhitelistManagement() {
               {activeTab === "battalion" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <div className="space-y-2">
-                    <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium">
+                    <label className="block text-sm uppercase tracking-widest text-nasun-white/50 font-medium">
                       Start Date
                     </label>
                     <input
@@ -189,7 +189,7 @@ export function WhitelistManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium">
+                    <label className="block text-sm uppercase tracking-widest text-nasun-white/50 font-medium">
                       End Date
                     </label>
                     <input
@@ -204,7 +204,7 @@ export function WhitelistManagement() {
 
               {/* Error message */}
               {error && (
-                <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-sm flex items-center gap-3">
+                <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-base flex items-center gap-3">
                   <span className="text-lg">⚠️</span>
                   {error}
                 </div>
@@ -237,26 +237,26 @@ export function WhitelistManagement() {
           {/* Information Section */}
           <div className="w-full">
             <OuterBox color="w1" padding="sm" className="w-full">
-              <h4 className="text-sm font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-base font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
                 <span className="w-1 h-4 bg-nasun-c1 rounded-full"></span>
                 CSV Column Definitions
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <span className="text-xs font-medium text-nasun-c1 uppercase">
+                  <span className="text-sm font-medium text-nasun-c1 uppercase">
                     Standard Format
                   </span>
-                  <p className="text-nasun-white/50 text-xs mt-1 leading-relaxed">
+                  <p className="text-nasun-white/50 text-sm mt-1 leading-relaxed">
                     {activeTab === "genesis"
                       ? "walletAddress, joinedAt, signature, status, withdrawnAt"
                       : "walletAddress, verifiedAt, xUserId, xUsername, allowlistBatchId, status"}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-nasun-c1 uppercase">
+                  <span className="text-sm font-medium text-nasun-c1 uppercase">
                     OpenSea Format
                   </span>
-                  <p className="text-nasun-white/50 text-xs mt-1 leading-relaxed">
+                  <p className="text-nasun-white/50 text-sm mt-1 leading-relaxed">
                     Optimized for OpenSea Allowlist upload. Includes only mandatory columns: Wallet
                     address, Mint limit, and Price.
                   </p>
