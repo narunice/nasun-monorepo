@@ -2,7 +2,7 @@
  * Battalion NFT Page
  *
  * @description
- * Wave 1 Battalion NFT Free Mint 이벤트 메인 페이지
+ * Wave 1 Battalion NFT 이벤트 메인 페이지
  * 6단계 프로세스를 관리하는 오케스트레이터 컴포넌트
  *
  * @author Claude Code
@@ -165,8 +165,8 @@ export const BattalionNftPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentStep]);
 
-  const handleXAuthSuccess = (userId: string, username: string) => {
-    setXAuth(userId, username);
+  const handleXAuthSuccess = (userId: string, username: string, identityId: string) => {
+    setXAuth(userId, username, identityId);
     setError(null);
   };
 
@@ -199,13 +199,18 @@ export const BattalionNftPage: React.FC = () => {
       }
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      setError(apiError.message || t("errors.registerFailed"));
+      // Map error codes to i18n translations (backend messages may be in Korean)
+      const errorCode = apiError.code;
+      const i18nKey = errorCode ? `errors.${errorCode}` : null;
+      const translated = i18nKey && t(i18nKey) !== i18nKey ? t(i18nKey) : null;
+      setError(translated || t("errors.registerFailed"));
     }
   };
 
   const handleReconnect = () => {
-    console.log("[BattalionNftPage] Redirecting to My Account for wallet reconnection");
-    navigate("/my-account");
+    console.log("[BattalionNftPage] Reconnecting wallet - returning to Step 4");
+    setStep(4);
+    setError(null);
   };
 
   const handleReconnectX = () => {
@@ -220,8 +225,8 @@ export const BattalionNftPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Check if wallet is connected
-  const isWalletConnected = !!user?.linkedAccounts?.metamask?.walletAddress;
+  // Check if wallet is connected (store walletAddress as primary, user profile as fallback)
+  const isWalletConnected = !!walletAddress || !!user?.linkedAccounts?.metamask?.walletAddress;
 
   if (!isEnabled) {
     return (

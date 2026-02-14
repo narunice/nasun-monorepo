@@ -40,9 +40,9 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
   const getStepColor = (status: "completed" | "current" | "upcoming"): string => {
     switch (status) {
       case "completed":
-        return "bg-nasun-c4 text-white border-nasun-c4";
+        return "bg-nasun-nw1 text-white border-nasun-nw1";
       case "current":
-        return "bg-nasun-c1/90 text-nasun-white border-nasun-c2";
+        return "bg-teal-800 text-white border-teal-600";
       case "upcoming":
         return "bg-gray-700 text-gray-400 border-gray-600";
     }
@@ -51,7 +51,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
   const getLineColor = (fromStep: EventStep): string => {
     const status = getStepStatus(fromStep);
     if (status === "completed") {
-      return "bg-nasun-c4";
+      return "bg-nasun-nw1";
     }
     return "bg-gray-600";
   };
@@ -76,11 +76,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                         w-12 h-12 rounded-full border-2 flex items-center justify-center
                         font-semibold text-lg transition-all   flex-shrink-0
                         ${stepColor}
-                        ${
-                          status === "current"
-                            ? "ring-4 ring-nasun-c4/30 dark:ring-nasun-c1/50"
-                            : ""
-                        }
+                        ${status === "current" ? "ring-4 ring-teal-600/20" : ""}
                       `}
                     >
                       {status === "completed" ? (
@@ -105,8 +101,8 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                     <p
                       className={`
                         text-center break-words
-                        ${status === "current" ? "text-nasun-c1" : ""}
-                        ${status === "completed" ? "text-nasun-c4" : ""}
+                        ${status === "current" ? "text-teal-500" : ""}
+                        ${status === "completed" ? "text-nasun-nw1" : ""}
                         ${status === "upcoming" ? "text-gray-400" : ""}
                       `}
                     >
@@ -144,7 +140,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                       w-10 h-10 rounded-full border-2 flex items-center justify-center
                       font-semibold flex-shrink-0 transition-all
                       ${stepColor}
-                      ${status === "current" ? "ring-4 ring-nasun-c4/30 dark:ring-nasun-c4/50" : ""}
+                      ${status === "current" ? "ring-4 ring-teal-600/20" : ""}
                     `}
                   >
                     {status === "completed" ? (
@@ -169,8 +165,8 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                   {/* Step Label */}
                   <p
                     className={`
-                      ${status === "current" ? "text-nasun-c1" : ""}
-                      ${status === "completed" ? "text-nasun-c4" : ""}
+                      ${status === "current" ? "text-teal-400" : ""}
+                      ${status === "completed" ? "text-nasun-nw1" : ""}
                       ${status === "upcoming" ? "text-gray-400" : ""}
                     `}
                   >
@@ -180,12 +176,12 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
 
                 {/* Right: Status Badge */}
                 {status === "current" && (
-                  <span className="px-3 py-1 text-nasun-c4 bg-nasun-c4/20 rounded-full text-sm flex-shrink-0">
+                  <span className="px-3 py-1 text-teal-400 bg-teal-700/30 rounded-full text-sm flex-shrink-0">
                     {t("stepper.statusCurrent")}
                   </span>
                 )}
                 {status === "completed" && (
-                  <span className="px-3 py-1 text-nasun-c4 bg-nasun-c4/20 rounded-full text-sm flex-shrink-0">
+                  <span className="px-3 py-1 text-nasun-nw1 bg-nasun-nw1/20 rounded-full text-sm flex-shrink-0">
                     {t("stepper.statusCompleted")}
                   </span>
                 )}

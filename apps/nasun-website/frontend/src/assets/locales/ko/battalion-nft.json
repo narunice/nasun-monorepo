@@ -4,20 +4,33 @@
     "description": "NFT 이벤트 기능이 현재 비활성화되었습니다. 나중에 다시 확인해주세요."
   },
   "header": {
-    "title": "Wave 1 Battalion NFT 프리민팅 이벤트",
+    "title": "Wave 1 Battalion NFT",
     "description": "아래의 미션을 완료하고 허용리스트에 등록하여 당신의 NFT를 민팅하세요."
   },
   "errors": {
     "missingInfo": "필수 정보가 누락되었습니다. 이전 단계를 모두 완료해주세요.",
     "registrationFailed": "등록에 실패했습니다",
-    "registerFailed": "등록에 실패했습니다. 다시 시도해주세요."
+    "registerFailed": "등록에 실패했습니다. 다시 시도해주세요.",
+    "networkError": "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    "statusCheckError": "상태를 확인하는 중 오류가 발생했습니다.",
+    "ALREADY_REGISTERED": "이미 등록된 지갑 주소입니다.",
+    "INVALID_WALLET_ADDRESS": "유효하지 않은 지갑 주소입니다.",
+    "INVALID_X_USER_ID": "유효하지 않은 X 사용자 ID입니다.",
+    "INVALID_X_USERNAME": "유효하지 않은 X 사용자명입니다.",
+    "MISSING_REQUIRED_FIELDS": "필수 필드가 누락되었습니다.",
+    "NOT_ELIGIBLE": "이벤트 참여 자격이 없습니다.",
+    "TASKS_NOT_COMPLETED": "모든 필수 태스크를 먼저 완료해주세요.",
+    "X_API_ERROR": "X API 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    "X_API_RATE_LIMIT": "X API 호출 한도에 도달했습니다. 잠시 후 다시 시도해주세요.",
+    "RATE_LIMIT_EXCEEDED": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+    "UNKNOWN_ERROR": "알 수 없는 오류가 발생했습니다. 다시 시도해주세요."
   },
   "shareOnX": "X에 공유",
   "share": "공유하기",
   "goToHome": "홈으로 가기",
   "goToMyAccount": "내 계정 대시보드로 가기",
   "step1": {
-    "title": "Wave 1 Battalion NFT 프리민팅 이벤트에 오신 것을 환영합니다!",
+    "title": "Wave 1 Battalion NFT 이벤트에 오신 것을 환영합니다!",
     "description": "아래의 미션을 완료하고 허용리스트에 등록하여 당신의 NFT를 민팅하세요.",
     "requirements": {
       "title": "참여 조건",
@@ -31,7 +44,7 @@
     },
     "rewards": {
       "title": "보상",
-      "item1": "1인당 Wave 1 Battalion NFT 1개 무료 민팅",
+      "item1": "1인당 Wave 1 Battalion NFT 1개 민팅",
       "item2": "향후 에어드랍 및 이벤트 우선 참여권",
       "item3": "랜덤 추첨 참여 자격",
       "item4": "모든 Battalion NFT + Genesis NFT 수집 시 멀티플라이어 증가",
@@ -186,7 +199,7 @@
       "registeredAt": "등록 시간",
       "item1": "민팅 시작일에 이메일 알림을 받게 됩니다",
       "item2": "등록한 지갑 주소로 NFT를 민팅할 수 있습니다",
-      "item3": "민팅 가격: 무료 (가스비만 부담)",
+      "item3": "민팅 가격: 추후 공지",
       "dataPreserved": "등록 정보가 저장되었습니다",
       "registrationSaved": "허용리스트 등록 정보가 백엔드에 저장되었습니다",
       "xAccountSaved": "X 계정 인증 정보가 보존되었습니다",

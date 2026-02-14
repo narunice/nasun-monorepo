@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { checkBattalionNftStatus } from '../services/battalionNftApi';
 import { NftWhitelist, ApiError } from '../types/battalion-nft';
 
@@ -33,6 +34,7 @@ export function useBattalionNftStatus(
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation('battalion-nft');
 
   const fetchStatus = useCallback(async () => {
     // 지갑 주소가 없으면 조회하지 않음
@@ -61,12 +63,15 @@ export function useBattalionNftStatus(
     } catch (err: unknown) {
       console.error('[useBattalionNftStatus] Error:', err);
 
-      // ApiError 타입 확인
+      // Map error codes to i18n translations
       if ((err as ApiError).code) {
         const apiError = err as ApiError;
-        setError(apiError.message || apiError.error);
+        const errorCode = apiError.code;
+        const i18nKey = `errors.${errorCode}`;
+        const translated = t(i18nKey) !== i18nKey ? t(i18nKey) : null;
+        setError(translated || t('errors.networkError'));
       } else {
-        setError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        setError(t('errors.networkError'));
       }
 
       setIsRegistered(false);
@@ -74,7 +79,7 @@ export function useBattalionNftStatus(
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress]);
+  }, [walletAddress, t]);
 
   // 지갑 주소가 변경될 때마다 자동으로 상태 조회
   useEffect(() => {
