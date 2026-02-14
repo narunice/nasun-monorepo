@@ -10,8 +10,10 @@ function FoundersSection() {
 
   return (
     <SectionLayout className="!max-w-6xl">
-      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
-        <PageTitle as="h2" align="center">{t("founders")}</PageTitle>
+      <div className="flex flex-col">
+        <PageTitle as="h2" align="center">
+          {t("founders")}
+        </PageTitle>
 
         {TEAM_MEMBERS.map((member) => (
           <TeamCard key={member.id} {...member} />

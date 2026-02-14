@@ -15,7 +15,7 @@ function NasunNetworkSection() {
       {/* Content Box - Semi-transparent container (Founders NFT style) */}
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-6 xl:py-8">
-          <OuterBox color="c5" padding="md" className="!border-nasun-c4/50 !bg-[#212E57]/50">
+          <OuterBox color="nw0" padding="md" className="">
             {/* Main Title */}
             <SectionTitle
               as="h2"
