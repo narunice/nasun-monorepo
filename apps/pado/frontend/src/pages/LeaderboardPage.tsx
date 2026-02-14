@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { useWallet, useZkLogin, useSignerAddress } from '@nasun/wallet';
-import { useLeaderboard, usePnlLeaderboard, LeaderboardTable, PnlLeaderboardTable, PeriodSelector, ModeSelector, MyRankCard } from '../features/leaderboard';
+import { useLeaderboard, usePnlLeaderboard, usePointsLeaderboard, LeaderboardTable, PnlLeaderboardTable, PointsLeaderboardTable, PeriodSelector, ModeSelector, MyRankCard } from '../features/leaderboard';
 import { CompetitionBanner } from '../features/competitions';
 import type { Period, LeaderboardMode } from '../features/leaderboard';
+
+const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
+  volume: 'Top traders ranked by volume',
+  pnl: 'Top traders ranked by realized PnL',
+  points: 'Earn points from trades, volume, and pool diversity',
+};
 
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
@@ -11,9 +17,19 @@ export function LeaderboardPage() {
 
   const volumeQuery = useLeaderboard(period, 100);
   const pnlQuery = usePnlLeaderboard(period, 100);
+  const pointsQuery = usePointsLeaderboard(100);
 
-  const activeData = mode === 'pnl' ? pnlQuery.data : volumeQuery.data;
-  const activeLoading = mode === 'pnl' ? pnlQuery.isLoading : volumeQuery.isLoading;
+  const activeData = mode === 'pnl'
+    ? pnlQuery.data
+    : mode === 'points'
+    ? pointsQuery.data
+    : volumeQuery.data;
+
+  const activeLoading = mode === 'pnl'
+    ? pnlQuery.isLoading
+    : mode === 'points'
+    ? pointsQuery.isLoading
+    : volumeQuery.isLoading;
 
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
@@ -28,7 +44,7 @@ export function LeaderboardPage() {
         <div>
           <h1 className="text-xl font-semibold text-theme-text-primary">Leaderboard</h1>
           <p className="text-sm text-theme-text-muted mt-0.5">
-            {mode === 'pnl' ? 'Top traders ranked by realized PnL' : 'Top traders ranked by volume'}
+            {MODE_DESCRIPTIONS[mode]}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -43,7 +59,9 @@ export function LeaderboardPage() {
             Following
           </button>
           <ModeSelector selected={mode} onSelect={setMode} />
-          <PeriodSelector selected={period} onSelect={setPeriod} />
+          {mode !== 'points' && (
+            <PeriodSelector selected={period} onSelect={setPeriod} />
+          )}
         </div>
       </div>
 
@@ -71,7 +89,14 @@ export function LeaderboardPage() {
 
       {/* Leaderboard Table */}
       <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
-        {mode === 'pnl' ? (
+        {mode === 'points' ? (
+          <PointsLeaderboardTable
+            traders={pointsQuery.data?.traders ?? []}
+            isLoading={activeLoading}
+            currentUserAddress={userAddress}
+            followFilter={showFollowing}
+          />
+        ) : mode === 'pnl' ? (
           <PnlLeaderboardTable
             traders={pnlQuery.data?.traders ?? []}
             isLoading={activeLoading}
