@@ -54,7 +54,7 @@ const env: NftEventEnv = {
  * Lambda Handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
-  console.log('[verify-eligibility] Event:', JSON.stringify(event, null, 2));
+  console.log('[verify-eligibility] Request:', { httpMethod: event.httpMethod, path: event.path, queryParams: event.queryStringParameters });
   const origin = event.headers?.origin || event.headers?.Origin;
 
   try {
@@ -166,7 +166,7 @@ function validateRequest(request: VerifyEligibilityRequest): void {
     throw new NftEventError('Invalid X User ID', ErrorCode.INVALID_X_USER_ID, 400);
   }
 
-  if (!request.xUsername || request.xUsername.trim() === '') {
+  if (!request.xUsername || request.xUsername.trim() === '' || request.xUsername.length > 50) {
     throw new NftEventError('Invalid X Username', ErrorCode.INVALID_X_USERNAME, 400);
   }
 }

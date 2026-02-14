@@ -16,26 +16,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { AccountLanguage, AccountRole, ContentSignal, Platform, Post } from '../types';
 import { getAccountById, getPostById, updateAccountLanguageData, updatePostAndAdjustScores } from '../services/dynamodb-client';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
-
-const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
-function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
-function validateAdmin(event: APIGatewayProxyEvent): boolean {
-  const authHeader = event.headers.Authorization || event.headers.authorization;
-  if (!authHeader || !ADMIN_PASSWORD) return false;
-  const [bearer, password] = authHeader.split(' ');
-  return bearer?.toLowerCase() === 'bearer' && password === ADMIN_PASSWORD;
-}
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { authenticateAdmin } from '../utils/admin-auth';
 
 const VALID_PLATFORMS: Platform[] = ['twitter', 'discord', 'farcaster'];
 const VALID_ROLES: AccountRole[] = ['kol', 'proactive_ct', 'default'];
@@ -128,7 +110,8 @@ function validateEditRequest(body: unknown): { valid: boolean; data?: EditPostRe
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   // Log request metadata only (exclude headers to avoid logging credentials)
   console.log('Admin Edit Post request:', JSON.stringify({
     httpMethod: event.httpMethod,
@@ -138,27 +121,28 @@ export const handler = async (
   }, null, 2));
 
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
+    return respond(200, {});
   }
 
-  if (!validateAdmin(event)) {
-    return createResponse(401, { error: 'Unauthorized' });
+  const admin = await authenticateAdmin(event);
+  if (!admin) {
+    return respond(401, { error: 'Unauthorized' });
   }
 
   const postId = event.pathParameters?.postId;
   if (!postId) {
-    return createResponse(400, { error: 'Missing postId path parameter' });
+    return respond(400, { error: 'Missing postId path parameter' });
   }
 
   if (event.httpMethod !== 'PATCH') {
-    return createResponse(405, { error: 'Method not allowed' });
+    return respond(405, { error: 'Method not allowed' });
   }
 
   try {
     const body = JSON.parse(event.body || '{}');
     const validation = validateEditRequest(body);
     if (!validation.valid) {
-      return createResponse(400, { error: validation.error });
+      return respond(400, { error: validation.error });
     }
 
     // Separate account-level fields from post-level fields
@@ -174,7 +158,7 @@ export const handler = async (
       // Account-only update: just fetch the post for accountId reference
       const existingPost = await getPostById(postId);
       if (!existingPost) {
-        return createResponse(404, { error: `Post ${postId} not found` });
+        return respond(404, { error: `Post ${postId} not found` });
       }
       updatedPost = existingPost;
     }
@@ -193,7 +177,7 @@ export const handler = async (
         }
       } catch (accountError) {
         console.error('Account update failed (post update succeeded):', accountError);
-        return createResponse(207, {
+        return respond(207, {
           success: true,
           post: updatedPost,
           warning: 'Post updated but account update failed. Retry the account fields.',
@@ -201,7 +185,7 @@ export const handler = async (
       }
     }
 
-    return createResponse(200, {
+    return respond(200, {
       success: true,
       post: updatedPost,
       ...(updatedAccount && { account: updatedAccount }),
@@ -211,7 +195,7 @@ export const handler = async (
     const message = error instanceof Error ? error.message : 'Internal server error';
     // Return specific messages for known errors, generic for unexpected ones
     const isKnownError = message.includes('not found');
-    return createResponse(
+    return respond(
       isKnownError ? 404 : 500,
       { error: isKnownError ? message : 'Internal server error' }
     );

@@ -17,9 +17,7 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { Account, Platform, DYNAMO_KEYS, SeasonAccountScore } from '../types';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { createResponse, getRequestOrigin } from '../utils/response';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -48,17 +46,6 @@ interface SearchResult {
 interface SearchResponse {
   accounts: SearchResult[];
   total: number;
-}
-
-function createResponse(
-  statusCode: number,
-  body: SearchResponse | { error: string }
-): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
 }
 
 /**
@@ -160,10 +147,11 @@ async function getSeasonRanks(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { accounts: [], total: 0 });
+    return respond(200, { accounts: [], total: 0 });
   }
 
   try {
@@ -172,7 +160,7 @@ export const handler = async (
     const seasonId = event.queryStringParameters?.seasonId;
 
     if (!query) {
-      return createResponse(400, { error: 'Query parameter "q" is required' });
+      return respond(400, { error: 'Query parameter "q" is required' });
     }
 
     // Parse limit (default 10, max 20)
@@ -184,7 +172,7 @@ export const handler = async (
     const accounts = await searchAccounts(query, limit);
 
     if (accounts.length === 0) {
-      return createResponse(200, { accounts: [], total: 0 });
+      return respond(200, { accounts: [], total: 0 });
     }
 
     // Get ranks if seasonId provided
@@ -209,12 +197,12 @@ export const handler = async (
       };
     });
 
-    return createResponse(200, {
+    return respond(200, {
       accounts: results,
       total: results.length,
     });
   } catch (error) {
     console.error('Error searching accounts:', error);
-    return createResponse(500, { error: 'Internal server error' });
+    return respond(500, { error: 'Internal server error' });
   }
 };

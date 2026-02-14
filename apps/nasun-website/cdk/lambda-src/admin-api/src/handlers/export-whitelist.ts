@@ -305,7 +305,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             { key: "price", header: "Custom price in native token e.g. ETH (optional)" },
           ]
         );
-        filename = generateFilename("genesis-nft-opensea-allowlist", status.toLowerCase());
+        filename = generateFilename("frontiers-opensea-allowlist", status.toLowerCase());
       } else {
         // Default format
         csv = generateCSV(items, [
@@ -315,7 +315,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           { key: "status", header: "status" },
           { key: "withdrawnAt", header: "withdrawnAt" },
         ]);
-        filename = generateFilename("genesis-nft-whitelist", status.toLowerCase());
+        filename = generateFilename("frontiers-whitelist", status.toLowerCase());
       }
 
       console.log(`Generated CSV: ${items.length} items, filename: ${filename}`);

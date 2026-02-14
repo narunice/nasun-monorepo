@@ -13,6 +13,7 @@ import {
   calculatePostScorePreview,
   calculatePostScorePreviewWithFollowers,
 } from '../services/leaderboardV3Api';
+import { useAdminAuth } from './useAdminAuth';
 import type {
   CreatePostRequest,
   GetLeaderboardParams,
@@ -60,24 +61,20 @@ export function useLeaderboardV3Account(
   });
 }
 
-// Admin password from environment variable
-const ADMIN_PASSWORD = import.meta.env.VITE_LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
 /**
  * Hook for creating a new post entry
- * Uses admin password from environment variable
+ * Uses Cognito JWT token from auth context
  */
 export function useCreatePost() {
   const queryClient = useQueryClient();
+  const { cognitoToken } = useAdminAuth();
 
   return useMutation({
     mutationFn: ({
       request,
-      adminUsername,
     }: {
       request: CreatePostRequest;
-      adminUsername?: string;
-    }) => createPost(request, ADMIN_PASSWORD, adminUsername),
+    }) => createPost(request, cognitoToken || ''),
     onSuccess: () => {
       // Invalidate all leaderboard queries to refresh rankings
       queryClient.invalidateQueries({ queryKey: leaderboardV3Keys.all });

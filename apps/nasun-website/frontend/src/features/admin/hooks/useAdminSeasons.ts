@@ -2,20 +2,20 @@
  * useAdminSeasons - Admin season management hooks
  *
  * Provides CRUD operations for season management.
- * Requires admin authentication.
+ * Requires Cognito JWT authentication.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Season, CreateSeasonRequest, UpdateSeasonRequest } from '../types/leaderboard-v3';
+import { useAdminAuth } from './useAdminAuth';
 
 const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
-const ADMIN_PASSWORD = import.meta.env.VITE_LEADERBOARD_V3_ADMIN_PASSWORD;
 
 // Helper to get auth headers
-function getAuthHeaders(): HeadersInit {
+function getAuthHeaders(token: string): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${ADMIN_PASSWORD}`,
+    Authorization: `Bearer ${token}`,
   };
 }
 
@@ -23,10 +23,10 @@ function getAuthHeaders(): HeadersInit {
 // API Functions
 // ============================================
 
-async function fetchAdminSeasons(): Promise<Season[]> {
+async function fetchAdminSeasons(token: string): Promise<Season[]> {
   const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/seasons`, {
     method: 'GET',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -38,10 +38,10 @@ async function fetchAdminSeasons(): Promise<Season[]> {
   return data.seasons || [];
 }
 
-async function createSeasonApi(request: CreateSeasonRequest): Promise<Season> {
+async function createSeasonApi(token: string, request: CreateSeasonRequest): Promise<Season> {
   const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/seasons`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(token),
     body: JSON.stringify(request),
   });
 
@@ -55,12 +55,13 @@ async function createSeasonApi(request: CreateSeasonRequest): Promise<Season> {
 }
 
 async function updateSeasonApi(
+  token: string,
   seasonId: string,
   request: UpdateSeasonRequest
 ): Promise<Season> {
   const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/seasons/${seasonId}`, {
     method: 'PATCH',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(token),
     body: JSON.stringify(request),
   });
 
@@ -73,10 +74,10 @@ async function updateSeasonApi(
   return data.season;
 }
 
-async function deleteSeasonApi(seasonId: string): Promise<void> {
+async function deleteSeasonApi(token: string, seasonId: string): Promise<void> {
   const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/seasons/${seasonId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(token),
   });
 
   if (!response.ok) {
@@ -85,12 +86,12 @@ async function deleteSeasonApi(seasonId: string): Promise<void> {
   }
 }
 
-async function activateSeasonApi(seasonId: string): Promise<Season> {
+async function activateSeasonApi(token: string, seasonId: string): Promise<Season> {
   const response = await fetch(
     `${LEADERBOARD_V3_API_URL}/v3/admin/seasons/${seasonId}/activate`,
     {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(token),
     }
   );
 
@@ -103,12 +104,12 @@ async function activateSeasonApi(seasonId: string): Promise<Season> {
   return data.season;
 }
 
-async function endSeasonApi(seasonId: string): Promise<Season> {
+async function endSeasonApi(token: string, seasonId: string): Promise<Season> {
   const response = await fetch(
     `${LEADERBOARD_V3_API_URL}/v3/admin/seasons/${seasonId}/end`,
     {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(token),
     }
   );
 
@@ -127,6 +128,7 @@ async function endSeasonApi(seasonId: string): Promise<Season> {
 
 export function useAdminSeasons() {
   const queryClient = useQueryClient();
+  const { cognitoToken } = useAdminAuth();
 
   // Query: Fetch all seasons
   const {
@@ -136,13 +138,14 @@ export function useAdminSeasons() {
     refetch,
   } = useQuery({
     queryKey: ['admin-seasons'],
-    queryFn: fetchAdminSeasons,
+    queryFn: () => fetchAdminSeasons(cognitoToken!),
+    enabled: !!cognitoToken,
     staleTime: 1000 * 60, // 1 minute
   });
 
   // Mutation: Create season
   const createMutation = useMutation({
-    mutationFn: createSeasonApi,
+    mutationFn: (request: CreateSeasonRequest) => createSeasonApi(cognitoToken!, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
@@ -152,7 +155,7 @@ export function useAdminSeasons() {
   // Mutation: Update season
   const updateMutation = useMutation({
     mutationFn: ({ seasonId, ...request }: UpdateSeasonRequest & { seasonId: string }) =>
-      updateSeasonApi(seasonId, request),
+      updateSeasonApi(cognitoToken!, seasonId, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
@@ -161,7 +164,7 @@ export function useAdminSeasons() {
 
   // Mutation: Delete season
   const deleteMutation = useMutation({
-    mutationFn: deleteSeasonApi,
+    mutationFn: (seasonId: string) => deleteSeasonApi(cognitoToken!, seasonId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
@@ -170,7 +173,7 @@ export function useAdminSeasons() {
 
   // Mutation: Activate season
   const activateMutation = useMutation({
-    mutationFn: activateSeasonApi,
+    mutationFn: (seasonId: string) => activateSeasonApi(cognitoToken!, seasonId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
@@ -179,7 +182,7 @@ export function useAdminSeasons() {
 
   // Mutation: End season
   const endMutation = useMutation({
-    mutationFn: endSeasonApi,
+    mutationFn: (seasonId: string) => endSeasonApi(cognitoToken!, seasonId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });

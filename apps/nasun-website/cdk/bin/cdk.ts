@@ -62,10 +62,15 @@ const followerStack = new FollowerStack(app, 'FollowerStack', {
 // No dependencies - standalone stack
 
 // Leaderboard V3 stack (Independent manual curation system)
+const cognitoIdentityPoolId = process.env.COGNITO_IDENTITY_POOL_ID;
+if (!cognitoIdentityPoolId) {
+  throw new Error('COGNITO_IDENTITY_POOL_ID environment variable is required for LeaderboardV3Stack');
+}
+
 const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
   env: { region: 'ap-northeast-2' },
   environmentName: 'prod',
-  adminPassword: process.env.LEADERBOARD_V3_ADMIN_PASSWORD || 'change-me-in-production',
-  userProfilesTableName: 'UserProfiles', // For Internal Data Sync (profile image/displayName lookup)
+  cognitoIdentityPoolId,
+  userProfilesTableName: 'UserProfiles',
 });
 // No dependencies - completely independent from V2

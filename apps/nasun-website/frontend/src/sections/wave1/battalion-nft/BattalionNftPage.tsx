@@ -14,7 +14,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStore } from "../../../stores/useBattalionNftStore";
-import { useBattalionNftRegistration } from "../../../hooks/useBattalionNftRegistration";
 import { StepperProgress } from "./StepperProgress";
 import { Step1WelcomeCard } from "./cards/Step1WelcomeCard";
 import { XAuthCard } from "./cards/Step2XAuthCard";
@@ -27,7 +26,8 @@ import { ErrorAlert } from "./common/ErrorAlert";
 import type { VerificationResult, ApiError } from "../../../types/battalion-nft";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
-import { checkBattalionNftStatus } from "../../../services/battalionNftApi";
+import { checkBattalionNftStatus, registerBattalionNftWithSignature } from "../../../services/battalionNftApi";
+import { signMessage } from "../../../utils/metamaskUtils";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 export const BattalionNftPage: React.FC = () => {
@@ -49,12 +49,7 @@ export const BattalionNftPage: React.FC = () => {
     reset,
   } = useBattalionNftStore();
 
-  const {
-    register,
-    isLoading: isRegistering,
-    error: registrationError,
-  } = useBattalionNftRegistration();
-
+  const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isInitialMount = useRef(true);
 
@@ -191,7 +186,13 @@ export const BattalionNftPage: React.FC = () => {
     }
     try {
       setError(null);
-      const result = await register({ walletAddress, xUserId, xUsername });
+      setIsRegistering(true);
+      const result = await registerBattalionNftWithSignature(
+        walletAddress,
+        xUserId,
+        xUsername,
+        (message) => signMessage(message, walletAddress),
+      );
       if (result.success && result.whitelist) {
         setRegistered(result.whitelist);
       } else {
@@ -204,6 +205,8 @@ export const BattalionNftPage: React.FC = () => {
       const i18nKey = errorCode ? `errors.${errorCode}` : null;
       const translated = i18nKey && t(i18nKey) !== i18nKey ? t(i18nKey) : null;
       setError(translated || t("errors.registerFailed"));
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -253,7 +256,6 @@ export const BattalionNftPage: React.FC = () => {
 
       <SectionLayout className="!py-0 mb-6 md:mb-8 lg:mb-10">
         <ErrorAlert message={error} />
-        <ErrorAlert message={registrationError?.message || null} />
 
         <div className="">
           {currentStep === 1 && <Step1WelcomeCard onStartClick={() => setStep(2)} />}

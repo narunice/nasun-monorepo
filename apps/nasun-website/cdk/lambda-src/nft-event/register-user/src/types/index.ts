@@ -90,6 +90,9 @@ export interface RegisterUserRequest {
   walletAddress: string; // MetaMask 지갑 주소
   xUserId: string; // X User ID
   xUsername: string; // X Username
+  signature: string; // MetaMask signed message
+  message: string; // Original message that was signed
+  timestamp: string; // ISO 8601 timestamp included in signed message
 }
 
 /**
@@ -217,6 +220,10 @@ export enum ErrorCode {
   INVALID_WALLET_ADDRESS = 'INVALID_WALLET_ADDRESS',
   INVALID_X_USER_ID = 'INVALID_X_USER_ID',
   INVALID_X_USERNAME = 'INVALID_X_USERNAME',
+
+  // Signature Errors (400/403)
+  INVALID_SIGNATURE = 'INVALID_SIGNATURE',
+  SIGNATURE_EXPIRED = 'SIGNATURE_EXPIRED',
 
   // Business Logic Errors (400)
   ALREADY_REGISTERED = 'ALREADY_REGISTERED',

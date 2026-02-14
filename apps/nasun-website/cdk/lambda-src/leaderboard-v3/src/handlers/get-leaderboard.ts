@@ -49,9 +49,10 @@ import {
   getBannedAccountIds,
 } from '../services/dynamodb-client';
 import { calculateUserScore, compareScores } from '../services/score-calculator';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { authenticateAdmin } from '../utils/admin-auth';
+import { getTodayDateString, getYesterdayDateString } from '../utils/date';
+import { calculateRankChange } from '../utils/rank';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -65,44 +66,6 @@ const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
 const SEASONS_TABLE =
   process.env.LEADERBOARD_V3_SEASONS_TABLE || DYNAMO_KEYS.SEASONS_TABLE;
-const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
-function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
-/**
- * Get today's date string (KST)
- */
-function getTodayDateString(): string {
-  const date = new Date();
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * Get yesterday's date string (KST)
- */
-function getYesterdayDateString(): string {
-  const date = new Date();
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * Check admin authentication for cumulative view
- */
-function isAdminAuthenticated(event: APIGatewayProxyEvent): boolean {
-  const authHeader = event.headers.Authorization || event.headers.authorization;
-  if (!authHeader || !ADMIN_PASSWORD) return false;
-  const [bearer, password] = authHeader.split(' ');
-  return bearer?.toLowerCase() === 'bearer' && password === ADMIN_PASSWORD;
-}
 
 /**
  * Get all public seasons (for season selector)
@@ -242,19 +205,6 @@ function recalculateSeasonScore(score: SeasonAccountScore): {
 }
 
 /**
- * Calculate rank change
- */
-function calculateRankChange(currentRank: number, previousRank?: number): RankChange {
-  if (previousRank === undefined) {
-    return { direction: 'new', amount: 0 };
-  }
-  const change = previousRank - currentRank;
-  if (change > 0) return { direction: 'up', amount: change };
-  if (change < 0) return { direction: 'down', amount: Math.abs(change) };
-  return { direction: 'same', amount: 0 };
-}
-
-/**
  * Convert season account score to leaderboard entry
  */
 function toSeasonLeaderboardEntry(
@@ -366,11 +316,12 @@ function toLeaderboardEntry(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   console.log('Get Leaderboard request:', JSON.stringify(event, null, 2));
 
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
+    return respond(200, {});
   }
 
   try {
@@ -379,11 +330,11 @@ export const handler = async (
     // List all public seasons (for season selector dropdown)
     if (queryParams.listSeasons === 'true') {
       const seasons = await getAllPublicSeasons();
-      return createResponse(200, { seasons });
+      return respond(200, { seasons });
     }
 
     const limit = Math.min(parseInt(queryParams.limit || '100', 10), 500);
-    const offset = parseInt(queryParams.offset || '0', 10);
+    const offset = Math.max(0, parseInt(queryParams.offset || '0', 10) || 0);
     const includeBreakdown = queryParams.breakdown === 'true';
     const isCumulative = queryParams.cumulative === 'true';
     const snapshotDate = queryParams.snapshotDate;
@@ -391,8 +342,9 @@ export const handler = async (
 
     // Cumulative view (admin only)
     if (isCumulative) {
-      if (!isAdminAuthenticated(event)) {
-        return createResponse(401, { error: 'Cumulative view requires admin authentication' });
+      const admin = await authenticateAdmin(event);
+      if (!admin) {
+        return respond(401, { error: 'Cumulative view requires admin authentication' });
       }
 
       // Get all accounts and calculate real-time scores
@@ -417,7 +369,7 @@ export const handler = async (
         calculatedAt: new Date().toISOString(),
       };
 
-      return createResponse(200, response);
+      return respond(200, response);
     }
 
     // Get season (defaults to active/default season)
@@ -425,12 +377,12 @@ export const handler = async (
     if (seasonId) {
       season = await getSeasonById(seasonId);
       if (!season) {
-        return createResponse(404, { error: `Season ${seasonId} not found` });
+        return respond(404, { error: `Season ${seasonId} not found` });
       }
     } else {
       season = await getActiveSeason();
       if (!season) {
-        return createResponse(200, {
+        return respond(200, {
           message: 'No active season',
           entries: [],
           totalCount: 0,
@@ -451,7 +403,7 @@ export const handler = async (
       );
 
       if (allSnapshots.length === 0) {
-        return createResponse(404, { error: `No snapshot found for ${snapshotDate}` });
+        return respond(404, { error: `No snapshot found for ${snapshotDate}` });
       }
 
       // Filter banned accounts from past snapshots
@@ -484,7 +436,7 @@ export const handler = async (
         calculatedAt: allSnapshots[0]?.snapshotTime || new Date().toISOString(),
       };
 
-      return createResponse(200, response);
+      return respond(200, response);
     }
 
     // Current leaderboard (snapshot-based for consistent rankings throughout the day)
@@ -552,7 +504,7 @@ export const handler = async (
         totalCount: 0,
         calculatedAt: new Date().toISOString(),
       };
-      return createResponse(200, response);
+      return respond(200, response);
     }
 
     // Filter banned accounts
@@ -616,9 +568,9 @@ export const handler = async (
       calculatedAt: todaySnapshots[0]?.snapshotTime || new Date().toISOString(),
     };
 
-    return createResponse(200, response);
+    return respond(200, response);
   } catch (error) {
     console.error('Error getting leaderboard:', error);
-    return createResponse(500, { error: 'Internal server error' });
+    return respond(500, { error: 'Internal server error' });
   }
 };

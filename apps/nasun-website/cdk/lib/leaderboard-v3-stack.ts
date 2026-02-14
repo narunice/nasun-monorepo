@@ -31,10 +31,10 @@ import { ALLOWED_ORIGINS_ENV } from './constants/cors';
 export interface LeaderboardV3StackProps extends cdk.StackProps {
   /** Environment name (dev, staging, prod) */
   environmentName: string;
-  /** Admin password for POST /v3/posts endpoint */
-  adminPassword: string;
-  /** UserProfiles table for profile data lookup (optional) */
-  userProfilesTableName?: string;
+  /** Cognito Identity Pool ID for JWT verification */
+  cognitoIdentityPoolId: string;
+  /** UserProfiles table for profile data lookup (required for admin auth) */
+  userProfilesTableName: string;
 }
 
 export class LeaderboardV3Stack extends cdk.Stack {
@@ -48,13 +48,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: LeaderboardV3StackProps) {
     super(scope, id, props);
 
-    const { environmentName, adminPassword, userProfilesTableName } = props;
+    const { environmentName, cognitoIdentityPoolId, userProfilesTableName } = props;
     const envPrefix = environmentName === 'prod' ? '' : `${environmentName}-`;
 
-    // Import UserProfiles table for profile data lookup (Internal Data Sync)
-    const userProfilesTable = userProfilesTableName
-      ? dynamodb.Table.fromTableName(this, 'UserProfilesTable', userProfilesTableName)
-      : undefined;
+    // Import UserProfiles table for admin auth + profile data lookup
+    const userProfilesTable = dynamodb.Table.fromTableName(this, 'UserProfilesTable', userProfilesTableName);
 
     // ============================================
     // DynamoDB Tables
@@ -195,15 +193,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
       LEADERBOARD_V3_SEASONS_TABLE: this.seasonsTable.tableName,
       LEADERBOARD_V3_SNAPSHOTS_TABLE: this.snapshotsTable.tableName,
       LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE: this.seasonAccountsTable.tableName,
-      LEADERBOARD_V3_ADMIN_PASSWORD: adminPassword,
+      COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
+      USER_PROFILES_TABLE: userProfilesTableName,
       ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       NODE_OPTIONS: '--enable-source-maps',
     };
-
-    // Add UserProfiles table name if available
-    if (userProfilesTableName) {
-      lambdaEnvironment.USER_PROFILES_TABLE = userProfilesTableName;
-    }
 
     const lambdaSrcPath = path.join(__dirname, '..', 'lambda-src', 'leaderboard-v3', 'src');
     const depsLockFilePath = path.join(__dirname, '..', 'pnpm-lock.yaml');
@@ -495,18 +489,28 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(getRankHistoryLambda);
     this.snapshotsTable.grantReadData(getRankHistoryLambda);
 
-    // Grant read access to UserProfiles table + GSI for profile data lookup
-    if (userProfilesTable) {
-      userProfilesTable.grantReadData(createPostLambda);
-      userProfilesTable.grantReadData(getMyRankLambda);
-      // fromTableName() doesn't include GSI permissions - add explicitly
-      const userProfilesIndexPolicy = new iam.PolicyStatement({
-        actions: ['dynamodb:Query'],
-        resources: [`${userProfilesTable.tableArn}/index/*`],
-      });
-      createPostLambda.addToRolePolicy(userProfilesIndexPolicy);
-      getMyRankLambda.addToRolePolicy(userProfilesIndexPolicy);
+    // Grant read access to UserProfiles table for admin auth + profile data lookup
+    const adminAuthLambdas = [
+      createPostLambda,
+      adminSeasonsLambda,
+      adminStatsLambda,
+      adminBlacklistLambda,
+      adminEditPostLambda,
+      getLeaderboardLambda,  // cumulative view requires admin auth
+    ];
+    for (const fn of adminAuthLambdas) {
+      userProfilesTable.grantReadData(fn);
     }
+    // Profile data lookup (non-admin)
+    userProfilesTable.grantReadData(getMyRankLambda);
+
+    // fromTableName() doesn't include GSI permissions - add explicitly
+    const userProfilesIndexPolicy = new iam.PolicyStatement({
+      actions: ['dynamodb:Query'],
+      resources: [`${userProfilesTable.tableArn}/index/*`],
+    });
+    createPostLambda.addToRolePolicy(userProfilesIndexPolicy);
+    getMyRankLambda.addToRolePolicy(userProfilesIndexPolicy);
 
     // ============================================
     // API Gateway

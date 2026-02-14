@@ -27,9 +27,9 @@ import {
   RankChange,
   DYNAMO_KEYS,
 } from '../types';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { getTodayDateString, getYesterdayDateString } from '../utils/date';
+import { calculateRankChange } from '../utils/rank';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -49,36 +49,6 @@ const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
 const USER_PROFILES_TABLE =
   process.env.USER_PROFILES_TABLE || 'UserProfiles';
-
-function createResponse(
-  statusCode: number,
-  body: MyRankResponse | { error: string }
-): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
-/**
- * Get today's date string (KST)
- */
-function getTodayDateString(): string {
-  const date = new Date();
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * Get yesterday's date string (KST)
- */
-function getYesterdayDateString(): string {
-  const date = new Date();
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
-}
 
 /**
  * Get active season
@@ -270,22 +240,6 @@ async function getSnapshotTotalUsers(seasonId: string, dateStr: string): Promise
 }
 
 /**
- * Get rank change by comparing today's snapshot with yesterday's snapshot
- */
-function calculateRankChangeFromSnapshots(
-  todayRank: number,
-  yesterdayRank?: number
-): RankChange {
-  if (yesterdayRank === undefined) {
-    return { direction: 'new', amount: 0 };
-  }
-  const change = yesterdayRank - todayRank;
-  if (change > 0) return { direction: 'up', amount: change };
-  if (change < 0) return { direction: 'down', amount: Math.abs(change) };
-  return { direction: 'same', amount: 0 };
-}
-
-/**
  * Sync profile data from UserProfiles table to Account + SeasonAccounts tables.
  * Called lazily when user checks their rank, ensuring fresh profile data
  * is reflected in both the My Rank card and the leaderboard table.
@@ -388,7 +342,8 @@ async function syncProfileFromUserProfiles(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     const emptyResponse: MyRankResponse = {
@@ -396,7 +351,7 @@ export const handler = async (
       data: { status: 'not_ranked' },
       calculatedAt: new Date().toISOString(),
     };
-    return createResponse(200, emptyResponse);
+    return respond(200, emptyResponse);
   }
 
   try {
@@ -405,7 +360,7 @@ export const handler = async (
 
     // Validate username
     if (!username) {
-      return createResponse(400, { error: 'Query parameter "username" is required' });
+      return respond(400, { error: 'Query parameter "username" is required' });
     }
 
     // Get season
@@ -413,12 +368,12 @@ export const handler = async (
     if (seasonId) {
       season = await getSeasonById(seasonId);
       if (!season) {
-        return createResponse(404, { error: `Season "${seasonId}" not found` });
+        return respond(404, { error: `Season "${seasonId}" not found` });
       }
     } else {
       season = await getActiveSeason();
       if (!season) {
-        return createResponse(404, { error: 'No active season found' });
+        return respond(404, { error: 'No active season found' });
       }
       seasonId = season.seasonId;
     }
@@ -433,7 +388,7 @@ export const handler = async (
         seasonId,
         calculatedAt: new Date().toISOString(),
       };
-      return createResponse(200, notRankedResponse);
+      return respond(200, notRankedResponse);
     }
 
     // Sync profile data from UserProfiles (lazy refresh to both accounts + season-accounts)
@@ -502,7 +457,7 @@ export const handler = async (
         seasonId,
         calculatedAt: new Date().toISOString(),
       };
-      return createResponse(200, notRankedResponse);
+      return respond(200, notRankedResponse);
     }
 
     // Get rank change
@@ -510,7 +465,7 @@ export const handler = async (
     if (!isEndedSeason && usedSnapshotDate === todayDate) {
       // Active season with today's snapshot: compute rank change from yesterday
       const yesterdaySnapshot = await getUserSnapshot(seasonId, account.accountId, yesterdayDate);
-      rankChange = calculateRankChangeFromSnapshots(userSnapshot.rank, yesterdaySnapshot?.rank);
+      rankChange = calculateRankChange(userSnapshot.rank, yesterdaySnapshot?.rank);
     } else {
       // Ended season or using yesterday's snapshot: use stored rank change
       rankChange = userSnapshot.rankChange || { direction: 'same', amount: 0 };
@@ -541,9 +496,9 @@ export const handler = async (
       calculatedAt: userSnapshot.snapshotTime || new Date().toISOString(),
     };
 
-    return createResponse(200, response);
+    return respond(200, response);
   } catch (error) {
     console.error('Error getting my rank:', error);
-    return createResponse(500, { error: 'Internal server error' });
+    return respond(500, { error: 'Internal server error' });
   }
 };
