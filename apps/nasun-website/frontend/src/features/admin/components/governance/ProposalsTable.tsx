@@ -22,7 +22,7 @@ export function ProposalsTable({
   return (
     <div className="w-full">
       <OuterBox color="w2" padding="sm" className="w-full overflow-hidden">
-        <h5 className="uppercase text-nasun-white/80 text-sm tracking-widest mb-6 px-2 flex items-center gap-2">
+        <h5 className="uppercase text-nasun-white/80 text-base tracking-widest mb-6 px-2 flex items-center gap-2">
           <span className="w-1 h-4 bg-nasun-c4 rounded-full"></span>
           Proposals Table
         </h5>
@@ -31,22 +31,22 @@ export function ProposalsTable({
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-nasun-c5/20">
-                <th className="px-4 py-4 text-left text-xs font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
                   Title / Description
                 </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-4 py-4 text-center text-xs font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
                   Yes
                 </th>
-                <th className="px-4 py-4 text-center text-xs font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
                   No
                 </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 py-4 text-center text-xs font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -83,7 +83,7 @@ export function ProposalsTable({
                           <p className="text-nasun-white font-medium mb-1 line-clamp-1">
                             {proposal.title}
                           </p>
-                          <p className="text-nasun-white/40 text-xs line-clamp-2 leading-relaxed">
+                          <p className="text-nasun-white/40 text-sm line-clamp-2 leading-relaxed">
                             {proposal.description}
                           </p>
                         </div>
@@ -91,7 +91,7 @@ export function ProposalsTable({
                     </td>
                     <td className="px-4 py-4">
                       <span
-                        className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-sm tracking-tighter ${
+                        className={`px-2 py-0.5 text-xs uppercase font-bold rounded-sm tracking-tighter ${
                           proposal.proposalType === "Poll"
                             ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                             : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
@@ -101,22 +101,22 @@ export function ProposalsTable({
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className="text-green-400 font-mono text-sm">
+                      <span className="text-green-400 font-mono text-base">
                         {proposal.yesPower.toLocaleString()}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className="text-red-400 font-mono text-sm">
+                      <span className="text-red-400 font-mono text-base">
                         {proposal.noPower.toLocaleString()}
                       </span>
                     </td>
                     <td className="px-4 py-4">
                       {proposal.isDelisted ? (
-                        <span className="text-red-400 text-xs font-medium">Delisted</span>
+                        <span className="text-red-400 text-sm font-medium">Delisted</span>
                       ) : proposal.isExpired ? (
-                        <span className="text-nasun-white/30 text-xs">Expired</span>
+                        <span className="text-nasun-white/30 text-sm">Expired</span>
                       ) : (
-                        <span className="text-nasun-c1 text-xs font-medium animate-pulse-subtle">
+                        <span className="text-nasun-c1 text-sm font-medium animate-pulse-subtle">
                           Active
                         </span>
                       )}
