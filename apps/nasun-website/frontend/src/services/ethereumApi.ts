@@ -377,7 +377,15 @@ export const getEthereumNFTs = async (
     try {
       const etherscanNFTs = await getEtherscanNFTs(normalizedAddress);
       const normalizedNFTs = etherscanNFTs.map(normalizeEtherscanNFT);
-      const deduplicatedNFTs = deduplicateNFTs(normalizedNFTs);
+      let deduplicatedNFTs = deduplicateNFTs(normalizedNFTs);
+
+      // Apply contract filter client-side (Etherscan doesn't support server-side filtering)
+      if (contractAddresses && contractAddresses.length > 0) {
+        const allowedSet = new Set(contractAddresses.map((a) => a.toLowerCase()));
+        deduplicatedNFTs = deduplicatedNFTs.filter((nft) =>
+          allowedSet.has(nft.contractAddress.toLowerCase())
+        );
+      }
 
       logDebug('✅ Etherscan API succeeded (fallback):', {
         count: deduplicatedNFTs.length,
@@ -452,8 +460,14 @@ export const getAllChainNFTs = async (
   }
 
   const [ethNFTs, polygonNFTs] = await Promise.all([
-    getEthereumNFTs(walletAddress, contractFilter?.ethereum),
-    getPolygonNFTs(walletAddress, contractFilter?.polygon),
+    // If filter exists but has no ethereum key, skip ethereum chain entirely
+    contractFilter && !contractFilter.ethereum
+      ? Promise.resolve([])
+      : getEthereumNFTs(walletAddress, contractFilter?.ethereum),
+    // If filter exists but has no polygon key, skip polygon chain entirely
+    contractFilter && !contractFilter.polygon
+      ? Promise.resolve([])
+      : getPolygonNFTs(walletAddress, contractFilter?.polygon),
   ]);
 
   return [...ethNFTs, ...polygonNFTs];
