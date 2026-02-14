@@ -13,7 +13,7 @@ export function useTradeMode() {
   const [mode, setModeState] = useState<TradeMode>(() => {
     if (typeof window === 'undefined') return 'simple';
     const stored = localStorage.getItem(STORAGE_KEY);
-    return (stored === 'pro' || stored === 'simple') ? stored : 'simple';
+    return (stored === 'pro' || stored === 'simple') ? stored : 'pro';
   });
 
   // Sync with localStorage

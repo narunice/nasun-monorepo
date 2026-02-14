@@ -9,6 +9,7 @@ import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 import { generateCsv, downloadCsv } from '../../../lib/csv-export';
 import { useNow } from '@/hooks/useNow';
 import { ShareTradeButton } from '../../social/components/ShareTradeButton';
+import { SkeletonTable } from '@/components/common';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -355,8 +356,8 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
 
     if (isLoading) {
       return (
-        <div className="p-8 text-center text-theme-text-muted">
-          Loading...
+        <div className="p-4">
+          <SkeletonTable rows={3} cols={4} />
         </div>
       );
     }
@@ -441,8 +442,8 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
         <div className="px-4 py-3 border-b border-theme-border">
           <h2 className="font-semibold">Trade History</h2>
         </div>
-        <div className="p-8 text-center text-theme-text-muted">
-          Loading...
+        <div className="p-4">
+          <SkeletonTable rows={5} cols={4} />
         </div>
       </div>
     );

@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { formatErrorMessage } from '../../trading/utils/errorParser';
 import {
   useSmartAccount,
   formatUsd,
@@ -56,7 +57,7 @@ export function SmartAccountPanel() {
       await createAccount();
       showToast("Pado enabled successfully!", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to enable Pado", "error");
+      showToast(formatErrorMessage(err), "error");
     }
   };
 

@@ -56,8 +56,8 @@ export function MobileTradeLayoutV2({
 
       {/* Scrollable content */}
       <div className="space-y-3 p-3">
-        {/* Chart — compact height for mobile */}
-        <div style={{ height: '250px' }}>
+        {/* Chart — responsive height for mobile (40vh capped at 350px) */}
+        <div style={{ height: 'min(40vh, 350px)' }}>
           {chartContent}
         </div>
 

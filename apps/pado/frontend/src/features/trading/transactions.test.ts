@@ -49,7 +49,6 @@ import {
   buildCancelOrder,
   buildSwapExactBaseForQuote,
   buildSwapExactQuoteForBase,
-  buildRequestTokens,
   buildWithdrawAll,
 } from './transactions';
 import { buildNbtcFaucetTx, buildNusdcFaucetTx } from '@nasun/wallet';
@@ -460,11 +459,6 @@ describe('buildSwapExactQuoteForBase - Slippage Protection', () => {
 // Faucet - Token Requests
 // ========================================
 describe('Faucet Transaction Builders', () => {
-  it('buildRequestTokens returns transaction', () => {
-    const tx = buildRequestTokens();
-    expect(tx).toBeDefined();
-  });
-
   it('buildNbtcFaucetTx returns transaction', () => {
     const tx = buildNbtcFaucetTx();
     expect(tx).toBeDefined();

@@ -5,6 +5,7 @@
 
 import { Link } from 'react-router-dom';
 import { useMarketOverview } from '../hooks';
+import { SkeletonMarketRow } from '@/components/common';
 
 export function HotMarketsCard() {
   const { markets, isLoading } = useMarketOverview();
@@ -33,7 +34,14 @@ export function HotMarketsCard() {
       <p className="text-xs text-theme-text-muted mb-3">Live market data</p>
 
       <div className="space-y-3">
-        {markets.map((market) => (
+        {isLoading ? (
+          <>
+            <SkeletonMarketRow />
+            <SkeletonMarketRow />
+            <SkeletonMarketRow />
+            <SkeletonMarketRow />
+          </>
+        ) : markets.map((market) => (
           <Link
             key={market.symbol}
             to={`/trade?pool=${market.pool}`}
@@ -51,7 +59,7 @@ export function HotMarketsCard() {
 
             <div className="text-right">
               <div className="font-medium text-theme-text-primary text-sm">
-                {isLoading ? '...' : formatPrice(market.price)}
+                {formatPrice(market.price)}
               </div>
               <div className={`text-xs font-medium ${
                 market.change24h == null

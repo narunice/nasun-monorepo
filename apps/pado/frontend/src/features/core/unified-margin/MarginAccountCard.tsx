@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useQuery } from "@tanstack/react-query";
 import { useWallet, useZkLogin, useMultiBalance, getSuiClient } from "@nasun/wallet";
 import { useMarginAccount } from "./useMarginAccount";
@@ -90,16 +91,14 @@ export function MarginAccountCard() {
           showToast("Pado enabled!", "success");
         } catch (bmError) {
           // MA succeeded but BM failed - show warning but don't fail
-          const errorMsg = bmError instanceof Error ? bmError.message : "Unknown error";
-          console.warn("[UnifiedOnboarding] BalanceManager creation failed:", errorMsg);
-          showToast("Pado Balance enabled. Trading setup failed.", "warning");
+          console.warn("[UnifiedOnboarding] BalanceManager creation failed:", bmError);
+          showToast("Pado Balance enabled but trading setup failed. Try refreshing the page.", "warning");
         }
       } else {
         showToast("Pado enabled!", "success");
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      showToast(`Error: ${errorMsg}`, "error");
+      showToast(formatErrorMessage(error), "error");
     } finally {
       setIsEnablingPado(false);
     }

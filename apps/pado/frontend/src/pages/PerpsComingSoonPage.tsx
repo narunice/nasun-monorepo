@@ -35,20 +35,20 @@ export function PerpsComingSoonPage() {
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 rounded-full mb-6">
           <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
           <span className="text-sm font-medium text-purple-400">
-            Coming in Phase 11
+            Contracts Deployed on V7
           </span>
         </div>
 
         {/* Description */}
         <p className="text-theme-text-secondary max-w-md mx-auto mb-8">
-          Trade perpetual futures with up to 10x leverage on BTC, ETH, and more.
-          Cross-margin and isolated margin modes will be supported.
+          Trade perpetual futures with up to 20x leverage on BTC-PERP.
+          Cross-margin supported via Unified Margin system.
         </p>
 
         {/* Features Preview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-xl mx-auto mb-8">
           <div className="p-4 bg-theme-bg-secondary rounded-xl">
-            <div className="text-2xl font-bold text-theme-text-primary">10x</div>
+            <div className="text-2xl font-bold text-theme-text-primary">20x</div>
             <div className="text-xs text-theme-text-muted">Max Leverage</div>
           </div>
           <div className="p-4 bg-theme-bg-secondary rounded-xl">

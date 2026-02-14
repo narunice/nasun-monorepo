@@ -7,6 +7,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useToast } from '@/components/common';
 import { downloadShareCard, copyShareCardToClipboard } from '../utils/canvasRenderer';
 
+const TWEET_TEXT = encodeURIComponent(
+  'Just traded on @PadoFinance \u2014 a full on-chain CLOB DEX built by just 2 people on Nasun L1!\n\npado.finance',
+);
+const TWITTER_URL = `https://x.com/intent/tweet?text=${TWEET_TEXT}`;
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -64,7 +69,7 @@ export function ShareCardModal({ isOpen, onClose, canvas, filename = 'pado-share
       await downloadShareCard(canvas, filename);
       showToast('Image downloaded', 'success');
     } catch {
-      showToast('Download failed', 'error');
+      showToast('Download failed. Try right-clicking the image to save instead.', 'error');
     }
   }, [canvas, filename, showToast]);
 
@@ -79,7 +84,7 @@ export function ShareCardModal({ isOpen, onClose, canvas, filename = 'pado-share
         showToast('Copy not supported in this browser', 'warning');
       }
     } catch {
-      showToast('Copy failed', 'error');
+      showToast('Copy failed. Try downloading the image instead.', 'error');
     } finally {
       setCopying(false);
     }
@@ -140,6 +145,17 @@ export function ShareCardModal({ isOpen, onClose, canvas, filename = 'pado-share
             </svg>
             {copying ? 'Copying...' : 'Copy'}
           </button>
+          <a
+            href={TWITTER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 bg-theme-bg-tertiary hover:bg-theme-bg-quaternary text-theme-text-primary rounded-lg text-sm font-medium transition-colors"
+            title="Share on X"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
           <button
             onClick={handleShareToChat}
             className="flex items-center justify-center gap-2 py-2.5 px-4 bg-theme-bg-tertiary hover:bg-theme-bg-quaternary text-theme-text-primary rounded-lg text-sm font-medium transition-colors"

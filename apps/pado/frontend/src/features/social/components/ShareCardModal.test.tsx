@@ -125,4 +125,132 @@ describe('ShareCardModal', () => {
       expect(screen.getByText('Download')).toBeTruthy();
     });
   });
+
+  // ===== T2-9: Twitter/X share link =====
+
+  describe('Twitter/X share', () => {
+    it('renders a Share on X link', () => {
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      const xLink = screen.getByTitle('Share on X');
+      expect(xLink).toBeTruthy();
+      expect(xLink.tagName.toLowerCase()).toBe('a');
+    });
+
+    it('has correct Twitter intent URL', () => {
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      const xLink = screen.getByTitle('Share on X') as HTMLAnchorElement;
+      expect(xLink.href).toContain('x.com/intent/tweet');
+      expect(xLink.href).toContain('text=');
+    });
+
+    it('opens in new tab', () => {
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      const xLink = screen.getByTitle('Share on X') as HTMLAnchorElement;
+      expect(xLink.target).toBe('_blank');
+      expect(xLink.rel).toContain('noopener');
+    });
+
+    it('tweet text mentions @PadoFinance', () => {
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      const xLink = screen.getByTitle('Share on X') as HTMLAnchorElement;
+      const decodedUrl = decodeURIComponent(xLink.href);
+      expect(decodedUrl).toContain('@PadoFinance');
+      expect(decodedUrl).toContain('pado.finance');
+    });
+
+    it('tweet text mentions "2 people"', () => {
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      const xLink = screen.getByTitle('Share on X') as HTMLAnchorElement;
+      const decodedUrl = decodeURIComponent(xLink.href);
+      expect(decodedUrl).toContain('2 people');
+    });
+  });
+
+  // ===== T2-11: Actionable error messages =====
+
+  describe('error messages', () => {
+    it('shows actionable download error message', async () => {
+      const { downloadShareCard: mockDownload } = await import('../utils/canvasRenderer');
+      (mockDownload as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('fail'));
+
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      fireEvent.click(screen.getByText('Download'));
+
+      // Wait for async
+      await vi.waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          expect.stringContaining('right-clicking'),
+          'error',
+        );
+      });
+    });
+
+    it('shows actionable copy error message', async () => {
+      const { copyShareCardToClipboard: mockCopy } = await import('../utils/canvasRenderer');
+      (mockCopy as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('fail'));
+
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      fireEvent.click(screen.getByText('Copy'));
+
+      await vi.waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          expect.stringContaining('downloading'),
+          'error',
+        );
+      });
+    });
+
+    it('shows warning when copy not supported', async () => {
+      const { copyShareCardToClipboard: mockCopy } = await import('../utils/canvasRenderer');
+      (mockCopy as ReturnType<typeof vi.fn>).mockResolvedValueOnce(false);
+
+      render(
+        <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
+      );
+      fireEvent.click(screen.getByText('Copy'));
+
+      await vi.waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          expect.stringContaining('not supported'),
+          'warning',
+        );
+      });
+    });
+  });
+
+  // ===== Escape key =====
+
+  describe('keyboard', () => {
+    it('closes on Escape key', () => {
+      const onClose = vi.fn();
+      render(
+        <ShareCardModal isOpen={true} onClose={onClose} canvas={createMockCanvas()} />
+      );
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not close on non-Escape key', () => {
+      const onClose = vi.fn();
+      render(
+        <ShareCardModal isOpen={true} onClose={onClose} canvas={createMockCanvas()} />
+      );
+      fireEvent.keyDown(window, { key: 'Enter' });
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
 });

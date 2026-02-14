@@ -5,6 +5,7 @@
 
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { useTotalValue, type TokenValue } from '../hooks';
+import { SkeletonMarketRow } from '@/components/common';
 
 interface TokenRowProps {
   token: TokenValue;
@@ -105,8 +106,10 @@ export function TokenBalanceList() {
         <div className="px-4 py-3 border-b border-theme-border">
           <h2 className="font-semibold">Assets</h2>
         </div>
-        <div className="p-8 text-center text-theme-text-muted">
-          Loading...
+        <div className="px-4 divide-y divide-theme-border">
+          <SkeletonMarketRow />
+          <SkeletonMarketRow />
+          <SkeletonMarketRow />
         </div>
       </div>
     );
