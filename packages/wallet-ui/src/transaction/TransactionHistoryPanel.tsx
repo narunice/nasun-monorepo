@@ -8,8 +8,11 @@ import {
   useTransactionHistory,
   useAddressBook,
   useChain,
+  useWallet,
+  useZkLogin,
   shortenAddress,
   getStoredEVMAddress,
+  getExplorerAddressUrl,
   type TransactionHistoryItem,
   type TokenTransfer,
 } from '@nasun/wallet';
@@ -307,7 +310,10 @@ export function TransactionHistoryPanel({
   onSend,
   onAddressBook,
 }: TransactionHistoryPanelProps) {
-  const { chain, isEVM } = useChain();
+  const { chain, chainId, isEVM } = useChain();
+  const { account } = useWallet();
+  const { state: zkLoginState } = useZkLogin();
+  const ownerAddress = account?.address || zkLoginState?.address;
   const { data: transactions, isLoading, error, hasNextPage, refetch } = useTransactionHistory({
     limit,
     refetchInterval,
@@ -527,11 +533,21 @@ export function TransactionHistoryPanel({
         </div>
       )}
 
-      {/* Load more indicator */}
-      {hasNextPage && expanded && (
-        <p className="text-center text-xs xl:text-sm text-gray-400 dark:text-zinc-500 py-2">
-          More transactions available in Explorer
-        </p>
+      {/* Explorer link for older transactions */}
+      {hasNextPage && expanded && ownerAddress && (
+        <div className="text-center py-2">
+          <a
+            href={getExplorerAddressUrl(ownerAddress, chainId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs xl:text-sm text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors"
+          >
+            <span>View full history in Explorer</span>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        </div>
       )}
     </div>
   );
