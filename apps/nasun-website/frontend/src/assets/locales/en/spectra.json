@@ -2,8 +2,8 @@
   "pageTitle": "SPECTRA",
   "communityEngagement": {
     "title": "COMMUNITY ENGAGEMENT",
-    "p1": "The details of the game and its current state is shared here to begin the process of involving the community in its development. After the Genesis NFT drop, the Discord server will open for collaborative discussions and voting to reach consensus on how to proceed with the game in production, marketing and distribution.",
-    "p2": "Over the next few months leading up to the Genesis NFT drop, we will share media and progress updates until we can again set up the Discord server for more direct engagement.",
+    "p1": "The details of the game and its current state is shared here to begin the process of involving the community in its development. After the Frontiers drop, the Discord server will open for collaborative discussions and voting to reach consensus on how to proceed with the game in production, marketing and distribution.",
+    "p2": "Over the next few months leading up to the Frontiers drop, we will share media and progress updates until we can again set up the Discord server for more direct engagement.",
     "p3": "Gen Sol is trademarked and copyrighted."
   },
   "overview": {
@@ -18,7 +18,7 @@
     "p1": "As multiplayer PvP games have consistently remained popular over the years, SPECTRA will also deliver a game that intends to capture the imagination of the players devoted to this popular genre with dramatic stories and characters with strong motivations set in exciting environments.",
     "p2": "SPECTRA will launch with three maps all around the core concept of possessing spectra, the most sacred and sought after resource in the Gen Sol Galaxy. Every map tells a unique story that each player holds a pivotal role in how it unfolds. The game play aims to be suspenseful, intense and fun, immersing the player in strategies, interactive environments and clear goals.",
     "p3": "The first map “Escape from Kramok” will have two teams battle each other to carry spectra energy from a crashed cargo spaceship to a working spaceship that needs fuel to escape the hostile lava planet Kramok. The suspense and tension in the game will be consistently high as the teams need to strategize and converge in specific areas to get the spectra energy from one point of the map to the spaceship in order to get off the unstable planet as soon as possible as the environment becomes more hostile over time.",
-    "p4": "With the funds raised from the Genesis NFT drop, the team will continue to focus on building a strong foundation for story, characters, assets, environments and game technology for rapid expansion. Join us on realizing a compelling vision to produce exciting games and content, blending sci-fi and fantasy to build a passionate and loyal fan base."
+    "p4": "With the funds raised from the Frontiers drop, the team will continue to focus on building a strong foundation for story, characters, assets, environments and game technology for rapid expansion. Join us on realizing a compelling vision to produce exciting games and content, blending sci-fi and fantasy to build a passionate and loyal fan base."
   },
   "gameDescription": {
     "title": "GAME DESCRIPTION",
@@ -230,7 +230,7 @@
     ]
   },
   "foundersNftFunds": {
-    "title": "GENESIS NFT FUNDS FOR SPECTRA",
+    "title": "FRONTIERS EVENT FUNDS FOR SPECTRA",
     "categories": {
       "serverBackend": {
         "title": "Server & Backend Development",

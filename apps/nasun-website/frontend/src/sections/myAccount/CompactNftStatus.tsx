@@ -149,7 +149,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   const handleGenesisWithdraw = async () => {
     if (!walletAddress || isGenesisWithdrawing) return;
 
-    if (!confirm("Are you sure you want to withdraw from Genesis NFT Whitelist?")) {
+    if (!confirm("Are you sure you want to withdraw from Frontiers Whitelist?")) {
       return;
     }
 
@@ -157,7 +157,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
       setIsGenesisWithdrawing(true);
       await withdrawWhitelist(walletAddress.toLowerCase(), "", "", new Date().toISOString());
       refetchFounders();
-      alert("Successfully withdrawn from Genesis NFT Whitelist.");
+      alert("Successfully withdrawn from Frontiers Whitelist.");
     } catch (err) {
       console.error("[CompactNftStatus] Founders withdraw error:", err);
       alert("Failed to withdraw. Please try again.");
@@ -187,7 +187,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
           onWithdraw={handleBattalionWithdraw}
         />
         <NftStatusItem
-          title="Genesis NFT Whitelist"
+          title="Frontiers Whitelist"
           isRegistered={isFoundersRegistered}
           isLoading={isFoundersLoading || isGenesisWithdrawing}
           onWithdraw={handleGenesisWithdraw}

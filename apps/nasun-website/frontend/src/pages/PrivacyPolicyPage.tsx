@@ -12,13 +12,13 @@ const PRIVACY_CONTENT = {
   lastUpdated: "Last Updated: January 18, 2026",
   devnetNotice: {
     title: "Important Notice for Devnet",
-    content: "Nasun currently operates on a Developer Network (\"Devnet\"). All on-chain transactions are public, and all assets (except Genesis NFTs) are test assets with no real monetary value."
+    content: "Nasun currently operates on a Developer Network (\"Devnet\"). All on-chain transactions are public, and all assets (except Frontiers NFTs) are test assets with no real monetary value."
   },
   sections: {
     "1": {
       "title": "1. Introduction",
       "content": [
-        "Nasun (\"we\", \"us\", or \"our\") is committed to protecting your privacy. This Privacy Policy (\"Policy\") explains how we collect, use, and safeguard your personal data when you use the Nasun website (nasun.io), Nasun Wallet, Pado application, and Genesis NFT services (collectively, \"Services\")."
+        "Nasun (\"we\", \"us\", or \"our\") is committed to protecting your privacy. This Privacy Policy (\"Policy\") explains how we collect, use, and safeguard your personal data when you use the Nasun website (nasun.io), Nasun Wallet, Pado application, and Frontiers NFT services (collectively, \"Services\")."
       ]
     },
     "2": {
@@ -43,7 +43,7 @@ const PRIVACY_CONTENT = {
         {
           "title": "2.3 Third-Party Data:",
           "items": [
-            "Transaction details from NFT marketplaces (e.g., OpenSea) for Genesis NFT verification."
+            "Transaction details from NFT marketplaces (e.g., OpenSea) for Frontiers NFT verification."
           ]
         }
       ]

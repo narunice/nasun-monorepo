@@ -155,11 +155,11 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
               </span>
             </div>
 
-            {/* Genesis Whitelist Bonus */}
+            {/* Frontiers Whitelist Bonus */}
             <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
-                <span className="text-nasun-white/80">Genesis Whitelist</span>
-                <InfoTooltip content="Genesis NFT whitelist registrants receive +20 bonus voting power." />
+                <span className="text-nasun-white/80">Frontiers Whitelist</span>
+                <InfoTooltip content="Frontiers whitelist registrants receive +20 bonus voting power." />
               </div>
               <span className={`font-medium ${(breakdown?.genesisAllowlist ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.genesisAllowlist ?? 0) > 0 ? `+${breakdown!.genesisAllowlist}` : "\u2014"}

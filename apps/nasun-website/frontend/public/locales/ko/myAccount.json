@@ -44,7 +44,7 @@
     "notSupported": "아직 지원되지 않음"
   },
   "whitelist": {
-    "title": "제너시스 NFT 화이트리스트 상태",
+    "title": "프론티어스 화이트리스트 상태",
     "connectWallet": "화이트리스트 상태를 확인하려면 MetaMask 지갑을 연결하세요.",
     "registered": "등록됨",
     "notRegistered": "아직 화이트리스트에 등록되지 않았습니다.",
