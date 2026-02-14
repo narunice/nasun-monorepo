@@ -1,5 +1,5 @@
 import type { LeaderboardConfig, Period } from './leaderboard-types.js';
-import { PERIOD_MS } from './leaderboard-types.js';
+import { PERIOD_MS, POINTS } from './leaderboard-types.js';
 import {
   aggregateTraderVolume,
   getCurrentRanks,
@@ -11,6 +11,8 @@ import {
   computeTraderPnl,
   getPnlCurrentRanks,
   replaceTraderPnlStats,
+  getPointsCurrentRanks,
+  replaceTraderPoints,
 } from './leaderboard-store.js';
 
 let config: LeaderboardConfig | null = null;
@@ -57,6 +59,9 @@ function runAggregation(): void {
   // Aggregate PnL rankings
   runPnlAggregation();
 
+  // Aggregate points
+  runPointsAggregation();
+
   // Aggregate active competitions
   runCompetitionAggregation();
 
@@ -94,6 +99,65 @@ function runPnlAggregation(): void {
 
     replaceTraderPnlStats(period, ranked);
   }
+}
+
+/**
+ * Compute points for all traders based on lifetime ("all" period) volume stats.
+ *
+ * Formula:
+ *   trade_points   = FIRST_TRADE_BONUS (if any trades) + trade_count * PER_TRADE
+ *   volume_points  = floor(volume_nusdc / 1_000_000_000) * PER_1K_VOLUME   (NUSDC has 6 decimals → raw/1e6 = USD, so 1K USD = 1e9 raw)
+ *   diversity_pts  = unique_pools * PER_UNIQUE_POOL
+ *   total          = trade_points + volume_points + diversity_pts
+ */
+function runPointsAggregation(): void {
+  if (!config) return;
+
+  // Use the "all" period volume data (already aggregated above)
+  const traders = aggregateTraderVolume(0, config.excludedAddresses, 200);
+  if (traders.length === 0) return;
+
+  const currentRanks = getPointsCurrentRanks();
+
+  // Compute points for each trader
+  const pointsData = traders.map((t) => {
+    const tradeCount = t.trade_count;
+    const volumeRaw = BigInt(t.volume_quote);
+    const uniquePools = t.unique_pools;
+
+    // Points calculation
+    const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
+    const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
+    // volumeRaw is in NUSDC raw units (6 decimals). 1K USD = 1_000 * 1e6 = 1e9 raw
+    const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
+    const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
+
+    return {
+      address: t.address,
+      totalPoints: tradePoints + volumePoints + diversityPoints,
+      pointsFromTrades: tradePoints,
+      pointsFromVolume: volumePoints,
+      pointsFromDiversity: diversityPoints,
+      tradeCount,
+      volumeQuote: t.volume_quote,
+    };
+  });
+
+  // Sort by total points descending
+  pointsData.sort((a, b) => b.totalPoints - a.totalPoints);
+
+  // Assign ranks
+  const ranked = pointsData.map((t, index) => {
+    const rank = index + 1;
+    const prevRank = currentRanks.get(t.address) ?? 0;
+    return {
+      ...t,
+      rank,
+      prevRank: prevRank > 0 ? prevRank : rank,
+    };
+  });
+
+  replaceTraderPoints(ranked);
 }
 
 /**

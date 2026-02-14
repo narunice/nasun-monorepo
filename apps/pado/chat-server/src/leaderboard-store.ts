@@ -6,6 +6,7 @@ import type {
   TradeFillRow,
   TraderStatsRow,
   TraderPnlStatsRow,
+  TraderPointsRow,
   BalanceManagerRow,
   CompetitionRow,
   CompetitionResultRow,
@@ -125,6 +126,22 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
 
     CREATE INDEX IF NOT EXISTS idx_pnl_period_rank
       ON trader_pnl(period, rank ASC);
+
+    CREATE TABLE IF NOT EXISTS trader_points (
+      address TEXT PRIMARY KEY,
+      total_points INTEGER NOT NULL DEFAULT 0,
+      points_from_trades INTEGER NOT NULL DEFAULT 0,
+      points_from_volume INTEGER NOT NULL DEFAULT 0,
+      points_from_diversity INTEGER NOT NULL DEFAULT 0,
+      trade_count INTEGER NOT NULL DEFAULT 0,
+      volume_quote TEXT NOT NULL DEFAULT '0',
+      rank INTEGER NOT NULL DEFAULT 0,
+      prev_rank INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_points_rank
+      ON trader_points(rank ASC);
   `);
 }
 
@@ -726,4 +743,114 @@ export function getLeaderboardPnl(
        LIMIT ?`
     )
     .all(period, limit) as TraderPnlStatsRow[];
+}
+
+// ===== Points System =====
+
+/**
+ * Get current points ranks (for prev_rank tracking).
+ */
+export function getPointsCurrentRanks(): Map<string, number> {
+  const rows = getLeaderboardDb()
+    .prepare('SELECT address, rank FROM trader_points')
+    .all() as Array<{ address: string; rank: number }>;
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    map.set(row.address, row.rank);
+  }
+  return map;
+}
+
+/**
+ * Replace all points data with newly computed values.
+ */
+export function replaceTraderPoints(
+  traders: Array<{
+    address: string;
+    totalPoints: number;
+    pointsFromTrades: number;
+    pointsFromVolume: number;
+    pointsFromDiversity: number;
+    tradeCount: number;
+    volumeQuote: string;
+    rank: number;
+    prevRank: number;
+  }>,
+): void {
+  const ldb = getLeaderboardDb();
+  const now = Date.now();
+
+  const replaceStmt = ldb.prepare(
+    `INSERT INTO trader_points (address, total_points, points_from_trades, points_from_volume, points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(address) DO UPDATE SET
+       total_points = excluded.total_points,
+       points_from_trades = excluded.points_from_trades,
+       points_from_volume = excluded.points_from_volume,
+       points_from_diversity = excluded.points_from_diversity,
+       trade_count = excluded.trade_count,
+       volume_quote = excluded.volume_quote,
+       rank = excluded.rank,
+       prev_rank = excluded.prev_rank,
+       updated_at = excluded.updated_at`
+  );
+
+  const tx = ldb.transaction(() => {
+    const addresses = traders.map((t) => t.address);
+    if (addresses.length > 0) {
+      const placeholders = addresses.map(() => '?').join(',');
+      ldb.prepare(
+        `DELETE FROM trader_points WHERE address NOT IN (${placeholders})`
+      ).run(...addresses);
+    } else {
+      ldb.prepare('DELETE FROM trader_points').run();
+    }
+
+    for (const t of traders) {
+      replaceStmt.run(
+        t.address, t.totalPoints, t.pointsFromTrades,
+        t.pointsFromVolume, t.pointsFromDiversity,
+        t.tradeCount, t.volumeQuote,
+        t.rank, t.prevRank, now,
+      );
+    }
+  });
+
+  tx();
+}
+
+/**
+ * Get points leaderboard.
+ */
+export function getPointsLeaderboard(limit: number = 50): TraderPointsRow[] {
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT address, total_points, points_from_trades, points_from_volume,
+              points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at
+       FROM trader_points
+       ORDER BY rank ASC
+       LIMIT ?`
+    )
+    .all(limit) as TraderPointsRow[];
+}
+
+/**
+ * Get individual trader's points.
+ */
+export function getTraderPoints(address: string): TraderPointsRow | null {
+  return (getLeaderboardDb()
+    .prepare(
+      `SELECT address, total_points, points_from_trades, points_from_volume,
+              points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at
+       FROM trader_points
+       WHERE address = ?`
+    )
+    .get(address) as TraderPointsRow | undefined) ?? null;
+}
+
+export function getTotalPointsTraders(): number {
+  const row = getLeaderboardDb()
+    .prepare('SELECT COUNT(*) as count FROM trader_points')
+    .get() as { count: number } | undefined;
+  return row?.count ?? 0;
 }
