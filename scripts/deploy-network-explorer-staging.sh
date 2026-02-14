@@ -124,6 +124,15 @@ rsync -avz -e "ssh -i $PEM_KEY_EXPANDED" --delete "$APP_DIR/dist/" "${EC2_USER}@
 
 log_success "파일 동기화 완료"
 
+# --- Phase 4.5: Nginx security headers 동기화 ---
+NGINX_SNIPPET="$APP_DIR/nginx/explorer-security-headers.conf"
+if [ -f "$NGINX_SNIPPET" ]; then
+  log_info "Nginx security headers 동기화 중..."
+  scp -i "$PEM_KEY_EXPANDED" "$NGINX_SNIPPET" "${EC2_USER}@${EC2_HOST}:/tmp/explorer-security-headers.conf"
+  ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "sudo cp /tmp/explorer-security-headers.conf /etc/nginx/snippets/explorer-security-headers.conf && rm /tmp/explorer-security-headers.conf"
+  log_success "Nginx security headers 동기화 완료"
+fi
+
 # --- Phase 5: Nginx 재시작 ---
 log_step 5 $TOTAL_STEPS "Nginx 재시작"
 
