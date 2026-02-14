@@ -167,28 +167,49 @@ case $ACTION in
     # Phase 3: 환경변수 확인
     log_step 3 4 "환경변수 확인"
 
+    REQUIRED_KEYS=("LP_PRIVATE_KEY" "ORACLE_ADMIN_KEY" "KEEPER_PRIVATE_KEY" "TPSL_API_KEY")
+
     ENV_CHECK=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "
-      if [ -f ${REMOTE_DIR}/.env ]; then
-        if grep -q 'LP_PRIVATE_KEY=' ${REMOTE_DIR}/.env 2>/dev/null; then
-          echo 'OK'
-        else
-          echo 'MISSING_KEY'
-        fi
-      else
+      if [ ! -f ${REMOTE_DIR}/.env ]; then
         echo 'NO_ENV'
+        exit 0
+      fi
+      missing=''
+      for key in LP_PRIVATE_KEY ORACLE_ADMIN_KEY KEEPER_PRIVATE_KEY TPSL_API_KEY; do
+        if ! grep -q \"\${key}=\" ${REMOTE_DIR}/.env 2>/dev/null; then
+          missing=\"\${missing} \${key}\"
+        fi
+      done
+      if [ -z \"\$missing\" ]; then
+        echo 'OK'
+      else
+        echo \"MISSING:\${missing}\"
       fi
     ")
 
     if [ "$ENV_CHECK" = "OK" ]; then
-      log_success "환경변수 확인됨 (.env 파일에 LP_PRIVATE_KEY 설정됨)"
-    else
-      log_warning "환경변수가 설정되지 않았습니다!"
+      log_success "환경변수 확인됨 (모든 필수 키 설정됨)"
+    elif [ "$ENV_CHECK" = "NO_ENV" ]; then
+      log_warning ".env 파일이 없습니다!"
       echo ""
       echo -e "${YELLOW}서버에서 직접 설정해주세요:${NC}"
       echo "  ssh -i $PEM_KEY_EXPANDED ${EC2_USER}@${EC2_HOST}"
-      echo "  echo 'LP_PRIVATE_KEY=your_key_here' > ${REMOTE_DIR}/.env"
+      echo "  cat > ${REMOTE_DIR}/.env << 'EOF'"
+      echo "  LP_PRIVATE_KEY=<lp-bot-hex-key>"
+      echo "  ORACLE_ADMIN_KEY=<oracle-admin-hex-key>"
+      echo "  KEEPER_PRIVATE_KEY=<keeper-hex-key>"
+      echo "  TPSL_API_KEY=<api-key>"
+      echo "  EOF"
       echo ""
       log_warning "환경변수 설정 후 --restart로 봇을 시작하세요"
+    else
+      MISSING_KEYS="${ENV_CHECK#MISSING:}"
+      log_warning "일부 환경변수가 누락되었습니다:${MISSING_KEYS}"
+      echo ""
+      echo -e "${YELLOW}누락된 키를 .env에 추가하세요:${NC}"
+      echo "  ssh -i $PEM_KEY_EXPANDED ${EC2_USER}@${EC2_HOST}"
+      echo "  vi ${REMOTE_DIR}/.env"
+      echo ""
     fi
 
     # Phase 4: PM2로 봇 시작
