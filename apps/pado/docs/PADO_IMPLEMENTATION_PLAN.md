@@ -1,7 +1,7 @@
 # Pado Implementation Plan
 
 **Created**: 2025-12-25
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-15
 **Status**: Prototype launch preparation
 **Strategic Reference**: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
@@ -23,7 +23,7 @@ All phases below are implemented and functional on Nasun Devnet.
 
 | Phase | Name | Key Deliverables |
 |-------|------|-----------------|
-| 0 | Infrastructure | Devnet V6 (Sui fork), 2-Node Validator, RPC + Faucet |
+| 0 | Infrastructure | Devnet V7 (Sui fork, 2026-02-04 reset), 2-Node Validator, RPC + Faucet |
 | 1 | Spot DEX Core | DeepBook V3 CLOB, NBTC/NUSDC pool |
 | 2 | Trading UI MVP | Orderbook, OrderForm (Limit/Market), Balance management |
 | 3 | Trading UX | Lightweight Charts, Order History, Real-time updates |
@@ -38,8 +38,10 @@ All phases below are implemented and functional on Nasun Devnet.
 | 16 | Unified Margin v1 | MarginAccount (multi-collateral), Risk Engine (4-tier), Liquidation Engine |
 | 17 | Lottery v2 | Lottery contract (Sui Random), Ticket purchase UI, Multi-tier prizes |
 | 11.1-11.4 | Perpetuals DEX | PerpMarket, Position, Leverage (20x), Funding, Trading UI, Liquidation + Keeper |
-| 19 | Social Layer | Global Chat (WebSocket + SQLite), Leaderboard (DeepBook event indexer), Trader Profiles, Trading Competitions |
-| 22 | LP Bot | Liquidity Provider Bot for NBTC/NUSDC orderbook (Binance price feed, 20-level grid) |
+| 19 | Social Layer | Global Chat (WebSocket + SQLite), Leaderboard (DeepBook event indexer), Trader Profiles, Trading Competitions, PnL Share, Badges, Market Narrator Bot |
+| 20 | LP Bot | Liquidity Provider Bot for NBTC/NUSDC orderbook (Binance price feed, grid market making) |
+| 21 | V7 Contract Redeployment | All contracts redeployed on V7 (2026-02-04 reset) |
+| 22 | Testnet Launch Polish (T1+T2) | NBTC hardcode fix, onboarding tour, first-trade celebration, Getting Started flow, mobile UX, share cards, skeletons, error messages, points system |
 
 ---
 
@@ -103,9 +105,9 @@ The forward plan is organized by the tier system defined in [SOCIAL_LAYER_DISCUS
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 20.1 Prediction Market Activation | Ensure 1-2 active markets are running at launch with seed liquidity | Pending |
-| 20.2 Lottery Round Activation | Ensure 1 active lottery round is running at launch | Pending |
-| 20.3 Cross-Feature Navigation | Smooth transitions between Trading, Prediction, Lottery from main nav | Pending |
+| 20.1 Prediction Market Activation | Ensure 1-2 active markets are running at launch with seed liquidity | Pending (operational) |
+| 20.2 Lottery Round Activation | Ensure 1 active lottery round is running at launch | Pending (operational) |
+| 20.3 Cross-Feature Navigation | Smooth transitions between Trading, Prediction, Lottery from main nav | ✅ Done (Menu v3) |
 
 ### Phase 21: V7 Contract Redeployment -- ✅ Complete
 
@@ -119,6 +121,36 @@ All contracts successfully deployed on V7 (2026-02-04 reset).
 | 21.4 Perp Redeployment | pado_perp deployed on V7 | ✅ Done |
 | 21.5 Frontend .env Update | Perp/Margin/Lending .env 주소 연동 필요 | Pending |
 
+### Phase 22: Testnet Launch Polish -- ✅ Complete (2026-02-14)
+
+**Goal**: Fix critical UX bugs, improve first impressions, add viral/retention mechanics before testnet public launch.
+
+Based on competitive analysis and code audit. See [IMPROVEMENT_ROADMAP.md](IMPROVEMENT_ROADMAP.md) for full context.
+
+#### Tier 1: Critical Fixes (launch blockers)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 22.1 NBTC Hardcode Fix | Dynamic `currentPool.baseToken.symbol` in useAutoDeposit, useOrderActions, useFaucet | ✅ Done |
+| 22.2 Onboarding Tour Fix | Removed `!isSimple` guard so Simple mode users see the tour | ✅ Done |
+| 22.3 PerpsComingSoon Update | Updated to "20x leverage, deployed", links to actual PerpTradePage | ✅ Done |
+| 22.4 First-Trade Celebration | canvas-confetti + modal + Twitter share button (`FirstTradeCelebration` + `useFirstTradeCelebration`) | ✅ Done |
+| 22.5 Earn Page Cleanup | Staking tab hidden with "Coming Soon" banner | ✅ Done |
+| 22.6 Chat Default Visibility | MobileChatDrawer auto-opens on first visit, notification dot when collapsed | ✅ Done |
+| 22.7 Getting Started Flow | GettingStartedCard on HomePage: 3-step checklist (Wallet -> Faucet -> First Trade) | ✅ Done |
+
+#### Tier 2: Polish & Growth Mechanics
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 22.8 Mobile Chart/Orderbook | Chart height `min(40vh,350px)`, MiniOrderbook 5->8 levels | ✅ Done |
+| 22.9 Enhanced Share Cards | "Built by 2 people" watermark, points/rank included, one-click Twitter share | ✅ Done |
+| 22.10 Loading Skeletons | Skeleton component added to Dashboard, Portfolio, Leaderboard pages | ✅ Done |
+| 22.11 Actionable Errors | `errorParser.ts` maps RPC errors to user-friendly messages with fix guidance | ✅ Done |
+| 22.12 Points System | SQLite store, trade/volume/diversity formula, Points leaderboard tab, aggregator | ✅ Done |
+
+**Test Coverage**: 1085 unit tests across 46 files (frontend) + 90 tests across 2 files (chat-server). 0 failures.
+
 ---
 
 ## Post-Funding Roadmap (Tier 4 -- Vision Document Only)
@@ -129,10 +161,10 @@ These features are implemented or partially implemented but are **not required f
 |---------|--------------|-----------------|
 | Perpetuals Trading UI | Phase 11.3 UI exists, contracts V7 deployed, .env integration pending | After funding, when liquidity is meaningful |
 | Unified Margin v2 (Spot-Perp Integration) | Contracts V7 deployed, UI integration pending | After perp .env integration |
-| Lending & Borrowing | Contract V7 deployed, UI not built | After core user base established |
+| Lending & Borrowing | Contract V7 deployed, UI stubs exist (40%), pool creation needed | After core user base established |
 | Encrypted DMs | Not started | When users request it |
-| AI Agents (Risk Sentinel, Market Narrator) | Not started | When data indexing is stable |
-| Category Chat Tabs | Not started | When single chat becomes too noisy |
+| AI Market Narrator v2 | v1 done (rule-based + optional AI summaries), v2 would add more pools | When multi-pool narrator needed |
+| Category Chat Tabs | Server-side room support exists, frontend tabs not built | When single chat becomes too noisy |
 | Copy Trading / Reputation System | Not started | When community has meaningful participation |
 | Strategy Marketplace / Tournaments | Not started | When community is self-sustaining |
 
@@ -142,8 +174,10 @@ These features are implemented or partially implemented but are **not required f
 
 | Date | Change |
 |------|--------|
+| 2026-02-15 | Phase 22 (Testnet Launch Polish) added: Tier 1 (7 items) + Tier 2 (5 items) all complete. 1085+90 tests passing |
+| 2026-02-14 | Full sync with codebase: Phase 20/21 completion, Market Narrator, PnL Share, Badges, 4 trading pools, NSA deployed, post-funding roadmap updated |
 | 2026-02-07 | Phase 19 (Social Layer), Phase 21 (V7 deploy) marked complete. V7 contract status updated |
-| 2026-02-05 | Phase 22: LP Bot implementation complete (Binance price, 20-level grid, PM2 deploy) |
+| 2026-02-05 | Phase 20: LP Bot implementation complete (Binance price, grid market making, PM2 deploy) |
 | 2026-01-31 | Full rewrite: prototype launch strategy aligned with social layer discussion |
 | 2026-01-17 | Phase 16 v1, 11.1-11.4, 17 completion status update |
 | 2026-01-10 | Phase 16 v1, 11.1-11.2 completion status update |

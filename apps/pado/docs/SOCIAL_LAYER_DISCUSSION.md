@@ -13,7 +13,7 @@
 
 Nasun is a bootstrapped L1 blockchain project built by a 2-person team with no external funding. The ecosystem includes:
 
-- **Nasun Network** -- Sui-forked L1 (Devnet V6 live)
+- **Nasun Network** -- Sui-forked L1 (Devnet V7 live)
 - **Pado** -- Unified non-custodial finance app (trading, prediction, lottery, payments)
 - **Baram** -- AI Settlement Layer (TEE + Escrow)
 - **GenSol / Spectra** -- Shooter game
@@ -114,8 +114,9 @@ Steps 5-6 are where the social layer converts a one-time visitor into a returnin
 |---------|--------|
 | Perpetuals, Unified Margin, Lending | Contracts exist, UI can wait |
 | DMs (encrypted) | Post-launch when users request it |
-| AI Agents (Risk Sentinel, Market Narrator, etc.) | Post-launch when data indexing is stable |
-| Category chat tabs (Spot, Perps, Predictions) | When single chat becomes too noisy |
+| Market Narrator v1 (rule-based + AI summaries) | ✅ Implemented (Phase 19) |
+| Risk Sentinel, Strategy Simulator | Post-launch when data indexing is stable |
+| Category chat tabs (Spot, Perps, Predictions) | When single chat becomes too noisy (server-side room support exists) |
 | Copy Trading, Reputation System, ZKP leaderboards | When community has meaningful participation |
 | Strategy Marketplace, Tournaments | When community is self-sustaining |
 
@@ -221,7 +222,7 @@ The sequence for Nasun: **vision + prototype → community (social layer) → NF
 1. What testnet campaign will drive initial chat activity at prototype launch? (Leaderboard competition? Faucet events? NFT whitelist via participation?)
 2. Should leaderboard rankings carry weight in NFT allocation or whitelist priority?
 3. How does the social layer connect to the broader Nasun ecosystem (Baram, GenSol/Spectra)?
-4. Is WebSocket infrastructure available on the current EC2 setup, or does it need a separate service?
+4. ~~Is WebSocket infrastructure available on the current EC2 setup, or does it need a separate service?~~ **Resolved**: WebSocket chat server runs on existing EC2 (`apps/pado/chat-server/`)
 5. What is the target concurrent user count for prototype launch day?
 
 ---

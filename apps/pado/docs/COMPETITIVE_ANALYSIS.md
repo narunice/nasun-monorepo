@@ -1,6 +1,6 @@
 # Pado DEX - Competitive Analysis & Improvement Roadmap
 
-> Last updated: 2026-02-09
+> Last updated: 2026-02-15
 
 ## Overview
 
@@ -13,12 +13,12 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 | Charts         | 85   | 95    | 95      | 85          | 80   | 40      |
 | Order Types    | 80   | 90    | 95      | 75          | 70   | 45      |
 | Orderbook/Depth| 75   | 90    | 90      | 80          | 75   | 30      |
-| UX/Interaction | 80   | 90    | 85      | 70          | 70   | 65      |
-| Social/Gamif.  | 75   | 85    | 80      | 50          | 45   | 60      |
+| UX/Interaction | 85   | 90    | 85      | 70          | 70   | 65      |
+| Social/Gamif.  | 88   | 85    | 80      | 50          | 45   | 60      |
 | Portfolio/PnL  | 80   | 95    | 95      | 75          | 75   | 50      |
-| Mobile/Perf.   | 55   | 95    | 95      | 70          | 65   | 70      |
-| Onboarding     | 80   | 85    | 85      | 60          | 65   | 75      |
-| **Overall**    | **80** | **91** | **90** | **75**    | **72** | **54** |
+| Mobile/Perf.   | 75   | 95    | 95      | 70          | 65   | 70      |
+| Onboarding     | 90   | 85    | 85      | 60          | 65   | 75      |
+| **Overall**    | **86** | **91** | **90** | **75**    | **72** | **54** |
 
 ## Current Pado Strengths
 
@@ -36,20 +36,31 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 - Portfolio summary CSV export (holdings, P&L, per-market stats)
 - Followed traders system with localStorage persistence
 - Global chat with trade notifications and large trade alerts
+- Market Narrator bot (rule-based price/volume/momentum alerts + optional AI summaries)
+- PnL share cards for social sharing of trading performance
+- Achievement badges system (volume, streak, PnL milestones)
+- Trading competitions with time-limited leaderboards
 - Leaderboard system with trader profiles and follow/unfollow
 - Step-by-step onboarding tour for new users
 - Keyboard shortcuts (B/S/L/M/Esc)
 - Dark/light theme support
+- PWA support (installable, offline-capable via vite-plugin-pwa)
 
 ## Key Gaps
 
-### 1. Mobile/Performance (55/100) - BIGGEST REMAINING GAP
+### 1. Mobile/Performance (75/100) - Improved
 - No native mobile app (web responsive improved with adaptive intervals + lazy loading)
-- Touch interactions limited
-- No PWA support
+- Mobile chart height improved: `min(40vh, 350px)` (was fixed 250px)
+- MiniOrderbook now shows 8 levels (was 5)
+- Loading skeletons added to major pages
+- PWA support (vite-plugin-pwa: installable, service worker caching)
+- Remaining gap: native app, touch gestures
 
-### 2. Social/Gamification (75/100)
+### 2. Social/Gamification (88/100) - Now exceeds Bybit/Binance
+- Points system with trade/volume/diversity scoring + Points leaderboard tab
+- Enhanced share cards with "Built by 2 people" watermark, one-click Twitter share
 - Followed traders, leaderboard trader profiles, large trade alerts in chat
+- Market Narrator bot, PnL share cards, badges, trading competitions all implemented
 - No copy trading (would require smart contract changes)
 - No trading bot SDK for users
 
@@ -149,9 +160,12 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 
 ## Implementation Order
 
-P1-P8, P11, and P16-P18 are completed (2026-02-09). Overall score improved from 60 to 80.
+P1-P8, P11, and P16-P18 are completed (2026-02-14). Phase 22 Testnet Launch Polish (T1+T2) completed 2026-02-15.
+Overall score improved from 60 to 86. Points system, enhanced share cards, loading skeletons, actionable errors, mobile UX, onboarding flow all added.
+PWA support and social layer features (Market Narrator, PnL share, badges, competitions) added since initial completion.
 
 Next priorities by impact-to-effort ratio:
-1. **P9** (Copy Trading) - High impact on social score, but high effort
-2. **P13** (WebSocket) - Significant perf improvement
+
+1. **P13** (WebSocket) - Significant perf improvement, medium effort
+2. **P9** (Copy Trading) - High impact on social score, but high effort
 3. **P15** (Native Mobile) - Closes biggest remaining gap but very high effort
