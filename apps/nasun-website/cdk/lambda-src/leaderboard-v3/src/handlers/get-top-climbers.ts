@@ -211,39 +211,77 @@ export const handler = async (
       seasonId = season.seasonId;
     }
 
-    // Calculate date range
-    const todayDate = getTodayDateString();
-    let previousDate: string;
+    // Determine current snapshot date based on season status
+    const isEndedSeason = season.status === 'ended' || season.status === 'archived';
+    let currentDate: string;
 
-    switch (range) {
-      case 'today':
-        previousDate = getDateNDaysAgo(1);
-        break;
-      case '7d':
-        previousDate = getDateNDaysAgo(7);
-        break;
-      case '4w':
-        previousDate = getDateNDaysAgo(28);
-        break;
-      default:
-        previousDate = getDateNDaysAgo(7);
+    if (isEndedSeason) {
+      // Ended seasons: use the final snapshot from endDate
+      currentDate = season.endDate;
+    } else {
+      currentDate = getTodayDateString();
     }
 
-    console.log(`Comparing snapshots: ${previousDate} -> ${todayDate}`);
+    // Calculate comparison date range
+    let previousDate: string;
+    if (isEndedSeason) {
+      // For ended seasons, calculate range relative to endDate
+      const endDateObj = new Date(season.endDate);
+      switch (range) {
+        case 'today':
+          endDateObj.setDate(endDateObj.getDate() - 1);
+          break;
+        case '7d':
+          endDateObj.setDate(endDateObj.getDate() - 7);
+          break;
+        case '4w':
+          endDateObj.setDate(endDateObj.getDate() - 28);
+          break;
+        default:
+          endDateObj.setDate(endDateObj.getDate() - 7);
+      }
+      previousDate = endDateObj.toISOString().split('T')[0];
+    } else {
+      switch (range) {
+        case 'today':
+          previousDate = getDateNDaysAgo(1);
+          break;
+        case '7d':
+          previousDate = getDateNDaysAgo(7);
+          break;
+        case '4w':
+          previousDate = getDateNDaysAgo(28);
+          break;
+        default:
+          previousDate = getDateNDaysAgo(7);
+      }
+    }
+
+    console.log(`Comparing snapshots: ${previousDate} -> ${currentDate}`);
 
     // Get snapshots
-    const currentSnapshot = await getSnapshot(seasonId, todayDate);
+    const currentSnapshot = await getSnapshot(seasonId, currentDate);
     const previousSnapshot = await getSnapshot(seasonId, previousDate);
 
-    // If today's snapshot doesn't exist yet, try yesterday
+    // If current snapshot doesn't exist, try fallback (up to 7 days back)
     if (currentSnapshot.size === 0) {
-      const yesterdayDate = getDateNDaysAgo(1);
-      console.log(`Today's snapshot not found, trying ${yesterdayDate}`);
-      const yesterdaySnapshot = await getSnapshot(seasonId, yesterdayDate);
-      if (yesterdaySnapshot.size > 0) {
-        // Use yesterday as current
-        for (const [key, value] of yesterdaySnapshot) {
-          currentSnapshot.set(key, value);
+      const MAX_FALLBACK_DAYS = 7;
+      for (let daysBack = 1; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
+        let fallbackDate: string;
+        if (isEndedSeason) {
+          const d = new Date(season.endDate);
+          d.setDate(d.getDate() - daysBack);
+          fallbackDate = d.toISOString().split('T')[0];
+        } else {
+          fallbackDate = getDateNDaysAgo(daysBack);
+        }
+        console.log(`Current snapshot not found, trying ${fallbackDate}`);
+        const fallbackSnapshot = await getSnapshot(seasonId, fallbackDate);
+        if (fallbackSnapshot.size > 0) {
+          for (const [key, value] of fallbackSnapshot) {
+            currentSnapshot.set(key, value);
+          }
+          break;
         }
       }
     }

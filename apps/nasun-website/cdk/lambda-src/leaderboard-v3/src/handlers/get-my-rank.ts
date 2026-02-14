@@ -439,17 +439,49 @@ export const handler = async (
     // Sync profile data from UserProfiles (lazy refresh to both accounts + season-accounts)
     const freshProfile = await syncProfileFromUserProfiles(account, seasonId);
 
-    // Get user's snapshot (today or yesterday if today's not available)
+    // Get user's snapshot
     const todayDate = getTodayDateString();
     const yesterdayDate = getYesterdayDateString();
+    const isEndedSeason = season.status === 'ended' || season.status === 'archived';
 
-    let userSnapshot = await getUserSnapshot(seasonId, account.accountId, todayDate);
-    let usedSnapshotDate = todayDate;
+    let userSnapshot: DailySnapshot | null;
+    let usedSnapshotDate: string;
 
-    if (!userSnapshot) {
-      // Today's snapshot not available, try yesterday
-      userSnapshot = await getUserSnapshot(seasonId, account.accountId, yesterdayDate);
-      usedSnapshotDate = yesterdayDate;
+    if (isEndedSeason) {
+      // Ended seasons: try endDate first, then fall back up to 7 days before endDate
+      const MAX_FALLBACK_DAYS = 7;
+      userSnapshot = null;
+      usedSnapshotDate = season.endDate;
+
+      for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
+        const dateObj = new Date(season.endDate);
+        dateObj.setDate(dateObj.getDate() - daysBack);
+        const dateStr = dateObj.toISOString().split('T')[0];
+
+        userSnapshot = await getUserSnapshot(seasonId, account.accountId, dateStr);
+        if (userSnapshot) {
+          usedSnapshotDate = dateStr;
+          break;
+        }
+      }
+    } else {
+      // Active seasons: try recent snapshots (today, then up to 7 days back)
+      userSnapshot = null;
+      usedSnapshotDate = todayDate;
+
+      const MAX_FALLBACK_DAYS = 7;
+      for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
+        const date = new Date();
+        date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
+        date.setDate(date.getDate() - daysBack);
+        const dateStr = date.toISOString().split('T')[0];
+
+        userSnapshot = await getUserSnapshot(seasonId, account.accountId, dateStr);
+        if (userSnapshot) {
+          usedSnapshotDate = dateStr;
+          break;
+        }
+      }
     }
 
     if (!userSnapshot) {
@@ -473,13 +505,14 @@ export const handler = async (
       return createResponse(200, notRankedResponse);
     }
 
-    // Get yesterday's snapshot for rank change comparison (if using today's snapshot)
+    // Get rank change
     let rankChange: RankChange;
-    if (usedSnapshotDate === todayDate) {
+    if (!isEndedSeason && usedSnapshotDate === todayDate) {
+      // Active season with today's snapshot: compute rank change from yesterday
       const yesterdaySnapshot = await getUserSnapshot(seasonId, account.accountId, yesterdayDate);
       rankChange = calculateRankChangeFromSnapshots(userSnapshot.rank, yesterdaySnapshot?.rank);
     } else {
-      // Using yesterday's snapshot, use stored rank change
+      // Ended season or using yesterday's snapshot: use stored rank change
       rankChange = userSnapshot.rankChange || { direction: 'same', amount: 0 };
     }
 

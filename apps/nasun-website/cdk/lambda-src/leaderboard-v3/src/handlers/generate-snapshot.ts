@@ -157,7 +157,7 @@ async function updateSeasonMetadata(
 /**
  * Recalculate user scores with current timestamp (for freshness multiplier)
  */
-function recalculateUserScore(score: SeasonAccountScore): {
+function recalculateUserScore(score: SeasonAccountScore, referenceDate?: Date): {
   userScore: number;
   rawScore: number;
   consistencyBonus: number;
@@ -173,8 +173,9 @@ function recalculateUserScore(score: SeasonAccountScore): {
   const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
 
   // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / FRESHNESS_HALF_LIFE_DAYS)
+  const refTime = referenceDate ? referenceDate.getTime() : Date.now();
   const daysSinceLastPost = Math.floor(
-    (Date.now() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
+    (refTime - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
   );
   const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
 
@@ -194,6 +195,11 @@ function recalculateUserScore(score: SeasonAccountScore): {
  */
 export const handler = async (event: ScheduledEvent): Promise<void> => {
   console.log('Generate Snapshot triggered:', JSON.stringify(event, null, 2));
+
+  // Support manual invocation with custom date for backfilling missed snapshots
+  // EventBridge schedule: no customDate → uses today's KST date
+  // Manual invoke: { "customDate": "2026-02-13" } → generates snapshot for that date
+  const customDate = (event as Record<string, unknown>).customDate as string | undefined;
 
   try {
     // Get active season
@@ -222,24 +228,34 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
       `Found ${scores.length} accounts, ${scores.length - filteredScores.length} banned, ${filteredScores.length} included in snapshot`
     );
 
-    // Recalculate scores with current timestamp and sort by userScore
+    // For custom date backfills, use the target date for freshness calculation
+    const referenceDate = customDate
+      ? new Date(customDate + 'T00:00:00+09:00')
+      : undefined;
+
+    // Recalculate scores with reference timestamp and sort by userScore
     const scoredAccounts = filteredScores
       .map((score) => ({
         ...score,
-        ...recalculateUserScore(score),
+        ...recalculateUserScore(score, referenceDate),
       }))
       .sort((a, b) => b.userScore - a.userScore);
 
     // Get previous day's ranks
-    const todayDate = getTodayDateString();
+    const todayDate = customDate || getTodayDateString();
     const yesterdayDate = getYesterdayDateString(todayDate);
     const previousRanks = await getPreviousDaySnapshot(activeSeason.seasonId, yesterdayDate);
 
+    if (customDate) {
+      console.log(`Backfill mode: generating snapshot for ${customDate}`);
+    }
     console.log(`Previous day snapshot has ${previousRanks.size} entries`);
 
-    // Create snapshot entries (limit to top 500)
+    // Create snapshot entries (limit to top 2000)
     const MAX_SNAPSHOT_ENTRIES = 2000;
-    const snapshotTime = new Date().toISOString();
+    const snapshotTime = customDate
+      ? new Date(customDate + 'T00:00:00+09:00').toISOString()
+      : new Date().toISOString();
 
     // Check if this is a final snapshot (today >= season endDate)
     // Final snapshots are permanent (no TTL)
