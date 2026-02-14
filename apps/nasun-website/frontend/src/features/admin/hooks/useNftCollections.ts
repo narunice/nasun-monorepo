@@ -30,7 +30,7 @@ export function useEnabledNftCollections() {
   return useQuery({
     queryKey: [...PUBLIC_KEY],
     queryFn: getEnabledNftCollections,
-    staleTime: 30 * 60_000, // 30 minutes — rarely changes
+    staleTime: 5 * 60_000, // 5 minutes
   });
 }
 
@@ -46,6 +46,7 @@ export function useCreateNftCollection(cognitoToken: string | undefined | null) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...ADMIN_KEY] });
       queryClient.invalidateQueries({ queryKey: [...PUBLIC_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['multi-chain-nfts'] });
     },
   });
 }
@@ -62,6 +63,7 @@ export function useUpdateNftCollection(cognitoToken: string | undefined | null) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...ADMIN_KEY] });
       queryClient.invalidateQueries({ queryKey: [...PUBLIC_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['multi-chain-nfts'] });
     },
   });
 }
@@ -78,6 +80,7 @@ export function useDeleteNftCollection(cognitoToken: string | undefined | null) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...ADMIN_KEY] });
       queryClient.invalidateQueries({ queryKey: [...PUBLIC_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['multi-chain-nfts'] });
     },
   });
 }
