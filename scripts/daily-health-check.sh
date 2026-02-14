@@ -1,4 +1,30 @@
 #!/bin/bash
+# ==============================================================================
+# *** DEPRECATED (2026-02-14) ***
+#
+# This script checks Legacy Leaderboard V2 infrastructure which has been
+# replaced by Leaderboard V3 (manual curation system).
+#
+# Token-related checks have been moved to:
+#   ./scripts/check-x-tokens.sh
+#
+# Usage of the replacement:
+#   ./scripts/check-x-tokens.sh           # Check all X/Twitter tokens
+#   ./scripts/check-x-tokens.sh --dev     # Dev only
+#   ./scripts/check-x-tokens.sh --prod    # Prod only
+#
+# This file will be removed in a future cleanup.
+# ==============================================================================
+
+echo ""
+echo "WARNING: daily-health-check.sh is DEPRECATED."
+echo "Token checks have moved to: ./scripts/check-x-tokens.sh"
+echo "V2 pipeline checks are no longer maintained."
+echo ""
+echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+sleep 5
+
+# --- Original script below ---
 
 # Nasun Leaderboard Daily Health Check Script
 # ============================================
