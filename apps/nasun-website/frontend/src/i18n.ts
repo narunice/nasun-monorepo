@@ -55,6 +55,7 @@ i18n
       "terms",
       "battalion-nft",
       "early-contributors",
+      "leaderboard",
       "notFound",
       "proposals",
       "pado",

@@ -399,6 +399,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.genesisEvent",
           path: "/wave1/frontiers-event",
           element: Pages.GenesisNft,
+          disabled: true,
         },
         {
           name: "navigation.contests",
