@@ -43,7 +43,8 @@ type ColorVariant =
   | "nw1"
   | "nw2"
   | "nw3"
-  | "nw4";
+  | "nw4"
+  | "nw0";
 
 type PaddingVariant = "md" | "sm";
 
@@ -69,10 +70,11 @@ const variantStyles: Record<ColorVariant, string> = {
   w3: " border-nasun-white/50 bg-nasun-c4/90", // Nasun Token Section style
   w4: "border-nasun-white/40 bg-nasun-gray/70", // Awards Section style
   w5: "border-nasun-white/40 bg-[#3D3D3D]",
-  nw1: "border-nasun-nw4/50 bg-nasun-nw2/20", // NW standard card (light border)
-  nw2: "border-nasun-nw1/50 bg-nasun-nw2/20", // NW medium card (nw1 border)
-  nw3: "border-nasun-nw2/50 bg-nasun-nw3/30", // NW dark card (modal panels)
-  nw4: "border-nasun-nw4/50 bg-nasun-nw4/10", // NW accent card (nw4 light blue)
+  nw1: "border-nasun-nw4/40 bg-nasun-nw2/20", // NW standard card (light border)
+  nw2: "border-nasun-nw1/40 bg-nasun-nw2/20", // NW medium card (nw1 border)
+  nw3: "border-nasun-nw2/40 bg-nasun-nw3/30", // NW dark card (modal panels)
+  nw4: "border-nasun-nw4/40 bg-nasun-nw4/10", // NW accent card (nw4 light blue)
+  nw0: "border-nasun-nw4/30 bg-[#212E57]/50", // NW accent card (nw4 light blue) -
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {

@@ -14,15 +14,20 @@ const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL;
 export async function getEnabledNftCollections(): Promise<NftCollection[]> {
   const url = `${ADMIN_API_URL}/nft-collections`;
 
-  const response = await fetch(url, { method: 'GET' });
+  try {
+    const response = await fetch(url, { method: 'GET' });
 
-  if (!response.ok) {
-    console.warn('[getEnabledNftCollections] Failed:', response.status);
+    if (!response.ok) {
+      console.warn('[getEnabledNftCollections] Failed:', response.status);
+      return [];
+    }
+
+    const data: NftCollectionsResponse = await response.json();
+    return data.collections;
+  } catch {
+    // NftCollections endpoint may not be deployed yet
     return [];
   }
-
-  const data: NftCollectionsResponse = await response.json();
-  return data.collections;
 }
 
 /**

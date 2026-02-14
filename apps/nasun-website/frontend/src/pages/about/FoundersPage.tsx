@@ -15,7 +15,7 @@ const FoundersPage = () => {
       <ErrorBoundary fallback={<div>{t("common:info.loading")}</div>}>
         <Suspense fallback={<SectionLoading fullScreen />}>
           <FoundersSection />
-          <JoinSection />
+          {/* <JoinSection /> */}
         </Suspense>
       </ErrorBoundary>
     </PageLayout>

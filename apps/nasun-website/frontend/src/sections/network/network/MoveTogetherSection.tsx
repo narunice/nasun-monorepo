@@ -82,7 +82,7 @@ function MoveTogetherSection() {
         {advantages.map((item) => (
           <div
             key={item.key}
-            className="border border-nasun-c4/50    text-[#B3E0FF]  rounded-sm bg-[#212E57]/50 p-6 md:p-8 transition-all hover:border-nasun-white/30 min-h-[140px] md:min-h-[160px]"
+            className="border border-nasun-nw4/30    text-[#B3E0FF]  rounded-sm bg-[#212E57]/50 p-6 md:p-8 transition-all hover:border-nasun-c5/50 min-h-[140px] md:min-h-[160px]"
           >
             <div className="flex items-center gap-6 h-full">
               {/* Icon Box */}

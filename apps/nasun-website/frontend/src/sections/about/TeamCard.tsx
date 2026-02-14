@@ -29,7 +29,7 @@ const TeamCard: React.FC<TeamMember> = ({
   const descriptionArray = Array.isArray(description) ? description : [description];
 
   return (
-    <OuterBox color="w1" className="flex flex-col md:flex-row gap-6 md:gap-10">
+    <OuterBox color="nw1" className="flex flex-col md:flex-row gap-6 md:gap-10 mb-6 md:mb-10 ">
       {/* Left Column - Profile */}
       <div className="md:w-1/4 flex flex-col items-center md:items-start">
         {/* Profile Image */}
@@ -126,15 +126,15 @@ const TeamCard: React.FC<TeamMember> = ({
             {/* Publications */}
             {publications && publications.length > 0 && (
               <DividerBox
-                color="w5"
+                color="nw3"
                 padding="sm"
                 icon={<FiBook />}
                 title="Publications"
-                titleClassName="!text-nasun-c1"
-                className="flex-1"
+                titleClassName="!text-nasun-nw1"
+                className="flex-1 !bg-gray-900/80"
                 disableHover
               >
-                <ul className="list-disc marker:text-nasun-c1 pl-6 space-y-1 text-nasun-white/80">
+                <ul className="list-disc marker:text-nasun-nw1 pl-6 space-y-1 text-nasun-white/80">
                   {publications.map((pub: { label: string; url?: string }, index: number) => (
                     <li key={`pub-${index}`}>
                       {pub.url ? (
@@ -142,7 +142,7 @@ const TeamCard: React.FC<TeamMember> = ({
                           href={pub.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="hover:text-nasun-c4 transition"
+                          className="hover:text-nasun-nw4 transition"
                         >
                           {pub.label}
                         </a>
@@ -158,15 +158,15 @@ const TeamCard: React.FC<TeamMember> = ({
             {/* Filmography */}
             {filmography && filmography.length > 0 && (
               <DividerBox
-                color="w5"
+                color="nw3"
                 padding="sm"
                 icon={<FiFilm />}
                 title="Filmography"
-                titleClassName="!text-nasun-c1"
-                className="flex-1"
+                titleClassName="!text-nasun-nw1"
+                className="flex-1 !bg-gray-900/80"
                 disableHover
               >
-                <ul className="list-disc marker:text-nasun-c1 pl-6 space-y-1 text-nasun-white/80">
+                <ul className="list-disc marker:text-nasun-nw1 pl-6 space-y-1 text-nasun-white/80">
                   {filmography.map((film: { label: string; url?: string }, index: number) => (
                     <li key={`film-${index}`}>
                       {film.url ? (
@@ -174,7 +174,7 @@ const TeamCard: React.FC<TeamMember> = ({
                           href={film.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="hover:text-nasun-c4 transition"
+                          className="hover:text-nasun-nw4 transition"
                         >
                           {film.label}
                         </a>

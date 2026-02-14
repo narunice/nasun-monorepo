@@ -35,21 +35,21 @@ const StrategyOverviewV2 = () => {
                   <Trans
                     t={t}
                     i18nKey="overviewV2.section1.box.item1"
-                    components={[<strong className="text-nasun-c1 " key="0" />]}
+                    components={[<strong className="text-nasun-nw1 " key="0" />]}
                   />
                 </li>
                 <li>
                   <Trans
                     t={t}
                     i18nKey="overviewV2.section1.box.item2"
-                    components={[<strong className="text-nasun-c1" key="0" />]}
+                    components={[<strong className="text-nasun-nw1" key="0" />]}
                   />
                 </li>
                 <li>
                   <Trans
                     t={t}
                     i18nKey="overviewV2.section1.box.item3"
-                    components={[<strong className="text-nasun-c1" key="0" />]}
+                    components={[<strong className="text-nasun-nw1" key="0" />]}
                   />
                 </li>
               </ul>
@@ -90,8 +90,8 @@ const StrategyOverviewV2 = () => {
             <DividerBox
               color="w1"
               className=""
-              titleClassName="!text-nasun-c1"
-              icon={<InfinityIcon className="w-5 h-5 text-nasun-c1" />}
+              titleClassName="!text-nasun-nw1"
+              icon={<InfinityIcon className="w-5 h-5 text-nasun-nw1" />}
               title={t("overviewV2.section2.box1.title")}
             >
               <div className="space-y-4 text-nasun-white/90 text-lg font-light">
@@ -105,8 +105,8 @@ const StrategyOverviewV2 = () => {
 
             <DividerBox
               color="w1"
-              titleClassName="!text-nasun-c1"
-              icon={<Network className="w-5 h-5 text-nasun-c1" />}
+              titleClassName="!text-nasun-nw1"
+              icon={<Network className="w-5 h-5 text-nasun-nw1" />}
               title={t("overviewV2.section2.box2.title")}
             >
               <div className="space-y-4 text-nasun-white/90 text-lg font-light">
@@ -120,14 +120,14 @@ const StrategyOverviewV2 = () => {
 
             <DividerBox
               color="w1"
-              titleClassName="!text-nasun-c1"
-              icon={<Users className="w-5 h-5 text-nasun-c1" />}
+              titleClassName="!text-nasun-nw1"
+              icon={<Users className="w-5 h-5 text-nasun-nw1" />}
               title={t("overviewV2.section2.box3.title")}
             >
               <div className="space-y-4 text-nasun-white/90 text-lg font-light">
                 <p>{t("overviewV2.section2.box3.intro")}</p>
                 <p>{t("overviewV2.section2.box3.p2")}</p>
-                <ul className="list-disc pl-6 space-y-2 marker:text-nasun-c1">
+                <ul className="list-disc pl-6 space-y-2 marker:text-nasun-nw1">
                   {(t("overviewV2.section2.box3.list", { returnObjects: true }) as string[]).map(
                     (_, index) => (
                       <li key={index}>
@@ -166,22 +166,22 @@ const StrategyOverviewV2 = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 md:mt-3 lg:mt-4">
-            <DividerBox color="c1" title={t("overviewV2.section4.box1.title")}>
+            <DividerBox color="nw1" title={t("overviewV2.section4.box1.title")}>
               <p className="text-nasun-white/90 text-lg font-light">
                 {t("overviewV2.section4.box1.content")}
               </p>
             </DividerBox>
-            <DividerBox color="c1" title={t("overviewV2.section4.box2.title")}>
+            <DividerBox color="nw1" title={t("overviewV2.section4.box2.title")}>
               <p className="text-nasun-white/90 text-lg font-light">
                 {t("overviewV2.section4.box2.content")}
               </p>
             </DividerBox>
-            <DividerBox color="c1" title={t("overviewV2.section4.box3.title")}>
+            <DividerBox color="nw1" title={t("overviewV2.section4.box3.title")}>
               <p className="text-nasun-white/90 text-lg font-light">
                 {t("overviewV2.section4.box3.content")}
               </p>
             </DividerBox>
-            <DividerBox color="c1" title={t("overviewV2.section4.box4.title")}>
+            <DividerBox color="nw1" title={t("overviewV2.section4.box4.title")}>
               <p className="text-nasun-white/90 text-lg font-light">
                 {t("overviewV2.section4.box4.content")}
               </p>

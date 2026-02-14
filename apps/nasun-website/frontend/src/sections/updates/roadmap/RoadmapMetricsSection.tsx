@@ -25,8 +25,8 @@ export const RoadmapMetricsSection = () => {
     {
       value: "200+",
       label: t("metrics.community"),
-      color: "bg-nasun-c5/20",
-      icon: <Users className="w-6 h-6 text-nasun-c5" />,
+      color: "bg-nasun-nw1/20",
+      icon: <Users className="w-6 h-6 text-nasun-nw1" />,
       delay: 0.2,
     },
   ];

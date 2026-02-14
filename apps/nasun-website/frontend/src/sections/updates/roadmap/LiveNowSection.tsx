@@ -1,10 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { OuterBox } from "@/components/ui/OuterBox";
 import { DividerBox } from "@/components/ui/DividerBox";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, Zap, ExternalLink } from "lucide-react";
+import { CheckCircle, Zap } from "lucide-react";
+import { SectionTitle } from "@/components/ui";
 
 interface LiveNowCategory {
   title: string;
@@ -40,64 +39,48 @@ export const LiveNowSection = () => {
 
   return (
     <SectionLayout className="!max-w-7xl gap-8 md:gap-10 xl:gap-12">
-      <OuterBox color="default" className="bg-nasun-c6/40">
-        {/* Header row with title and button */}
-        <div className="flex items-start justify-between gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-            className="flex items-center gap-3"
-          >
-            <h4 className="font-bold text-green-500 tracking-wide">{liveNow.title}</h4>
-            <div className="relative">
-              <Zap className="w-6 h-6 text-green-500" />
-              <span className="absolute inset-0 animate-ping">
-                <Zap className="w-6 h-6 text-green-500 opacity-50" />
-              </span>
-            </div>
-          </motion.div>
-        </div>
-        <div className="flex flex-row justify-between items-center mb-2">
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            viewport={{ once: true }}
-            className="text-nasun-white/60 text-sm"
-          >
-            {liveNow.subtitle}
-          </motion.p>
-          <Button variant="c4" size="xs" asChild>
-            <a href={import.meta.env.VITE_DEVNET_EXPLORER_URL || 'https://explorer.nasun.io/devnet'} target="_blank" rel="noopener noreferrer">
-              {liveNow.explorerButton}
-              <ExternalLink className="w-3 h-3 ml-1.5" />
-            </a>
-          </Button>
-        </div>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          className="flex items-center gap-3"
+        >
+          <div className="relative flex items-center justify-center w-7 h-7 mb-4">
+            <Zap className="w-7 h-7 text-green-500" />
+            <span className="absolute inset-0 animate-ping">
+              <Zap className="w-7 h-7 text-green-500 opacity-50" />
+            </span>
+          </div>
+          <SectionTitle as="h4" className="!mb-4">
+            {liveNow.title}
+          </SectionTitle>
+        </motion.div>
+      </div>
 
-        {/* Categories */}
-        <div className="space-y-4 md:space-y-5">
-        {([liveNow.nasun, liveNow.pado, liveNow.baram] as LiveNowCategory[]).map((category, catIndex) => (
-          <motion.div
-            key={category.title}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 + catIndex * 0.1 }}
-            viewport={{ once: true }}
-          >
-            <DividerBox title={category.title} color="c5" padding="sm" className="">
-              <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
-                {category.items.map((item, index) => (
-                  <LiveItem key={item} text={item} delay={0.3 + index * 0.05} />
-                ))}
-              </ul>
-            </DividerBox>
-          </motion.div>
-        ))}
-        </div>
-      </OuterBox>
+      {/* Nasun L1 Network */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        viewport={{ once: true }}
+      >
+        <DividerBox
+          title={liveNow.nasun.title}
+          color="nw3"
+          padding="sm"
+          className="!bg-gray-900"
+          titleClassName="!text-nasun-nw4"
+        >
+          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+            {liveNow.nasun.items.map((item, index) => (
+              <LiveItem key={item} text={item} delay={0.3 + index * 0.05} />
+            ))}
+          </ul>
+        </DividerBox>
+      </motion.div>
     </SectionLayout>
   );
 };
