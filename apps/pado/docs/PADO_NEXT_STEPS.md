@@ -1,6 +1,6 @@
 # Pado Next Steps: Prototype Launch
 
-> Last Updated: 2026-02-05
+> Last Updated: 2026-02-15
 > Vision: **Finance-first social -- a financial platform where community forms around execution, not hype.**
 > Strategic Reference: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
@@ -8,7 +8,7 @@
 
 ## Current State Summary
 
-Pado has **22 completed development phases** covering spot trading, perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, social layer (chat + leaderboard + competitions), and LP bot. The core financial engine and community infrastructure are functional.
+Pado has **22 completed development phases** covering spot trading (4 pools), perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, social layer (chat + leaderboard + competitions + PnL share + badges + market narrator), LP bot, and testnet launch polish (Phase 22: critical bug fixes, onboarding flow, first-trade celebration, points system, mobile UX, enhanced share cards). All contracts deployed on V7. The core financial engine and community infrastructure are functional and polished.
 
 ### Devnet V7 Deployment Status (2026-02-04)
 
@@ -27,7 +27,7 @@ Pado has **22 completed development phases** covering spot trading, perpetuals, 
 
 ---
 
-## Priority 1: Prototype Polish (Phase 18)
+## Priority 1: Prototype Polish (Phase 18) -- ✅ Complete
 
 The single most important thing at launch: **a visitor creates a wallet, gets faucet tokens, and executes a trade on a real orderbook -- all within 60 seconds**.
 
@@ -125,15 +125,64 @@ Ensure the vision-differentiating features are live at launch.
 
 ---
 
+## Protocol-Level Roadmap (Post-Mainnet)
+
+### Native Conditional Orders (Priority: Must-Have)
+
+**Problem**: DeepBook V3 supports only limit/market orders. TP/SL, Stop-Limit, and
+Trailing Stop orders depend on an off-chain keeper bot or client browser polling.
+This creates a single point of failure, browser dependency, and trust concerns.
+
+**Current state**: Keeper Bot running (PM2, Port 4001). Frontend delegates TradeCap
+for server-side TP/SL. Browser polling is the fallback. TP/SL keeper modal guides
+users to enable server mode on first TP/SL activation.
+
+**Competitive comparison**:
+
+| Platform | Conditional Order Execution | Trust Model |
+|----------|---------------------------|-------------|
+| Binance/Bybit | Matching engine (central server) | Custodial |
+| Hyperliquid | Validator consensus (on-chain) | Trustless |
+| dYdX v4 | Validator memory (off-chain -> on-chain settlement) | Trustless |
+| Pado (current) | Keeper Bot (single server) + browser | Semi-trust |
+
+**Goal**: Nasun L1 protocol upgrade to support trustless conditional orders.
+
+**Implementation paths** (by difficulty):
+
+1. **DeepBook Conditional Order Module** (Medium)
+   - Add on-chain TP/SL/Stop-Limit support via Move module upgrade
+   - Matching engine checks conditional orders on price updates
+   - No keeper bot needed, fully trustless
+   - Estimated scope: new `conditional_order` module + pool integration
+
+2. **Validator-Level Trigger System** (Hard)
+   - Validators check trigger conditions during block production (like Hyperliquid)
+   - Requires consensus layer modifications
+   - Highest performance, lowest latency
+   - Nasun controls the validator software (Sui fork) so this is feasible
+
+3. **Scheduled Transaction Framework** (Hard)
+   - General-purpose conditional transaction framework
+   - Useful beyond trading: DeFi automation, scheduled governance, etc.
+   - Broadest impact but largest scope
+
+**Why this is feasible for Nasun**: Unlike projects built on top of Sui mainnet,
+Nasun is a sovereign L1 (Sui fork) with full control over the validator software
+and protocol. Protocol-level conditional orders are an engineering decision, not
+a governance or political one.
+
+---
+
 ## Not For Prototype (Tier 4)
 
 These are explicitly deferred. Do not work on them until after community formation and funding.
 
 - Perpetuals UI activation (contracts V7 deployed, .env integration pending)
 - Unified Margin v2 (Spot-Perp integration, contracts V7 deployed)
-- Lending & Borrowing UI (contract V7 deployed)
+- Lending & Borrowing full UI (contract V7 deployed, UI stubs at 40%)
+- Chat Tabs / Room system (server-side room support exists)
 - Encrypted DMs
-- AI Agents
 - Copy Trading
 - Reputation System / ZKP Leaderboards
 - Strategy Marketplace
@@ -169,8 +218,11 @@ No new AWS resources required for prototype launch.
 
 | Date | Change |
 |------|--------|
+| 2026-02-15 | TP/SL Keeper modal + TPSLKeeperBadge wired into TradingPanel; Protocol-Level Roadmap section added |
+| 2026-02-15 | Phase 22 (Testnet Launch Polish) complete: T1 (7 items) + T2 (5 items), 1175 tests passing |
+| 2026-02-14 | Full sync: Phase 18 marked complete, Tier 4 list updated (AI Agents → Market Narrator done), Chat Tabs added to deferred |
 | 2026-02-07 | Phase 19 (Social Layer) marked complete. V7 deployment status updated for all contracts |
-| 2026-02-05 | LP Bot implementation complete -- orderbook now has 40 levels of liquidity |
+| 2026-02-05 | LP Bot implementation complete -- orderbook now has liquidity |
 | 2026-01-31 | Full rewrite: prototype launch priorities aligned with social layer strategy |
 | 2026-01-17 | Phase 11.4, 16 v1, 17 completion. Package IDs updated |
 | 2026-01-10 | Phase 16 v1, 11.1-11.2 completion |

@@ -1,7 +1,7 @@
 # Pado Spot Trading - Manual E2E Test Checklist
 
-> Last updated: 2026-02-10
-> Total test cases: ~65 (10 phases)
+> Last updated: 2026-02-15
+> Total test cases: ~120 (15 phases)
 
 ## Test Execution Order
 
@@ -135,6 +135,130 @@
 
 ---
 
+## Phase 22 Tests: Testnet Launch Polish (T1 + T2)
+
+> Added: 2026-02-15. These tests cover features implemented in Phase 22 (Tier 1 + Tier 2).
+> They require a real browser because they involve on-chain transactions, visual effects,
+> canvas rendering, real CSS layout, WebSocket connections, and third-party integrations
+> that jsdom/vitest cannot simulate.
+
+### Phase 11: Getting Started & Onboarding (T1)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 79 | Visit HomePage as new user (no wallet) | GettingStartedCard visible with 3 steps: Create Wallet, Get Tokens, Make First Trade | |
+| 80 | Step 1: Create wallet from GettingStartedCard | Step 1 marked complete (checkmark), step 2 highlighted | |
+| 81 | Step 2: Click "Get Tokens" in GettingStartedCard | Navigates to faucet or triggers faucet flow, step 2 marked complete after success | |
+| 82 | Step 3: Complete first trade | Step 3 marked complete, card shows "You're Ready!" state | |
+| 83 | Revisit HomePage after completing all steps | GettingStartedCard hidden or shows completed state (not blocking) | |
+| 84 | Clear localStorage and revisit | GettingStartedCard reappears with all steps unchecked | |
+
+### Phase 12: First-Trade Celebration (T1)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 85 | Execute first-ever trade (new wallet, 0 prior trades) | Confetti animation plays, celebration modal appears | |
+| 86 | Celebration modal content | Shows "You traded on a real L1 CLOB!" message, trade details (pair, amount) | |
+| 87 | Twitter share button in celebration modal | Opens Twitter intent with pre-filled text including trade details | |
+| 88 | Close celebration modal | Modal dismisses, does not reappear on next trade | |
+| 89 | Execute second trade | No confetti, no celebration modal (one-time only) | |
+| 90 | Test across sessions: trade, close browser, re-open | Celebration state persists in localStorage, no re-trigger | |
+
+### Phase 13: Onboarding Tour & Chat Visibility (T1)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 91 | Visit TradePage in Simple mode as first-time user | Onboarding tour auto-starts with step-by-step tooltips | |
+| 92 | Tour covers Simple mode elements | Tooltips point to: swap form, market selector, balance display (not pro-only elements) | |
+| 93 | Complete tour | Tour state saved, does not re-trigger on next visit | |
+| 94 | Dismiss tour early | Tour stops, does not auto-restart | |
+| 95 | MobileChatDrawer on first visit (mobile viewport) | Chat drawer auto-opens briefly or notification dot visible | |
+| 96 | Collapse chat, receive new message | Notification dot appears on chat toggle button | |
+| 97 | Re-open chat after notification | Dot clears, new messages visible | |
+
+### Phase 14: Token-Dynamic Error Messages (T1)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 98 | Switch to NETH/NUSDC market, attempt order with insufficient NETH | Error says "Not enough NETH" (not "NBTC") | |
+| 99 | Switch to NSOL/NUSDC market, attempt order with insufficient NSOL | Error says "Not enough NSOL" | |
+| 100 | Switch to NASUN/NUSDC market, attempt order with insufficient NASUN | Error says "Not enough NASUN" | |
+| 101 | Auto-deposit flow on NETH market | Auto-deposit message references NETH, correct amount deposited | |
+| 102 | Faucet button on NETH market shows correct token | Button says "Get NETH" or references NETH (not NBTC) | |
+
+### Phase 15: PerpsComingSoon & Earn Page (T1)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 103 | Navigate to Perps page | Shows updated info: "20x leverage", "deployed" status, link to PerpTradePage | |
+| 104 | Click "Go to Perps Trading" link (if present) | Navigates to actual PerpTradePage | |
+| 105 | Navigate to Earn page | Staking tab hidden or shows "Coming Soon" banner, no broken stubs | |
+| 106 | Earn page does not show incomplete forms | No input fields or buttons for unimplemented staking features | |
+
+### Phase 16: Mobile Chart & Orderbook Improvements (T2)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 107 | Resize to mobile (<1024px), check chart height | Chart container height is approximately min(40vh, 350px), NOT fixed 250px | |
+| 108 | Verify chart is usable on 375px width (iPhone SE) | Chart renders without overflow, candles visible, touch zoom works | |
+| 109 | Verify chart on 430px width (iPhone 14 Pro Max) | Chart takes advantage of larger viewport, taller than on iPhone SE | |
+| 110 | MiniOrderbook shows 8 levels | Count visible ask (red) and bid (green) rows: should be 8 each | |
+| 111 | MiniOrderbook price click on mobile | Tapping a price level fills the order form price field | |
+| 112 | MiniOrderbook spread display | Spread row visible between asks and bids with percentage | |
+| 113 | Scroll behavior: chart -> orderbook -> trade form | Smooth scroll, no content overlap or z-index issues | |
+
+### Phase 17: Enhanced Share Cards (T2)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 114 | Open PnL share modal after a trade | ShareCardModal opens with trade performance data | |
+| 115 | Canvas card rendering | Card includes: PnL data, "Built by 2 people" watermark, Pado branding | |
+| 116 | Points/rank display on card | If user has points, they appear on the share card | |
+| 117 | Download share card | "Download" button saves PNG to device | |
+| 118 | Twitter share button | Opens Twitter with pre-attached image or intent URL, correct hashtags | |
+| 119 | Share card on mobile viewport | Card renders correctly, buttons are touch-friendly | |
+| 120 | Share card with negative PnL | Red color scheme, correct negative percentage display | |
+| 121 | Share card with zero trades | Graceful empty state or disabled share button | |
+
+### Phase 18: Loading Skeletons (T2)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 122 | Dashboard page initial load (clear cache) | Skeleton placeholders shown for NetWorthCard, HotMarketsCard while data loads | |
+| 123 | Portfolio page initial load | Skeleton for AssetOverview, TokenBalanceList, RecentTrades | |
+| 124 | Leaderboard page initial load | Skeleton rows in leaderboard table while fetching rankings | |
+| 125 | Throttle network to Slow 3G in DevTools | Skeletons visible for extended period, smooth transition to real content | |
+| 126 | No flash of empty content | Content areas show skeletons immediately, never blank white space | |
+
+### Phase 19: Actionable Error Messages (T2)
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 127 | Trigger "InsufficientBalance" RPC error | Toast shows user-friendly message + "Deposit funds or use Faucet" guidance | |
+| 128 | Trigger "GasPaymentError" (0 NASUN gas) | Toast says "You need NASUN for gas fees" + "Get NASUN from Faucet" button | |
+| 129 | Trigger network timeout/RPC unavailable | Toast says "Network connection issue" + "Try again in a few seconds" | |
+| 130 | Trigger "ObjectNotFound" error | Toast explains object was deleted/doesn't exist, suggests refresh | |
+| 131 | Verify error message includes action button | At least one error type has a clickable CTA (e.g., "Go to Faucet") | |
+| 132 | Error messages do not show raw hex/RPC data | No `0x...` addresses, Move abort codes, or stack traces in user-facing toasts | |
+
+### Phase 20: Points System & Leaderboard (T2)
+
+> **Prerequisite**: Chat-server must be running with points aggregation enabled.
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 133 | Navigate to /leaderboard, find "Points" tab/mode | Points leaderboard tab visible alongside Volume tab | |
+| 134 | Points leaderboard shows ranked traders | Table with rank, address/nickname, total points, breakdown columns | |
+| 135 | Execute a trade, wait for aggregation cycle | Trader appears in points leaderboard (or points increase) | |
+| 136 | Trade on multiple pools (NBTC + NETH) | Diversity points increase (unique_pools * 25 pts each) | |
+| 137 | First trade bonus | New wallet's first trade awards 100 bonus points | |
+| 138 | Volume-based points | $1K+ volume awards 5 points per $1K (check after large trade) | |
+| 139 | Points leaderboard sorting | Sorted by total points descending, rank numbers sequential | |
+| 140 | Points tab on mobile viewport | Table scrolls horizontally or adapts to narrow width | |
+| 141 | Verify prev_rank tracking | After multiple aggregation cycles, rank changes reflected (up/down arrows) | |
+
+---
+
 ## Key Files Reference
 
 ### Core Trading
@@ -162,5 +286,20 @@
 - [OpenOrders.tsx](../frontend/src/features/trading/components/OpenOrders.tsx) - Open orders
 
 ### TP/SL & Alerts
+
 - [useTPSLMonitor.ts](../frontend/src/features/trading/hooks/useTPSLMonitor.ts) - TP/SL monitor
 - [usePriceAlertMonitor.ts](../frontend/src/features/trading/hooks/usePriceAlertMonitor.ts) - Price alerts
+
+### Phase 22 (T1/T2) Components
+
+- [GettingStartedCard.tsx](../frontend/src/features/dashboard/components/GettingStartedCard.tsx) - Onboarding checklist
+- [FirstTradeCelebration.tsx](../frontend/src/features/trading/components/FirstTradeCelebration.tsx) - Confetti + modal
+- [useFirstTradeCelebration.ts](../frontend/src/features/trading/hooks/useFirstTradeCelebration.ts) - First-trade detection
+- [MiniOrderbook.tsx](../frontend/src/features/trading/components/MiniOrderbook.tsx) - Mobile orderbook (8 levels)
+- [MobileTradeLayoutV2.tsx](../frontend/src/features/trading/components/MobileTradeLayoutV2.tsx) - Mobile layout
+- [ShareCardModal.tsx](../frontend/src/features/social/components/ShareCardModal.tsx) - Share card UI
+- [canvasRenderer.ts](../frontend/src/features/social/utils/canvasRenderer.ts) - Canvas card renderer
+- [errorParser.ts](../frontend/src/features/trading/utils/errorParser.ts) - RPC error mapper
+- [Skeleton.tsx](../frontend/src/components/common/Skeleton.tsx) - Loading skeleton component
+- [PointsLeaderboardTable.tsx](../frontend/src/features/leaderboard/components/PointsLeaderboardTable.tsx) - Points tab
+- [PerpsComingSoonPage.tsx](../frontend/src/pages/PerpsComingSoonPage.tsx) - Perps info page

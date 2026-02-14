@@ -1,7 +1,7 @@
 # Pado Spot Trading - 수동 E2E 테스트 체크리스트
 
-> 최종 업데이트: 2026-02-10
-> 총 테스트 케이스: ~65개 (10개 단계)
+> 최종 업데이트: 2026-02-15
+> 총 테스트 케이스: ~120개 (15개 단계)
 
 ## 테스트 실행 순서
 
@@ -135,6 +135,129 @@
 
 ---
 
+## Phase 22 테스트: 테스트넷 런칭 폴리시 (T1 + T2)
+
+> 추가: 2026-02-15. Phase 22에서 구현된 기능들의 테스트.
+> 온체인 트랜잭션, 시각 효과, 캔버스 렌더링, 실제 CSS 레이아웃, WebSocket 연결,
+> 서드파티 연동 등 jsdom/vitest로 시뮬레이션할 수 없는 항목들.
+
+### 11단계: Getting Started & 온보딩 (T1)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 79 | 신규 사용자로 HomePage 방문 (지갑 없음) | GettingStartedCard 표시: 3단계 (지갑 생성, 토큰 받기, 첫 거래) | |
+| 80 | 1단계: GettingStartedCard에서 지갑 생성 | 1단계 완료 체크, 2단계 하이라이트 | |
+| 81 | 2단계: "토큰 받기" 클릭 | Faucet 플로우 실행, 성공 후 2단계 완료 체크 | |
+| 82 | 3단계: 첫 거래 완료 | 3단계 완료 체크, "준비 완료!" 상태 표시 | |
+| 83 | 모든 단계 완료 후 HomePage 재방문 | GettingStartedCard 숨김 또는 완료 상태 (차단하지 않음) | |
+| 84 | localStorage 초기화 후 재방문 | GettingStartedCard 재표시, 모든 단계 미완료 | |
+
+### 12단계: 첫 거래 축하 (T1)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 85 | 첫 거래 실행 (신규 지갑, 거래 이력 0) | 컨페티 애니메이션 재생, 축하 모달 표시 | |
+| 86 | 축하 모달 내용 | "실제 L1 CLOB에서 거래했습니다!" 메시지, 거래 상세(페어, 금액) | |
+| 87 | 축하 모달 Twitter 공유 버튼 | 거래 상세가 포함된 Twitter 공유 인텐트 열림 | |
+| 88 | 축하 모달 닫기 | 모달 닫힘, 다음 거래 시 재표시 안 됨 | |
+| 89 | 두 번째 거래 실행 | 컨페티 없음, 축하 모달 없음 (1회성) | |
+| 90 | 세션 간 테스트: 거래 후 브라우저 닫고 재실행 | localStorage에 축하 상태 유지, 재트리거 없음 | |
+
+### 13단계: 온보딩 투어 & 채팅 노출 (T1)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 91 | Simple 모드에서 TradePage 첫 방문 | 온보딩 투어 자동 시작, 단계별 툴팁 표시 | |
+| 92 | Simple 모드 요소 투어 대상 | 툴팁이 가리키는 곳: 스왑 폼, 마켓 선택기, 잔액 표시 | |
+| 93 | 투어 완료 | 투어 상태 저장, 다음 방문 시 재트리거 안 됨 | |
+| 94 | 투어 중간 종료 | 투어 중단, 자동 재시작 안 됨 | |
+| 95 | 첫 방문 시 MobileChatDrawer (모바일 뷰포트) | 채팅 드로어 잠시 자동 열림 또는 알림 도트 표시 | |
+| 96 | 채팅 접기 후 새 메시지 수신 | 채팅 토글 버튼에 알림 도트 표시 | |
+| 97 | 알림 후 채팅 다시 열기 | 도트 사라짐, 새 메시지 표시 | |
+
+### 14단계: 토큰별 동적 에러 메시지 (T1)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 98 | NETH/NUSDC 마켓에서 NETH 부족 시 주문 시도 | "Not enough NETH" 에러 ("NBTC" 아님) | |
+| 99 | NSOL/NUSDC 마켓에서 NSOL 부족 시 주문 시도 | "Not enough NSOL" 에러 | |
+| 100 | NASUN/NUSDC 마켓에서 NASUN 부족 시 주문 시도 | "Not enough NASUN" 에러 | |
+| 101 | NETH 마켓 자동 입금 플로우 | 자동 입금 메시지가 NETH 참조, 정확한 금액 입금 | |
+| 102 | NETH 마켓 Faucet 버튼 | "Get NETH" 표시 ("NBTC" 아님) | |
+
+### 15단계: Perps & Earn 페이지 (T1)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 103 | Perps 페이지 이동 | 업데이트된 정보: "20x 레버리지", "배포됨" 상태, PerpTradePage 링크 | |
+| 104 | "Perps 거래 시작" 링크 클릭 (있을 경우) | 실제 PerpTradePage로 이동 | |
+| 105 | Earn 페이지 이동 | Staking 탭 숨겨짐 또는 "Coming Soon" 배너, 깨진 스텁 없음 | |
+| 106 | Earn 페이지 미완성 폼 없음 | 미구현 스테이킹 기능의 입력 필드나 버튼 없음 | |
+
+### 16단계: 모바일 차트 & 호가창 개선 (T2)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 107 | 모바일 리사이즈 (<1024px), 차트 높이 확인 | 차트 컨테이너 높이 약 min(40vh, 350px), 고정 250px가 아님 | |
+| 108 | 375px 너비(iPhone SE)에서 차트 사용성 | 차트 오버플로우 없음, 캔들 표시, 터치 줌 작동 | |
+| 109 | 430px 너비(iPhone 14 Pro Max)에서 차트 | 더 큰 뷰포트 활용, iPhone SE보다 높은 차트 | |
+| 110 | MiniOrderbook 8레벨 표시 | 매도(빨강) 8행 + 매수(초록) 8행 확인 | |
+| 111 | 모바일 MiniOrderbook 가격 클릭 | 가격 레벨 탭 시 주문 폼 가격 필드 채움 | |
+| 112 | MiniOrderbook 스프레드 표시 | 매도/매수 사이 스프레드 행 (퍼센트 포함) 표시 | |
+| 113 | 스크롤 동작: 차트 -> 호가창 -> 거래 폼 | 부드러운 스크롤, 콘텐츠 겹침이나 z-index 문제 없음 | |
+
+### 17단계: 공유 카드 강화 (T2)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 114 | 거래 후 PnL 공유 모달 열기 | ShareCardModal에 거래 성과 데이터 표시 | |
+| 115 | 캔버스 카드 렌더링 | 카드 포함: PnL 데이터, "Built by 2 people" 워터마크, Pado 브랜딩 | |
+| 116 | 카드에 포인트/랭크 표시 | 사용자 포인트가 있으면 공유 카드에 표시 | |
+| 117 | 공유 카드 다운로드 | "Download" 버튼으로 PNG 파일 저장 | |
+| 118 | Twitter 공유 버튼 | 이미지 첨부 또는 인텐트 URL로 Twitter 열림, 해시태그 포함 | |
+| 119 | 모바일 뷰포트에서 공유 카드 | 카드 정상 렌더링, 터치 친화적 버튼 | |
+| 120 | 마이너스 PnL 공유 카드 | 빨간색 계열, 정확한 음수 퍼센트 표시 | |
+| 121 | 거래 없는 상태의 공유 카드 | 빈 상태 표시 또는 공유 버튼 비활성화 | |
+
+### 18단계: 로딩 스켈레톤 (T2)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 122 | Dashboard 페이지 초기 로드 (캐시 삭제) | NetWorthCard, HotMarketsCard 데이터 로드 중 스켈레톤 표시 | |
+| 123 | Portfolio 페이지 초기 로드 | AssetOverview, TokenBalanceList, RecentTrades 스켈레톤 표시 | |
+| 124 | Leaderboard 페이지 초기 로드 | 리더보드 테이블에 스켈레톤 행 표시 | |
+| 125 | DevTools에서 네트워크 Slow 3G로 스로틀 | 스켈레톤 장시간 표시, 실제 콘텐츠로 부드러운 전환 | |
+| 126 | 빈 콘텐츠 플래시 없음 | 콘텐츠 영역에 즉시 스켈레톤 표시, 빈 흰 공간 절대 없음 | |
+
+### 19단계: 사용자 친화적 에러 메시지 (T2)
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 127 | "InsufficientBalance" RPC 에러 유발 | 토스트: 사용자 친화적 메시지 + "입금 또는 Faucet 사용" 안내 | |
+| 128 | "GasPaymentError" 유발 (NASUN 가스 0) | 토스트: "가스 수수료용 NASUN 필요" + "Faucet에서 NASUN 받기" 버튼 | |
+| 129 | 네트워크 타임아웃/RPC 접속 불가 유발 | 토스트: "네트워크 연결 문제" + "몇 초 후 재시도" 안내 | |
+| 130 | "ObjectNotFound" 에러 유발 | 토스트: 오브젝트 삭제/미존재 설명, 새로고침 제안 | |
+| 131 | 에러 메시지에 액션 버튼 포함 확인 | 최소 1개 에러 유형에 클릭 가능 CTA (예: "Faucet 이동") | |
+| 132 | 에러 메시지에 raw hex/RPC 데이터 없음 | 사용자 대상 토스트에 `0x...` 주소, Move 중단 코드, 스택 트레이스 없음 | |
+
+### 20단계: 포인트 시스템 & 리더보드 (T2)
+
+> **전제 조건**: 포인트 집계 활성화된 Chat-server 실행 필요.
+
+| # | 테스트 케이스 | 예상 결과 | 통과 |
+|---|--------------|----------|------|
+| 133 | /leaderboard 이동, "포인트" 탭/모드 찾기 | 볼륨 탭 옆에 포인트 리더보드 탭 표시 | |
+| 134 | 포인트 리더보드에 순위 표시 | 순위, 주소/닉네임, 총 포인트, 세부 항목 컬럼 테이블 | |
+| 135 | 거래 실행 후 집계 사이클 대기 | 포인트 리더보드에 트레이더 표시 (또는 포인트 증가) | |
+| 136 | 여러 풀(NBTC + NETH)에서 거래 | 다양성 포인트 증가 (고유 풀 수 * 25pt) | |
+| 137 | 첫 거래 보너스 | 신규 지갑 첫 거래 시 100 보너스 포인트 부여 | |
+| 138 | 볼륨 기반 포인트 | $1K 이상 볼륨 시 $1K당 5포인트 (대량 거래 후 확인) | |
+| 139 | 포인트 리더보드 정렬 | 총 포인트 내림차순 정렬, 순위 번호 연속 | |
+| 140 | 모바일 뷰포트에서 포인트 탭 | 테이블 가로 스크롤 또는 좁은 너비 적응 | |
+| 141 | prev_rank 추적 확인 | 여러 집계 사이클 후 순위 변동 반영 (상승/하락 화살표) | |
+
+---
+
 ## 관련 파일 참조
 
 ### 핵심 거래
@@ -162,5 +285,20 @@
 - [OpenOrders.tsx](../frontend/src/features/trading/components/OpenOrders.tsx) - 미체결 주문
 
 ### TP/SL & 알림
+
 - [useTPSLMonitor.ts](../frontend/src/features/trading/hooks/useTPSLMonitor.ts) - TP/SL 모니터
 - [usePriceAlertMonitor.ts](../frontend/src/features/trading/hooks/usePriceAlertMonitor.ts) - 가격 알림
+
+### Phase 22 (T1/T2) 컴포넌트
+
+- [GettingStartedCard.tsx](../frontend/src/features/dashboard/components/GettingStartedCard.tsx) - 온보딩 체크리스트
+- [FirstTradeCelebration.tsx](../frontend/src/features/trading/components/FirstTradeCelebration.tsx) - 컨페티 + 모달
+- [useFirstTradeCelebration.ts](../frontend/src/features/trading/hooks/useFirstTradeCelebration.ts) - 첫 거래 감지
+- [MiniOrderbook.tsx](../frontend/src/features/trading/components/MiniOrderbook.tsx) - 모바일 호가창 (8레벨)
+- [MobileTradeLayoutV2.tsx](../frontend/src/features/trading/components/MobileTradeLayoutV2.tsx) - 모바일 레이아웃
+- [ShareCardModal.tsx](../frontend/src/features/social/components/ShareCardModal.tsx) - 공유 카드 UI
+- [canvasRenderer.ts](../frontend/src/features/social/utils/canvasRenderer.ts) - 캔버스 카드 렌더러
+- [errorParser.ts](../frontend/src/features/trading/utils/errorParser.ts) - RPC 에러 매퍼
+- [Skeleton.tsx](../frontend/src/components/common/Skeleton.tsx) - 로딩 스켈레톤 컴포넌트
+- [PointsLeaderboardTable.tsx](../frontend/src/features/leaderboard/components/PointsLeaderboardTable.tsx) - 포인트 탭
+- [PerpsComingSoonPage.tsx](../frontend/src/pages/PerpsComingSoonPage.tsx) - Perps 정보 페이지
