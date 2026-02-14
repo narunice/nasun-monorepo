@@ -4,13 +4,26 @@
     "description": "The NFT event feature is currently disabled. Please check back later."
   },
   "header": {
-    "title": "Wave 1 Battalion NFT Free Mint",
+    "title": "Wave 1 Battalion NFT",
     "description": "You're among the pioneers shaping Nasun's future. Please complete the steps below to claim your place on the allowlist."
   },
   "errors": {
     "missingInfo": "Missing required information. Please complete all previous steps.",
     "registrationFailed": "Registration failed",
-    "registerFailed": "Failed to register. Please try again."
+    "registerFailed": "Failed to register. Please try again.",
+    "networkError": "A network error occurred. Please try again later.",
+    "statusCheckError": "An error occurred while checking status.",
+    "ALREADY_REGISTERED": "This wallet address is already registered.",
+    "INVALID_WALLET_ADDRESS": "Invalid wallet address.",
+    "INVALID_X_USER_ID": "Invalid X user ID.",
+    "INVALID_X_USERNAME": "Invalid X username.",
+    "MISSING_REQUIRED_FIELDS": "Missing required fields.",
+    "NOT_ELIGIBLE": "You are not eligible for this event.",
+    "TASKS_NOT_COMPLETED": "Please complete all required tasks first.",
+    "X_API_ERROR": "X API error. Please try again later.",
+    "X_API_RATE_LIMIT": "X API rate limit reached. Please try again later.",
+    "RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later.",
+    "UNKNOWN_ERROR": "An unknown error occurred. Please try again."
   },
   "shareOnX": "Share on X",
   "share": "Share on",
@@ -18,7 +31,7 @@
   "goToMyAccount": "Go to My Account Dashboard",
   "step1": {
     "title": "Welcome to Nasun",
-    "description": "This is your special opportunity to mint NASUN's first NFT collection for free.",
+    "description": "This is your special opportunity to mint NASUN's first NFT collection.",
     "requirements": {
       "title": "Requirements",
       "item1": "Follow X @Nasun_io account",
@@ -31,7 +44,7 @@
     },
     "rewards": {
       "title": "Rewards",
-      "item1": "1 Free Wave 1 Battalion NFT Mint per Person",
+      "item1": "1 Wave 1 Battalion NFT Mint per Person",
       "item2": "Priority access to future airdrops and events",
       "item3": "Eligible for Random Drawings",
       "item4": "Collect all Battalion NFTs + Genesis NFT to increase Multipliers",
@@ -186,7 +199,7 @@
       "registeredAt": "Registered At",
       "item1": "You will receive an email notification when minting starts",
       "item2": "You can mint NFT with your registered wallet address",
-      "item3": "Minting price: Free (gas fees only)",
+      "item3": "Minting price: TBA",
       "dataPreserved": "Your Registration is Saved",
       "registrationSaved": "Your allowlist registration is saved in our backend",
       "xAccountSaved": "Your X account verification is preserved",

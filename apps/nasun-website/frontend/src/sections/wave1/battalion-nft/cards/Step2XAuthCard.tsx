@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
@@ -20,7 +20,7 @@ import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
 library.add(fab);
 
 interface XAuthCardProps {
-  onAuthSuccess: (userId: string, username: string) => void;
+  onAuthSuccess: (userId: string, username: string, identityId: string) => void;
 }
 
 /**
@@ -68,12 +68,18 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
           username: data.username,
         });
 
-        // Extract userId and username (prefer original casing for display)
+        // Extract userId, username, and identityId (prefer original casing for display)
         const userId = data.twitterId;
         const username = data.originalTwitterHandle || data.twitterHandle || data.username;
+        const identityId = data.identityId;
 
         if (!userId || !username) {
           throw new Error("Failed to get user information from Twitter");
+        }
+
+        if (!identityId) {
+          console.error("[XAuthCard] Missing identityId from Twitter callback response");
+          throw new Error("Failed to get Cognito identity from Twitter authentication");
         }
 
         // X access token is now stored server-side (backend proxy pattern)
@@ -84,7 +90,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         window.history.replaceState({}, document.title, window.location.pathname);
 
         // Notify parent component
-        onAuthSuccess(userId, username);
+        onAuthSuccess(userId, username, identityId);
       } catch (err: unknown) {
         const error = err as Error;
         console.error("[XAuthCard] Twitter callback error:", error);
@@ -146,7 +152,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <OuterBox color="c5" className="max-w-3xl mx-auto">
+    <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header with X Icon */}
       <div className="mb-4 text-center">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -157,7 +163,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       </div>
 
       {/* Simplified Info Box */}
-      <DividerBox color="c4" padding="sm" className="mb-6 md:mb-8 lg:mb-10">
+      <DividerBox color="nw4" padding="sm" className="mb-6 md:mb-8 lg:mb-10 !bg-black/30">
         <p className="text-nasun-white mb-3">{t("step2.infoSimplified")}</p>
         <ul className="space-y-1 list-disc list-inside">
           <li>{t("step2.verifyLikes")}</li>
@@ -175,10 +181,10 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       )}
 
       {/* Connect Button */}
-      <Button
+      <ButtonV3
         onClick={handleXLogin}
         disabled={isLoading}
-        variant="c5"
+        variant="nw1"
         className="flex  mx-auto"
         size="lg"
       >
@@ -190,7 +196,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
             <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-5 h-5 pl-2" />
           </>
         )}
-      </Button>
+      </ButtonV3>
     </OuterBox>
   );
 };

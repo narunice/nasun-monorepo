@@ -2,7 +2,7 @@
  * Battalion NFT Type Definitions (Frontend)
  *
  * @description
- * Wave 1 Battalion NFT Free Mint 이벤트 프론트엔드 TypeScript 타입 정의
+ * Wave 1 Battalion NFT 이벤트 프론트엔드 TypeScript 타입 정의
  *
  * @author Claude Code
  * @date 2025-10-25
@@ -16,6 +16,7 @@ export interface EventState {
   currentStep: EventStep;
   xUserId?: string;
   xUsername?: string;
+  cognitoIdentityId?: string;
   walletAddress?: string;
   verification?: VerificationResult;
   registered: boolean;
@@ -23,7 +24,7 @@ export interface EventState {
 
 // ========== Task Types ==========
 
-export type TaskType = 'FOLLOW' | 'LIKE' | 'RETWEET';
+export type TaskType = "FOLLOW" | "LIKE" | "RETWEET";
 
 export interface TaskStatus {
   taskType: TaskType;
@@ -145,35 +146,35 @@ export interface ApiError {
 
 export enum ErrorCode {
   // Validation Errors (400)
-  INVALID_WALLET_ADDRESS = 'INVALID_WALLET_ADDRESS',
-  INVALID_X_USER_ID = 'INVALID_X_USER_ID',
-  INVALID_X_USERNAME = 'INVALID_X_USERNAME',
-  MISSING_REQUIRED_FIELDS = 'MISSING_REQUIRED_FIELDS',
-  INVALID_SIGNATURE = 'INVALID_SIGNATURE',
-  SIGNATURE_EXPIRED = 'SIGNATURE_EXPIRED',
+  INVALID_WALLET_ADDRESS = "INVALID_WALLET_ADDRESS",
+  INVALID_X_USER_ID = "INVALID_X_USER_ID",
+  INVALID_X_USERNAME = "INVALID_X_USERNAME",
+  MISSING_REQUIRED_FIELDS = "MISSING_REQUIRED_FIELDS",
+  INVALID_SIGNATURE = "INVALID_SIGNATURE",
+  SIGNATURE_EXPIRED = "SIGNATURE_EXPIRED",
 
   // Business Logic Errors (400, 404)
-  ALREADY_REGISTERED = 'ALREADY_REGISTERED',
+  ALREADY_REGISTERED = "ALREADY_REGISTERED",
   // ALREADY_WITHDRAWN 제거 (Hard Delete 방식으로 변경, WITHDRAWN 상태 없음)
-  USER_NOT_FOUND = 'USER_NOT_FOUND',
-  NOT_ELIGIBLE = 'NOT_ELIGIBLE',
-  TASKS_NOT_COMPLETED = 'TASKS_NOT_COMPLETED',
+  USER_NOT_FOUND = "USER_NOT_FOUND",
+  NOT_ELIGIBLE = "NOT_ELIGIBLE",
+  TASKS_NOT_COMPLETED = "TASKS_NOT_COMPLETED",
 
   // X API Errors (502, 429)
-  X_API_ERROR = 'X_API_ERROR',
-  X_API_RATE_LIMIT = 'X_API_RATE_LIMIT',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  X_API_ERROR = "X_API_ERROR",
+  X_API_RATE_LIMIT = "X_API_RATE_LIMIT",
+  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
 
   // Database Errors (500)
-  DYNAMODB_ERROR = 'DYNAMODB_ERROR',
+  DYNAMODB_ERROR = "DYNAMODB_ERROR",
 
   // Network Errors
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
+  NETWORK_ERROR = "NETWORK_ERROR",
+  TIMEOUT_ERROR = "TIMEOUT_ERROR",
 
   // Unknown Errors (500)
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
-  INTERNAL_ERROR = 'INTERNAL_ERROR',
+  UNKNOWN_ERROR = "UNKNOWN_ERROR",
+  INTERNAL_ERROR = "INTERNAL_ERROR",
 }
 
 // ========== Component Props Types ==========
@@ -213,6 +214,7 @@ export interface BattalionNftStore {
   currentStep: EventStep;
   xUserId?: string;
   xUsername?: string;
+  cognitoIdentityId?: string;
   walletAddress?: string;
   verification?: VerificationResult;
   registered: boolean;
@@ -220,7 +222,7 @@ export interface BattalionNftStore {
 
   // Actions
   setStep: (step: EventStep) => void;
-  setXAuth: (userId: string, username: string) => void;
+  setXAuth: (userId: string, username: string, identityId: string) => void;
   setVerification: (result: VerificationResult) => void;
   setWalletAddress: (address: string) => void;
   setRegistered: (whitelist: NftWhitelist) => void;

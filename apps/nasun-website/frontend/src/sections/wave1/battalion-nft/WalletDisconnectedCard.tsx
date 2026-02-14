@@ -11,7 +11,7 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface WalletDisconnectedCardProps {
   onReconnectClick: () => void;
@@ -68,9 +68,9 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
       </div>
 
       {/* Information Box */}
-      <div className="mb-5 p-4 bg-nasun-c4/10 rounded-lg border border-nasun-c4/30">
-        <p className="text-sm font-medium text-nasun-c4 mb-2">{t("step6.info.dataPreserved")}</p>
-        <ul className="space-y-1 text-sm text-nasun-c4/80">
+      <div className="mb-5 p-4 bg-nasun-nw1/10 rounded-lg border border-nasun-nw1/30">
+        <p className="text-sm font-medium text-nasun-nw1 mb-2">{t("step6.info.dataPreserved")}</p>
+        <ul className="space-y-1 text-sm text-nasun-nw1/80">
           <li>{t("step6.info.registrationSaved")}</li>
           <li>{t("step6.info.xAccountSaved")}</li>
           <li className="text-yellow-400/80">{t("step6.info.walletNeeded")}</li>
@@ -80,7 +80,7 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
       {/* Action Buttons */}
       <div className="space-y-3">
         {/* Primary Action: Reconnect */}
-        <Button onClick={onReconnectClick} variant="c5" className="w-full">
+        <ButtonV3 onClick={onReconnectClick} variant="nw1" className="w-full">
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -90,10 +90,10 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
             />
           </svg>
           {t("step6.walletDisconnected.reconnectButton")}
-        </Button>
+        </ButtonV3>
 
         {/* Secondary Action: Reset */}
-        <Button onClick={handleReset} variant="destructive" className="w-full">
+        <ButtonV3 onClick={handleReset} variant="red" className="w-full">
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -103,7 +103,7 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
             />
           </svg>
           {t("step6.walletDisconnected.resetButton")}
-        </Button>
+        </ButtonV3>
       </div>
 
       {/* Help Text */}

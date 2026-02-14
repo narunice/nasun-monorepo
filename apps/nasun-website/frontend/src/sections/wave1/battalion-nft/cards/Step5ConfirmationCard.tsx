@@ -10,7 +10,7 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
 
 interface Step5ConfirmationCardProps {
@@ -29,12 +29,12 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
   const { t } = useTranslation("battalion-nft");
 
   return (
-    <OuterBox color="c5" className="max-w-3xl mx-auto">
+    <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header - 모바일: 세로, 데스크톱: 가로 배치 (중앙 정렬) */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 mb-6">
-        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-nasun-c1/20 rounded-full flex items-center justify-center">
+        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-green-900/20 rounded-full flex items-center justify-center">
           <svg
-            className="w-8 h-8 md:w-10 md:h-10 text-nasun-c1"
+            className="w-8 h-8 md:w-10 md:h-10 text-green-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -53,7 +53,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
       </div>
       <p className="w-full mx-auto text-center mb-2">{t("step5.description")}</p>
       {/* Summary */}
-      <DividerBox color="w1" padding="sm" className="mb-8 text-left">
+      <DividerBox color="nw3" padding="sm" className="mb-8 text-left">
         {/* X Account & Wallet - 모바일: 세로, 데스크톱: 가로 */}
         <div className="flex flex-col md:flex-row md:gap-8 space-y-4 md:space-y-0 mb-4">
           <div className="flex-1">
@@ -74,11 +74,11 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           <span className="text-green-500">{t("step5.allTasksCompleted")}</span>
         </div>
       </DividerBox>
-      <Button
+      <ButtonV3
         onClick={onRegister}
         disabled={isRegistering}
-        variant="c5"
-        className=" flex mx-auto"
+        variant="nw1"
+        className="flex mx-auto disabled:opacity-90"
         size="lg"
       >
         {isRegistering ? (
@@ -86,7 +86,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
         ) : (
           <span>{t("step5.button")}</span>
         )}
-      </Button>
+      </ButtonV3>
     </OuterBox>
   );
 };

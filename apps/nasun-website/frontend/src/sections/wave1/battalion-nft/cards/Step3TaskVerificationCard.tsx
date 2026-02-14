@@ -15,7 +15,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useBattalionNftVerification } from "../../../../hooks/useBattalionNftVerification";
 import type { TaskType, VerificationResult } from "../../../../types/battalion-nft";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
@@ -173,7 +173,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
   const followIntentUrl = `https://twitter.com/intent/follow?screen_name=${targetAccount}`;
 
   return (
-    <OuterBox color="c5" className="max-w-3xl mx-auto">
+    <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center">
         <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step3.title")}</h4>
@@ -181,31 +181,32 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       </div>
 
       {/* User Info */}
-      <DividerBox color="c4" className="!py-4">
-        <p>
-          {t("step5.labels.xAccount")}: <span>@{xUsername}</span>
-        </p>
-      </DividerBox>
+      <div className="flex items-center justify-between p-4 rounded-md border border-gray-600 bg-gray-900/50">
+        <div className="flex items-center space-x-3">
+          <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-5 h-5 text-nasun-white" />
+          <span className=" text-nasun-white ">@{xUsername}</span>
+        </div>
+      </div>
 
       {/* Tasks List */}
       <div className="space-y-4 !py-4">
         {/* Follow Recommendation (Not Required) */}
-        <div className="flex text-nasun-white items-center justify-between p-4 rounded-lg border transition-all bg-nasun-c2/10 border-nasun-c2/40">
+        <div className="flex items-center justify-between px-4 py-3 rounded-md border border-gray-600 bg-gray-900/50">
           <div className="flex items-center space-x-3">
-            <svg className="w-6 h-6 text-nasun-c1" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-nasun-nw4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
-            <span>
+            <span className=" text-nasun-white">
               {t("step3.tasks.follow", { account: targetAccount })}{" "}
-              <span className="text-nasun-c2/80 text-sm">({t("step3.recommended")})</span>
+              <span className="text-nasun-nw4/80">({t("step3.recommended")})</span>
             </span>
           </div>
-          <Button variant="outlineC1" size="sm" asChild>
+          <ButtonV3 variant="nw4" outline size="sm" asChild>
             <a href={followIntentUrl} target="_blank" rel="noopener noreferrer">
               <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-4 h-4 mr-1" />
               {t("step3.followButton")}
             </a>
-          </Button>
+          </ButtonV3>
         </div>
 
         {/* Required Tasks */}
@@ -219,15 +220,15 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
             <div
               key={task.type}
               className={`
-                flex text-nasun-white/80 items-center justify-between p-4 rounded-lg border transition-all
+                flex text-nasun-white items-center justify-between px-4 py-3 rounded-md border
                 ${completed === true ? "bg-green-950 border-green-500/40" : ""}
                 ${completed === false ? "bg-red-950/20 border-red-800" : ""}
-                ${completed === undefined ? "bg-gray-800 border-gray-600" : ""}
+                ${completed === undefined ? "bg-gray-900/50 border-gray-600" : ""}
               `}
             >
               <div className="flex items-center space-x-3">
                 {getTaskIcon(completed)}
-                <span>{task.label}</span>
+                <span className="">{task.label}</span>
               </div>
 
               {completed !== undefined && (
@@ -253,7 +254,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
           href={targetTweetUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-nasun-c4"
+          className="underline hover:text-nasun-nw1"
         >
           {t("step3.eventPostLink")}
           <ExternalLink className="w-4 h-4 ml-1 inline-block" />
@@ -264,7 +265,8 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       {isCooldownActive && (
         <div className="mb-6 p-4 bg-yellow-900/20 rounded-lg border border-yellow-700">
           <p className="text-yellow-200">
-            X API rate limit reached. Please wait {cooldownMinutes}:{cooldownSeconds.toString().padStart(2, "0")} before retrying.
+            X API rate limit reached. Please wait {cooldownMinutes}:
+            {cooldownSeconds.toString().padStart(2, "0")} before retrying.
           </p>
         </div>
       )}
@@ -276,9 +278,9 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
             <>
               <p className="text-red-200 mb-3">⚠️ {t("step3.errors.tokenExpired")}</p>
               {onReconnectX && (
-                <Button onClick={onReconnectX} variant="outlineC5" size="sm" className="w-full">
+                <ButtonV3 onClick={onReconnectX} variant="nw1" outline size="sm" className="w-full">
                   {t("step3.errors.reconnectX")}
-                </Button>
+                </ButtonV3>
               )}
             </>
           ) : (
@@ -301,16 +303,16 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
         <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
           <p className="text-red-200 mb-3">⚠️ {t("step3.errors.tokenExpired")}</p>
           {onReconnectX && (
-            <Button onClick={onReconnectX} variant="outlineC5" size="sm" className="w-full">
+            <ButtonV3 onClick={onReconnectX} variant="nw1" outline size="sm" className="w-full">
               {t("step3.errors.reconnectX")}
-            </Button>
+            </ButtonV3>
           )}
         </div>
       )}
 
       {/* Incomplete Tasks Message (non-401 errors) */}
       {hasVerified && data && !data.eligible && !data.message?.includes("401") && (
-        <DividerBox color="c5" icon="⚠️" className="!py-4 mb-6">
+        <DividerBox color="nw1" icon="⚠️" className="!py-4 mb-6">
           <p>{t("step3.errors.incomplete")}</p>
         </DividerBox>
       )}
@@ -318,7 +320,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       {/* Action Button */}
       {hasVerified && data?.eligible ? (
         // 검증 완료 시 "다음 스텝" 버튼
-        <Button
+        <ButtonV3
           onClick={() => {
             onVerificationSuccess({
               following: true,
@@ -328,7 +330,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
               tasks: data.tasks,
             });
           }}
-          variant="c5"
+          variant="nw1"
           className="flex mx-auto"
           size="lg"
         >
@@ -341,13 +343,13 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
               d="M13 7l5 5m0 0l-5 5m5-5H6"
             />
           </svg>
-        </Button>
+        </ButtonV3>
       ) : (
         // 검증 버튼 (초기 또는 재시도)
-        <Button
+        <ButtonV3
           onClick={handleVerify}
           disabled={isLoading || isCooldownActive}
-          variant="c5"
+          variant="nw1"
           className="flex mx-auto"
           size="lg"
         >
@@ -360,7 +362,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
           ) : (
             <span>{hasVerified ? t("step3.retry") : t("step3.button")}</span>
           )}
-        </Button>
+        </ButtonV3>
       )}
     </OuterBox>
   );

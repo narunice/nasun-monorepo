@@ -12,13 +12,14 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "../../../../store/userStore";
+import { useBattalionNftStore } from "../../../../stores/useBattalionNftStore";
 import {
   isMetaMaskInstalled as checkMetaMaskInstalled,
   connectWallet,
   signMessage,
 } from "../../../../utils/metamaskUtils";
 import { authenticateWithMetaMask } from "../../../../services/metamaskApi";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import logger from "../../../../lib/logger";
 import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
 
@@ -40,6 +41,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
   const { updateUserProfile } = useUserStore();
+  const { cognitoIdentityId } = useBattalionNftStore();
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
@@ -97,9 +99,16 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       const walletAddress = await connectWallet();
       logger.log("[WalletConnectCard] Connected wallet:", walletAddress);
 
-      // 3. If not linked, authenticate and link account
+      // 3. Determine the primary identity ID (from store or auth context)
+      const primaryIdentityId = cognitoIdentityId || user?.identityId;
+
+      // 4. If not linked, authenticate and link account
       if (!linkedWallet) {
         logger.log("[WalletConnectCard] Wallet not linked - authenticating...");
+
+        if (!primaryIdentityId) {
+          throw new Error("Missing Cognito identity ID. Please restart the event from Step 1.");
+        }
 
         // 4a. Authenticate with MetaMask (Challenge/Response)
         const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
@@ -120,21 +129,23 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            primaryIdentityId: user?.identityId,
+            primaryIdentityId,
             secondaryIdentityId: authResult.identityId,
             secondaryProvider: "MetaMask",
           }),
         });
 
         if (!linkResponse.ok) {
-          throw new Error("Failed to link MetaMask account");
+          const errorBody = await linkResponse.text();
+          console.error("[WalletConnectCard] Link API error:", linkResponse.status, errorBody);
+          throw new Error(`Failed to link MetaMask account: ${linkResponse.status} ${errorBody}`);
         }
 
         logger.log("[WalletConnectCard] Account linked successfully");
 
         // 4c. Fetch updated profile
         const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
-        const profileResponse = await fetch(`${userProfileApi}?identityId=${user?.identityId}`);
+        const profileResponse = await fetch(`${userProfileApi}?identityId=${primaryIdentityId}`);
 
         if (profileResponse.ok) {
           const updatedProfile = await profileResponse.json();
@@ -166,7 +177,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
   if (!isMetaMaskInstalled) {
     return (
-      <OuterBox color="c5" className="max-w-3xl mx-auto">
+      <OuterBox color="nw0" className=" max-w-3xl mx-auto">
         <div className="text-center">
           {/* MetaMask Logo */}
           <div className="mb-6 flex justify-center">
@@ -179,7 +190,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
           <p className="mb-6">{t("step4.errors.noMetaMask")}</p>
 
-          <Button color="c2" size="lg" asChild>
+          <ButtonV3 variant="nw4" size="lg" asChild>
             <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">
               {t("step4.installLink")}
               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +202,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                 />
               </svg>
             </a>
-          </Button>
+          </ButtonV3>
 
           <p className="mt-4">{t("step4.installing")}</p>
         </div>
@@ -200,7 +211,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   }
 
   return (
-    <OuterBox color="c5" className="max-w-3xl mx-auto">
+    <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center">
         <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step4.title")}</h4>
@@ -235,7 +246,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           </DividerBox>
 
           {/* Next Step Button */}
-          <Button
+          <ButtonV3
             onClick={() => onWalletConnected(connectedAddress)}
             variant="green"
             size="lg"
@@ -250,22 +261,22 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                 d="M13 7l5 5m0 0l-5 5m5-5H6"
               />
             </svg>
-          </Button>
+          </ButtonV3>
         </>
       ) : (
         <>
           {/* MetaMask Info */}
           <DividerBox
-            color="w1"
+            color="nw3"
             padding="sm"
             icon="ℹ️"
             title={t("step4.infoTitle")}
-            className="mb-6"
+            className="mb-6 !bg-black/60"
+            titleClassName="!text-nasun-nw4"
+            hideDivider={true}
           >
-            <p>{t("step4.infoDescription")}</p>
-            <p className="mt-2 text-yellow-200 text-xs/snug md:text-sm/snug xl:text-base/snug">
-              🔒 {t("step4.signatureNote")}
-            </p>
+            <p className="pt-2">{t("step4.infoDescription")}</p>
+            <p className="mt-2 text-yellow-200"> {t("step4.signatureNote")}</p>
           </DividerBox>
 
           {/* Error Message */}
@@ -276,12 +287,12 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           )}
 
           {/* Connect Button */}
-          <Button
+          <ButtonV3
             onClick={handleConnect}
             disabled={isConnecting}
-            variant="c2"
+            variant="nw4"
             size="lg"
-            className="flex mx-auto"
+            className="flex mx-auto !bg-nasun-c2 disabled:opacity-90"
           >
             {isConnecting ? (
               <InlineLoading message={t("step4.connecting")} size="md" className="text-white" />
@@ -291,7 +302,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                 <span>{t("step4.button")}</span>
               </>
             )}
-          </Button>
+          </ButtonV3>
         </>
       )}
     </OuterBox>

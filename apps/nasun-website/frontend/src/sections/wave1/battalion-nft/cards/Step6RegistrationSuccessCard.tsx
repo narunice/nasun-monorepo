@@ -11,11 +11,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { NftWhitelist } from "../../../../types/battalion-nft";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { DividerBox, OuterBox } from "@/components/ui";
+import { useAuth } from "@/features/auth";
 
 interface RegistrationSuccessCardProps {
   whitelist: NftWhitelist;
@@ -38,6 +39,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 }) => {
   const { t } = useTranslation("battalion-nft");
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const openseaCollectionUrl = "https://opensea.io/collection/wave1-battalion-nasun"; // TODO: 실제 Collection URL로 변경
 
@@ -64,7 +66,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
   return (
     <>
-      <OuterBox color="c5" className="max-w-3xl mx-auto">
+      <OuterBox color="nw0" className=" max-w-3xl mx-auto">
         {/* Success Header */}
         <div className="text-center mb-4">
           <h4 className="!font-rubik font-medium mb-2">{t("step6.title")}</h4>
@@ -73,22 +75,22 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Wallet Disconnected Warning */}
         {!isWalletConnected && (
-          <DividerBox color="c5" padding="sm" icon="⚠️" className="mb-6">
+          <DividerBox color="nw1" padding="sm" icon="⚠️" className="mb-6">
             <p className="mb-3">{t("step6.walletDisconnectedWarning")}</p>
-            <Button
-              onClick={() => navigate("/my-account")}
-              variant="black"
+            <ButtonV3
+              onClick={() => navigate(isAuthenticated ? "/my-account" : "/")}
+              variant="nw2"
               size="sm"
               className="w-full !bg-yellow-600 hover:bg-yellow-700"
             >
-              {t("step6.goToMyAccount")}
-            </Button>
+              {isAuthenticated ? t("step6.goToMyAccount") : t("goToHome")}
+            </ButtonV3>
           </DividerBox>
         )}
 
         {/* Whitelist Info - 등록 정보 */}
         <DividerBox
-          color="w1"
+          color="nw3"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -121,7 +123,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Minting Guide */}
         <DividerBox
-          color="w1"
+          color="nw3"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -136,7 +138,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
           padding="sm"
           className="mb-8"
         >
-          <p className="text-nasun-c1 flex items-center pb-3 gap-2">
+          <p className="text-nasun-nw4 flex items-center pb-3 gap-2">
             <svg
               className="w-6 h-6 flex-shrink-0"
               fill="none"
@@ -155,7 +157,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((step) => (
               <div key={step} className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-nasun-c4 text-white rounded-full flex items-center justify-center text-sm">
+                <div className="flex-shrink-0 w-6 h-6 bg-nasun-nw1 text-white rounded-full flex items-center justify-center text-sm">
                   {step}
                 </div>
                 <p className="flex-1">
@@ -169,7 +171,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* OpenSea Button */}
         <div className="flex justify-center">
-          <Button variant="c5" size="lg" asChild>
+          <ButtonV3 variant="nw1" size="lg" asChild>
             <a
               href={openseaCollectionUrl}
               target="_blank"
@@ -191,23 +193,36 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
                 />
               </svg>
             </a>
-          </Button>
+          </ButtonV3>
         </div>
 
         {/* Navigation Buttons */}
         <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row gap-4">
-          <Button onClick={handleShareToTwitter} variant="outlineC4" size="md" className="w-full">
+          <ButtonV3 onClick={handleShareToTwitter} variant="nw1" outline size="md" className="w-full">
             <span>{t("step6.shareEventOnX")}</span>
             <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 ml-1" />
-          </Button>
-          <Button
-            onClick={() => navigate("/my-account")}
-            variant="outlineC4"
-            size="md"
-            className="w-full"
-          >
-            {t("goToMyAccount")}
-          </Button>
+          </ButtonV3>
+          {isAuthenticated ? (
+            <ButtonV3
+              onClick={() => navigate("/my-account")}
+              variant="nw1"
+              outline
+              size="md"
+              className="w-full"
+            >
+              {t("goToMyAccount")}
+            </ButtonV3>
+          ) : (
+            <ButtonV3
+              onClick={() => navigate("/")}
+              variant="nw1"
+              outline
+              size="md"
+              className="w-full"
+            >
+              {t("goToHome")}
+            </ButtonV3>
+          )}
         </div>
       </OuterBox>
     </>
