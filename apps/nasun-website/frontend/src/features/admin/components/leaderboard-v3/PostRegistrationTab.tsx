@@ -10,7 +10,7 @@
  * Phase 11: Role selection removed, continuous RoleMultiplier based on follower count
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,6 @@ import {
   useLeaderboardV3Account,
   usePostFormKeyboardShortcuts,
 } from "../../hooks/useLeaderboardV3";
-import { useAdminAuth } from "../../hooks/useAdminAuth";
 import {
   SIGNAL_LABELS,
   BONUS_SIGNALS,
@@ -51,12 +50,7 @@ export function PostRegistrationTab() {
   const urlInputRef = useRef<HTMLInputElement>(null);
   const form = usePostSubmissionForm();
   const createPostMutation = useCreatePost();
-  const { profile } = useAdminAuth();
 
-  // Admin identifier: twitterHandle > username > email
-  const adminIdentifier = useMemo(() => {
-    return profile?.twitterHandle || profile?.username || profile?.email || "unknown";
-  }, [profile]);
 
   // Extract username from URL for account lookup
   const extractedUsername = extractUsernameFromUrl(form.postUrl);
@@ -96,7 +90,6 @@ export function PostRegistrationTab() {
     try {
       const result = await createPostMutation.mutateAsync({
         request: form.buildRequest(),
-        adminUsername: adminIdentifier,
       });
 
       if (result.isDuplicate) {
@@ -115,7 +108,7 @@ export function PostRegistrationTab() {
       const message = err instanceof Error ? err.message : "Failed to register post";
       setSubmitMessage({ type: "error", text: message });
     }
-  }, [form, createPostMutation, adminIdentifier]);
+  }, [form, createPostMutation]);
 
   // Keyboard shortcuts
   const { handleKeyDown } = usePostFormKeyboardShortcuts(form, handleSubmit, urlInputRef);

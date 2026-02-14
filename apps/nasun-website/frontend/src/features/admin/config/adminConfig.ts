@@ -25,7 +25,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
   {
     title: 'Whitelist Export',
-    description: 'Download Genesis NFT Whitelist and Battalion NFT Allowlist as CSV files with date filtering capabilities.',
+    description: 'Download Frontiers Whitelist and Battalion NFT Allowlist as CSV files with date filtering capabilities.',
     icon: '📋',
     link: '/admin/whitelist',
     linkText: 'Manage Whitelist',

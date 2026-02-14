@@ -41,11 +41,11 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  const openseaCollectionUrl = "https://opensea.io/collection/wave1-battalion-nasun"; // TODO: 실제 Collection URL로 변경
+  const openseaCollectionUrl = import.meta.env.VITE_OPENSEA_COLLECTION_URL || "https://opensea.io/collection/wave1-battalion-nasun";
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
-    return date.toLocaleString("ko-KR", {
+    return date.toLocaleString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",

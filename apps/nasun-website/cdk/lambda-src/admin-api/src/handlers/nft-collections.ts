@@ -255,11 +255,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(200, { collections }, requestOrigin);
     }
 
-    // All other methods are protected by API Gateway Token Authorizer
-    const identityId = extractIdentityIdFromAuthorizer(event.requestContext);
+    // Try Token Authorizer context first, fall back to manual token verification.
+    let identityId = extractIdentityIdFromAuthorizer(event.requestContext);
+    if (!identityId) {
+      const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      identityId = await verifyTokenManually(authHeader);
+    }
 
     if (!identityId) {
-      console.warn("No identityId in authorizer context");
+      console.warn("No identityId provided");
       return unauthorizedResponse(requestOrigin);
     }
 

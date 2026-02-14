@@ -4,7 +4,7 @@ import type { UserProfile } from '../types';
 
 const USER_PROFILE_API = import.meta.env.VITE_USER_PROFILE_API;
 
-async function fetchUserProfile(identityId: string): Promise<UserProfile | null> {
+export async function fetchUserProfile(identityId: string): Promise<UserProfile | null> {
   if (!USER_PROFILE_API) {
     console.error('VITE_USER_PROFILE_API not configured');
     return null;

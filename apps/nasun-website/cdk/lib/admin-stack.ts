@@ -64,7 +64,10 @@ export class AdminStack extends cdk.Stack {
     );
 
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
-    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID || '';
+    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
+    if (!cognitoIdentityPoolId) {
+      throw new Error('VITE_COGNITO_IDENTITY_POOL_ID environment variable is required for AdminStack');
+    }
 
     // Admin Export Lambda
     this.exportFunction = new NodejsFunction(this, "AdminExportFunction", {

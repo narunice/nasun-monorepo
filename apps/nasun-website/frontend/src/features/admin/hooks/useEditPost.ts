@@ -1,14 +1,13 @@
 /**
  * useEditPost - Hook for editing post fields via admin API
  *
- * Admin only - requires authentication.
+ * Admin only - requires Cognito JWT authentication.
  * Invalidates dashboard and leaderboard queries on success.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { editPost } from '../services/leaderboardV3Api';
-
-const ADMIN_PASSWORD = import.meta.env.VITE_LEADERBOARD_V3_ADMIN_PASSWORD;
+import { useAdminAuth } from './useAdminAuth';
 
 interface EditPostParams {
   postId: string;
@@ -26,10 +25,11 @@ interface EditPostParams {
 
 export function useEditPost() {
   const queryClient = useQueryClient();
+  const { cognitoToken } = useAdminAuth();
 
   return useMutation({
     mutationFn: ({ postId, updates }: EditPostParams) =>
-      editPost(ADMIN_PASSWORD, postId, updates),
+      editPost(cognitoToken || '', postId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['season-leaderboard'] });

@@ -143,7 +143,7 @@ export class NftEventStack extends cdk.Stack {
       cors: [
         {
           allowedMethods: [s3.HttpMethods.GET],
-          allowedOrigins: ["*"],
+          allowedOrigins: ALLOWED_ORIGINS,
           allowedHeaders: ["*"],
           maxAge: 3000,
         },
@@ -277,7 +277,7 @@ export class NftEventStack extends cdk.Stack {
         throttlingRateLimit: 100, // 초당 100 요청
         throttlingBurstLimit: 200, // 버스트 200 요청
         tracingEnabled: true, // X-Ray tracing
-        dataTraceEnabled: true, // API Gateway 로그
+        dataTraceEnabled: false, // Disabled: prevents logging request/response bodies with sensitive data
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
       },
       defaultCorsPreflightOptions: {

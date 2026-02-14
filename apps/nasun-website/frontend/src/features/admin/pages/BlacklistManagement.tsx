@@ -9,7 +9,6 @@ import { useBlacklist } from "../hooks/useBlacklist";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import type { BannedAccount } from "../types/index";
 
-const ADMIN_PASSWORD = import.meta.env.VITE_LEADERBOARD_V3_ADMIN_PASSWORD;
 const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
 
 interface SearchResult {
@@ -24,9 +23,9 @@ interface SearchResult {
 }
 
 export function BlacklistManagement() {
-  const { profile } = useAdminAuth();
+  const { profile, cognitoToken } = useAdminAuth();
   const { bannedAccounts, total, isLoading, ban, unban, isBanning, isUnbanning } =
-    useBlacklist(ADMIN_PASSWORD);
+    useBlacklist(cognitoToken);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -64,7 +63,6 @@ export function BlacklistManagement() {
       await ban({
         accountId: banTarget.accountId,
         reason: banReason || undefined,
-        adminUsername: profile?.email || profile?.username || "admin",
       });
       setBanTarget(null);
       setBanReason("");

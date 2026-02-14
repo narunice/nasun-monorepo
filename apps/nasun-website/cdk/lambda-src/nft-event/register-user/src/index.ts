@@ -22,6 +22,7 @@ import {
 } from './types';
 import { WhitelistService } from './services/whitelistService';
 import { TaskTracker } from './services/taskTracker';
+import { ethers } from 'ethers';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -48,7 +49,7 @@ const env: NftEventEnv = {
  * Lambda Handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
-  console.log('[register-user] Event:', JSON.stringify(event, null, 2));
+  console.log('[register-user] Request:', { httpMethod: event.httpMethod, path: event.path });
   const origin = event.headers?.origin || event.headers?.Origin;
 
   try {
@@ -61,6 +62,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // 2. 입력 검증
     validateRequest(request);
+
+    // 2.5. 지갑 서명 검증 — proves caller owns the wallet
+    verifyWalletSignature(request);
 
     // 3. 서비스 초기화
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
@@ -175,7 +179,42 @@ function validateRequest(request: RegisterUserRequest): void {
     throw new NftEventError('Invalid X User ID', ErrorCode.INVALID_X_USER_ID, 400);
   }
 
-  if (!request.xUsername || request.xUsername.trim() === '') {
+  if (!request.xUsername || request.xUsername.trim() === '' || request.xUsername.length > 50) {
     throw new NftEventError('Invalid X Username', ErrorCode.INVALID_X_USERNAME, 400);
   }
+
+  if (!request.signature || !request.message || !request.timestamp) {
+    throw new NftEventError('signature, message, and timestamp are required', ErrorCode.INVALID_SIGNATURE, 400);
+  }
+}
+
+/**
+ * 지갑 서명 검증 — proves caller owns the wallet
+ */
+function verifyWalletSignature(request: RegisterUserRequest): void {
+  // Verify signature is not expired (5-minute window, 30s forward tolerance for clock skew)
+  const signedAt = new Date(request.timestamp).getTime();
+  const age = Date.now() - signedAt;
+  if (isNaN(signedAt) || age < -30_000 || age > 5 * 60 * 1000) {
+    throw new NftEventError('Signature expired or invalid timestamp', ErrorCode.SIGNATURE_EXPIRED, 400);
+  }
+
+  // Verify message content — prevent cross-action signature replay
+  if (!request.message.includes(request.timestamp)) {
+    throw new NftEventError('Signed message must contain the request timestamp', ErrorCode.INVALID_SIGNATURE, 400);
+  }
+
+  // Verify MetaMask signature — proves caller owns the wallet
+  let recoveredAddress: string;
+  try {
+    recoveredAddress = ethers.verifyMessage(request.message, request.signature);
+  } catch {
+    throw new NftEventError('Invalid signature', ErrorCode.INVALID_SIGNATURE, 400);
+  }
+
+  if (recoveredAddress.toLowerCase() !== request.walletAddress.toLowerCase()) {
+    throw new NftEventError('Signature does not match wallet address', ErrorCode.INVALID_SIGNATURE, 403);
+  }
+
+  console.log('[register-user] Wallet ownership verified:', request.walletAddress);
 }

@@ -37,7 +37,7 @@ const env: CheckStatusEnv = {
  * Lambda Handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
-  console.log('[check-registration-status] Event:', JSON.stringify(event, null, 2));
+  console.log('[check-registration-status] Request:', { httpMethod: event.httpMethod, path: event.path, queryParams: event.queryStringParameters });
   const origin = event.headers?.origin || event.headers?.Origin;
 
   try {

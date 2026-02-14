@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBannedAccounts, banAccountApi, unbanAccountApi } from '../services/leaderboardV3Api';
 
-export function useBlacklist(adminPassword: string) {
+export function useBlacklist(token: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['admin', 'blacklist'],
-    queryFn: () => getBannedAccounts(adminPassword),
-    enabled: !!adminPassword,
+    queryFn: () => getBannedAccounts(token!),
+    enabled: !!token,
     staleTime: 60_000, // 1 minute
   });
 
@@ -17,13 +17,13 @@ export function useBlacklist(adminPassword: string) {
   };
 
   const banMutation = useMutation({
-    mutationFn: (params: { accountId: string; reason?: string; adminUsername?: string }) =>
-      banAccountApi(adminPassword, params.accountId, params.reason, params.adminUsername),
+    mutationFn: (params: { accountId: string; reason?: string }) =>
+      banAccountApi(token!, params.accountId, params.reason),
     onSuccess: invalidateAll,
   });
 
   const unbanMutation = useMutation({
-    mutationFn: (accountId: string) => unbanAccountApi(adminPassword, accountId),
+    mutationFn: (accountId: string) => unbanAccountApi(token!, accountId),
     onSuccess: invalidateAll,
   });
 

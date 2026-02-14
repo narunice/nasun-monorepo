@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth"; // 내부 경로는 상대 경로 유지
 import logger from "@/lib/logger";
 import { ZkLoginCallback } from "@nasun/wallet-ui";
+import { fetchUserProfile } from "@/features/admin/hooks/useUserProfile";
 
 export default function Callback() {
   const navigate = useNavigate();
@@ -89,8 +90,20 @@ export default function Callback() {
       hasHandledRef.current = true;
       const savedPath = localStorage.getItem('auth_return_to');
       localStorage.removeItem('auth_return_to');
-      const returnTo = (!savedPath || savedPath === '/') ? '/my-account' : savedPath;
-      navigate(returnTo, { replace: true });
+
+      if (savedPath && savedPath !== '/') {
+        navigate(savedPath, { replace: true });
+        return;
+      }
+
+      // No explicit return path — check if admin for smart redirect
+      fetchUserProfile(user.identityId)
+        .then((profile) => {
+          navigate(profile?.role === 'ADMIN' ? '/admin' : '/my-account', { replace: true });
+        })
+        .catch(() => {
+          navigate('/my-account', { replace: true });
+        });
     }
 
     // Otherwise, we are still loading, so the component will just keep showing the spinner.

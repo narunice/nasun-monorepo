@@ -24,9 +24,8 @@ import {
   RankChange,
   DYNAMO_KEYS,
 } from '../types';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { getDateNDaysAgo } from '../utils/date';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -84,17 +83,6 @@ interface RankHistoryResponse {
 }
 
 const VALID_DAYS = [7, 14, 30, 90];
-
-function createResponse(
-  statusCode: number,
-  body: RankHistoryResponse | { error: string }
-): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
 
 /**
  * Get active season
@@ -171,16 +159,7 @@ async function getAccountByUsername(
   return result.Items[0] as Account;
 }
 
-/**
- * Get date string for N days ago in YYYY-MM-DD format (KST)
- */
-function getDateNDaysAgo(days: number): string {
-  const now = new Date();
-  // Convert to KST (UTC+9)
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  kst.setDate(kst.getDate() - days);
-  return kst.toISOString().split('T')[0];
-}
+
 
 /**
  * Get rank history for a user using the GSI
@@ -265,10 +244,11 @@ function calculateStats(history: RankHistoryEntry[]): RankHistoryStats {
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {
+    return respond(200, {
       success: true,
       calculatedAt: new Date().toISOString(),
     });
@@ -281,7 +261,7 @@ export const handler = async (
 
     // Validate username
     if (!username) {
-      return createResponse(400, { error: 'Query parameter "username" is required' });
+      return respond(400, { error: 'Query parameter "username" is required' });
     }
 
     // Validate days parameter
@@ -289,7 +269,7 @@ export const handler = async (
     if (daysParam) {
       const parsedDays = parseInt(daysParam, 10);
       if (isNaN(parsedDays) || !VALID_DAYS.includes(parsedDays)) {
-        return createResponse(400, {
+        return respond(400, {
           error: `Query parameter "days" must be one of: ${VALID_DAYS.join(', ')}`,
         });
       }
@@ -301,12 +281,12 @@ export const handler = async (
     if (seasonId) {
       season = await getSeasonById(seasonId);
       if (!season) {
-        return createResponse(404, { error: `Season "${seasonId}" not found` });
+        return respond(404, { error: `Season "${seasonId}" not found` });
       }
     } else {
       season = await getActiveSeason();
       if (!season) {
-        return createResponse(404, { error: 'No active season found' });
+        return respond(404, { error: 'No active season found' });
       }
       seasonId = season.seasonId;
     }
@@ -314,7 +294,7 @@ export const handler = async (
     // Get account by username
     const account = await getAccountByUsername(username);
     if (!account || account.isBanned) {
-      return createResponse(404, { error: 'User not found or banned' });
+      return respond(404, { error: 'User not found or banned' });
     }
 
     // Get start date (N days ago)
@@ -359,9 +339,9 @@ export const handler = async (
       calculatedAt: new Date().toISOString(),
     };
 
-    return createResponse(200, response);
+    return respond(200, response);
   } catch (error) {
     console.error('Error getting rank history:', error);
-    return createResponse(500, { error: 'Internal server error' });
+    return respond(500, { error: 'Internal server error' });
   }
 };
