@@ -27,6 +27,7 @@ import {
   MobileTradeLayoutV2,
   OnboardingTour,
   FavoriteStrip,
+  FirstTradeCelebration,
 } from "../features/trading/components";
 import {
   useTradeMode,
@@ -34,6 +35,7 @@ import {
   useKeyboardShortcuts,
   useOnboardingTour,
   isTourCompleted,
+  useFirstTradeCelebration,
 } from "../features/trading/hooks";
 import { useOrderForm } from "../features/trading/context";
 import { usePrices } from "../features/core/usePrices";
@@ -157,17 +159,22 @@ function ChatCollapsedBar({ onClick }: { onClick: () => void }) {
         text-theme-text-muted hover:text-theme-text-primary transition-colors"
     >
       <div className="flex items-center gap-2">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
+        <div className="relative">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          {/* Activity dot */}
+          <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        </div>
         <span className="text-trading-sm font-medium">Chat</span>
+        <span className="text-[10px] text-theme-text-muted opacity-70">Live</span>
       </div>
       <svg
         width="14"
@@ -193,10 +200,11 @@ function TradePageContent() {
   const [newsVisible, setNewsVisible] = useState(true);
   const [chartView, setChartView] = useState<ChartView>("price");
   const tour = useOnboardingTour();
+  const { showCelebration, dismiss: dismissCelebration } = useFirstTradeCelebration();
 
-  // Auto-start tour on first visit (Pro mode, xl+ viewport, not completed)
+  // Auto-start tour on first visit (xl+ viewport, not completed)
   useEffect(() => {
-    if (!isSimple && !isTourCompleted() && window.innerWidth >= 1280) {
+    if (!isTourCompleted() && window.innerWidth >= 1280) {
       const timer = setTimeout(() => tour.start(), 1500);
       return () => clearTimeout(timer);
     }
@@ -283,7 +291,7 @@ function TradePageContent() {
         {!isSimple && (
           <div className={`hidden xl:block shrink-0 ${CARD_W}`}>
             <div className="flex flex-col gap-3">
-              <div className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
+              <div data-tour="mode-toggle" className="bg-theme-bg-secondary rounded-lg px-3 py-3 flex items-center justify-between">
                 <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
                 <div className="flex items-center gap-2">
                   <span className="text-trading-sm text-theme-text-muted">Simple</span>
@@ -351,7 +359,7 @@ function TradePageContent() {
         /* Simple mode: Chart | OrderForm | Chat — 3 columns, centered */
         <div className={`hidden xl:flex gap-3 ${SIMPLE_MAX_W}`}>
           {/* Col 1: Chart (flexible, fills remaining space) */}
-          <div className="flex-1 min-w-0" style={{ height: `${CHART_HEIGHT}px` }}>
+          <div data-tour="chart" className="flex-1 min-w-0" style={{ height: `${CHART_HEIGHT}px` }}>
             <ChartArea
               chartView={chartView}
               onChartViewChange={setChartView}
@@ -362,11 +370,11 @@ function TradePageContent() {
             />
           </div>
           {/* Col 2: Quick Trade */}
-          <div className={`shrink-0 ${CARD_W}`} style={{ height: `${CHART_HEIGHT}px` }}>
+          <div data-tour="orderform" className={`shrink-0 ${CARD_W}`} style={{ height: `${CHART_HEIGHT}px` }}>
             <TradingPanel mode={mode} />
           </div>
           {/* Col 3: Chat (same height as Quick Trade) */}
-          <div className={`shrink-0 ${CARD_W}`}>
+          <div data-tour="chat" className={`shrink-0 ${CARD_W}`}>
             {!chatFloating &&
               (chatVisible ? (
                 <div style={{ height: `${CHART_HEIGHT}px` }}>
@@ -513,6 +521,9 @@ function TradePageContent() {
 
       {/* Chat drawer (below xl) — available at both lg-xl and mobile */}
       <MobileChatDrawer />
+
+      {/* First trade celebration overlay */}
+      {showCelebration && <FirstTradeCelebration onDismiss={dismissCelebration} />}
 
       {/* Onboarding tour overlay */}
       <OnboardingTour tour={tour} />

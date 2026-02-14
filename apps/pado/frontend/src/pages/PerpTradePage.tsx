@@ -22,7 +22,7 @@ export function PerpTradePage() {
         <div className="p-6 bg-theme-bg-secondary rounded-lg border border-theme-border text-center">
           <p className="text-lg font-medium text-theme-text-primary mb-2">Coming Soon</p>
           <p className="text-sm text-theme-text-muted">
-            Perpetual futures contracts are pending V6 redeployment.
+            Perpetual futures contracts are deployed on V7. Frontend integration pending.
           </p>
         </div>
       ) : (

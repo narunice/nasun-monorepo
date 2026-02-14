@@ -153,7 +153,7 @@ export function useFaucet(): UseFaucetResult {
         await pollAndRefresh();
         showToast("NASUN received!", "success");
       } else {
-        showToast("Faucet request failed", "error");
+        showToast("NASUN faucet failed. Check your connection and try again.", "error");
       }
     } catch (error) {
       showToast(formatFaucetError(error, "NASUN"), "error");

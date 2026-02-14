@@ -24,6 +24,7 @@ import {
   MobileAssetBar,
   MobileTokenPills,
   MobileQuickActions,
+  GettingStartedCard,
 } from "../features/dashboard";
 import { AssetOverview, TokenBalanceList, ActivityTabs } from "../features/portfolio";
 
@@ -47,6 +48,9 @@ export function HomePage() {
       {/* ===== Connected or Locked State: Portfolio-Centric Layout ===== */}
       {!hasNoWallet && (
         <>
+          {/* Getting Started checklist (auto-hides when all steps complete) */}
+          <GettingStartedCard />
+
           {/* Mobile: compact asset bar + token pills + icon strip */}
           <div className="md:hidden space-y-3 mb-4">
             <MobileAssetBar />

@@ -149,7 +149,7 @@ export function AssetOverview() {
       </div>
       <div className="text-3xl font-bold mt-2">
         {isLoading ? (
-          <span className="text-theme-text-muted">Loading...</span>
+          <div className="h-9 w-40 bg-theme-bg-tertiary rounded animate-pulse" />
         ) : (
           `$${totalValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,

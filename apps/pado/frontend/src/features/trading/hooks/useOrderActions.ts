@@ -30,6 +30,7 @@ async function performAutoDeposit(
   requiredQuote: number,
   requiredBase: number,
   showToast: (msg: string, type: "info" | "error" | "success" | "warning") => void,
+  baseSymbol: string,
 ): Promise<{ success: boolean; error?: string }> {
   const result = await depositIfNeeded(requiredQuote, requiredBase);
 
@@ -46,7 +47,7 @@ async function performAutoDeposit(
     showToast(`Auto-deposited ${result.depositedQuoteAmount!.toFixed(2)} NUSDC to trading`, "info");
   }
   if (hasBase) {
-    showToast(`Auto-deposited ${result.depositedBaseAmount!.toFixed(4)} NBTC to trading`, "info");
+    showToast(`Auto-deposited ${result.depositedBaseAmount!.toFixed(4)} ${baseSymbol} to trading`, "info");
   }
   if (hasQuote || hasBase) {
     await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
@@ -242,7 +243,7 @@ export function useOrderActions(): UseOrderActionsResult {
       if (autoDepositEnabled && balanceManagerId) {
         const requiredQuote = type === "buy" ? price * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
-        const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast);
+        const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast, currentPool.baseToken.symbol);
         if (!deposit.success) return { success: false, error: deposit.error };
       }
 
@@ -289,11 +290,12 @@ export function useOrderActions(): UseOrderActionsResult {
     async (type: "buy" | "sell", amount: number): Promise<TradeResult> => {
       // Auto deposit if enabled (use oracle price with slippage buffer for market orders)
       if (autoDepositEnabled && balanceManagerId) {
-        const oraclePrice = getUnifiedPrice('NBTC');
+        const baseSymbol = currentPool.baseToken.symbol;
+        const oraclePrice = getUnifiedPrice(baseSymbol as Parameters<typeof getUnifiedPrice>[0]);
         const estimatedPrice = oraclePrice > 0 ? oraclePrice * MARKET_ORDER_SLIPPAGE_BUFFER : 100000;
         const requiredQuote = type === "buy" ? estimatedPrice * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
-        const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast);
+        const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast, baseSymbol);
         if (!deposit.success) return { success: false, error: deposit.error };
       }
 

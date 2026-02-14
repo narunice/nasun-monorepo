@@ -1,7 +1,7 @@
 /**
  * MiniOrderbook
- * Compact 5-level orderbook for mobile Pro mode.
- * Shows top 5 asks (descending) + spread + top 5 bids (descending).
+ * Compact 8-level orderbook for mobile Pro mode.
+ * Shows top 8 asks (descending) + spread + top 8 bids (descending).
  */
 
 import type { PriceLevel } from '../../../lib/deepbook';
@@ -13,7 +13,7 @@ interface MiniOrderbookProps {
   onPriceClick?: (price: number) => void;
 }
 
-const LEVELS = 5;
+const LEVELS = 8;
 
 export function MiniOrderbook({ bids, asks, midPrice, onPriceClick }: MiniOrderbookProps) {
   const topAsks = asks.slice(0, LEVELS).reverse();

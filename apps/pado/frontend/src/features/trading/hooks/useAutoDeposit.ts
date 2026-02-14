@@ -308,7 +308,7 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
         if (!check.canAffordQuote && check.requiredQuoteAmount > 0) {
           error = `Not enough NUSDC. Get ${check.quoteShortfall.toFixed(2)} more from Faucet in your wallet.`;
         } else if (!check.canAffordBase && check.requiredBaseAmount > 0) {
-          error = `Not enough NBTC. Get ${check.baseShortfall.toFixed(4)} more from Faucet in your wallet.`;
+          error = `Not enough ${currentPool.baseToken.symbol}. Get ${check.baseShortfall.toFixed(4)} more from Faucet in your wallet.`;
         } else {
           error = 'Not enough balance. Use Faucet in your wallet to get tokens.';
         }
