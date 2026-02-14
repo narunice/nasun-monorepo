@@ -2,7 +2,7 @@
  * Battalion NFT Page
  *
  * @description
- * Wave 1 Battalion NFT Free Mint 이벤트 페이지
+ * Wave 1 Battalion NFT 이벤트 페이지
  * Hero 섹션과 메인 컨텐츠를 포함
  *
  * @author Claude Code

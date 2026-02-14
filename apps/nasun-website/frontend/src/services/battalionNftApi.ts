@@ -2,7 +2,7 @@
  * Battalion NFT API Client
  *
  * @description
- * Wave 1 Battalion NFT Free Mint 이벤트 API 클라이언트
+ * Wave 1 Battalion NFT 이벤트 API 클라이언트
  *
  * @author Claude Code
  * @date 2025-10-25
@@ -17,13 +17,13 @@ import {
   WithdrawUserResponse,
   BattalionNftStatusResponse,
   ApiError,
-} from '../types/battalion-nft';
-import i18n from '../i18n';
+} from "../types/battalion-nft";
+import i18n from "../i18n";
 
-const API_BASE_URL = import.meta.env.VITE_BATTALION_NFT_API || '';
+const API_BASE_URL = import.meta.env.VITE_BATTALION_NFT_API || "";
 
 if (!API_BASE_URL) {
-  console.warn('[battalionNftApi] VITE_BATTALION_NFT_API is not configured');
+  console.warn("[battalionNftApi] VITE_BATTALION_NFT_API is not configured");
 }
 
 /**
@@ -34,7 +34,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     let errorData: Record<string, unknown>;
 
     try {
-      errorData = await response.json() as Record<string, unknown>;
+      errorData = (await response.json()) as Record<string, unknown>;
 
       // 백엔드의 errorCode를 code로 매핑 (필드명 불일치 해결)
       if (errorData.errorCode && !errorData.code) {
@@ -50,8 +50,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
       errorData = {
         success: false,
         error: `HTTP ${response.status}`,
-        code: 'NETWORK_ERROR',
-        message: response.statusText || 'Unknown error occurred',
+        code: "NETWORK_ERROR",
+        message: response.statusText || "Unknown error occurred",
       };
     }
 
@@ -68,38 +68,38 @@ async function handleResponse<T>(response: Response): Promise<T> {
  * @returns 검증 결과
  */
 export async function verifyEligibilityApi(
-  request: VerifyEligibilityRequest
+  request: VerifyEligibilityRequest,
 ): Promise<VerifyEligibilityResponse> {
   try {
-    console.log('[battalionNftApi] Verifying eligibility:', request);
+    console.log("[battalionNftApi] Verifying eligibility:", request);
 
     // X access token is now stored server-side — no frontend token handling needed
     const response = await fetch(`${API_BASE_URL}/event/verify`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
     });
 
     const data = await handleResponse<VerifyEligibilityResponse>(response);
 
-    console.log('[battalionNftApi] Verification result:', data);
+    console.log("[battalionNftApi] Verification result:", data);
     return data;
   } catch (error: unknown) {
-    console.error('[battalionNftApi] Verification error:', error);
+    console.error("[battalionNftApi] Verification error:", error);
 
-    if (error && typeof error === 'object' && 'code' in error) {
+    if (error && typeof error === "object" && "code" in error) {
       // ApiError 형태인 경우 그대로 throw
       throw error;
     }
 
-    // 네트워크 에러 등 기타 에러는 ApiError로 변환
+    // Network error fallback
     throw {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      code: 'NETWORK_ERROR',
-      message: '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      code: "NETWORK_ERROR",
+      message: i18n.t("battalion-nft:errors.networkError"),
     } as ApiError;
   }
 }
@@ -110,36 +110,34 @@ export async function verifyEligibilityApi(
  * @param request - 등록 요청 정보
  * @returns 등록 결과
  */
-export async function registerUserApi(
-  request: RegisterUserRequest
-): Promise<RegisterUserResponse> {
+export async function registerUserApi(request: RegisterUserRequest): Promise<RegisterUserResponse> {
   try {
-    console.log('[battalionNftApi] Registering user:', request);
+    console.log("[battalionNftApi] Registering user:", request);
 
     const response = await fetch(`${API_BASE_URL}/event/register`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
     });
 
     const data = await handleResponse<RegisterUserResponse>(response);
 
-    console.log('[battalionNftApi] Registration result:', data);
+    console.log("[battalionNftApi] Registration result:", data);
     return data;
   } catch (error: unknown) {
-    console.error('[battalionNftApi] Registration error:', error);
+    console.error("[battalionNftApi] Registration error:", error);
 
-    if (error && typeof error === 'object' && 'code' in error) {
+    if (error && typeof error === "object" && "code" in error) {
       throw error;
     }
 
     throw {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      code: 'NETWORK_ERROR',
-      message: '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      code: "NETWORK_ERROR",
+      message: i18n.t("battalion-nft:errors.networkError"),
     } as ApiError;
   }
 }
@@ -155,10 +153,10 @@ export async function registerUserApi(
  * GET /event/status?walletAddress=0x...
  */
 export async function checkBattalionNftStatus(
-  walletAddress: string
+  walletAddress: string,
 ): Promise<BattalionNftStatusResponse> {
   try {
-    console.log('[battalionNftApi] Checking Battalion NFT status:', walletAddress);
+    console.log("[battalionNftApi] Checking Battalion NFT status:", walletAddress);
 
     // Normalize wallet address (lowercase)
     const normalizedAddress = walletAddress.toLowerCase();
@@ -167,31 +165,31 @@ export async function checkBattalionNftStatus(
     const response = await fetch(
       `${API_BASE_URL}/event/status?walletAddress=${encodeURIComponent(normalizedAddress)}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const data = await handleResponse<BattalionNftStatusResponse>(response);
 
-    console.log('[battalionNftApi] Status check result:', data);
+    console.log("[battalionNftApi] Status check result:", data);
     return data;
   } catch (error: unknown) {
-    console.error('[battalionNftApi] Status check error:', error);
+    console.error("[battalionNftApi] Status check error:", error);
 
-    if (error && typeof error === 'object' && 'code' in error) {
+    if (error && typeof error === "object" && "code" in error) {
       // ApiError 형태인 경우 그대로 throw
       throw error;
     }
 
-    // 네트워크 에러 등 기타 에러는 ApiError로 변환
+    // Network error fallback
     throw {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      code: 'NETWORK_ERROR',
-      message: '상태를 확인하는 중 오류가 발생했습니다.',
+      code: "NETWORK_ERROR",
+      message: i18n.t("battalion-nft:errors.statusCheckError"),
     } as ApiError;
   }
 }
@@ -202,36 +200,34 @@ export async function checkBattalionNftStatus(
  * @param request - 취소 요청 정보
  * @returns 취소 결과
  */
-export async function withdrawUserApi(
-  request: WithdrawUserRequest
-): Promise<WithdrawUserResponse> {
+export async function withdrawUserApi(request: WithdrawUserRequest): Promise<WithdrawUserResponse> {
   try {
-    console.log('[battalionNftApi] Withdrawing user:', request.walletAddress);
+    console.log("[battalionNftApi] Withdrawing user:", request.walletAddress);
 
     const response = await fetch(`${API_BASE_URL}/event/withdraw`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
     });
 
     const data = await handleResponse<WithdrawUserResponse>(response);
 
-    console.log('[battalionNftApi] Withdraw result:', data);
+    console.log("[battalionNftApi] Withdraw result:", data);
     return data;
   } catch (error: unknown) {
-    console.error('[battalionNftApi] Withdraw error:', error);
+    console.error("[battalionNftApi] Withdraw error:", error);
 
-    if (error && typeof error === 'object' && 'code' in error) {
+    if (error && typeof error === "object" && "code" in error) {
       throw error;
     }
 
     throw {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      code: 'NETWORK_ERROR',
-      message: '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      code: "NETWORK_ERROR",
+      message: i18n.t("battalion-nft:errors.networkError"),
     } as ApiError;
   }
 }
@@ -248,38 +244,41 @@ export async function withdrawUserApi(
  */
 export async function withdrawBattalionNftWithSignature(
   walletAddress: string,
-  signMessageFn: (message: string) => Promise<string>
+  signMessageFn: (message: string) => Promise<string>,
 ): Promise<WithdrawUserResponse> {
-  console.log('[battalionNftApi] withdrawBattalionNftWithSignature called for wallet:', walletAddress);
+  console.log(
+    "[battalionNftApi] withdrawBattalionNftWithSignature called for wallet:",
+    walletAddress,
+  );
 
   // 타임스탬프 생성
   const timestamp = new Date().toISOString();
-  console.log('[battalionNftApi] Timestamp generated:', timestamp);
+  console.log("[battalionNftApi] Timestamp generated:", timestamp);
 
   // 서명할 메시지 생성 (다국어 지원 + 보안 안내)
-  const message = `${i18n.t('common:signatures.withdrawBattalionNft.title')}
+  const message = `${i18n.t("common:signatures.withdrawBattalionNft.title")}
 
-${i18n.t('common:signatures.withdrawBattalionNft.securityNotice')}
-${i18n.t('common:signatures.withdrawBattalionNft.noTransaction')}
-${i18n.t('common:signatures.withdrawBattalionNft.ownershipVerification')}
+${i18n.t("common:signatures.withdrawBattalionNft.securityNotice")}
+${i18n.t("common:signatures.withdrawBattalionNft.noTransaction")}
+${i18n.t("common:signatures.withdrawBattalionNft.ownershipVerification")}
 
 Timestamp: ${timestamp}`;
 
-  console.log('[battalionNftApi] Message generated, calling signMessageFn...');
+  console.log("[battalionNftApi] Message generated, calling signMessageFn...");
 
   // MetaMask로 메시지 서명
   const signature = await signMessageFn(message);
-  console.log('[battalionNftApi] Signature received');
+  console.log("[battalionNftApi] Signature received");
 
   // Withdraw API 호출
-  console.log('[battalionNftApi] Calling withdrawUserApi...');
+  console.log("[battalionNftApi] Calling withdrawUserApi...");
   const response = await withdrawUserApi({
     walletAddress: walletAddress.toLowerCase(),
     signature,
     message,
     timestamp,
   });
-  console.log('[battalionNftApi] Withdraw API response:', response);
+  console.log("[battalionNftApi] Withdraw API response:", response);
 
   return response;
 }

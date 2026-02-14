@@ -52,6 +52,7 @@ export const Pages = {
   InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
   // About Pages (new)
   AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
+  Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -320,11 +321,17 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.opportunities",
           path: "/about/opportunities",
           element: Pages.Opportunities,
+          disabled: true, // Coming Soon
         },
         {
           name: "navigation.strategy",
           path: "/about/strategy",
           element: Pages.VisionStrategy,
+        },
+        {
+          name: "navigation.investors",
+          path: "/about/investors",
+          element: Pages.Investors,
         },
       ],
     },
@@ -687,5 +694,6 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.aboutTeam": "Team",
     "navigation.opportunities": "Opportunities",
     "navigation.strategy": "Strategy",
+    "navigation.investors": "Investors",
   },
 };
