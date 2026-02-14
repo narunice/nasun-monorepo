@@ -62,9 +62,9 @@ const followerStack = new FollowerStack(app, 'FollowerStack', {
 // No dependencies - standalone stack
 
 // Leaderboard V3 stack (Independent manual curation system)
-const cognitoIdentityPoolId = process.env.COGNITO_IDENTITY_POOL_ID;
+const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
 if (!cognitoIdentityPoolId) {
-  throw new Error('COGNITO_IDENTITY_POOL_ID environment variable is required for LeaderboardV3Stack');
+  throw new Error('VITE_COGNITO_IDENTITY_POOL_ID environment variable is required for LeaderboardV3Stack');
 }
 
 const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
