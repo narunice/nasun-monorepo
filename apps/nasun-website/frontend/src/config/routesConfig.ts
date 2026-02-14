@@ -397,7 +397,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         },
         {
           name: "navigation.genesisEvent",
-          path: "/wave1/genesis-nft",
+          path: "/wave1/frontiers-event",
           element: Pages.GenesisNft,
         },
         {
@@ -415,16 +415,16 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   },
 
   genesisNft: {
-    path: "/wave1/genesis-nft",
+    path: "/wave1/frontiers-event",
     component: Pages.GenesisNft,
     navItem: {
       name: "navigation.genesisEvent",
-      path: "/wave1/genesis-nft",
+      path: "/wave1/frontiers-event",
       hidden: true,
     },
     meta: {
-      title: "Genesis NFT - NASUN",
-      description: "NASUN Genesis NFT collection",
+      title: "Frontiers Event - NASUN",
+      description: "NASUN Frontiers Event",
     },
   },
 
@@ -680,7 +680,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.earlyContributors": "Early Contributors",
     "navigation.leaderboard": "Leaderboard",
     "navigation.leaderboardInfo": "Leaderboard Info",
-    "navigation.genesisEvent": "Genesis Event",
+    "navigation.genesisEvent": "Frontiers Event",
     "navigation.contests": "Contests",
   },
   updates: {

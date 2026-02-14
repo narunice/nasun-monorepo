@@ -16,7 +16,7 @@ function GenesisNftHeroSection() {
               as="h2"
               className="!font-rubik font-medium uppercase text-center mb-2 md:mb-3 lg:mb-4 xl:mb-5"
             >
-              Genesis NFT
+              Frontiers Event
             </SectionTitle>
 
             {/* Subtitle with highlight */}
@@ -36,7 +36,7 @@ function GenesisNftHeroSection() {
                 Nasun's vision will grow.
               </p>
               <p className="text-nasun-white/85 text-sm md:text-base mb-1 md:mb-2 lg:mb-3">
-                The Nasun Genesis NFT recognizes your early participation and grants exclusive
+                The Nasun Frontiers Event recognizes your early participation and grants exclusive
                 access, privileges, and eligibility across the Nasun ecosystem.
               </p>{" "}
             </div>

@@ -57,8 +57,8 @@
     "investors": "투자자",
     "team": "팀",
     "founders": "창립자",
-    "genesisNft": "제너시스 이벤트",
-    "genesisEvent": "제너시스 이벤트",
+    "genesisNft": "프론티어스 이벤트",
+    "genesisEvent": "프론티어스 이벤트",
     "leaderboard": "리더보드",
     "wave1Campaign": "웨이브 1",
     "battalionNft": "배틀리온 NFT",
@@ -147,7 +147,7 @@
       },
       "success": {
         "title": "등록 완료!",
-        "description": "Genesis NFT 화이트리스트에 성공적으로 등록되었습니다.",
+        "description": "프론티어스 화이트리스트에 성공적으로 등록되었습니다.",
         "walletAddress": "지갑 주소",
         "joinedAt": "등록 시각",
         "withdraw": "등록 취소",
@@ -155,7 +155,7 @@
       },
       "alreadyJoined": {
         "title": "이미 등록됨",
-        "description": "이 지갑 주소는 이미 Genesis NFT 화이트리스트에 등록되어 있습니다.",
+        "description": "이 지갑 주소는 이미 프론티어스 화이트리스트에 등록되어 있습니다.",
         "walletAddress": "지갑 주소",
         "joinedAt": "등록 시각",
         "withdraw": "등록 취소",
@@ -189,19 +189,25 @@
       "officialSiteOnly": "• NASUN 공식 사이트에서만 서명하세요"
     },
     "joinWhitelist": {
-      "title": "Nasun Genesis NFT 화이트리스트 참여",
+      "title": "Nasun 프론티어스 화이트리스트 참여",
       "securityNotice": "",
       "noTransaction": "⚠️ 이 서명으로 자금이 이체되지 않습니다",
       "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
     },
     "withdrawWhitelist": {
-      "title": "Nasun Genesis NFT 화이트리스트 철회",
+      "title": "Nasun 프론티어스 화이트리스트 철회",
       "securityNotice": "",
       "noTransaction": "⚠️ 이 서명으로 자금이 이체되지 않습니다",
       "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
     },
     "withdrawBattalionNft": {
       "title": "NASUN 배틀리온 NFT 참여 취소",
+      "securityNotice": "⚠️ 중요 안내:",
+      "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
+      "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"
+    },
+    "registerBattalionNft": {
+      "title": "NASUN 배틀리온 NFT 등록",
       "securityNotice": "⚠️ 중요 안내:",
       "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
       "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"

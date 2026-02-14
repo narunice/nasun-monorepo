@@ -17,7 +17,7 @@ type TabType = "genesis" | "battalion";
 
 export function WhitelistManagement() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("genesis");
+  const [activeTab, setActiveTab] = useState<TabType>("battalion");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isExporting, setIsExporting] = useState(false);
@@ -43,7 +43,7 @@ export function WhitelistManagement() {
           format,
         });
         const date = new Date().toISOString().split("T")[0];
-        const prefix = format === "opensea" ? "genesis-opensea-allowlist" : "genesis-nft-whitelist";
+        const prefix = format === "opensea" ? "frontiers-opensea-allowlist" : "frontiers-whitelist";
         downloadBlob(blob, `${prefix}-active-${date}.csv`);
       } else {
         const blob = await exportBattalionAllowlist({
@@ -115,7 +115,7 @@ export function WhitelistManagement() {
 
               <DashboardCard variant="default">
                 <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
-                  Genesis NFT Whitelist
+                  Frontiers Whitelist
                 </h5>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-nasun-c1">
@@ -143,16 +143,6 @@ export function WhitelistManagement() {
           <div className="w-full">
             <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-sm w-fit border border-nasun-c5/20">
               <button
-                onClick={() => setActiveTab("genesis")}
-                className={`px-6 py-2 rounded-sm font-medium transition-all ${
-                  activeTab === "genesis"
-                    ? "bg-nasun-c4 text-nasun-white shadow-lg"
-                    : "text-nasun-white/50 hover:text-nasun-white hover:bg-white/5"
-                }`}
-              >
-                Genesis NFT
-              </button>
-              <button
                 onClick={() => setActiveTab("battalion")}
                 className={`px-6 py-2 rounded-sm font-medium transition-all ${
                   activeTab === "battalion"
@@ -162,15 +152,25 @@ export function WhitelistManagement() {
               >
                 Battalion NFT
               </button>
+              <button
+                onClick={() => setActiveTab("genesis")}
+                className={`px-6 py-2 rounded-sm font-medium transition-all ${
+                  activeTab === "genesis"
+                    ? "bg-nasun-c4 text-nasun-white shadow-lg"
+                    : "text-nasun-white/50 hover:text-nasun-white hover:bg-white/5"
+                }`}
+              >
+                Frontiers Event
+              </button>
             </div>
 
             <OuterBox color="w5" padding="md" className="w-full">
               <h3 className="text-xl font-medium text-nasun-white mb-2">
-                {activeTab === "genesis" ? "Genesis NFT Whitelist" : "Battalion NFT Allowlist"}
+                {activeTab === "genesis" ? "Frontiers Whitelist" : "Battalion NFT Allowlist"}
               </h3>
               <p className="text-nasun-white/60 text-base mb-8">
                 {activeTab === "genesis"
-                  ? "Export wallet addresses currently registered for the Genesis NFT whitelist."
+                  ? "Export wallet addresses currently registered for the Frontiers whitelist."
                   : "Export wallet addresses for the Battalion NFT allowlist. You can filter by registration date."}
               </p>
 
