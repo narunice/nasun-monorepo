@@ -23,6 +23,7 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
   const maskId = useId();
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const prevStepRef = useRef(tour.step);
 
   const updateRect = useCallback(() => {
     if (!tour.currentStep) {
@@ -55,10 +56,14 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
     if (tour.currentStep) {
       const el = document.querySelector(tour.currentStep.target);
       if (!el) {
-        const timer = setTimeout(() => tour.next(), 100);
+        const goingForward = tour.step >= prevStepRef.current;
+        prevStepRef.current = tour.step;
+        const timer = setTimeout(() => goingForward ? tour.next() : tour.prev(), 100);
         return () => clearTimeout(timer);
       }
     }
+
+    prevStepRef.current = tour.step;
 
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
@@ -66,7 +71,7 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
     };
-  }, [tour.isActive, tour.step, updateRect]); // eslint-disable-line react-hooks/exhaustive-deps -- tour.next is stable
+  }, [tour.isActive, tour.step, updateRect]); // eslint-disable-line react-hooks/exhaustive-deps -- tour.next/prev are stable
   /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!tour.isActive || !tour.currentStep) return null;

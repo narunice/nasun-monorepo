@@ -19,6 +19,7 @@ import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { playSound } from '../../../lib/sounds';
 import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
+import { formatErrorMessage } from '../utils/errorParser';
 import type { TPSLOrder } from '../lib/tpsl-types';
 import { shouldTrigger, TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
 import {
@@ -218,8 +219,7 @@ export function useTPSLMonitor({
             error: result.error,
           });
           playSound('error');
-          const failMsg = `${typeLabel} failed: ${result.error || 'Unknown error'}`;
-          showToast(failMsg, 'error');
+          showToast(`${typeLabel} failed: ${formatErrorMessage(result.error || 'Unknown error')}`, 'error');
           sendBrowserNotification('TP/SL Failed', {
             body: `${typeLabel} execution failed. Check the app for details.`,
             tag: `tpsl-${order.id}`,
@@ -232,7 +232,7 @@ export function useTPSLMonitor({
           error: errorMsg,
         });
         playSound('error');
-        showToast(`${typeLabel} failed: ${errorMsg}`, 'error');
+        showToast(`${typeLabel} failed: ${formatErrorMessage(err)}`, 'error');
       } finally {
         refreshOrders();
       }
@@ -321,7 +321,7 @@ export function useTPSLMonitor({
         return localOrder;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        showToast(`Failed to register TP/SL: ${errorMsg}`, 'error');
+        showToast(`Failed to register TP/SL: ${formatErrorMessage(err)}`, 'error');
         return null;
       }
     },
@@ -336,8 +336,7 @@ export function useTPSLMonitor({
           showToast('TP/SL order cancelled (server)', 'info');
           queryClient.invalidateQueries({ queryKey: ['keeperTPSLOrders'] });
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-          showToast(`Cancel failed: ${errorMsg}`, 'error');
+          showToast(`Cancel failed: ${formatErrorMessage(err)}`, 'error');
         }
       } else {
         cancelTPSLOrderLocal(id);

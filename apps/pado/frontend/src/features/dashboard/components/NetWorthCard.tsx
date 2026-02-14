@@ -4,7 +4,6 @@
  */
 
 import { useNetWorth } from "../hooks/useNetWorth";
-import { Spinner } from "@/components/common";
 
 export function NetWorthCard() {
   const { totalUsdValue, change24h, changePercent, tokens, predictionValue, isLoading } =
@@ -12,9 +11,14 @@ export function NetWorthCard() {
 
   if (isLoading) {
     return (
-      <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-6">
-        <div className="flex items-center justify-center h-24">
-          <Spinner />
+      <div className="bg-gradient-to-br from-pd1 to-pd1/80 dark:from-pd1/80 dark:to-pd0 rounded-xl p-6 animate-pulse">
+        <div className="h-4 w-20 bg-pd2/30 rounded mb-4" />
+        <div className="h-8 w-36 bg-pd2/20 rounded mb-2" />
+        <div className="h-4 w-28 bg-pd2/20 rounded mb-4" />
+        <div className="pt-4 border-t border-pd2/30 space-y-2">
+          <div className="h-4 bg-pd2/15 rounded w-full" />
+          <div className="h-4 bg-pd2/15 rounded w-full" />
+          <div className="h-4 bg-pd2/15 rounded w-full" />
         </div>
       </div>
     );

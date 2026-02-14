@@ -35,6 +35,11 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Live Chat',
     description: 'Chat with other traders in real-time. Share ideas and discuss markets.',
   },
+  {
+    target: '[data-tour="mode-toggle"]',
+    title: 'Interface Mode',
+    description: 'Switch between Simple and Pro layouts. Simple mode is great for quick trades.',
+  },
 ];
 
 export interface OnboardingTourState {

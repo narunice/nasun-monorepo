@@ -32,7 +32,7 @@ import {
 // ========================================
 describe('getUnifiedPrice', () => {
   it('returns simulated price for NBTC when cache is empty', () => {
-    expect(getUnifiedPrice('NBTC')).toBe(97000);
+    expect(getUnifiedPrice('NBTC')).toBe(69000);
   });
 
   it('returns $1.00 for NUSDC', () => {
@@ -44,11 +44,11 @@ describe('getUnifiedPrice', () => {
   });
 
   it('returns simulated price for NETH', () => {
-    expect(getUnifiedPrice('NETH')).toBe(3500);
+    expect(getUnifiedPrice('NETH')).toBe(2000);
   });
 
   it('returns simulated price for NSOL', () => {
-    expect(getUnifiedPrice('NSOL')).toBe(200);
+    expect(getUnifiedPrice('NSOL')).toBe(85);
   });
 });
 
@@ -67,7 +67,7 @@ describe('getPriceSource', () => {
 describe('getPriceWithFreshness', () => {
   it('returns simulated fallback with isFresh=false when cache empty', () => {
     const result = getPriceWithFreshness('NBTC');
-    expect(result.price).toBe(97000);
+    expect(result.price).toBe(69000);
     expect(result.isFresh).toBe(false);
     expect(result.source).toBe('unknown');
     expect(result.timestamp).toBe(0);
@@ -138,8 +138,8 @@ describe('24h Price Change', () => {
 // ========================================
 describe('calculateUsdValue', () => {
   it('calculates BTC value correctly', () => {
-    // Price = 97000, amount = 0.5
-    expect(calculateUsdValue('NBTC', 0.5)).toBe(48500);
+    // Price = 69000, amount = 0.5
+    expect(calculateUsdValue('NBTC', 0.5)).toBe(34500);
   });
 
   it('returns 0 for zero amount', () => {
@@ -147,9 +147,9 @@ describe('calculateUsdValue', () => {
   });
 
   it('rounds to 2 decimal places', () => {
-    // 0.333 * 97000 = 32301
+    // 0.333 * 69000 = 22977
     const result = calculateUsdValue('NBTC', 0.333);
-    expect(result).toBe(32301); // 32301.00 rounded
+    expect(result).toBe(22977);
   });
 
   it('handles NUSDC (1:1 ratio)', () => {
@@ -244,9 +244,9 @@ describe('getAllPrices', () => {
   it('returns all token prices', () => {
     const prices = getAllPrices();
     expect(prices.NASUN).toBe(0.1);
-    expect(prices.NBTC).toBe(97000);
+    expect(prices.NBTC).toBe(69000);
     expect(prices.NUSDC).toBe(1.0);
-    expect(prices.NETH).toBe(3500);
-    expect(prices.NSOL).toBe(200);
+    expect(prices.NETH).toBe(2000);
+    expect(prices.NSOL).toBe(85);
   });
 });

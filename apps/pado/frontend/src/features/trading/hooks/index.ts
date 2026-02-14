@@ -32,3 +32,4 @@ export {
   ORDER_FILL_EVENT,
   type OrderFillDetail,
 } from './useOrderFillNotifier';
+export { useFirstTradeCelebration, FIRST_TRADE_STORAGE_KEY } from './useFirstTradeCelebration';

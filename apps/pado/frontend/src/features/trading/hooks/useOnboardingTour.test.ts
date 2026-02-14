@@ -103,7 +103,7 @@ describe('useOnboardingTour', () => {
 describe('TOUR_STEPS', () => {
   it('has valid target selectors', () => {
     for (const step of TOUR_STEPS) {
-      expect(step.target).toMatch(/^\[data-tour="[a-z]+"\]$/);
+      expect(step.target).toMatch(/^\[data-tour="[a-z-]+"\]$/);
     }
   });
 

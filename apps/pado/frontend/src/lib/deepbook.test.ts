@@ -271,8 +271,13 @@ describe('validateQuantity', () => {
     expect(validateQuantity(1.0, NETH_POOL).valid).toBe(true);
   });
 
-  it('invalid: NETH pool below lot (0.0001 ETH)', () => {
-    expect(validateQuantity(0.0001, NETH_POOL).valid).toBe(false);
+  it('valid: NETH pool 0.0001 ETH (10x lot size)', () => {
+    expect(validateQuantity(0.0001, NETH_POOL).valid).toBe(true);
+  });
+
+  it('invalid: NETH pool below lot (0.000005 ETH)', () => {
+    // 0.000005 * 10^8 = 500 raw, 500 % 1000 = 500 → not aligned
+    expect(validateQuantity(0.000005, NETH_POOL).valid).toBe(false);
   });
 });
 

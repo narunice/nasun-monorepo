@@ -74,6 +74,27 @@ const GENERAL_ERRORS: { pattern: RegExp; message: string; errorType?: ErrorType 
     message: 'Order no longer exists (already filled or cancelled)',
     errorType: 'ORDER_NOT_FOUND',
   },
+  // Network / RPC errors
+  {
+    pattern: /fetch failed|Failed to fetch|NetworkError|ECONNREFUSED/i,
+    message: 'Network error. Check your connection and try again.',
+  },
+  {
+    pattern: /timeout|ETIMEDOUT|AbortError/i,
+    message: 'Request timed out. The network may be congested — try again shortly.',
+  },
+  {
+    pattern: /429|Too Many Requests|rate.?limit/i,
+    message: 'Too many requests. Please wait a moment before trying again.',
+  },
+  {
+    pattern: /503|Service Unavailable/i,
+    message: 'Service temporarily unavailable. Please try again in a few seconds.',
+  },
+  {
+    pattern: /quorum/i,
+    message: 'Network consensus issue. Please wait a moment and retry.',
+  },
 ];
 
 /**

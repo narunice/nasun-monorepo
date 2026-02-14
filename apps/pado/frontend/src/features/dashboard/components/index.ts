@@ -11,3 +11,4 @@ export { WelcomeBanner } from './WelcomeBanner';
 export { MobileAssetBar } from './MobileAssetBar';
 export { MobileTokenPills } from './MobileTokenPills';
 export { MobileQuickActions } from './MobileQuickActions';
+export { GettingStartedCard } from './GettingStartedCard';
