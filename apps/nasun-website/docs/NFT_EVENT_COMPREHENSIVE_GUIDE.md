@@ -38,7 +38,7 @@
 ### 🎁 이벤트 혜택
 
 1. **Wave 1 Battalion NFT** (무료 민팅)
-2. **주간 래플**: Genesis NFT 추첨권
+2. **주간 래플**: Frontiers Event 추첨권
 3. **GTD 화이트리스트**: 추가 추첨 기회
 4. **Engagement 점수**: 참여도에 따른 확률 증가
 

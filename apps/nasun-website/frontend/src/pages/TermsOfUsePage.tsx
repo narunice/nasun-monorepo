@@ -26,7 +26,7 @@ const TERMS_CONTENT = {
     "1": {
       "title": "1. Introduction and Acceptance",
       "content": [
-        "These Terms of Use (\"Terms\") constitute a binding agreement between you (\"User,\" \"you\") and the Nasun Team (\"Nasun,\" \"we,\" \"us\"). These Terms govern your access to and use of the Nasun website (nasun.io), the Nasun Network Devnet, the Pado application, the Genesis NFT, and related services (collectively, the \"Services\").",
+        "These Terms of Use (\"Terms\") constitute a binding agreement between you (\"User,\" \"you\") and the Nasun Team (\"Nasun,\" \"we,\" \"us\"). These Terms govern your access to and use of the Nasun website (nasun.io), the Nasun Network Devnet, the Pado application, the Frontiers NFT, and related services (collectively, the \"Services\").",
         "By connecting your wallet, purchasing an NFT, or using any Service, you agree to be bound by these Terms. If you do not agree, you must not use the Services."
       ]
     },
@@ -34,7 +34,7 @@ const TERMS_CONTENT = {
       "title": "2. The Nasun Devnet & No Monetary Value",
       "content": [
         "2.1 Experimental Environment: You acknowledge that the Nasun Network is currently a \"Devnet\" (Development Network) operated by a limited number of nodes. It is experimental, unstable, and subject to resets, rollbacks, or complete termination without notice.",
-        "2.2 Simulation Data Only: Unless explicitly stated otherwise (e.g., the Genesis NFT collectible itself), all tokens, balances, yield rates (APY), and transaction records on the Nasun Devnet—including those within the Pado application—are SIMULATION DATA ONLY. They have ZERO real-world monetary value and cannot be exchanged for fiat currency or mainnet tokens.",
+        "2.2 Simulation Data Only: Unless explicitly stated otherwise (e.g., the Frontiers NFT collectible itself), all tokens, balances, yield rates (APY), and transaction records on the Nasun Devnet—including those within the Pado application—are SIMULATION DATA ONLY. They have ZERO real-world monetary value and cannot be exchanged for fiat currency or mainnet tokens.",
         "2.3 Data Resets: We reserve the right to reset the Devnet ledger at any time. This will erase all on-chain data, including your transaction history and balances. Nasun is not liable for any data loss associated with these resets."
       ]
     },
@@ -54,9 +54,9 @@ const TERMS_CONTENT = {
       ]
     },
     "5": {
-      "title": "5. Genesis NFT & Ownership",
+      "title": "5. Frontiers NFT & Ownership",
       "content": [
-        "5.1 Nature of Product: The Genesis NFT is sold as a digital collectible that grants membership access to the Nasun community. As stated in the Disclaimer above, it is NOT an investment contract.",
+        "5.1 Nature of Product: The Frontiers NFT is sold as a digital collectible that grants membership access to the Nasun community. As stated in the Disclaimer above, it is NOT an investment contract.",
         "5.2 Future Airdrops (Non-Guaranteed): While Nasun may, at its sole discretion, distribute future benefits or tokens to NFT holders, such distributions are speculative, not guaranteed, and subject to future regulatory compliance.",
         "5.3 License: You own the NFT token itself. Nasun retains all intellectual property rights to the underlying art, the \"GenSol\" universe, and lore. Subject to these Terms, Nasun grants you a limited, non-commercial license to display the NFT artwork."
       ]

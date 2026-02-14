@@ -23,7 +23,9 @@
     "X_API_ERROR": "X API error. Please try again later.",
     "X_API_RATE_LIMIT": "X API rate limit reached. Please try again later.",
     "RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later.",
-    "UNKNOWN_ERROR": "An unknown error occurred. Please try again."
+    "UNKNOWN_ERROR": "An unknown error occurred. Please try again.",
+    "INVALID_SIGNATURE": "Invalid wallet signature. Please try again.",
+    "SIGNATURE_EXPIRED": "Signature expired. Please try again."
   },
   "shareOnX": "Share on X",
   "share": "Share on",
@@ -47,7 +49,7 @@
       "item1": "1 Wave 1 Battalion NFT Mint per Person",
       "item2": "Priority access to future airdrops and events",
       "item3": "Eligible for Random Drawings",
-      "item4": "Collect all Battalion NFTs + Genesis NFT to increase Multipliers",
+      "item4": "Collect all Battalion NFTs + Frontiers NFT to increase Multipliers",
       "item5": "Exclusive community membership"
     },
     "button": "Get Started"

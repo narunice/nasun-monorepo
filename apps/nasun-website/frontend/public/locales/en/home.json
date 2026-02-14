@@ -30,10 +30,10 @@
     "description": "Nasun will provide a place where people from all parts of the world and different backgrounds can come together to share their passion for art, storytelling, technology, and business, and in so doing, the community will become the main creative and financial driver of the studio. By leveraging the latest tech in Web3, AI, and social media, we will together, by managing IPs, grow a flourishing, complementary creative and financial environment to produce best in class products and services."
   },
   "foundersSale": {
-    "title": "GENESIS SALE",
-    "subtitle": "Black Series Genesis Mint",
+    "title": "FRONTIERS SALE",
+    "subtitle": "Black Series Frontiers Mint",
     "description1": "Be one of the first to join Nasun and we will become the most productive and prosperous community focused on mass, real world adoption, creating fun, exciting things that make people happy.",
-    "description2": "To promote active participation of early Nasun adopters, the Genesis Sale will receive a significant portion of the total token supply."
+    "description2": "To promote active participation of early Nasun adopters, the Frontiers Sale will receive a significant portion of the total token supply."
   },
   "managingIps": {
     "title": "MANAGING IPs",
@@ -48,7 +48,7 @@
     "title": "READ THE NASUN MANIFESTO",
     "description": " Excerpt of the Nasun Manifesto."
   },
-  "foundersNFTSale": "Genesis NFT Sale",
+  "foundersNFTSale": "Frontiers Sale",
   "earlyContributors": "Early Contributors Program",
   "joinFuture": {
     "heading": "Join the Future of Entertainment and Finance",
@@ -91,7 +91,7 @@
     },
     "leaderboard": {
       "title": "Leaderboard",
-      "description": "Climb the Ranks Early and meaningful contribution is recognized. Top contributors share in the launch reward pool and a chance to receive a Genesis NFT.",
+      "description": "Climb the Ranks Early and meaningful contribution is recognized. Top contributors share in the launch reward pool and a chance to receive a Frontiers NFT.",
       "cta": "Get Started ↗"
     },
     "leader": {
@@ -101,7 +101,7 @@
     },
     "battalionNft": {
       "title": "Battalion NFT Free Mint",
-      "description": "The Gateway Pass Mint your free pass to unlock Genesis NFT multipliers, eligibility for exclusive giveaways, and early testing access.",
+      "description": "The Gateway Pass Mint your free pass to unlock Frontiers Event multipliers, eligibility for exclusive giveaways, and early testing access.",
       "cta": "Get Started ↗"
     },
     "earlyContributor": {

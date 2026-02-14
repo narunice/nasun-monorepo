@@ -1,10 +1,10 @@
 {
   "foundersHero": {
-    "title": "Genesis NFT",
+    "title": "Frontiers Event",
     "subtitleHighlight": "You — the early contributors, creators, and visionaries —",
     "subtitleDimmed": "form the heart of Nasun's community.",
     "description1": "As one of the first to join our journey, you help shape the foundation on which Nasun's vision will grow.",
-    "description2": "The Nasun Genesis NFT recognizes your early participation and grants exclusive access, privileges, and eligibility across the Nasun ecosystem.",
+    "description2": "The Nasun Frontiers Event recognizes your early participation and grants exclusive access, privileges, and eligibility across the Nasun ecosystem.",
     "visionTitle": "Embody Our Vision and Commitment",
     "visionDescription1": "Each piece was inspired by the sci-fi world-building of our first IP—Gen Sol, and was crafted using tools like Blender, ZBrush, Substance Painter, and Photoshop.",
     "visionDescription2": "Owning one means joining us beyond the boundaries of art, finance, and technology—where our imagination fuels our journey into a future without limits.",
@@ -25,7 +25,7 @@
       },
       "tiersOfRarity": {
         "label": "4 Tiers of Rarity",
-        "description": "4 Genesis NFTs + Battalion NFT + Early Contributors NFT (6 NFTs per wallet) will be recognized for participation and multipliers. Quantity and rarity will signal the power of each wallet."
+        "description": "4 Frontiers NFTs + Battalion NFT + Early Contributors NFT (6 NFTs per wallet) will be recognized for participation and multipliers. Quantity and rarity will signal the power of each wallet."
       }
     },
     "earlyAccessCard": {
@@ -47,10 +47,10 @@
         "description": "enjoy priority access for future programs, including the Nasun Seed Sale and partner initiatives."
       }
     },
-    "ctaButton": "OPENSEA: NASUN GENESIS NFT COLLECTION"
+    "ctaButton": "OPENSEA: NASUN FRONTIERS COLLECTION"
   },
 
-  "title": "GENESIS NFT COLLECTION",
+  "title": "FRONTIERS COLLECTION",
   "tagline": "Ascend through the ranks of the Ark universe. Higher tiers unlock unprecedented access in our space opera saga.",
   "tier": "TIER",
   "max_supply": "Max Supply",

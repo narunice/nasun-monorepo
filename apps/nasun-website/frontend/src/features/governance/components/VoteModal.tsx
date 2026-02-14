@@ -199,7 +199,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                   )}
                   {votingPower.breakdown.genesisAllowlist > 0 && (
                     <div className="flex justify-between text-nasun-nw4">
-                      <span>Genesis Whitelist</span>
+                      <span>Frontiers Whitelist</span>
                       <span>+{votingPower.breakdown.genesisAllowlist}</span>
                     </div>
                   )}

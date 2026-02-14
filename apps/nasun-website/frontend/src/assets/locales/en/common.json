@@ -62,8 +62,8 @@
     "investors": "Investors",
     "team": "Team",
     "founders": "Founders",
-    "genesisNft": "Genesis Event",
-    "genesisEvent": "Genesis Event",
+    "genesisNft": "Frontiers Event",
+    "genesisEvent": "Frontiers Event",
     "leaderboard": "Leaderboard",
     "wave1Campaign": "Wave 1",
     "battalionNft": "Battalion NFT",
@@ -152,7 +152,7 @@
       },
       "success": {
         "title": "Successfully Joined!",
-        "description": "You have successfully joined the Genesis NFT whitelist.",
+        "description": "You have successfully joined the Frontiers whitelist.",
         "walletAddress": "Wallet Address",
         "joinedAt": "Joined At",
         "withdraw": "Withdraw",
@@ -160,7 +160,7 @@
       },
       "alreadyJoined": {
         "title": "Already Joined",
-        "description": "This wallet address is already registered in the Genesis NFT whitelist.",
+        "description": "This wallet address is already registered in the Frontiers whitelist.",
         "walletAddress": "Wallet Address",
         "joinedAt": "Joined At",
         "withdraw": "Withdraw",
@@ -194,19 +194,25 @@
       "officialSiteOnly": "• Only sign on the official NASUN website"
     },
     "joinWhitelist": {
-      "title": "Join Nasun Genesis NFT Whitelist",
+      "title": "Join Nasun Frontiers Whitelist",
       "securityNotice": "",
       "noTransaction": "⚠️ This signature does NOT transfer any funds",
       "ownershipVerification": "⚠️ This is only to verify you own this wallet"
     },
     "withdrawWhitelist": {
-      "title": "Withdraw from Nasun Genesis NFT Whitelist",
+      "title": "Withdraw from Nasun Frontiers Whitelist",
       "securityNotice": "",
       "noTransaction": "⚠️ This signature does NOT transfer any funds",
       "ownershipVerification": "⚠️ This is only to verify you own this wallet"
     },
     "withdrawBattalionNft": {
       "title": "Withdraw from NASUN Battalion NFT",
+      "securityNotice": "⚠️ Important Notice:",
+      "noTransaction": "• This signature does NOT transfer any funds",
+      "ownershipVerification": "• This is only to verify you own this wallet"
+    },
+    "registerBattalionNft": {
+      "title": "Register for NASUN Battalion NFT",
       "securityNotice": "⚠️ Important Notice:",
       "noTransaction": "• This signature does NOT transfer any funds",
       "ownershipVerification": "• This is only to verify you own this wallet"
