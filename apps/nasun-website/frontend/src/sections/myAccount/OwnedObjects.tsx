@@ -85,16 +85,11 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
 
       {/* Ethereum & Polygon NFTs */}
       {walletAddress && (
-        <div>
-          <h6 className="font-semibold mb-4 text-gray-200">
-            Ethereum & Polygon NFTs{nftCount > 0 ? ` (${nftCount})` : ""}
-          </h6>
-          <NftThumbnailGallery
-            nfts={multiChainNfts}
-            isLoading={isNftPending}
-            error={nftError}
-          />
-        </div>
+        <NftThumbnailGallery
+          nfts={multiChainNfts}
+          isLoading={isNftPending}
+          error={nftError}
+        />
       )}
 
       {/* Sui Objects */}
