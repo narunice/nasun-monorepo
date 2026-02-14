@@ -31,7 +31,11 @@ export function SnapshotViewerV3({
     <div className="flex items-center justify-between gap-3">
       {/* Status indicator */}
       {!selectedDate ? (
-        <span className="text-nasun-c4/70 text-sm ">Viewing: Latest Rankings</span>
+        isEnded ? (
+          <span className="px-2 py-0.5 bg-gray-600 rounded text-xs text-gray-200 uppercase tracking-wide">Final Rankings</span>
+        ) : (
+          <span className="text-nasun-c4/70 text-sm">Viewing: Latest Rankings</span>
+        )
       ) : (
         <span className="text-nasun-c4/90 text-sm">
           Viewing:{" "}
@@ -41,10 +45,6 @@ export function SnapshotViewerV3({
             year: "numeric",
           })}
         </span>
-      )}
-
-      {isEnded && !selectedDate && (
-        <span className="px-2 py-0.5 bg-gray-600 rounded text-xs text-gray-200">FINAL</span>
       )}
       <div className="flex items-center gap-3">
         {/* Snapshot Viewer label */}

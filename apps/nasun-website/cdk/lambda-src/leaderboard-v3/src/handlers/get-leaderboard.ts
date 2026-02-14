@@ -490,22 +490,53 @@ export const handler = async (
     // Current leaderboard (snapshot-based for consistent rankings throughout the day)
     const todayDate = getTodayDateString();
     const yesterdayDate = getYesterdayDateString();
+    const isEndedSeason = season.status === 'ended' || season.status === 'archived';
 
-    // Try today's snapshot first, fall back to yesterday's if not available
-    let { entries: todaySnapshots, totalCount } = await getSnapshotData(
-      seasonId,
-      todayDate,
-      500, // Get all for filtering, will paginate later
-      0
-    );
-    let usedSnapshotDate = todayDate;
+    let todaySnapshots: DailySnapshot[];
+    let totalCount: number;
+    let usedSnapshotDate: string;
 
-    if (todaySnapshots.length === 0) {
-      // Today's snapshot not available (before 9AM KST), use yesterday's
-      const yesterdayData = await getSnapshotData(seasonId, yesterdayDate, 500, 0);
-      todaySnapshots = yesterdayData.entries;
-      totalCount = yesterdayData.totalCount;
-      usedSnapshotDate = yesterdayDate;
+    if (isEndedSeason) {
+      // Ended seasons: try endDate first, then fall back up to 7 days before endDate
+      const MAX_FALLBACK_DAYS = 7;
+      todaySnapshots = [];
+      totalCount = 0;
+      usedSnapshotDate = season.endDate;
+
+      for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
+        const dateObj = new Date(season.endDate);
+        dateObj.setDate(dateObj.getDate() - daysBack);
+        const dateStr = dateObj.toISOString().split('T')[0];
+
+        const result = await getSnapshotData(seasonId, dateStr, 2000, 0);
+        if (result.entries.length > 0) {
+          todaySnapshots = result.entries;
+          totalCount = result.totalCount;
+          usedSnapshotDate = dateStr;
+          break;
+        }
+      }
+    } else {
+      // Active seasons: try recent snapshots (today, then up to 7 days back)
+      const MAX_FALLBACK_DAYS = 7;
+      todaySnapshots = [];
+      totalCount = 0;
+      usedSnapshotDate = todayDate;
+
+      for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
+        const date = new Date();
+        date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
+        date.setDate(date.getDate() - daysBack);
+        const dateStr = date.toISOString().split('T')[0];
+
+        const result = await getSnapshotData(seasonId, dateStr, 2000, 0);
+        if (result.entries.length > 0) {
+          todaySnapshots = result.entries;
+          totalCount = result.totalCount;
+          usedSnapshotDate = dateStr;
+          break;
+        }
+      }
     }
 
     if (todaySnapshots.length === 0) {
@@ -530,13 +561,13 @@ export const handler = async (
       (snapshot) => !bannedIds.has(snapshot.accountId)
     );
 
-    // Get yesterday's snapshot for rank change comparison (if using today's snapshot)
+    // Get yesterday's snapshot for rank change comparison (active seasons using today's snapshot only)
     let yesterdayRankMap = new Map<string, number>();
-    if (usedSnapshotDate === todayDate) {
+    if (!isEndedSeason && usedSnapshotDate === todayDate) {
       const { entries: yesterdaySnapshots } = await getSnapshotData(
         seasonId,
         yesterdayDate,
-        500,
+        2000,
         0
       );
       for (const snapshot of yesterdaySnapshots) {
@@ -556,11 +587,12 @@ export const handler = async (
     const entries: SeasonLeaderboardEntry[] = paginatedSnapshots.map((snapshot) => {
       // Calculate rank change: compare with yesterday's snapshot
       let rankChange: RankChange;
-      if (usedSnapshotDate === todayDate) {
+      if (!isEndedSeason && usedSnapshotDate === todayDate) {
+        // Active season with today's snapshot: compute rank change from yesterday
         const yesterdayRank = yesterdayRankMap.get(snapshot.accountId);
         rankChange = calculateRankChange(snapshot.rank, yesterdayRank);
       } else {
-        // Using yesterday's snapshot, use stored rank change
+        // Ended season or using yesterday's snapshot: use stored rank change
         rankChange = snapshot.rankChange || { direction: 'same', amount: 0 };
       }
 
