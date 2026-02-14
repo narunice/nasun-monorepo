@@ -64,6 +64,7 @@ export class AdminStack extends cdk.Stack {
     );
 
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
+    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID || '';
 
     // Admin Export Lambda
     this.exportFunction = new NodejsFunction(this, "AdminExportFunction", {
@@ -79,6 +80,7 @@ export class AdminStack extends cdk.Stack {
         BATTALION_TABLE: battalionTableName,
         HIDDEN_PROPOSALS_TABLE: hiddenProposalsTableName,
         ALLOWED_ORIGINS: allowedOrigins,
+        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
       bundling: {
         minify: true,
@@ -104,8 +106,6 @@ export class AdminStack extends cdk.Stack {
         ],
       })
     );
-
-    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID || '';
 
     // NFT Collections Lambda
     this.nftCollectionsFunction = new NodejsFunction(this, "NftCollectionsFunction", {

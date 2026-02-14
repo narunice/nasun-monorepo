@@ -6,7 +6,7 @@ import {
   PutItemCommand,
   DeleteItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { verifyAdminRole, extractIdentityIdFromAuthorizer } from "../utils/auth.js";
+import { verifyAdminRole, extractIdentityIdFromAuthorizer, verifyTokenManually } from "../utils/auth.js";
 import { generateCSV, generateFilename } from "../utils/csv.js";
 import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResponse } from "../utils/response.js";
 
@@ -262,8 +262,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(200, { proposalIds: items.map((i) => i.proposalId) }, requestOrigin);
     }
 
-    // All other endpoints require admin authentication (verified by API Gateway Token Authorizer)
-    const identityId = extractIdentityIdFromAuthorizer(event.requestContext);
+    // All other endpoints require admin authentication.
+    // Try Token Authorizer context first, fall back to manual token verification.
+    let identityId = extractIdentityIdFromAuthorizer(event.requestContext);
+    if (!identityId) {
+      const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      identityId = await verifyTokenManually(authHeader);
+    }
 
     if (!identityId) {
       console.warn("No identityId provided");
