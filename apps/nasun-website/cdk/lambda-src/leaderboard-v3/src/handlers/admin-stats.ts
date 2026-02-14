@@ -28,9 +28,9 @@ import {
   SCORE_CONSTANTS,
 } from '../types';
 import { getActiveSeason, getSeasonAccountScores } from '../services/dynamodb-client';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { getTodayDateString } from '../utils/date';
+import { authenticateAdmin } from '../utils/admin-auth';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -42,31 +42,6 @@ const docClient = DynamoDBDocumentClient.from(client, {
 
 const POSTS_TABLE = process.env.LEADERBOARD_V3_POSTS_TABLE || DYNAMO_KEYS.POSTS_TABLE;
 const ACCOUNTS_TABLE = process.env.LEADERBOARD_V3_ACCOUNTS_TABLE || DYNAMO_KEYS.ACCOUNTS_TABLE;
-const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
-function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
-function validateAdmin(event: APIGatewayProxyEvent): boolean {
-  const authHeader = event.headers.Authorization || event.headers.authorization;
-  if (!authHeader || !ADMIN_PASSWORD) return false;
-  const [bearer, password] = authHeader.split(' ');
-  return bearer?.toLowerCase() === 'bearer' && password === ADMIN_PASSWORD;
-}
-
-/**
- * Get today's date string (KST)
- */
-function getTodayDateString(): string {
-  const date = new Date();
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-  return date.toISOString().split('T')[0];
-}
 
 /**
  * Get today's midnight timestamp (KST)
@@ -263,16 +238,18 @@ async function getRecentActivity(): Promise<
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   console.log('Admin Stats request:', JSON.stringify(event, null, 2));
 
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
+    return respond(200, {});
   }
 
   // Validate admin
-  if (!validateAdmin(event)) {
-    return createResponse(401, { error: 'Unauthorized' });
+  const admin = await authenticateAdmin(event);
+  if (!admin) {
+    return respond(401, { error: 'Unauthorized' });
   }
 
   try {
@@ -331,9 +308,9 @@ export const handler = async (
       calculatedAt: new Date().toISOString(),
     };
 
-    return createResponse(200, response);
+    return respond(200, response);
   } catch (error) {
     console.error('Admin Stats error:', error);
-    return createResponse(500, { error: 'Internal server error' });
+    return respond(500, { error: 'Internal server error' });
   }
 };

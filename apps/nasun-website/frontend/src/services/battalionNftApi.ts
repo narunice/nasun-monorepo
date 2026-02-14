@@ -71,7 +71,7 @@ export async function verifyEligibilityApi(
   request: VerifyEligibilityRequest,
 ): Promise<VerifyEligibilityResponse> {
   try {
-    console.log("[battalionNftApi] Verifying eligibility:", request);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Verifying eligibility:", request);
 
     // X access token is now stored server-side — no frontend token handling needed
     const response = await fetch(`${API_BASE_URL}/event/verify`, {
@@ -84,7 +84,7 @@ export async function verifyEligibilityApi(
 
     const data = await handleResponse<VerifyEligibilityResponse>(response);
 
-    console.log("[battalionNftApi] Verification result:", data);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Verification result:", data);
     return data;
   } catch (error: unknown) {
     console.error("[battalionNftApi] Verification error:", error);
@@ -112,7 +112,7 @@ export async function verifyEligibilityApi(
  */
 export async function registerUserApi(request: RegisterUserRequest): Promise<RegisterUserResponse> {
   try {
-    console.log("[battalionNftApi] Registering user:", request);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Registering user:", request);
 
     const response = await fetch(`${API_BASE_URL}/event/register`, {
       method: "POST",
@@ -124,7 +124,7 @@ export async function registerUserApi(request: RegisterUserRequest): Promise<Reg
 
     const data = await handleResponse<RegisterUserResponse>(response);
 
-    console.log("[battalionNftApi] Registration result:", data);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Registration result:", data);
     return data;
   } catch (error: unknown) {
     console.error("[battalionNftApi] Registration error:", error);
@@ -156,7 +156,7 @@ export async function checkBattalionNftStatus(
   walletAddress: string,
 ): Promise<BattalionNftStatusResponse> {
   try {
-    console.log("[battalionNftApi] Checking Battalion NFT status:", walletAddress);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Checking Battalion NFT status:", walletAddress);
 
     // Normalize wallet address (lowercase)
     const normalizedAddress = walletAddress.toLowerCase();
@@ -174,7 +174,7 @@ export async function checkBattalionNftStatus(
 
     const data = await handleResponse<BattalionNftStatusResponse>(response);
 
-    console.log("[battalionNftApi] Status check result:", data);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Status check result:", data);
     return data;
   } catch (error: unknown) {
     console.error("[battalionNftApi] Status check error:", error);
@@ -202,7 +202,7 @@ export async function checkBattalionNftStatus(
  */
 export async function withdrawUserApi(request: WithdrawUserRequest): Promise<WithdrawUserResponse> {
   try {
-    console.log("[battalionNftApi] Withdrawing user:", request.walletAddress);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Withdrawing user:", request.walletAddress);
 
     const response = await fetch(`${API_BASE_URL}/event/withdraw`, {
       method: "POST",
@@ -214,7 +214,7 @@ export async function withdrawUserApi(request: WithdrawUserRequest): Promise<Wit
 
     const data = await handleResponse<WithdrawUserResponse>(response);
 
-    console.log("[battalionNftApi] Withdraw result:", data);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Withdraw result:", data);
     return data;
   } catch (error: unknown) {
     console.error("[battalionNftApi] Withdraw error:", error);
@@ -233,6 +233,47 @@ export async function withdrawUserApi(request: WithdrawUserRequest): Promise<Wit
 }
 
 /**
+ * Register for Battalion NFT with MetaMask signature
+ *
+ * 1. Generate signing message with timestamp
+ * 2. Request MetaMask signature via signMessageFn
+ * 3. Call register API with signature
+ *
+ * @param walletAddress - MetaMask wallet address
+ * @param xUserId - X User ID
+ * @param xUsername - X Username
+ * @param signMessageFn - Function to sign a message via MetaMask
+ * @returns Registration response
+ */
+export async function registerBattalionNftWithSignature(
+  walletAddress: string,
+  xUserId: string,
+  xUsername: string,
+  signMessageFn: (message: string) => Promise<string>,
+): Promise<RegisterUserResponse> {
+  const timestamp = new Date().toISOString();
+
+  const message = `${i18n.t("common:signatures.registerBattalionNft.title")}
+
+${i18n.t("common:signatures.registerBattalionNft.securityNotice")}
+${i18n.t("common:signatures.registerBattalionNft.noTransaction")}
+${i18n.t("common:signatures.registerBattalionNft.ownershipVerification")}
+
+Timestamp: ${timestamp}`;
+
+  const signature = await signMessageFn(message);
+
+  return registerUserApi({
+    walletAddress: walletAddress.toLowerCase(),
+    xUserId,
+    xUsername,
+    signature,
+    message,
+    timestamp,
+  });
+}
+
+/**
  * 전체 Battalion NFT Withdraw 플로우 실행
  *
  * 1. MetaMask 서명 생성 (호출자가 처리)
@@ -246,14 +287,9 @@ export async function withdrawBattalionNftWithSignature(
   walletAddress: string,
   signMessageFn: (message: string) => Promise<string>,
 ): Promise<WithdrawUserResponse> {
-  console.log(
-    "[battalionNftApi] withdrawBattalionNftWithSignature called for wallet:",
-    walletAddress,
-  );
+  if (import.meta.env.DEV) console.log("[battalionNftApi] withdrawBattalionNftWithSignature called");
 
-  // 타임스탬프 생성
   const timestamp = new Date().toISOString();
-  console.log("[battalionNftApi] Timestamp generated:", timestamp);
 
   // 서명할 메시지 생성 (다국어 지원 + 보안 안내)
   const message = `${i18n.t("common:signatures.withdrawBattalionNft.title")}
@@ -264,22 +300,16 @@ ${i18n.t("common:signatures.withdrawBattalionNft.ownershipVerification")}
 
 Timestamp: ${timestamp}`;
 
-  console.log("[battalionNftApi] Message generated, calling signMessageFn...");
-
   // MetaMask로 메시지 서명
   const signature = await signMessageFn(message);
-  console.log("[battalionNftApi] Signature received");
 
   // Withdraw API 호출
-  console.log("[battalionNftApi] Calling withdrawUserApi...");
   const response = await withdrawUserApi({
     walletAddress: walletAddress.toLowerCase(),
     signature,
     message,
     timestamp,
   });
-  console.log("[battalionNftApi] Withdraw API response:", response);
-
   return response;
 }
 

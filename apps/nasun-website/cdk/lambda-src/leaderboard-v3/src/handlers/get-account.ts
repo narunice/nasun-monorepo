@@ -12,23 +12,7 @@ import {
   getAccountByUsername,
   getPostsByAccountId,
 } from '../services/dynamodb-client';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
-
-/**
- * Create CORS response
- */
-function createResponse(
-  statusCode: number,
-  body: GetAccountResponse | { error: string }
-): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
+import { createResponse, getRequestOrigin } from '../utils/response';
 
 /**
  * Main handler
@@ -36,10 +20,11 @@ function createResponse(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { found: false });
+    return respond(200, { found: false });
   }
 
   try {
@@ -47,7 +32,7 @@ export const handler = async (
     const username = event.pathParameters?.username;
 
     if (!username) {
-      return createResponse(400, {
+      return respond(400, {
         error: 'Username is required',
       });
     }
@@ -60,7 +45,7 @@ export const handler = async (
     const account = await getAccountByUsername(platform, username.toLowerCase());
 
     if (!account) {
-      return createResponse(200, {
+      return respond(200, {
         found: false,
       });
     }
@@ -85,11 +70,11 @@ export const handler = async (
       recentPosts,
     };
 
-    return createResponse(200, response);
+    return respond(200, response);
   } catch (error) {
     console.error('Error getting account:', error);
 
-    return createResponse(500, {
+    return respond(500, {
       error: 'Internal server error',
     });
   }

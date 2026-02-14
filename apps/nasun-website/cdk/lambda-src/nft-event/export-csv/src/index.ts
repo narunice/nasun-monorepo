@@ -57,7 +57,7 @@ const env: NftEventEnv = {
  *   - 미지정 시: 전체 조회 (Scan)
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
-  console.log('[export-csv] Event:', JSON.stringify(event, null, 2));
+  console.log('[export-csv] Request:', { httpMethod: event.httpMethod, path: event.path, queryParams: event.queryStringParameters });
   const origin = event.headers?.origin || event.headers?.Origin;
 
   try {

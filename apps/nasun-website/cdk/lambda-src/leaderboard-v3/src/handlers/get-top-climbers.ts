@@ -21,10 +21,9 @@ import {
   TopClimberEntry,
   DYNAMO_KEYS,
 } from '../types';
-import { getActiveSeason, getSeasonById } from '../services/dynamodb-client';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { getActiveSeason, getSeasonById, getBannedAccountIds } from '../services/dynamodb-client';
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { getTodayDateString, getDateNDaysAgo } from '../utils/date';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -36,34 +35,6 @@ const docClient = DynamoDBDocumentClient.from(client, {
 
 const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
-
-function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
-/**
- * Get date string N days ago
- */
-function getDateNDaysAgo(days: number): string {
-  const date = new Date();
-  // Use KST (UTC+9) for consistency with snapshot generation
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000);
-  date.setDate(date.getDate() - days);
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * Get today's date string in KST
- */
-function getTodayDateString(): string {
-  const date = new Date();
-  date.setTime(date.getTime() + 9 * 60 * 60 * 1000);
-  return date.toISOString().split('T')[0];
-}
 
 /**
  * Get snapshot for a specific date
@@ -181,12 +152,13 @@ function calculateTopClimbers(
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   console.log('Get Top Climbers request:', JSON.stringify(event, null, 2));
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
+    return respond(200, {});
   }
 
   try {
@@ -201,12 +173,12 @@ export const handler = async (
     if (seasonId) {
       season = await getSeasonById(seasonId);
       if (!season) {
-        return createResponse(404, { error: `Season ${seasonId} not found` });
+        return respond(404, { error: `Season ${seasonId} not found` });
       }
     } else {
       season = await getActiveSeason();
       if (!season) {
-        return createResponse(404, { error: 'No active season found' });
+        return respond(404, { error: 'No active season found' });
       }
       seasonId = season.seasonId;
     }
@@ -287,7 +259,7 @@ export const handler = async (
     }
 
     if (currentSnapshot.size === 0) {
-      return createResponse(200, {
+      return respond(200, {
         seasonId,
         range,
         climbers: [],
@@ -297,7 +269,6 @@ export const handler = async (
     }
 
     // Calculate top climbers (filter banned accounts)
-    const { getBannedAccountIds } = await import('../services/dynamodb-client');
     const bannedIds = await getBannedAccountIds();
     const allClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, limit + 20);
     const climbers = allClimbers
@@ -311,9 +282,9 @@ export const handler = async (
       calculatedAt: new Date().toISOString(),
     };
 
-    return createResponse(200, response);
+    return respond(200, response);
   } catch (error) {
     console.error('Error getting top climbers:', error);
-    return createResponse(500, { error: 'Internal server error' });
+    return respond(500, { error: 'Internal server error' });
   }
 };

@@ -23,8 +23,7 @@ const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
  */
 export async function createPost(
   request: CreatePostRequest,
-  adminPassword: string,
-  adminUsername?: string
+  token: string,
 ): Promise<CreatePostResponse> {
   const url = `${LEADERBOARD_V3_API_URL}/v3/posts`;
 
@@ -32,8 +31,7 @@ export async function createPost(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminPassword}`,
-      ...(adminUsername && { 'X-Admin-Username': adminUsername }),
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
       postUrl: request.postUrl,
@@ -57,11 +55,11 @@ export async function createPost(
 /**
  * Get list of banned accounts
  */
-export async function getBannedAccounts(adminPassword: string): Promise<BannedAccountsResponse> {
+export async function getBannedAccounts(token: string): Promise<BannedAccountsResponse> {
   const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/blacklist`, {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminPassword}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
   if (!response.ok) {
@@ -75,17 +73,15 @@ export async function getBannedAccounts(adminPassword: string): Promise<BannedAc
  * Ban an account
  */
 export async function banAccountApi(
-  adminPassword: string,
+  token: string,
   accountId: string,
   reason?: string,
-  adminUsername?: string
 ): Promise<void> {
   const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/blacklist`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminPassword}`,
-      ...(adminUsername && { 'X-Admin-Username': adminUsername }),
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({ accountId, reason }),
   });
@@ -99,14 +95,14 @@ export async function banAccountApi(
  * Unban an account
  */
 export async function unbanAccountApi(
-  adminPassword: string,
+  token: string,
   accountId: string
 ): Promise<void> {
   const response = await fetch(
     `${LEADERBOARD_V3_API_URL}/v3/admin/blacklist/${encodeURIComponent(accountId)}`,
     {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${adminPassword}` },
+      headers: { 'Authorization': `Bearer ${token}` },
     }
   );
   if (!response.ok) {
@@ -179,7 +175,7 @@ export async function getAccount(
  * Returns all-time rankings across all seasons
  */
 export async function getCumulativeLeaderboard(
-  adminPassword: string,
+  token: string,
   params: { limit?: number; offset?: number; breakdown?: boolean } = {}
 ): Promise<GetLeaderboardResponse> {
   const searchParams = new URLSearchParams();
@@ -195,7 +191,7 @@ export async function getCumulativeLeaderboard(
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminPassword}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -211,14 +207,14 @@ export async function getCumulativeLeaderboard(
  * Get dashboard statistics (Admin only)
  * Returns system stats, active season info, and recent activity
  */
-export async function getDashboardStats(adminPassword: string): Promise<DashboardStats> {
+export async function getDashboardStats(token: string): Promise<DashboardStats> {
   const url = `${LEADERBOARD_V3_API_URL}/v3/admin/stats`;
 
   const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminPassword}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -235,7 +231,7 @@ export async function getDashboardStats(adminPassword: string): Promise<Dashboar
  * Updates post fields and adjusts season/cumulative score aggregates
  */
 export async function editPost(
-  adminPassword: string,
+  token: string,
   postId: string,
   updates: {
     platform?: string;
@@ -254,7 +250,7 @@ export async function editPost(
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminPassword}`,
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify(updates),
   });

@@ -20,12 +20,13 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import {
   DailySnapshot,
-  RankChange,
   SeasonAccountScore,
   DYNAMO_KEYS,
   SCORE_CONSTANTS,
 } from '../types';
 import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds } from '../services/dynamodb-client';
+import { getTodayDateString, getYesterdayDateString } from '../utils/date';
+import { calculateRankChange } from '../utils/rank';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -42,43 +43,6 @@ const SEASONS_TABLE =
 
 // TTL: 180 days in seconds (final snapshots are permanent)
 const SNAPSHOT_TTL_DAYS = 180;
-
-/**
- * Get today's date string in YYYY-MM-DD format (KST)
- */
-function getTodayDateString(): string {
-  const now = new Date();
-  // Convert to KST (UTC+9)
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().split('T')[0];
-}
-
-/**
- * Get yesterday's date string in YYYY-MM-DD format
- */
-function getYesterdayDateString(todayDate: string): string {
-  const date = new Date(todayDate);
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * Calculate rank change between current and previous rank
- */
-function calculateRankChange(currentRank: number, previousRank?: number): RankChange {
-  if (previousRank === undefined) {
-    return { direction: 'new', amount: 0 };
-  }
-
-  const change = previousRank - currentRank;
-  if (change > 0) {
-    return { direction: 'up', amount: change };
-  }
-  if (change < 0) {
-    return { direction: 'down', amount: Math.abs(change) };
-  }
-  return { direction: 'same', amount: 0 };
-}
 
 /**
  * Get previous day's snapshot for a season
@@ -112,25 +76,43 @@ async function getPreviousDaySnapshot(
 
 /**
  * Write snapshots in batches (DynamoDB limit: 25 items per batch)
+ * Retries unprocessed items with exponential backoff.
  */
 async function batchWriteSnapshots(snapshots: DailySnapshot[]): Promise<void> {
   const BATCH_SIZE = 25;
+  const MAX_RETRIES = 3;
 
   for (let i = 0; i < snapshots.length; i += BATCH_SIZE) {
     const batch = snapshots.slice(i, i + BATCH_SIZE);
-    const putRequests = batch.map((snapshot) => ({
+    let putRequests = batch.map((snapshot) => ({
       PutRequest: {
         Item: snapshot,
       },
     }));
 
-    await docClient.send(
-      new BatchWriteCommand({
-        RequestItems: {
-          [SNAPSHOTS_TABLE]: putRequests,
-        },
-      })
-    );
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const result = await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [SNAPSHOTS_TABLE]: putRequests,
+          },
+        })
+      );
+
+      const unprocessed = result.UnprocessedItems?.[SNAPSHOTS_TABLE];
+      if (!unprocessed || unprocessed.length === 0) {
+        break;
+      }
+
+      if (attempt === MAX_RETRIES) {
+        console.error(`Failed to write ${unprocessed.length} items after ${MAX_RETRIES} retries`);
+        throw new Error(`BatchWrite failed: ${unprocessed.length} unprocessed items after ${MAX_RETRIES} retries`);
+      }
+
+      console.warn(`Retry ${attempt + 1}/${MAX_RETRIES}: ${unprocessed.length} unprocessed items`);
+      putRequests = unprocessed as typeof putRequests;
+      await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempt)));
+    }
   }
 }
 
@@ -199,7 +181,15 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
   // Support manual invocation with custom date for backfilling missed snapshots
   // EventBridge schedule: no customDate → uses today's KST date
   // Manual invoke: { "customDate": "2026-02-13" } → generates snapshot for that date
-  const customDate = (event as Record<string, unknown>).customDate as string | undefined;
+  const rawCustomDate = (event as Record<string, unknown>).customDate as string | undefined;
+  let customDate: string | undefined;
+  if (rawCustomDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawCustomDate) || isNaN(new Date(rawCustomDate + 'T00:00:00Z').getTime())) {
+      console.error(`Invalid customDate format: ${rawCustomDate}. Expected YYYY-MM-DD.`);
+      return;
+    }
+    customDate = rawCustomDate;
+  }
 
   try {
     // Get active season

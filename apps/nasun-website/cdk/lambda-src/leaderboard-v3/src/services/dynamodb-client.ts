@@ -32,8 +32,8 @@ import {
   calculatePostScore,
   calculatePostScoreWithFollowers,
   countBonusSignals,
-  getTodayDateString,
 } from './score-calculator';
+import { getTodayDateString } from '../utils/date';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});

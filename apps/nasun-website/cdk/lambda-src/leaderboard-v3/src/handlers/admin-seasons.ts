@@ -32,9 +32,8 @@ import {
   UpdateSeasonRequest,
   DYNAMO_KEYS,
 } from '../types';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { authenticateAdmin } from '../utils/admin-auth';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -48,31 +47,6 @@ const SEASONS_TABLE =
   process.env.LEADERBOARD_V3_SEASONS_TABLE || DYNAMO_KEYS.SEASONS_TABLE;
 const POSTS_TABLE =
   process.env.LEADERBOARD_V3_POSTS_TABLE || DYNAMO_KEYS.POSTS_TABLE;
-const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
-function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
-function validateAdmin(event: APIGatewayProxyEvent): { valid: boolean; username?: string; error?: string } {
-  const authHeader = event.headers.Authorization || event.headers.authorization;
-  if (!authHeader) {
-    return { valid: false, error: 'Missing Authorization header' };
-  }
-
-  // Simple password auth: Authorization: Bearer <password>
-  const [bearer, password] = authHeader.split(' ');
-  if (bearer?.toLowerCase() !== 'bearer' || password !== ADMIN_PASSWORD) {
-    return { valid: false, error: 'Invalid credentials' };
-  }
-
-  const username = event.headers['X-Admin-Username'] || event.headers['x-admin-username'] || 'admin';
-  return { valid: true, username };
-}
 
 function validateDateRange(startDate: string, endDate: string): { valid: boolean; error?: string } {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -433,18 +407,19 @@ export async function getDefaultSeason(): Promise<Season | null> {
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   console.log('Admin Seasons request:', JSON.stringify(event, null, 2));
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
+    return respond(200, {});
   }
 
   // Validate admin
-  const authResult = validateAdmin(event);
-  if (!authResult.valid) {
-    return createResponse(401, { error: authResult.error });
+  const admin = await authenticateAdmin(event);
+  if (!admin) {
+    return respond(401, { error: 'Unauthorized' });
   }
 
   const method = event.httpMethod;
@@ -464,16 +439,16 @@ export const handler = async (
       const body = JSON.parse(event.body || '{}') as CreateSeasonRequest;
 
       if (!body.seasonId || !body.name || !body.startDate || !body.endDate) {
-        return createResponse(400, { error: 'Missing required fields: seasonId, name, startDate, endDate' });
+        return respond(400, { error: 'Missing required fields: seasonId, name, startDate, endDate' });
       }
 
       const dateValidation = validateDateRange(body.startDate, body.endDate);
       if (!dateValidation.valid) {
-        return createResponse(400, { error: dateValidation.error });
+        return respond(400, { error: dateValidation.error });
       }
 
-      const season = await createSeason(body, authResult.username!);
-      return createResponse(201, { success: true, season });
+      const season = await createSeason(body, admin.email || admin.username || 'admin');
+      return respond(201, { success: true, season });
     }
 
     // GET /v3/admin/seasons - List all seasons
@@ -481,47 +456,47 @@ export const handler = async (
       const seasons = await getAllSeasons();
       // Sort by startDate descending
       seasons.sort((a, b) => b.startDate.localeCompare(a.startDate));
-      return createResponse(200, { seasons });
+      return respond(200, { seasons });
     }
 
     // GET /v3/admin/seasons/:seasonId - Get specific season
     if (method === 'GET' && seasonId && !action) {
       const season = await getSeason(seasonId);
       if (!season) {
-        return createResponse(404, { error: `Season ${seasonId} not found` });
+        return respond(404, { error: `Season ${seasonId} not found` });
       }
-      return createResponse(200, { season });
+      return respond(200, { season });
     }
 
     // PATCH /v3/admin/seasons/:seasonId - Update season
     if (method === 'PATCH' && seasonId) {
       const body = JSON.parse(event.body || '{}') as UpdateSeasonRequest;
-      const season = await updateSeason(seasonId, body, authResult.username!);
-      return createResponse(200, { success: true, season });
+      const season = await updateSeason(seasonId, body, admin.email || admin.username || 'admin');
+      return respond(200, { success: true, season });
     }
 
     // DELETE /v3/admin/seasons/:seasonId - Delete season
     if (method === 'DELETE' && seasonId) {
       await deleteSeason(seasonId);
-      return createResponse(200, { success: true, message: `Season ${seasonId} deleted` });
+      return respond(200, { success: true, message: `Season ${seasonId} deleted` });
     }
 
     // POST /v3/admin/seasons/:seasonId/activate - Manually activate
     if (method === 'POST' && seasonId && action === 'activate') {
       const season = await activateSeason(seasonId);
-      return createResponse(200, { success: true, season });
+      return respond(200, { success: true, season });
     }
 
     // POST /v3/admin/seasons/:seasonId/end - Manually end
     if (method === 'POST' && seasonId && action === 'end') {
       const season = await endSeason(seasonId);
-      return createResponse(200, { success: true, season });
+      return respond(200, { success: true, season });
     }
 
-    return createResponse(404, { error: 'Not found' });
+    return respond(404, { error: 'Not found' });
   } catch (error) {
     console.error('Admin Seasons error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return createResponse(500, { error: message });
+    return respond(500, { error: message });
   }
 };

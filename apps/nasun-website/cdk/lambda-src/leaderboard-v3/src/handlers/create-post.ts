@@ -15,32 +15,8 @@ import {
 } from '../types';
 import { normalizeUrl } from '../utils/url-normalizer';
 import { createPost, getPostByUrl, getAccountByUsername } from '../services/dynamodb-client';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
-
-// Admin password from environment
-const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
-/**
- * Validate admin authentication
- */
-function validateAuth(event: APIGatewayProxyEvent): boolean {
-  const authHeader = event.headers['Authorization'] || event.headers['authorization'];
-
-  if (!authHeader || !ADMIN_PASSWORD) {
-    return false;
-  }
-
-  // Expect: "Bearer {password}"
-  const [type, password] = authHeader.split(' ');
-
-  if (type !== 'Bearer' || password !== ADMIN_PASSWORD) {
-    return false;
-  }
-
-  return true;
-}
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { authenticateAdmin } from '../utils/admin-auth';
 
 /**
  * Validate request body
@@ -145,32 +121,26 @@ function validateRequest(body: unknown): {
 /**
  * Create CORS response
  */
-function createResponse(statusCode: number, body: CreatePostResponse): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers: corsHeaders(_requestOrigin),
-    body: JSON.stringify(body),
-  };
-}
-
 /**
  * Main handler
  */
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { success: true });
+    return respond(200, { success: true });
   }
 
   try {
     // Validate auth
-    if (!validateAuth(event)) {
-      return createResponse(401, {
+    const admin = await authenticateAdmin(event);
+    if (!admin) {
+      return respond(401, {
         success: false,
-        error: 'Unauthorized. Invalid or missing admin password.',
+        error: 'Unauthorized',
       });
     }
 
@@ -179,7 +149,7 @@ export const handler = async (
     try {
       body = JSON.parse(event.body || '{}');
     } catch {
-      return createResponse(400, {
+      return respond(400, {
         success: false,
         error: 'Invalid JSON in request body',
       });
@@ -188,7 +158,7 @@ export const handler = async (
     // Validate request
     const validation = validateRequest(body);
     if (!validation.valid || !validation.data) {
-      return createResponse(400, {
+      return respond(400, {
         success: false,
         error: validation.error,
       });
@@ -199,7 +169,7 @@ export const handler = async (
     // Normalize URL
     const normalized = normalizeUrl(postUrl);
     if (!normalized.isValid) {
-      return createResponse(400, {
+      return respond(400, {
         success: false,
         error: normalized.error || 'Invalid URL',
       });
@@ -208,7 +178,7 @@ export const handler = async (
     // Check if account is banned
     const existingAccount = await getAccountByUsername(normalized.platform, normalized.username);
     if (existingAccount?.isBanned) {
-      return createResponse(403, {
+      return respond(403, {
         success: false,
         error: 'This account is banned and cannot register posts',
         // @ts-ignore - CreatePostResponse doesn't explicitly include username but it's useful for debugging
@@ -219,7 +189,7 @@ export const handler = async (
     // Check for duplicate
     const existingPost = await getPostByUrl(normalized.normalizedUrl);
     if (existingPost) {
-      return createResponse(409, {
+      return respond(409, {
         success: false,
         error: 'This post has already been registered',
         isDuplicate: true,
@@ -227,11 +197,8 @@ export const handler = async (
       });
     }
 
-    // Get admin username from header or use default
-    const adminUsername =
-      event.headers['X-Admin-Username'] ||
-      event.headers['x-admin-username'] ||
-      'admin';
+    // Get admin username from authenticated admin
+    const adminUsername = admin.email || admin.username || 'admin';
 
     // Create post
     const { post, account } = await createPost({
@@ -248,7 +215,7 @@ export const handler = async (
       followerCount, // For new users: X follower count
     });
 
-    return createResponse(201, {
+    return respond(201, {
       success: true,
       post,
       account,
@@ -256,7 +223,7 @@ export const handler = async (
   } catch (error) {
     console.error('Error creating post:', error);
 
-    return createResponse(500, {
+    return respond(500, {
       success: false,
       error: 'Internal server error',
     });

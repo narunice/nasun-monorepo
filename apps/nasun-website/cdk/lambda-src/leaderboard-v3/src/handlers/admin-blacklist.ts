@@ -5,66 +5,53 @@
  * POST   /v3/admin/blacklist              - Ban an account
  * DELETE  /v3/admin/blacklist/{accountId}  - Unban an account
  *
- * Authentication: Bearer token (LEADERBOARD_V3_ADMIN_PASSWORD)
+ * Authentication: Cognito JWT token
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { BanAccountRequest, BannedAccountEntry, BannedAccountsResponse } from '../types';
 import { banAccount, unbanAccount, getBannedAccounts, getAccountById } from '../services/dynamodb-client';
-import { corsHeaders } from '../utils/cors';
-
-let _requestOrigin: string | undefined;
-
-const ADMIN_PASSWORD = process.env.LEADERBOARD_V3_ADMIN_PASSWORD || '';
-
-function createResponse(statusCode: number, body: object): APIGatewayProxyResult {
-  return { statusCode, headers: corsHeaders(_requestOrigin), body: JSON.stringify(body) };
-}
-
-function validateAuth(event: APIGatewayProxyEvent): boolean {
-  const authHeader = event.headers['Authorization'] || event.headers['authorization'];
-  if (!authHeader || !ADMIN_PASSWORD) return false;
-  const parts = authHeader.split(' ');
-  return parts[0] === 'Bearer' && parts[1] === ADMIN_PASSWORD;
-}
-
-function getAdminUsername(event: APIGatewayProxyEvent): string {
-  return event.headers['X-Admin-Username'] || event.headers['x-admin-username'] || 'unknown';
-}
+import { createResponse, getRequestOrigin } from '../utils/response';
+import { authenticateAdmin } from '../utils/admin-auth';
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  _requestOrigin = event.headers?.origin || event.headers?.Origin;
+  const requestOrigin = getRequestOrigin(event.headers);
+  const respond = (status: number, body: object) => createResponse(status, body, requestOrigin);
+
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
+    return respond(200, {});
   }
 
   // Auth check
-  if (!validateAuth(event)) {
-    return createResponse(401, { success: false, error: 'Unauthorized' });
+  const admin = await authenticateAdmin(event);
+  if (!admin) {
+    return respond(401, { success: false, error: 'Unauthorized' });
   }
 
   try {
     switch (event.httpMethod) {
       case 'GET':
-        return await handleList();
+        return await handleList(respond);
       case 'POST':
-        return await handleBan(event);
+        return await handleBan(event, respond, admin.email || admin.username || 'admin');
       case 'DELETE':
-        return await handleUnban(event);
+        return await handleUnban(event, respond);
       default:
-        return createResponse(405, { success: false, error: 'Method not allowed' });
+        return respond(405, { success: false, error: 'Method not allowed' });
     }
   } catch (error) {
     console.error('Admin blacklist error:', error);
-    return createResponse(500, {
+    return respond(500, {
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
     });
   }
 };
 
-async function handleList(): Promise<APIGatewayProxyResult> {
+type Respond = (status: number, body: object) => APIGatewayProxyResult;
+
+async function handleList(respond: Respond): Promise<APIGatewayProxyResult> {
   const accounts = await getBannedAccounts();
 
   const entries: BannedAccountEntry[] = accounts.map((a) => ({
@@ -87,34 +74,32 @@ async function handleList(): Promise<APIGatewayProxyResult> {
     total: entries.length,
   };
 
-  return createResponse(200, response);
+  return respond(200, response);
 }
 
-async function handleBan(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+async function handleBan(event: APIGatewayProxyEvent, respond: Respond, adminUsername: string): Promise<APIGatewayProxyResult> {
   const body: BanAccountRequest = JSON.parse(event.body || '{}');
 
   if (!body.accountId) {
-    return createResponse(400, { success: false, error: 'accountId is required' });
+    return respond(400, { success: false, error: 'accountId is required' });
   }
 
   // Verify account exists
   const account = await getAccountById(body.accountId);
   if (!account) {
-    return createResponse(404, { success: false, error: 'Account not found' });
+    return respond(404, { success: false, error: 'Account not found' });
   }
 
   if (account.isBanned) {
-    return createResponse(409, { success: false, error: 'Account is already banned' });
+    return respond(409, { success: false, error: 'Account is already banned' });
   }
-
-  const adminUsername = getAdminUsername(event);
   const updated = await banAccount({
     accountId: body.accountId,
     reason: body.reason,
     bannedBy: adminUsername,
   });
 
-  return createResponse(200, {
+  return respond(200, {
     success: true,
     account: {
       accountId: updated.accountId,
@@ -126,25 +111,25 @@ async function handleBan(event: APIGatewayProxyEvent): Promise<APIGatewayProxyRe
   });
 }
 
-async function handleUnban(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+async function handleUnban(event: APIGatewayProxyEvent, respond: Respond): Promise<APIGatewayProxyResult> {
   const accountId = event.pathParameters?.accountId;
 
   if (!accountId) {
-    return createResponse(400, { success: false, error: 'accountId is required' });
+    return respond(400, { success: false, error: 'accountId is required' });
   }
 
   const account = await getAccountById(accountId);
   if (!account) {
-    return createResponse(404, { success: false, error: 'Account not found' });
+    return respond(404, { success: false, error: 'Account not found' });
   }
 
   if (!account.isBanned) {
-    return createResponse(409, { success: false, error: 'Account is not banned' });
+    return respond(409, { success: false, error: 'Account is not banned' });
   }
 
   const updated = await unbanAccount(accountId);
 
-  return createResponse(200, {
+  return respond(200, {
     success: true,
     account: {
       accountId: updated.accountId,
