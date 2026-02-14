@@ -16,11 +16,11 @@
     "lp-bot:all": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts & wait"
   },
   "dependencies": {
-    "@mysten/sui": "^1.21.1"
+    "@mysten/sui": "^1.21.1",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "tsx": "^4.19.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
