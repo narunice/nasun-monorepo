@@ -60,7 +60,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className=" font-normal text-nasun-white truncate">{user?.username || "Admin"}</p>
-              <p className="text-sm text-nasun-white/50 truncate">
+              <p className="text-base text-nasun-white/50 truncate">
                 {profile?.email || user?.email || profile?.role}
               </p>
             </div>
