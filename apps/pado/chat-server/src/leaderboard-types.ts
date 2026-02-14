@@ -160,6 +160,57 @@ export interface CompetitionResultRow {
   updated_at: number;
 }
 
+// ===== Points Types =====
+
+export interface TraderPointsRow {
+  address: string;
+  total_points: number;
+  points_from_trades: number;
+  points_from_volume: number;
+  points_from_diversity: number;
+  trade_count: number;
+  volume_quote: string;
+  rank: number;
+  prev_rank: number;
+  updated_at: number;
+}
+
+export interface PointsLeaderboardTrader {
+  rank: number;
+  address: string;
+  nickname: string | null;
+  totalPoints: number;
+  tradeCount: number;
+  volumeUsd: string;
+  rankChange: number;
+}
+
+export interface PointsLeaderboardResponse {
+  traders: PointsLeaderboardTrader[];
+  updatedAt: number;
+  totalTraders: number;
+}
+
+export interface TraderPointsResponse {
+  address: string;
+  nickname: string | null;
+  totalPoints: number;
+  breakdown: {
+    trades: number;
+    volume: number;
+    diversity: number;
+  };
+  rank: number;
+}
+
+// Points formula constants
+export const POINTS = {
+  PER_TRADE: 10,
+  PER_1K_VOLUME: 5,       // per $1000 NUSDC volume
+  PER_UNIQUE_POOL: 25,    // per unique pool traded
+  FIRST_TRADE_BONUS: 100, // one-time bonus for first trade
+} as const;
+
 // ===== RPC Event Types =====
 
 export interface OrderFilledParsedJson {

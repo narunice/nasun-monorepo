@@ -22,6 +22,7 @@ import {
   getIndexerState,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
+  getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
 } from './leaderboard-store.js';
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
@@ -654,6 +655,80 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       }));
     } catch (err) {
       console.error('[Leaderboard] Status API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // ===== Points API =====
+
+  // GET /api/leaderboard/points - points leaderboard
+  if (url.pathname === '/api/leaderboard/points' && req.method === 'GET') {
+    try {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
+      const rows = getPointsLeaderboard(limit);
+      const totalTraders = getTotalPointsTraders();
+      const addresses = rows.map((r) => r.address);
+      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map<string, string>();
+
+      const traders = rows.map((row) => ({
+        rank: row.rank,
+        address: row.address,
+        nickname: nicknames.get(row.address) ?? null,
+        totalPoints: row.total_points,
+        tradeCount: row.trade_count,
+        volumeUsd: formatQuoteVolume(row.volume_quote),
+        rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
+      }));
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        traders,
+        updatedAt: rows[0]?.updated_at ?? 0,
+        totalTraders,
+      }));
+    } catch (err) {
+      console.error('[Points] Leaderboard API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/leaderboard/trader/:address/points - individual trader points
+  const pointsMatch = url.pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/points$/);
+  if (pointsMatch && req.method === 'GET') {
+    try {
+      const address = pointsMatch[1];
+      const points = getTraderPoints(address);
+
+      if (!points) {
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({
+          address,
+          nickname: getNickname(address),
+          totalPoints: 0,
+          breakdown: { trades: 0, volume: 0, diversity: 0 },
+          rank: 0,
+        }));
+        return;
+      }
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        address,
+        nickname: getNickname(address),
+        totalPoints: points.total_points,
+        breakdown: {
+          trades: points.points_from_trades,
+          volume: points.points_from_volume,
+          diversity: points.points_from_diversity,
+        },
+        rank: points.rank,
+      }));
+    } catch (err) {
+      console.error('[Points] Trader points API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);
       res.end(JSON.stringify({ error: 'Internal server error' }));
     }

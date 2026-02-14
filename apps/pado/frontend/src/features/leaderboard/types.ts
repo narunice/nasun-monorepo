@@ -1,5 +1,5 @@
 export type Period = '24h' | '7d' | '30d' | 'all';
-export type LeaderboardMode = 'volume' | 'pnl';
+export type LeaderboardMode = 'volume' | 'pnl' | 'points';
 
 export interface LeaderboardTrader {
   rank: number;
@@ -35,6 +35,34 @@ export interface PnlLeaderboardResponse {
   traders: PnlLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;
+}
+
+export interface PointsLeaderboardTrader {
+  rank: number;
+  address: string;
+  nickname: string | null;
+  totalPoints: number;
+  tradeCount: number;
+  volumeUsd: string;
+  rankChange: number;
+}
+
+export interface PointsLeaderboardResponse {
+  traders: PointsLeaderboardTrader[];
+  updatedAt: number;
+  totalTraders: number;
+}
+
+export interface TraderPointsResponse {
+  address: string;
+  nickname: string | null;
+  totalPoints: number;
+  breakdown: {
+    trades: number;
+    volume: number;
+    diversity: number;
+  };
+  rank: number;
 }
 
 export interface TraderPeriodStats {

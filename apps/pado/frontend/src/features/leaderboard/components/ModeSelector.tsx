@@ -3,6 +3,7 @@ import type { LeaderboardMode } from '../types';
 const MODES: { id: LeaderboardMode; label: string }[] = [
   { id: 'volume', label: 'Volume' },
   { id: 'pnl', label: 'PnL' },
+  { id: 'points', label: 'Points' },
 ];
 
 interface ModeSelectorProps {
