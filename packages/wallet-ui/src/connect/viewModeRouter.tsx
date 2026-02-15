@@ -54,6 +54,9 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
         s.setMnemonic(mnemonic);
         s.setViewMode("passkey-backup");
       }}
+      createWallet={s.passkeyCreateWallet}
+      isLoading={s.isPasskeyLoading}
+      error={s.passkeyError}
     />
   ),
 

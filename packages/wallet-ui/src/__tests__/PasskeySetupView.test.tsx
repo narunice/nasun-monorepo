@@ -5,7 +5,7 @@
  * - Rendering (title, description, form elements)
  * - Form validation (empty name disables button)
  * - Wallet creation flow (success → onCreated callback)
- * - Error display from hook state
+ * - Error display from props
  * - Loading state during authentication
  * - Enter key submission
  */
@@ -13,35 +13,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from './setup';
 import { PasskeySetupView } from '../connect/wallet-views/PasskeySetupView';
-import { usePasskey } from '@nasun/wallet';
-
-const mockUsePasskey = vi.mocked(usePasskey);
 
 describe('PasskeySetupView', () => {
+  const mockCreateWallet = vi.fn();
+
   const defaultProps = {
     onBack: vi.fn(),
     onCreated: vi.fn(),
+    createWallet: mockCreateWallet,
+    isLoading: false,
+    error: null as any,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUsePasskey.mockReturnValue({
-      isSupported: true,
-      isPlatformAvailable: true,
-      wallet: null,
-      isUnlocked: false,
-      isLoading: false,
-      error: null,
-      keypair: null,
-      address: null,
-      createWallet: vi.fn(),
-      unlock: vi.fn(),
-      lock: vi.fn(),
-      deleteWallet: vi.fn(),
-      addCredential: vi.fn(),
-      removeCredential: vi.fn(),
-      credentials: [],
-      refresh: vi.fn(),
+    mockCreateWallet.mockResolvedValue({
+      address: '0x' + 'a'.repeat(64),
+      mnemonic: 'word '.repeat(11) + 'word',
     });
   });
 
@@ -88,15 +76,6 @@ describe('PasskeySetupView', () => {
   });
 
   it('should call createWallet with trimmed name on Create click', async () => {
-    const mockCreateWallet = vi.fn().mockResolvedValue({
-      address: '0x' + 'a'.repeat(64),
-      mnemonic: 'word '.repeat(11) + 'word',
-    });
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      createWallet: mockCreateWallet,
-    });
-
     render(<PasskeySetupView {...defaultProps} />);
 
     const input = screen.getByPlaceholderText(/display name/i);
@@ -110,13 +89,9 @@ describe('PasskeySetupView', () => {
 
   it('should call onCreated with mnemonic after successful creation', async () => {
     const testMnemonic = 'abandon badge cabbage dad eagle fabric gadget habit ice jacket kangaroo lamp';
-    const mockCreateWallet = vi.fn().mockResolvedValue({
+    mockCreateWallet.mockResolvedValue({
       address: '0x' + 'a'.repeat(64),
       mnemonic: testMnemonic,
-    });
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      createWallet: mockCreateWallet,
     });
 
     render(<PasskeySetupView {...defaultProps} />);
@@ -138,24 +113,14 @@ describe('PasskeySetupView', () => {
   });
 
   it('should show loading state during authentication', () => {
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      isLoading: true,
-    });
-
-    render(<PasskeySetupView {...defaultProps} />);
+    render(<PasskeySetupView {...defaultProps} isLoading={true} />);
 
     expect(screen.getByText('Authenticating...')).toBeInTheDocument();
     expect(screen.queryByText('Create')).not.toBeInTheDocument();
   });
 
   it('should disable input and buttons during loading', () => {
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      isLoading: true,
-    });
-
-    render(<PasskeySetupView {...defaultProps} />);
+    render(<PasskeySetupView {...defaultProps} isLoading={true} />);
 
     const input = screen.getByPlaceholderText(/display name/i);
     expect(input).toBeDisabled();
@@ -164,14 +129,10 @@ describe('PasskeySetupView', () => {
     expect(cancelBtn).toBeDisabled();
   });
 
-  it('should display error message from hook', () => {
+  it('should display error message from props', () => {
     const mockError = { name: 'PasskeyError', type: 'CANCELLED', message: 'User cancelled passkey registration' } as any;
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      error: mockError,
-    });
 
-    render(<PasskeySetupView {...defaultProps} />);
+    render(<PasskeySetupView {...defaultProps} error={mockError} />);
 
     expect(screen.getByText('User cancelled passkey registration')).toBeInTheDocument();
   });
@@ -184,15 +145,6 @@ describe('PasskeySetupView', () => {
   });
 
   it('should submit on Enter key press with valid name', async () => {
-    const mockCreateWallet = vi.fn().mockResolvedValue({
-      address: '0x' + 'a'.repeat(64),
-      mnemonic: 'word '.repeat(11) + 'word',
-    });
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      createWallet: mockCreateWallet,
-    });
-
     render(<PasskeySetupView {...defaultProps} />);
 
     const input = screen.getByPlaceholderText(/display name/i);
@@ -205,12 +157,6 @@ describe('PasskeySetupView', () => {
   });
 
   it('should NOT submit on Enter key press with empty name', async () => {
-    const mockCreateWallet = vi.fn();
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      createWallet: mockCreateWallet,
-    });
-
     render(<PasskeySetupView {...defaultProps} />);
 
     const input = screen.getByPlaceholderText(/display name/i);
@@ -222,11 +168,7 @@ describe('PasskeySetupView', () => {
   });
 
   it('should not call onCreated when createWallet throws', async () => {
-    const mockCreateWallet = vi.fn().mockRejectedValue(new Error('Registration failed'));
-    mockUsePasskey.mockReturnValue({
-      ...mockUsePasskey(),
-      createWallet: mockCreateWallet,
-    });
+    mockCreateWallet.mockRejectedValue(new Error('Registration failed'));
 
     render(<PasskeySetupView {...defaultProps} />);
 
