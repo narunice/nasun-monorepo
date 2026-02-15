@@ -14,6 +14,7 @@ import {
   useMultiBalance,
   useWallet,
   useZkLogin,
+  usePasskey,
 } from '@nasun/wallet';
 import type { LinkConfig, LinkType, ClaimCondition, LinkURL, LinkData } from '@nasun/wallet';
 
@@ -99,6 +100,7 @@ export function NasunLinkWizard({
 }: NasunLinkWizardProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isUnlocked: isPasskeyUnlocked } = usePasskey();
   const { create, isLoading, error, clearError, canCreate } = useNasunLink();
   const { data: nasunBalance } = useBalance();
   const { data: multiBalances } = useMultiBalance();
@@ -111,7 +113,7 @@ export function NasunLinkWizard({
   const [createdLink, setCreatedLink] = useState<{ url: LinkURL; data: LinkData } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const isConnected = status === 'unlocked' || isZkLoggedIn;
+  const isConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
 
   // Get balance for selected token
   const getTokenBalance = (): bigint => {
