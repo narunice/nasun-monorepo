@@ -7,6 +7,10 @@
  * Security: Uses WebAuthn PRF extension when available for true
  * cryptographic protection. Falls back to credential-ID based
  * key derivation when PRF is not supported.
+ *
+ * State Management: Uses passkeyStore (Zustand) for wallet/keypair
+ * so all hook instances share the same global state. Error state
+ * remains component-local via useState.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -34,6 +38,7 @@ import {
   updateCredentialLastUsed,
   base64urlEncode,
 } from '../core/passkey';
+import { usePasskeyStore } from '../stores/passkeyStore';
 
 /**
  * Passkey hook options
@@ -94,9 +99,13 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   const { autoCheck = true, onWalletCreated, onWalletUnlocked, onError } = options;
   const queryClient = useQueryClient();
 
-  // Local state
-  const [wallet, setWallet] = useState<PasskeyWalletState | null>(() => getPasskeyWallet());
-  const [keypair, setKeypair] = useState<Ed25519Keypair | null>(null);
+  // Global state from Zustand store (shared across all hook instances)
+  const wallet = usePasskeyStore((s) => s.wallet);
+  const keypair = usePasskeyStore((s) => s.keypair);
+  const isUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const address = usePasskeyStore((s) => s.address);
+
+  // Component-local error state
   const [error, setError] = useState<PasskeyError | null>(null);
 
   // Check WebAuthn support
@@ -152,8 +161,8 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
       return result;
     },
     onSuccess: ({ wallet: newWallet, keypair: newKeypair }) => {
-      setWallet(newWallet);
-      setKeypair(newKeypair);
+      // Update global store — all usePasskey instances see this immediately
+      usePasskeyStore.getState().setUnlocked(newWallet, newKeypair);
       onWalletCreated?.(newWallet.address);
       queryClient.invalidateQueries({ queryKey: ['passkey'] });
     },
@@ -171,7 +180,9 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   // Unlock wallet mutation
   const unlockMutation = useMutation({
     mutationFn: async () => {
-      if (!wallet) {
+      // Read current wallet from store to avoid stale closure
+      const currentWallet = usePasskeyStore.getState().wallet;
+      if (!currentWallet) {
         throw new PasskeyError('INVALID_STATE', 'No wallet to unlock');
       }
 
@@ -179,29 +190,27 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
 
       // Authenticate with passkey (biometric gate — proves device ownership)
       const authResult = await authenticateWithPasskey({
-        allowCredentials: wallet.credentials.map((c) => c.id),
+        allowCredentials: currentWallet.credentials.map((c) => c.id),
         userVerification: 'required',
       });
 
       // Verify the authenticated credential belongs to this wallet
-      if (!wallet.credentials.some((c) => c.id === authResult.credentialId)) {
+      if (!currentWallet.credentials.some((c) => c.id === authResult.credentialId)) {
         throw new PasskeyError('CREDENTIAL_NOT_FOUND', 'Authenticated with unrecognized credential');
       }
 
       // Decrypt wallet (PRF output used if wallet was created with PRF)
-      const unlockedKeypair = await unlockPasskeyWallet(wallet, authResult.prfOutput);
+      const unlockedKeypair = await unlockPasskeyWallet(currentWallet, authResult.prfOutput);
 
       // Update last used timestamp
-      const updatedWallet = updateCredentialLastUsed(wallet, authResult.credentialId);
-      setWallet(updatedWallet);
+      const updatedWallet = updateCredentialLastUsed(currentWallet, authResult.credentialId);
 
-      return unlockedKeypair;
+      return { unlockedKeypair, updatedWallet };
     },
-    onSuccess: (unlockedKeypair) => {
-      setKeypair(unlockedKeypair);
-      if (wallet) {
-        onWalletUnlocked?.(wallet.address);
-      }
+    onSuccess: ({ unlockedKeypair, updatedWallet }) => {
+      // Update global store with keypair + updated wallet metadata
+      usePasskeyStore.getState().setUnlocked(updatedWallet, unlockedKeypair);
+      onWalletUnlocked?.(updatedWallet.address);
     },
     onError: (err) => {
       const passkeyError =
@@ -217,25 +226,26 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   // Add credential mutation
   const addCredentialMutation = useMutation({
     mutationFn: async (credentialName?: string) => {
-      if (!wallet) {
+      const currentWallet = usePasskeyStore.getState().wallet;
+      if (!currentWallet) {
         throw new PasskeyError('INVALID_STATE', 'No wallet exists');
       }
 
       setError(null);
 
-      const userId = wallet.address; // Use address as user ID
+      const userId = currentWallet.address; // Use address as user ID
 
       const { credential } = await registerPasskey({
         userId,
-        userName: `Nasun Wallet (${wallet.address.slice(0, 8)}...)`,
-        credentialName: credentialName || `Passkey ${wallet.credentials.length + 1}`,
-        excludeCredentials: wallet.credentials.map((c) => c.id),
+        userName: `Nasun Wallet (${currentWallet.address.slice(0, 8)}...)`,
+        credentialName: credentialName || `Passkey ${currentWallet.credentials.length + 1}`,
+        excludeCredentials: currentWallet.credentials.map((c) => c.id),
       });
 
-      return addCredentialToWallet(wallet, credential);
+      return addCredentialToWallet(currentWallet, credential);
     },
     onSuccess: (updatedWallet) => {
-      setWallet(updatedWallet);
+      usePasskeyStore.getState().setWallet(updatedWallet);
       queryClient.invalidateQueries({ queryKey: ['passkey'] });
     },
     onError: (err) => {
@@ -252,15 +262,16 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   // Remove credential mutation
   const removeCredentialMutation = useMutation({
     mutationFn: async (credentialId: string) => {
-      if (!wallet) {
+      const currentWallet = usePasskeyStore.getState().wallet;
+      if (!currentWallet) {
         throw new PasskeyError('INVALID_STATE', 'No wallet exists');
       }
 
       setError(null);
-      return removeCredentialFromWallet(wallet, credentialId);
+      return removeCredentialFromWallet(currentWallet, credentialId);
     },
     onSuccess: (updatedWallet) => {
-      setWallet(updatedWallet);
+      usePasskeyStore.getState().setWallet(updatedWallet);
       queryClient.invalidateQueries({ queryKey: ['passkey'] });
     },
     onError: (err) => {
@@ -290,28 +301,28 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
 
   // Lock function — drop keypair reference so GC can collect it.
   // Note: JS strings are immutable; we cannot reliably zero the keypair's
-  // internal secret key in memory. Clearing the React state reference is
+  // internal secret key in memory. Clearing the store reference is
   // the strongest measure available in a browser environment.
   const lock = useCallback(() => {
-    setKeypair(null);
+    usePasskeyStore.getState().lock();
   }, []);
 
   // Delete wallet function — requires biometric re-authentication
   const deleteWallet = useCallback(async () => {
-    if (wallet) {
+    const currentWallet = usePasskeyStore.getState().wallet;
+    if (currentWallet) {
       // Require biometric re-authentication before destructive action
       await authenticateWithPasskey({
-        allowCredentials: wallet.credentials.map((c) => c.id),
+        allowCredentials: currentWallet.credentials.map((c) => c.id),
         userVerification: 'required',
       });
     }
 
     clearPasskeyWallet();
-    setWallet(null);
-    setKeypair(null);
+    usePasskeyStore.getState().clear();
     setError(null);
     queryClient.invalidateQueries({ queryKey: ['passkey'] });
-  }, [wallet, queryClient]);
+  }, [queryClient]);
 
   // Add credential function
   const addCredential = useCallback(
@@ -329,9 +340,9 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     [removeCredentialMutation]
   );
 
-  // Refresh function
+  // Refresh function — reload wallet metadata from localStorage
   const refresh = useCallback(() => {
-    setWallet(getPasskeyWallet());
+    usePasskeyStore.getState().setWallet(getPasskeyWallet());
   }, []);
 
   // Check for existing wallet on mount
@@ -345,7 +356,7 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     isSupported,
     isPlatformAvailable: isPlatformAvailable ?? null,
     wallet,
-    isUnlocked: !!keypair,
+    isUnlocked,
     isLoading:
       createWalletMutation.isPending ||
       unlockMutation.isPending ||
@@ -353,7 +364,7 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
       removeCredentialMutation.isPending,
     error,
     keypair,
-    address: wallet?.address ?? null,
+    address,
     createWallet,
     unlock,
     lock,

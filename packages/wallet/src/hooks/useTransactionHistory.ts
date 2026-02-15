@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
+import { usePasskeyStore } from '../stores/passkeyStore';
 import { getSuiClient } from '../sui/client';
 import { getTokenByType } from '../config/tokens';
 import type {
@@ -335,9 +336,11 @@ export function useTransactionHistory(
   const { state: zkLoginState, isConnected: isZkConnected } = useZkLogin();
   const { enabled = true, refetchInterval, limit, cursor, direction } = options;
 
-  // Use wallet address or zkLogin address
-  const ownerAddress = account?.address || zkLoginState?.address;
-  const isConnected = (status === 'unlocked' && account?.address) || isZkConnected;
+  // Use wallet address, zkLogin address, or passkey address
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const ownerAddress = account?.address || zkLoginState?.address || passkeyAddress;
+  const isConnected = (status === 'unlocked' && account?.address) || isZkConnected || isPasskeyUnlocked;
 
   const query = useQuery({
     queryKey: [TX_HISTORY_QUERY_KEY, ownerAddress, limit, cursor, direction],
@@ -368,9 +371,10 @@ export function useTransactionHistory(
 export function useRefreshTransactionHistory() {
   const { account } = useWallet();
   const { state: zkLoginState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
   const queryClient = useQueryClient();
 
-  const ownerAddress = account?.address || zkLoginState?.address;
+  const ownerAddress = account?.address || zkLoginState?.address || passkeyAddress;
 
   return () => {
     if (ownerAddress) {

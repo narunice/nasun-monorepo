@@ -336,6 +336,9 @@ export {
 // Passkey Authentication (Phase 9.6)
 // ============================================
 
+// Passkey Store (Zustand)
+export { usePasskeyStore } from './stores/passkeyStore';
+
 // Passkey Hooks
 export { usePasskey, hasPasskeyWallet } from './hooks/usePasskey';
 export type { UsePasskeyOptions, UsePasskeyResult } from './hooks/usePasskey';
@@ -395,7 +398,7 @@ export { SignerManager } from './core/signer/SignerManager';
 export type { SignerManagerSnapshot } from './core/signer/SignerManager';
 
 // Signer Adapters
-export { LocalSigner, ZkLoginSigner, EVMSigner, NsaSigner } from './core/signer/adapters';
+export { LocalSigner, ZkLoginSigner, EVMSigner, NsaSigner, PasskeySigner } from './core/signer/adapters';
 
 // ============================================
 // Nasun Smart Account (NSA)
