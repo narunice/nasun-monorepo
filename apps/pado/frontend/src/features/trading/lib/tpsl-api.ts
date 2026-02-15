@@ -44,12 +44,10 @@ export interface KeeperStatus {
   checkInterval: number;
 }
 
-// Build auth headers
+// Build request headers with API key authentication
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (API_KEY) {
-    headers['Authorization'] = `Bearer ${API_KEY}`;
-  }
+  if (API_KEY) headers['X-API-Key'] = API_KEY;
   return headers;
 }
 
@@ -110,8 +108,8 @@ export async function getUserTPSLOrders(address: string): Promise<TPSLOrderRespo
 /**
  * Cancel a TP/SL order (with ownership verification via address param)
  */
-export async function cancelTPSLOrder(orderId: string, userAddress?: string): Promise<void> {
-  const addressParam = userAddress ? `?address=${encodeURIComponent(userAddress)}` : '';
+export async function cancelTPSLOrder(orderId: string, userAddress: string): Promise<void> {
+  const addressParam = `?address=${encodeURIComponent(userAddress)}`;
   const response = await fetchWithTimeout(
     `${KEEPER_URL}/api/tpsl/orders/${encodeURIComponent(orderId)}${addressParam}`,
     { method: 'DELETE', headers: authHeaders() },

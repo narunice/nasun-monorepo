@@ -23,7 +23,7 @@ import { formatErrorMessage } from '../utils/errorParser';
 import type { TPSLOrder } from '../lib/tpsl-types';
 import { shouldTrigger, TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
 import {
-  getActiveTPSLOrders,
+  getActiveTPSLOrdersByMarket,
   updateTPSLStatus,
   claimTPSLOrder,
   addTPSLOrder,
@@ -46,7 +46,7 @@ import type { TradeCapStatus } from './useTradeCap';
 export interface UseTPSLMonitorResult {
   orders: TPSLOrder[];
   activeOrders: TPSLOrder[];
-  addOrder: (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>) => TPSLOrder | null;
+  addOrder: (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>, options?: { isServerFallback?: boolean }) => TPSLOrder | null;
   addOrderAsync: (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>) => Promise<TPSLOrder | null>;
   cancelOrder: (id: string) => void;
   removeOrder: (id: string) => void;
@@ -140,12 +140,14 @@ export function useTPSLMonitor({
     if (isDelegated) return;
     if (!hasBalanceManagerRef.current) return;
 
-    const activeOrders = getActiveTPSLOrders();
-    if (activeOrders.length === 0) return;
-
     // Only trigger on fresh oracle data, never on simulated fallback
     const symbol = marketSymbolRef.current;
     if (!symbol) return;
+
+    // Filter by current market to prevent cross-market triggers
+    const activeOrders = getActiveTPSLOrdersByMarket(symbol);
+    if (activeOrders.length === 0) return;
+
     const priceInfo = getPriceWithFreshness(symbol);
     if (!priceInfo.isFresh || priceInfo.source !== 'oracle') return;
 
@@ -155,7 +157,7 @@ export function useTPSLMonitor({
     // Update trailing-stop highWaterMarks before checking triggers
     updateTrailingHighWaterMarks(currentPrice);
     // Re-fetch active orders since highWaterMarks may have been updated
-    const refreshedOrders = getActiveTPSLOrders();
+    const refreshedOrders = getActiveTPSLOrdersByMarket(symbol);
 
     const baseSymbol = marketSymbolRef.current;
 
@@ -248,7 +250,7 @@ export function useTPSLMonitor({
 
   // Client-side addOrder (synchronous, localStorage)
   const addOrder = useCallback(
-    (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>) => {
+    (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>, options?: { isServerFallback?: boolean }) => {
       const result = addTPSLOrder(order);
       if (result) {
         refreshOrders();
@@ -270,7 +272,8 @@ export function useTPSLMonitor({
               ? ` (trail $${result.trailAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })})`
               : ''
           : '';
-        showToast(`${typeLabel} set at $${priceStr}${limitInfo}${trailInfo}`, 'success');
+        const modeTag = options?.isServerFallback ? ' (browser-only)' : '';
+        showToast(`${typeLabel} set at $${priceStr}${limitInfo}${trailInfo}${modeTag}`, 'success');
       } else {
         showToast('Invalid order or max limit reached (50)', 'warning');
       }
@@ -282,9 +285,12 @@ export function useTPSLMonitor({
   // Async addOrder that routes to keeper API when delegated
   const addOrderAsync = useCallback(
     async (order: Omit<TPSLOrder, 'id' | 'status' | 'createdAt'>): Promise<TPSLOrder | null> => {
-      // Stop-limit always uses client-side (keeper API doesn't support stop_limit type)
-      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId || !poolId || !marketSymbol || order.triggerType === 'stop-limit') {
-        return addOrder(order);
+      // Stop-limit and trailing-stop always use client-side (keeper API only supports take_profit/stop_loss)
+      if (!isDelegated || !walletAddress || !balanceManagerId || !tradeCapId || !poolId || !marketSymbol
+          || order.triggerType === 'stop-limit' || order.triggerType === 'trailing-stop') {
+        const isServerFallback = isDelegated
+          && (order.triggerType === 'stop-limit' || order.triggerType === 'trailing-stop');
+        return addOrder(order, { isServerFallback });
       }
 
       try {
@@ -320,7 +326,6 @@ export function useTPSLMonitor({
 
         return localOrder;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         showToast(`Failed to register TP/SL: ${formatErrorMessage(err)}`, 'error');
         return null;
       }

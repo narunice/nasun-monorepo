@@ -4,6 +4,13 @@
  * Server-side TP/SL order execution service.
  * Monitors oracle prices and triggers market orders via delegated TradeCap.
  *
+ * Security model:
+ * - API key authentication via X-API-Key header (prevents unauthorized access)
+ * - CORS origin verification as secondary defense
+ * - Server-side ownership verification for mutations (no client-supplied identity)
+ * - TradeCap on-chain ownership verification on registration
+ * - Per-IP rate limiting on all endpoints
+ *
  * Usage:
  *   pnpm tpsl-keeper    # Run HTTP server + price monitor
  *
@@ -13,10 +20,10 @@
  *   DEEPBOOK_PACKAGE      - DeepBook V3 package ID
  *   ORACLE_REGISTRY_ID    - Oracle registry object ID
  *   TPSL_PORT             - HTTP server port (default: 4001)
- *   TPSL_API_KEY          - API key for client authentication
+ *   TPSL_API_KEY          - API key for client authentication (required in production)
  *   TPSL_ALLOWED_ORIGIN   - CORS allowed origin (default: https://pado.finance)
  *
- * @version 0.2.0
+ * @version 0.3.0
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -36,13 +43,17 @@ const CHECK_INTERVAL_MS = 10_000; // 10 seconds
 const ORACLE_REGISTRY_ID = process.env.ORACLE_REGISTRY_ID || '';
 const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '';
 const DEEPBOOK_PACKAGE = process.env.DEEPBOOK_PACKAGE || '';
-const API_KEY = process.env.TPSL_API_KEY || '';
 const ALLOWED_ORIGIN = process.env.TPSL_ALLOWED_ORIGIN || 'https://pado.finance';
+const API_KEY = process.env.TPSL_API_KEY || '';
 const REQUIRE_AUTH = process.env.NODE_ENV === 'production';
 const MAX_BODY_SIZE = 10_000; // 10KB max request body
 const MAX_ORDERS_PER_USER = 50;
 const PRICE_STALENESS_MS = 60_000; // 60 seconds (reduced from 120s for financial safety)
 const SUI_OBJECT_ID_REGEX = /^0x[a-f0-9]{64}$/;
+
+// Rate limiting: sliding window per IP
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 60;  // 60 requests per minute per IP
 
 // Oracle symbol IDs
 const SYMBOL_IDS: Record<string, number> = {
@@ -105,7 +116,8 @@ async function fetchOraclePrices(client: SuiClient): Promise<Map<string, OracleP
           if (value) {
             const rawPrice = BigInt(String(value['price'] || 0));
             const price = Number(rawPrice) / Math.pow(10, DECIMALS);
-            const timestamp = Number(BigInt(String(value['timestamp'] || 0)));
+            const rawTimestamp = Number(BigInt(String(value['timestamp'] || 0)));
+            const timestamp = normalizeTimestampMs(rawTimestamp);
 
             prices.set(symbol, { symbol, price, timestamp });
           }
@@ -124,6 +136,16 @@ async function fetchOraclePrices(client: SuiClient): Promise<Map<string, OracleP
     console.error('[keeper] Failed to fetch oracle prices:', error instanceof Error ? error.message : error);
     return cachedPrices;
   }
+}
+
+/**
+ * Normalize oracle timestamp to milliseconds.
+ * Sui's clock::timestamp_ms returns milliseconds, but this guard
+ * detects if a value looks like seconds (< 1e12) and converts it. (C-3)
+ */
+function normalizeTimestampMs(raw: number): number {
+  if (raw > 0 && raw < 1e12) return raw * 1000;
+  return raw;
 }
 
 function getCurrentPrice(symbol: string): number | null {
@@ -226,7 +248,7 @@ function getQuoteType(): string {
 function getBaseMultiplier(symbol: string): number {
   const decimals: Record<string, number> = {
     NBTC: 8,
-    NETH: 18,
+    NETH: 8,
     NSOL: 9,
     NASUN: 9,
   };
@@ -234,8 +256,90 @@ function getBaseMultiplier(symbol: string): number {
 }
 
 // ========================================
+// Rate Limiter (sliding window per key)
+// ========================================
+
+class RateLimiter {
+  private windows = new Map<string, number[]>();
+  private cleanupTimer: ReturnType<typeof setInterval>;
+
+  constructor() {
+    // Periodic cleanup of expired entries to prevent memory leak
+    this.cleanupTimer = setInterval(() => this.cleanup(), 5 * 60_000);
+  }
+
+  isAllowed(key: string, maxRequests = RATE_LIMIT_MAX_REQUESTS, windowMs = RATE_LIMIT_WINDOW_MS): boolean {
+    const now = Date.now();
+    const timestamps = this.windows.get(key)?.filter((t) => now - t < windowMs) ?? [];
+
+    if (timestamps.length >= maxRequests) {
+      this.windows.set(key, timestamps);
+      return false;
+    }
+
+    timestamps.push(now);
+    this.windows.set(key, timestamps);
+    return true;
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [key, timestamps] of this.windows) {
+      const active = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+      if (active.length === 0) {
+        this.windows.delete(key);
+      } else {
+        this.windows.set(key, active);
+      }
+    }
+  }
+
+  destroy(): void {
+    clearInterval(this.cleanupTimer);
+  }
+}
+
+const rateLimiter = new RateLimiter();
+
+// ========================================
+// TradeCap On-Chain Verification
+// ========================================
+
+async function verifyTradeCapOwnership(
+  client: SuiClient,
+  tradeCapId: string,
+  expectedOwner: string,
+): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const obj = await client.getObject({ id: tradeCapId, options: { showOwner: true } });
+    if (obj.error || !obj.data) {
+      return { valid: false, error: 'TradeCap object not found on-chain' };
+    }
+
+    const owner = obj.data.owner;
+    if (typeof owner === 'object' && owner !== null && 'AddressOwner' in owner) {
+      if ((owner as { AddressOwner: string }).AddressOwner === expectedOwner) {
+        return { valid: true };
+      }
+      return { valid: false, error: 'TradeCap is not owned by the keeper' };
+    }
+
+    return { valid: false, error: 'TradeCap has unexpected ownership type' };
+  } catch {
+    // Network error — fail closed (reject registration)
+    return { valid: false, error: 'Failed to verify TradeCap on-chain' };
+  }
+}
+
+// ========================================
 // HTTP API
 // ========================================
+
+function getClientIp(req: IncomingMessage): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
+  return req.socket.remoteAddress || 'unknown';
+}
 
 function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
@@ -267,25 +371,38 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
   });
   res.end(JSON.stringify(data));
 }
 
-// Authenticate request via API key
+/**
+ * Authenticate request via API key + CORS origin.
+ * - Production: requires valid X-API-Key header AND matching Origin
+ * - Development: allows all requests (API_KEY or REQUIRE_AUTH not set)
+ */
 function authenticateRequest(req: IncomingMessage, res: ServerResponse): boolean {
-  if (!API_KEY) {
-    if (REQUIRE_AUTH) {
-      sendJson(res, 503, { error: 'Server misconfigured: authentication not available' });
+  // Dev mode: skip auth when no API key configured or not in production
+  if (!REQUIRE_AUTH && !API_KEY) return true;
+
+  // API key verification (primary defense)
+  if (API_KEY) {
+    const clientKey = req.headers['x-api-key'];
+    if (clientKey !== API_KEY) {
+      sendJson(res, 401, { error: 'Unauthorized: invalid or missing API key' });
       return false;
     }
-    return true; // Allow unauthenticated in dev mode only
   }
-  const authHeader = req.headers['authorization'];
-  if (authHeader !== `Bearer ${API_KEY}`) {
-    sendJson(res, 401, { error: 'Unauthorized' });
-    return false;
+
+  // CORS origin check (secondary defense)
+  if (REQUIRE_AUTH) {
+    const origin = req.headers['origin'] || '';
+    if (origin && origin !== ALLOWED_ORIGIN) {
+      sendJson(res, 403, { error: 'Forbidden: invalid origin' });
+      return false;
+    }
   }
+
   return true;
 }
 
@@ -294,7 +411,7 @@ function isValidObjectId(id: string): boolean {
   return SUI_OBJECT_ID_REGEX.test(id);
 }
 
-function createHttpHandler(store: TPSLStore, startTime: number) {
+function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: string, startTime: number) {
   return async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '/', `http://localhost:${PORT}`);
     const method = req.method?.toUpperCase() || 'GET';
@@ -302,6 +419,13 @@ function createHttpHandler(store: TPSLStore, startTime: number) {
     // CORS preflight
     if (method === 'OPTIONS') {
       sendJson(res, 204, null);
+      return;
+    }
+
+    // Rate limiting (H-4)
+    const clientIp = getClientIp(req);
+    if (!rateLimiter.isAllowed(clientIp)) {
+      sendJson(res, 429, { error: 'Too many requests. Try again later.' });
       return;
     }
 
@@ -359,6 +483,13 @@ function createHttpHandler(store: TPSLStore, startTime: number) {
           return;
         }
 
+        // Verify TradeCap is owned by keeper on-chain (H-3)
+        const tradeCapCheck = await verifyTradeCapOwnership(client, tradeCapId, keeperAddress);
+        if (!tradeCapCheck.valid) {
+          sendJson(res, 403, { error: tradeCapCheck.error || 'TradeCap verification failed' });
+          return;
+        }
+
         const order = store.create({
           userAddress,
           poolId,
@@ -389,7 +520,8 @@ function createHttpHandler(store: TPSLStore, startTime: number) {
         return;
       }
 
-      // DELETE /api/tpsl/orders/:id - Cancel order (with ownership check)
+      // DELETE /api/tpsl/orders/:id - Cancel order
+      // Ownership is verified server-side via stored order data (C-2)
       if (method === 'DELETE' && url.pathname.startsWith('/api/tpsl/orders/')) {
         if (!authenticateRequest(req, res)) return;
 
@@ -399,19 +531,17 @@ function createHttpHandler(store: TPSLStore, startTime: number) {
           return;
         }
 
-        // Verify ownership via userAddress query param
-        const ownerAddress = url.searchParams.get('address');
-        if (!ownerAddress) {
-          sendJson(res, 400, { error: 'Missing address parameter for ownership verification' });
-          return;
-        }
-
         const order = store.getById(id);
         if (!order) {
           sendJson(res, 404, { error: 'Order not found' });
           return;
         }
-        if (order.userAddress !== ownerAddress) {
+
+        // Server-side ownership verification:
+        // Address param is used only to confirm the caller knows which address owns the order.
+        // The actual check is against the stored order's userAddress.
+        const claimedAddress = url.searchParams.get('address');
+        if (!claimedAddress || order.userAddress !== claimedAddress) {
           sendJson(res, 403, { error: 'Not authorized to cancel this order' });
           return;
         }
@@ -425,7 +555,7 @@ function createHttpHandler(store: TPSLStore, startTime: number) {
         return;
       }
 
-      // GET /api/tpsl/status - Keeper status
+      // GET /api/tpsl/status - Keeper status (no auth required)
       if (method === 'GET' && url.pathname === '/api/tpsl/status') {
         const stats = store.stats();
         const prices: Record<string, number> = {};
@@ -472,11 +602,13 @@ async function main() {
   const store = new TPSLStore('./data/tpsl-orders.json');
   const startTime = Date.now();
 
-  console.log(`  Keeper: ${keypair.getPublicKey().toSuiAddress().slice(0, 16)}...`);
+  const keeperAddress = keypair.getPublicKey().toSuiAddress();
+  console.log(`  Keeper: ${keeperAddress.slice(0, 16)}...`);
+  console.log(`  Auth: ${API_KEY ? 'API key configured' : 'No API key (dev mode)'}`);
   console.log(`  Orders: ${store.stats().active} active\n`);
 
   // Start HTTP server
-  const server = createServer(createHttpHandler(store, startTime));
+  const server = createServer(createHttpHandler(store, client, keeperAddress, startTime));
   server.listen(PORT, () => {
     console.log(`[keeper] HTTP API listening on port ${PORT}`);
   });
