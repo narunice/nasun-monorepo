@@ -9,10 +9,12 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
 import { useToast } from '@/components/common';
 import { useOrderbook, useOpenOrders, useOrderActions, useOrderFillNotifier, type TradeMode } from '../hooks';
+import { useTradeCap } from '../hooks/useTradeCap';
 import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
 import { calcLockedAmounts } from '../types';
-import { OrderForm, OrderConfirmModal, SwapOrderForm } from '../components';
+import { OrderForm, OrderConfirmModal, SwapOrderForm, TPSLKeeperBadge } from '../components';
+import { TPSLKeeperModal, isKeeperModalSeen } from '../components/TPSLKeeperModal';
 import type { ScaleOrderItem } from '../components/ScaleOrderForm';
 import type { PriceLevel } from '../../../lib/deepbook';
 
@@ -138,8 +140,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const isSimple = mode === 'simple';
   const { showToast } = useToast();
   const { status, account } = useWallet();
-  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const walletAddress = account?.address ?? zkState?.address;
 
   // Market context for base token symbol
   const { currentPool } = useMarket();
@@ -178,6 +181,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
 
+  // TradeCap delegation for server-side TP/SL execution
+  const tradeCap = useTradeCap(balanceManagerId, walletAddress);
+
   // Order fill notifier — browser notification + sound when user's orders are filled
   useOrderFillNotifier({
     balanceManagerId,
@@ -186,7 +192,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   });
 
   // TP/SL Monitor — mount once, monitors price and auto-executes market/limit orders
-  const { addOrder: addTPSLOrder } = useTPSLMonitor({
+  const { addOrderAsync: addTPSLOrderAsync } = useTPSLMonitor({
     executeMarketOrder: useCallback(async (orderSide: 'buy' | 'sell', quantity: number) => {
       return handleMarketOrder(orderSide, quantity);
     }, [handleMarketOrder]),
@@ -195,7 +201,16 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     }, [handleLimitOrder]),
     hasBalanceManager: !!balanceManagerId,
     marketSymbol: baseSymbol as import('../../../lib/prices').TokenSymbol,
+    poolId: currentPool.id,
+    walletAddress,
+    balanceManagerId,
+    tradeCapStatus: tradeCap.status,
+    tradeCapId: tradeCap.tradeCapId,
   });
+
+  // TP/SL Keeper modal — show after first TP/SL order creation
+  const [showKeeperModal, setShowKeeperModal] = useState(false);
+  const hasShownKeeperModalRef = useRef(false);
 
   // 주문 폼 상태 (Context)
   const {
@@ -228,7 +243,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   } = useOrderForm();
 
   // Create TP/SL orders after successful main order (with optional OCO linking)
-  const createTPSLOrdersIfEnabled = useCallback((orderSide: 'buy' | 'sell', qty: number) => {
+  const createTPSLOrdersIfEnabled = useCallback(async (orderSide: 'buy' | 'sell', qty: number) => {
     if (!tpslEnabled) return;
     const tpValue = parseFloat(tpPrice);
     const slValue = parseFloat(slPriceValue);
@@ -240,15 +255,23 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     const ocoGroupId = ocoEnabled && hasTP && hasSL ? crypto.randomUUID() : undefined;
 
     if (hasTP) {
-      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: tpValue, triggerType: 'tp', ocoGroupId });
+      await addTPSLOrderAsync({ side: closeSide, quantity: qty, triggerPrice: tpValue, triggerType: 'tp', ocoGroupId, marketSymbol: baseSymbol });
     }
     if (hasSL) {
-      addTPSLOrder({ side: closeSide, quantity: qty, triggerPrice: slValue, triggerType: 'sl', ocoGroupId });
+      await addTPSLOrderAsync({ side: closeSide, quantity: qty, triggerPrice: slValue, triggerType: 'sl', ocoGroupId, marketSymbol: baseSymbol });
     }
-  }, [tpslEnabled, tpPrice, slPriceValue, ocoEnabled, addTPSLOrder]);
+
+    // Show keeper modal after first TP/SL order creation (P3-1: post-order timing)
+    if ((hasTP || hasSL) && !hasShownKeeperModalRef.current) {
+      if (!isKeeperModalSeen(walletAddress) && tradeCap.isKeeperAvailable && tradeCap.status !== 'delegated') {
+        setShowKeeperModal(true);
+        hasShownKeeperModalRef.current = true;
+      }
+    }
+  }, [tpslEnabled, tpPrice, slPriceValue, ocoEnabled, addTPSLOrderAsync, baseSymbol, walletAddress, tradeCap.isKeeperAvailable, tradeCap.status]);
 
   // Stop-Limit order handler — creates a conditional order in TP/SL storage
-  const handleStopLimitOrder = useCallback((orderSide: 'buy' | 'sell') => {
+  const handleStopLimitOrder = useCallback(async (orderSide: 'buy' | 'sell') => {
     const stopPriceNum = parseFloat(stopPrice);
     const limitPriceNum = parseFloat(price);
     const amountNum = parseFloat(amount);
@@ -257,18 +280,19 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     if (!Number.isFinite(limitPriceNum) || limitPriceNum <= 0) return;
     if (!Number.isFinite(amountNum) || amountNum <= 0) return;
 
-    addTPSLOrder({
+    await addTPSLOrderAsync({
       side: orderSide,
       quantity: amountNum,
       triggerPrice: stopPriceNum,
       triggerType: 'stop-limit',
       limitPrice: limitPriceNum,
+      marketSymbol: baseSymbol,
     });
     resetForm();
-  }, [stopPrice, price, amount, addTPSLOrder, resetForm]);
+  }, [stopPrice, price, amount, addTPSLOrderAsync, resetForm, baseSymbol]);
 
   // Trailing Stop order handler — creates a trailing-stop conditional order
-  const handleTrailingStopOrder = useCallback((orderSide: 'buy' | 'sell') => {
+  const handleTrailingStopOrder = useCallback(async (orderSide: 'buy' | 'sell') => {
     const amountNum = parseFloat(amount);
     const trail = parseFloat(trailValue);
 
@@ -276,7 +300,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     if (!Number.isFinite(amountNum) || amountNum <= 0) return;
     if (midPrice <= 0) return;
 
-    addTPSLOrder({
+    await addTPSLOrderAsync({
       side: orderSide,
       quantity: amountNum,
       triggerPrice: midPrice, // initial reference price
@@ -285,9 +309,10 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
         ? { trailPercent: trail }
         : { trailAmount: trail }),
       highWaterMark: midPrice,
+      marketSymbol: baseSymbol,
     });
     resetForm();
-  }, [amount, trailValue, trailMode, midPrice, addTPSLOrder, resetForm]);
+  }, [amount, trailValue, trailMode, midPrice, addTPSLOrderAsync, resetForm, baseSymbol]);
 
   // One-Click 주문 핸들러 (확인 모달 스킵)
   const handleOneClickOrder = async (type: 'buy' | 'sell') => {
@@ -300,22 +325,22 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     const result = await handleLimitOrder(type, priceNum, amountNum, orderType);
 
     if (result.success) {
-      createTPSLOrdersIfEnabled(type, amountNum);
+      await createTPSLOrdersIfEnabled(type, amountNum);
       resetForm();
     }
   };
 
   // Unified limit order handler (One-Click or Modal)
-  const handleOrderClick = (orderSide: 'buy' | 'sell') => {
+  const handleOrderClick = async (orderSide: 'buy' | 'sell') => {
     // Stop-Limit: create conditional order (no confirmation modal needed)
     if (orderMode === 'stop-limit') {
-      handleStopLimitOrder(orderSide);
+      await handleStopLimitOrder(orderSide);
       return;
     }
 
     // Trailing Stop: create conditional order
     if (orderMode === 'trailing-stop') {
-      handleTrailingStopOrder(orderSide);
+      await handleTrailingStopOrder(orderSide);
       return;
     }
 
@@ -339,7 +364,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     closeConfirmModal();
 
     if (result.success) {
-      createTPSLOrdersIfEnabled(pendingOrderType, amountNum);
+      await createTPSLOrdersIfEnabled(pendingOrderType, amountNum);
       resetForm();
     }
   };
@@ -350,7 +375,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     const amountNum = parseFloat(amount);
     const result = await handleMarketOrder(orderSide, amountNum);
     if (result.success) {
-      createTPSLOrdersIfEnabled(orderSide, amountNum);
+      await createTPSLOrdersIfEnabled(orderSide, amountNum);
       setAmount('');
     }
   };
@@ -402,7 +427,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           <div className="flex items-center justify-between mb-4 shrink-0">
             <h3 className="text-base font-semibold text-theme-text-primary">Quick Trade</h3>
             {isConnected && (
-              <span className="text-sm text-theme-text-muted font-mono">
+              <span className="text-sm xl:text-base text-theme-text-muted font-mono">
                 ${availableQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             )}
@@ -410,7 +435,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
           {/* Connect wallet banner when not connected */}
           {!isConnected && (
-            <div className="mb-3 p-3 rounded-lg text-sm bg-theme-bg-tertiary text-theme-text-secondary text-center shrink-0">
+            <div className="mb-3 p-3 rounded-lg text-sm xl:text-base bg-theme-bg-tertiary text-theme-text-secondary text-center shrink-0">
               Connect wallet to start trading
             </div>
           )}
@@ -418,14 +443,14 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           {/* Enable Pado banner when connected but no BM */}
           {isConnected && !balanceManagerId && (
             <div className="mb-3 p-4 bg-theme-bg-tertiary rounded-lg text-center shrink-0">
-              <div className="text-sm text-theme-text-secondary mb-2">
+              <div className="text-sm xl:text-base text-theme-text-secondary mb-2">
                 Enable Pado to start trading
                 <EnablePadoInfo />
               </div>
               <button
                 onClick={handleCreateBalanceManager}
                 disabled={isLoading}
-                className="px-5 py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm font-medium transition-colors"
+                className="px-5 py-2 bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 text-white rounded-lg text-sm xl:text-base font-medium transition-colors"
               >
                 {isLoading ? 'Enabling...' : 'Enable Pado'}
               </button>
@@ -492,6 +517,13 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           onScaleOrder={handleScaleOrders}
         />
 
+        {/* TP/SL Keeper Badge — execution mode indicator */}
+        {balanceManagerId && (
+          <div className="mt-2 flex justify-end">
+            <TPSLKeeperBadge tradeCap={tradeCap} />
+          </div>
+        )}
+
         {/* Order Confirmation Modal */}
         <OrderConfirmModal
           isOpen={isConfirmModalOpen}
@@ -504,6 +536,14 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           executionOption={executionOption}
           midPrice={midPrice}
           onEnableOneClick={() => setOneClickEnabled(true)}
+        />
+
+        {/* TP/SL Keeper onboarding modal */}
+        <TPSLKeeperModal
+          isOpen={showKeeperModal}
+          onClose={() => setShowKeeperModal(false)}
+          tradeCap={tradeCap}
+          walletAddress={walletAddress}
         />
 
       </div>

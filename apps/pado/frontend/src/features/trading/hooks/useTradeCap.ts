@@ -4,13 +4,21 @@
  * Manages TradeCap delegation to the TP/SL Keeper bot.
  * Flow: mint_trade_cap → transfer to keeper address → keeper can execute orders
  * Revoke: owner calls revoke_trade_cap on BalanceManager (keeper TradeCap becomes invalid)
+ *
+ * On-chain validation: verifies TradeCap object exists when loading from localStorage.
+ * Revoke cleanup: cancels all active keeper orders after revoking TradeCap.
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { useTransactionExecutor } from './useTransactionExecutor';
 import { NETWORK_CONFIG } from '../../../config/network';
-import { isKeeperConfigured } from '../lib/tpsl-api';
+import { getSuiClient } from '../../../lib/sui-client';
+import {
+  isKeeperConfigured,
+  getUserTPSLOrders,
+  cancelTPSLOrder as cancelTPSLOrderKeeper,
+} from '../lib/tpsl-api';
 
 export type TradeCapStatus = 'none' | 'delegated' | 'loading';
 
@@ -61,6 +69,21 @@ function clearTradeCapState(walletAddress: string): void {
   }
 }
 
+/**
+ * Verify TradeCap object exists on-chain.
+ * Fail-closed: returns false on network errors to prevent operating with
+ * a potentially revoked TradeCap. The UI will re-verify on next load.
+ */
+async function verifyTradeCapOnChain(tradeCapId: string): Promise<boolean> {
+  try {
+    const client = getSuiClient();
+    const obj = await client.getObject({ id: tradeCapId });
+    return !obj.error && !!obj.data;
+  } catch {
+    return false;
+  }
+}
+
 export interface UseTradeCapResult {
   status: TradeCapStatus;
   tradeCapId: string | null;
@@ -81,7 +104,7 @@ export function useTradeCap(
   const [status, setStatus] = useState<TradeCapStatus>('none');
   const [state, setState] = useState<TradeCapState | null>(null);
 
-  // Load stored state on mount / address change
+  // Load stored state on mount / address change, with on-chain verification (P2-1)
   // Syncing state from localStorage (external system) — setState in effect is intentional
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -90,14 +113,36 @@ export function useTradeCap(
       setState(null);
       return;
     }
-    const stored = getStoredTradeCapState(walletAddress);
-    if (stored) {
-      setStatus('delegated');
-      setState(stored);
-    } else {
-      setStatus('none');
-      setState(null);
-    }
+
+    let cancelled = false;
+
+    const loadAndVerify = async () => {
+      const stored = getStoredTradeCapState(walletAddress);
+      if (!stored) {
+        if (!cancelled) {
+          setStatus('none');
+          setState(null);
+        }
+        return;
+      }
+
+      // Verify TradeCap still exists on-chain
+      const isValid = await verifyTradeCapOnChain(stored.tradeCapId);
+      if (cancelled) return;
+
+      if (isValid) {
+        setStatus('delegated');
+        setState(stored);
+      } else {
+        // TradeCap no longer exists — clear stale state
+        clearTradeCapState(walletAddress);
+        setStatus('none');
+        setState(null);
+      }
+    };
+
+    loadAndVerify();
+    return () => { cancelled = true; };
   }, [walletAddress]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -164,7 +209,7 @@ export function useTradeCap(
     }
   }, [balanceManagerId, walletAddress, executeTransaction]);
 
-  // Revoke TradeCap (owner removes from allow list)
+  // Revoke TradeCap (owner removes from allow list) + cancel keeper orders (P2-2)
   const revoke = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     if (!balanceManagerId || !walletAddress || !state?.tradeCapId || !DEEPBOOK_PACKAGE) {
       return { success: false, error: 'No TradeCap delegated or missing configuration' };
@@ -194,6 +239,21 @@ export function useTradeCap(
       clearTradeCapState(walletAddress);
       setState(null);
       setStatus('none');
+
+      // Cancel all active keeper orders (non-blocking, best-effort)
+      if (isKeeperConfigured()) {
+        try {
+          const orders = await getUserTPSLOrders(walletAddress);
+          const activeOrders = orders.filter((o) => o.status === 'active');
+          if (activeOrders.length > 0) {
+            await Promise.allSettled(
+              activeOrders.map((o) => cancelTPSLOrderKeeper(o.id, walletAddress))
+            );
+          }
+        } catch {
+          // Non-critical: keeper orders become non-executable after revoke anyway
+        }
+      }
 
       return { success: true };
     } catch (err) {
