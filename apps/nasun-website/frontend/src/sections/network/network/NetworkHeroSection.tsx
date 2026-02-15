@@ -116,8 +116,12 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
       {isVideoPlaying && (
         <div className="absolute inset-x-0 bottom-[5%] sm:bottom-[10%] z-20 px-6 md:hidden">
           <div className="leading-tight text-center">
-            <h3 className=" font-medium text-nasun-white">End-to-End Protocol</h3>
-            <h4 className=" text-nasun-white/70">for Coordinated Creation</h4>
+            <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
+              IP Infrastructure
+            </h3>
+            <h4 className=" text-nasun-white/70 text-lg  sm:text-xl">
+              Entertainment, Finance, and AI
+            </h4>
           </div>
           <div className="flex justify-center mt-3">
             <Button variant="white" size="lg" asChild className="mt-5">
@@ -138,8 +142,12 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         <div className="absolute hidden md:flex md:flex-col md:inset-x-auto md:right-[10%] md:bottom-[25%]  lg:right-[10%] xl:right-[17%] xl:bottom-[25%] z-20 text-end">
           <div>
             <FadeInUp>
-              <h3 className="font-medium text-nasun-white">End-to-End Protocol</h3>
-              <h5 className="text-nasun-white/70">for Coordinated Creation</h5>
+              <h3 className="font-medium text-nasun-white text-2xl/tight md:text-[32px] lg:text-[39px] uppercase">
+                IP Infrastructure
+              </h3>
+              <h5 className="text-nasun-white/70 text-2xl/tight md:text-[22px] lg:text-[27px]">
+                Entertainment, Finance, and AI
+              </h5>
               <Button variant="white" size="lg" asChild className="mt-5">
                 <Link
                   to={import.meta.env.VITE_DEVNET_EXPLORER_URL}

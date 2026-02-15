@@ -3,19 +3,40 @@ import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { OuterBox } from "@/components/ui/OuterBox";
 import { DividerBox } from "@/components/ui/DividerBox";
-import NetworkActivity from "./NetworkActivity";
+import { OuterBox } from "@/components/ui/OuterBox";
+
+const LAYERS = [
+  {
+    emoji: "\uD83D\uDD12",
+    title: "Layer 1: Protocol",
+    description: "Move L1 + Mysticeti consensus. Ownership, coordination, settlement.",
+    color: "nw3" as const,
+  },
+  {
+    emoji: "\u26A1",
+    title: "Layer 2: Infrastructure",
+    description: "Decentralized AI executors, game servers, streaming, compute, storage.",
+    color: "nw2" as const,
+  },
+  {
+    emoji: "\uD83C\uDFAE",
+    title: "Layer 3: Applications",
+    description:
+      "Gen Sol (media & gaming), Baram (AI settlement), Pado (unified finance) \u2014 and more.",
+    color: "nw1" as const,
+  },
+] as const;
 
 function NasunNetworkSection() {
   const { t } = useTranslation("tokenomics");
 
   return (
     <SectionLayout className="!max-w-6xl">
-      {/* Content Box - Semi-transparent container (Founders NFT style) */}
+      {/* Content Box */}
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-6 xl:py-8">
-          <OuterBox color="nw0" padding="md" className="">
+          <OuterBox color="nw0" padding="md">
             {/* Main Title */}
             <SectionTitle
               as="h2"
@@ -25,14 +46,30 @@ function NasunNetworkSection() {
             </SectionTitle>
 
             <div className="mb-6 md:mb-7 lg:mb-8 xl:mb-10">
-              {/* Description */}
               <p className="text-nasun-white/80 whitespace-pre-line">{t("network.description")}</p>
             </div>
 
-            {/* Vision Section - DividerBox */}
-            <DividerBox color="c4" disableHover={true} className="font-semibold bg-nasun-c4/10">
-              <p>{t("network.visionDescription")}</p>
-            </DividerBox>
+            {/* Three-Layer Model */}
+            <h4 className="font-normal mb-4 md:mb-5 uppercase">Our Three-Layer Model</h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+              {LAYERS.map((layer) => (
+                <DividerBox
+                  key={layer.title}
+                  title={layer.title}
+                  icon={<span>{layer.emoji}</span>}
+                  description={layer.description}
+                  color={layer.color}
+                  className="!bg-black/50"
+                  padding="sm"
+                  disableHover
+                />
+              ))}
+            </div>
+
+            <h6 className="font-semibold text-nasun-white/90 mt-5 md:mt-6 text-center">
+              Community builds. Value shared.
+            </h6>
 
             {/* Button */}
             <div className="pt-6 md:pt-8 text-center">
@@ -41,9 +78,6 @@ function NasunNetworkSection() {
               </ButtonV3>
             </div>
           </OuterBox>
-
-          {/* Network Activity - TPS Chart & Epoch Progress */}
-          <NetworkActivity />
         </div>
       </div>
     </SectionLayout>

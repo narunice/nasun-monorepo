@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { PageTitle } from "@/components/ui/PageTitle";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Doughnut } from "react-chartjs-2";
@@ -28,10 +28,12 @@ const DistributionLabel: React.FC<DistributionLabelProps> = ({
 }) => {
   const formatAmount = (num: number) => {
     if (num >= 1e9) {
-      return `${(num / 1e9).toFixed(0)}B`;
+      const v = num / 1e9;
+      return `${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}B`;
     }
     if (num >= 1e6) {
-      return `${(num / 1e6).toFixed(0)}M`;
+      const v = num / 1e6;
+      return `${v % 1 === 0 ? v.toFixed(0) : v.toFixed(0)}M`;
     }
     return num.toLocaleString();
   };
@@ -91,12 +93,15 @@ function TokenDistributionSection() {
 
   return (
     <SectionLayout className="!max-w-6xl">
-      <PageTitle as="h2" align="center">
-        {t("distribution.heading")}
-      </PageTitle>
+      <div className="max-w-5xl w-full mx-auto">
+        <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
+          <SectionTitle as="h4" className="font-normal uppercase">
+            {t("distribution.heading")}
+          </SectionTitle>
+        </div>
+      </div>
 
       {/* Main Container */}
-
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
         {/* Chart */}
         <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
