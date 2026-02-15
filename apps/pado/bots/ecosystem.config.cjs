@@ -12,6 +12,7 @@
  *   ORACLE_ADMIN_KEY=<admin-hex-key>      # Required by price-updater
  *   KEEPER_PRIVATE_KEY=<keeper-hex-key>   # Required by tpsl-keeper
  *   TPSL_API_KEY=<api-key>               # Required by tpsl-keeper
+ *   TPSL_ALLOWED_ORIGIN=<origin-url>     # Required by tpsl-keeper (CORS)
  *
  * The deploy script (scripts/deploy-pado-bots.sh) sources .env before PM2 start.
  * Non-secret config (contract addresses, RPC URLs) is set in env: blocks below.
@@ -150,7 +151,7 @@ module.exports = {
         ORACLE_REGISTRY_ID: '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1',
         ORACLE_PACKAGE_ID: '0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c',
         DEEPBOOK_PACKAGE: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
-        TPSL_ALLOWED_ORIGIN: 'https://pado.finance',
+        // TPSL_ALLOWED_ORIGIN loaded from .env (per-environment CORS origin)
       },
       max_restarts: 10,
       restart_delay: 5000,
