@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import { useWallet } from './useWallet';
 import { useZkLoginStore } from '../stores/zkLoginStore';
+import { usePasskeyStore } from '../stores/passkeyStore';
 import { getAllBalances } from '../sui/client';
 import { getAllChains, getEVMChains, getMoveChains, type ChainConfig } from '../config/chains';
 import { getEVMClient } from '../core/evm/client';
@@ -84,12 +85,16 @@ export function usePortfolio(options?: UsePortfolioOptions): UsePortfolioResult 
   const { account, status } = useWallet();
   const { state: zkState, isConnected: isZkLoggedIn } = useZkLoginStore();
 
+  // Passkey state
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+
   // Move address (Nasun/Sui)
-  const moveAddress = account?.address ?? zkState?.address;
+  const moveAddress = account?.address ?? zkState?.address ?? passkeyAddress;
   // EVM address (from options or derived - future: derive from same mnemonic)
   const evmAddress = options?.evmAddress;
 
-  const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const isEnabled = options?.enabled !== false && isWalletConnected && !!moveAddress;
 
   const {

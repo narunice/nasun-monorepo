@@ -6,6 +6,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
+import { usePasskeyStore } from '../stores/passkeyStore';
 import { getStakes, calculateStakingSummary } from '../sui/staking';
 import type { DelegatedStake, StakingSummary } from '../types/staking';
 
@@ -53,10 +54,12 @@ export function useStaking(options: UseStakingOptions = {}): UseStakingResult {
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { enabled = true, pollingInterval = DEFAULT_POLLING_INTERVAL } = options;
 
-  // Support both mnemonic wallet and zkLogin
-  const walletAddress = account?.address || zkState?.address;
+  // Support mnemonic wallet, zkLogin, and passkey
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const walletAddress = account?.address || zkState?.address || passkeyAddress;
   const isWalletUnlocked = status === 'unlocked' && Boolean(account?.address);
-  const isConnected = isWalletUnlocked || isZkConnected;
+  const isConnected = isWalletUnlocked || isZkConnected || isPasskeyUnlocked;
 
   const query = useQuery({
     queryKey: [STAKING_QUERY_KEY, walletAddress],
@@ -88,10 +91,11 @@ export function useStaking(options: UseStakingOptions = {}): UseStakingResult {
 export function useRefreshStaking() {
   const { account } = useWallet();
   const { state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
   const queryClient = useQueryClient();
 
   return () => {
-    const address = account?.address || zkState?.address;
+    const address = account?.address || zkState?.address || passkeyAddress;
     if (address) {
       queryClient.invalidateQueries({
         queryKey: [STAKING_QUERY_KEY, address],

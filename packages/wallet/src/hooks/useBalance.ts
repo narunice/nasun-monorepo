@@ -12,6 +12,7 @@ import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { useChainStore } from './useChain';
 import { useSignerAddress } from './useSigner';
+import { usePasskeyStore } from '../stores/passkeyStore';
 import { SignerManager } from '../core/signer/SignerManager';
 
 // Query key
@@ -36,6 +37,7 @@ export function useBalance(
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const chainId = useChainStore((s) => s.currentChainId);
   const signerAddress = useSignerAddress();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
   // Prefer signer address (chain-aware) over wallet store address (always Sui-derived)
   const targetAddress = address ?? signerAddress ?? account?.address ?? zkState?.address;
@@ -48,8 +50,8 @@ export function useBalance(
     }
   }, [chainId, targetAddress]);
 
-  // Enable query when mnemonic wallet unlocked OR zkLogin connected
-  const isWalletConnected = status === 'unlocked' || isZkConnected;
+  // Enable query when mnemonic wallet unlocked OR zkLogin connected OR passkey unlocked
+  const isWalletConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
 
   // Prevent stale balance query during chain switch: if chain uses non-Sui scheme
   // but signerAddress hasn't updated yet (still Sui-derived), skip the query.

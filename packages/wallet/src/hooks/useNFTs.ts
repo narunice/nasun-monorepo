@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
+import { usePasskeyStore } from '../stores/passkeyStore';
 import { getOwnedNFTs } from '../sui/nft';
 import type { NFTInfo, NFTQueryOptions, NFTSortBy } from '../types/nft';
 import { DEFAULT_NFT_SORT } from '../types/nft';
@@ -91,9 +92,11 @@ export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
   const { state: zkLoginState, isConnected: isZkConnected } = useZkLogin();
   const { enabled = true, refetchInterval, limit, cursor, sortBy = DEFAULT_NFT_SORT } = options;
 
-  // Use wallet address or zkLogin address
-  const ownerAddress = account?.address || zkLoginState?.address;
-  const isConnected = (status === 'unlocked' && account?.address) || isZkConnected;
+  // Use wallet address, zkLogin address, or passkey address
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const ownerAddress = account?.address || zkLoginState?.address || passkeyAddress;
+  const isConnected = (status === 'unlocked' && account?.address) || isZkConnected || isPasskeyUnlocked;
 
   const query = useQuery({
     queryKey: [NFT_QUERY_KEY, ownerAddress, limit, cursor],
@@ -133,9 +136,10 @@ export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
 export function useRefreshNFTs() {
   const { account } = useWallet();
   const { state: zkLoginState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
   const queryClient = useQueryClient();
 
-  const ownerAddress = account?.address || zkLoginState?.address;
+  const ownerAddress = account?.address || zkLoginState?.address || passkeyAddress;
 
   return () => {
     if (ownerAddress) {
