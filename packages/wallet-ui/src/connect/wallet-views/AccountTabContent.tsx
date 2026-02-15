@@ -51,7 +51,7 @@ export function AccountTabContent({
   nsaRecoveryCompleted,
   onNavigate,
 }: {
-  variant: "zkLogin" | "self-custody";
+  variant: "zkLogin" | "self-custody" | "passkey";
   nsaIsInitialized: boolean;
   nsaRecoveryCompleted: number;
   onNavigate: (mode: ViewMode) => void;
