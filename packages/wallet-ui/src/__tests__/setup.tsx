@@ -264,6 +264,31 @@ vi.mock('@nasun/wallet', () => ({
     label: '',
     setLabel: vi.fn(),
   })),
+  // Chain ID hook
+  useCurrentChainId: vi.fn(() => '272218f1'),
+  // Passkey hooks
+  usePasskey: vi.fn(() => ({
+    isSupported: true,
+    isPlatformAvailable: true,
+    wallet: null,
+    isUnlocked: false,
+    isLoading: false,
+    error: null,
+    keypair: null,
+    address: null,
+    createWallet: vi.fn(),
+    unlock: vi.fn(),
+    lock: vi.fn(),
+    deleteWallet: vi.fn(),
+    addCredential: vi.fn(),
+    removeCredential: vi.fn(),
+    credentials: [],
+    refresh: vi.fn(),
+  })),
+  hasPasskeyWallet: vi.fn(() => false),
+  getPendingBackupMnemonic: vi.fn(() => null),
+  // Crypto utilities
+  secureZeroString: vi.fn(),
 }));
 
 // Mock localStorage
