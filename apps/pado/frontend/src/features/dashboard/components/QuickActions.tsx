@@ -149,7 +149,7 @@ export function QuickActions() {
             >
               {/* Soon badge */}
               <div className="absolute top-2 right-2">
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-500/20 text-purple-400 rounded-full">
+                <span className="px-1.5 py-0.5 text-[10px] xl:text-xs font-medium bg-purple-500/20 text-purple-400 rounded-full">
                   Soon
                 </span>
               </div>
@@ -158,12 +158,12 @@ export function QuickActions() {
                 <span className={colors.icon}>{action.icon}</span>
               </div>
               <h3 className="font-medium text-theme-text-muted">{action.label}</h3>
-              <p className="text-xs text-theme-text-muted mt-1">{action.description}</p>
+              <p className="text-xs xl:text-sm text-theme-text-muted mt-1">{action.description}</p>
 
               {/* Tooltip */}
               {hoveredDisabled === action.id && action.tooltip && (
                 <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg shadow-lg z-10 whitespace-nowrap">
-                  <p className="text-xs text-theme-text-secondary">{action.tooltip}</p>
+                  <p className="text-xs xl:text-sm text-theme-text-secondary">{action.tooltip}</p>
                   <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-theme-border" />
                 </div>
               )}
@@ -181,7 +181,7 @@ export function QuickActions() {
               <span className={colors.icon}>{action.icon}</span>
             </div>
             <h3 className="font-medium text-theme-text-primary">{action.label}</h3>
-            <p className="text-xs text-theme-text-muted mt-1">{action.description}</p>
+            <p className="text-xs xl:text-sm text-theme-text-muted mt-1">{action.description}</p>
           </Link>
         );
       })}
