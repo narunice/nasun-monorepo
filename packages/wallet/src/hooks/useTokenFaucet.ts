@@ -13,6 +13,7 @@ import { useState, useCallback } from 'react';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
+import { usePasskey } from './usePasskey';
 import { useRefreshMultiBalance } from './useMultiBalance';
 import { getTokenFaucet, hasTokenFaucet } from '../config/tokens';
 import { getSuiClient } from '../sui/client';
@@ -54,11 +55,12 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   const { isDevnet, isTestnet } = useNetwork();
   const { account, getKeypair } = useWallet();
   const { state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const { keypair: passkeyKeypair, address: passkeyAddress } = usePasskey();
   const refreshBalance = useRefreshMultiBalance();
 
   const [loadingTokens, setLoadingTokens] = useState<Set<string>>(new Set());
 
-  const address = account?.address || zkState?.address;
+  const address = account?.address || zkState?.address || passkeyAddress;
   const canUseFaucet = (isDevnet || isTestnet) && !!address;
 
   const requestFaucet = useCallback(
@@ -126,6 +128,18 @@ export function useTokenFaucet(): UseTokenFaucetResult {
             if (result && txResult.digest) {
               await suiClient.waitForTransaction({ digest: txResult.digest });
             }
+          } else if (passkeyKeypair) {
+            // Sign with passkey wallet (Ed25519Keypair, same as self-custody)
+            const txResult = await suiClient.signAndExecuteTransaction({
+              signer: passkeyKeypair,
+              transaction: tx,
+              options: { showEffects: true },
+            });
+            result = txResult.effects?.status?.status === 'success';
+
+            if (result && txResult.digest) {
+              await suiClient.waitForTransaction({ digest: txResult.digest });
+            }
           }
         }
 
@@ -155,7 +169,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         });
       }
     },
-    [canUseFaucet, address, getKeypair, zkState, zkSignTransaction, refreshBalance]
+    [canUseFaucet, address, getKeypair, passkeyKeypair, zkState, zkSignTransaction, refreshBalance]
   );
 
   const isLoading = useCallback(
