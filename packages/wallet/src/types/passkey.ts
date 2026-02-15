@@ -11,8 +11,6 @@
 export interface PasskeyCredential {
   /** Credential ID (base64url encoded) */
   id: string;
-  /** Raw credential ID bytes */
-  rawId: Uint8Array;
   /** Public key (base64url encoded) */
   publicKey: string;
   /** Signature algorithm used (-7 for ES256, -257 for RS256) */
@@ -81,10 +79,12 @@ export interface PasskeyAuthenticationOptions {
 export interface PasskeyRegistrationResult {
   /** The created credential */
   credential: PasskeyCredential;
-  /** Attestation object (for server verification if needed) */
-  attestationObject?: string;
-  /** Client data JSON (for server verification if needed) */
-  clientDataJSON?: string;
+  /** Attestation object (for server verification) */
+  attestationObject: string;
+  /** Client data JSON (for server verification) */
+  clientDataJSON: string;
+  /** Whether the authenticator supports PRF extension */
+  prfSupported: boolean;
 }
 
 /**
@@ -101,6 +101,8 @@ export interface PasskeyAuthenticationResult {
   clientDataJSON: string;
   /** User handle (base64url, if available) */
   userHandle?: string;
+  /** PRF extension output (secret derived from authenticator, if supported) */
+  prfOutput?: ArrayBuffer;
 }
 
 /**
@@ -119,6 +121,8 @@ export interface PasskeyWalletState {
   iv: string;
   /** Salt for key derivation */
   salt: string;
+  /** Key derivation method: 'prf' uses authenticator secret, 'credential-id' uses public credential ID */
+  keyDerivationMethod: 'prf' | 'credential-id';
   /** Timestamp when created */
   createdAt: number;
 }
