@@ -12,13 +12,22 @@ interface VoteNftFields {
 
 /**
  * Determine vote direction from VoteProofNFT URL
- * The Move contract encodes vote direction in the NFT image URL:
- * - vote_yes_nft.jpg = Yes vote
- * - vote_no_nft.jpg = No vote
+ * Supports both legacy Sirv CDN format and new IPFS format:
+ * - Legacy: vote_yes_nft.jpg / vote_no_nft.jpg
+ * - IPFS: CID-based URLs from Pinata gateway
  */
+const YES_VOTE_CID = "bafybeidqzi47x2iue4cyjsn6lduh33ca5y362s4k3dk3eh7ornsa4wzhea";
+const NO_VOTE_CID = "bafybeih5vmxazgn7jkyzt3ssi4kbia2pteaq7r6a6svhtmr37oh3c36iui";
+
 function isVoteYesFromUrl(url: string | undefined): boolean {
-  if (!url) return true; // fallback
-  return url.includes("vote_yes");
+  if (!url) return true;
+  // Legacy Sirv CDN format
+  if (url.includes("vote_yes")) return true;
+  if (url.includes("vote_no")) return false;
+  // New IPFS format
+  if (url.includes(YES_VOTE_CID)) return true;
+  if (url.includes(NO_VOTE_CID)) return false;
+  return true; // unknown format fallback
 }
 
 /**
@@ -29,7 +38,7 @@ export function useVoteHistory(limit = 5) {
   const { account } = useWallet();
   const { state: zkLoginState } = useZkLogin();
   const ownerAddress = account?.address || zkLoginState?.address;
-  const packageId = useNetworkVariable("packageId");
+  const originalPackageId = useNetworkVariable("originalPackageId");
   const dashboardId = useNetworkVariable("dashboardId");
 
   // Fetch user's Vote NFTs
@@ -45,11 +54,11 @@ export function useVoteHistory(limit = 5) {
         showContent: true,
       },
       filter: {
-        StructType: `${packageId}::proposal::VoteProofNFT`,
+        StructType: `${originalPackageId}::proposal::VoteProofNFT`,
       },
     },
     {
-      enabled: !!ownerAddress && !!packageId,
+      enabled: !!ownerAddress && !!originalPackageId,
     }
   );
 

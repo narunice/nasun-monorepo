@@ -285,7 +285,8 @@ export class CommonStack extends cdk.Stack {
         BARAM_PACKAGE_ID: "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
         // VotingPowerCertificate + Sponsored Transaction (V7 - 2026-02-04)
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0xe2fb0947f43473e21d1f8aef40e1d6799aa61b3d4fa80b6a1973d1e658de1256",
+        GOVERNANCE_ORIGINAL_PACKAGE_ID: process.env.GOVERNANCE_ORIGINAL_PACKAGE_ID || "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
         PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
@@ -301,6 +302,15 @@ export class CommonStack extends cdk.Stack {
     v3AccountsTable.grantReadData(governanceApiLambda);
     v3SeasonsTable.grantReadData(governanceApiLambda);
     v3SeasonAccountsTable.grantReadData(governanceApiLambda);
+
+    // Grant GSI query access (grantReadData only covers base table, not indexes)
+    governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["dynamodb:Query"],
+      resources: [
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/leaderboard-v3-accounts/index/*`,
+      ],
+    }));
 
     // Grant allowlist table read access for V2 voting power (Battalion + Genesis)
     const battalionTableRef = dynamodb.Table.fromTableName(this, "BattalionTableRef", "nasun-nft-whitelist");

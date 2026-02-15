@@ -319,8 +319,8 @@ fun issue_vote_proof(proposal: &Proposal, vote_yes: bool, ctx: &mut TxContext) {
     let proposal_address = object::id_address(proposal).to_string();
     description.append(proposal_address);
 
-    let vote_yes_image = new_unsafe_from_bytes(b"https://thrangra.sirv.com/vote_yes_nft.jpg");
-    let vote_no_image = new_unsafe_from_bytes(b"https://thrangra.sirv.com/vote_no_nft.jpg");
+    let vote_yes_image = new_unsafe_from_bytes(b"https://red-active-guanaco-484.mypinata.cloud/ipfs/bafybeidqzi47x2iue4cyjsn6lduh33ca5y362s4k3dk3eh7ornsa4wzhea");
+    let vote_no_image = new_unsafe_from_bytes(b"https://red-active-guanaco-484.mypinata.cloud/ipfs/bafybeih5vmxazgn7jkyzt3ssi4kbia2pteaq7r6a6svhtmr37oh3c36iui");
 
     let url = if (vote_yes) { vote_yes_image } else { vote_no_image };
 

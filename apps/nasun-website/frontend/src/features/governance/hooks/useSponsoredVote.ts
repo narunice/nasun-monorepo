@@ -17,6 +17,7 @@ import { SuiClient } from "@mysten/sui/client";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { useAuth } from "@/features/auth";
+import { useUserStore } from "@/store/userStore";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
 
@@ -34,6 +35,7 @@ export function useSponsoredVote() {
   const { account, status, getKeypair } = useWallet();
   const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const { user } = useAuth();
+  const { user: userProfile } = useUserStore();
 
   const vote = async (
     proposalId: string,
@@ -57,6 +59,7 @@ export function useSponsoredVote() {
           proposalId,
           twitterHandle: user?.twitterHandle,
           walletAddress: voterAddress,
+          ethAddress: userProfile?.linkedAccounts?.metamask?.walletAddress,
         }),
       });
 
@@ -113,7 +116,10 @@ export function useSponsoredVote() {
 
       if (!sponsorResponse.ok) {
         const err = await sponsorResponse.json();
-        throw new Error(err.error || "Failed to get sponsor signature");
+        if (sponsorResponse.status === 409) {
+          throw new Error("You have already voted on this proposal");
+        }
+        throw new Error(err.error || "Failed to sponsor transaction");
       }
 
       const { txBytes, sponsorSignature } = await sponsorResponse.json();
