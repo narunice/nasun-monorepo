@@ -4,12 +4,12 @@
     "title": "나선 네트워크",
     "mainTitle": "편견 없이. 최고를 사용하거나 직접 만들어라.",
     "subtitle": "아이디어, 기술 그리고 프로세스",
-    "nsnTitle": "NSN 네트워크",
+    "nsnTitle": "NASUN NETWORK",
     "visionTitle": "비전",
     "visionDescription": "나선 네트워크는 보안성, 속도, 확장성을 위해 설계된 차세대 프로그래밍 언어인 Move를 활용하는 고성능 레이어 1 블록체인 위에 구축되었습니다.\n\n최첨단 기술과 창작자 중심의 인프라를 통합함으로써, 우리는 아티스트와 팬들이 전례 없는 방식으로 디지털 경험을 구축하고, 공유하며, 소유할 수 있도록 지원합니다.",
     "layer1": "레이어 1 프로토콜",
-    "description": "나선 네트워크는 위임 지분 증명(DPoS)과 Mysticeti 합의 메커니즘을 활용하는 레이어 1 프로토콜입니다. 이 네트워크를 통해 사용자는 디지털 자산을 전송, 생성, 발전시키거나 스마트 계약과 상호작용할 수 있습니다.\n\n나선 네트워크의 네이티브 토큰인 NSN은 생태계 내 모든 활동의 동력이 됩니다. 트랜잭션 비용(가스)은 NSN으로 지불되며, 사용자는 토큰을 검증인에게 위임하여 네트워크 보안을 돕고 보상을 얻을 수 있습니다. 검증인은 커뮤니티와 인센티브를 일치시키고 네트워크의 보안과 성장을 지키기 위해 최소 수량의 NSN을 스테이킹해야 합니다.",
-    "buttonText": "자세히 알아보기"
+    "description": "Building community-owned IP at global scale.\nEntertainment. AI platforms. Financial services.\nDecentralized infrastructure, owned and governed by the community.",
+    "buttonText": "Explore Ecosystem"
   },
   "token": {
     "title": "나선 토큰",
@@ -67,23 +67,23 @@
     ]
   },
   "distribution": {
-    "title": "나선 토큰 분배",
-    "heading": "토큰 분배",
+    "title": "NSN TOKEN",
+    "heading": "NSN TOKEN",
     "subheading": "예비 배분",
     "description_top": "NSN 토큰의 총 공급량은 100억 개입니다.",
     "description_bottom": "이 내용은 초기 배분 계획이며, 구체적인 프로그램 할당, 토큰 분배를 위한 거버넌스 모델, 락업 및 베스팅 일정 등 세부 사항은 추후 공개될 예정입니다.\n우리는 런칭 이후 커뮤니티 피드백을 반영하여 이러한 세부 사항을 확정할 계획이며, 나선의 토크노믹스가 우리 생태계의 가치, 정서, 그리고 선의에 부합하도록 발전시켜 나갈 것입니다.",
     "supply": "총 공급량",
     "community_treasury": {
-      "title": "커뮤니티 트레저리 및 생태계"
+      "title": "커뮤니티 & 생태계"
     },
     "team_advisors": {
-      "title": "팀 및 어드바이저"
+      "title": "팀 & 어드바이저"
     },
     "public_sales": {
-      "title": "퍼블릭 세일 및 유동성"
+      "title": "퍼블릭 세일 & 유동성"
     },
     "early_contributors": {
-      "title": "초기 기여자, 테스터 및 캠페인"
+      "title": "초기 기여자"
     },
     "strategic_partners": {
       "title": "전략적 파트너"
