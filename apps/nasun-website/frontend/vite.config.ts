@@ -3,6 +3,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import fs from "fs";
 import { createHtmlPlugin } from "vite-plugin-html";
 
 export default defineConfig(({ mode }) => {
@@ -33,6 +34,16 @@ export default defineConfig(({ mode }) => {
   return {
     base: "/",
     plugins: [
+      // Sync src/assets/locales/ → public/locales/ so i18next-http-backend can load them.
+      // src/assets/locales/ is the single source of truth for all locale files.
+      {
+        name: "sync-locales",
+        buildStart() {
+          const src = path.resolve(__dirname, "src/assets/locales");
+          const dest = path.resolve(__dirname, "public/locales");
+          fs.cpSync(src, dest, { recursive: true });
+        },
+      },
       react(),
       createHtmlPlugin({
         minify: true,
