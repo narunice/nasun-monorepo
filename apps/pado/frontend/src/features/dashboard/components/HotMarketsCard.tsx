@@ -27,11 +27,11 @@ export function HotMarketsCard() {
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-bold text-theme-text-primary">Hot Markets</h2>
-        <Link to="/trade" className="text-xs text-pd3 hover:text-pd4">
+        <Link to="/trade" className="text-xs xl:text-sm text-pd3 hover:text-pd4">
           View All →
         </Link>
       </div>
-      <p className="text-xs text-theme-text-muted mb-3">Live market data</p>
+      <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Live market data</p>
 
       <div className="space-y-3">
         {isLoading ? (
@@ -52,16 +52,16 @@ export function HotMarketsCard() {
                 {market.symbol.charAt(0)}
               </div>
               <div>
-                <div className="font-medium text-theme-text-primary text-sm">{market.symbol}</div>
-                <div className="text-xs text-theme-text-muted">{market.name}</div>
+                <div className="font-medium text-theme-text-primary text-sm xl:text-base">{market.symbol}</div>
+                <div className="text-xs xl:text-sm text-theme-text-muted">{market.name}</div>
               </div>
             </div>
 
             <div className="text-right">
-              <div className="font-medium text-theme-text-primary text-sm">
+              <div className="font-medium text-theme-text-primary text-sm xl:text-base">
                 {formatPrice(market.price)}
               </div>
-              <div className={`text-xs font-medium ${
+              <div className={`text-xs xl:text-sm font-medium ${
                 market.change24h == null
                   ? 'text-theme-text-muted'
                   : market.change24h >= 0

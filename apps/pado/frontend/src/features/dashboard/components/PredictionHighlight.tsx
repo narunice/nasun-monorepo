@@ -28,8 +28,8 @@ export function PredictionHighlight() {
     return (
       <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
         <h2 className="font-bold text-theme-text-primary mb-1">Prediction Markets</h2>
-        <p className="text-xs text-theme-text-muted mb-3">Bet on future events and win rewards</p>
-        <Link to="/predict" className="text-sm text-pd3 hover:text-pd4 font-medium">
+        <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Bet on future events and win rewards</p>
+        <Link to="/predict" className="text-sm xl:text-base text-pd3 hover:text-pd4 font-medium">
           Explore Markets &rarr;
         </Link>
       </div>
@@ -40,11 +40,11 @@ export function PredictionHighlight() {
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-bold text-theme-text-primary">Prediction Markets</h2>
-        <Link to="/predict" className="text-xs text-pd3 hover:text-pd4">
+        <Link to="/predict" className="text-xs xl:text-sm text-pd3 hover:text-pd4">
           View All →
         </Link>
       </div>
-      <p className="text-xs text-theme-text-muted mb-3">Bet on future events and win rewards</p>
+      <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Bet on future events and win rewards</p>
 
       <div className="space-y-3">
         {markets.slice(0, 3).map(({ market, yesOrderbook }) => {
@@ -60,7 +60,7 @@ export function PredictionHighlight() {
               to={`/predict/${market.id}`}
               className="block p-3 -mx-1 rounded-lg hover:bg-theme-bg-tertiary transition-colors"
             >
-              <p className="text-sm font-medium text-theme-text-primary line-clamp-1 mb-2">
+              <p className="text-sm xl:text-base font-medium text-theme-text-primary line-clamp-1 mb-2">
                 {market.question}
               </p>
               <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ export function PredictionHighlight() {
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-2 text-xs xl:text-sm">
                   <span className="text-green-500 font-medium">{Math.round(yesProbability)}%</span>
                   <span className="text-theme-text-muted">YES</span>
                 </div>

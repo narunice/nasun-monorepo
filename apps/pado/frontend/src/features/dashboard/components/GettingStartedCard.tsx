@@ -88,8 +88,8 @@ export function GettingStartedCard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-theme-text-primary">Getting Started</h3>
-          <p className="text-xs text-theme-text-muted mt-0.5">
+          <h3 className="text-sm xl:text-base font-semibold text-theme-text-primary">Getting Started</h3>
+          <p className="text-xs xl:text-sm text-theme-text-muted mt-0.5">
             {completedCount}/{steps.length} completed
           </p>
         </div>
@@ -131,13 +131,13 @@ export function GettingStartedCard() {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium ${
+              <p className={`text-sm xl:text-base font-medium ${
                 step.completed ? 'text-theme-text-muted line-through' : 'text-theme-text-primary'
               }`}>
                 {i + 1}. {step.label}
               </p>
               {!step.completed && (
-                <p className="text-xs text-theme-text-muted mt-0.5">{step.description}</p>
+                <p className="text-xs xl:text-sm text-theme-text-muted mt-0.5">{step.description}</p>
               )}
             </div>
 
@@ -145,7 +145,7 @@ export function GettingStartedCard() {
             {!step.completed && step.action && 'to' in step.action && (
               <Link
                 to={step.action.to}
-                className="shrink-0 text-xs font-medium text-pd2 hover:text-pd3 transition-colors"
+                className="shrink-0 text-xs xl:text-sm font-medium text-pd2 hover:text-pd3 transition-colors"
               >
                 {step.action.label} &rarr;
               </Link>

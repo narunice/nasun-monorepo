@@ -112,7 +112,7 @@ export function HomePage() {
 
           {/* Footer Tagline */}
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 text-center">
-            <p className="text-sm text-theme-text-muted">
+            <p className="text-sm xl:text-base text-theme-text-muted">
               Trade, predict, and earn — all in one place.
             </p>
           </div>
