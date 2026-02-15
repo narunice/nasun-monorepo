@@ -8,6 +8,7 @@ import { getAllBalances } from '../sui/client';
 import type { MultiTokenBalanceInfo, TokenBalance } from '../types';
 import { useWallet } from './useWallet';
 import { useZkLoginStore } from '../stores/zkLoginStore';
+import { usePasskey } from './usePasskey';
 import { useChainStore } from './useChain';
 import { isNasunChain } from '../config/chains';
 
@@ -30,14 +31,15 @@ export interface UseMultiBalanceOptions {
 export function useMultiBalance(options?: UseMultiBalanceOptions) {
   const { account, status } = useWallet();
   const { state: zkState, isConnected: isZkLoggedIn } = useZkLoginStore();
+  const { isUnlocked: isPasskeyUnlocked, address: passkeyAddress } = usePasskey();
   const chainId = useChainStore((s) => s.currentChainId);
 
-  // Determine target address (local wallet or zkLogin)
-  const targetAddress = options?.address ?? account?.address ?? zkState?.address;
+  // Determine target address (local wallet, zkLogin, or passkey)
+  const targetAddress = options?.address ?? account?.address ?? zkState?.address ?? passkeyAddress;
 
   // Only query on Nasun chains (external Move chains don't have Nasun tokens)
   const isNasun = isNasunChain(chainId);
-  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn) && isNasun;
+  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked) && isNasun;
 
   return useQuery<MultiTokenBalanceInfo>({
     queryKey: [MULTI_BALANCE_QUERY_KEY, chainId, targetAddress],
@@ -88,10 +90,11 @@ export function useRefreshMultiBalance() {
   const queryClient = useQueryClient();
   const { account } = useWallet();
   const { state: zkState } = useZkLoginStore();
+  const { address: passkeyAddress } = usePasskey();
   const chainId = useChainStore((s) => s.currentChainId);
 
-  // Use wallet address or zkLogin address
-  const address = account?.address ?? zkState?.address;
+  // Use wallet address, zkLogin address, or passkey address
+  const address = account?.address ?? zkState?.address ?? passkeyAddress;
 
   return async () => {
     if (address) {
