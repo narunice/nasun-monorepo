@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet, useRefreshBalance, requestFaucet } from '@nasun/wallet';
+import { useWallet, useRefreshBalance, requestFaucet, usePasskey } from '@nasun/wallet';
 
 interface FaucetButtonProps {
   // Button style variant
@@ -17,7 +17,10 @@ interface FaucetButtonProps {
 
 export function FaucetButton({ variant = 'default', className = '', onSuccess }: FaucetButtonProps) {
   const { status, account } = useWallet();
+  const { isUnlocked: isPasskeyUnlocked, address: passkeyAddress } = usePasskey();
   const refreshBalance = useRefreshBalance();
+
+  const faucetAddress = account?.address || passkeyAddress;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,14 +28,14 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
   const [cooldown, setCooldown] = useState(false);
 
   const handleRequest = useCallback(async () => {
-    if (!account?.address || cooldown) return;
+    if (!faucetAddress || cooldown) return;
 
     setIsLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
-      await requestFaucet(account.address);
+      await requestFaucet(faucetAddress);
       setSuccess(true);
 
       // Refresh balance
@@ -59,10 +62,10 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
     } finally {
       setIsLoading(false);
     }
-  }, [account?.address, refreshBalance, onSuccess, cooldown]);
+  }, [faucetAddress, refreshBalance, onSuccess, cooldown]);
 
   // Wallet not connected
-  if (status !== 'unlocked' || !account) {
+  if (status !== 'unlocked' && !isPasskeyUnlocked) {
     return null;
   }
 

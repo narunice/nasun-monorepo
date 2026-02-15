@@ -12,6 +12,7 @@ import {
   useLinkBalance,
   useWallet,
   useZkLogin,
+  usePasskey,
 } from '@nasun/wallet';
 import type { LinkData, ZkLoginProvider } from '@nasun/wallet';
 import { SocialLoginButtons } from '../social/SocialLoginButtons';
@@ -60,6 +61,7 @@ export function LinkClaimPage({
 }: LinkClaimPageProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn, login: zkLogin } = useZkLogin();
+  const { isUnlocked: isPasskeyUnlocked } = usePasskey();
   const { claim, parseUrl, isLoading: isClaiming, error: claimError, canClaim } = useClaimFromUrl();
   const linkStatus = useLinkStatus(linkData);
   const { hasFunds, isLoading: isLoadingBalance } = useLinkBalance(
@@ -72,7 +74,7 @@ export function LinkClaimPage({
   const [claimedAmount, setClaimedAmount] = useState<bigint | null>(null);
   const [claimedTxDigest, setClaimedTxDigest] = useState<string | null>(null);
 
-  const isConnected = status === 'unlocked' || isZkLoggedIn;
+  const isConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
 
   // Parse link to get basic info
   let parsedLink: { linkId: string; secret: string } | null = null;

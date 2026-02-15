@@ -10,6 +10,7 @@ import {
   useBalance,
   useRefreshBalance,
   useWallet,
+  usePasskey,
   useChain,
   useEVMBalance,
   getStoredEVMAddress,
@@ -24,6 +25,7 @@ interface BalanceDisplayProps {
 
 export function BalanceDisplay({ compact = false, className = '' }: BalanceDisplayProps) {
   const { status } = useWallet();
+  const { isUnlocked: isPasskeyUnlocked } = usePasskey();
   const { isEVM, chain } = useChain();
 
   // Move balance (Nasun)
@@ -46,7 +48,7 @@ export function BalanceDisplay({ compact = false, className = '' }: BalanceDispl
   } = useEVMBalance(evmAddressForHook);
 
   // Wallet not connected
-  if (status !== 'unlocked') {
+  if (status !== 'unlocked' && !isPasskeyUnlocked) {
     return null;
   }
 
