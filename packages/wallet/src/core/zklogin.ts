@@ -49,6 +49,9 @@ const ZKLOGIN_STATE_KEY = 'nasun:zklogin:state';
 /** Session storage key for OAuth CSRF state */
 const OAUTH_CSRF_STATE_KEY = 'nasun:zklogin:oauth_csrf_state';
 
+/** Session storage key for return URL after zkLogin */
+const ZKLOGIN_RETURN_URL_KEY = 'nasun:zklogin:return_url';
+
 /** zkLogin configuration (set via configureZkLogin) */
 let zkLoginConfig: ZkLoginConfig | null = null;
 
@@ -628,8 +631,26 @@ export async function startZkLogin(provider: ZkLoginProvider): Promise<void> {
   // 2. Build OAuth URL
   const oauthUrl = buildOAuthUrl(provider, session.nonce);
 
-  // 3. Redirect to OAuth provider
+  // 3. Save current page for post-login redirect
+  const returnUrl = window.location.pathname + window.location.search;
+  sessionStorage.setItem(ZKLOGIN_RETURN_URL_KEY, returnUrl);
+
+  // 4. Redirect to OAuth provider
   window.location.href = oauthUrl;
+}
+
+/**
+ * Get saved return URL for post-zkLogin redirect
+ */
+export function getZkLoginReturnUrl(): string | null {
+  return sessionStorage.getItem(ZKLOGIN_RETURN_URL_KEY);
+}
+
+/**
+ * Clear saved return URL
+ */
+export function clearZkLoginReturnUrl(): void {
+  sessionStorage.removeItem(ZKLOGIN_RETURN_URL_KEY);
 }
 
 /**
