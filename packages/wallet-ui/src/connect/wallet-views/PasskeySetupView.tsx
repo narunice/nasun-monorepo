@@ -1,20 +1,28 @@
 /**
  * Passkey wallet setup view.
  * Registers a new passkey credential and creates a wallet.
+ *
+ * Receives createWallet/isLoading/error from the parent's usePasskey() instance
+ * to ensure keypair state is shared (fixes disconnected-after-creation bug).
  */
 
 import { useState } from "react";
-import { usePasskey } from "@nasun/wallet";
+import type { PasskeyError } from "@nasun/wallet";
 
 export function PasskeySetupView({
   onBack,
   onCreated,
+  createWallet,
+  isLoading,
+  error,
 }: {
   onBack: () => void;
   onCreated: (mnemonic: string) => void;
+  createWallet: (userName: string) => Promise<{ address: string; mnemonic: string }>;
+  isLoading: boolean;
+  error: PasskeyError | null;
 }) {
   const [userName, setUserName] = useState("");
-  const { createWallet, isLoading, error } = usePasskey();
 
   const handleCreate = async () => {
     if (!userName.trim()) return;
