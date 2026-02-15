@@ -12,6 +12,7 @@ import {
   useBalance,
   useWallet,
   useZkLogin,
+  usePasskey,
   useLedger,
   useChain,
   useEVMBalance,
@@ -48,6 +49,7 @@ const MIN_GAS_BALANCE = 0.01;
 export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecipient }: SendTransactionProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const { isUnlocked: isPasskeyUnlocked, address: passkeyAddress } = usePasskey();
   const { isConnected: isLedgerConnected } = useLedger();
   const { chain, isEVM, isExternalMove } = useChain();
   const { data: balances } = useMultiBalance();
@@ -95,7 +97,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   const { recordTransaction } = useAddressBook();
 
   // Get connected address (Move chain) and EVM address
-  const connectedAddress = account?.address || zkState?.address;
+  const connectedAddress = account?.address || zkState?.address || passkeyAddress;
   const storedEVMAddress = isEVM ? getStoredEVMAddress() : null;
   const evmAddressForBalance = storedEVMAddress ?? undefined;
 
@@ -215,8 +217,8 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   const nativeSymbol = (isEVM || isExternalMove) ? chain.nativeCurrency.symbol : 'NSN';
   const hasEnoughGas = selectedToken === nativeSymbol || getNativeBalance() >= MIN_GAS_BALANCE;
 
-  // Check if connected via traditional wallet OR zkLogin
-  const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  // Check if connected via traditional wallet, zkLogin, or passkey
+  const isWalletConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Wallet not connected
   if (!isWalletConnected || !connectedAddress) {

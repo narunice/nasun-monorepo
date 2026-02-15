@@ -3,7 +3,7 @@
  * Displays multi-chain asset summary with USD valuation
  */
 
-import { usePortfolio, useWallet, useRefreshPortfolio, useZkLogin } from '@nasun/wallet';
+import { usePortfolio, useWallet, useRefreshPortfolio, useZkLogin, usePasskey } from '@nasun/wallet';
 import type { TokenAsset, ChainPortfolio } from '@nasun/wallet';
 import { PanelHeader } from '../shared';
 
@@ -134,11 +134,12 @@ export function PortfolioPanel({
 }: PortfolioPanelProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isUnlocked: isPasskeyUnlocked } = usePasskey();
   const { data: portfolio, isLoading, error } = usePortfolio();
   const refreshPortfolio = useRefreshPortfolio();
 
-  // Not connected - check both wallet and zkLogin
-  const isConnected = status === 'unlocked' || isZkLoggedIn;
+  // Not connected - check wallet, zkLogin, and passkey
+  const isConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   if (!isConnected) {
     return (
       <div className={`text-center py-6 ${className}`}>

@@ -6,6 +6,7 @@ import {
   useMultiBalance,
   useRefreshMultiBalance,
   useWallet,
+  usePasskey,
   type TokenBalance,
 } from '@nasun/wallet';
 import { TokenFaucetButton } from './TokenFaucetButton';
@@ -31,11 +32,12 @@ export function MultiBalanceDisplay({
   showFaucet = false,
 }: MultiBalanceDisplayProps) {
   const { status } = useWallet();
+  const { isUnlocked: isPasskeyUnlocked } = usePasskey();
   const { data: balances, isLoading, error, refetch } = useMultiBalance();
   const refreshBalance = useRefreshMultiBalance();
 
   // Wallet not connected
-  if (status !== 'unlocked') {
+  if (status !== 'unlocked' && !isPasskeyUnlocked) {
     return null;
   }
 
