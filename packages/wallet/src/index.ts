@@ -328,6 +328,8 @@ export {
   completeZkLogin,
   isZkLoginSessionValid,
   disconnectZkLogin,
+  getZkLoginReturnUrl,
+  clearZkLoginReturnUrl,
 } from './core/zklogin';
 
 // ============================================
@@ -362,6 +364,7 @@ export {
   addCredentialToWallet,
   removeCredentialFromWallet,
   updateCredentialLastUsed,
+  base64urlEncode,
 } from './core/passkey';
 
 // ============================================

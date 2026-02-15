@@ -3,6 +3,10 @@
  *
  * React hook for passkey-based wallet authentication.
  * Enables biometric login (Face ID, Touch ID, Windows Hello).
+ *
+ * Security: Uses WebAuthn PRF extension when available for true
+ * cryptographic protection. Falls back to credential-ID based
+ * key derivation when PRF is not supported.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -28,6 +32,7 @@ import {
   addCredentialToWallet,
   removeCredentialFromWallet,
   updateCredentialLastUsed,
+  base64urlEncode,
 } from '../core/passkey';
 
 /**
@@ -65,13 +70,13 @@ export interface UsePasskeyResult {
   /** Wallet address */
   address: string | null;
   /** Register a new passkey and create wallet */
-  createWallet: (userName: string, credentialName?: string) => Promise<string>;
+  createWallet: (userName: string, credentialName?: string) => Promise<{ address: string; mnemonic: string }>;
   /** Authenticate with passkey to unlock wallet */
   unlock: () => Promise<void>;
   /** Lock the wallet (clear keypair from memory) */
   lock: () => void;
-  /** Delete wallet and all credentials */
-  deleteWallet: () => void;
+  /** Delete wallet and all credentials (requires biometric re-auth) */
+  deleteWallet: () => Promise<void>;
   /** Add a new credential to existing wallet */
   addCredential: (credentialName?: string) => Promise<void>;
   /** Remove a credential from wallet */
@@ -116,13 +121,10 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     }) => {
       setError(null);
 
-      // Generate user ID from username
-      const userId = btoa(userName)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
+      // Generate user ID from username (safe for all Unicode characters)
+      const userId = base64urlEncode(new TextEncoder().encode(userName));
 
-      // Register passkey
+      // Register passkey (biometric prompt)
       const registrationOptions: PasskeyRegistrationOptions = {
         userId,
         userName,
@@ -132,16 +134,20 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         userVerification: 'required',
       };
 
-      const { credential } = await registerPasskey(registrationOptions);
+      const { credential, prfSupported } = await registerPasskey(registrationOptions);
 
-      // Authenticate immediately to get key material
-      const authResult = await authenticateWithPasskey({
-        allowCredentials: [credential.id],
-        userVerification: 'required',
-      });
+      // If PRF is supported, authenticate to get PRF output for encryption
+      let prfOutput: ArrayBuffer | undefined;
+      if (prfSupported) {
+        const authResult = await authenticateWithPasskey({
+          allowCredentials: [credential.id],
+          userVerification: 'required',
+        });
+        prfOutput = authResult.prfOutput;
+      }
 
-      // Create wallet with the credential
-      const result = await createPasskeyWallet(credential, authResult);
+      // Create wallet with credential (and PRF output if available)
+      const result = await createPasskeyWallet(credential, prfOutput);
 
       return result;
     },
@@ -171,14 +177,19 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
 
       setError(null);
 
-      // Authenticate with any registered credential
+      // Authenticate with passkey (biometric gate — proves device ownership)
       const authResult = await authenticateWithPasskey({
         allowCredentials: wallet.credentials.map((c) => c.id),
         userVerification: 'required',
       });
 
-      // Unlock wallet
-      const unlockedKeypair = await unlockPasskeyWallet(wallet, authResult);
+      // Verify the authenticated credential belongs to this wallet
+      if (!wallet.credentials.some((c) => c.id === authResult.credentialId)) {
+        throw new PasskeyError('CREDENTIAL_NOT_FOUND', 'Authenticated with unrecognized credential');
+      }
+
+      // Decrypt wallet (PRF output used if wallet was created with PRF)
+      const unlockedKeypair = await unlockPasskeyWallet(wallet, authResult.prfOutput);
 
       // Update last used timestamp
       const updatedWallet = updateCredentialLastUsed(wallet, authResult.credentialId);
@@ -263,11 +274,11 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     },
   });
 
-  // Create wallet function
+  // Create wallet function — returns { address, mnemonic } for backup
   const createWallet = useCallback(
-    async (userName: string, credentialName?: string): Promise<string> => {
+    async (userName: string, credentialName?: string): Promise<{ address: string; mnemonic: string }> => {
       const result = await createWalletMutation.mutateAsync({ userName, credentialName });
-      return result.wallet.address;
+      return { address: result.wallet.address, mnemonic: result.mnemonic };
     },
     [createWalletMutation]
   );
@@ -277,19 +288,30 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     await unlockMutation.mutateAsync();
   }, [unlockMutation]);
 
-  // Lock function
+  // Lock function — drop keypair reference so GC can collect it.
+  // Note: JS strings are immutable; we cannot reliably zero the keypair's
+  // internal secret key in memory. Clearing the React state reference is
+  // the strongest measure available in a browser environment.
   const lock = useCallback(() => {
     setKeypair(null);
   }, []);
 
-  // Delete wallet function
-  const deleteWallet = useCallback(() => {
+  // Delete wallet function — requires biometric re-authentication
+  const deleteWallet = useCallback(async () => {
+    if (wallet) {
+      // Require biometric re-authentication before destructive action
+      await authenticateWithPasskey({
+        allowCredentials: wallet.credentials.map((c) => c.id),
+        userVerification: 'required',
+      });
+    }
+
     clearPasskeyWallet();
     setWallet(null);
     setKeypair(null);
     setError(null);
     queryClient.invalidateQueries({ queryKey: ['passkey'] });
-  }, [queryClient]);
+  }, [wallet, queryClient]);
 
   // Add credential function
   const addCredential = useCallback(
