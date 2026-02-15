@@ -39,7 +39,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (!isConnected) {
     return (
-      <OuterBox color="nw2" padding="sm" className={className}>
+      <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center">
@@ -52,7 +52,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (isLoading) {
     return (
-      <OuterBox color="nw2" padding="sm" className={className}>
+      <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-nw4 border-t-transparent" />
@@ -62,7 +62,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   }
 
   return (
-    <OuterBox color="nw2" padding="sm" className={className}>
+    <OuterBox color="c5" padding="sm" className={className}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 mb-4">

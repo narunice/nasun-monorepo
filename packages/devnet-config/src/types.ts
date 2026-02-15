@@ -51,6 +51,8 @@ export interface LotteryConfig {
 
 export interface GovernanceConfig {
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
+  upgradeCap?: ObjectId;
   dashboard: ObjectId;
   adminCap: ObjectId;
   votingPowerOracle: ObjectId;

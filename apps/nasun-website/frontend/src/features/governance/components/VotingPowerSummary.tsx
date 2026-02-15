@@ -10,6 +10,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useAuth } from "@/features/auth";
+import { useUserStore } from "@/store/userStore";
 import { OuterBox, DividerBox } from "@/components/ui";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { InfoCircledIcon, ChevronDownIcon, CheckCircledIcon } from "@radix-ui/react-icons";
@@ -49,15 +50,18 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
   const [showHowItWorks, setShowHowItWorks] = useState(false);
 
+  const { user: userProfile } = useUserStore();
+
   const hasLinkedX = isAuthenticated && user?.provider === "Twitter";
   const walletAddress = isZkConnected ? zkState?.address : account?.address;
+  const ethAddress = userProfile?.linkedAccounts?.metamask?.walletAddress;
 
   // Fetch voting power when connected
   useEffect(() => {
     if (isConnected && walletAddress) {
-      fetchVotingPower(user?.twitterHandle, walletAddress);
+      fetchVotingPower(user?.twitterHandle, walletAddress, ethAddress);
     }
-  }, [isConnected, walletAddress, user?.twitterHandle, fetchVotingPower]);
+  }, [isConnected, walletAddress, ethAddress, user?.twitterHandle, fetchVotingPower]);
 
   const totalPower = votingPower?.totalVotingPower || 1;
   const breakdown = votingPower?.breakdown;

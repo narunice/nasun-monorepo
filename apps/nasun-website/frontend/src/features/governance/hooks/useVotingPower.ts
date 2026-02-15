@@ -35,7 +35,7 @@ interface UseVotingPowerReturn {
   votingPower: VotingPowerData | null;
   isLoading: boolean;
   error: string | null;
-  fetchVotingPower: (twitterHandle?: string, walletAddress?: string) => Promise<void>;
+  fetchVotingPower: (twitterHandle?: string, walletAddress?: string, ethAddress?: string) => Promise<void>;
 }
 
 export function useVotingPower(): UseVotingPowerReturn {
@@ -43,7 +43,7 @@ export function useVotingPower(): UseVotingPowerReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchVotingPower = useCallback(async (twitterHandle?: string, walletAddress?: string) => {
+  const fetchVotingPower = useCallback(async (twitterHandle?: string, walletAddress?: string, ethAddress?: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -51,6 +51,7 @@ export function useVotingPower(): UseVotingPowerReturn {
       const params = new URLSearchParams();
       if (twitterHandle) params.set("twitterHandle", twitterHandle);
       if (walletAddress) params.set("walletAddress", walletAddress);
+      if (ethAddress) params.set("ethAddress", ethAddress);
 
       const response = await fetch(`${GOVERNANCE_API_URL}/voting-power?${params.toString()}`);
 

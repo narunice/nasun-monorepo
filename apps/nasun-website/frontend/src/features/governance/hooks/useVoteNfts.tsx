@@ -6,7 +6,7 @@ export const useVoteNfts = () => {
   // Support both regular wallet and zkLogin
   const { account } = useWallet();
   const { state: zkLoginState } = useZkLogin();
-  const packageId = useNetworkVariable("packageId");
+  const originalPackageId = useNetworkVariable("originalPackageId");
 
   // Use wallet address or zkLogin address
   const ownerAddress = account?.address || zkLoginState?.address;
@@ -19,7 +19,7 @@ export const useVoteNfts = () => {
         showContent: true,
       },
       filter: {
-        StructType: `${packageId}::proposal::VoteProofNFT`,
+        StructType: `${originalPackageId}::proposal::VoteProofNFT`,
       },
     },
     {
