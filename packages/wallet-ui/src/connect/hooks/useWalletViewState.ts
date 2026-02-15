@@ -4,12 +4,38 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useWallet, getPendingBackupMnemonic } from "@nasun/wallet";
+import { useWallet, getPendingBackupMnemonic, secureZeroString } from "@nasun/wallet";
 import type { ViewMode } from "../types";
 import type { TabMode } from "../TabBar";
 import type { NFTInfo } from "@nasun/wallet";
 
 export type ViewportTier = "mobile" | "tablet" | "desktop";
+
+// Pending passkey backup mnemonic — module-level to survive component unmount/remount
+let pendingPasskeyMnemonic: string | null = null;
+let mnemonicClearTimer: ReturnType<typeof setTimeout> | null = null;
+const MNEMONIC_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Get the pending passkey mnemonic (non-destructive read). */
+export function getPendingPasskeyMnemonic(): string | null {
+  return pendingPasskeyMnemonic;
+}
+
+/** Set or clear the pending passkey mnemonic. Auto-clears after 5 minutes. */
+export function setPendingPasskeyMnemonic(mnemonic: string | null): void {
+  if (mnemonicClearTimer) {
+    clearTimeout(mnemonicClearTimer);
+    mnemonicClearTimer = null;
+  }
+  pendingPasskeyMnemonic = mnemonic;
+  if (mnemonic !== null) {
+    mnemonicClearTimer = setTimeout(() => {
+      if (pendingPasskeyMnemonic) secureZeroString(pendingPasskeyMnemonic);
+      pendingPasskeyMnemonic = null;
+      mnemonicClearTimer = null;
+    }, MNEMONIC_TIMEOUT_MS);
+  }
+}
 
 export function useWalletViewState() {
   const { clearError } = useWallet();
@@ -18,14 +44,19 @@ export function useWalletViewState() {
   // backup view shows from the very first render (no effect delay).
   // This handles WalletConnect unmount/remount mid-backup (e.g., Pado homepage).
   const pendingBackup = getPendingBackupMnemonic();
+  const pendingPasskey = getPendingPasskeyMnemonic();
 
   // View & form state
-  const [viewMode, setViewMode] = useState<ViewMode>(pendingBackup ? "create-backup" : "main");
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    pendingBackup ? "create-backup"
+    : pendingPasskey ? "passkey-backup"
+    : "main"
+  );
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showDropdown, setShowDropdown] = useState(!!pendingBackup);
-  const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup);
+  const [showDropdown, setShowDropdown] = useState(!!pendingBackup || !!pendingPasskey);
+  const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup ?? pendingPasskey);
   const [activeTab, setActiveTab] = useState<TabMode>("assets");
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [sendRecipient, setSendRecipient] = useState<string | undefined>(undefined);
@@ -52,7 +83,7 @@ export function useWalletViewState() {
 
   // Save backup pending state to localStorage
   useEffect(() => {
-    if (viewMode === "create-backup" && mnemonic) {
+    if ((viewMode === "create-backup" || viewMode === "passkey-backup") && mnemonic) {
       try {
         localStorage.setItem("nasun_wallet_backup_pending", "true");
       } catch {
@@ -83,8 +114,8 @@ export function useWalletViewState() {
         !isInsideMobileDropdown &&
         !isInsideModal
       ) {
-        // Keep dropdown open during wallet creation flow — user must complete before closing
-        if (viewMode === "create-backup" || viewMode === "create-auto-lock") return;
+        // Keep dropdown open during wallet creation/backup flow — user must complete before closing
+        if (viewMode === "create-backup" || viewMode === "create-auto-lock" || viewMode === "passkey-backup") return;
 
         setShowDropdown(false);
         setViewMode("main");

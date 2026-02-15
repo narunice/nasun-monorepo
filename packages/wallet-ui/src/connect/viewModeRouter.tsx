@@ -22,6 +22,7 @@ import {
   LedgerSelectView,
   LedgerConnectedView,
   NsaViewRouter,
+  PasskeySetupView,
   BackupView,
   ImportView,
   ExportView,
@@ -35,6 +36,8 @@ import {
   AddTokenView,
 } from "./wallet-views";
 import { WCViewRouter } from "../walletconnect";
+import { setPendingPasskeyMnemonic } from "./hooks/useWalletViewState";
+import { secureZeroString } from "@nasun/wallet";
 
 type ViewRenderer = (s: WalletConnectStateReturn) => ReactNode | null;
 
@@ -42,6 +45,38 @@ type ViewRenderer = (s: WalletConnectStateReturn) => ReactNode | null;
 const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   "create-backup": (s) =>
     s.mnemonic ? <BackupView mnemonic={s.mnemonic} onConfirm={s.handleBackupConfirmed} /> : null,
+
+  "passkey-setup": (s) => (
+    <PasskeySetupView
+      onBack={() => s.setViewMode("main")}
+      onCreated={(mnemonic) => {
+        setPendingPasskeyMnemonic(mnemonic);
+        s.setMnemonic(mnemonic);
+        s.setViewMode("passkey-backup");
+      }}
+    />
+  ),
+
+  "passkey-backup": (s) =>
+    s.mnemonic ? (
+      <BackupView
+        mnemonic={s.mnemonic}
+        onConfirm={() => {
+          // Best-effort secure cleanup of mnemonic from memory
+          if (s.mnemonic) {
+            secureZeroString(s.mnemonic);
+          }
+          setPendingPasskeyMnemonic(null);
+          s.setMnemonic(null);
+          s.setViewMode("main");
+          try {
+            localStorage.removeItem("nasun_wallet_backup_pending");
+          } catch {
+            // Ignore localStorage errors
+          }
+        }}
+      />
+    ) : null,
 
   "create-auto-lock": (s) => (
     <AutoLockSetupView onComplete={s.handleAutoLockComplete} />
@@ -150,8 +185,8 @@ function renderByWalletStatus(
     );
   }
 
-  // Disconnected state
-  if (s.status === "disconnected" && !s.isZkLoggedIn && !s.isLedgerConnected) {
+  // Disconnected state (no auth method active)
+  if (s.status === "disconnected" && !s.isZkLoggedIn && !s.isLedgerConnected && !s.isPasskeyUnlocked) {
     return (
       <DisconnectedView
         handleSocialLogin={s.handleSocialLogin}
@@ -159,6 +194,11 @@ function renderByWalletStatus(
         loadingProvider={s.loadingProvider}
         zkError={s.zkError}
         setViewMode={s.setViewMode}
+        isPasskeySupported={s.isPasskeySupported}
+        isPasskeyPlatformAvailable={s.isPasskeyPlatformAvailable}
+        passkeyWallet={s.passkeyWallet}
+        onPasskeyUnlock={s.passkeyUnlock}
+        passkeyIsLoading={s.isPasskeyLoading}
       />
     );
   }
@@ -175,6 +215,25 @@ function renderByWalletStatus(
         {...connectedViewSharedProps}
         onSignOut={() => {
           s.zkLogout();
+          s.setShowDropdown(false);
+        }}
+      />
+    );
+  }
+
+  // Passkey connected state (after zkLogin, before ledger/self-custody)
+  if (s.isPasskeyUnlocked && s.passkeyAddress) {
+    const credName = s.passkeyCredentials?.[0]?.name ?? "Passkey Wallet";
+    return (
+      <ConnectedView
+        header={{
+          variant: "passkey",
+          address: s.passkeyAddress,
+          credentialName: credName,
+        }}
+        {...connectedViewSharedProps}
+        onSignOut={() => {
+          s.passkeyLock();
           s.setShowDropdown(false);
         }}
       />
