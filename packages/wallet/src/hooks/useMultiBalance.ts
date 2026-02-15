@@ -31,15 +31,18 @@ export interface UseMultiBalanceOptions {
 export function useMultiBalance(options?: UseMultiBalanceOptions) {
   const { account, status } = useWallet();
   const { state: zkState, isConnected: isZkLoggedIn } = useZkLoginStore();
-  const { isUnlocked: isPasskeyUnlocked, address: passkeyAddress } = usePasskey();
+  const { address: passkeyAddress } = usePasskey();
   const chainId = useChainStore((s) => s.currentChainId);
 
   // Determine target address (local wallet, zkLogin, or passkey)
   const targetAddress = options?.address ?? account?.address ?? zkState?.address ?? passkeyAddress;
 
   // Only query on Nasun chains (external Move chains don't have Nasun tokens)
+  // Note: passkeyAddress check uses !!passkeyAddress (not isPasskeyUnlocked) because
+  // each usePasskey() instance has independent keypair state. Balance queries are
+  // read-only, so having the address from localStorage is sufficient.
   const isNasun = isNasunChain(chainId);
-  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked) && isNasun;
+  const isEnabled = options?.enabled !== false && !!targetAddress && (status === 'unlocked' || isZkLoggedIn || !!passkeyAddress) && isNasun;
 
   return useQuery<MultiTokenBalanceInfo>({
     queryKey: [MULTI_BALANCE_QUERY_KEY, chainId, targetAddress],
