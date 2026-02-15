@@ -7,6 +7,7 @@ export { DisconnectedView } from "./DisconnectedView";
 export { CreateWalletView } from "./CreateWalletView";
 export { LedgerConnectView, LedgerSelectView, LedgerConnectedView } from "./LedgerViews";
 export { NsaViewRouter } from "./NsaViews";
+export { PasskeySetupView } from "./PasskeySetupView";
 export {
   BackupView,
   AutoLockSetupView,

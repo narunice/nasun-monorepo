@@ -5,7 +5,7 @@
  * Shows different states: setup, unlock, or connected.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePasskey, shortenAddress } from '@nasun/wallet';
 
 export interface PasskeyButtonProps {
@@ -61,30 +61,36 @@ export function PasskeyButton({
 
     setViewState('authenticating');
     try {
-      const newAddress = await createWallet(userName);
+      const { address: newAddress } = await createWallet(userName);
       onConnect?.(newAddress);
       setViewState('idle');
       setUserName('');
-    } catch (err) {
-      console.error('Passkey setup failed:', err);
+    } catch {
       setViewState('setup');
     }
   }, [userName, createWallet, onConnect]);
+
+  // Track previous unlock state to detect transitions
+  const wasUnlocked = useRef(isUnlocked);
+
+  // Fire onConnect when wallet transitions from locked to unlocked
+  useEffect(() => {
+    if (!wasUnlocked.current && isUnlocked && address) {
+      onConnect?.(address);
+    }
+    wasUnlocked.current = isUnlocked;
+  }, [isUnlocked, address, onConnect]);
 
   // Handle passkey unlock (authentication)
   const handleUnlock = useCallback(async () => {
     setViewState('authenticating');
     try {
       await unlock();
-      if (address) {
-        onConnect?.(address);
-      }
       setViewState('idle');
-    } catch (err) {
-      console.error('Passkey unlock failed:', err);
+    } catch {
       setViewState('idle');
     }
-  }, [unlock, address, onConnect]);
+  }, [unlock]);
 
   // Handle lock
   const handleLock = useCallback(() => {
@@ -93,10 +99,10 @@ export function PasskeyButton({
     setShowMenu(false);
   }, [lock, onDisconnect]);
 
-  // Handle delete
-  const handleDelete = useCallback(() => {
+  // Handle delete (async — deleteWallet requires biometric re-auth)
+  const handleDelete = useCallback(async () => {
     if (confirm('Are you sure you want to delete this wallet? This action cannot be undone.')) {
-      deleteWallet();
+      await deleteWallet();
       onDisconnect?.();
       setShowMenu(false);
     }

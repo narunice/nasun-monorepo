@@ -32,7 +32,13 @@ interface SelfCustodyHeaderProps {
   storedEVMAddress: string | null;
 }
 
-type HeaderProps = ZkLoginHeaderProps | SelfCustodyHeaderProps;
+interface PasskeyHeaderProps {
+  variant: "passkey";
+  address: string;
+  credentialName: string;
+}
+
+type HeaderProps = ZkLoginHeaderProps | SelfCustodyHeaderProps | PasskeyHeaderProps;
 
 export interface ConnectedViewProps {
   // Header variant
@@ -176,6 +182,35 @@ export function ConnectedView(props: ConnectedViewProps) {
                 </p>
                 <CopyableAddress
                   value={header.zkAddress}
+                  shorten={isMobile ? 4 : 6}
+                  showCopy
+                  showExplorer
+                  explorerType="address"
+                  size="xs"
+                />
+              </div>
+            </div>
+          ) : header.variant === "passkey" ? (
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm xl:text-base text-gray-900 dark:text-white font-medium truncate">
+                  {header.credentialName}
+                </p>
+                <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
+                  Passkey Wallet
+                </p>
+                <CopyableAddress
+                  value={header.address}
                   shorten={isMobile ? 4 : 6}
                   showCopy
                   showExplorer
@@ -348,7 +383,7 @@ export function ConnectedView(props: ConnectedViewProps) {
 
       {/* Session Actions - Always visible */}
       <div className="px-2 pb-2 pt-1 bg-gray-100 dark:bg-zinc-700/50">
-        {variant === "zkLogin" && onSignOut ? (
+        {(variant === "zkLogin" || variant === "passkey") && onSignOut ? (
           <button
             onClick={onSignOut}
             className="w-full px-3 py-2 text-sm xl:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors flex items-center justify-center gap-2"

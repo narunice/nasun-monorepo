@@ -8,6 +8,7 @@ import {
   useWallet,
   useZkLogin,
   useLedger,
+  usePasskey,
   useNsaStore,
   useNasunSmartAccount,
   useWalletConnect,
@@ -79,6 +80,22 @@ export function useWalletConnectState() {
     disconnect: ledgerDisconnect,
     error: ledgerError,
   } = useLedger();
+
+  // Passkey state
+  const {
+    isSupported: isPasskeySupported,
+    isPlatformAvailable: isPasskeyPlatformAvailable,
+    wallet: passkeyWallet,
+    isUnlocked: isPasskeyUnlocked,
+    isLoading: isPasskeyLoading,
+    error: passkeyError,
+    address: passkeyAddress,
+    credentials: passkeyCredentials,
+    createWallet: passkeyCreateWallet,
+    unlock: passkeyUnlock,
+    lock: passkeyLock,
+    deleteWallet: passkeyDeleteWallet,
+  } = usePasskey({ autoCheck: true });
 
   // UI Settings (Advanced mode)
   const isAdvancedMode = useAdvancedMode();
@@ -152,11 +169,15 @@ export function useWalletConnectState() {
   );
 
   // Button text based on status
+  // Priority: zkLogin > passkey > ledger > self-custody
   const getButtonText = () => {
     if (isZkLoggedIn && zkState?.address) {
       if (zkUserInfo?.name) return viewState.isMobile ? truncateText(zkUserInfo.name, 12) : zkUserInfo.name;
       if (zkUserInfo?.email) return truncateEmail(zkUserInfo.email, viewState.isMobile);
       return shortenAddressResponsive(zkState.address, viewState.isMobile);
+    }
+    if (isPasskeyUnlocked && passkeyAddress) {
+      return shortenAddressResponsive(passkeyAddress, viewState.isMobile);
     }
     if (isLedgerConnected && ledgerAddress) {
       return shortenAddressResponsive(ledgerAddress, viewState.isMobile);
@@ -174,6 +195,7 @@ export function useWalletConnectState() {
   // Status indicator color
   const getStatusColor = () => {
     if (isZkLoggedIn) return "bg-green-500";
+    if (isPasskeyUnlocked) return "bg-green-500";
     if (isLedgerConnected) return "bg-amber-500";
     if (status === "unlocked") return "bg-green-500";
     if (status === "locked") return "bg-yellow-500";
@@ -224,6 +246,20 @@ export function useWalletConnectState() {
     nsaRecoveryCompleted,
     pendingForMe,
     nsaIncomingInvitations,
+
+    // Passkey
+    isPasskeySupported,
+    isPasskeyPlatformAvailable,
+    passkeyWallet,
+    isPasskeyUnlocked,
+    isPasskeyLoading,
+    passkeyError,
+    passkeyAddress,
+    passkeyCredentials,
+    passkeyCreateWallet,
+    passkeyUnlock,
+    passkeyLock,
+    passkeyDeleteWallet,
 
     // WalletConnect
     wcSessionCount,
