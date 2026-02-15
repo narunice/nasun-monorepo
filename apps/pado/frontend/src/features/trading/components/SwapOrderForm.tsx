@@ -317,13 +317,13 @@ export function SwapOrderForm({
   return (
     <div className="h-full flex flex-col">
       {/* Exchange Rate */}
-      <div className="text-sm text-theme-text-muted mb-3 shrink-0 font-mono">
+      <div className="text-sm xl:text-base text-theme-text-muted mb-3 shrink-0 font-mono">
         {rateDisplay}
       </div>
 
       {/* You Pay */}
       <div className="bg-theme-bg-tertiary/50 rounded-lg p-4 shrink-0">
-        <div className="flex items-center justify-between text-sm mb-2">
+        <div className="flex items-center justify-between text-sm xl:text-base mb-2">
           <span className="text-theme-text-muted">You Pay</span>
           <span className="text-theme-text-muted font-mono">
             Bal: {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })}
@@ -353,7 +353,7 @@ export function SwapOrderForm({
               key={pct}
               onClick={() => handlePercentClick(pct)}
               disabled={disabled || maxPayAmount <= 0}
-              className="flex-1 h-7 text-xs font-medium rounded bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 h-7 text-xs xl:text-sm font-medium rounded bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {pct === 100 ? 'Max' : `${pct}%`}
             </button>
@@ -382,7 +382,7 @@ export function SwapOrderForm({
 
       {/* You Receive */}
       <div className="bg-theme-bg-tertiary/50 rounded-lg p-4 shrink-0">
-        <div className="text-sm text-theme-text-muted mb-2">You Receive</div>
+        <div className="text-sm xl:text-base text-theme-text-muted mb-2">You Receive</div>
         <div className="flex items-center gap-2">
           <InlineTokenSelector
             selectedToken={receiveToken}
@@ -400,7 +400,7 @@ export function SwapOrderForm({
 
       {/* Price Impact Warning */}
       {baseAmount > 0 && priceImpact.avgPrice > 0 && (
-        <div className="mt-2 space-y-1 px-3 py-2 bg-theme-bg-tertiary/50 rounded text-xs shrink-0">
+        <div className="mt-2 space-y-1 px-3 py-2 bg-theme-bg-tertiary/50 rounded text-xs xl:text-sm shrink-0">
           <div className="flex justify-between">
             <span className="text-theme-text-muted">Est. Avg Price</span>
             <span className="font-mono text-theme-text-secondary">
@@ -431,7 +431,7 @@ export function SwapOrderForm({
       )}
 
       {/* Rate + Fee + Slippage toggle */}
-      <div className="mt-3 flex items-center justify-between text-xs text-theme-text-muted shrink-0">
+      <div className="mt-3 flex items-center justify-between text-xs xl:text-sm text-theme-text-muted shrink-0">
         <div className="flex items-center gap-2 min-w-0 truncate">
           <span>Fee: ~${feeUsd.toFixed(2)}</span>
         </div>
@@ -450,12 +450,12 @@ export function SwapOrderForm({
       {/* Slippage Settings (expandable) */}
       {showSlippage && (
         <div className="mt-1.5 flex items-center gap-2 shrink-0">
-          <span className="text-xs text-theme-text-muted">Slippage:</span>
+          <span className="text-xs xl:text-sm text-theme-text-muted">Slippage:</span>
           {SLIPPAGE_PRESETS.map((pct) => (
             <button
               key={pct}
               onClick={() => setSlippage(pct)}
-              className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
+              className={`px-2 py-0.5 text-xs xl:text-sm font-medium rounded transition-colors ${
                 slippage === pct
                   ? 'bg-pd1 text-white'
                   : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
@@ -469,7 +469,7 @@ export function SwapOrderForm({
 
       {/* Insufficient balance warning */}
       {isInsufficientBalance && (
-        <div className="mt-2 text-xs text-red-400 text-center shrink-0">
+        <div className="mt-2 text-xs xl:text-sm text-red-400 text-center shrink-0">
           Insufficient balance (have {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })})
         </div>
       )}
@@ -481,7 +481,7 @@ export function SwapOrderForm({
       <button
         onClick={handlePreview}
         disabled={previewBtn.disabled}
-        className="h-12 w-full rounded-lg text-sm font-semibold text-white bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 transition-colors shrink-0"
+        className="h-12 w-full rounded-lg text-sm xl:text-base font-semibold text-white bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 transition-colors shrink-0"
       >
         {previewBtn.text}
       </button>

@@ -41,18 +41,18 @@ function TokenRow({ token }: TokenRowProps) {
   return (
     <div className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs font-bold text-white`}>
+        <div className={`w-8 h-8 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs xl:text-sm font-bold text-white`}>
           {isPredictions ? '📊' : token.symbol.charAt(0)}
         </div>
         <div>
           <div className="font-medium">{token.symbol}</div>
           {!isPredictions && (
-            <div className="text-sm text-theme-text-secondary">
+            <div className="text-sm xl:text-base text-theme-text-secondary">
               ${token.price.toLocaleString('en-US')} each
             </div>
           )}
           {isPredictions && (
-            <div className="text-sm text-theme-text-secondary">
+            <div className="text-sm xl:text-base text-theme-text-secondary">
               Cost basis
             </div>
           )}
@@ -63,14 +63,14 @@ function TokenRow({ token }: TokenRowProps) {
           {isPredictions ? token.balance : `${formatBalance(token.symbol, token.balance)} ${token.symbol}`}
         </div>
         <div className="flex items-center justify-end gap-2">
-          <span className="text-sm text-theme-text-secondary">
+          <span className="text-sm xl:text-base text-theme-text-secondary">
             ${token.value.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
           </span>
           {token.change24h !== 0 && (
-            <span className={`text-xs ${changeColor}`}>
+            <span className={`text-xs xl:text-sm ${changeColor}`}>
               {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
             </span>
           )}

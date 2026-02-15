@@ -120,7 +120,7 @@ export function SimpleOrderForm({
       <div className="h-9 flex bg-theme-bg-tertiary rounded-lg p-1 shrink-0">
         <button
           onClick={() => { setOrderSide('buy'); setUsdAmount(null); setCustomInput(''); }}
-          className={`flex-1 text-xs font-semibold rounded-md transition-colors ${
+          className={`flex-1 text-xs xl:text-sm font-semibold rounded-md transition-colors ${
             orderSide === 'buy'
               ? 'bg-green-600/20 text-green-600 dark:text-green-400'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
@@ -130,7 +130,7 @@ export function SimpleOrderForm({
         </button>
         <button
           onClick={() => { setOrderSide('sell'); setUsdAmount(null); setCustomInput(''); }}
-          className={`flex-1 text-xs font-semibold rounded-md transition-colors ${
+          className={`flex-1 text-xs xl:text-sm font-semibold rounded-md transition-colors ${
             orderSide === 'sell'
               ? 'bg-red-600/20 text-red-600 dark:text-red-400'
               : 'text-theme-text-secondary hover:text-theme-text-primary'
@@ -142,7 +142,7 @@ export function SimpleOrderForm({
 
       {/* Amount Selection - 2x2 grid + custom input */}
       <div className="mt-3 shrink-0">
-        <div className="text-xs text-theme-text-secondary mb-1.5">
+        <div className="text-xs xl:text-sm text-theme-text-secondary mb-1.5">
           {orderSide === 'buy' ? 'Buy' : 'Sell'} Amount (NUSDC)
         </div>
         <div className="h-[64px] grid grid-cols-2 gap-1.5">
@@ -154,7 +154,7 @@ export function SimpleOrderForm({
                 key={amount}
                 onClick={() => handleQuickAmountClick(amount)}
                 disabled={isDisabled}
-                className={`h-[30px] text-xs font-medium rounded transition-colors ${
+                className={`h-[30px] text-xs xl:text-sm font-medium rounded transition-colors ${
                   isSelected
                     ? 'bg-pd1 text-white'
                     : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
@@ -167,7 +167,7 @@ export function SimpleOrderForm({
           <button
             onClick={() => maxBalance > 0 && handleQuickAmountClick(Math.floor(maxBalance))}
             disabled={disabled || maxBalance <= 0}
-            className={`h-[30px] text-xs font-medium rounded transition-colors ${
+            className={`h-[30px] text-xs xl:text-sm font-medium rounded transition-colors ${
               usdAmount === Math.floor(maxBalance) && maxBalance > 0 && isQuickAmount
                 ? 'bg-pd1 text-white'
                 : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-secondary hover:text-theme-text-primary'
@@ -185,7 +185,7 @@ export function SimpleOrderForm({
             disabled={disabled}
             prefix="$"
             step={10}
-            className="h-[30px] text-xs"
+            className="h-[30px] text-xs xl:text-sm"
           />
         </div>
       </div>
@@ -194,7 +194,7 @@ export function SimpleOrderForm({
       <div className="mt-3 min-h-[72px] bg-theme-bg-tertiary/50 rounded-lg p-2.5 flex flex-col justify-center shrink-0">
         {usdAmount && usdAmount > 0 ? (
           <>
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-xs xl:text-sm">
               <span className="text-theme-text-muted">You {orderSide === 'buy' ? 'pay' : 'sell'}</span>
               <span className="font-mono text-theme-text-primary">
                 {orderSide === 'buy' ? `$${usdAmount.toFixed(2)}` : `~${baseAmount.toFixed(4)} ${baseSymbol}`}
@@ -218,13 +218,13 @@ export function SimpleOrderForm({
               </span>
             </div>
             {isInsufficientBalance && (
-              <div className="text-[10px] text-red-400 mt-1.5 text-center">
+              <div className="text-[10px] xl:text-xs text-red-400 mt-1.5 text-center">
                 Insufficient balance (have ${maxBalance.toFixed(2)})
               </div>
             )}
           </>
         ) : (
-          <div className="text-xs text-theme-text-muted text-center">
+          <div className="text-xs xl:text-sm text-theme-text-muted text-center">
             Select an amount or enter custom value
           </div>
         )}
@@ -232,12 +232,12 @@ export function SimpleOrderForm({
 
       {/* Slippage Presets (compact) */}
       <div className="mt-2 flex items-center gap-1.5 shrink-0">
-        <span className="text-[10px] text-theme-text-muted">Slippage:</span>
+        <span className="text-[10px] xl:text-xs text-theme-text-muted">Slippage:</span>
         {SLIPPAGE_PRESETS.map((pct) => (
           <button
             key={pct}
             onClick={() => setSlippage(pct)}
-            className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors ${
+            className={`px-1.5 py-0.5 text-[10px] xl:text-xs font-medium rounded transition-colors ${
               slippage === pct
                 ? 'bg-pd1 text-white'
                 : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
@@ -255,7 +255,7 @@ export function SimpleOrderForm({
       <button
         onClick={handleExecute}
         disabled={buttonState.disabled}
-        className={`h-10 w-full rounded-lg text-xs font-semibold text-white transition-colors shrink-0 ${
+        className={`h-10 w-full rounded-lg text-xs xl:text-sm font-semibold text-white transition-colors shrink-0 ${
           orderSide === 'buy'
             ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-600/50'
             : 'bg-red-600 hover:bg-red-700 disabled:bg-red-600/50'

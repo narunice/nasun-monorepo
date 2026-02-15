@@ -114,9 +114,9 @@ export function AssetOverview() {
   if (!isConnected) {
     return (
       <div className="bg-theme-bg-secondary rounded-lg p-6">
-        <div className="text-sm text-theme-text-secondary">My Assets</div>
+        <div className="text-sm xl:text-base text-theme-text-secondary">My Assets</div>
         <div className="text-3xl font-bold mt-2 text-theme-text-muted">--</div>
-        <div className="text-sm text-theme-text-muted mt-2">
+        <div className="text-sm xl:text-base text-theme-text-muted mt-2">
           Connect to see your balance
         </div>
       </div>
@@ -126,7 +126,7 @@ export function AssetOverview() {
   return (
     <div className="bg-theme-bg-secondary rounded-lg p-6">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-theme-text-secondary">My Assets</div>
+        <div className="text-sm xl:text-base text-theme-text-secondary">My Assets</div>
         <div className="flex items-center gap-1">
           {!isLoading && totalValue > 0 && (
             <SharePortfolioButton
@@ -140,7 +140,7 @@ export function AssetOverview() {
           )}
           <button
             onClick={handleExport}
-            className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors px-2 py-1 rounded hover:bg-theme-bg-tertiary"
+            className="text-xs xl:text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors px-2 py-1 rounded hover:bg-theme-bg-tertiary"
             title="Export portfolio as CSV"
           >
             Export
@@ -159,26 +159,26 @@ export function AssetOverview() {
       </div>
       {!isLoading && totalValue > 0 && (
         <div className={`mt-2 ${changeColor}`}>
-          <span className="text-sm font-medium">{formatPnl24h()}</span>
+          <span className="text-sm xl:text-base font-medium">{formatPnl24h()}</span>
         </div>
       )}
       {!isPnlLoading && (totalRealizedPnl !== 0 || totalUnrealizedPnl !== 0) && (
         <div className="mt-3 pt-3 border-t border-theme-border">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-theme-text-muted">All Time P&L</span>
-            <span className={`text-sm font-semibold ${allTimePnlColor}`}>
+            <span className="text-xs xl:text-sm text-theme-text-muted">All Time P&L</span>
+            <span className={`text-sm xl:text-base font-semibold ${allTimePnlColor}`}>
               {formatAllTimePnl(totalPnl)}
             </span>
           </div>
           <div className="flex items-center justify-between mt-1">
-            <span className="text-[10px] text-theme-text-muted">Realized</span>
-            <span className={`text-xs ${totalRealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className="text-[10px] xl:text-sm text-theme-text-muted">Realized</span>
+            <span className={`text-xs xl:text-sm ${totalRealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {formatAllTimePnl(totalRealizedPnl)}
             </span>
           </div>
           <div className="flex items-center justify-between mt-0.5">
-            <span className="text-[10px] text-theme-text-muted">Unrealized</span>
-            <span className={`text-xs ${totalUnrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className="text-[10px] xl:text-sm text-theme-text-muted">Unrealized</span>
+            <span className={`text-xs xl:text-sm ${totalUnrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {formatAllTimePnl(totalUnrealizedPnl)}
             </span>
           </div>
