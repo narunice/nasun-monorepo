@@ -12,10 +12,12 @@ import { LocalSigner } from '../core/signer/adapters/LocalSigner';
 import { ZkLoginSigner } from '../core/signer/adapters/ZkLoginSigner';
 import { EVMSigner } from '../core/signer/adapters/EVMSigner';
 import { NsaSigner } from '../core/signer/adapters/NsaSigner';
+import { PasskeySigner } from '../core/signer/adapters/PasskeySigner';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { useChain } from './useChain';
 import { useNsaStore } from '../stores/nsaStore';
+import { usePasskeyStore } from '../stores/passkeyStore';
 import { hasEVMWallet, unlockEVMWallet } from '../core/evm/keystore';
 import { getSessionPassword } from '../sui/client';
 import { deriveChainAddress } from '../core/crypto';
@@ -64,6 +66,11 @@ export function useSigner(): UseSignerResult {
   const { status, account, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { chain, isEVM, isMove } = useChain();
+
+  // Passkey store state
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
   // Track EVM wallet unlock state
   const [evmUnlocked, setEvmUnlocked] = useState(false);
@@ -126,6 +133,17 @@ export function useSigner(): UseSignerResult {
     }
   }, [isZkLoggedIn, zkState]);
 
+  // Register/unregister PasskeySigner based on passkey store state
+  useEffect(() => {
+    if (isPasskeyUnlocked && passkeyKeypair && passkeyAddress) {
+      SignerManager.register(new PasskeySigner(passkeyKeypair, passkeyAddress));
+    } else {
+      if (SignerManager.has('passkey')) {
+        SignerManager.unregister('passkey');
+      }
+    }
+  }, [isPasskeyUnlocked, passkeyKeypair, passkeyAddress]);
+
   // Register/unregister EVMSigner based on EVM chain and wallet state
   useEffect(() => {
     const registerEVMSigner = async () => {
@@ -177,8 +195,8 @@ export function useSigner(): UseSignerResult {
       return;
     }
 
-    // Wrap the underlying Move signer (prefer local, fallback to zklogin)
-    const underlyingSigner = SignerManager.get('local') || SignerManager.get('zklogin');
+    // Wrap the underlying Move signer (prefer local, fallback to passkey, then zklogin)
+    const underlyingSigner = SignerManager.get('local') || SignerManager.get('passkey') || SignerManager.get('zklogin');
     if (underlyingSigner) {
       SignerManager.register(new NsaSigner(underlyingSigner, nsaAccountObjectId));
     } else {
@@ -189,7 +207,7 @@ export function useSigner(): UseSignerResult {
   }, [nsaIsInitialized, nsaAccountObjectId, snapshot.available.length]);
 
   // Auto-switch to appropriate signer when chain changes
-  // Priority on Move: nsa > local > zklogin
+  // Priority on Move: nsa > local > passkey > zklogin
   useEffect(() => {
     if (isEVM && SignerManager.has('evm')) {
       SignerManager.switchTo('evm');
@@ -197,6 +215,8 @@ export function useSigner(): UseSignerResult {
       SignerManager.switchTo('nsa');
     } else if (isMove && SignerManager.has('local')) {
       SignerManager.switchTo('local');
+    } else if (isMove && SignerManager.has('passkey')) {
+      SignerManager.switchTo('passkey');
     } else if (isMove && SignerManager.has('zklogin')) {
       SignerManager.switchTo('zklogin');
     }

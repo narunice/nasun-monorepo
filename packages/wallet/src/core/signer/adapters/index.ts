@@ -11,3 +11,4 @@ export { SmartAccountSigner } from './SmartAccountSigner';
 export { SessionKeySigner } from './SessionKeySigner';
 export { LedgerSigner, type LedgerAccountOptions } from './LedgerSigner';
 export { NsaSigner } from './NsaSigner';
+export { PasskeySigner } from './PasskeySigner';
