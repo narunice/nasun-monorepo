@@ -42,6 +42,8 @@ export interface TPSLOrder {
   digest?: string;
   /** OCO group ID — when one order in the group triggers, all others are cancelled */
   ocoGroupId?: string;
+  /** Market symbol this order belongs to (e.g. 'NBTC'). Optional for backward compat. */
+  marketSymbol?: string;
 }
 
 /** Maximum active TP/SL orders per user */

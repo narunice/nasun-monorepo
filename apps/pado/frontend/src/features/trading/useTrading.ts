@@ -27,7 +27,7 @@ import { priceToRaw, quantityToRaw } from '../../lib/deepbook';
 import { useMarket } from './context/MarketContext';
 import { RPC_SYNC_DELAY_MS } from '../../lib/constants';
 import { useTransactionExecutor } from './hooks/useTransactionExecutor';
-import { validateBalanceManagerExists } from './lib/balanceManagerValidation';
+import { validateBalanceManagerExists, findUserBalanceManager } from './lib/balanceManagerValidation';
 import { parseExecutionInfo } from './lib/parseExecutionInfo';
 
 /**
@@ -105,6 +105,14 @@ export function useTrading(): UseTrading {
         } else {
           console.warn('[useTrading] Stored BalanceManager does not exist on chain, clearing...');
           clearBalanceManagerId(walletAddress);
+        }
+      } else {
+        // No stored ID — attempt on-chain recovery via event query
+        const recoveredId = await findUserBalanceManager(walletAddress);
+        if (recoveredId) {
+          storeBalanceManagerId(walletAddress, recoveredId);
+          setBalanceManagerId(recoveredId);
+          console.info('[useTrading] Recovered BalanceManager from on-chain:', recoveredId.slice(0, 16));
         }
       }
       setIsValidatingBalanceManager(false);

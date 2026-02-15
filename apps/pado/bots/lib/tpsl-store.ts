@@ -5,7 +5,7 @@
  * Supports CRUD operations with atomic status transitions.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -59,12 +59,18 @@ export class TPSLStore {
     return { ...DEFAULT_DATA };
   }
 
+  /**
+   * Atomic write: write to temp file, then rename.
+   * rename() is atomic on POSIX filesystems, preventing data corruption on crash.
+   */
   private save(): void {
     const dir = dirname(this.filePath);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    writeFileSync(this.filePath, JSON.stringify(this.data, null, 2));
+    const tmpPath = `${this.filePath}.tmp`;
+    writeFileSync(tmpPath, JSON.stringify(this.data, null, 2));
+    renameSync(tmpPath, this.filePath);
   }
 
   // Create a new TP/SL order

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 
 // Mock dependencies
 vi.mock('./useTransactionExecutor', () => ({
@@ -23,8 +23,16 @@ vi.mock('../../../config/network', () => ({
   },
 }));
 
+vi.mock('../../../lib/sui-client', () => ({
+  getSuiClient: () => ({
+    getObject: vi.fn().mockResolvedValue({ data: { objectId: '0xstored-cap' } }),
+  }),
+}));
+
 vi.mock('../lib/tpsl-api', () => ({
   isKeeperConfigured: () => true,
+  getUserTPSLOrders: vi.fn().mockResolvedValue([]),
+  cancelTPSLOrder: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('@mysten/sui/transactions', () => ({
@@ -70,7 +78,7 @@ describe('useTradeCap', () => {
   });
 
   describe('localStorage restore', () => {
-    it('restores delegated state from localStorage', () => {
+    it('restores delegated state from localStorage', async () => {
       const storedState = {
         tradeCapId: '0xstored-cap',
         keeperAddress: '0xkeeper-address-abc',
@@ -85,7 +93,9 @@ describe('useTradeCap', () => {
         useTradeCap(BALANCE_MANAGER_ID, WALLET_ADDRESS)
       );
 
-      expect(result.current.status).toBe('delegated');
+      await waitFor(() => {
+        expect(result.current.status).toBe('delegated');
+      });
       expect(result.current.tradeCapId).toBe('0xstored-cap');
       expect(result.current.keeperAddress).toBe('0xkeeper-address-abc');
     });
@@ -152,7 +162,7 @@ describe('useTradeCap', () => {
   });
 
   describe('wallet address changes', () => {
-    it('resets state when wallet address changes', () => {
+    it('resets state when wallet address changes', async () => {
       const storedState = {
         tradeCapId: '0xstored-cap',
         keeperAddress: '0xkeeper-address-abc',
@@ -168,11 +178,15 @@ describe('useTradeCap', () => {
         { initialProps: { addr: WALLET_ADDRESS } }
       );
 
-      expect(result.current.status).toBe('delegated');
+      await waitFor(() => {
+        expect(result.current.status).toBe('delegated');
+      });
 
       // Change wallet address (no stored state for new address)
       rerender({ addr: '0xnew-wallet' });
-      expect(result.current.status).toBe('none');
+      await waitFor(() => {
+        expect(result.current.status).toBe('none');
+      });
     });
 
     it('resets when wallet disconnects (undefined)', () => {

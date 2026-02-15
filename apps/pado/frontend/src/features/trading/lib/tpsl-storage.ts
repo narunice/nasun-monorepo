@@ -38,6 +38,17 @@ export function getActiveTPSLOrders(): TPSLOrder[] {
 }
 
 /**
+ * Get active TP/SL orders filtered by market symbol.
+ * Legacy orders without marketSymbol are included (backward-compatible fallback)
+ * to prevent silently breaking existing users' active orders.
+ */
+export function getActiveTPSLOrdersByMarket(marketSymbol: string): TPSLOrder[] {
+  return getTPSLOrders().filter(
+    (o) => o.status === 'active' && (!o.marketSymbol || o.marketSymbol === marketSymbol)
+  );
+}
+
+/**
  * Save orders to localStorage
  * @returns true if write succeeded
  */
@@ -91,18 +102,57 @@ export function addTPSLOrder(
   return newOrder;
 }
 
+const LOCK_TTL_MS = 30_000;
+
 /**
- * Atomically claim an order for execution (cross-tab safety).
- * Sets status to 'executing' only if currently 'active'.
+ * Claim an order for execution with cross-tab safety.
+ *
+ * Uses a per-order lock key with a unique nonce to reduce the race window.
+ * Flow: acquire lock → verify lock ownership → update order status.
+ * The lock has a TTL to prevent deadlocks if a tab crashes mid-execution.
+ *
  * @returns true if successfully claimed (this tab owns execution)
  */
 export function claimTPSLOrder(id: string): boolean {
-  const orders = getTPSLOrders();
-  const order = orders.find((o) => o.id === id);
-  if (!order || order.status !== 'active') return false;
+  const lockKey = `pado:tpsl:lock:${id}`;
+  const nonce = crypto.randomUUID();
+  const now = Date.now();
 
-  order.status = 'executing';
-  return saveOrders(orders);
+  try {
+    // Check for existing fresh lock
+    const existing = localStorage.getItem(lockKey);
+    if (existing) {
+      const parsed = JSON.parse(existing) as { v: string; at: number };
+      if (now - parsed.at < LOCK_TTL_MS) return false;
+    }
+
+    // Set lock with our nonce
+    localStorage.setItem(lockKey, JSON.stringify({ v: nonce, at: now }));
+
+    // Verify we own the lock (narrows race window)
+    const verify = localStorage.getItem(lockKey);
+    if (!verify || (JSON.parse(verify) as { v: string }).v !== nonce) return false;
+
+    // Lock acquired — update order status
+    const orders = getTPSLOrders();
+    const order = orders.find((o) => o.id === id);
+    if (!order || order.status !== 'active') {
+      localStorage.removeItem(lockKey);
+      return false;
+    }
+
+    order.status = 'executing';
+    const saved = saveOrders(orders);
+    if (!saved) {
+      localStorage.removeItem(lockKey);
+      return false;
+    }
+
+    return true;
+  } catch {
+    try { localStorage.removeItem(lockKey); } catch { /* noop */ }
+    return false;
+  }
 }
 
 /**
