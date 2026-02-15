@@ -167,6 +167,13 @@ users to enable server mode on first TP/SL activation.
    - Useful beyond trading: DeFi automation, scheduled governance, etc.
    - Broadest impact but largest scope
 
+4. **Permissionless Crank Network** (Low-Medium)
+   - Anyone can call a `crank_conditional_orders()` entry function to trigger eligible orders
+   - Incentivize crankers with small gas rebate or fee share
+   - Already proven pattern in Pado: Lottery draw + Lending liquidation use crank
+   - Lowest protocol-level change required (Move module only, no validator changes)
+   - Trade-off: trigger latency depends on cranker availability and incentive design
+
 **Why this is feasible for Nasun**: Unlike projects built on top of Sui mainnet,
 Nasun is a sovereign L1 (Sui fork) with full control over the validator software
 and protocol. Protocol-level conditional orders are an engineering decision, not
