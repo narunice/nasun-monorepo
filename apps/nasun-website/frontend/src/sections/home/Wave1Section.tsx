@@ -149,7 +149,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    Allow List
+                    Join Allowlist
                   </ButtonV3>
                 </div>
               </div>
