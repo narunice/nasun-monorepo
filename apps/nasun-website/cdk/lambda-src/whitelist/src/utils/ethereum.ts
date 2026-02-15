@@ -47,15 +47,15 @@ export function validateMessageFormat(
   timestamp: string,
   action: 'join' | 'withdraw'
 ): boolean {
-  // 영어 패턴 (새 포맷)
+  // 영어 패턴
   const enPatterns = {
-    join: `Join Nasun Genesis NFT Whitelist
+    join: `Join Nasun Frontiers Whitelist
 
 ⚠️ This signature does NOT transfer any funds
 ⚠️ This is only to verify you own this wallet
 
 Timestamp: ${timestamp}`,
-    withdraw: `Withdraw from Nasun Genesis NFT Whitelist
+    withdraw: `Withdraw from Nasun Frontiers Whitelist
 
 ⚠️ This signature does NOT transfer any funds
 ⚠️ This is only to verify you own this wallet
@@ -63,15 +63,15 @@ Timestamp: ${timestamp}`,
 Timestamp: ${timestamp}`
   };
 
-  // 한국어 패턴 (새 포맷)
+  // 한국어 패턴
   const koPatterns = {
-    join: `Nasun Genesis NFT 화이트리스트 참여
+    join: `Nasun 프론티어스 화이트리스트 참여
 
 ⚠️ 이 서명으로 자금이 이체되지 않습니다
 ⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다
 
 Timestamp: ${timestamp}`,
-    withdraw: `Nasun Genesis NFT 화이트리스트 철회
+    withdraw: `Nasun 프론티어스 화이트리스트 철회
 
 ⚠️ 이 서명으로 자금이 이체되지 않습니다
 ⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다

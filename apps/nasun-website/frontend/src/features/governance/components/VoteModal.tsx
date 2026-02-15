@@ -9,6 +9,7 @@ import { useVotingPower } from "../hooks/useVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
 import { useDirectVote } from "../hooks/useDirectVote";
 import { useAuth } from "@/features/auth";
+import { useUserStore } from "@/store/userStore";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -25,6 +26,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const isConnected = (status === "unlocked" && account) || isZkConnected;
   const toastId = useRef<number | string | null>(null);
   const { user } = useAuth();
+  const { user: userProfile } = useUserStore();
 
   // Sponsored vote hook (gas-free voting for Poll proposals)
   const { vote: sponsoredVote, isPending: isSponsoredPending } = useSponsoredVote();
@@ -45,11 +47,13 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   // Voting Power state
   const { votingPower, isLoading: isLoadingPower, fetchVotingPower } = useVotingPower();
 
+  const ethAddress = userProfile?.linkedAccounts?.metamask?.walletAddress;
+
   // Fetch voting power when modal opens
   useEffect(() => {
     if (isOpen && isConnected) {
       const walletAddress = isZkConnected ? zkState?.address : account?.address;
-      fetchVotingPower(user?.twitterHandle, walletAddress);
+      fetchVotingPower(user?.twitterHandle, walletAddress, ethAddress);
     }
   }, [
     isOpen,
@@ -57,6 +61,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
     isZkConnected,
     zkState?.address,
     account?.address,
+    ethAddress,
     user?.twitterHandle,
     fetchVotingPower,
   ]);

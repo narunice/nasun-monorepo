@@ -127,7 +127,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             {/* COORDINATED CREATION */}
             <FadeInUp delay="0.3s">
               <h5 className="font-medium text-nasun-black/80 -mt-4 !tracking-normal">
-                COORDINATED CREATION
+                For Coordinated Creation
               </h5>
             </FadeInUp>
 
@@ -141,7 +141,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             {/* Description */}
             <FadeInUp delay="0.5s">
               <h6 className="font-medium text-nasun-black/60 -mt-2 xl:max-w-none">
-                Communities build, own, and grow valuable IP together
+                Communities build, own, and grow IP together
               </h6>
             </FadeInUp>
 
@@ -173,12 +173,14 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
         </div>
 
         {/* Tagline */}
+        {/*
         <FadeInUp delay="0.7s">
           <p className="font-medium text-lg/snug md:text-xl/snug xl:text-2xl/snug text-nasun-black/80 text-center max-w-4xl mx-auto mt-16 lg:mt-20">
             Building the next generation of global IP
             <br className="lg:hidden" /> through coordinated creation.
           </p>
         </FadeInUp>
+        */}
       </div>
 
       {/* Sign Up Modal */}

@@ -121,9 +121,9 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                   LEADERBOARD
                 </h6>
                 <p className="flex-1 text-nasun-black/90 ">
-                  Climb ranks &rarr; Launch pool + Battalion NFT eligibility.
+                  Climb ranks to unlock Launch Pool access and Battalion NFT eligibility
                   <br />
-                  Tasks: X follows, content, testing
+                  Complete tasks: Follow on X, create content, test features
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
@@ -140,11 +140,12 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             >
               <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
                 <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
-                  BATTALION NFT (⅓)
+                  BATTALION NFT
                 </h6>
                 <p className="flex-1 text-nasun-black/90">
-                  Devnet/Testnet staking &rarr; Emissions &rarr; Mainnet $NSN airdrop
-                  <br />+ Alpha access + exclusive giveaways
+                  Boost rewards by staking on Devnet/Testnet with Battalion NFT multipliers.
+                  <br />
+                  Earn toward Mainnet $NSN airdrop, alpha access, and exclusive giveaways.
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
@@ -164,7 +165,9 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                   EARLY CONTRIBUTORS
                 </h6>
                 <p className="flex-1 text-nasun-black/90 ">
-                  Launch pool + Rare Battalion NFTs &rarr; Exclusive utilities
+                  Limited spots for builders and creators
+                  <br />
+                  Launch pool allocation and Rare Battalion NFTs with exclusive utilities
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">

@@ -115,6 +115,7 @@ function calculateCertificateTTL(proposalExpiration?: number): number {
 }
 
 const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
+const GOVERNANCE_ORIGINAL_PACKAGE_ID = process.env.GOVERNANCE_ORIGINAL_PACKAGE_ID || GOVERNANCE_PACKAGE_ID;
 const PROPOSAL_TYPE_REGISTRY_ID = process.env.PROPOSAL_TYPE_REGISTRY_ID || "";
 
 // Domain Separation (MUST match Move contract's DOMAIN_SEPARATOR)
@@ -476,9 +477,9 @@ async function calculateOnChainScore(address: string): Promise<number> {
         owner: address,
         filter: { StructType: `${BARAM_PACKAGE_ID}::baram::RequestReceipt` },
       }) : Promise.resolve({ data: [] }),
-      GOVERNANCE_PACKAGE_ID ? suiClient.getOwnedObjects({
+      GOVERNANCE_ORIGINAL_PACKAGE_ID ? suiClient.getOwnedObjects({
         owner: address,
-        filter: { StructType: `${GOVERNANCE_PACKAGE_ID}::proposal::VoteProofNFT` },
+        filter: { StructType: `${GOVERNANCE_ORIGINAL_PACKAGE_ID}::proposal::VoteProofNFT` },
       }) : Promise.resolve({ data: [] }),
     ]);
 
@@ -655,17 +656,21 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // GET /voting-power?twitterHandle=xxx&walletAddress=0x...
     if (path.endsWith("/voting-power") && event.httpMethod === "GET") {
-      const { twitterHandle: twitterHandleParam, walletAddress } = event.queryStringParameters || {};
+      const { twitterHandle: twitterHandleParam, walletAddress, ethAddress } = event.queryStringParameters || {};
 
       const twitterHandle = twitterHandleParam?.toLowerCase().replace(/^@/, "");
       const hasLinkedX = !!twitterHandle;
+
+      // Use ethAddress for allowlist/whitelist checks (Ethereum address),
+      // fall back to walletAddress (Sui address) for backward compatibility
+      const allowlistAddress = ethAddress || walletAddress || "";
 
       // Parallel: leaderboard + on-chain + battalion allowlist + genesis whitelist
       const [leaderboardScore, onChainScore, isOnBattalion, isOnGenesis] = await Promise.all([
         getLeaderboardScore(twitterHandle),
         getOnChainScore(walletAddress || ""),
-        checkBattalionAllowlist(walletAddress || ""),
-        checkGenesisWhitelist(walletAddress || ""),
+        checkBattalionAllowlist(allowlistAddress),
+        checkGenesisWhitelist(allowlistAddress),
       ]);
 
       const power = calculateVotingPowerV2(leaderboardScore, onChainScore, isOnBattalion, isOnGenesis, hasLinkedX);
@@ -725,7 +730,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
-      const { voter, proposalId, twitterHandle: rawTwitterHandle, walletAddress } = JSON.parse(event.body);
+      const { voter, proposalId, twitterHandle: rawTwitterHandle, walletAddress, ethAddress } = JSON.parse(event.body);
 
       if (!voter || !proposalId) {
         return {
@@ -739,12 +744,16 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         const twitterHandle = rawTwitterHandle?.toLowerCase().replace(/^@/, "");
         const hasLinkedX = !!twitterHandle;
 
+        // Use ethAddress for allowlist/whitelist checks (Ethereum address),
+        // fall back to walletAddress/voter (Sui address) for backward compatibility
+        const allowlistAddress = ethAddress || walletAddress || voter;
+
         // Parallel: leaderboard + on-chain + battalion allowlist + genesis whitelist
         const [leaderboardScore, onChainScore, isOnBattalion, isOnGenesis] = await Promise.all([
           getLeaderboardScore(twitterHandle),
           getOnChainScore(walletAddress || voter),
-          checkBattalionAllowlist(walletAddress || voter),
-          checkGenesisWhitelist(walletAddress || voter),
+          checkBattalionAllowlist(allowlistAddress),
+          checkGenesisWhitelist(allowlistAddress),
         ]);
 
         const power = calculateVotingPowerV2(leaderboardScore, onChainScore, isOnBattalion, isOnGenesis, hasLinkedX);
@@ -912,6 +921,19 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       } catch (error: any) {
         console.error("Sponsor error:", maskSensitiveData({ message: error.message, stack: error.stack }));
+
+        // Detect "already voted" abort from Move contract (ECertificateAlreadyIssued = 6)
+        if (error.message?.includes("MoveAbort") && error.message?.includes(", 6)")) {
+          return {
+            statusCode: 409,
+            headers: corsHeaders(),
+            body: JSON.stringify({
+              error: "You have already voted on this proposal",
+              code: "ALREADY_VOTED",
+            }),
+          };
+        }
+
         return {
           statusCode: 500,
           headers: corsHeaders(),

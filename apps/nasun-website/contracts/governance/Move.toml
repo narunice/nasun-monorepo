@@ -1,13 +1,13 @@
 [package]
 name = "governance"
 edition = "2024.beta"
-version = "0.0.6"
-published-at = "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3"
+version = "0.0.7"
+published-at = "0xe2fb0947f43473e21d1f8aef40e1d6799aa61b3d4fa80b6a1973d1e658de1256"
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-governance = "0x0"
+governance = "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3"
 
 [environments]
 devnet = "272218f1"

@@ -7,7 +7,9 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth"; // 내부 경로는 상대 경로 유지
 import logger from "@/lib/logger";
 import { ZkLoginCallback } from "@nasun/wallet-ui";
+import { getZkLoginReturnUrl, clearZkLoginReturnUrl } from "@nasun/wallet";
 import { fetchUserProfile } from "@/features/admin/hooks/useUserProfile";
+import { isValidReturnUrl } from "../utils/urlValidation";
 
 export default function Callback() {
   const navigate = useNavigate();
@@ -116,7 +118,10 @@ export default function Callback() {
         <div className="bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl border border-zinc-800">
           <ZkLoginCallback
             onSuccess={() => {
-              navigate("/", { replace: true });
+              const returnUrl = getZkLoginReturnUrl();
+              clearZkLoginReturnUrl();
+              const target = returnUrl && isValidReturnUrl(returnUrl) ? returnUrl : '/';
+              navigate(target, { replace: true });
             }}
             onError={(err) => {
               logger.error("zkLogin error:", err);
