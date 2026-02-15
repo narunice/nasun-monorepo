@@ -62,6 +62,32 @@ Glob 도구로 위 패턴을 검색합니다. 파일이 발견되면:
 
 **근거:** 2026-02-14 세션에서 `leaderboard-v3-stack.js` (Feb 12 컴파일)가 업데이트된 `.ts` 소스를 가려서 CDK 배포가 실패한 사례.
 
+### 2.5단계: Lambda `Code.fromAsset` 소스 리빌드
+
+일부 Lambda 함수는 CDK `NodejsFunction`(자동 esbuild 번들링)이 아닌 `lambda.Function` + `Code.fromAsset`을 사용합니다. 이 경우 CDK는 미리 빌드된 `dist/` 디렉토리를 그대로 패키징하므로, TypeScript 소스를 수정해도 `dist/`를 리빌드하지 않으면 **이전 코드가 배포됩니다**. CDK의 S3Key 해시가 변경되더라도 내용은 stale입니다.
+
+**탐지 대상 (nasun-website):**
+
+| Lambda 디렉토리 | 빌드 방식 | 리빌드 필요 |
+| --------------- | --------- | ----------- |
+| `cdk/lambda-src/whitelist/` | `tsc && tsc-alias` → `dist/` | O |
+| 기타 `NodejsFunction` Lambda | esbuild (CDK 자동) | X |
+
+**실행:**
+
+1. `lambda-src/` 하위에서 `dist/` 디렉토리가 있는 Lambda 프로젝트를 탐지
+2. 각 프로젝트의 `src/` 파일 최신 수정 시간과 `dist/` 파일 최신 수정 시간을 비교
+3. `src/`가 `dist/`보다 새로우면:
+
+```bash
+cd apps/{app}/cdk/lambda-src/{lambda-name}
+npm run rebuild
+```
+
+4. 리빌드 후 `dist/` 내용이 변경되었음을 사용자에게 알림
+
+**근거:** 2026-02-15 세션에서 `ethereum.ts`의 메시지 포맷을 수정했으나, `dist/`를 리빌드하지 않아 CDK가 이전 코드를 배포. 배포는 "성공"으로 보고되었지만 런타임에서 여전히 에러 발생.
+
 ### 3단계: AWS 계정 검증
 
 배포 대상 환경에 맞는 AWS 자격 증명이 올바른지 확인합니다.
@@ -267,6 +293,7 @@ aws lambda get-function-configuration \
 | Lambda 개별 업데이트 (`aws lambda update-function-code`) | CDK 상태와 불일치 | CDK로 배포 |
 | 프론트엔드 .env URL 미확인 후 배포 | 배포된 스택의 API를 프론트엔드가 참조하지 않아 방치됨 | 8.3단계에서 반드시 동기화 확인 |
 | dev/prod .env에서 다른 계정의 API 참조 | 환경 분리 무효화, 데이터 격리 실패 | 5단계 양방향 교차 검증으로 감지 |
+| `Code.fromAsset` Lambda의 `dist/` 리빌드 없이 배포 | TS 소스 수정이 배포에 반영 안 됨. CDK는 성공으로 보고하지만 런타임에서 에러 발생 | 2.5단계에서 `src/` vs `dist/` 타임스탬프 비교 후 리빌드 |
 
 ## 주의사항
 
