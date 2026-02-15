@@ -41,4 +41,7 @@ Thumbs.db
 .cache/
 .temp/
 
+# Auto-generated from src/assets/locales/ by vite sync-locales plugin
+public/locales/
+
 .secret/
