@@ -3,6 +3,12 @@
  *
  * Provides WebAuthn-based passkey authentication for wallet access.
  * Uses biometrics (Face ID, Touch ID, Windows Hello) for secure authentication.
+ *
+ * Security model:
+ * - When PRF extension is available: authenticator-derived secret is used as
+ *   key material, providing true cryptographic protection via biometrics.
+ * - When PRF is unavailable: credential ID (public value) is used as fallback.
+ *   In this mode, biometric auth is a convenience gate, not a security boundary.
  */
 
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
@@ -15,6 +21,7 @@ import type {
   PasskeyWalletState,
 } from '../types/passkey';
 import { PasskeyError, isWebAuthnSupported } from '../types/passkey';
+import { generateMnemonicPhrase, keypairFromMnemonic, secureZero, secureZeroString } from './crypto';
 
 // ============================================
 // Configuration
@@ -29,11 +36,14 @@ const DEFAULT_RP_ID = typeof window !== 'undefined' ? window.location.hostname :
 /** Default Relying Party name */
 const DEFAULT_RP_NAME = 'Nasun Wallet';
 
+/** Stable salt for PRF extension evaluation (not a secret — used as PRF input) */
+const PRF_EVAL_SALT = new TextEncoder().encode('nasun-wallet-prf-v1');
+
 // ============================================
 // Base64URL Utilities
 // ============================================
 
-function base64urlEncode(buffer: ArrayBuffer | Uint8Array): string {
+export function base64urlEncode(buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) {
@@ -57,7 +67,6 @@ function base64urlDecode(str: string): Uint8Array {
  * Convert Uint8Array to ArrayBuffer for WebAuthn API compatibility
  */
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  // Create a new ArrayBuffer and copy the data to ensure correct type
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
   return buffer;
@@ -71,16 +80,13 @@ function generateChallenge(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(32));
 }
 
-function generateUserId(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(16));
-}
-
 // ============================================
 // Passkey Registration
 // ============================================
 
 /**
- * Register a new passkey credential
+ * Register a new passkey credential.
+ * Attempts to use PRF extension for secure key derivation.
  */
 export async function registerPasskey(
   options: PasskeyRegistrationOptions
@@ -107,7 +113,7 @@ export async function registerPasskey(
   const challengeBuffer = challenge ? base64urlDecode(challenge) : generateChallenge();
 
   // Prepare user ID
-  const userIdBuffer = base64urlDecode(userId) ?? generateUserId();
+  const userIdBuffer = base64urlDecode(userId);
 
   // Prepare exclude list
   const excludeList: PublicKeyCredentialDescriptor[] = excludeCredentials.map((id) => ({
@@ -115,7 +121,7 @@ export async function registerPasskey(
     id: toArrayBuffer(base64urlDecode(id)),
   }));
 
-  // Create credential options
+  // Create credential options with PRF extension
   const createOptions: CredentialCreationOptions = {
     publicKey: {
       rp: {
@@ -141,6 +147,9 @@ export async function registerPasskey(
       timeout,
       excludeCredentials: excludeList,
       attestation: 'none', // No attestation needed for client-side wallet
+      extensions: {
+        prf: {},
+      },
     },
   };
 
@@ -164,10 +173,14 @@ export async function registerPasskey(
     // Determine algorithm from COSE key
     const algorithm = response.getPublicKeyAlgorithm?.() ?? -7;
 
-    // Build credential object
+    // Check PRF extension support from registration response
+    const clientExtensions = credential.getClientExtensionResults() as Record<string, unknown>;
+    const prfExtension = clientExtensions?.prf as { enabled?: boolean } | undefined;
+    const prfSupported = prfExtension?.enabled === true;
+
+    // Build credential object (rawId omitted — use base64url `id` instead)
     const passkeyCredential: PasskeyCredential = {
       id: base64urlEncode(credential.rawId),
-      rawId: new Uint8Array(credential.rawId),
       publicKey: base64urlEncode(publicKeyBuffer),
       algorithm,
       authenticatorType: authenticatorAttachment,
@@ -181,6 +194,7 @@ export async function registerPasskey(
       credential: passkeyCredential,
       attestationObject: base64urlEncode(response.attestationObject),
       clientDataJSON: base64urlEncode(response.clientDataJSON),
+      prfSupported,
     };
   } catch (error) {
     if (error instanceof PasskeyError) throw error;
@@ -209,7 +223,8 @@ export async function registerPasskey(
 // ============================================
 
 /**
- * Authenticate with a passkey
+ * Authenticate with a passkey.
+ * Requests PRF extension output for secure key derivation when available.
  */
 export async function authenticateWithPasskey(
   options: PasskeyAuthenticationOptions = {}
@@ -235,7 +250,7 @@ export async function authenticateWithPasskey(
     id: toArrayBuffer(base64urlDecode(id)),
   }));
 
-  // Create get options
+  // Create get options with PRF extension
   const getOptions: CredentialRequestOptions = {
     publicKey: {
       challenge: toArrayBuffer(challengeBuffer),
@@ -243,6 +258,13 @@ export async function authenticateWithPasskey(
       userVerification,
       timeout,
       allowCredentials: allowList.length > 0 ? allowList : undefined,
+      extensions: {
+        prf: {
+          eval: {
+            first: toArrayBuffer(PRF_EVAL_SALT),
+          },
+        },
+      },
     },
   };
 
@@ -255,12 +277,20 @@ export async function authenticateWithPasskey(
 
     const response = credential.response as AuthenticatorAssertionResponse;
 
+    // Extract PRF output if available
+    const clientExtensions = credential.getClientExtensionResults() as Record<string, unknown>;
+    const prfExtension = clientExtensions?.prf as {
+      results?: { first?: ArrayBuffer };
+    } | undefined;
+    const prfOutput = prfExtension?.results?.first ?? undefined;
+
     return {
       credentialId: base64urlEncode(credential.rawId),
       signature: base64urlEncode(response.signature),
       authenticatorData: base64urlEncode(response.authenticatorData),
       clientDataJSON: base64urlEncode(response.clientDataJSON),
       userHandle: response.userHandle ? base64urlEncode(response.userHandle) : undefined,
+      prfOutput,
     };
   } catch (error) {
     if (error instanceof PasskeyError) throw error;
@@ -285,29 +315,35 @@ export async function authenticateWithPasskey(
 // Wallet Key Encryption with Passkey
 // ============================================
 
+/** PBKDF2 iterations for key derivation */
+const PASSKEY_PBKDF2_ITERATIONS = 100000;
+
 /**
- * Derive encryption key from passkey authentication
- * Uses the authenticator data and signature as key material
+ * Derive encryption key from PRF extension output (authenticator secret).
+ *
+ * PRF output is a 32-byte secret derived by the authenticator from its
+ * internal key material. This provides true cryptographic protection —
+ * the secret never leaves the authenticator and cannot be extracted from
+ * localStorage.
  */
-async function deriveKeyFromPasskey(authResult: PasskeyAuthenticationResult): Promise<CryptoKey> {
-  // Combine authenticator data and signature as key material
-  const authData = base64urlDecode(authResult.authenticatorData);
-  const signature = base64urlDecode(authResult.signature);
+async function deriveKeyFromPRF(
+  prfOutput: ArrayBuffer,
+  storedSalt: Uint8Array
+): Promise<CryptoKey> {
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    prfOutput,
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
 
-  const keyMaterial = new Uint8Array(authData.length + signature.length);
-  keyMaterial.set(authData);
-  keyMaterial.set(signature, authData.length);
-
-  // Import as raw key material
-  const baseKey = await crypto.subtle.importKey('raw', keyMaterial, 'HKDF', false, ['deriveKey']);
-
-  // Derive AES-GCM key using HKDF
   return crypto.subtle.deriveKey(
     {
-      name: 'HKDF',
+      name: 'PBKDF2',
+      salt: toArrayBuffer(storedSalt),
+      iterations: PASSKEY_PBKDF2_ITERATIONS,
       hash: 'SHA-256',
-      salt: new Uint8Array(32), // Will be overridden with stored salt
-      info: new TextEncoder().encode('nasun-passkey-wallet'),
     },
     baseKey,
     { name: 'AES-GCM', length: 256 },
@@ -317,60 +353,136 @@ async function deriveKeyFromPasskey(authResult: PasskeyAuthenticationResult): Pr
 }
 
 /**
- * Create a new wallet protected by passkey
+ * Derive encryption key from credential ID and stored salt (fallback).
+ *
+ * WARNING: The credential ID is a public value stored in localStorage.
+ * This method is a convenience fallback when the PRF extension is not
+ * supported. Biometric authentication in this mode is a UI-level gate,
+ * not a cryptographic protection boundary.
  */
-export async function createPasskeyWallet(
-  credential: PasskeyCredential,
-  authResult: PasskeyAuthenticationResult
-): Promise<{ wallet: PasskeyWalletState; keypair: Ed25519Keypair }> {
-  // Generate new Sui keypair
-  const keypair = new Ed25519Keypair();
-  const secretKey = keypair.getSecretKey(); // Bech32 encoded string
-  const address = keypair.toSuiAddress();
+async function deriveKeyFromCredential(
+  credentialId: string,
+  storedSalt: Uint8Array
+): Promise<CryptoKey> {
+  const keyMaterial = new TextEncoder().encode(credentialId);
 
-  // Generate salt and IV
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-
-  // Derive encryption key from passkey authentication
-  const encryptionKey = await deriveKeyFromPasskey(authResult);
-
-  // Encrypt private key (encode string to bytes)
-  const privateKeyBytes = new TextEncoder().encode(secretKey);
-  const encryptedData = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
-    encryptionKey,
-    toArrayBuffer(privateKeyBytes)
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    keyMaterial,
+    'PBKDF2',
+    false,
+    ['deriveKey']
   );
 
-  const walletState: PasskeyWalletState = {
-    address,
-    primaryCredentialId: credential.id,
-    credentials: [credential],
-    encryptedPrivateKey: base64urlEncode(encryptedData),
-    iv: base64urlEncode(iv),
-    salt: base64urlEncode(salt),
-    createdAt: Date.now(),
-  };
-
-  // Save to storage
-  savePasskeyWallet(walletState);
-
-  return { wallet: walletState, keypair };
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: toArrayBuffer(storedSalt),
+      iterations: PASSKEY_PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
 /**
- * Unlock wallet with passkey authentication
+ * Create a new wallet protected by passkey.
+ * Generates a BIP39 mnemonic and derives the keypair from it.
+ * The mnemonic is returned once for backup — it is NOT stored.
+ *
+ * @param credential - The registered passkey credential
+ * @param prfOutput - PRF extension output (if authenticator supports it)
+ */
+export async function createPasskeyWallet(
+  credential: PasskeyCredential,
+  prfOutput?: ArrayBuffer
+): Promise<{ wallet: PasskeyWalletState; keypair: Ed25519Keypair; mnemonic: string }> {
+  // Generate mnemonic and derive keypair
+  const mnemonic = generateMnemonicPhrase();
+  const keypair = keypairFromMnemonic(mnemonic);
+  let secretKey: string | null = null;
+
+  try {
+    secretKey = keypair.getSecretKey();
+    const address = keypair.toSuiAddress();
+
+    // Generate salt and IV
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    // Derive encryption key — PRF (authenticator secret) or credential ID (fallback)
+    const keyDerivationMethod = prfOutput ? 'prf' : 'credential-id' as const;
+    const encryptionKey = prfOutput
+      ? await deriveKeyFromPRF(prfOutput, salt)
+      : await deriveKeyFromCredential(credential.id, salt);
+
+    // Encrypt private key
+    const privateKeyBytes = new TextEncoder().encode(secretKey);
+    const encryptedData = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: toArrayBuffer(iv) },
+      encryptionKey,
+      toArrayBuffer(privateKeyBytes)
+    );
+
+    // Zero intermediate buffer immediately after encryption
+    secureZero(privateKeyBytes);
+
+    const walletState: PasskeyWalletState = {
+      address,
+      primaryCredentialId: credential.id,
+      credentials: [credential],
+      encryptedPrivateKey: base64urlEncode(encryptedData),
+      iv: base64urlEncode(iv),
+      salt: base64urlEncode(salt),
+      keyDerivationMethod,
+      createdAt: Date.now(),
+    };
+
+    // Save to storage
+    savePasskeyWallet(walletState);
+
+    return { wallet: walletState, keypair, mnemonic };
+  } finally {
+    // Clear sensitive data from memory (best effort — JS strings are immutable)
+    if (secretKey) secureZeroString(secretKey);
+    if (prfOutput) secureZero(new Uint8Array(prfOutput));
+  }
+}
+
+/**
+ * Unlock wallet using passkey credential.
+ * Passkey authentication (biometric check) must be performed before calling this.
+ *
+ * @param wallet - The stored wallet state
+ * @param prfOutput - PRF extension output from authentication (required for PRF wallets)
  */
 export async function unlockPasskeyWallet(
   wallet: PasskeyWalletState,
-  authResult: PasskeyAuthenticationResult
+  prfOutput?: ArrayBuffer
 ): Promise<Ed25519Keypair> {
-  try {
-    // Derive decryption key
-    const decryptionKey = await deriveKeyFromPasskey(authResult);
+  let secretKey: string | null = null;
+  let decryptedBuffer: Uint8Array | null = null;
 
-    // Decrypt private key
+  try {
+    const salt = base64urlDecode(wallet.salt);
+
+    // Derive decryption key based on wallet's key derivation method
+    let decryptionKey: CryptoKey;
+    if (wallet.keyDerivationMethod === 'prf') {
+      if (!prfOutput) {
+        throw new PasskeyError(
+          'DECRYPTION_FAILED',
+          'PRF output required for this wallet but authenticator did not provide it'
+        );
+      }
+      decryptionKey = await deriveKeyFromPRF(prfOutput, salt);
+    } else {
+      decryptionKey = await deriveKeyFromCredential(wallet.primaryCredentialId, salt);
+    }
+
     const iv = base64urlDecode(wallet.iv);
     const encryptedData = base64urlDecode(wallet.encryptedPrivateKey);
 
@@ -380,14 +492,22 @@ export async function unlockPasskeyWallet(
       toArrayBuffer(encryptedData)
     );
 
-    // Reconstruct keypair from decrypted secret key string
-    const secretKey = new TextDecoder().decode(decryptedData);
-    return Ed25519Keypair.fromSecretKey(secretKey);
+    decryptedBuffer = new Uint8Array(decryptedData);
+    secretKey = new TextDecoder().decode(decryptedData);
+    const keypair = Ed25519Keypair.fromSecretKey(secretKey);
+
+    return keypair;
   } catch (error) {
+    if (error instanceof PasskeyError) throw error;
     throw new PasskeyError(
       'DECRYPTION_FAILED',
-      'Failed to decrypt wallet. Please try authenticating again.'
+      `Failed to decrypt wallet: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
+  } finally {
+    // Clear sensitive data from memory
+    if (decryptedBuffer) secureZero(decryptedBuffer);
+    if (secretKey) secureZeroString(secretKey);
+    if (prfOutput) secureZero(new Uint8Array(prfOutput));
   }
 }
 
@@ -403,7 +523,12 @@ export function getPasskeyWallet(): PasskeyWalletState | null {
   if (!stored) return null;
 
   try {
-    return JSON.parse(stored) as PasskeyWalletState;
+    const parsed = JSON.parse(stored) as PasskeyWalletState;
+    // Migrate legacy wallets without keyDerivationMethod
+    if (!parsed.keyDerivationMethod) {
+      parsed.keyDerivationMethod = 'credential-id';
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -439,7 +564,9 @@ export function addCredentialToWallet(
 }
 
 /**
- * Remove a credential from wallet
+ * Remove a credential from wallet.
+ * Cannot remove the primary credential (it is used for key derivation).
+ * Cannot remove the last credential.
  */
 export function removeCredentialFromWallet(
   wallet: PasskeyWalletState,
@@ -449,15 +576,17 @@ export function removeCredentialFromWallet(
     throw new PasskeyError('INVALID_STATE', 'Cannot remove the last credential');
   }
 
+  if (wallet.primaryCredentialId === credentialId) {
+    throw new PasskeyError(
+      'INVALID_STATE',
+      'Cannot remove primary credential. Delete the wallet instead.'
+    );
+  }
+
   const updated = {
     ...wallet,
     credentials: wallet.credentials.filter((c) => c.id !== credentialId),
   };
-
-  // Update primary if removed
-  if (wallet.primaryCredentialId === credentialId) {
-    updated.primaryCredentialId = updated.credentials[0].id;
-  }
 
   savePasskeyWallet(updated);
   return updated;
