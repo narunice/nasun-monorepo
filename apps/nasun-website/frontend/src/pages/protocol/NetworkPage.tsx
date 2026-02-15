@@ -20,8 +20,26 @@ const NasunTokenSection = lazy(
 const MoveTogetherSection = lazy(
   () => import("../../sections/network/network/MoveTogetherSection")
 );
+const HowNasunWorksSection = lazy(
+  () => import("../../sections/network/network/HowNasunWorksSection")
+);
+const BuiltForCoordinationSection = lazy(
+  () => import("../../sections/network/network/BuiltForCoordinationSection")
+);
+const WhoBuildsHereSection = lazy(
+  () => import("../../sections/network/network/WhoBuildsHereSection")
+);
+const NetworkActivitySection = lazy(
+  () => import("../../sections/network/network/NetworkActivity")
+);
 const TokenDistributionSection = lazy(
   () => import("../../sections/network/network/TokenDistributionSection")
+);
+const TechnicalFoundationSection = lazy(
+  () => import("../../sections/network/network/TechnicalFoundationSection")
+);
+const ForBuildersSection = lazy(
+  () => import("../../sections/network/network/ForBuildersSection")
 );
 
 const VisionNetworkPage = () => {
@@ -73,9 +91,15 @@ const VisionNetworkPage = () => {
         {isVideoReady && (
           <>
             <NasunNetworkSection />
+            <NetworkActivitySection />
+            <HowNasunWorksSection />
+            <BuiltForCoordinationSection />
+            <WhoBuildsHereSection />
             <NasunTokenSection />
-            <MoveTogetherSection />
             <TokenDistributionSection />
+            <TechnicalFoundationSection />
+            <MoveTogetherSection />
+            <ForBuildersSection />
           </>
         )}
       </Suspense>

@@ -4,12 +4,12 @@
     "title": "NASUN NETWORK",
     "mainTitle": "Use the best out there or build it.",
     "subtitle": "Ideas, Tech and Process",
-    "nsnTitle": "NSN NETWORK",
+    "nsnTitle": "NASUN NETWORK",
     "visionTitle": "THE VISION",
     "visionDescription": "NASUN Network is built on a high-performance Layer 1 blockchain utilizing Move—a next-generation programming language designed for security, speed, and scalability.\n\nBy integrating cutting-edge technology with creator-focused infrastructure, we're empowering artists and fans to build, share, and own their digital experiences like never before.",
     "layer1": "Layer 1 Protocol",
-    "description": "Nasun Network is a Layer-1 protocol that utilizes Delegated Proof-of-Stake (DPoS) and the Mysticeti consensus mechanism. Through the network, users can transfer, create, and evolve digital assets, or interact with smart contracts.\n\nThe native token of the Nasun Network, NSN, powers all activity within the ecosystem. Transaction costs (gas) are paid in NSN, and users can delegate their tokens to validators to help secure the network and earn rewards. Validators, in turn, must stake a minimum amount of NSN to align their incentives with the community and uphold the network’s security and growth.",
-    "buttonText": "LEARN MORE"
+    "description": "Building community-owned IP at global scale.\nEntertainment. AI platforms. Financial services.\nDecentralized infrastructure, owned and governed by the community.",
+    "buttonText": "Explore Ecosystem"
   },
   "token": {
     "title": "NASUN TOKEN",
@@ -67,23 +67,23 @@
     ]
   },
   "distribution": {
-    "title": "NASUN TOKEN DISTRIBUTION",
-    "heading": "NASUN TOKEN DISTRIBUTION",
+    "title": "NSN TOKEN",
+    "heading": "NSN TOKEN",
     "description_top": "The total supply of NSN tokens will be 10 billion.",
     "subheading": "Preliminary allocation",
     "supply": "Total Supply",
     "description_bottom": "This represents an initial breakdown, with further details to follow — including specific program allocations, governance models for token distribution, and lock-up and vesting schedules. We plan to finalize these details after launch, incorporating community feedback to ensure Nasun’s tokenomics evolve in line with the values, sentiment, and goodwill of our ecosystem.",
     "community_treasury": {
-      "title": "Community Treasury & Ecosystem"
+      "title": "Community & Ecosystem"
     },
     "team_advisors": {
-      "title": "Team and Advisors"
+      "title": "Team & Advisors"
     },
     "public_sales": {
-      "title": "Public Sales and Liquidity"
+      "title": "Public Sale & Liquidity"
     },
     "early_contributors": {
-      "title": "Early Contributors, Testers & Campaigns"
+      "title": "Early Contributors"
     },
     "strategic_partners": {
       "title": "Strategic Partners"
