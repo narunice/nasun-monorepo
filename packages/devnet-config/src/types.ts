@@ -129,6 +129,12 @@ export interface OracleConfig {
   adminCap: ObjectId | '';
 }
 
+export interface NsaConfig {
+  packageId: ObjectId;
+  upgradeCap: ObjectId;
+  registry: ObjectId;
+}
+
 export interface DevnetConfig {
   version: string;
   lastUpdated: string;
@@ -143,4 +149,5 @@ export interface DevnetConfig {
   tokensV2: Omit<TokensV2Config, 'nethType' | 'nsolType'>;
   pools: PoolsConfig;
   oracle: OracleConfig;
+  nsa: NsaConfig;
 }
