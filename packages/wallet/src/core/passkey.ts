@@ -389,6 +389,43 @@ async function deriveKeyFromCredential(
 }
 
 /**
+ * Derive encryption key from credential ID + user password and stored salt.
+ *
+ * Used when the PRF extension is not supported by the authenticator.
+ * The user-provided password is the actual cryptographic secret; the
+ * credential ID is included as defense-in-depth (attacker needs both
+ * localStorage access AND the password to decrypt).
+ */
+async function deriveKeyFromCredentialAndPassword(
+  credentialId: string,
+  password: string,
+  storedSalt: Uint8Array
+): Promise<CryptoKey> {
+  const keyMaterial = new TextEncoder().encode(credentialId + ':' + password);
+
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    keyMaterial,
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: toArrayBuffer(storedSalt),
+      iterations: PASSKEY_PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
  * Create a new wallet protected by passkey.
  * Generates a BIP39 mnemonic and derives the keypair from it.
  * The mnemonic is returned once for backup — it is NOT stored.
@@ -398,7 +435,8 @@ async function deriveKeyFromCredential(
  */
 export async function createPasskeyWallet(
   credential: PasskeyCredential,
-  prfOutput?: ArrayBuffer
+  prfOutput?: ArrayBuffer,
+  password?: string
 ): Promise<{ wallet: PasskeyWalletState; keypair: Ed25519Keypair; mnemonic: string }> {
   // Generate mnemonic and derive keypair
   const mnemonic = generateMnemonicPhrase();
@@ -413,11 +451,21 @@ export async function createPasskeyWallet(
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
 
-    // Derive encryption key — PRF (authenticator secret) or credential ID (fallback)
-    const keyDerivationMethod = prfOutput ? 'prf' : 'credential-id' as const;
-    const encryptionKey = prfOutput
-      ? await deriveKeyFromPRF(prfOutput, salt)
-      : await deriveKeyFromCredential(credential.id, salt);
+    // Derive encryption key — PRF (authenticator secret), credential-id+password, or credential-id (legacy)
+    let keyDerivationMethod: PasskeyWalletState['keyDerivationMethod'];
+    let encryptionKey: CryptoKey;
+
+    if (prfOutput) {
+      keyDerivationMethod = 'prf';
+      encryptionKey = await deriveKeyFromPRF(prfOutput, salt);
+    } else if (password) {
+      keyDerivationMethod = 'credential-id-password';
+      encryptionKey = await deriveKeyFromCredentialAndPassword(credential.id, password, salt);
+    } else {
+      // Legacy fallback — insecure (credential ID is public in localStorage)
+      keyDerivationMethod = 'credential-id';
+      encryptionKey = await deriveKeyFromCredential(credential.id, salt);
+    }
 
     // Encrypt private key
     const privateKeyBytes = new TextEncoder().encode(secretKey);
@@ -461,7 +509,8 @@ export async function createPasskeyWallet(
  */
 export async function unlockPasskeyWallet(
   wallet: PasskeyWalletState,
-  prfOutput?: ArrayBuffer
+  prfOutput?: ArrayBuffer,
+  password?: string
 ): Promise<Ed25519Keypair> {
   let secretKey: string | null = null;
   let decryptedBuffer: Uint8Array | null = null;
@@ -479,7 +528,18 @@ export async function unlockPasskeyWallet(
         );
       }
       decryptionKey = await deriveKeyFromPRF(prfOutput, salt);
+    } else if (wallet.keyDerivationMethod === 'credential-id-password') {
+      if (!password) {
+        throw new PasskeyError(
+          'DECRYPTION_FAILED',
+          'Password required for this wallet'
+        );
+      }
+      decryptionKey = await deriveKeyFromCredentialAndPassword(
+        wallet.primaryCredentialId, password, salt
+      );
     } else {
+      // Legacy 'credential-id' path
       decryptionKey = await deriveKeyFromCredential(wallet.primaryCredentialId, salt);
     }
 

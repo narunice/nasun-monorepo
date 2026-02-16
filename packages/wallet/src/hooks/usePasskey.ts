@@ -38,6 +38,7 @@ import {
   updateCredentialLastUsed,
   base64urlEncode,
 } from '../core/passkey';
+import { getSecretKeyFromKeypair } from '../core/crypto';
 import { usePasskeyStore } from '../stores/passkeyStore';
 
 /**
@@ -74,10 +75,12 @@ export interface UsePasskeyResult {
   keypair: Ed25519Keypair | null;
   /** Wallet address */
   address: string | null;
+  /** Whether this wallet requires a password to unlock (non-PRF) */
+  needsPassword: boolean;
   /** Register a new passkey and create wallet */
-  createWallet: (userName: string, credentialName?: string) => Promise<{ address: string; mnemonic: string }>;
+  createWallet: (userName: string, password?: string, credentialName?: string) => Promise<{ address: string; mnemonic: string }>;
   /** Authenticate with passkey to unlock wallet */
-  unlock: () => Promise<void>;
+  unlock: (password?: string) => Promise<void>;
   /** Lock the wallet (clear keypair from memory) */
   lock: () => void;
   /** Delete wallet and all credentials (requires biometric re-auth) */
@@ -86,6 +89,8 @@ export interface UsePasskeyResult {
   addCredential: (credentialName?: string) => Promise<void>;
   /** Remove a credential from wallet */
   removeCredential: (credentialId: string) => Promise<void>;
+  /** Export private key (requires biometric re-authentication) */
+  exportPrivateKey: () => Promise<string>;
   /** List all credentials */
   credentials: PasskeyCredential[];
   /** Refresh wallet state from storage */
@@ -123,9 +128,11 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   const createWalletMutation = useMutation({
     mutationFn: async ({
       userName,
+      password,
       credentialName,
     }: {
       userName: string;
+      password?: string;
       credentialName?: string;
     }) => {
       setError(null);
@@ -153,10 +160,16 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
           userVerification: 'required',
         });
         prfOutput = authResult.prfOutput;
+      } else if (!password) {
+        // Non-PRF without password — reject (insecure)
+        throw new PasskeyError(
+          'PASSWORD_REQUIRED',
+          'Password required: your browser does not support hardware encryption'
+        );
       }
 
-      // Create wallet with credential (and PRF output if available)
-      const result = await createPasskeyWallet(credential, prfOutput);
+      // Create wallet with credential (and PRF output or password)
+      const result = await createPasskeyWallet(credential, prfOutput, password);
 
       return result;
     },
@@ -179,7 +192,7 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
 
   // Unlock wallet mutation
   const unlockMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (password?: string) => {
       // Read current wallet from store to avoid stale closure
       const currentWallet = usePasskeyStore.getState().wallet;
       if (!currentWallet) {
@@ -199,8 +212,8 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         throw new PasskeyError('CREDENTIAL_NOT_FOUND', 'Authenticated with unrecognized credential');
       }
 
-      // Decrypt wallet (PRF output used if wallet was created with PRF)
-      const unlockedKeypair = await unlockPasskeyWallet(currentWallet, authResult.prfOutput);
+      // Decrypt wallet (PRF output for PRF wallets, password for credential-id-password wallets)
+      const unlockedKeypair = await unlockPasskeyWallet(currentWallet, authResult.prfOutput, password);
 
       // Update last used timestamp
       const updatedWallet = updateCredentialLastUsed(currentWallet, authResult.credentialId);
@@ -287,16 +300,16 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
 
   // Create wallet function — returns { address, mnemonic } for backup
   const createWallet = useCallback(
-    async (userName: string, credentialName?: string): Promise<{ address: string; mnemonic: string }> => {
-      const result = await createWalletMutation.mutateAsync({ userName, credentialName });
+    async (userName: string, password?: string, credentialName?: string): Promise<{ address: string; mnemonic: string }> => {
+      const result = await createWalletMutation.mutateAsync({ userName, password, credentialName });
       return { address: result.wallet.address, mnemonic: result.mnemonic };
     },
     [createWalletMutation]
   );
 
   // Unlock function
-  const unlock = useCallback(async () => {
-    await unlockMutation.mutateAsync();
+  const unlock = useCallback(async (password?: string) => {
+    await unlockMutation.mutateAsync(password);
   }, [unlockMutation]);
 
   // Lock function — drop keypair reference so GC can collect it.
@@ -345,6 +358,23 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     usePasskeyStore.getState().setWallet(getPasskeyWallet());
   }, []);
 
+  // Export private key — requires biometric re-authentication as security gate
+  const exportPrivateKey = useCallback(async (): Promise<string> => {
+    const currentWallet = usePasskeyStore.getState().wallet;
+    const currentKeypair = usePasskeyStore.getState().keypair;
+    if (!currentWallet || !currentKeypair) {
+      throw new PasskeyError('INVALID_STATE', 'Wallet must be unlocked to export');
+    }
+
+    // Biometric re-authentication before exposing sensitive material
+    await authenticateWithPasskey({
+      allowCredentials: currentWallet.credentials.map((c) => c.id),
+      userVerification: 'required',
+    });
+
+    return getSecretKeyFromKeypair(currentKeypair);
+  }, []);
+
   // Check for existing wallet on mount
   useEffect(() => {
     if (autoCheck) {
@@ -365,10 +395,12 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     error,
     keypair,
     address,
+    needsPassword: wallet?.keyDerivationMethod === 'credential-id-password',
     createWallet,
     unlock,
     lock,
     deleteWallet,
+    exportPrivateKey,
     addCredential,
     removeCredential,
     credentials: wallet?.credentials ?? [],
