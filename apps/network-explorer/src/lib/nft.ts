@@ -137,11 +137,3 @@ export function getModuleName(type: string | null | undefined): string | undefin
 
   return parts[parts.length - 2];
 }
-
-/**
- * Shorten address/ID for display
- */
-export function shortenId(id: string, chars: number = 6): string {
-  if (id.length <= chars * 2 + 3) return id;
-  return `${id.slice(0, chars + 2)}...${id.slice(-chars)}`;
-}

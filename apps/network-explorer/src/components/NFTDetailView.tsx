@@ -12,8 +12,8 @@ import CopyableId from './CopyableId';
 import { SectionBox } from './ui/SectionBox';
 import { Card } from './ui/Card';
 import { getDisplayMediaUrl, getNFTName, getNFTDescription } from '../lib/media';
-import { extractAttributes, getCollectionName, getModuleName, shortenId } from '../lib/nft';
-import { formatObjectType } from '../lib/format';
+import { extractAttributes, getCollectionName, getModuleName } from '../lib/nft';
+import { formatObjectType, truncateId } from '../lib/format';
 import { parseContent, getOwnerAddress } from '../lib/object-utils';
 
 interface NFTDetailViewProps {
@@ -155,7 +155,7 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Digest</p>
                 <p className="text-sm text-muted-foreground font-mono mt-1">
-                  {shortenId(data.digest || '', 6)}
+                  {truncateId(data.digest || '', 8, 6)}
                 </p>
               </div>
             </div>
