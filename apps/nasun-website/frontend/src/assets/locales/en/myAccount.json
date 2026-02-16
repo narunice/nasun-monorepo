@@ -107,7 +107,7 @@
     "viewOnOpenSea": "View on OpenSea"
   },
   "rankHistory": {
-    "title": "RANK HISTORY",
+    "title": "LEADERBOARD HISTORY",
     "description": "View your daily ranking changes over time",
     "loginRequired": "Log in to view your rank history",
     "twitterRequired": "Connect your X account to view rank history",
@@ -132,6 +132,8 @@
     "error": "Failed to load history data",
     "unknownError": "An unknown error occurred.",
     "noData": "No rank history available yet",
+    "noDataEnded": "You didn't participate in this season.",
+    "seasonLive": "Live",
     "noDataDescription": "No ranking data available for the selected period.",
     "viewLeaderboard": "View Leaderboard",
     "chart": {
@@ -142,6 +144,7 @@
     },
     "stats": {
       "current": "Current",
+      "final": "Final",
       "best": "Highest",
       "worst": "Lowest",
       "change": "Change",

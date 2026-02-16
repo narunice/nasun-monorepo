@@ -5,11 +5,11 @@
  * Requires Twitter account to be connected for rank lookup.
  */
 
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';
-import { useRankHistory, useActiveSeason } from '@/features/leaderboard-v3/hooks';
+import { useRankHistory, useActiveSeason, useSeasons } from '@/features/leaderboard-v3/hooks';
 import { RankHistoryChartV3 } from '@/features/leaderboard-v3/components/RankHistoryChartV3';
 import { OuterBox } from '@/components/ui';
 import { StatCard } from '@/components/ui/StatCard';
@@ -30,16 +30,32 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   const { t } = useTranslation(['myAccount', 'common']);
   const { user, isAuthenticated } = useAuth();
   const activeSeason = useActiveSeason();
+  const { data: seasons } = useSeasons();
   const [selectedDays, setSelectedDays] = useState<DateRangeOptionV3>(7);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>(undefined);
+
+  // Initialize with active season
+  useEffect(() => {
+    if (activeSeason && !selectedSeasonId) {
+      setSelectedSeasonId(activeSeason.seasonId);
+    }
+  }, [activeSeason, selectedSeasonId]);
+
+  // Only show active + ended seasons (exclude upcoming/archived)
+  const selectableSeasons = (seasons ?? []).filter(
+    (s) => s.status === 'active' || s.status === 'ended'
+  );
+  const selectedSeason = selectableSeasons.find((s) => s.seasonId === selectedSeasonId);
+  const isSeasonEnded = selectedSeason?.status === 'ended';
 
   // Get Twitter username
   const twitterUsername =
     user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle;
 
   const { data, isLoading, isError } = useRankHistory({
-    seasonId: activeSeason?.seasonId,
+    seasonId: selectedSeasonId,
     days: selectedDays,
-    enabled: !!twitterUsername && !!activeSeason,
+    enabled: !!twitterUsername && !!selectedSeasonId,
   });
 
   // Not authenticated
@@ -74,13 +90,31 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
     );
   }
 
+  // Season selector (shared across loading/noData/success paths)
+  const seasonSelector = selectableSeasons.length > 1 && (
+    <select
+      value={selectedSeasonId || ''}
+      onChange={(e) => setSelectedSeasonId(e.target.value)}
+      className="bg-nasun-c6 text-nasun-white text-xs border border-nasun-c5/50 rounded px-2 py-1 focus:outline-none focus:border-nasun-c4 cursor-pointer"
+    >
+      {selectableSeasons.map((season) => (
+        <option key={season.seasonId} value={season.seasonId}>
+          {season.name}{season.status === 'active' ? ` (${t('rankHistory.seasonLive')})` : ''}
+        </option>
+      ))}
+    </select>
+  );
+
   // Loading
   if (isLoading) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4">
-          {t('rankHistory.title')}
-        </h5>
+        <div className="flex items-center justify-between mb-4">
+          <h5 className="font-medium uppercase text-nasun-white">
+            {t('rankHistory.title')}
+          </h5>
+          {seasonSelector}
+        </div>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c4 border-t-transparent" />
         </div>
@@ -92,12 +126,17 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   if (isError || !data || data.history.length === 0) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4">
-          {t('rankHistory.title')}
-        </h5>
+        <div className="flex items-center justify-between mb-4">
+          <h5 className="font-medium uppercase text-nasun-white">
+            {t('rankHistory.title')}
+          </h5>
+          {seasonSelector}
+        </div>
         <div className="flex flex-col items-center justify-center py-8 gap-3">
           <p className="text-nasun-white/50 text-center">
-            {t('rankHistory.noData')}
+            {isSeasonEnded
+              ? t('rankHistory.noDataEnded')
+              : t('rankHistory.noData')}
           </p>
           <Link
             to="/wave1/leaderboard"
@@ -114,25 +153,28 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      {/* Header with date range selector */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with season selector and date range */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h5 className="font-medium uppercase text-nasun-white">
           {t('rankHistory.title')}
         </h5>
-        <div className="flex gap-1">
-          {DATE_RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setSelectedDays(option.value)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedDays === option.value
-                  ? 'bg-nasun-c4 text-nasun-white'
-                  : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {seasonSelector}
+          <div className="flex gap-1">
+            {DATE_RANGE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedDays(option.value)}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  selectedDays === option.value
+                    ? 'bg-nasun-c4 text-nasun-white'
+                    : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -144,7 +186,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-2 mb-4">
         <StatCard
-          label={t('rankHistory.stats.current')}
+          label={isSeasonEnded ? t('rankHistory.stats.final') : t('rankHistory.stats.current')}
           value={`#${stats.currentRank}`}
           className="!p-2"
         />
