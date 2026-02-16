@@ -75,11 +75,11 @@ describe('NFT Utilities', () => {
       expect(getNFTImageUrl(display)).toBeUndefined();
     });
 
-    it('should handle IPFS URLs', () => {
+    it('should convert IPFS URLs to gateway URLs', () => {
       const display: NFTDisplay = {
         image_url: 'ipfs://QmXxx123/image.png',
       };
-      expect(getNFTImageUrl(display)).toBe('ipfs://QmXxx123/image.png');
+      expect(getNFTImageUrl(display)).toBe('https://ipfs.io/ipfs/QmXxx123/image.png');
     });
   });
 

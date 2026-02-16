@@ -341,13 +341,17 @@ describe('Link Crypto', () => {
   });
 
   describe('hashPassword / verifyPassword', () => {
-    it('should hash password deterministically', async () => {
+    it('should hash password with random salt (non-deterministic)', async () => {
       const password = 'mysecretpassword';
 
       const hash1 = await hashPassword(password);
       const hash2 = await hashPassword(password);
 
-      expect(hash1).toBe(hash2);
+      // Each hash includes a random salt, so outputs differ
+      expect(hash1).not.toBe(hash2);
+      // Both should verify against the same password
+      expect(await verifyPassword(password, hash1)).toBe(true);
+      expect(await verifyPassword(password, hash2)).toBe(true);
     });
 
     it('should produce different hashes for different passwords', async () => {
