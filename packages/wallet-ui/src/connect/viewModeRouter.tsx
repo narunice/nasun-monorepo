@@ -8,7 +8,7 @@
  * 3. Wallet status fallback (disconnected, locked, unlocked, zkLogin)
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { WalletConnectStateReturn } from "./hooks/useWalletConnectState";
 import type { ViewMode } from "./types";
 import { LockedStateUI } from "./LockedStateUI";
@@ -36,13 +36,31 @@ import {
   AddTokenView,
 } from "./wallet-views";
 import { WCViewRouter } from "../walletconnect";
-import { setPendingPasskeyMnemonic } from "./hooks/useWalletViewState";
+import { setPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
 import { secureZeroString } from "@nasun/wallet";
+import { NsaRestorePanel } from "../nsa";
 
 type ViewRenderer = (s: WalletConnectStateReturn) => ReactNode | null;
 
 // Step 1: Explicit ViewMode -> renderer mapping
 const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
+  // NSA restore: when disconnected, render directly (bypass NsaViewRouter)
+  "nsa-restore": (s) => {
+    if (s.status === "disconnected" && !s.isZkLoggedIn && !s.isLedgerConnected && !s.isPasskeyUnlocked) {
+      return (
+        <NsaRestorePanel
+          onClose={() => s.setViewMode("main")}
+          onImportKey={(key) => {
+            setPendingRestoreKey(key);
+            s.setViewMode("import");
+          }}
+        />
+      );
+    }
+    // Connected: fall through to prefix-based NsaViewRouter
+    return null;
+  },
+
   "create-backup": (s) =>
     s.mnemonic ? <BackupView mnemonic={s.mnemonic} onConfirm={s.handleBackupConfirmed} /> : null,
 
@@ -99,7 +117,7 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   ),
 
   "import": (s) => (
-    <ImportView
+    <ImportViewWithRestore
       onImportMnemonic={s.handleImportMnemonic}
       onImportPrivateKey={s.handleImportPrivateKey}
       resetView={s.resetView}
@@ -107,9 +125,16 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
     />
   ),
 
-  "export": (s) => (
-    <ExportView onExport={s.handleExportPrivateKey} setViewMode={s.setViewMode} />
-  ),
+  "export": (s) => {
+    const isPasskey = s.isPasskeyUnlocked && s.passkeyAddress;
+    return (
+      <ExportView
+        onExport={isPasskey ? s.handleExportPasskeyPrivateKey : s.handleExportPrivateKey}
+        setViewMode={s.setViewMode}
+        authMode={isPasskey ? "biometric" : "password"}
+      />
+    );
+  },
 
   "send": (s) => (
     <SendView
@@ -153,6 +178,22 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   ),
 };
 
+// Wrapper: consume pending restore key safely in a useState initializer (runs once)
+function ImportViewWithRestore(props: {
+  onImportMnemonic: (m: string, p: string) => Promise<void>;
+  onImportPrivateKey: (k: string, p: string) => Promise<void>;
+  resetView: () => void;
+  isLoading: boolean;
+}) {
+  const [restoredKey] = useState(() => consumePendingRestoreKey());
+  return (
+    <ImportView
+      {...props}
+      initialPrivateKey={restoredKey ?? undefined}
+    />
+  );
+}
+
 // Step 2: Prefix-based routers
 const PREFIX_RENDERERS: [string, ViewRenderer][] = [
   [
@@ -163,6 +204,7 @@ const PREFIX_RENDERERS: [string, ViewRenderer][] = [
         setViewMode={s.setViewMode}
         selectedProposalId={s.selectedProposalId}
         setSelectedProposalId={s.setSelectedProposalId}
+        setProposalBannerDismissed={s.setProposalBannerDismissed}
       />
     ),
   ],
@@ -202,6 +244,7 @@ function renderByWalletStatus(
         passkeyWallet={s.passkeyWallet}
         onPasskeyUnlock={s.passkeyUnlock}
         passkeyIsLoading={s.isPasskeyLoading}
+        passkeyNeedsPassword={s.passkeyNeedsPassword}
       />
     );
   }

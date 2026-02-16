@@ -99,7 +99,7 @@ export function WalletConnect({
               }`
         }`}
       >
-        <span className={`w-2 h-2 ${s.getStatusColor()} rounded-full flex-shrink-0`} />
+        <span className={`text-xs leading-none ${s.getStatusColor()} flex-shrink-0`}>&#9660;</span>
         <span
           className={`font-mono truncate ${
             variant === "filledOutlineC7" ? "" : "text-gray-900 dark:text-white"

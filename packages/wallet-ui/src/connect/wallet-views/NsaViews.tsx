@@ -2,15 +2,20 @@
  * NSA (Smart Account) view routing.
  */
 
+import { useState } from "react";
+import { useNasunSmartAccount, useWallet } from "@nasun/wallet";
 import {
   NsaSetupWizard,
   NsaAccountInfo,
   NsaAddSigner,
   NsaAcceptProposal,
   NsaBackupPanel,
+  NsaRestorePanel,
   NsaGuardianSetup,
   NsaRecoveryPanel,
+  NsaGuardianConnect,
 } from "../../nsa";
+import type { GuardianContext } from "../../nsa";
 import type { ViewMode } from "../types";
 
 export function NsaViewRouter({
@@ -18,17 +23,25 @@ export function NsaViewRouter({
   setViewMode,
   selectedProposalId,
   setSelectedProposalId,
+  setProposalBannerDismissed,
 }: {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   selectedProposalId: string;
   setSelectedProposalId: (id: string) => void;
+  setProposalBannerDismissed?: (v: boolean) => void;
 }) {
+  const { refreshIncomingInvitations } = useNasunSmartAccount();
+  const { account } = useWallet();
+  const [guardianContext, setGuardianContext] = useState<GuardianContext | null>(null);
+
   if (viewMode === "nsa-setup") {
     return (
       <NsaSetupWizard
         onClose={() => setViewMode("main")}
         onSuccess={() => setViewMode("nsa-info")}
+        onRestoreFromBackup={() => setViewMode("nsa-restore")}
+        onRecoverAsGuardian={() => setViewMode("nsa-guardian-connect")}
       />
     );
   }
@@ -52,6 +65,8 @@ export function NsaViewRouter({
       <NsaAcceptProposal
         onClose={() => {
           setSelectedProposalId("");
+          if (account?.address) refreshIncomingInvitations(account.address);
+          setProposalBannerDismissed?.(false);
           setViewMode("nsa-info");
         }}
         initialProposalId={selectedProposalId}
@@ -61,11 +76,34 @@ export function NsaViewRouter({
   if (viewMode === "nsa-backup") {
     return <NsaBackupPanel onClose={() => setViewMode("nsa-info")} />;
   }
+  if (viewMode === "nsa-restore") {
+    return <NsaRestorePanel onClose={() => setViewMode("nsa-info")} />;
+  }
   if (viewMode === "nsa-guardians") {
     return <NsaGuardianSetup onClose={() => setViewMode("nsa-info")} />;
   }
+  if (viewMode === "nsa-guardian-connect") {
+    return (
+      <NsaGuardianConnect
+        onClose={() => setViewMode("main")}
+        onConnected={(ctx) => {
+          setGuardianContext(ctx);
+          setViewMode("nsa-recovery");
+        }}
+      />
+    );
+  }
   if (viewMode === "nsa-recovery") {
-    return <NsaRecoveryPanel onClose={() => setViewMode("nsa-info")} />;
+    return (
+      <NsaRecoveryPanel
+        onClose={() => {
+          const wasGuardian = !!guardianContext;
+          setGuardianContext(null);
+          setViewMode(wasGuardian ? "main" : "nsa-info");
+        }}
+        guardianContext={guardianContext ?? undefined}
+      />
+    );
   }
   return null;
 }

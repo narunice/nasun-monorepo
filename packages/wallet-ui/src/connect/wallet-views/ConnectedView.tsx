@@ -254,8 +254,8 @@ export function ConnectedView(props: ConnectedViewProps) {
         <NetworkSelectorModal onClose={() => setIsNetworkModalOpen(false)} />
       )}
 
-      {/* Pending proposal notification banner (self-custody only) */}
-      {variant === "self-custody" && pendingForMe > 0 && !proposalBannerDismissed && (
+      {/* Pending proposal notification banner */}
+      {(variant === "self-custody" || variant === "passkey") && pendingForMe > 0 && !proposalBannerDismissed && (
         <div className="mx-3 mt-2 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2">
           <svg
             className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0"

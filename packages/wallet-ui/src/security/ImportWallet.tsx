@@ -3,7 +3,7 @@
  * Import wallet from mnemonic or private key
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 type ImportMode = 'select' | 'mnemonic' | 'privatekey';
 
@@ -12,6 +12,8 @@ interface ImportWalletProps {
   onImportPrivateKey: (privateKey: string, password: string) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  /** Pre-fill private key (e.g., from SmartAccount backup restore) */
+  initialPrivateKey?: string;
 }
 
 export function ImportWallet({
@@ -19,13 +21,25 @@ export function ImportWallet({
   onImportPrivateKey,
   onCancel,
   isLoading = false,
+  initialPrivateKey,
 }: ImportWalletProps) {
-  const [mode, setMode] = useState<ImportMode>('select');
+  const [mode, setMode] = useState<ImportMode>(initialPrivateKey ? 'privatekey' : 'select');
   const [mnemonic, setMnemonic] = useState('');
-  const [privateKey, setPrivateKey] = useState('');
+  const [privateKey, setPrivateKey] = useState(initialPrivateKey ?? '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Track privateKey in ref for secure cleanup on unmount
+  const privateKeyRef = useRef(privateKey);
+  useEffect(() => { privateKeyRef.current = privateKey; }, [privateKey]);
+  useEffect(() => {
+    return () => {
+      // Best-effort cleanup: clear the string reference
+      // (JS strings are immutable, but this nullifies the ref for GC)
+      privateKeyRef.current = '';
+    };
+  }, []);
 
   const handleImportMnemonic = useCallback(async () => {
     if (password.length < 8) {
@@ -70,6 +84,7 @@ export function ImportWallet({
     setError(null);
     try {
       await onImportPrivateKey(key, password);
+      setPrivateKey(''); // Clear key from state after successful import
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import wallet');
     }
@@ -237,6 +252,15 @@ export function ImportWallet({
       </button>
 
       <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-4">Import with Private Key</h3>
+
+      {/* Restored from backup banner */}
+      {initialPrivateKey && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50 rounded p-3 mb-4">
+          <p className="text-xs xl:text-sm text-green-700 dark:text-green-400">
+            Key restored from SmartAccount backup. Set a password to create your wallet.
+          </p>
+        </div>
+      )}
 
       {/* Warning */}
       <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-500/50 rounded p-3 mb-4">

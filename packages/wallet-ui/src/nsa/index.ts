@@ -10,5 +10,8 @@ export { NsaAccountInfo } from './NsaAccountInfo';
 export { NsaAddSigner } from './NsaAddSigner';
 export { NsaAcceptProposal } from './NsaAcceptProposal';
 export { NsaBackupPanel } from './NsaBackupPanel';
+export { NsaRestorePanel } from './NsaRestorePanel';
 export { NsaGuardianSetup } from './NsaGuardianSetup';
 export { NsaRecoveryPanel } from './NsaRecoveryPanel';
+export { NsaGuardianConnect } from './NsaGuardianConnect';
+export type { GuardianContext } from './NsaGuardianConnect';
