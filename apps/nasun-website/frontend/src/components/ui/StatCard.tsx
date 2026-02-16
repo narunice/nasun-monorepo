@@ -16,6 +16,7 @@ interface StatCardProps {
   };
   icon?: React.ReactNode;
   className?: string;
+  valueClassName?: string;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -24,6 +25,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend,
   icon,
   className = "",
+  valueClassName,
 }) => {
   return (
     <div
@@ -36,7 +38,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         </span>
       </div>
       <div className="flex items-baseline justify-center gap-2">
-        <span className="text-lg font-bold text-nasun-white">
+        <span className={`text-lg font-bold ${valueClassName ?? 'text-nasun-white'}`}>
           {typeof value === "number" ? value.toLocaleString() : value}
         </span>
         {trend && (

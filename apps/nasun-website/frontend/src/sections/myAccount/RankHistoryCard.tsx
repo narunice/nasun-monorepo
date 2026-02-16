@@ -13,14 +13,7 @@ import { useRankHistory, useActiveSeason, useSeasons } from '@/features/leaderbo
 import { RankHistoryChartV3 } from '@/features/leaderboard-v3/components/RankHistoryChartV3';
 import { OuterBox } from '@/components/ui';
 import { StatCard } from '@/components/ui/StatCard';
-import type { DateRangeOptionV3 } from '@/features/leaderboard-v3/types';
-
-const DATE_RANGE_OPTIONS: { value: DateRangeOptionV3; label: string }[] = [
-  { value: 7, label: '7D' },
-  { value: 14, label: '2W' },
-  { value: 30, label: '4W' },
-  { value: 90, label: '3M' },
-];
+import { DATE_RANGE_LABELS, type DateRangeOptionV3 } from '@/features/leaderboard-v3/types';
 
 interface RankHistoryCardProps {
   className?: string;
@@ -161,17 +154,17 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
         <div className="flex items-center gap-2">
           {seasonSelector}
           <div className="flex gap-1">
-            {DATE_RANGE_OPTIONS.map((option) => (
+            {(Object.entries(DATE_RANGE_LABELS) as [string, string][]).map(([val, label]) => (
               <button
-                key={option.value}
-                onClick={() => setSelectedDays(option.value)}
+                key={val}
+                onClick={() => setSelectedDays(Number(val) as DateRangeOptionV3)}
                 className={`px-2 py-1 text-xs rounded transition-colors ${
-                  selectedDays === option.value
+                  selectedDays === Number(val)
                     ? 'bg-nasun-c4 text-nasun-white'
                     : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
                 }`}
               >
-                {option.label}
+                {label}
               </button>
             ))}
           </div>
@@ -209,13 +202,14 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
                 ? `${stats.rankImprovement}`
                 : '-'
           }
-          className={`!p-2 ${
+          className="!p-2"
+          valueClassName={
             stats.rankImprovement > 0
               ? 'text-green-400'
               : stats.rankImprovement < 0
                 ? 'text-red-400'
-                : ''
-          }`}
+                : 'text-nasun-white'
+          }
         />
       </div>
 
