@@ -11,8 +11,11 @@ import AddressNFTs from '../components/address/AddressNFTs';
 import AddressOtherObjects from '../components/address/AddressOtherObjects';
 import AddressTransactionHistory from '../components/address/AddressTransactionHistory';
 
+const HEX_ADDR_RE = /^0x[0-9a-fA-F]{1,64}$/;
+
 export default function Address() {
   const { addr } = useParams<{ addr: string }>();
+  const isValidAddr = addr ? HEX_ADDR_RE.test(addr) : false;
 
   // Data loading via custom hook
   const {
@@ -24,13 +27,13 @@ export default function Address() {
     isLoadingMore,
     hasNextPage,
     handleLoadMore,
-  } = useAddressObjects(addr);
+  } = useAddressObjects(isValidAddr ? addr : undefined);
 
   // Separate query for transaction history
   const { data: transactions, isLoading: txLoading } = useQuery({
     queryKey: ['address-transactions', addr],
     queryFn: () => getAddressTransactions(addr!, 20),
-    enabled: !!addr,
+    enabled: isValidAddr,
   });
 
   return (
@@ -43,7 +46,11 @@ export default function Address() {
 
       <h1 className="text-2xl font-bold mb-6 text-foreground">Address Details</h1>
 
-      {isLoading ? (
+      {!isValidAddr && addr ? (
+        <Card variant="default" className="p-4 border-destructive/50">
+          <span className="text-destructive">Invalid address format. Expected: 0x followed by 1-64 hex characters</span>
+        </Card>
+      ) : isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : error || !addressInfo ? (
         <Card variant="default" className="p-4 border-destructive/50">

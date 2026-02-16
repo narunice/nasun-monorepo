@@ -30,7 +30,7 @@ export function formatBalance(balance: string | undefined): string {
     }
     return `${nasun.toLocaleString('en-US')}.${remainder.toString().padStart(9, '0').replace(/0+$/, '')}`;
   } catch {
-    return balance;
+    return 'N/A';
   }
 }
 
@@ -116,16 +116,28 @@ export function formatPercentage(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
 }
 
+// Known token decimals for fallback when CoinMetadata is unavailable
+const KNOWN_DECIMALS: Record<string, number> = {
+  '::sui::': 9,
+  '::nsn::': 9,
+  '::nusdc::': 6,
+  '::nbtc::': 8,
+};
+
+function resolveDecimals(coinType: string): number {
+  const lower = coinType.toLowerCase();
+  for (const [pattern, decimals] of Object.entries(KNOWN_DECIMALS)) {
+    if (lower.includes(pattern)) return decimals;
+  }
+  return 9; // Default to 9 (native token)
+}
+
 // Token Balance Format (considering decimals)
-// Known decimals: NSN=9, NUSDC=6, NBTC=8
-export function formatTokenBalance(balance: string, coinType: string): string {
+// Pass `knownDecimals` from CoinMetadata when available for accuracy
+export function formatTokenBalance(balance: string, coinType: string, knownDecimals?: number): string {
   try {
     const value = BigInt(balance);
-
-    // Known decimals
-    let decimals = 9; // Default (NSN/SUI)
-    if (coinType.includes('::nusdc::')) decimals = 6;
-    else if (coinType.includes('::nbtc::')) decimals = 8;
+    const decimals = knownDecimals ?? resolveDecimals(coinType);
 
     const divisor = BigInt(10 ** decimals);
     const integerPart = value / divisor;
@@ -145,6 +157,6 @@ export function formatTokenBalance(balance: string, coinType: string): string {
 
     return `${integerPart.toLocaleString('en-US')}.${trimmed}`;
   } catch {
-    return balance;
+    return 'N/A';
   }
 }

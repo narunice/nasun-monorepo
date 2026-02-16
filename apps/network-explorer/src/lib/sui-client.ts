@@ -1,3 +1,12 @@
+import type {
+  SuiTransactionBlockResponse,
+  SuiObjectResponse,
+  CheckpointPage,
+  Checkpoint,
+  CoinMetadata,
+  CoinBalance,
+  SuiMoveNormalizedModules,
+} from '@mysten/sui/client';
 import { SuiClient } from '@mysten/sui/client';
 
 const RPC_URL = import.meta.env.VITE_SUI_RPC_URL;
@@ -13,7 +22,14 @@ export const networkConfig = {
   rpcUrl: RPC_URL,
 };
 
-export async function getNetworkStatus() {
+export interface NetworkStatus {
+  chainId: string | null;
+  latestCheckpoint: string | null;
+  referenceGasPrice: string | null;
+  isConnected: boolean;
+}
+
+export async function getNetworkStatus(): Promise<NetworkStatus> {
   try {
     const [chainId, latestCheckpoint, referenceGasPrice] = await Promise.all([
       suiClient.getChainIdentifier(),
@@ -38,7 +54,7 @@ export async function getNetworkStatus() {
   }
 }
 
-export async function getRecentTransactions(limit = 10) {
+export async function getRecentTransactions(limit = 10): Promise<SuiTransactionBlockResponse[]> {
   try {
     const txs = await suiClient.queryTransactionBlocks({
       limit,
@@ -54,7 +70,7 @@ export async function getRecentTransactions(limit = 10) {
   }
 }
 
-export async function getTransaction(digest: string) {
+export async function getTransaction(digest: string): Promise<SuiTransactionBlockResponse | null> {
   try {
     const tx = await suiClient.getTransactionBlock({
       digest,
@@ -73,7 +89,7 @@ export async function getTransaction(digest: string) {
   }
 }
 
-export async function getObject(objectId: string) {
+export async function getObject(objectId: string): Promise<SuiObjectResponse | null> {
   try {
     const obj = await suiClient.getObject({
       id: objectId,
@@ -92,7 +108,22 @@ export async function getObject(objectId: string) {
   }
 }
 
-export async function getAddressInfo(address: string, cursor?: string | null) {
+export interface AddressInfo {
+  balance: CoinBalance;
+  allBalances: CoinBalance[];
+  ownedObjects: SuiObjectResponse[];
+  hasNextPage: boolean;
+  nextCursor: string | null | undefined;
+}
+
+const EMPTY_BALANCE: CoinBalance = {
+  totalBalance: '0',
+  coinType: '0x2::sui::SUI',
+  coinObjectCount: 0,
+  lockedBalance: {},
+};
+
+export async function getAddressInfo(address: string, cursor?: string | null): Promise<AddressInfo | null> {
   try {
     const [allBalances, ownedObjects] = await Promise.all([
       suiClient.getAllBalances({ owner: address }),
@@ -104,12 +135,11 @@ export async function getAddressInfo(address: string, cursor?: string | null) {
       }),
     ]);
 
-    // 네이티브 토큰 (NSN/SUI) 잔액
     const nativeBalance = allBalances.find(b => b.coinType === '0x2::sui::SUI');
 
     return {
-      balance: nativeBalance || { totalBalance: '0', coinType: '0x2::sui::SUI', coinObjectCount: 0 },
-      allBalances, // 모든 토큰 잔액
+      balance: nativeBalance || EMPTY_BALANCE,
+      allBalances,
       ownedObjects: ownedObjects.data,
       hasNextPage: ownedObjects.hasNextPage,
       nextCursor: ownedObjects.nextCursor,
@@ -120,7 +150,13 @@ export async function getAddressInfo(address: string, cursor?: string | null) {
   }
 }
 
-export async function loadMoreObjects(address: string, cursor: string) {
+export interface LoadMoreResult {
+  ownedObjects: SuiObjectResponse[];
+  hasNextPage: boolean;
+  nextCursor: string | null | undefined;
+}
+
+export async function loadMoreObjects(address: string, cursor: string): Promise<LoadMoreResult | null> {
   try {
     const ownedObjects = await suiClient.getOwnedObjects({
       owner: address,
@@ -140,18 +176,38 @@ export async function loadMoreObjects(address: string, cursor: string) {
   }
 }
 
-export async function getAddressTransactions(address: string, limit = 20) {
+export async function getAddressTransactions(address: string, limit = 20): Promise<SuiTransactionBlockResponse[]> {
   try {
-    const txs = await suiClient.queryTransactionBlocks({
-      filter: { FromAddress: address },
-      options: {
-        showEffects: true,
-        showInput: true,
-      },
-      limit,
-      order: 'descending',
+    const [sentTxs, receivedTxs] = await Promise.all([
+      suiClient.queryTransactionBlocks({
+        filter: { FromAddress: address },
+        options: { showEffects: true, showInput: true },
+        limit,
+        order: 'descending',
+      }),
+      suiClient.queryTransactionBlocks({
+        filter: { ToAddress: address },
+        options: { showEffects: true, showInput: true },
+        limit,
+        order: 'descending',
+      }),
+    ]);
+
+    // Merge and deduplicate by digest, then sort by timestamp descending
+    const seen = new Set<string>();
+    const merged = [...sentTxs.data, ...receivedTxs.data].filter((tx) => {
+      if (seen.has(tx.digest)) return false;
+      seen.add(tx.digest);
+      return true;
     });
-    return txs.data;
+
+    merged.sort((a, b) => {
+      const timeA = Number(a.timestampMs ?? 0);
+      const timeB = Number(b.timestampMs ?? 0);
+      return timeB - timeA;
+    });
+
+    return merged.slice(0, limit);
   } catch (error) {
     console.error('Failed to get address transactions:', error);
     return [];
@@ -162,7 +218,29 @@ export async function getAddressTransactions(address: string, limit = 20) {
 // Validator Functions
 // ============================================
 
-export async function getValidators() {
+export interface ValidatorInfo {
+  address: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  projectUrl: string;
+  commissionRate: number;
+  stakingPoolSuiBalance: string;
+  nextEpochStake: string;
+  votingPower: string;
+  gasPrice: string;
+  apy: number;
+}
+
+export interface ValidatorsData {
+  epoch: string;
+  totalStake: string;
+  activeValidators: ValidatorInfo[];
+  pendingActiveValidatorsSize: string;
+  stakingPoolMappingsSize: string;
+}
+
+export async function getValidators(): Promise<ValidatorsData | null> {
   try {
     const [systemState, validatorsApy] = await Promise.all([
       suiClient.getLatestSuiSystemState(),
@@ -198,7 +276,12 @@ export async function getValidators() {
   }
 }
 
-export async function getValidatorByAddress(address: string) {
+export type ValidatorDetail = ValidatorInfo & {
+  epoch: string;
+  totalNetworkStake: string;
+};
+
+export async function getValidatorByAddress(address: string): Promise<ValidatorDetail | null> {
   try {
     const validators = await getValidators();
     if (!validators) return null;
@@ -224,7 +307,7 @@ export async function getValidatorByAddress(address: string) {
 // Checkpoint Functions
 // ============================================
 
-export async function getCheckpoints(limit = 20, cursor?: string) {
+export async function getCheckpoints(limit = 20, cursor?: string): Promise<CheckpointPage | null> {
   try {
     const checkpoints = await suiClient.getCheckpoints({
       descendingOrder: true,
@@ -238,7 +321,7 @@ export async function getCheckpoints(limit = 20, cursor?: string) {
   }
 }
 
-export async function getCheckpoint(sequenceNumber: string) {
+export async function getCheckpoint(sequenceNumber: string): Promise<Checkpoint | null> {
   try {
     const checkpoint = await suiClient.getCheckpoint({
       id: sequenceNumber,
@@ -254,7 +337,7 @@ export async function getCheckpoint(sequenceNumber: string) {
 // Coin Metadata Functions
 // ============================================
 
-export async function getCoinMetadata(coinType: string) {
+export async function getCoinMetadata(coinType: string): Promise<CoinMetadata | null> {
   try {
     const metadata = await suiClient.getCoinMetadata({ coinType });
     return metadata;
@@ -268,7 +351,18 @@ export async function getCoinMetadata(coinType: string) {
 // Epoch & TPS Functions
 // ============================================
 
-export async function getEpochInfo() {
+export interface EpochInfo {
+  epoch: string;
+  epochStartTimestampMs: string;
+  epochDurationMs: string;
+  remainingMs: number;
+  totalStake: string;
+  progress: number;
+  startTimestamp: number;
+  endTimestamp: number;
+}
+
+export async function getEpochInfo(): Promise<EpochInfo | null> {
   try {
     const systemState = await suiClient.getLatestSuiSystemState();
     const now = Date.now();
@@ -296,7 +390,7 @@ export async function getEpochInfo() {
   }
 }
 
-export async function getTPS() {
+export async function getTPS(): Promise<number | null> {
   try {
     // 최근 5개 체크포인트로 TPS 추정
     const checkpoints = await suiClient.getCheckpoints({
@@ -326,7 +420,7 @@ export async function getTPS() {
 // Package/Module Functions
 // ============================================
 
-export async function getPackageModules(packageId: string) {
+export async function getPackageModules(packageId: string): Promise<SuiMoveNormalizedModules | null> {
   try {
     const modules = await suiClient.getNormalizedMoveModulesByPackage({
       package: packageId,
