@@ -108,7 +108,21 @@ ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "sudo systemctl restart baram-host"
 ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> "journalctl -u baram-host -n 20 --no-pager"
 ```
 
-- **EXISTS**: 건너뜀
+- **EXISTS**: 로컬 `.env`와 EC2 `.env`의 변수 키를 비교:
+
+```bash
+# EC2의 .env 변수 키 목록 추출
+ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> \
+  "grep -oP '^[A-Z_]+(?==)' ~/nasun-monorepo/apps/baram/executor-nitro/.env | sort" > /tmp/ec2_keys.txt
+
+# 로컬 .env 변수 키 목록 추출
+grep -oP '^[A-Z_]+(?==)' /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro/.env | sort > /tmp/local_keys.txt
+
+# 차이 확인
+comm -23 /tmp/local_keys.txt /tmp/ec2_keys.txt
+```
+
+차이가 있으면 (로컬에만 있는 변수가 있으면): scp로 재배포 + 서비스 재시작. 차이가 없으면: 건너뜀.
 
 ### 5단계: Nginx 프록시 + On-chain Endpoint 업데이트
 
