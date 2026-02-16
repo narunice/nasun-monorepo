@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import wave1VideoMP4 from "../../assets/videos/Home-Wave1-rf24.mp4";
-import leaderboardImage from "../../assets/images/leaderboard-img.jpg";
+import leaderboardVideoMP4 from "../../assets/videos/Leaderboard-Ui-rf22.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
@@ -183,11 +183,15 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 mb-4 lg:mb-6 lg:-mt-4 tracking-wide whitespace-nowrap w-full text-center">
               WAVE 1
             </h2>
-            <img
-              src={leaderboardImage}
-              alt="Leaderboard Preview"
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
               className="w-full max-w-lg lg:max-w-none object-contain rounded-md shadow-lg"
-            />
+            >
+              <source src={leaderboardVideoMP4} type="video/mp4" />
+            </video>
           </div>
         </div>
       </FadeInUp>

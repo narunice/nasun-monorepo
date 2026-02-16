@@ -9,9 +9,9 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
 import gensolVideo from "../../assets/videos/Trakker-Flying-26rf.mp4";
-import baramVideo from "../../assets/videos/Baram-Ui-Demo-rf15.mp4";
+import baramVideo from "../../assets/videos/Baram-U-rf10.mp4";
 import padoVideo from "../../assets/videos/Pado-Ui-Demo-Final-rf26.mp4";
-import explorerVideo from "../../assets/videos/Explorer-Ui-Demo-rf15.mp4";
+import explorerVideo from "../../assets/videos/Network-Explorer-Ui-rf12.mp4";
 
 const CustomArrow = ({
   onClick,
@@ -68,7 +68,6 @@ const SLIDES: SlideData[] = [
     buttonVariant: "baram",
     link: "/baram",
     video: baramVideo,
-    videoStartTime: 15,
   },
   {
     id: "pado",
