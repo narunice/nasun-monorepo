@@ -107,7 +107,7 @@
     "viewOnOpenSea": "OpenSea에서 보기"
   },
   "rankHistory": {
-    "title": "순위 히스토리",
+    "title": "리더보드 히스토리",
     "description": "일자별 랭킹 변화를 그래프로 확인하세요",
     "loginRequired": "순위 히스토리를 보려면 로그인하세요",
     "twitterRequired": "순위 히스토리를 보려면 X 계정을 연결하세요",
@@ -132,6 +132,8 @@
     "error": "히스토리 데이터 로드 실패",
     "unknownError": "알 수 없는 오류가 발생했습니다.",
     "noData": "아직 순위 히스토리가 없습니다",
+    "noDataEnded": "이 시즌에 참여하지 않으셨습니다.",
+    "seasonLive": "진행 중",
     "noDataDescription": "선택한 기간 동안 랭킹 데이터가 없습니다.",
     "viewLeaderboard": "리더보드 보기",
     "chart": {
@@ -142,6 +144,7 @@
     },
     "stats": {
       "current": "현재",
+      "final": "최종",
       "best": "최상위",
       "worst": "최하위",
       "change": "변화",
