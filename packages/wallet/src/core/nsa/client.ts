@@ -211,14 +211,15 @@ export async function lookupAccountInRegistry(address: string): Promise<string |
     if (!rv2 || rv2.length === 0) return null;
 
     // Option<ID> BCS: [1, ...32 bytes] = Some(ID), [0] = None
-    const optionBytes = rv2[0][0] as number[];
-    if (!optionBytes || optionBytes.length < 33 || optionBytes[0] !== 1) return null;
+    const raw = rv2[0][0];
+    if (!Array.isArray(raw) || raw.length < 33 || raw[0] !== 1) return null;
 
-    const idBytes = optionBytes.slice(1, 33);
+    const idBytes = raw.slice(1, 33);
     if (idBytes.length !== 32) return null;
 
-    const hex = Array.from(idBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-    return `0x${hex}`;
+    const hex = '0x' + Array.from(idBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (!/^0x[a-f0-9]{64}$/.test(hex)) return null;
+    return hex;
   } catch (error) {
     console.warn('[NSA] Registry lookup failed, falling back to events:', error);
     return null;
