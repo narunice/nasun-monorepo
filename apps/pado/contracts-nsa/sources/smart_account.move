@@ -7,6 +7,7 @@ module nasun_smart_account::smart_account {
     use sui::coin::{Self, Coin};
     use sui::clock::Clock;
     use sui::event;
+    use sui::table::Table;
     use sui::vec_map::{Self, VecMap};
     use std::type_name;
 
@@ -29,12 +30,16 @@ module nasun_smart_account::smart_account {
     const ENotPendingSigner: u64 = 14;
     const EProposalAlreadyExecuted: u64 = 15;
     const EProposalAlreadyCancelled: u64 = 16;
+    const EAccountAlreadyExists: u64 = 17;
+    const EDeprecated: u64 = 18;
+    const ELabelTooLong: u64 = 19;
 
     // === Constants ===
 
     const MAX_SIGNERS: u64 = 5;
     const MAX_GUARDIANS: u64 = 5;
     const MAX_WEIGHT: u8 = 10;
+    const MAX_LABEL_LENGTH: u64 = 64;
     const SIGNER_TYPE_MAX: u8 = 3;
     const PROPOSAL_TTL_MS: u64 = 604_800_000; // 7 days
 
@@ -73,6 +78,13 @@ module nasun_smart_account::smart_account {
         expires_at: u64,
         is_executed: bool,
         is_cancelled: bool,
+    }
+
+    /// Singleton registry mapping creator address -> SmartAccount ID.
+    /// Enforces one SmartAccount per address at the protocol level.
+    public struct AccountRegistry has key {
+        id: UID,
+        accounts: Table<address, ID>,
     }
 
     // === Events ===
@@ -168,15 +180,38 @@ module nasun_smart_account::smart_account {
 
     // === Public Entry Functions ===
 
+    /// Deprecated: registry already created. Always aborts.
+    public entry fun create_registry(_ctx: &mut TxContext) {
+        abort EDeprecated
+    }
+
+    /// Deprecated: use create_account_v2 with AccountRegistry instead.
+    /// Kept for compatible upgrade policy; always aborts.
     public entry fun create_account(
+        _initial_signer_type: u8,
+        _label: vector<u8>,
+        _clock: &Clock,
+        _ctx: &mut TxContext,
+    ) {
+        abort EDeprecated
+    }
+
+    /// Create a new SmartAccount with duplicate prevention via AccountRegistry.
+    public entry fun create_account_v2(
+        registry: &mut AccountRegistry,
         initial_signer_type: u8,
         label: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         assert!(initial_signer_type <= SIGNER_TYPE_MAX, EInvalidSignerType);
+        assert!(label.length() <= MAX_LABEL_LENGTH, ELabelTooLong);
 
         let sender = ctx.sender();
+
+        // Enforce one SmartAccount per address
+        assert!(!registry.accounts.contains(sender), EAccountAlreadyExists);
+
         let now = clock.timestamp_ms();
 
         let mut signers = vec_map::empty<address, SignerInfo>();
@@ -200,6 +235,9 @@ module nasun_smart_account::smart_account {
         };
 
         let account_id = object::id(&account);
+
+        // Register the mapping before sharing
+        registry.accounts.add(sender, account_id);
 
         event::emit(AccountCreated {
             account_id,
@@ -510,6 +548,20 @@ module nasun_smart_account::smart_account {
     }
 
     // === View Functions ===
+
+    /// Look up SmartAccount ID for an address. Returns Option::none if not registered.
+    public fun lookup_account(registry: &AccountRegistry, addr: address): Option<ID> {
+        if (registry.accounts.contains(addr)) {
+            option::some(*registry.accounts.borrow(addr))
+        } else {
+            option::none()
+        }
+    }
+
+    /// Check if an address already has a SmartAccount in the registry.
+    public fun has_account(registry: &AccountRegistry, addr: address): bool {
+        registry.accounts.contains(addr)
+    }
 
     public fun is_signer(account: &SmartAccount, addr: address): bool {
         account.signers.contains(&addr)
