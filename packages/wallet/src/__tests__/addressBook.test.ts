@@ -5,9 +5,10 @@ import './setup';
 // Since it uses zustand with persist, we'll test the store logic
 
 describe('AddressBook Store', () => {
-  // Reset module cache before each test to get fresh store
+  // Reset module cache and clear persisted data before each test
   beforeEach(async () => {
     vi.resetModules();
+    localStorage.removeItem('nasun-address-book');
   });
 
   describe('isKnownAddress', () => {
@@ -201,6 +202,7 @@ describe('AddressBook Store', () => {
 describe('useAddressStatus', () => {
   beforeEach(async () => {
     vi.resetModules();
+    localStorage.removeItem('nasun-address-book');
   });
 
   it('should return status for address', async () => {

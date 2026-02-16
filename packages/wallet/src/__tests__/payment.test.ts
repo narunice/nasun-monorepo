@@ -37,8 +37,8 @@ describe('Payment Types', () => {
     });
 
     it('should export Nasun coin type', async () => {
-      const { NSN_COIN_TYPE } = await import('../core/payment/types');
-      expect(NSN_COIN_TYPE).toBe('0x2::sui::SUI');
+      const { NASUN_COIN_TYPE } = await import('../core/payment/types');
+      expect(NASUN_COIN_TYPE).toBe('0x2::sui::SUI');
     });
 
     it('should export URL params constants', async () => {
@@ -565,7 +565,7 @@ describe('Payment Module Exports', () => {
     const types = await import('../core/payment/types');
 
     expect(types.DEFAULT_INTENT_TTL_MS).toBeDefined();
-    expect(types.NSN_COIN_TYPE).toBeDefined();
+    expect(types.NASUN_COIN_TYPE).toBeDefined();
     expect(types.DEFAULT_TOKEN_SYMBOL).toBeDefined();
     expect(types.URL_PARAMS).toBeDefined();
   });
@@ -605,7 +605,7 @@ describe('Payment Module Exports', () => {
 
     // Types/constants
     expect(payment.DEFAULT_TOKEN_SYMBOL).toBeDefined();
-    expect(payment.NSN_COIN_TYPE).toBeDefined();
+    expect(payment.NASUN_COIN_TYPE).toBeDefined();
     expect(payment.URL_PARAMS).toBeDefined();
 
     // Validation
