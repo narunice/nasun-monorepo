@@ -23,7 +23,7 @@ EC2_USER="ec2-user"
 EC2_HOST="43.200.67.52"
 REMOTE_DIR="/var/www/explorer.nasun.io/devnet/"
 BACKUP_DIR="/var/www/explorer.nasun.io/backups"
-HEALTH_CHECK_URL="https://explorer.nasun.io/devnet"
+HEALTH_CHECK_URL="https://explorer.nasun.io/devnet/"
 
 TOTAL_STEPS=7
 START_TIME=$(date +%s)

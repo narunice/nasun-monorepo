@@ -21,7 +21,7 @@ PEM_KEY_PATH="$HOME/.ssh/.awskey/naru_seoul.pem"
 EC2_USER="ubuntu"
 EC2_HOST="ec2-15-165-19-180.ap-northeast-2.compute.amazonaws.com"
 REMOTE_DIR="/var/www/staging.explorer.nasun.io/devnet/"
-HEALTH_CHECK_URL="https://staging.explorer.nasun.io/devnet"
+HEALTH_CHECK_URL="https://staging.explorer.nasun.io/devnet/"
 
 TOTAL_STEPS=6
 START_TIME=$(date +%s)
