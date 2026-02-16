@@ -250,7 +250,7 @@ export async function getBalance(address: string, rpcUrl?: string, chainId?: str
  */
 export function formatBalance(amount: string | bigint, decimals: number = NASUN_DECIMALS): string {
   const value = BigInt(amount);
-  if (value === 0n) return '0.000000';
+  if (value === 0n) return '0';
 
   const divisor = BigInt(10 ** decimals);
   const integerPart = value / divisor;
