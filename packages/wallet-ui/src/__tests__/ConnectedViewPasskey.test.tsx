@@ -187,7 +187,7 @@ describe('ConnectedView - Passkey Variant', () => {
       expect(onSignOut).toHaveBeenCalled();
     });
 
-    it('should NOT show proposal banner for passkey variant', () => {
+    it('should show proposal banner for passkey variant with pending invitations', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
@@ -198,8 +198,8 @@ describe('ConnectedView - Passkey Variant', () => {
         />
       );
 
-      // Proposal banner only shows for self-custody variant
-      expect(screen.queryByText(/pending signer invitation/)).not.toBeInTheDocument();
+      // Proposal banner shows for both self-custody and passkey variants
+      expect(screen.getByText(/pending signer invitation/)).toBeInTheDocument();
     });
   });
 

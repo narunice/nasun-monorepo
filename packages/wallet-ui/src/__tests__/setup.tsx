@@ -3,8 +3,8 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 
 expect.extend(matchers);
 
-// Mock @nasun/wallet module
-vi.mock('@nasun/wallet', () => ({
+// Base wallet mock (exported so test files can spread and override)
+export const walletMockDefaults: Record<string, unknown> = {
   useWallet: vi.fn(() => ({
     status: 'disconnected',
     account: null,
@@ -250,6 +250,13 @@ vi.mock('@nasun/wallet', () => ({
     error: null,
   })),
   getStoredEVMAddress: vi.fn(() => null),
+  // ERC-20 hooks
+  useERC20Balances: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  })),
+  getAllERC20Tokens: vi.fn(() => []),
   getTokenByType: vi.fn((type: string) => {
     if (type === '0x2::sui::SUI') return { symbol: 'NSN', name: 'Nasun', decimals: 9, type };
     return null;
@@ -289,7 +296,44 @@ vi.mock('@nasun/wallet', () => ({
   getPendingBackupMnemonic: vi.fn(() => null),
   // Crypto utilities
   secureZeroString: vi.fn(),
-}));
+  // NSA hooks
+  useNasunSmartAccount: vi.fn(() => ({
+    accountState: null,
+    isLoading: false,
+    error: null,
+    refreshIncomingInvitations: vi.fn(),
+  })),
+  useNsaRecovery: vi.fn(() => ({
+    status: 'idle',
+    timelockDisplay: '',
+    approvalsNeeded: 0,
+    canExecute: false,
+    initiateRecovery: vi.fn(),
+    approveRecovery: vi.fn(),
+    executeRecovery: vi.fn(),
+    cancelRecovery: vi.fn(),
+    hasApproved: vi.fn(() => false),
+    isLoading: false,
+  })),
+  useSigner: vi.fn(() => ({
+    signer: null,
+    address: null,
+  })),
+  fetchAccountState: vi.fn(),
+  findAccountsWhereGuardian: vi.fn(() => []),
+  useNsaBackup: vi.fn(() => ({
+    backup: vi.fn(),
+    restore: vi.fn(),
+    isLoading: false,
+    error: null,
+  })),
+  useNsaStore: vi.fn(() => ({})),
+  usePasskeyStore: vi.fn(() => ({})),
+  getSecretKeyFromKeypair: vi.fn(() => 'suiprivkey1test'),
+};
+
+// Mock @nasun/wallet module
+vi.mock('@nasun/wallet', () => walletMockDefaults);
 
 // Mock localStorage
 const localStorageMock = {

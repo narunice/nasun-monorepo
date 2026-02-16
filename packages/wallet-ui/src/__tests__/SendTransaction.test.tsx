@@ -2,99 +2,54 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SendTransaction } from '../transaction/SendTransaction';
 
-// Mock functions
-const mockSendTokenTransaction = vi.fn();
-const mockClearError = vi.fn();
-const mockClearResult = vi.fn();
-const mockUseWallet = vi.fn();
+// Use vi.hoisted so mock fns are available inside hoisted vi.mock factory
+const {
+  mockSendTokenTransaction,
+  mockClearError,
+  mockClearResult,
+  mockUseWallet,
+} = vi.hoisted(() => ({
+  mockSendTokenTransaction: vi.fn(),
+  mockClearError: vi.fn(),
+  mockClearResult: vi.fn(),
+  mockUseWallet: vi.fn(),
+}));
 
 // Mock @nasun/wallet
-vi.mock('@nasun/wallet', () => ({
-  useWallet: () => mockUseWallet(),
-  useZkLogin: vi.fn(() => ({
-    isConnected: false,
-    isLoading: false,
-    address: null,
-    proof: null,
-    state: null,
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    signTransaction: vi.fn(),
-  })),
-  useLedger: vi.fn(() => ({
-    status: 'disconnected',
-    address: null,
-    isConnected: false,
-    accountIndex: 0,
-    setAccountIndex: vi.fn(),
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    error: null,
-    clearError: vi.fn(),
-  })),
-  useTokenTransaction: vi.fn(() => ({
-    sendTokenTransaction: mockSendTokenTransaction,
-    isPending: false,
-    error: null,
-    lastResult: null,
-    clearError: mockClearError,
-    clearResult: mockClearResult,
-  })),
-  useMultiBalance: vi.fn(() => ({
-    data: {
-      native: { symbol: 'NSN', balance: 1000000000n, formatted: '1.000', decimals: 9, type: '0x2::sui::SUI' },
-      tokens: {
-        NBTC: { symbol: 'NBTC', balance: 50000000n, formatted: '0.500', decimals: 8, type: '0xabc::nbtc::NBTC' },
+vi.mock('@nasun/wallet', async () => {
+  const { walletMockDefaults } = await import('./setup');
+  return {
+    ...walletMockDefaults,
+    useWallet: () => mockUseWallet(),
+    useTokenTransaction: vi.fn(() => ({
+      sendTokenTransaction: mockSendTokenTransaction,
+      isPending: false,
+      error: null,
+      lastResult: null,
+      clearError: mockClearError,
+      clearResult: mockClearResult,
+    })),
+    useMultiBalance: vi.fn(() => ({
+      data: {
+        native: { symbol: 'NSN', balance: 1000000000n, formatted: '1.000', decimals: 9, type: '0x2::sui::SUI' },
+        tokens: {
+          NBTC: { symbol: 'NBTC', balance: 50000000n, formatted: '0.500', decimals: 8, type: '0xabc::nbtc::NBTC' },
+        },
       },
-    },
-    isLoading: false,
-    error: null,
-  })),
-  // Address book hooks
-  useAddressBook: vi.fn(() => ({
-    isKnownAddress: vi.fn(() => false),
-    isTrustedAddress: vi.fn(() => false),
-    getEntry: vi.fn(() => undefined),
-    getAllEntries: vi.fn(() => []),
-    recordTransaction: vi.fn(),
-    updateLabel: vi.fn(),
-    trustAddress: vi.fn(),
-    untrustAddress: vi.fn(),
-    removeAddress: vi.fn(),
-  })),
-  useAddressStatus: vi.fn(() => ({
-    isKnown: false,
-    isTrusted: false,
-    entry: undefined,
-  })),
-  isValidAddress: vi.fn((addr: string) => /^0x[a-fA-F0-9]{64}$/.test(addr)),
-  shortenAddress: vi.fn((addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`),
-  getAllTokens: vi.fn(() => [
-    { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
-    { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type: '0xabc::nbtc::NBTC' },
-  ]),
-  getTokenByType: vi.fn((type: string) => {
-    if (type === '0x2::sui::SUI') return { symbol: 'NSN', name: 'Nasun', decimals: 9, type };
-    if (type === '0xabc::nbtc::NBTC') return { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type };
-    return null;
-  }),
-  NATIVE_TOKEN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
-  // Explorer URL functions
-  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`),
-  getExplorerAddressUrl: vi.fn((address: string) => `https://explorer.nasun.io/devnet/address/${address}`),
-  getExplorerObjectUrl: vi.fn((objectId: string) => `https://explorer.nasun.io/devnet/object/${objectId}`),
-  useChain: vi.fn(() => ({
-    chain: { id: 'nasun-devnet', name: 'Nasun Devnet', type: 'move', nativeCurrency: { symbol: 'NSN', name: 'Nasun', decimals: 9 }, rpcUrl: 'https://rpc.devnet.nasun.io' },
-    isEVM: false,
-    isMoveChain: true,
-    switchChain: vi.fn(),
-    availableChains: [],
-  })),
-  useEVMBalance: vi.fn(() => ({ balance: null, isLoading: false, error: null, refetch: vi.fn() })),
-  useEVMTransaction: vi.fn(() => ({ sendTransfer: vi.fn(), isPending: false, error: null, lastResult: null, clearError: vi.fn(), clearResult: vi.fn() })),
-  useEVMGasEstimate: vi.fn(() => ({ data: null, isLoading: false, error: null })),
-  getStoredEVMAddress: vi.fn(() => null),
-}));
+      isLoading: false,
+      error: null,
+    })),
+    getAllTokens: vi.fn(() => [
+      { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+      { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type: '0xabc::nbtc::NBTC' },
+    ]),
+    getTokenByType: vi.fn((type: string) => {
+      if (type === '0x2::sui::SUI') return { symbol: 'NSN', name: 'Nasun', decimals: 9, type };
+      if (type === '0xabc::nbtc::NBTC') return { symbol: 'NBTC', name: 'Nasun Bitcoin', decimals: 8, type };
+      return null;
+    }),
+  };
+});
 
 describe('SendTransaction', () => {
   beforeEach(() => {

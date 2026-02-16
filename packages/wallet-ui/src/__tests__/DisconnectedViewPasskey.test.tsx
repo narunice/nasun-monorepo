@@ -240,8 +240,8 @@ describe('DisconnectedView - Passkey Integration', () => {
       expect(screen.getByText('Use Passkey')).toBeInTheDocument();
 
       // Traditional
-      expect(screen.getByText('Create Wallet')).toBeInTheDocument();
-      expect(screen.getByText('Import Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Create')).toBeInTheDocument();
+      expect(screen.getByText('Import')).toBeInTheDocument();
 
       // Divider
       expect(screen.getByText('or use web3 native wallet')).toBeInTheDocument();
