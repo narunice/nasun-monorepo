@@ -28,7 +28,7 @@ export default function TransactionOverview({
           label="Sender"
           value={sender || '-'}
           mono
-          link={`/address/${sender}`}
+          link={sender ? `/address/${sender}` : undefined}
         />
       </div>
     </SectionBox>
