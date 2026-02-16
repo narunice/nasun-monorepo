@@ -8,7 +8,7 @@ published-at = "0x097e96d5e0c09915b6ba2ed744fe2d4ee0bd21df1d453e6528d4d82c96c1c4
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-nasun_smart_account = "0x0"
+nasun_smart_account = "0x097e96d5e0c09915b6ba2ed744fe2d4ee0bd21df1d453e6528d4d82c96c1c44b"
 
 [environments]
 devnet = "272218f1"
