@@ -119,7 +119,7 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
     setError(null);
 
     try {
-      await acceptSignerProposal(proposal.objectId, signer);
+      await acceptSignerProposal(proposal.objectId, proposal.accountId, signer);
       setStep('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to accept proposal');

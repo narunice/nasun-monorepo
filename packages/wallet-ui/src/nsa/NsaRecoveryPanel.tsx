@@ -1,6 +1,9 @@
 /**
  * NsaRecoveryPanel Component
  * Guardian recovery flow: initiate, approve, execute, cancel
+ *
+ * Supports guardian mode via guardianContext prop, allowing a guardian
+ * to operate on another user's SmartAccount without modifying local store.
  */
 
 import { useState } from 'react';
@@ -9,22 +12,23 @@ import {
   useNasunSmartAccount,
   useSigner,
 } from '@nasun/wallet';
+import type { GuardianContext } from './NsaGuardianConnect';
 
 interface NsaRecoveryPanelProps {
   onClose: () => void;
+  guardianContext?: GuardianContext;
 }
 
 type Role = 'owner' | 'guardian' | 'none';
 
-function isValidSuiAddress(addr: string): boolean {
-  return /^0x[a-fA-F0-9]{64}$/.test(addr);
-}
-
-export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
-  const [newOwnerInput, setNewOwnerInput] = useState('');
+export function NsaRecoveryPanel({ onClose, guardianContext }: NsaRecoveryPanelProps) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+
+  // Use guardianContext overrides when in guardian mode
+  const storeState = useNasunSmartAccount();
+  const accountState = guardianContext?.accountState ?? storeState.accountState;
 
   const {
     status,
@@ -35,24 +39,38 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
     approveRecovery,
     executeRecovery,
     cancelRecovery,
+    hasApproved,
     isLoading,
-  } = useNsaRecovery();
+  } = useNsaRecovery(
+    guardianContext
+      ? {
+          accountObjectId: guardianContext.accountObjectId,
+          accountState: guardianContext.accountState,
+          activeRecoveryId: guardianContext.activeRecoveryId,
+        }
+      : undefined
+  );
 
-  const { accountState } = useNasunSmartAccount();
   const { signer, address } = useSigner();
 
-  // Determine user role
-  const isSigner = accountState?.signers?.some((s) => s.address === address);
-  const isGuardian = accountState?.guardians?.includes(address || '');
+  // Determine user role from the effective account state (case-insensitive)
+  const normalizedAddress = address?.toLowerCase() || '';
+  const isSigner = accountState?.signers?.some((s) => s.address.toLowerCase() === normalizedAddress);
+  const isGuardian = normalizedAddress
+    ? accountState?.guardians?.some((g) => g.toLowerCase() === normalizedAddress)
+    : false;
   const role: Role = isSigner ? 'owner' : isGuardian ? 'guardian' : 'none';
 
+  // Recovery owner is pre-configured on-chain (read-only)
+  const recoveryOwner = accountState?.recoveryOwner || '';
+  const alreadyApproved = address ? hasApproved(address) : false;
+
   const handleInitiate = async () => {
-    if (!signer || !isValidSuiAddress(newOwnerInput)) return;
+    if (!signer || !recoveryOwner) return;
     setActionInProgress('initiate');
     setError(null);
     try {
-      await initiateRecovery(newOwnerInput, signer);
-      setNewOwnerInput('');
+      await initiateRecovery(recoveryOwner, signer);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate recovery');
     }
@@ -110,6 +128,18 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
         </button>
         <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Account Recovery</h3>
       </div>
+
+      {/* Guardian Mode Banner */}
+      {guardianContext && (
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded mb-4">
+          <p className="text-xs xl:text-sm text-blue-800 dark:text-blue-300 font-medium">
+            Guardian Mode
+          </p>
+          <p className="text-xs xl:text-sm text-blue-700 dark:text-blue-400 font-mono mt-0.5">
+            {guardianContext.accountObjectId.slice(0, 10)}...{guardianContext.accountObjectId.slice(-6)}
+          </p>
+        </div>
+      )}
 
       {/* Status Display */}
       {status !== 'idle' && (
@@ -193,21 +223,22 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {role === 'guardian' && status === 'idle' && (
         <div className="space-y-3">
           <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">
-            Initiate recovery to rotate the account{"'"}s signers to a new owner address.
+            Initiate recovery to rotate the account{"'"}s signers to the pre-approved recovery owner.
           </p>
 
           <div>
-            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">New Owner Address</label>
+            <label className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-1 block">
+              Recovery Owner Address
+            </label>
             <input
               type="text"
-              value={newOwnerInput}
-              onChange={(e) => setNewOwnerInput(e.target.value)}
-              placeholder="0x..."
-              className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+              value={recoveryOwner}
+              disabled
+              className="w-full px-3 py-2 bg-gray-200 dark:bg-zinc-600 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-700 dark:text-zinc-400 font-mono opacity-75 cursor-not-allowed"
             />
-            {newOwnerInput && !isValidSuiAddress(newOwnerInput) && (
-              <p className="text-xs xl:text-sm text-red-400 mt-1">Invalid address format</p>
-            )}
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+              Pre-configured by the account owner during guardian setup.
+            </p>
           </div>
 
           <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
@@ -218,7 +249,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
 
           <button
             onClick={handleInitiate}
-            disabled={!isValidSuiAddress(newOwnerInput) || !!actionInProgress}
+            disabled={!recoveryOwner || !!actionInProgress}
             className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
             {actionInProgress === 'initiate' ? 'Initiating...' : 'Initiate Recovery'}
@@ -229,7 +260,7 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
       {/* Guardian View - Active recovery */}
       {role === 'guardian' && status !== 'idle' && status !== 'executed' && status !== 'cancelled' && (
         <div className="space-y-3">
-          {approvalsNeeded > 0 && (
+          {approvalsNeeded > 0 && !alreadyApproved && (
             <button
               onClick={handleApprove}
               disabled={!!actionInProgress}
@@ -237,6 +268,14 @@ export function NsaRecoveryPanel({ onClose }: NsaRecoveryPanelProps) {
             >
               {actionInProgress === 'approve' ? 'Approving...' : 'Approve Recovery'}
             </button>
+          )}
+
+          {alreadyApproved && approvalsNeeded > 0 && (
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+              <p className="text-xs xl:text-sm text-green-800 dark:text-green-300">
+                You have already approved this recovery. Waiting for other guardians.
+              </p>
+            </div>
           )}
 
           {canExecute && (

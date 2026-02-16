@@ -30,32 +30,42 @@ const defaultProps = {
 };
 
 describe('DisconnectedView', () => {
-  it('should render Quick Start section with Recommended badge', () => {
+  it('should render brand header', () => {
     render(<DisconnectedView {...defaultProps} />);
 
-    expect(screen.getByText('Quick Start')).toBeInTheDocument();
-    expect(screen.getByText('Recommended')).toBeInTheDocument();
-    expect(screen.getByText('No seed phrase needed')).toBeInTheDocument();
+    expect(screen.getByText('Nasun Wallet')).toBeInTheDocument();
   });
 
-  it('should render traditional wallet options', () => {
+  it('should render social login button', () => {
     render(<DisconnectedView {...defaultProps} />);
 
-    expect(screen.getByText('Create Password Wallet')).toBeInTheDocument();
-    expect(screen.getByText('Import Existing Wallet')).toBeInTheDocument();
+    expect(screen.getByText('Continue with Google')).toBeInTheDocument();
   });
 
-  it('should call setViewMode("create") when clicking Create', () => {
+  it('should render wallet creation and import options', () => {
     render(<DisconnectedView {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Create Password Wallet'));
+    expect(screen.getByText('Create Wallet')).toBeInTheDocument();
+    expect(screen.getByText('Import Wallet')).toBeInTheDocument();
+  });
+
+  it('should render contextual divider', () => {
+    render(<DisconnectedView {...defaultProps} />);
+
+    expect(screen.getByText('or use web3 native wallet')).toBeInTheDocument();
+  });
+
+  it('should call setViewMode("create") when clicking Create Wallet', () => {
+    render(<DisconnectedView {...defaultProps} />);
+
+    fireEvent.click(screen.getByText('Create Wallet'));
     expect(defaultProps.setViewMode).toHaveBeenCalledWith('create');
   });
 
-  it('should call setViewMode("import") when clicking Import', () => {
+  it('should call setViewMode("import") when clicking Import Wallet', () => {
     render(<DisconnectedView {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Import Existing Wallet'));
+    fireEvent.click(screen.getByText('Import Wallet'));
     expect(defaultProps.setViewMode).toHaveBeenCalledWith('import');
   });
 

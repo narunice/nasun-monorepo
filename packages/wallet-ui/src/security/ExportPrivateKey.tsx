@@ -8,9 +8,11 @@ import { useState, useCallback } from 'react';
 interface ExportPrivateKeyProps {
   onExport: (password: string) => Promise<string>;
   onClose: () => void;
+  /** Authentication mode: "password" (default) or "biometric" (passkey wallets) */
+  authMode?: "password" | "biometric";
 }
 
-export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
+export function ExportPrivateKey({ onExport, onClose, authMode = "password" }: ExportPrivateKeyProps) {
   const [password, setPassword] = useState('');
   const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +22,7 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
   const [showKey, setShowKey] = useState(false);
 
   const handleExport = useCallback(async () => {
-    if (!password) {
+    if (authMode === "password" && !password) {
       setError('Please enter your password');
       return;
     }
@@ -29,14 +31,14 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
     setError(null);
 
     try {
-      const key = await onExport(password);
+      const key = await onExport(authMode === "biometric" ? "" : password);
       setPrivateKey(key);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to export private key');
     } finally {
       setIsLoading(false);
     }
-  }, [password, onExport]);
+  }, [password, onExport, authMode]);
 
   const handleCopy = useCallback(async () => {
     if (!privateKey) return;
@@ -170,7 +172,59 @@ export function ExportPrivateKey({ onExport, onClose }: ExportPrivateKeyProps) {
     );
   }
 
-  // Password input screen
+  // Biometric verification screen (passkey wallets)
+  if (authMode === "biometric") {
+    return (
+      <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
+        <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Export Private Key</h3>
+
+        {/* Warning */}
+        <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-500/50 rounded p-3 mb-4">
+          <p className="text-xs xl:text-sm text-yellow-700 dark:text-yellow-400">
+            Warning: Your private key grants full access to your wallet. Make sure no one is watching your screen.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400">
+            Verify your identity with biometrics to export your private key.
+          </p>
+
+          {error && (
+            <p className="text-sm xl:text-base text-red-400">{error}</p>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleClose}
+              disabled={isLoading}
+              className="flex-1 py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white rounded transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded transition-colors flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                'Verifying...'
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                  </svg>
+                  Verify with Biometrics
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Password input screen (self-custody wallets)
   return (
     <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg">
       <h3 className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white mb-4">Export Private Key</h3>

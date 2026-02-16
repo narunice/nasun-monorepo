@@ -27,8 +27,10 @@ export type NsaViewMode =
   | "nsa-add-signer"
   | "nsa-accept-proposal"
   | "nsa-backup"
+  | "nsa-restore"
   | "nsa-guardians"
-  | "nsa-recovery";
+  | "nsa-recovery"
+  | "nsa-guardian-connect";
 
 export type WcViewMode =
   | "wc-main"
