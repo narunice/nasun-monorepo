@@ -107,8 +107,7 @@ export interface NsaBalanceEntry {
   decimals?: number;
 }
 
-/** NSA module package address (devnet) */
-export const NSA_PACKAGE_ID = '0x90227aff359b0ebbcf7fd6814cd6dd06d014a69b974905ac399ba9401c9995e2';
+export { NSA_PACKAGE_ID, NSA_REGISTRY_ID } from '@nasun/devnet-config';
 
 /** On-chain SignerProposal state (2-phase signer addition) */
 export interface NsaSignerProposal {
