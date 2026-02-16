@@ -36,7 +36,7 @@ export class CognitoService {
           [this.developerProviderName]: developerUserIdentifier,
         },
         // Optional: Set token duration (default is 15 minutes, max is 24 hours)
-        TokenDuration: 3600, // 1 hour
+        TokenDuration: 86400, // 24 hours — admin sessions for 2-person team
       });
 
       const response = await this.client.send(command);
