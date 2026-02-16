@@ -3,6 +3,7 @@
  */
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { ModelSelector } from "./ModelSelector";
 
 const MAX_PROMPT_LENGTH = 10_000;
 
@@ -13,7 +14,8 @@ interface ChatInputProps {
   initialValue?: string;
   privacyMode: boolean;
   onTogglePrivacy: (mode: boolean) => void;
-  modelName?: string;
+  selectedModel: string | null;
+  onSelectModel: (modelId: string) => void;
 }
 
 export function ChatInput({
@@ -23,7 +25,8 @@ export function ChatInput({
   initialValue = "",
   privacyMode,
   onTogglePrivacy,
-  modelName,
+  selectedModel,
+  onSelectModel,
 }: ChatInputProps) {
   const [value, setValue] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -120,12 +123,12 @@ export function ChatInput({
           </button>
         </div>
 
-        {/* Model label */}
-        {modelName && (
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {modelName}
-          </span>
-        )}
+        {/* Model selector dropdown */}
+        <ModelSelector
+          selectedModel={selectedModel}
+          onSelectModel={onSelectModel}
+          privacyMode={privacyMode}
+        />
       </div>
 
       {/* Textarea wrapper — overflow-hidden preserves rounded corners when scrollbar appears */}

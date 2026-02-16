@@ -34,9 +34,10 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
   const addMessage = useChatStore((state) => state.addMessage);
   const updateMessage = useChatStore((state) => state.updateMessage);
 
-  // Model provider determines executor tier requirement
+  // Model provider determines executor pool filtering
   const modelProvider = MODEL_PRICING[selectedModel as ModelId]?.provider;
-  const requiredMinTier: TierLevel = modelProvider === 'tee' ? 1 : 0;
+  // Tier gate disabled: single TEE executor on devnet has no staking yet
+  const requiredMinTier: TierLevel = 0;
   const needsAttestation = modelProvider === 'tee';
 
   // Auto-assign executor via weighted random

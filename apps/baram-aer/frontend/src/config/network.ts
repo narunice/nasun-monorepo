@@ -142,38 +142,82 @@ export const TOKENS = {
   },
 } as const;
 
+// AI Model Categories
+export type ModelCategory = 'cloud' | 'private' | 'fast';
+
+export const MODEL_CATEGORY_LABELS: Record<ModelCategory, string> = {
+  cloud: 'Cloud Models',
+  private: 'Private (TEE)',
+  fast: 'Fast',
+};
+
+export const MODEL_CATEGORY_ORDER: ModelCategory[] = ['cloud', 'private', 'fast'];
+
 // AI Model Pricing (in NUSDC, 6 decimals)
 // Note: Contract MIN_PRICE is 100,000 (0.1 NUSDC)
 export const MODEL_PRICING = {
-  // Groq (Standard mode)
+  // Cloud Models (Standard mode)
+  'gpt-4o': {
+    name: 'GPT-4o',
+    price: 500_000, // 0.5 NUSDC
+    description: 'OpenAI flagship multimodal model',
+    provider: 'openai',
+    category: 'cloud' as ModelCategory,
+  },
+  'claude-3.5-sonnet': {
+    name: 'Claude 3.5 Sonnet',
+    price: 300_000, // 0.3 NUSDC
+    description: 'Anthropic balanced model',
+    provider: 'anthropic',
+    category: 'cloud' as ModelCategory,
+  },
   'llama-3.3-70b-versatile': {
-    name: 'Llama 3.3 70B (Groq)',
+    name: 'Llama 3.3 70B',
     price: 100_000, // 0.1 NUSDC
     description: 'Large model via Groq Cloud',
     provider: 'groq',
+    category: 'cloud' as ModelCategory,
   },
-  // TEE Local (Private mode)
+  // Private (TEE) Models
   'llama-3.2-3b-local': {
     name: 'Llama 3.2 3B (TEE)',
     price: 100_000, // 0.1 NUSDC
     description: 'Private inference in TEE enclave',
     provider: 'tee',
+    category: 'private' as ModelCategory,
   },
-} satisfies Record<string, { name: string; price: number; description: string; provider: string }>;
+  // Fast Models
+  'gpt-4o-mini': {
+    name: 'GPT-4o Mini',
+    price: 50_000, // 0.05 NUSDC
+    description: 'Fast and affordable',
+    provider: 'openai',
+    category: 'fast' as ModelCategory,
+  },
+  'llama-3.1-8b-instant': {
+    name: 'Llama 3.1 8B',
+    price: 50_000, // 0.05 NUSDC
+    description: 'Ultra-fast via Groq Cloud',
+    provider: 'groq',
+    category: 'fast' as ModelCategory,
+  },
+} satisfies Record<string, { name: string; price: number; description: string; provider: string; category: ModelCategory }>;
 
 export type ModelId = keyof typeof MODEL_PRICING;
 export const DEFAULT_MODEL: ModelId = 'llama-3.3-70b-versatile';
 
 // Privacy Mode Configuration
-// Maps toggle state to model selection
+// Maps toggle state to model selection and allowed providers
 export const PRIVACY_MODE_CONFIG = {
   private: {
-    modelId: 'llama-3.2-3b-local' as ModelId,
+    defaultModelId: 'llama-3.2-3b-local' as ModelId,
+    allowedProviders: ['tee'],
     label: 'Private',
     description: 'Encrypted inference in TEE enclave',
   },
   standard: {
-    modelId: 'llama-3.3-70b-versatile' as ModelId,
+    defaultModelId: 'llama-3.3-70b-versatile' as ModelId,
+    allowedProviders: ['openai', 'anthropic', 'groq'],
     label: 'Standard',
     description: 'Fast inference via Groq Cloud',
   },
