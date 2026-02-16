@@ -21,6 +21,11 @@ const COINGECKO_IDS: Record<string, string> = {
   LINK: 'chainlink',
 };
 
+// Symbol aliases (alternative names → canonical symbol)
+const SYMBOL_ALIASES: Record<string, string> = {
+  NASUN: 'NSN',
+};
+
 // Simulated prices for devnet/testnet tokens
 const SIMULATED_PRICES: Record<string, number> = {
   NSN: 0.1,
@@ -58,7 +63,8 @@ export class DefaultPriceProvider implements PriceProvider {
   }
 
   async getPrice(symbol: string): Promise<TokenPrice | null> {
-    const upperSymbol = symbol.toUpperCase();
+    const raw = symbol.toUpperCase();
+    const upperSymbol = SYMBOL_ALIASES[raw] ?? raw;
 
     // Check cache
     const cached = this.cache.get(upperSymbol);
@@ -104,7 +110,8 @@ export class DefaultPriceProvider implements PriceProvider {
     const coingeckoSymbols: string[] = [];
 
     for (const symbol of symbols) {
-      const upperSymbol = symbol.toUpperCase();
+      const raw = symbol.toUpperCase();
+      const upperSymbol = SYMBOL_ALIASES[raw] ?? raw;
       const cached = this.cache.get(upperSymbol);
 
       if (cached && Date.now() - cached.timestamp < this.cacheTtlMs) {
@@ -144,6 +151,15 @@ export class DefaultPriceProvider implements PriceProvider {
           results[symbol] = price;
           this.cache.set(symbol, price);
         }
+      }
+    }
+
+    // Also store under original input symbols (alias → canonical mapping)
+    for (const symbol of symbols) {
+      const raw = symbol.toUpperCase();
+      const upperSymbol = SYMBOL_ALIASES[raw] ?? raw;
+      if (raw !== upperSymbol && results[upperSymbol] && !results[raw]) {
+        results[raw] = results[upperSymbol];
       }
     }
 
