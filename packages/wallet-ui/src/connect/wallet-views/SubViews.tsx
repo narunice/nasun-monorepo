@@ -43,11 +43,13 @@ export function ImportView({
   onImportPrivateKey,
   resetView,
   isLoading,
+  initialPrivateKey,
 }: {
   onImportMnemonic: (mnemonic: string, pwd: string) => Promise<void>;
   onImportPrivateKey: (key: string, pwd: string) => Promise<void>;
   resetView: () => void;
   isLoading: boolean;
+  initialPrivateKey?: string;
 }) {
   return (
     <div className="w-full">
@@ -56,6 +58,7 @@ export function ImportView({
         onImportPrivateKey={onImportPrivateKey}
         onCancel={resetView}
         isLoading={isLoading}
+        initialPrivateKey={initialPrivateKey}
       />
     </div>
   );
@@ -64,13 +67,15 @@ export function ImportView({
 export function ExportView({
   onExport,
   setViewMode,
+  authMode,
 }: {
   onExport: (pwd: string) => Promise<string>;
   setViewMode: (mode: ViewMode) => void;
+  authMode?: "password" | "biometric";
 }) {
   return (
     <div className="w-full">
-      <ExportPrivateKey onExport={onExport} onClose={() => setViewMode("main")} />
+      <ExportPrivateKey onExport={onExport} onClose={() => setViewMode("main")} authMode={authMode} />
     </div>
   );
 }

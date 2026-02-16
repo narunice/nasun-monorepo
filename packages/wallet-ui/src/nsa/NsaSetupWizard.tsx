@@ -3,7 +3,7 @@
  * First-time SmartAccount creation flow
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useNasunSmartAccount,
   useSigner,
@@ -13,17 +13,47 @@ import {
 interface NsaSetupWizardProps {
   onClose: () => void;
   onSuccess: () => void;
+  onRestoreFromBackup?: () => void;
+  onRecoverAsGuardian?: () => void;
 }
 
-type Step = 'intro' | 'confirm' | 'creating' | 'success';
+type Step = 'checking' | 'intro' | 'found' | 'confirm' | 'creating' | 'success';
 
-export function NsaSetupWizard({ onClose, onSuccess }: NsaSetupWizardProps) {
-  const [step, setStep] = useState<Step>('intro');
+export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onRecoverAsGuardian }: NsaSetupWizardProps) {
+  const [step, setStep] = useState<Step>('checking');
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  const { createAccount } = useNasunSmartAccount();
+  const { createAccount, discoverAndInitialize } = useNasunSmartAccount();
   const { signer, signerType } = useSigner();
+
+  // Auto-discover existing SmartAccount when wizard opens
+  useEffect(() => {
+    if (!signer) {
+      setStep('intro');
+      return;
+    }
+
+    let cancelled = false;
+
+    const discover = async () => {
+      try {
+        const found = await discoverAndInitialize(signer.address);
+        if (cancelled) return;
+
+        if (found) {
+          setStep('found');
+        } else {
+          setStep('intro');
+        }
+      } catch {
+        if (!cancelled) setStep('intro');
+      }
+    };
+
+    discover();
+    return () => { cancelled = true; };
+  }, [signer, discoverAndInitialize]);
 
   const handleCreate = async () => {
     if (!signer) {
@@ -50,6 +80,76 @@ export function NsaSetupWizard({ onClose, onSuccess }: NsaSetupWizardProps) {
       setStep('confirm');
     }
   };
+
+  // Checking step — discovery in progress
+  if (step === 'checking') {
+    return (
+      <div className="p-4 w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Smart Account</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-sm xl:text-base text-gray-700 dark:text-zinc-300">Checking for existing account...</p>
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-1">This only takes a moment</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Found step — existing account discovered
+  if (step === 'found') {
+    return (
+      <div className="p-4 w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Smart Account</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center py-6">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-3">
+            <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-sm xl:text-base font-medium text-gray-900 dark:text-white mb-1">Smart Account Found</h3>
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-4">
+            An existing account was found for this wallet.
+          </p>
+
+          <div className="w-full space-y-2">
+            <button
+              onClick={onSuccess}
+              className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
+            >
+              Connect to Existing Account
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Intro step
   if (step === 'intro') {
@@ -111,6 +211,24 @@ export function NsaSetupWizard({ onClose, onSuccess }: NsaSetupWizardProps) {
         >
           Continue
         </button>
+
+        {onRestoreFromBackup && (
+          <button
+            onClick={onRestoreFromBackup}
+            className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+          >
+            Restore from backup .json file
+          </button>
+        )}
+
+        {onRecoverAsGuardian && (
+          <button
+            onClick={onRecoverAsGuardian}
+            className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+          >
+            Recover as Guardian
+          </button>
+        )}
       </div>
     );
   }

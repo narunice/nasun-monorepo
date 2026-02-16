@@ -91,11 +91,21 @@ export function useWalletConnectState() {
     error: passkeyError,
     address: passkeyAddress,
     credentials: passkeyCredentials,
+    needsPassword: passkeyNeedsPassword,
     createWallet: passkeyCreateWallet,
     unlock: passkeyUnlock,
     lock: passkeyLock,
     deleteWallet: passkeyDeleteWallet,
+    exportPrivateKey: passkeyExportPrivateKey,
   } = usePasskey({ autoCheck: true });
+
+  // Passkey private key export handler (biometric re-auth gate)
+  const handleExportPasskeyPrivateKey = useCallback(
+    async (_pwd: string) => {
+      return await passkeyExportPrivateKey();
+    },
+    [passkeyExportPrivateKey],
+  );
 
   // UI Settings (Advanced mode)
   const isAdvancedMode = useAdvancedMode();
@@ -192,14 +202,14 @@ export function useWalletConnectState() {
     return "Wallet";
   };
 
-  // Status indicator color
+  // Status indicator color (text color for ▼ symbol)
   const getStatusColor = () => {
-    if (isZkLoggedIn) return "bg-green-500";
-    if (isPasskeyUnlocked) return "bg-green-500";
-    if (isLedgerConnected) return "bg-amber-500";
-    if (status === "unlocked") return "bg-green-500";
-    if (status === "locked") return "bg-yellow-500";
-    return "bg-zinc-500";
+    if (isZkLoggedIn) return "text-green-500";
+    if (isPasskeyUnlocked) return "text-green-500";
+    if (isLedgerConnected) return "text-amber-500";
+    if (status === "unlocked") return "text-green-500";
+    if (status === "locked") return "text-yellow-500";
+    return "text-zinc-500";
   };
 
   return {
@@ -256,10 +266,12 @@ export function useWalletConnectState() {
     passkeyError,
     passkeyAddress,
     passkeyCredentials,
+    passkeyNeedsPassword,
     passkeyCreateWallet,
     passkeyUnlock,
     passkeyLock,
     passkeyDeleteWallet,
+    handleExportPasskeyPrivateKey,
 
     // WalletConnect
     wcSessionCount,

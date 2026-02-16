@@ -121,6 +121,18 @@ export function AccountTabContent({
           </button>
         </>
       )}
+
+      {/* Passkey: Export Private Key */}
+      {variant === "passkey" && (
+        <>
+          <div className={WALLET_STYLES.divider} />
+
+          <button onClick={() => onNavigate("export")} className={MENU_ITEM_CLASS}>
+            <MenuIcon d={ICON_PATHS.exportKey} />
+            Export Private Key
+          </button>
+        </>
+      )}
     </div>
   );
 }

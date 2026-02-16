@@ -9,6 +9,9 @@
 import { useState } from "react";
 import type { PasskeyError } from "@nasun/wallet";
 
+const inputClass =
+  "px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500";
+
 export function PasskeySetupView({
   onBack,
   onCreated,
@@ -18,16 +21,26 @@ export function PasskeySetupView({
 }: {
   onBack: () => void;
   onCreated: (mnemonic: string) => void;
-  createWallet: (userName: string) => Promise<{ address: string; mnemonic: string }>;
+  createWallet: (userName: string, password?: string) => Promise<{ address: string; mnemonic: string }>;
   isLoading: boolean;
   error: PasskeyError | null;
 }) {
   const [userName, setUserName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  const passwordTooShort = password.length > 0 && password.length < 6;
+  const canCreate =
+    userName.trim().length > 0 &&
+    password.length >= 6 &&
+    password === confirmPassword &&
+    !isLoading;
 
   const handleCreate = async () => {
-    if (!userName.trim()) return;
+    if (!canCreate) return;
     try {
-      const { mnemonic } = await createWallet(userName.trim());
+      const { mnemonic } = await createWallet(userName.trim(), password);
       onCreated(mnemonic);
     } catch {
       // Error is stored in hook state
@@ -49,11 +62,41 @@ export function PasskeySetupView({
           placeholder="Display name (e.g., My Wallet)"
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && userName.trim() && handleCreate()}
-          className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={inputClass}
           disabled={isLoading}
           autoFocus
         />
+
+        <input
+          type="password"
+          placeholder="Wallet password (min 6 characters)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={inputClass}
+          disabled={isLoading}
+        />
+
+        <input
+          type="password"
+          placeholder="Confirm password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && canCreate && handleCreate()}
+          className={inputClass}
+          disabled={isLoading}
+        />
+
+        {passwordTooShort && (
+          <p className="text-xs text-amber-500">Password must be at least 6 characters</p>
+        )}
+        {passwordMismatch && (
+          <p className="text-xs text-red-400">Passwords don't match</p>
+        )}
+
+        <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500">
+          Password protects your wallet if your device doesn't support hardware encryption.
+          On supported devices, only biometrics are needed to unlock.
+        </p>
 
         {error && (
           <p className="text-xs xl:text-sm text-red-400">{error.message}</p>
@@ -69,7 +112,7 @@ export function PasskeySetupView({
           </button>
           <button
             onClick={handleCreate}
-            disabled={isLoading || !userName.trim()}
+            disabled={!canCreate}
             className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm xl:text-base transition-colors flex items-center justify-center gap-2"
           >
             {isLoading ? (

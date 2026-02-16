@@ -2,8 +2,8 @@
  * Tests for passkey-specific functionality in DisconnectedView.
  *
  * Covers:
- * - Conditional rendering of biometric wallet section
- * - "Setup Passkey Wallet" button (no existing wallet)
+ * - Conditional rendering of passkey section
+ * - "Use Passkey" button (no existing wallet)
  * - "Unlock with Passkey" button (existing wallet)
  * - Loading state during unlock
  * - Hidden section when passkey not supported
@@ -49,10 +49,10 @@ describe('DisconnectedView - Passkey Integration', () => {
   });
 
   // ------------------------------------------
-  // Biometric Wallet Section Visibility
+  // Passkey Section Visibility
   // ------------------------------------------
   describe('Section Visibility', () => {
-    it('should show biometric wallet section when passkey is supported and platform available', () => {
+    it('should show passkey button when passkey is supported and platform available', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -61,10 +61,10 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      expect(screen.getByText('Biometric Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Use Passkey')).toBeInTheDocument();
     });
 
-    it('should NOT show biometric section when passkey not supported', () => {
+    it('should NOT show passkey section when passkey not supported', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -73,10 +73,10 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      expect(screen.queryByText('Biometric Wallet')).not.toBeInTheDocument();
+      expect(screen.queryByText('Use Passkey')).not.toBeInTheDocument();
     });
 
-    it('should NOT show biometric section when platform authenticator unavailable', () => {
+    it('should NOT show passkey section when platform authenticator unavailable', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -85,10 +85,10 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      expect(screen.queryByText('Biometric Wallet')).not.toBeInTheDocument();
+      expect(screen.queryByText('Use Passkey')).not.toBeInTheDocument();
     });
 
-    it('should NOT show biometric section when platform availability is null (loading)', () => {
+    it('should NOT show passkey section when platform availability is null (loading)', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -97,21 +97,21 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      expect(screen.queryByText('Biometric Wallet')).not.toBeInTheDocument();
+      expect(screen.queryByText('Use Passkey')).not.toBeInTheDocument();
     });
 
-    it('should NOT show biometric section when passkey props are undefined', () => {
+    it('should NOT show passkey section when passkey props are undefined', () => {
       render(<DisconnectedView {...baseProps} />);
 
-      expect(screen.queryByText('Biometric Wallet')).not.toBeInTheDocument();
+      expect(screen.queryByText('Use Passkey')).not.toBeInTheDocument();
     });
   });
 
   // ------------------------------------------
-  // Setup Passkey Wallet (no existing wallet)
+  // Use Passkey (no existing wallet)
   // ------------------------------------------
-  describe('Setup Passkey Wallet', () => {
-    it('should show "Setup Passkey Wallet" when no wallet exists', () => {
+  describe('Use Passkey (Setup)', () => {
+    it('should show "Use Passkey" when no wallet exists', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -121,7 +121,7 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      expect(screen.getByText('Setup Passkey Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Use Passkey')).toBeInTheDocument();
     });
 
     it('should navigate to passkey-setup on click', () => {
@@ -134,11 +134,11 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Setup Passkey Wallet'));
+      fireEvent.click(screen.getByText('Use Passkey'));
       expect(baseProps.setViewMode).toHaveBeenCalledWith('passkey-setup');
     });
 
-    it('should show "Setup Passkey Wallet" when passkeyWallet is undefined', () => {
+    it('should show "Use Passkey" when passkeyWallet is undefined', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -147,7 +147,7 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      expect(screen.getByText('Setup Passkey Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Use Passkey')).toBeInTheDocument();
     });
   });
 
@@ -167,7 +167,7 @@ describe('DisconnectedView - Passkey Integration', () => {
       );
 
       expect(screen.getByText('Unlock with Passkey')).toBeInTheDocument();
-      expect(screen.queryByText('Setup Passkey Wallet')).not.toBeInTheDocument();
+      expect(screen.queryByText('Use Passkey')).not.toBeInTheDocument();
     });
 
     it('should call onPasskeyUnlock when unlock button clicked', () => {
@@ -226,7 +226,7 @@ describe('DisconnectedView - Passkey Integration', () => {
   // Coexistence with other auth methods
   // ------------------------------------------
   describe('Coexistence', () => {
-    it('should still show social login and traditional wallet options alongside passkey', () => {
+    it('should show social login and traditional wallet options alongside passkey', () => {
       render(
         <DisconnectedView
           {...baseProps}
@@ -236,16 +236,15 @@ describe('DisconnectedView - Passkey Integration', () => {
         />
       );
 
-      // Social login section
-      expect(screen.getByText('Quick Start')).toBeInTheDocument();
-      expect(screen.getByText('Recommended')).toBeInTheDocument();
-
-      // Biometric
-      expect(screen.getByText('Biometric Wallet')).toBeInTheDocument();
+      // Passkey
+      expect(screen.getByText('Use Passkey')).toBeInTheDocument();
 
       // Traditional
-      expect(screen.getByText('Create Password Wallet')).toBeInTheDocument();
-      expect(screen.getByText('Import Existing Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Create Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Import Wallet')).toBeInTheDocument();
+
+      // Divider
+      expect(screen.getByText('or use web3 native wallet')).toBeInTheDocument();
     });
   });
 });

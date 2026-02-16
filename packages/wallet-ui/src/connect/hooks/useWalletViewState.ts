@@ -37,6 +37,38 @@ export function setPendingPasskeyMnemonic(mnemonic: string | null): void {
   }
 }
 
+// Pending restore key — bridging NsaRestorePanel -> ImportWallet
+let pendingRestoreKey: string | null = null;
+let restoreKeyClearTimer: ReturnType<typeof setTimeout> | null = null;
+const RESTORE_KEY_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+
+/** Set or clear the pending restore key. Auto-clears after 2 minutes. */
+export function setPendingRestoreKey(key: string | null): void {
+  if (restoreKeyClearTimer) {
+    clearTimeout(restoreKeyClearTimer);
+    restoreKeyClearTimer = null;
+  }
+  pendingRestoreKey = key;
+  if (key !== null) {
+    restoreKeyClearTimer = setTimeout(() => {
+      if (pendingRestoreKey) secureZeroString(pendingRestoreKey);
+      pendingRestoreKey = null;
+      restoreKeyClearTimer = null;
+    }, RESTORE_KEY_TIMEOUT_MS);
+  }
+}
+
+/** Read-once: returns the pending restore key and immediately clears it. */
+export function consumePendingRestoreKey(): string | null {
+  const key = pendingRestoreKey;
+  pendingRestoreKey = null;
+  if (restoreKeyClearTimer) {
+    clearTimeout(restoreKeyClearTimer);
+    restoreKeyClearTimer = null;
+  }
+  return key;
+}
+
 export function useWalletViewState() {
   const { clearError } = useWallet();
 
@@ -91,6 +123,11 @@ export function useWalletViewState() {
       }
     }
   }, [viewMode, mnemonic]);
+
+  // Reset proposal banner dismiss when dropdown reopens
+  useEffect(() => {
+    if (showDropdown) setProposalBannerDismissed(false);
+  }, [showDropdown]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -8,6 +8,10 @@ import {
   useNsaBackup,
   useSigner,
   useNsaStore,
+  useWallet,
+  usePasskeyStore,
+  getSecretKeyFromKeypair,
+  secureZeroString,
 } from '@nasun/wallet';
 
 interface NsaBackupPanelProps {
@@ -23,10 +27,13 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
   const [error, setError] = useState<string | null>(null);
 
   const { createNsaBackup, downloadBackup } = useNsaBackup();
-  const { signer, address } = useSigner();
+  const { signer, address, signerType } = useSigner();
   const accountObjectId = useNsaStore((s) => s.accountObjectId);
+  const { getKeypair } = useWallet();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
 
   const [backupData, setBackupData] = useState<Awaited<ReturnType<typeof createNsaBackup>> | null>(null);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
 
   const handleCreateBackup = async () => {
     if (!signer || !address || !accountObjectId) {
@@ -38,10 +45,18 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
     setStep('creating');
     setError(null);
 
+    let signerPrivateKey: string | null = null;
     try {
-      // Get signer's private key representation for backup
-      // The backup encrypts the signer address as the key identifier
-      const backup = await createNsaBackup(address, address, pin);
+      // Extract the actual private key based on signer type
+      const keypair = signerType === 'passkey' ? passkeyKeypair : getKeypair();
+      if (!keypair) {
+        setError('Cannot access signer key. Please unlock your wallet first.');
+        setStep('set-pin');
+        return;
+      }
+      signerPrivateKey = getSecretKeyFromKeypair(keypair);
+
+      const backup = await createNsaBackup(signerPrivateKey, address, pin);
       setBackupData(backup);
 
       // Mark backup as created
@@ -51,14 +66,56 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create backup');
       setStep('set-pin');
+    } finally {
+      if (signerPrivateKey) secureZeroString(signerPrivateKey);
     }
   };
 
   const handleDownload = () => {
     if (backupData) {
       downloadBackup(backupData);
+      setHasDownloaded(true);
     }
   };
+
+  // zkLogin users don't need backup — re-authenticate via OAuth to restore access
+  if (signerType === 'zklogin') {
+    return (
+      <div className="p-4 w-full">
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={onClose}
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white">Encrypted Backup</h3>
+        </div>
+
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded mb-4">
+          <p className="text-sm xl:text-base text-blue-800 dark:text-blue-300 font-medium mb-1">
+            Backup is not needed for zkLogin accounts
+          </p>
+          <p className="text-xs xl:text-sm text-blue-700 dark:text-blue-400">
+            Your Smart Account is linked to your Google account. You can restore access by signing in again — no backup file required.
+          </p>
+        </div>
+
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-4">
+          For additional protection, set up guardians in the Smart Account menu. Guardians can help you recover access even if you lose your Google account.
+        </p>
+
+        <button
+          onClick={onClose}
+          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
+        >
+          Got it
+        </button>
+      </div>
+    );
+  }
 
   // Intro step
   if (step === 'intro') {
@@ -232,7 +289,7 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Download Again
+            {hasDownloaded ? 'Download Again' : 'Download Backup'}
           </button>
           <button
             onClick={onClose}
