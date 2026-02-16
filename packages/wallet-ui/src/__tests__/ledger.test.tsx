@@ -232,7 +232,7 @@ describe('LedgerErrorDisplay', () => {
   it('renders user-friendly error for APP_NOT_OPEN', () => {
     render(<LedgerErrorDisplay code="APP_NOT_OPEN" />);
     expect(screen.getByText('Wallet app not open')).toBeInTheDocument();
-    expect(screen.getByText(/Open the Sui\/Nasun app/)).toBeInTheDocument();
+    expect(screen.getByText(/Open the Nasun app/)).toBeInTheDocument();
   });
 
   it('renders user-friendly error for BROWSER_NOT_SUPPORTED', () => {
