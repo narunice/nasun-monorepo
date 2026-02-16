@@ -36,12 +36,23 @@ export default defineConfig(({ mode }) => {
     plugins: [
       // Sync src/assets/locales/ → public/locales/ so i18next-http-backend can load them.
       // src/assets/locales/ is the single source of truth for all locale files.
+      // Watches for changes in dev mode so locale edits don't require server restart.
       {
         name: "sync-locales",
         buildStart() {
           const src = path.resolve(__dirname, "src/assets/locales");
           const dest = path.resolve(__dirname, "public/locales");
           fs.cpSync(src, dest, { recursive: true });
+        },
+        configureServer(server) {
+          const src = path.resolve(__dirname, "src/assets/locales");
+          const dest = path.resolve(__dirname, "public/locales");
+          server.watcher.add(src);
+          server.watcher.on("change", (changedPath) => {
+            if (changedPath.startsWith(src)) {
+              fs.cpSync(src, dest, { recursive: true });
+            }
+          });
         },
       },
       react(),
