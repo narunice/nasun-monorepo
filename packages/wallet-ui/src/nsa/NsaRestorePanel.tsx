@@ -376,7 +376,7 @@ export function NsaRestorePanel({ onClose, onImportKey }: NsaRestorePanelProps) 
             onClick={handleDone}
             className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
-            Done
+            Close
           </button>
         </div>
       </div>
