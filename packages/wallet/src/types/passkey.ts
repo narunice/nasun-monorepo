@@ -121,8 +121,8 @@ export interface PasskeyWalletState {
   iv: string;
   /** Salt for key derivation */
   salt: string;
-  /** Key derivation method: 'prf' uses authenticator secret, 'credential-id' uses public credential ID */
-  keyDerivationMethod: 'prf' | 'credential-id';
+  /** Key derivation method: 'prf' uses authenticator secret, 'credential-id' uses public credential ID, 'credential-id-password' adds user password */
+  keyDerivationMethod: 'prf' | 'credential-id' | 'credential-id-password';
   /** Timestamp when created */
   createdAt: number;
 }
@@ -139,7 +139,8 @@ export type PasskeyErrorType =
   | 'INVALID_STATE'
   | 'SECURITY_ERROR'
   | 'CREDENTIAL_NOT_FOUND'
-  | 'DECRYPTION_FAILED';
+  | 'DECRYPTION_FAILED'
+  | 'PASSWORD_REQUIRED';
 
 /**
  * Passkey specific error
