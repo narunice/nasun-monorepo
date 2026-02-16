@@ -4,7 +4,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { shortenId } from '../lib/nft';
+import { truncateId } from '../lib/format';
 import { useCopyToClipboard } from '../hooks';
 
 interface CopyableIdProps {
@@ -54,7 +54,7 @@ export default function CopyableId({
 }: CopyableIdProps) {
   const { copied, handleCopy } = useCopyToClipboard(1500);
 
-  const displayValue = shorten && shorten > 0 ? shortenId(value, shorten) : value;
+  const displayValue = shorten && shorten > 0 ? truncateId(value, shorten + 2, shorten) : value;
   const textSize = size === 'xs' ? 'text-xs' : 'text-sm';
 
   return (
