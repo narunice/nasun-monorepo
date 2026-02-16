@@ -2,25 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BalanceDisplay } from '../balance/BalanceDisplay';
 
-// Get mocked functions
-const mockUseWallet = vi.fn();
-const mockUseBalance = vi.fn();
-const mockUseRefreshBalance = vi.fn();
-
-vi.mock('@nasun/wallet', () => ({
-  useWallet: () => mockUseWallet(),
-  useBalance: () => mockUseBalance(),
-  useRefreshBalance: () => mockUseRefreshBalance(),
-  useChain: vi.fn(() => ({
-    chain: { id: 'nasun-devnet', name: 'Nasun Devnet', type: 'move', nativeCurrency: { symbol: 'NSN', name: 'Nasun', decimals: 9 }, rpcUrl: 'https://rpc.devnet.nasun.io' },
-    isEVM: false,
-    isMoveChain: true,
-    switchChain: vi.fn(),
-    availableChains: [],
-  })),
-  useEVMBalance: vi.fn(() => ({ balance: null, isLoading: false, error: null, refetch: vi.fn() })),
-  getStoredEVMAddress: vi.fn(() => null),
+// Use vi.hoisted so mock fns are available inside hoisted vi.mock factory
+const { mockUseWallet, mockUseBalance, mockUseRefreshBalance } = vi.hoisted(() => ({
+  mockUseWallet: vi.fn(),
+  mockUseBalance: vi.fn(),
+  mockUseRefreshBalance: vi.fn(),
 }));
+
+vi.mock('@nasun/wallet', async () => {
+  const { walletMockDefaults } = await import('./setup');
+  return {
+    ...walletMockDefaults,
+    useWallet: () => mockUseWallet(),
+    useBalance: () => mockUseBalance(),
+    useRefreshBalance: () => mockUseRefreshBalance(),
+  };
+});
 
 describe('BalanceDisplay', () => {
   beforeEach(() => {

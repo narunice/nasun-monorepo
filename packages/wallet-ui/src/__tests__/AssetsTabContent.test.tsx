@@ -1,16 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from './setup';
+import { render, screen, walletMockDefaults } from './setup';
 import { AssetsTabContent } from '../connect/wallet-views/AssetsTabContent';
 
 vi.mock('@nasun/wallet', () => ({
-  requestFaucet: vi.fn(),
-  getAllTokens: vi.fn(() => [
-    { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
-  ]),
-  NATIVE_TOKEN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
-  useNetwork: vi.fn(() => ({ network: 'devnet' })),
+  ...walletMockDefaults,
   useWallet: vi.fn(() => ({ status: 'unlocked', account: { address: '0x123' } })),
-  useZkLogin: vi.fn(() => ({ isConnected: false, address: null })),
 }));
 
 // Mock TokenFaucetButton to keep tests simple
@@ -46,6 +40,8 @@ const defaultProps = {
     { symbol: 'NBTC' },
     { symbol: 'NUSDC' },
   ],
+  erc20Balances: [] as any[],
+  erc20BalancesLoading: false,
   accumulatedNfts: [] as any[],
   nftsLoading: false,
   onSelectNFT: vi.fn(),

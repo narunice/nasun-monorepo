@@ -3,7 +3,7 @@
  *
  * Covers:
  * - Rendering (title, description, form elements)
- * - Form validation (empty name disables button)
+ * - Form validation (empty name / missing password disables button)
  * - Wallet creation flow (success → onCreated callback)
  * - Error display from props
  * - Loading state during authentication
@@ -13,6 +13,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from './setup';
 import { PasskeySetupView } from '../connect/wallet-views/PasskeySetupView';
+
+/** Helper: fill all required fields so the form becomes submittable */
+function fillForm(
+  overrides: { name?: string; password?: string; confirmPassword?: string } = {},
+) {
+  const name = overrides.name ?? 'My Wallet';
+  const password = overrides.password ?? 'secret123';
+  const confirmPassword = overrides.confirmPassword ?? password;
+
+  fireEvent.change(screen.getByPlaceholderText(/display name/i), {
+    target: { value: name },
+  });
+  fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
+    target: { value: password },
+  });
+  fireEvent.change(screen.getByPlaceholderText(/confirm password/i), {
+    target: { value: confirmPassword },
+  });
+}
 
 describe('PasskeySetupView', () => {
   const mockCreateWallet = vi.fn();
@@ -37,8 +56,10 @@ describe('PasskeySetupView', () => {
     render(<PasskeySetupView {...defaultProps} />);
 
     expect(screen.getByText('Setup Passkey Wallet')).toBeInTheDocument();
-    expect(screen.getByText(/biometrics/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/biometrics/i).length).toBeGreaterThan(0);
     expect(screen.getByPlaceholderText(/display name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/wallet password/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/confirm password/i)).toBeInTheDocument();
   });
 
   it('should render Cancel and Create buttons', () => {
@@ -55,11 +76,10 @@ describe('PasskeySetupView', () => {
     expect(createBtn).toBeDisabled();
   });
 
-  it('should enable Create button when name is entered', () => {
+  it('should enable Create button when all fields are valid', () => {
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.change(input, { target: { value: 'My Wallet' } });
+    fillForm();
 
     const createBtn = screen.getByText('Create').closest('button')!;
     expect(createBtn).not.toBeDisabled();
@@ -68,22 +88,38 @@ describe('PasskeySetupView', () => {
   it('should disable Create button for whitespace-only input', () => {
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.change(input, { target: { value: '   ' } });
+    fillForm({ name: '   ' });
 
     const createBtn = screen.getByText('Create').closest('button')!;
     expect(createBtn).toBeDisabled();
   });
 
-  it('should call createWallet with trimmed name on Create click', async () => {
+  it('should disable Create button when password is too short', () => {
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.change(input, { target: { value: '  My Wallet  ' } });
+    fillForm({ password: '12345', confirmPassword: '12345' });
+
+    const createBtn = screen.getByText('Create').closest('button')!;
+    expect(createBtn).toBeDisabled();
+  });
+
+  it('should disable Create button when passwords do not match', () => {
+    render(<PasskeySetupView {...defaultProps} />);
+
+    fillForm({ password: 'secret123', confirmPassword: 'secret456' });
+
+    const createBtn = screen.getByText('Create').closest('button')!;
+    expect(createBtn).toBeDisabled();
+  });
+
+  it('should call createWallet with trimmed name and password on Create click', async () => {
+    render(<PasskeySetupView {...defaultProps} />);
+
+    fillForm({ name: '  My Wallet  ', password: 'secret123' });
     fireEvent.click(screen.getByText('Create').closest('button')!);
 
     await waitFor(() => {
-      expect(mockCreateWallet).toHaveBeenCalledWith('My Wallet');
+      expect(mockCreateWallet).toHaveBeenCalledWith('My Wallet', 'secret123');
     });
   });
 
@@ -96,8 +132,7 @@ describe('PasskeySetupView', () => {
 
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.change(input, { target: { value: 'Test' } });
+    fillForm({ name: 'Test' });
     fireEvent.click(screen.getByText('Create').closest('button')!);
 
     await waitFor(() => {
@@ -144,23 +179,23 @@ describe('PasskeySetupView', () => {
     expect(errorElements).toHaveLength(0);
   });
 
-  it('should submit on Enter key press with valid name', async () => {
+  it('should submit on Enter key press in confirm password with valid fields', async () => {
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.change(input, { target: { value: 'Test Wallet' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    fillForm({ name: 'Test Wallet' });
+    const confirmInput = screen.getByPlaceholderText(/confirm password/i);
+    fireEvent.keyDown(confirmInput, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(mockCreateWallet).toHaveBeenCalledWith('Test Wallet');
+      expect(mockCreateWallet).toHaveBeenCalledWith('Test Wallet', 'secret123');
     });
   });
 
-  it('should NOT submit on Enter key press with empty name', async () => {
+  it('should NOT submit on Enter key press with incomplete form', async () => {
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const confirmInput = screen.getByPlaceholderText(/confirm password/i);
+    fireEvent.keyDown(confirmInput, { key: 'Enter' });
 
     // Give it a tick to ensure nothing happened
     await new Promise((r) => setTimeout(r, 50));
@@ -172,8 +207,7 @@ describe('PasskeySetupView', () => {
 
     render(<PasskeySetupView {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(/display name/i);
-    fireEvent.change(input, { target: { value: 'Test' } });
+    fillForm({ name: 'Test' });
     fireEvent.click(screen.getByText('Create').closest('button')!);
 
     await waitFor(() => {

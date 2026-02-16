@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from './setup';
+import { render, screen, fireEvent, walletMockDefaults } from './setup';
 import { AddressBookPanel } from '../address/AddressBookPanel';
 
 // Mock useAddressBook
@@ -10,6 +10,7 @@ const mockUntrustAddress = vi.fn();
 const mockRemoveAddress = vi.fn();
 
 vi.mock('@nasun/wallet', () => ({
+  ...walletMockDefaults,
   useAddressBook: () => ({
     getAllEntries: mockGetAllEntries,
     updateLabel: mockUpdateLabel,
@@ -17,11 +18,6 @@ vi.mock('@nasun/wallet', () => ({
     untrustAddress: mockUntrustAddress,
     removeAddress: mockRemoveAddress,
   }),
-  shortenAddress: (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`,
-  isValidAddress: vi.fn((addr: string) => /^0x[a-fA-F0-9]{64}$/.test(addr)),
-  getExplorerAddressUrl: vi.fn((addr: string) => `https://explorer.nasun.io/devnet/address/${addr}`),
-  getExplorerObjectUrl: vi.fn((id: string) => `https://explorer.nasun.io/devnet/object/${id}`),
-  getExplorerTxUrl: vi.fn((digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`),
 }));
 
 const mockEntries = [
