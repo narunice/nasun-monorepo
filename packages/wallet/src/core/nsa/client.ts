@@ -9,6 +9,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '../../sui/client';
 import {
   NSA_PACKAGE_ID,
+  NSA_REGISTRY_ID,
   NSA_SIGNER_TYPE_MAP,
   NsaError,
 } from '../../types/nsa';
@@ -38,6 +39,9 @@ import type {
 
 const MODULE_SMART_ACCOUNT = `${NSA_PACKAGE_ID}::smart_account`;
 const MODULE_RECOVERY = `${NSA_PACKAGE_ID}::recovery`;
+
+// Must match MAX_LABEL_LENGTH in smart_account.move
+const MAX_LABEL_LENGTH = 64;
 
 // === Query Functions ===
 
@@ -80,25 +84,160 @@ export async function fetchRecoveryRequest(objectId: string): Promise<NsaRecover
 }
 
 /**
- * Find SmartAccount objects owned by or associated with a given address
+ * Find SmartAccount objects where the given address is a signer.
+ * Uses AccountCreated/SignerAdded events for discovery, then verifies
+ * current on-chain state. Replaces the broken getOwnedObjects approach
+ * since SmartAccounts are shared objects.
  */
 export async function findAccountsForAddress(address: string): Promise<string[]> {
   const client = getSuiClient();
+  const normalizedAddress = address.toLowerCase();
 
-  const objects = await client.getOwnedObjects({
-    owner: address,
-    filter: {
-      StructType: `${NSA_PACKAGE_ID}::smart_account::SmartAccount`,
+  const seen = new Set<string>();
+  const candidateIds: string[] = [];
+
+  // Check AccountCreated events (creator/initial_signer)
+  const createdEvents = await client.queryEvents({
+    query: {
+      MoveEventType: `${NSA_PACKAGE_ID}::smart_account::AccountCreated`,
     },
-    options: { showContent: false },
+    order: 'descending',
+    limit: 50,
   });
 
-  const ids: string[] = [];
-  for (const obj of objects.data) {
-    const id = obj.data?.objectId;
-    if (id) ids.push(id);
+  for (const event of createdEvents.data) {
+    const parsed = event.parsedJson as Record<string, unknown> | undefined;
+    if (!parsed) continue;
+
+    const creator = (parsed.creator as string || '').toLowerCase();
+    const initialSigner = (parsed.initial_signer as string || '').toLowerCase();
+    if (creator !== normalizedAddress && initialSigner !== normalizedAddress) continue;
+
+    const accountId = parsed.account_id as string;
+    if (!accountId || seen.has(accountId)) continue;
+    seen.add(accountId);
+    candidateIds.push(accountId);
   }
-  return ids;
+
+  // Check SignerAdded events (user may have been added later)
+  const signerEvents = await client.queryEvents({
+    query: {
+      MoveEventType: `${NSA_PACKAGE_ID}::smart_account::SignerAdded`,
+    },
+    order: 'descending',
+    limit: 50,
+  });
+
+  for (const event of signerEvents.data) {
+    const parsed = event.parsedJson as Record<string, unknown> | undefined;
+    if (!parsed) continue;
+
+    const signerAddress = (parsed.signer_address as string || '').toLowerCase();
+    if (signerAddress !== normalizedAddress) continue;
+
+    const accountId = parsed.account_id as string;
+    if (!accountId || seen.has(accountId)) continue;
+    seen.add(accountId);
+    candidateIds.push(accountId);
+  }
+
+  // Verify each candidate still has this address as a signer
+  const verifiedIds: string[] = [];
+  const settled = await Promise.allSettled(
+    candidateIds.map(async (accountId) => {
+      const state = await fetchAccountState(accountId);
+      const isSigner = state.signers.some(
+        (s) => s.address.toLowerCase() === normalizedAddress,
+      );
+      return isSigner ? accountId : null;
+    }),
+  );
+
+  for (const result of settled) {
+    if (result.status === 'fulfilled' && result.value) {
+      verifiedIds.push(result.value);
+    }
+  }
+
+  return verifiedIds;
+}
+
+/**
+ * Look up SmartAccount ID via on-chain AccountRegistry.
+ * Uses devInspectTransactionBlock for gas-free read.
+ * Returns null if address has no registered account or registry is unavailable.
+ */
+export async function lookupAccountInRegistry(address: string): Promise<string | null> {
+  const client = getSuiClient();
+
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${NSA_PACKAGE_ID}::smart_account::has_account`,
+    arguments: [
+      tx.object(NSA_REGISTRY_ID),
+      tx.pure.address(address),
+    ],
+  });
+
+  try {
+    const result = await client.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: address,
+    });
+
+    const returnValues = result.results?.[0]?.returnValues;
+    if (!returnValues || returnValues.length === 0) return null;
+
+    // has_account returns bool: [1] = true, [0] = false
+    const bytes = returnValues[0][0] as number[];
+    if (!bytes || bytes[0] !== 1) return null;
+
+    // Now call lookup_account to get the actual ID
+    const tx2 = new Transaction();
+    tx2.moveCall({
+      target: `${NSA_PACKAGE_ID}::smart_account::lookup_account`,
+      arguments: [
+        tx2.object(NSA_REGISTRY_ID),
+        tx2.pure.address(address),
+      ],
+    });
+
+    const result2 = await client.devInspectTransactionBlock({
+      transactionBlock: tx2,
+      sender: address,
+    });
+
+    const rv2 = result2.results?.[0]?.returnValues;
+    if (!rv2 || rv2.length === 0) return null;
+
+    // Option<ID> BCS: [1, ...32 bytes] = Some(ID), [0] = None
+    const optionBytes = rv2[0][0] as number[];
+    if (!optionBytes || optionBytes.length < 33 || optionBytes[0] !== 1) return null;
+
+    const idBytes = optionBytes.slice(1, 33);
+    if (idBytes.length !== 32) return null;
+
+    const hex = Array.from(idBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `0x${hex}`;
+  } catch (error) {
+    console.warn('[NSA] Registry lookup failed, falling back to events:', error);
+    return null;
+  }
+}
+
+/**
+ * Discover existing SmartAccount for an address.
+ * Primary: registry lookup (O(1), deterministic).
+ * Fallback: event-based scan (for pre-registry accounts).
+ */
+export async function discoverExistingAccount(address: string): Promise<string | null> {
+  // Primary: registry lookup
+  const registryResult = await lookupAccountInRegistry(address);
+  if (registryResult) return registryResult;
+
+  // Fallback: event-based discovery
+  const accounts = await findAccountsForAddress(address);
+  return accounts.length > 0 ? accounts[0] : null;
 }
 
 // === Transaction Builders ===
@@ -107,14 +246,20 @@ export async function findAccountsForAddress(address: string): Promise<string[]>
  * Build create_account transaction
  */
 export function buildCreateAccount(params: CreateAccountParams): Transaction {
+  const labelBytes = new TextEncoder().encode(params.label);
+  if (labelBytes.length > MAX_LABEL_LENGTH) {
+    throw new NsaError('TX_BUILD_FAILED', `Label exceeds ${MAX_LABEL_LENGTH} bytes (got ${labelBytes.length})`);
+  }
+
   const tx = new Transaction();
   const signerTypeNum = NSA_SIGNER_TYPE_MAP[params.initialSignerType];
 
   tx.moveCall({
-    target: `${MODULE_SMART_ACCOUNT}::create_account`,
+    target: `${MODULE_SMART_ACCOUNT}::create_account_v2`,
     arguments: [
+      tx.object(NSA_REGISTRY_ID), // AccountRegistry shared object
       tx.pure.u8(signerTypeNum),
-      tx.pure.vector('u8', Array.from(new TextEncoder().encode(params.label))),
+      tx.pure.vector('u8', Array.from(labelBytes)),
       tx.object('0x6'), // Clock
     ],
   });
@@ -465,6 +610,116 @@ export async function findProposalsForPendingSigner(address: string): Promise<Ns
   }
 
   return proposals;
+}
+
+/**
+ * Find active (not executed, not cancelled) recovery request for an account.
+ * Uses queryEvents to find RecoveryInitiated events, then verifies current state.
+ */
+export async function findActiveRecoveryForAccount(
+  accountObjectId: string,
+): Promise<string | null> {
+  const client = getSuiClient();
+
+  const events = await client.queryEvents({
+    query: {
+      MoveEventType: `${NSA_PACKAGE_ID}::recovery::RecoveryInitiated`,
+    },
+    order: 'descending',
+    limit: 20,
+  });
+
+  for (const event of events.data) {
+    const parsed = event.parsedJson as Record<string, unknown> | undefined;
+    if (!parsed) continue;
+
+    const eventAccountId = parsed.account_id as string;
+    if (eventAccountId !== accountObjectId) continue;
+
+    const requestId = parsed.request_id as string;
+    if (!requestId) continue;
+
+    try {
+      const request = await fetchRecoveryRequest(requestId);
+      if (!request.isExecuted && !request.isCancelled) {
+        return requestId;
+      }
+    } catch {
+      // Request may have been deleted or not accessible
+    }
+  }
+
+  return null;
+}
+
+/** Discovered account where the current user is a guardian */
+export interface GuardedAccountInfo {
+  accountState: NsaAccountState;
+  activeRecoveryId: string | null;
+}
+
+/**
+ * Find SmartAccounts where the given address is currently a guardian.
+ * Uses GuardiansUpdated events for discovery, then verifies current on-chain state.
+ * Only checks the 50 most recent events; returns at most MAX_GUARDIAN_RESULTS accounts.
+ */
+export async function findAccountsWhereGuardian(
+  guardianAddress: string,
+): Promise<GuardedAccountInfo[]> {
+  const MAX_RESULTS = 10;
+  const client = getSuiClient();
+  const normalizedAddress = guardianAddress.toLowerCase();
+
+  const events = await client.queryEvents({
+    query: {
+      MoveEventType: `${NSA_PACKAGE_ID}::smart_account::GuardiansUpdated`,
+    },
+    order: 'descending',
+    limit: 50,
+  });
+
+  // Collect unique candidate account IDs from events
+  const seen = new Set<string>();
+  const candidateIds: string[] = [];
+
+  for (const event of events.data) {
+    const parsed = event.parsedJson as Record<string, unknown> | undefined;
+    if (!parsed) continue;
+
+    const guardians = parsed.guardians as string[] | undefined;
+    if (!guardians?.some((g) => g.toLowerCase() === normalizedAddress)) continue;
+
+    const accountId = parsed.account_id as string;
+    if (!accountId || seen.has(accountId)) continue;
+    seen.add(accountId);
+    candidateIds.push(accountId);
+
+    if (candidateIds.length >= MAX_RESULTS) break;
+  }
+
+  // Verify candidates in parallel
+  const settled = await Promise.allSettled(
+    candidateIds.map(async (accountId): Promise<GuardedAccountInfo | null> => {
+      const accountState = await fetchAccountState(accountId);
+      if (!accountState.guardians.some((g) => g.toLowerCase() === normalizedAddress)) return null;
+
+      let activeRecoveryId: string | null = null;
+      try {
+        activeRecoveryId = await findActiveRecoveryForAccount(accountId);
+      } catch { /* Non-critical */ }
+
+      return { accountState, activeRecoveryId };
+    }),
+  );
+
+  const results: GuardedAccountInfo[] = [];
+  for (const result of settled) {
+    if (result.status === 'fulfilled' && result.value) {
+      results.push(result.value);
+    }
+  }
+
+  return results;
 }
 
 // === Internal Helpers ===

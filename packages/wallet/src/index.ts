@@ -195,6 +195,7 @@ export type { FaucetResult, UseTokenFaucetResult } from './hooks/useTokenFaucet'
 export {
   generateMnemonicPhrase,
   isValidMnemonic,
+  getSecretKeyFromKeypair,
   // Security utilities
   secureZero,
   secureZeroString,
@@ -408,7 +409,7 @@ export { LocalSigner, ZkLoginSigner, EVMSigner, NsaSigner, PasskeySigner } from 
 export { useNasunSmartAccount } from './hooks/useNasunSmartAccount';
 export type { UseNasunSmartAccountResult } from './hooks/useNasunSmartAccount';
 export { useNsaRecovery } from './hooks/useNsaRecovery';
-export type { UseNsaRecoveryResult } from './hooks/useNsaRecovery';
+export type { UseNsaRecoveryResult, NsaRecoveryOverrides } from './hooks/useNsaRecovery';
 export { useNsaBackup } from './hooks/useNsaBackup';
 export type { UseNsaBackupResult } from './hooks/useNsaBackup';
 
@@ -422,6 +423,8 @@ export {
   findAccountsForAddress,
   fetchSignerProposal,
   findActiveProposalsForAccount,
+  findActiveRecoveryForAccount,
+  findAccountsWhereGuardian,
   findProposalsForPendingSigner,
   buildCreateAccount,
   buildDeposit,
@@ -482,6 +485,7 @@ export type {
   ApproveRecoveryParams,
   ExecuteRecoveryParams,
   CancelRecoveryParams,
+  GuardedAccountInfo,
 } from './core/nsa';
 
 // ============================================

@@ -13,6 +13,8 @@ export {
   fetchSignerProposal,
   findActiveProposalsForAccount,
   findProposalsForPendingSigner,
+  findActiveRecoveryForAccount,
+  findAccountsWhereGuardian,
   buildCreateAccount,
   buildDeposit,
   buildWithdraw,
@@ -67,3 +69,5 @@ export type {
   CancelRecoveryParams,
   NsaTransactionBytes,
 } from './types';
+
+export type { GuardedAccountInfo } from './client';

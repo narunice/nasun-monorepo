@@ -22,6 +22,7 @@ import {
   buildUpdateThreshold,
   findActiveProposalsForAccount,
   findProposalsForPendingSigner,
+  discoverExistingAccount,
 } from '../core/nsa/client';
 import { validateGuardianConfig } from '../core/nsa/recovery';
 import { NsaError } from '../types/nsa';
@@ -49,7 +50,7 @@ export interface UseNasunSmartAccountResult {
   /** Propose adding a new signer (Phase 1: creates proposal) */
   proposeAddSigner: (pendingSigner: string, signerType: NsaSignerType, weight: number, label: string, signer: SignerAdapter) => Promise<string>;
   /** Accept a signer proposal (Phase 2: proof of ownership) */
-  acceptSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
+  acceptSignerProposal: (proposalObjectId: string, accountObjectId: string, signer: SignerAdapter) => Promise<void>;
   /** Cancel a pending signer proposal */
   cancelSignerProposal: (proposalObjectId: string, signer: SignerAdapter) => Promise<void>;
   /** Decline a signer proposal (called by pending signer) */
@@ -70,6 +71,8 @@ export interface UseNasunSmartAccountResult {
   updateThreshold: (newThreshold: number, signer: SignerAdapter) => Promise<void>;
   /** Reset NSA state (for logout) */
   reset: () => void;
+  /** Discover existing SmartAccount on-chain and initialize if found */
+  discoverAndInitialize: (address: string) => Promise<boolean>;
 }
 
 export function useNasunSmartAccount(): UseNasunSmartAccountResult {
@@ -107,6 +110,38 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     label: string,
     signer: SignerAdapter,
   ): Promise<string> => {
+    // Optimistic lock: prevent concurrent creation attempts
+    const currentState = useNsaStore.getState();
+    if (currentState.isInitialized) {
+      return currentState.accountObjectId!;
+    }
+    if (currentState.isLoading) {
+      throw new NsaError('TX_BUILD_FAILED', 'Account creation already in progress');
+    }
+    useNsaStore.getState().setLoading(true);
+
+    try {
+      return await _executeCreateAccount(signerType, label, signer);
+    } finally {
+      useNsaStore.getState().setLoading(false);
+    }
+  }, []);
+
+  const _executeCreateAccount = async (
+    signerType: NsaSignerType,
+    label: string,
+    signer: SignerAdapter,
+  ): Promise<string> => {
+    // Best-effort client-side dedup check. The on-chain create_account_v2
+    // enforces uniqueness via AccountRegistry — if this check passes but
+    // another tab already created, the TX will abort on-chain.
+    const existingId = await discoverExistingAccount(signer.address);
+    if (existingId) {
+      const existingState = await fetchAccountState(existingId);
+      useNsaStore.getState().initialize(existingId, existingState, signer.address);
+      return existingId;
+    }
+
     const tx = buildCreateAccount({ initialSignerType: signerType, label });
     const client = getSuiClient();
 
@@ -114,11 +149,26 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     const txBytes = await tx.build({ client });
     const { signature } = await signer.sign(txBytes);
 
-    const result = await client.executeTransactionBlock({
-      transactionBlock: txBytes,
-      signature,
-      options: { showEffects: true, showObjectChanges: true },
-    });
+    let result;
+    try {
+      result = await client.executeTransactionBlock({
+        transactionBlock: txBytes,
+        signature,
+        options: { showEffects: true, showObjectChanges: true },
+      });
+    } catch (err) {
+      // On-chain abort: EAccountAlreadyExists (code 17) — re-discover and return
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes('17') || errMsg.includes('AccountAlreadyExists')) {
+        const retryId = await discoverExistingAccount(signer.address);
+        if (retryId) {
+          const retryState = await fetchAccountState(retryId);
+          useNsaStore.getState().initialize(retryId, retryState, signer.address);
+          return retryId;
+        }
+      }
+      throw err;
+    }
 
     // Find the created SmartAccount object
     const created = result.objectChanges?.find(
@@ -148,10 +198,10 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
       }
     }
 
-    useNsaStore.getState().initialize(objectId, accountState!);
+    useNsaStore.getState().initialize(objectId, accountState!, signer.address);
 
     return objectId;
-  }, []);
+  };
 
   const deposit = useCallback(async (
     coinType: string,
@@ -249,11 +299,9 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
 
   const acceptSignerProposal = useCallback(async (
     proposalObjectId: string,
+    accountObjectId: string,
     signer: SignerAdapter,
   ): Promise<void> => {
-    const accountObjectId = useNsaStore.getState().accountObjectId;
-    if (!accountObjectId) throw new Error('No SmartAccount configured');
-
     const tx = buildAcceptSignerProposal({ proposalObjectId, accountObjectId });
     const client = getSuiClient();
 
@@ -420,6 +468,32 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     await refreshState();
   }, [refreshState]);
 
+  const discoverAndInitialize = useCallback(async (address: string): Promise<boolean> => {
+    const state = useNsaStore.getState();
+
+    // Validate persisted state matches current wallet address
+    state.validateOwner(address);
+
+    const freshState = useNsaStore.getState();
+    if (freshState.isInitialized || freshState.isLoading) return freshState.isInitialized;
+
+    useNsaStore.getState().setLoading(true);
+    try {
+      const accountId = await discoverExistingAccount(address);
+      if (accountId) {
+        const accountState = await fetchAccountState(accountId);
+        useNsaStore.getState().initialize(accountId, accountState, address);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('[NSA] Auto-discovery failed:', error);
+      return false;
+    } finally {
+      useNsaStore.getState().setLoading(false);
+    }
+  }, []);
+
   const reset = useCallback(() => {
     useNsaStore.getState().clearState();
   }, []);
@@ -445,5 +519,6 @@ export function useNasunSmartAccount(): UseNasunSmartAccountResult {
     setGuardians,
     updateThreshold,
     reset,
+    discoverAndInitialize,
   };
 }
