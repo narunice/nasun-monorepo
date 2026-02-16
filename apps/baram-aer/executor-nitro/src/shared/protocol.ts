@@ -22,6 +22,8 @@
  * - Local simulation: TCP socket
  */
 
+import { randomUUID } from 'node:crypto';
+
 // Message types for Host → Enclave requests
 export type EnclaveRequestType =
   | 'GET_PUBLIC_KEY'
@@ -279,5 +281,5 @@ export function createSimulatedAttestation(moduleId: string): AttestationDocumen
  * Generate unique request ID using CSPRNG
  */
 export function generateRequestId(): string {
-  return `req_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  return `req_${Date.now()}_${randomUUID().slice(0, 8)}`;
 }
