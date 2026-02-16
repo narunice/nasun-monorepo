@@ -1,8 +1,8 @@
 # @nasun/wallet
 
-> Last Updated: 2026-02-02
+> Last Updated: 2026-02-15
 
-Nasun Wallet Core Package — A production-grade, multi-chain wallet library for the Nasun Network. Provides 23 core modules, 36 React hooks, and 7 signer adapters spanning Move and EVM chains.
+Nasun Wallet Core Package — A production-grade, multi-chain wallet library for the Nasun Network. Provides 23 core modules, 39 React hooks, and 8 signer adapters spanning Move and EVM chains.
 
 ## Architecture
 
@@ -18,17 +18,17 @@ src/
 │   ├── nsa/                   Nasun Smart Account (multi-signer, recovery)
 │   ├── payment/               Payment intent, QR, validation
 │   ├── portfolio/             Price provider, portfolio aggregation
-│   ├── signer/                Signer abstraction (7 adapters)
+│   ├── signer/                Signer abstraction (8 adapters)
 │   ├── walletconnect/         WalletConnect v2 SignClient
 │   ├── zkid/                  Zero-knowledge identity (age, KYC, sybil)
 │   ├── crypto.ts              BIP39 mnemonic, AES-256-GCM, secure memory
 │   ├── keystore.ts            Encrypted key storage (PBKDF2 100K)
-│   ├── passkey.ts             WebAuthn/Passkey (biometric auth)
+│   ├── passkey.ts             WebAuthn/Passkey (biometric auth + password fallback)
 │   ├── rate-limit.ts          Brute-force progressive lockout
 │   └── zklogin.ts             OAuth + ZK proof authentication
-├── hooks/                     36 React hooks
+├── hooks/                     39 React hooks
 ├── schemas/                   Zod RPC validation
-├── stores/                    Zustand state stores
+├── stores/                    Zustand state stores (wallet, zkLogin, passkey, nsa, zkid)
 ├── sui/                       Sui-specific utilities (faucet, NFT, staking)
 ├── types/                     Shared type definitions
 └── index.ts                   Package exports
@@ -40,8 +40,8 @@ src/
 |----------|----------|
 | **Core Wallet** | Create, lock/unlock, delete, BIP39 mnemonic backup, import/export private key (Bech32), session persistence, auto-lock |
 | **Security** | AES-256-GCM encryption, PBKDF2 100K iterations, secure memory zeroing, progressive brute-force lockout (8/12/16+ attempts) |
-| **Authentication** | Embedded wallet (password), zkLogin (Google/Apple/Twitch/Facebook/Kakao OAuth), Passkey (WebAuthn biometric) |
-| **Signer Abstraction** | 7 adapters: Local, ZkLogin, EVM, SmartAccount, SessionKey, Ledger, NSA |
+| **Authentication** | Embedded wallet (password), zkLogin (Google/Apple/Twitch/Facebook/Kakao OAuth), Passkey (WebAuthn biometric + password fallback for non-PRF browsers) |
+| **Signer Abstraction** | 8 adapters: Local, ZkLogin, EVM, SmartAccount, SessionKey, Ledger, NSA, Passkey |
 | **Multi-chain** | Move (Nasun) + EVM (Ethereum, Sepolia, Arbitrum, Polygon) with chain switching |
 | **Multi-token** | NSN/NBTC/NUSDC token registry, balance queries, transfers, per-token faucets |
 | **NFT** | Gallery with sorting/pagination, detail view, transfer, IPFS support, Display standard |
@@ -89,7 +89,7 @@ function WalletComponent() {
 }
 ```
 
-## Hooks Reference (36 hooks)
+## Hooks Reference (39 hooks)
 
 ### Wallet Core
 | Hook | Description |
@@ -109,13 +109,15 @@ function WalletComponent() {
 | `useNetwork()` | Network configuration |
 | `useAddressBook()` | Address book CRUD |
 | `useAddressStatus(addr)` | Check if address is known/trusted |
+| `useWalletLabel()` | Wallet alias management |
 
 ### Signer & Authentication
 | Hook | Description |
 |------|-------------|
-| `useSigner()` | Active signer selection (auto-registers NSA) |
+| `useSigner()` | Active signer selection (priority: NSA > Local > Passkey > ZkLogin) |
+| `useSignerAddress()` | Chain-aware address from active signer |
 | `useZkLogin()` | zkLogin flow (init, callback, sign, session check) |
-| `usePasskey()` | WebAuthn credential register/authenticate |
+| `usePasskey()` | WebAuthn register/authenticate, password for non-PRF wallets |
 | `useChain()` | Chain selection (Move + 11 EVM chains) |
 
 ### NFT & Staking
@@ -130,8 +132,10 @@ function WalletComponent() {
 ### EVM & Account Abstraction
 | Hook | Description |
 |------|-------------|
-| `useEVMBalance()` | EVM native + ERC-20 balance |
+| `useEVMBalance()` | EVM native balance |
+| `useERC20Balances()` | ERC-20 token balances |
 | `useEVMTransaction()` | EVM transaction sending |
+| `useEVMGasEstimate()` | EVM gas estimation |
 | `useSmartAccount()` | ERC-4337 Smart Account state |
 | `useGaslessTransaction()` | Gasless TX via paymaster |
 | `useSessionKey()` | Session key create/revoke |
@@ -153,6 +157,21 @@ function WalletComponent() {
 | `useZKID()` | ZK-ID proof generation/verification |
 | `useTokenFaucet()` | Token faucet requests |
 
+## Signer Adapters (8)
+
+The `SignerManager` provides a unified signing interface across all authentication methods with automatic priority-based selection: **NSA > Local > Passkey > ZkLogin**.
+
+| Adapter | Auth Method | Transaction Signing |
+|---------|-------------|---------------------|
+| `LocalSigner` | Password-encrypted keypair | Ed25519 |
+| `ZkLoginSigner` | OAuth + ZK proof | Ephemeral Ed25519 |
+| `PasskeySigner` | WebAuthn biometric + optional password | Ed25519 (from encrypted mnemonic) |
+| `EVMSigner` | HD-derived EVM key | ECDSA (secp256k1) |
+| `SmartAccountSigner` | ERC-4337 UserOp | Bundler relay |
+| `SessionKeySigner` | Scoped session key | Ed25519 (limited permissions) |
+| `LedgerSigner` | Hardware device (WebHID) | Device-side Ed25519/ECDSA |
+| `NsaSigner` | Multi-signer smart account | Threshold Ed25519 |
+
 ## Security Model
 
 ### Encryption
@@ -172,15 +191,40 @@ Counter persists in localStorage (survives page refresh). Resets on successful u
 ### Auto-Lock
 Configurable inactivity timeout (5min / 15min / 30min / 1hr / disabled). Checked every 30 seconds.
 
+### Passkey Key Derivation
+
+Passkey wallets encrypt the private key using one of three key derivation methods, depending on browser capabilities:
+
+| Method | Browser Support | Key Material | Security Level |
+|--------|----------------|--------------|----------------|
+| `prf` | Chrome 120+, Safari 18+ | Hardware-derived 32-byte secret (WebAuthn PRF extension) | Highest — secret never leaves authenticator |
+| `credential-id-password` | All WebAuthn browsers | `PBKDF2(credentialId + password, salt, 100K)` | High — requires user password not stored anywhere |
+| `credential-id` | Legacy (deprecated) | `PBKDF2(credentialId, salt, 100K)` | Low — credential ID is public, kept for backward compat |
+
+New wallets created on non-PRF browsers automatically use `credential-id-password`. The `needsPassword` flag from `usePasskey()` indicates whether the wallet requires a password to unlock.
+
 ### Authentication Comparison
 
 | Feature | Mnemonic Wallet | zkLogin | Passkey |
 |---------|-----------------|---------|---------|
-| Key storage | Encrypted locally | Ephemeral + ZK proof | WebAuthn credential |
-| Export private key | Yes | No | No |
-| Biometric | No | No | Yes (Face ID, Touch ID) |
+| Key storage | Encrypted locally | Ephemeral + ZK proof | Encrypted locally (WebAuthn-protected) |
+| Key derivation | PBKDF2(password) | N/A (ephemeral) | PRF hardware secret or PBKDF2(credentialId + password) |
+| Export private key | Yes | No | Yes (biometric re-auth) |
+| Biometric | No | No | Yes (Face ID, Touch ID, Windows Hello) |
 | Social login | No | Yes (5 OAuth providers) | No |
-| Lock/Unlock | Password | Session-based | Biometric |
+| Lock/Unlock | Password | Session-based | Biometric (+ password on non-PRF browsers) |
+| Mnemonic backup | At creation | N/A | At creation |
+| Session persistence | localStorage | sessionStorage (tab-scoped) | localStorage (passkeyStore) |
+
+### Zustand Stores (5)
+
+| Store | Persistence | Purpose |
+|-------|-------------|---------|
+| Wallet store | localStorage | Core wallet state (status, account, keystore) |
+| `useZkLoginStore` | sessionStorage | zkLogin session (ephemeral key, JWT, proof) |
+| `usePasskeyStore` | In-memory | Passkey wallet metadata, unlocked keypair, address |
+| `useNsaStore` | localStorage | NSA account state (signers, guardians, proposals) |
+| `useZKIDStore` | In-memory | ZK-ID proofs and verification state |
 
 ## Network Configuration
 
@@ -191,8 +235,8 @@ Default: Nasun Devnet
 | RPC Endpoint | `https://rpc.devnet.nasun.io` |
 | Faucet | `https://faucet.devnet.nasun.io` |
 | Explorer | `https://explorer.nasun.io/devnet` |
-| Chain ID | `12bf3808` |
-| Native Token | NSN (decimals: 9) |
+| Chain ID | `272218f1` |
+| Native Token | NASUN (decimals: 9) |
 
 ## Storage Keys
 
@@ -204,6 +248,7 @@ Default: Nasun Devnet
 | `nasun_security_settings` | localStorage | Security configuration |
 | `nasun-wallet-chain` | localStorage | Selected chain (Zustand persist) |
 | `nasun-wallet-nsa` | localStorage | NSA account state (Zustand persist) |
+| `nasun:passkey:wallet` | localStorage | Passkey wallet metadata (encrypted key, credentials, derivation method) |
 | zkLogin session | sessionStorage | Ephemeral keypair + nonce (clears on tab close) |
 | zkLogin state | sessionStorage | Authenticated state (jwt, salt, proof) |
 | OAuth CSRF state | sessionStorage | CSRF protection token |
@@ -214,7 +259,7 @@ Default: Nasun Devnet
   - WalletConnect dropdown, BalanceDisplay, SendTransaction, NFTGallery
   - WalletConnect v2 UI: WalletConnectPanel, WCPairingView, WCSessionProposal, WCRequestApproval, WCSessionDetail
   - MnemonicBackup, ImportWallet, ExportPrivateKey, StakingPanel
-  - SocialLoginButtons, PasskeyButton, LedgerConnect
+  - SocialLoginButtons, PasskeySetupView (with password fields), LedgerConnect
   - Clear Signing TransactionPreview, NasunLinkWizard, PortfolioPanel
   - NetworkSelector, AddressBookPanel, SecuritySettings
 - **@nasun/tailwind-config** — Nasun brand colors for Tailwind CSS

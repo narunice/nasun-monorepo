@@ -26,6 +26,8 @@ interface NsaStoreState {
   pendingProposals: NsaSignerProposal[];
   /** Incoming invitations (proposals where current user is pending signer) */
   incomingInvitations: NsaSignerProposal[];
+  /** Wallet address that owns this NSA state (for multi-account safety) */
+  ownerAddress: string | null;
 }
 
 interface NsaStoreActions {
@@ -43,8 +45,10 @@ interface NsaStoreActions {
   setIncomingInvitations: (invitations: NsaSignerProposal[]) => void;
   /** Clear all NSA state (logout/reset) */
   clearState: () => void;
-  /** Mark as initialized */
-  initialize: (objectId: string, state: NsaAccountState) => void;
+  /** Mark as initialized (ownerAddress binds state to a specific wallet) */
+  initialize: (objectId: string, state: NsaAccountState, ownerAddress?: string) => void;
+  /** Validate persisted state matches the current wallet address */
+  validateOwner: (currentAddress: string) => void;
 }
 
 type NsaStore = NsaStoreState & NsaStoreActions;
@@ -61,6 +65,7 @@ export const useNsaStore = create<NsaStore>()(
       activeRecoveryId: null,
       pendingProposals: [],
       incomingInvitations: [],
+      ownerAddress: null,
 
       // Actions
       setAccountObjectId: (objectId) =>
@@ -94,15 +99,25 @@ export const useNsaStore = create<NsaStore>()(
           activeRecoveryId: null,
           pendingProposals: [],
           incomingInvitations: [],
+          ownerAddress: null,
         }),
 
-      initialize: (objectId, state) =>
+      initialize: (objectId, state, ownerAddress) =>
         set({
           accountObjectId: objectId,
           accountState: state,
           isInitialized: true,
           lastFetchedAt: Date.now(),
+          ...(ownerAddress ? { ownerAddress } : {}),
         }),
+
+      validateOwner: (currentAddress) => {
+        const { ownerAddress, isInitialized } = useNsaStore.getState();
+        if (isInitialized && ownerAddress && ownerAddress.toLowerCase() !== currentAddress.toLowerCase()) {
+          console.warn('[NSA] Wallet address changed, clearing stale NSA state.');
+          useNsaStore.getState().clearState();
+        }
+      },
     }),
     {
       name: 'nasun:nsa',
@@ -111,6 +126,7 @@ export const useNsaStore = create<NsaStore>()(
         accountObjectId: state.accountObjectId,
         isInitialized: state.isInitialized,
         activeRecoveryId: state.activeRecoveryId,
+        ownerAddress: state.ownerAddress,
       }),
     }
   )
