@@ -3,6 +3,8 @@
  * Consolidates duplicated logic from Object.tsx, NFTDetailView.tsx, and sui-client.ts
  */
 
+import type { ObjectOwner } from '@mysten/sui/client';
+
 // Parse moveObject content to extract fields
 export function parseContent(
   content: unknown
@@ -39,23 +41,23 @@ export function getOwnerAddress(owner: unknown): string | null {
 }
 
 // Get displayable owner string
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getOwnerDisplay(owner: any): string {
+export function getOwnerDisplay(owner: ObjectOwner | null | undefined): string {
   if (!owner) return '-';
   if (owner === 'Immutable') return 'Immutable';
   if (typeof owner === 'object') {
     if ('AddressOwner' in owner) return owner.AddressOwner;
     if ('ObjectOwner' in owner) return owner.ObjectOwner;
     if ('Shared' in owner) return `Shared (v${owner.Shared.initial_shared_version})`;
+    if ('ConsensusAddressOwner' in owner) return owner.ConsensusAddressOwner.owner;
   }
   return '-';
 }
 
 // Get explorer link path for owner
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getOwnerLink(owner: any): string | undefined {
+export function getOwnerLink(owner: ObjectOwner | null | undefined): string | undefined {
   if (!owner || typeof owner !== 'object') return undefined;
   if ('AddressOwner' in owner) return `/address/${owner.AddressOwner}`;
   if ('ObjectOwner' in owner) return `/object/${owner.ObjectOwner}`;
+  if ('ConsensusAddressOwner' in owner) return `/address/${owner.ConsensusAddressOwner.owner}`;
   return undefined;
 }

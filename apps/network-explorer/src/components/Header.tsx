@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { networkConfig } from "../lib/sui-client";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { ThemeToggle } from "./theme/ThemeToggle";
@@ -10,6 +10,11 @@ interface HeaderProps {
 
 export default function Header({ showNetworkName = false }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border sticky top-0 z-50">

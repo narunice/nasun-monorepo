@@ -10,8 +10,11 @@ import TransactionObjectChanges from '../components/transaction/TransactionObjec
 import TransactionEvents from '../components/transaction/TransactionEvents';
 import TransactionRawData from '../components/transaction/TransactionRawData';
 
+const TX_DIGEST_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
+
 export default function Transaction() {
   const { digest } = useParams<{ digest: string }>();
+  const isValidDigest = digest ? TX_DIGEST_RE.test(digest) : false;
 
   const {
     data: tx,
@@ -20,7 +23,7 @@ export default function Transaction() {
   } = useQuery({
     queryKey: ['transaction', digest],
     queryFn: () => getTransaction(digest!),
-    enabled: !!digest,
+    enabled: isValidDigest,
   });
 
   return (
@@ -33,7 +36,11 @@ export default function Transaction() {
 
       <h1 className="text-2xl font-bold mb-6 text-foreground">Transaction Details</h1>
 
-      {isLoading ? (
+      {!isValidDigest && digest ? (
+        <Card variant="default" className="p-4 border-destructive/50">
+          <span className="text-destructive">Invalid transaction digest format</span>
+        </Card>
+      ) : isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : error || !tx ? (
         <Card variant="default" className="p-4 border-destructive/50">

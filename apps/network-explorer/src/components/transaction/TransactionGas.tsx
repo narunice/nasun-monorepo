@@ -13,13 +13,16 @@ interface TransactionGasProps {
 }
 
 export default function TransactionGas({ budget, price, gasUsed }: TransactionGasProps) {
-  const totalGasUsed = gasUsed
-    ? formatSoe(
-        BigInt(gasUsed.computationCost) +
-          BigInt(gasUsed.storageCost) -
-          BigInt(gasUsed.storageRebate)
-      )
-    : '-';
+  let totalGasUsed = '-';
+  if (gasUsed) {
+    const netGas =
+      BigInt(gasUsed.computationCost) +
+      BigInt(gasUsed.storageCost) -
+      BigInt(gasUsed.storageRebate);
+    totalGasUsed = netGas < 0n
+      ? `Refund: ${BigInt(-netGas).toLocaleString('en-US')} SOE`
+      : formatSoe(netGas);
+  }
 
   return (
     <SectionBox title="Gas" color="c5">

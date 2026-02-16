@@ -12,13 +12,16 @@ import { SectionBox } from '../components/ui/SectionBox';
 import { Card } from '../components/ui/Card';
 import { JsonBlock } from '../components/ui/JsonBlock';
 
+const HEX_ID_RE = /^0x[0-9a-fA-F]{1,64}$/;
+
 export default function ObjectPage() {
   const { id } = useParams<{ id: string }>();
+  const isValidId = id ? HEX_ID_RE.test(id) : false;
 
   const { data: obj, isLoading, error } = useQuery({
     queryKey: ['object', id],
     queryFn: () => getObject(id!),
-    enabled: !!id,
+    enabled: isValidId,
   });
 
   const content = obj?.data?.content ? parseContent(obj.data.content) : null;
@@ -37,7 +40,14 @@ export default function ObjectPage() {
         </>
       )}
 
-      {isLoading ? (
+      {!isValidId && id ? (
+        <Card variant="default" className="p-6">
+          <div className="text-destructive mb-2">Invalid object ID format</div>
+          <div className="text-sm text-muted-foreground">
+            Expected format: 0x followed by 1-64 hex characters
+          </div>
+        </Card>
+      ) : isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : error || !obj || obj.error ? (
         <Card variant="default" className="p-6">
