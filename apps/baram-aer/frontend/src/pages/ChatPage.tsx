@@ -38,6 +38,7 @@ export function ChatPage() {
   const createSession = useChatStore((state) => state.createSession);
   const activeSessionId = useChatStore((state) => state.activeSessionId);
   const selectedModel = useChatStore((state) => state.selectedModel);
+  const setSelectedModel = useChatStore((state) => state.setSelectedModel);
   const privacyMode = useChatStore((state) => state.privacyMode);
   const setPrivacyMode = useChatStore((state) => state.setPrivacyMode);
   const isLoading = useChatStore((state) => state.isLoading);
@@ -76,7 +77,7 @@ export function ChatPage() {
           ) : !hasMessages ? (
             <>
               <WelcomeScreen onSuggestionClick={submit} />
-              {selectedExecutor && (
+              {selectedExecutor && MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee' && (
                 <div className="max-w-lg mx-auto mt-6">
                   <AttestationDisplay teeType={selectedExecutor.teeType} attestation={attestation} />
                 </div>
@@ -131,7 +132,8 @@ export function ChatPage() {
             }
             privacyMode={privacyMode}
             onTogglePrivacy={(mode) => setPrivacyMode(mode)}
-            modelName={selectedModel ? MODEL_PRICING[selectedModel as ModelId]?.name : undefined}
+            selectedModel={selectedModel}
+            onSelectModel={setSelectedModel}
           />
           {(result?.requestId !== undefined || result?.executionTimeMs !== undefined) && (
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] px-1">

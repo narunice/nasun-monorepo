@@ -50,7 +50,7 @@ export function DashboardSidebar({ isOpen }: DashboardSidebarProps) {
       {/* Logo */}
       <div className="px-4 py-4 border-b border-[var(--color-border)] shrink-0">
         <h1 className="text-base font-semibold text-[var(--color-text-primary)]">
-          Baram AER
+          Baram
         </h1>
         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
           AI Agent Compliance

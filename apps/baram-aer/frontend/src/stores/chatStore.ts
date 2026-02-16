@@ -31,7 +31,7 @@ import {
   clearAllData,
 } from '../services/chatStorage';
 import { deriveStorageKey } from '../services/chatCrypto';
-import { PRIVACY_MODE_CONFIG, DEFAULT_PRIVACY_MODE } from '../config/network';
+import { PRIVACY_MODE_CONFIG, DEFAULT_PRIVACY_MODE, MODEL_PRICING, type ModelId } from '../config/network';
 
 // Settings are stored in localStorage (non-sensitive)
 const SETTINGS_KEY = 'baram-chat-settings';
@@ -300,8 +300,40 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
 
   setPrivacyMode: (mode: boolean) => {
     const config = mode ? PRIVACY_MODE_CONFIG.private : PRIVACY_MODE_CONFIG.standard;
-    set({ privacyMode: mode, selectedModel: config.modelId });
-    saveSettingsToLocalStorage(get());
+    const currentModel = get().selectedModel;
+
+    // Check if current model is allowed in the new mode
+    const currentModelConfig = currentModel ? MODEL_PRICING[currentModel as ModelId] : null;
+    const isAllowed = currentModelConfig &&
+      (config.allowedProviders as readonly string[]).includes(currentModelConfig.provider);
+
+    // Save current model for the departing mode, restore for arriving mode
+    const settings = loadSettingsFromLocalStorage();
+    if (currentModel) {
+      if (mode) {
+        settings.lastStandardModel = currentModel;
+      } else {
+        settings.lastPrivateModel = currentModel;
+      }
+    }
+
+    // Pick model: keep if allowed, restore last used (with validation), or use default
+    let newModel: string;
+    if (isAllowed) {
+      newModel = currentModel!;
+    } else {
+      const lastModel = mode ? settings.lastPrivateModel : settings.lastStandardModel;
+      const lastModelConfig = lastModel ? MODEL_PRICING[lastModel as ModelId] : null;
+      const isLastModelAllowed = lastModelConfig &&
+        (config.allowedProviders as readonly string[]).includes(lastModelConfig.provider);
+      newModel = isLastModelAllowed ? lastModel! : config.defaultModelId;
+    }
+
+    set({ privacyMode: mode, selectedModel: newModel });
+    saveSettingsToLocalStorage(get(), {
+      lastStandardModel: settings.lastStandardModel,
+      lastPrivateModel: settings.lastPrivateModel,
+    });
   },
 
   // ============================================
@@ -334,17 +366,22 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
       // Load settings from localStorage (non-sensitive)
       const settings = loadSettingsFromLocalStorage();
 
-      // Derive selectedModel from privacyMode if no explicit model saved
+      // Validate savedModel is compatible with the saved privacyMode
       const privacyMode = settings.privacyMode;
-      const modelFromPrivacy = privacyMode
-        ? PRIVACY_MODE_CONFIG.private.modelId
-        : PRIVACY_MODE_CONFIG.standard.modelId;
+      const modeConfig = privacyMode ? PRIVACY_MODE_CONFIG.private : PRIVACY_MODE_CONFIG.standard;
+      const savedModelConfig = settings.selectedModel ? MODEL_PRICING[settings.selectedModel as ModelId] : null;
+      const isSavedModelAllowed = savedModelConfig &&
+        (modeConfig.allowedProviders as readonly string[]).includes(savedModelConfig.provider);
+
+      const resolvedModel = isSavedModelAllowed
+        ? settings.selectedModel!
+        : modeConfig.defaultModelId;
 
       set({
         sessions,
         activeSessionId,
         messages,
-        selectedModel: settings.selectedModel || modelFromPrivacy,
+        selectedModel: resolvedModel,
         privacyMode,
         isLoading: false,
       });
@@ -419,13 +456,19 @@ export const useChatStore = create<ExtendedChatStore>((set, get) => ({
 interface StoredSettings {
   selectedModel: string | null;
   privacyMode: boolean;
+  lastStandardModel: string | null;
+  lastPrivateModel: string | null;
 }
 
-function saveSettingsToLocalStorage(state: ExtendedChatState): void {
+function saveSettingsToLocalStorage(state: ExtendedChatState, overrides?: Partial<StoredSettings>): void {
   try {
+    const existing = loadSettingsFromLocalStorage();
     const settings: StoredSettings = {
       selectedModel: state.selectedModel,
       privacyMode: state.privacyMode,
+      lastStandardModel: existing.lastStandardModel,
+      lastPrivateModel: existing.lastPrivateModel,
+      ...overrides,
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (error) {
@@ -441,12 +484,14 @@ function loadSettingsFromLocalStorage(): StoredSettings {
       return {
         selectedModel: parsed.selectedModel ?? null,
         privacyMode: parsed.privacyMode ?? DEFAULT_PRIVACY_MODE,
+        lastStandardModel: parsed.lastStandardModel ?? null,
+        lastPrivateModel: parsed.lastPrivateModel ?? null,
       };
     }
   } catch (error) {
     console.warn('[ChatStore] Failed to load settings:', error);
   }
-  return { selectedModel: null, privacyMode: DEFAULT_PRIVACY_MODE };
+  return { selectedModel: null, privacyMode: DEFAULT_PRIVACY_MODE, lastStandardModel: null, lastPrivateModel: null };
 }
 
 // ============================================
