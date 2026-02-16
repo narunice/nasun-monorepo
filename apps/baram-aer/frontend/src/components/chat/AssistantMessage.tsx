@@ -2,7 +2,7 @@
  * AssistantMessage - AI response with Gemini-style layout (no bubble)
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { NETWORK_CONFIG } from '@/config/network';
 import { ExecutionReport } from '@/features/request/components/ExecutionReport';
 import { formatMessageTime } from '@/utils/format';
@@ -14,7 +14,6 @@ interface AssistantMessageProps {
   metadata?: MessageMetadata;
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
-  autoShowReport?: boolean;
   failed?: boolean;
 }
 
@@ -24,21 +23,9 @@ export function AssistantMessage({
   metadata,
   isProcessing = false,
   isTeeExecutor = false,
-  autoShowReport = false,
   failed = false,
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
-  const autoShownRef = useRef(false);
-
-  // Auto-open Execution Report modal on first TEE response (once per component lifetime)
-  useEffect(() => {
-    if (!autoShowReport || autoShownRef.current) return;
-    if (!metadata?.teeVerified || metadata.requestId === undefined) return;
-
-    autoShownRef.current = true;
-    const timer = setTimeout(() => setShowReceipt(true), 800);
-    return () => clearTimeout(timer);
-  }, [autoShowReport, metadata]);
 
   const timeString = timestamp ? formatMessageTime(timestamp) : undefined;
 
