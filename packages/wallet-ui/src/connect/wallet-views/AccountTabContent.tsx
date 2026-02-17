@@ -7,6 +7,7 @@
 import { useState } from "react";
 import type { ViewMode } from "../types";
 import { WALLET_STYLES } from "../../shared";
+import { useUISettingsStore } from "../../stores/uiSettingsStore";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -60,6 +61,7 @@ export function AccountTabContent({
   onNavigate: (mode: ViewMode) => void;
 }) {
   const [showBackupGuide, setShowBackupGuide] = useState(false);
+  const { isAdvancedMode } = useUISettingsStore();
 
   return (
     <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tl-lg">
@@ -87,27 +89,47 @@ export function AccountTabContent({
         Address Book
       </button>
 
-      {/* Smart Account */}
-      {nsaIsInitialized ? (
-        <button onClick={() => onNavigate("nsa-info")} className={MENU_ITEM_CLASS}>
-          <MenuIcon d={ICON_PATHS.shield} />
-          <span className="flex-1">Smart Account</span>
-          <span
-            className={`px-1.5 py-0.5 text-[10px] xl:text-xs font-medium rounded ${
-              nsaRecoveryCompleted === 3
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
-            }`}
-          >
-            {nsaRecoveryCompleted}/3
-          </span>
-        </button>
-      ) : (
-        <button onClick={() => onNavigate("nsa-setup")} className={MENU_ITEM_CLASS}>
-          <MenuIcon d={ICON_PATHS.shield} />
-          <span className="flex-1">Smart Account</span>
-          <span className="text-xs xl:text-sm text-blue-500 dark:text-blue-400">Setup</span>
-        </button>
+      {/* Pro mode info banner - Only show in Simple mode when NSA not initialized */}
+      {!isAdvancedMode && !nsaIsInitialized && (
+        <div className="mx-3 my-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                <strong>Pro mode</strong> unlocks advanced features like Smart Account, multi-chain support, and WalletConnect.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Account - Only visible in Pro mode or if already initialized */}
+      {(isAdvancedMode || nsaIsInitialized) && (
+        <>
+          {nsaIsInitialized ? (
+            <button onClick={() => onNavigate("nsa-info")} className={MENU_ITEM_CLASS}>
+              <MenuIcon d={ICON_PATHS.shield} />
+              <span className="flex-1">Smart Account</span>
+              <span
+                className={`px-1.5 py-0.5 text-[10px] xl:text-xs font-medium rounded ${
+                  nsaRecoveryCompleted === 3
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-gray-100 text-gray-600 dark:bg-zinc-700 dark:text-zinc-400"
+                }`}
+              >
+                {nsaRecoveryCompleted}/3
+              </span>
+            </button>
+          ) : (
+            <button onClick={() => onNavigate("nsa-setup")} className={MENU_ITEM_CLASS}>
+              <MenuIcon d={ICON_PATHS.shield} />
+              <span className="flex-1">Smart Account</span>
+              <span className="text-xs xl:text-sm text-blue-500 dark:text-blue-400">Setup</span>
+            </button>
+          )}
+        </>
       )}
 
       {/* Self-custody only: Security Settings */}
