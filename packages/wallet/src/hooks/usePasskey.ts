@@ -160,12 +160,6 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
           userVerification: 'required',
         });
         prfOutput = authResult.prfOutput;
-      } else if (!password) {
-        // Non-PRF without password — reject (insecure)
-        throw new PasskeyError(
-          'PASSWORD_REQUIRED',
-          'Password required: your browser does not support hardware encryption'
-        );
       }
 
       // Create wallet with credential (and PRF output or password)
