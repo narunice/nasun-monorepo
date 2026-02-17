@@ -38,6 +38,8 @@ export const BattalionNftPage: React.FC = () => {
     xUserId,
     xUsername,
     walletAddress,
+    walletProof,
+    proofIssuedAt,
     registered,
     whitelist,
     setXAuth,
@@ -179,7 +181,7 @@ export const BattalionNftPage: React.FC = () => {
   };
 
   const handleRegister = async () => {
-    if (!xUserId || !xUsername || !walletAddress) {
+    if (!xUserId || !xUsername || !walletAddress || !walletProof || !proofIssuedAt) {
       setError(t("errors.missingInfo"));
       return;
     }
@@ -190,6 +192,8 @@ export const BattalionNftPage: React.FC = () => {
         walletAddress: walletAddress.toLowerCase(),
         xUserId,
         xUsername,
+        walletProof,
+        proofIssuedAt,
       });
       if (result.success && result.whitelist) {
         setRegistered(result.whitelist);

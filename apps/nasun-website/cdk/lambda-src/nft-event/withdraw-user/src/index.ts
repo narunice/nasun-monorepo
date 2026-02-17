@@ -10,6 +10,7 @@
  * @date 2025-11-01
  */
 
+import { createHmac, timingSafeEqual } from 'crypto';
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import {
   WithdrawUserRequest,
@@ -19,7 +20,6 @@ import {
   NftEventError,
 } from './types';
 import { WhitelistService } from './services/whitelistService';
-import { ethers } from 'ethers';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -76,35 +76,14 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       throw new NftEventError('Invalid wallet address', ErrorCode.INVALID_WALLET_ADDRESS, 400);
     }
 
-    // 3. Verify MetaMask signature if provided (optional — user may already be authenticated on-site)
-    if (request.signature && request.message && request.timestamp) {
-      const signedAt = new Date(request.timestamp).getTime();
-      const age = Date.now() - signedAt;
-      if (isNaN(signedAt) || age < -30_000 || age > 5 * 60 * 1000) {
-        throw new NftEventError('Signature expired or invalid timestamp', ErrorCode.SIGNATURE_EXPIRED, 400);
-      }
-
-      if (!request.message.includes(request.timestamp)) {
-        throw new NftEventError('Signed message must contain the request timestamp', ErrorCode.INVALID_SIGNATURE, 400);
-      }
-
-      let recoveredAddress: string;
-      try {
-        recoveredAddress = ethers.verifyMessage(request.message, request.signature);
-      } catch {
-        throw new NftEventError('Invalid signature', ErrorCode.INVALID_SIGNATURE, 400);
-      }
-
-      if (recoveredAddress.toLowerCase() !== request.walletAddress.toLowerCase()) {
-        throw new NftEventError('Signature does not match wallet address', ErrorCode.INVALID_SIGNATURE, 403);
-      }
-
-      console.log('[withdraw-user] Wallet ownership verified via signature:', request.walletAddress);
-    } else {
-      console.log('[withdraw-user] No signature provided, proceeding without verification:', request.walletAddress);
+    if (!request.walletProof || !request.proofIssuedAt) {
+      throw new NftEventError('Missing wallet proof', ErrorCode.INVALID_SIGNATURE, 400);
     }
 
-    // 6. 화이트리스트에서 사용자 제거 (Soft Delete)
+    // 3. Validate HMAC wallet proof (from MetaMask verify Lambda)
+    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt);
+
+    // 4. 화이트리스트에서 사용자 제거 (Soft Delete)
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
     await whitelistService.withdrawUser(request.walletAddress);
 
@@ -144,3 +123,39 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     };
   }
 };
+
+const PROOF_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Validate HMAC wallet proof token issued by MetaMask verify Lambda.
+ */
+function validateWalletProof(walletAddress: string, proof: string, issuedAt: string): void {
+  // Runtime guard: secret must be configured
+  const secret = process.env.WALLET_PROOF_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('WALLET_PROOF_SECRET is not configured');
+  }
+
+  // Format validation: HMAC-SHA256 hex is always 64 chars
+  if (!/^[a-f0-9]{64}$/.test(proof)) {
+    throw new NftEventError('Invalid wallet proof format', ErrorCode.INVALID_SIGNATURE, 400);
+  }
+
+  const age = Date.now() - new Date(issuedAt).getTime();
+  if (isNaN(age) || age < 0 || age > PROOF_MAX_AGE_MS) {
+    throw new NftEventError('Wallet proof expired', ErrorCode.SIGNATURE_EXPIRED, 401);
+  }
+
+  const expected = createHmac('sha256', secret)
+    .update(`${walletAddress.toLowerCase()}:${issuedAt}`)
+    .digest('hex');
+
+  const proofBuf = Buffer.from(proof);
+  const expectedBuf = Buffer.from(expected);
+
+  if (proofBuf.length !== expectedBuf.length || !timingSafeEqual(proofBuf, expectedBuf)) {
+    throw new NftEventError('Invalid wallet proof', ErrorCode.INVALID_SIGNATURE, 401);
+  }
+
+  console.log('[withdraw-user] Wallet proof validated:', `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
+}

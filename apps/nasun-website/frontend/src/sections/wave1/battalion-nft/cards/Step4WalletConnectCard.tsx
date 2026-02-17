@@ -41,7 +41,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
   const { updateUserProfile } = useUserStore();
-  const { cognitoIdentityId, cognitoToken: storeCognitoToken } = useBattalionNftStore();
+  const { cognitoIdentityId, cognitoToken: storeCognitoToken, setWalletProof } = useBattalionNftStore();
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
@@ -117,6 +117,11 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
         logger.log("[WalletConnectCard] MetaMask auth successful:", authResult);
 
+        // 4a-2. Save wallet proof for downstream register/withdraw
+        if (authResult.walletProof && authResult.proofIssuedAt) {
+          setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
+        }
+
         // 4b. Link accounts
         const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
         if (!linkAccountApi) {
@@ -163,7 +168,16 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           throw new Error("Failed to fetch updated profile");
         }
       } else {
-        logger.log("[WalletConnectCard] Wallet already linked - skipping link step");
+        logger.log("[WalletConnectCard] Wallet already linked - authenticating for proof only...");
+
+        // Still need MetaMask auth to get wallet proof (HMAC token for register/withdraw)
+        const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
+          return await signMessage(message, walletAddress);
+        });
+
+        if (authResult.walletProof && authResult.proofIssuedAt) {
+          setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
+        }
       }
 
       // 5. Set connected address and proceed to next step
@@ -252,9 +266,10 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             </div>
           </DividerBox>
 
-          {/* Next Step Button */}
+          {/* Next Step Button — triggers MetaMask auth to get wallet proof */}
           <ButtonV3
-            onClick={() => onWalletConnected(connectedAddress)}
+            onClick={handleConnect}
+            disabled={isConnecting}
             variant="green"
             size="lg"
             className="flex mx-auto"
