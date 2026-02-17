@@ -9,7 +9,79 @@
     "visionDescription": "NASUN Network is built on a high-performance Layer 1 blockchain utilizing Move—a next-generation programming language designed for security, speed, and scalability.\n\nBy integrating cutting-edge technology with creator-focused infrastructure, we're empowering artists and fans to build, share, and own their digital experiences like never before.",
     "layer1": "Layer 1 Protocol",
     "description": "Building community-owned IP at global scale.\nEntertainment. AI platforms. Financial services.\nDecentralized infrastructure, owned and governed by the community.",
-    "buttonText": "Explore Ecosystem"
+    "buttonText": "Explore Ecosystem",
+    "threeLayerModel": "Our Three-Layer Model",
+    "communityBuilds": "Community builds. Value shared.",
+    "layer1Title": "Layer 1: Protocol",
+    "layer1Desc": "Move L1 + Mysticeti consensus. Ownership, coordination, settlement.",
+    "layer2Title": "Layer 2: Infrastructure",
+    "layer2Desc": "Decentralized AI executors, game servers, streaming, compute, storage.",
+    "layer3Title": "Layer 3: Applications",
+    "layer3Desc": "Gen Sol (media & gaming), Baram (AI settlement), Pado (unified finance) — and more."
+  },
+  "networkActivity": {
+    "heading": "Network Activity",
+    "liveMonitoring": "Live Monitoring",
+    "errorMessage": "Network data temporarily unavailable"
+  },
+  "hero": {
+    "title": "IP Infrastructure",
+    "subtitle": "Entertainment, Finance, and AI",
+    "cta": "Open Devnet & Wallet",
+    "loading": "Loading..."
+  },
+  "howNasunWorks": {
+    "heading": "How Nasun Works",
+    "description": "Applications built on Nasun generate revenue that flows to projects and ecosystem treasury. NSN token holders govern how treasury funds are allocated.",
+    "revenueSupports": "Revenue supports",
+    "revenueItem1": "Product development and sustainability",
+    "revenueItem2": "Ecosystem growth programs",
+    "revenueItem3": "Governance-approved network initiatives",
+    "governanceNote": "Token holders govern. They do not receive revenue distributions.",
+    "alignment": "This aligns product success with long-term network health."
+  },
+  "builtForCoordination": {
+    "heading": "Built For Coordination",
+    "description": "Nasun powers applications where creators, platforms, users, and autonomous agents coordinate at scale:",
+    "item1": "Persistent, evolving assets across games, AI models, and IP",
+    "item2": "Programmable ownership with royalties, splits, and treasuries",
+    "item3": "High-frequency microtransactions",
+    "item4": "Parallel execution without global bottlenecks"
+  },
+  "whoBuildsHere": {
+    "heading": "Who Builds Here",
+    "columnVertical": "Vertical",
+    "columnWhy": "Why Nasun",
+    "v1Name": "Creators / Streaming",
+    "v1Reason": "Programmable royalties and micropayments",
+    "v2Name": "Gaming / Virtual Worlds",
+    "v2Reason": "Persistent objects and cross-game portability",
+    "v3Name": "AI / Agents",
+    "v3Reason": "Attributable compute and agent coordination",
+    "v4Name": "Finance",
+    "v4Reason": "Multi-party capital coordination",
+    "v5Name": "Infrastructure",
+    "v5Reason": "High-frequency state and embedded economic logic"
+  },
+  "technicalFoundation": {
+    "heading": "Technical Foundation",
+    "t1Title": "Move",
+    "t1Desc": "Asset safety, explicit ownership, multi-party primitives.",
+    "t2Title": "Mysticeti + DPoS",
+    "t2Desc": "Sub-second finality, scalable, energy-efficient consensus.",
+    "t3Title": "Object-Centric Execution",
+    "t3Desc": "Parallel execution with no global contention."
+  },
+  "forBuilders": {
+    "heading": "For Builders",
+    "usersLabel": "Users",
+    "usersDesc": "experience seamless apps. Invisible blockchain.",
+    "developersLabel": "Developers",
+    "developersDesc": "get SDKs, documentation, grants, and community support.",
+    "intentional": "Most users won't know it's decentralized. That's intentional.",
+    "investorsHeading": "For Investors",
+    "investorsDesc": "Early-stage network. Pre-seed underway.",
+    "contactUs": "Contact Us"
   },
   "token": {
     "title": "NASUN TOKEN",

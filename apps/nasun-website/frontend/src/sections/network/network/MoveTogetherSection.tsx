@@ -59,6 +59,7 @@ function MoveTogetherSection() {
 
   return (
     <SectionLayout maxWidth="6xl">
+      <FadeInUp>
       {/* Main Title */}
       <SectionTitle
         as="h2"
@@ -104,6 +105,7 @@ function MoveTogetherSection() {
           </div>
         ))}
       </div>
+      </FadeInUp>
     </SectionLayout>
   );
 }
