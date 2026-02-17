@@ -208,6 +208,7 @@ export class CommonStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda-src/link-account"),
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       timeout: cdk.Duration.seconds(10),
