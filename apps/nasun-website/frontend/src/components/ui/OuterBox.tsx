@@ -55,7 +55,7 @@ const variantStyles: Record<ColorVariant, string> = {
   c2: "border-nasun-c2/50 bg-[#312d20]/40",
   c3: "border-nasun-c3/50 bg-[#1d2d2a]/40",
   c4: "border-nasun-c4/50 bg-[#0d1b25]/40",
-  c5: "border-nasun-c5/50 bg-[#081427]/40",
+  c5: "border-nasun-c5/30 bg-[#081427]/50",
   c6: "border-nasun-c6/50 bg-nasun-c6/90",
   scarlet: "border-nasun-scarlet/50 bg-[#320900]/90",
   coral: "border-nasun-coral/50 bg-[#330a0a]/90",
@@ -70,7 +70,7 @@ const variantStyles: Record<ColorVariant, string> = {
   w3: " border-nasun-white/50 bg-nasun-c4/90", // Nasun Token Section style
   w4: "border-nasun-white/40 bg-nasun-gray/70", // Awards Section style
   w5: "border-nasun-white/40 bg-[#3D3D3D]",
-  nw1: "border-nasun-nw4/40 bg-nasun-nw2/20", // NW standard card (light border)
+  nw1: "border-gray-700/70 bg-gray-950/50", // NW standard card (light border)
   nw2: "border-nasun-nw1/40 bg-nasun-nw2/20", // NW medium card (nw1 border)
   nw3: "border-nasun-nw2/40 bg-nasun-nw3/30", // NW dark card (modal panels)
   nw4: "border-nasun-nw4/40 bg-nasun-nw4/10", // NW accent card (nw4 light blue)

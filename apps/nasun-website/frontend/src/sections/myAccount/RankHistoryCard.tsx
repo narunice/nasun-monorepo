@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';
 import { useRankHistory, useActiveSeason, useSeasons } from '@/features/leaderboard-v3/hooks';
 import { RankHistoryChartV3 } from '@/features/leaderboard-v3/components/RankHistoryChartV3';
-import { OuterBox } from '@/components/ui';
+import { OuterBox, Spinner } from '@/components/ui';
 import { StatCard } from '@/components/ui/StatCard';
 import { DATE_RANGE_LABELS, type DateRangeOptionV3 } from '@/features/leaderboard-v3/types';
 
@@ -109,7 +109,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
           {seasonSelector}
         </div>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-c4 border-t-transparent" />
+          <Spinner />
         </div>
       </OuterBox>
     );
@@ -145,7 +145,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   const { history, stats } = data;
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       {/* Header with season selector and date range */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h5 className="font-medium uppercase text-nasun-white">

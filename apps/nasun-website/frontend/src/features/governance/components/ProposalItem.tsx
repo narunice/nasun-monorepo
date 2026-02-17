@@ -1,12 +1,12 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { FC, useEffect, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { FC, useState } from "react";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
 import { VoteModal } from "./VoteModal";
 import { useProposalType } from "../hooks/useProposalType";
 import { OuterBox } from "@/components/ui";
 import { useNavigate } from "react-router-dom";
+
 import {
   parseProposal,
   isUnixTimeExpired,
@@ -44,20 +44,6 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
 
   // Get proposal type from registry
   const { proposalType, isLoading: isTypeLoading } = useProposalType(id);
-  const descRef = useRef<HTMLParagraphElement>(null);
-  const [isClamped, setIsClamped] = useState(false);
-
-  useEffect(() => {
-    const el = descRef.current;
-    if (!el) return;
-
-    const check = () => setIsClamped(el.scrollHeight > el.clientHeight);
-    check();
-
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [dataResponse, filter]);
 
   if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
   if (error) return <EcText isError text={`Error: ${error.message}`} />;
@@ -86,20 +72,16 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
     ? "!bg-nasun-white/5 !border-nasun-white/15 hover:!border-nasun-white/30"
     : "hover:border-nasun-nw1/70";
 
-  const handleCardClick = () => {
-    navigate(`/network/governance/proposal/${id}`);
-  };
-
   const statusBadge = getStatusBadge(isDelisted, isExpired, hasPassed);
 
   return (
     <>
       <OuterBox
-        color="nw3"
+        color="nw0"
         padding="md"
-        className={`flex flex-col relative h-full min-h-[320px] bg-gray-900/50 transition-all duration-200 ${activeCardClass} cursor-pointer`}
+        className={`flex flex-col relative h-full min-h-[320px]  transition-all duration-200 ${activeCardClass} cursor-pointer`}
         style={{ order: isExpired ? 1 : 0 }}
-        onClick={handleCardClick}
+        onClick={() => navigate(`/network/governance/proposal/${id}`)}
       >
         {/* Header: Badges + Title */}
         <div className="mb-3">
@@ -107,16 +89,16 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
           <div className="flex justify-between items-center mb-2 -mt-2 -mx-2">
             <div className="flex items-center gap-2">
               {proposal.proposalType === "Poll" ? (
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
+                <span className="px-2 py-0.5 text-xs uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
                   Poll
                 </span>
               ) : (
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
+                <span className="px-2 py-0.5 text-xs uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
                   Governance
                 </span>
               )}
               <span
-                className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}
+                className={`px-2 py-0.5 text-xs uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}
               >
                 {statusBadge.label}
               </span>
@@ -131,7 +113,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
               </div>
             )}
           </div>
-          <h6 className={`${isExpired ? "text-nasun-white/50" : "text-white font-semibold"}`}>
+          <h6 className={`${isExpired ? "text-nasun-white/50 " : "text-white font-semibold"} `}>
             {proposal.title}
           </h6>
         </div>
@@ -139,22 +121,10 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
         {/* Description */}
         <div className="flex-1 mb-4">
           <p
-            ref={descRef}
             className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-6`}
           >
             {proposal.description}
           </p>
-          {isClamped && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/network/governance/proposal/${id}`);
-              }}
-              className="mt-1 text-xs text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1"
-            >
-              Read More <ArrowRight className="w-3 h-3" />
-            </button>
-          )}
         </div>
 
         {/* Footer: Progress Bar + Time */}
@@ -169,7 +139,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
                 style={{ width: `${yesPercent}%` }}
               />
             </div>
-            <div className="flex justify-between text-xs mt-1">
+            <div className="flex justify-between text-sm mt-1">
               <span className={isExpired ? "text-nasun-white/30" : "text-green-400"}>
                 Yes {yesPercent.toFixed(0)}% ({proposal.yesVotes})
               </span>
@@ -181,7 +151,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
 
           {/* Countdown / Date */}
           <div className="flex items-center justify-between">
-            <p className={`text-xs ${isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}`}>
+            <p className={`text-sm ${isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}`}>
               {isDelisted ? "Delisted" : formatTimeRemaining(expiration)}
             </p>
           </div>

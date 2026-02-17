@@ -22,7 +22,7 @@ function formatDuration(ms: number): string {
 
 export function EpochProgress({ epochInfo }: EpochProgressProps) {
   return (
-    <DashboardCard className="p-4 !bg-gray-950 !border-nasun-nw4/30">
+    <DashboardCard className="p-4 !bg-gray-950 !border-nasun-nw1/40">
       <div className="text-nasun-white/60 text-xs uppercase tracking-widest font-semibold mb-4">
         Epoch Progress
       </div>

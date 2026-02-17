@@ -8,7 +8,7 @@ interface TPSChartProps {
 
 export function TPSChart({ data }: TPSChartProps) {
   return (
-    <DashboardCard className="p-4 !bg-gray-950 !border-nasun-nw4/30">
+    <DashboardCard className="p-4 !bg-gray-950 !border-nasun-nw1/40">
       <div className="flex items-center justify-between mb-4">
         <div className="text-nasun-white/60 text-xs uppercase tracking-widest font-semibold">
           TPS Trend

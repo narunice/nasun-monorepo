@@ -11,7 +11,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
 import { useAuth } from "@/features/auth";
-import { OuterBox } from "@/components/ui";
+import { OuterBox, Spinner } from "@/components/ui";
 import { StatCard } from "@/components/ui/StatCard";
 
 interface GovernanceCardProps {
@@ -55,14 +55,14 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
       <OuterBox color="c5" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-nasun-nw4 border-t-transparent" />
+          <Spinner />
         </div>
       </OuterBox>
     );
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3 mb-4">

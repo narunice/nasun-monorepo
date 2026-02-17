@@ -167,11 +167,7 @@ export const NftThumbnailGallery: FC<NftThumbnailGalleryProps> = ({
   }
 
   if (!nfts || nfts.length === 0) {
-    return (
-      <p className="text-sm text-gray-500">
-        No NFTs found on Ethereum or Polygon.
-      </p>
-    );
+    return null;
   }
 
   return (

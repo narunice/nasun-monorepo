@@ -40,7 +40,7 @@ const DistributionLabel: React.FC<DistributionLabelProps> = ({
   };
 
   return (
-    <div className="flex items-start gap-4 p-4 rounded-sm bg-[#212E57]/50 border border-nasun-c4/50  hover:border-nasun-white/30 transition-all">
+    <div className="flex items-start gap-4 p-4 rounded-sm bg-gray-950 border border-nasun-nw1/30 hover:border-nasun-white/30 transition-all">
       {/* Color indicator */}
       <div
         className="w-3 h-12 rounded-full flex-shrink-0 mt-1"
@@ -95,55 +95,61 @@ function TokenDistributionSection() {
   return (
     <SectionLayout maxWidth="6xl">
       <FadeInUp>
-      <div className="max-w-5xl w-full mx-auto">
-        <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
-          <SectionTitle as="h4" className="font-normal uppercase">
-            {t("distribution.heading")}
-          </SectionTitle>
-        </div>
-      </div>
-
-      {/* Main Container */}
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
-        {/* Chart */}
-        <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
-          <div className="relative h-[340px] md:h-[460px]">
-            <Doughnut ref={chartRef} data={chartData} options={chartOptions} aria-label="NSN Token Distribution Chart" role="img" />
-
-            {/* Center Text */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <p className="text-nasun-white/80 uppercase tracking-wider">
-                {t("distribution.supply")}
-              </p>
-              <h6 className="text-nasun-white">10,000,000,000</h6>
-              <p className="text-nasun-white/80">NSN</p>
-            </div>
+        <div className="max-w-5xl w-full mx-auto">
+          <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
+            <SectionTitle as="h4" className="font-normal uppercase">
+              {t("distribution.heading")}
+            </SectionTitle>
           </div>
         </div>
 
-        {/* Labels */}
-        <div className="w-full lg:w-1/2 space-y-3">
-          {/* Subheading */}
-          <h6 className="text-nasun-white/80 font-medium  uppercase tracking-wider pl-4">
-            {t("distribution.subheading")}
-          </h6>
-          {distributionData.map((item, index) => {
-            return (
-              <DistributionLabel
-                key={item.name}
-                title={translatedLabels[index]}
-                amount={item.amount}
-                percentage={item.value}
-                color={colors[index]?.border || "#ffffff"}
+        {/* Main Container */}
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+          {/* Chart */}
+          <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
+            <div className="relative h-[340px] md:h-[460px]">
+              <Doughnut
+                ref={chartRef}
+                data={chartData}
+                options={chartOptions}
+                aria-label="NSN Token Distribution Chart"
+                role="img"
               />
-            );
-          })}
+
+              {/* Center Text */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                <p className="text-nasun-white/80 uppercase tracking-wider">
+                  {t("distribution.supply")}
+                </p>
+                <h6 className="text-nasun-white">10,000,000,000</h6>
+                <p className="text-nasun-white/80">NSN</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Labels */}
+          <div className="w-full lg:w-1/2 space-y-3">
+            {/* Subheading */}
+            <h6 className="text-nasun-white/80 font-medium  uppercase tracking-wider pl-4">
+              {t("distribution.subheading")}
+            </h6>
+            {distributionData.map((item, index) => {
+              return (
+                <DistributionLabel
+                  key={item.name}
+                  title={translatedLabels[index]}
+                  amount={item.amount}
+                  percentage={item.value}
+                  color={colors[index]?.border || "#ffffff"}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
-      {/* Bottom Description */}
-      <p className="text-sm text-nasun-white/70  mx-auto mt-12 whitespace-pre-line ">
-        {t("distribution.description_bottom")}
-      </p>
+        {/* Bottom Description */}
+        <p className="text-sm text-nasun-white/70  mx-auto mt-12 whitespace-pre-line ">
+          {t("distribution.description_bottom")}
+        </p>
       </FadeInUp>
     </SectionLayout>
   );

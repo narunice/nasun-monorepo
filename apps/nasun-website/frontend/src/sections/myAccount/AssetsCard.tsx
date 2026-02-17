@@ -19,7 +19,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   className = "",
 }) => {
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">MY ASSETS</h5>
       <OwnedObjects walletAddress={walletAddress} />
     </OuterBox>
