@@ -30,6 +30,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <div
       className={`bg-gray-800/80 rounded-lg p-3 lg:p-4 text-center ${className}`}
+      role="region"
+      aria-label={label}
     >
       <div className="flex items-center justify-center gap-2 mb-1">
         {icon && <span className="text-nasun-white/60">{icon}</span>}

@@ -1,4 +1,5 @@
 import { FC, useRef, useState, useEffect } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Proposal } from "../types/voting";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
@@ -112,17 +113,18 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const votingDisable = hasVoted || isPending || isSuccess;
 
   return (
-    <div
-      className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Content
+          className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-[calc(100%-2rem)] shadow-lg max-h-[90vh] flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
+          aria-describedby={undefined}
+        >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
-          <h6 className="text-nasun-white font-semibold">{proposal.title}</h6>
+          <Dialog.Title className="text-nasun-white font-semibold text-lg">
+            {proposal.title}
+          </Dialog.Title>
           {hasVoted || isSuccess ? (
             <span className="flex-shrink-0 text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
               {t("vote.already_voted")}
@@ -222,7 +224,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           {/* Confirmation Step */}
           {confirmStep.show && (
             <div className="bg-nasun-nw4/5 border border-nasun-nw4/20 rounded-sm p-4">
-              <h5 className="text-nasun-nw4 mb-3 flex items-center gap-2">
+              <h2 className="text-nasun-nw4 mb-3 flex items-center gap-2 text-base">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
@@ -231,7 +233,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                   />
                 </svg>
                 Confirm Your Vote
-              </h5>
+              </h2>
               <ul className="text-sm text-nasun-white/80 space-y-2 mb-4">
                 <li className="flex items-start gap-2">
                   <span className="text-nasun-nw4">•</span>
@@ -311,11 +313,14 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
             </div>
           )}
 
-          <ButtonV3 variant="nw2" outline size="sm" onClick={onClose} className="w-full font-normal">
-            {t("vote.close")}
-          </ButtonV3>
+          <Dialog.Close asChild>
+            <ButtonV3 variant="nw2" outline size="sm" className="w-full font-normal">
+              {t("vote.close")}
+            </ButtonV3>
+          </Dialog.Close>
         </div>
-      </div>
-    </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

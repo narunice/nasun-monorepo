@@ -6,6 +6,7 @@
 
 import { FC } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
@@ -46,17 +47,17 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
         throw new Error(errorData.message);
       }
 
-      alert(t("accountDeletion.success"));
+      toast.success(t("accountDeletion.success"));
       await logout();
     } catch (error) {
       console.error("Error deleting account:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(t("accountDeletion.error", { error: errorMessage }));
+      toast.error(t("accountDeletion.error", { error: errorMessage }));
     }
   };
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="scarlet" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h5 className="font-medium uppercase text-red-400">

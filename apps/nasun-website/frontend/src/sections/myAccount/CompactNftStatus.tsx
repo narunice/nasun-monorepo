@@ -7,6 +7,7 @@
 
 import { FC, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { checkWhitelistStatus, withdrawWhitelist } from "../../services/whitelistApi";
@@ -14,7 +15,7 @@ import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
 import { authenticateWithMetaMask } from "../../services/metamaskApi";
 import { connectWallet, signMessage } from "../../utils/metamaskUtils";
-import { OuterBox } from "@/components/ui";
+import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { JoinWhitelistButton } from "@/components/whitelist/JoinWhitelistButton";
 
@@ -45,7 +46,7 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
     <h6 className="text-nasun-white ">{title}</h6>
     <div className="flex items-center justify-between">
       {isLoading ? (
-        <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c7 border-t-transparent" />
+        <Spinner size="sm" />
       ) : isRegistered ? (
         <span className="text-green-400 text-sm">✓ Registered</span>
       ) : (
@@ -139,7 +140,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
       // Authenticate with MetaMask to get wallet proof
       const connectedAddress = await connectWallet();
       if (connectedAddress.toLowerCase() !== registeredWallet.toLowerCase()) {
-        alert(`Please connect the registered wallet (${registeredWallet.slice(0, 6)}...${registeredWallet.slice(-4)}).`);
+        toast.error(`Please connect the registered wallet (${registeredWallet.slice(0, 6)}...${registeredWallet.slice(-4)}).`);
         return;
       }
 
@@ -158,10 +159,10 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
       });
       resetBattalionStore();
       refetchBattalion();
-      alert("Successfully withdrawn from Battalion NFT Allowlist.");
+      toast.success("Successfully withdrawn from Battalion NFT Allowlist.");
     } catch (err) {
       console.error("[CompactNftStatus] Battalion withdraw error:", err);
-      alert("Failed to withdraw. Please try again.");
+      toast.error("Failed to withdraw. Please try again.");
     } finally {
       setIsBattalionWithdrawing(false);
     }
@@ -181,10 +182,10 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
       setIsGenesisWithdrawing(true);
       await withdrawWhitelist(walletAddress.toLowerCase(), "", "", new Date().toISOString());
       refetchFounders();
-      alert("Successfully withdrawn from Frontiers Whitelist.");
+      toast.success("Successfully withdrawn from Frontiers Whitelist.");
     } catch (err) {
       console.error("[CompactNftStatus] Founders withdraw error:", err);
-      alert("Failed to withdraw. Please try again.");
+      toast.error("Failed to withdraw. Please try again.");
     } finally {
       setIsGenesisWithdrawing(false);
     }
@@ -192,7 +193,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
 
   if (!walletAddress) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
         <p className="text-nasun-white/50">Connect MetaMask above to view NFT status</p>
       </OuterBox>
@@ -200,7 +201,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
       <div className="flex flex-col gap-3">
         <NftStatusItem

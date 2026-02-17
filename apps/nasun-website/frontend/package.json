@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview --mode production",
+    "test:e2e": "vitest run --config ../e2e/vitest.e2e.config.ts",
     "convert:dark": "tsx scripts/convert-dark-classes.ts"
   },
   "dependencies": {

@@ -84,11 +84,12 @@
     "processing_message": "Completing your login..."
   },
   "logout": {
-    "successMessage": "You are safely logged out",
-    "description": "Thank you for using our service.",
+    "successMessage": "Logged out safely",
+    "description": "See you back on-chain, Pioneer.",
     "backToHome": "Back to Home",
     "loginAgain": "Log In Again"
   },
+  "languageDisclaimer": "The English version of this website is the official and legally binding version. Translations are provided for informational purposes only.",
   "error": {
     "generic": "An error occurred. Please try again later.",
     "notAuthenticated": "User authentication information is missing. Please log in again.",
