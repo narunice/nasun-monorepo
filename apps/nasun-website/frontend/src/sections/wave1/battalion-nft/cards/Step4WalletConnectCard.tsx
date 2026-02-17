@@ -290,9 +290,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           <ButtonV3
             onClick={handleConnect}
             disabled={isConnecting}
-            variant="nw4"
+            variant="nw1"
             size="lg"
-            className="flex mx-auto !bg-nasun-c2 disabled:opacity-90"
+            className="flex mx-auto"
           >
             {isConnecting ? (
               <InlineLoading message={t("step4.connecting")} size="md" className="text-white" />

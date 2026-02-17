@@ -265,8 +265,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       {isCooldownActive && (
         <div className="mb-6 p-4 bg-yellow-900/20 rounded-lg border border-yellow-700">
           <p className="text-yellow-200">
-            X API rate limit reached. Please wait {cooldownMinutes}:
-            {cooldownSeconds.toString().padStart(2, "0")} before retrying.
+            {t("step3.rateLimitWithTimer", { time: `${cooldownMinutes}:${cooldownSeconds.toString().padStart(2, "0")}` })}
           </p>
         </div>
       )}
@@ -357,7 +356,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
             <InlineLoading message={t("step3.verifying")} size="md" />
           ) : isCooldownActive ? (
             <span>
-              Retry in {cooldownMinutes}:{cooldownSeconds.toString().padStart(2, "0")}
+              {t("step3.retryIn", { time: `${cooldownMinutes}:${cooldownSeconds.toString().padStart(2, "0")}` })}
             </span>
           ) : (
             <span>{hasVerified ? t("step3.retry") : t("step3.button")}</span>

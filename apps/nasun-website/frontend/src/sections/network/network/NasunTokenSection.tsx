@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 interface TokenUseCase {
   key: "staking" | "fee" | "transfer" | "governance";
@@ -15,25 +16,25 @@ const tokenUses: TokenUseCase[] = [
     key: "staking",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold !",
+    titleClassName: "!text-nasun-c7 !font-bold !",
   },
   {
     key: "fee",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold ",
+    titleClassName: "!text-nasun-c7 !font-bold ",
   },
   {
     key: "transfer",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold ",
+    titleClassName: "!text-nasun-c7 !font-bold ",
   },
   {
     key: "governance",
     color: "c4",
     gradient: "",
-    titleClassName: "!text-[#B3E0FF] !font-bold ",
+    titleClassName: "!text-nasun-c7 !font-bold ",
   },
 ];
 
@@ -53,7 +54,7 @@ function NasunTokenSection() {
               Use Cases
             </h1>
             <div className="flex flex-col items-center lg:items-end justify-center text-center lg:text-right h-[180px] w-full">
-              <h4 className="font-medium w-full text-[#B3E0FF] whitespace-pre-line py-4 lg:py-2 leading-tight">
+              <h4 className="font-medium w-full text-nasun-c7 whitespace-pre-line py-4 lg:py-2 leading-tight">
                 {t("token.subtitle")}
               </h4>
             </div>
@@ -81,4 +82,4 @@ function NasunTokenSection() {
   );
 }
 
-export default React.memo(NasunTokenSection);
+export default NasunTokenSection;

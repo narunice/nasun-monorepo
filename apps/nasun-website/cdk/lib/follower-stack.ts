@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -44,13 +45,20 @@ export class FollowerStack extends cdk.Stack {
     // ========================================
     // Lambda Function: collect-followers
     // ========================================
-    this.collectFollowersFunction = new lambda.Function(this, 'CollectFollowersFunction', {
+    this.collectFollowersFunction = new NodejsFunction(this, 'CollectFollowersFunction', {
       functionName: 'nasun-collect-followers',
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '../lambda-src/collect-followers/dist')
-      ),
+      entry: path.join(__dirname, '..', 'lambda-src', 'collect-followers', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath: path.join(__dirname, '..', 'pnpm-lock.yaml'),
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        externalModules: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+        ],
+      },
       timeout: cdk.Duration.minutes(10), // 10 minutes for large follower lists
       memorySize: 512,
       environment: {
@@ -58,6 +66,7 @@ export class FollowerStack extends cdk.Stack {
         FOLLOWERS_TABLE_NAME: this.followersTable.tableName,
         TWITTER_BEARER_TOKEN: props.twitterBearerToken,
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
+        NODE_OPTIONS: '--enable-source-maps',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });

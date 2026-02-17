@@ -2,10 +2,11 @@ import React from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 function ForBuildersSection() {
   return (
-    <SectionLayout className="!max-w-6xl">
+    <SectionLayout maxWidth="6xl">
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
           <SectionTitle as="h4" className="font-normal uppercase">
@@ -50,4 +51,4 @@ function ForBuildersSection() {
   );
 }
 
-export default React.memo(ForBuildersSection);
+export default ForBuildersSection;

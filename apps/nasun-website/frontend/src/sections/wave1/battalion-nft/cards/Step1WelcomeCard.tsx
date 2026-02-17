@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ExternalLink } from "lucide-react";
-import { FiCheck, FiAward, FiFeather, FiUsers, FiGift, FiStar } from "react-icons/fi";
+import { FiCheck, FiAward, FiFeather, FiUsers, FiGift, FiStar, FiClipboard } from "react-icons/fi";
 import { OuterBox } from "@/components/ui";
 
 interface Step1WelcomeCardProps {
@@ -24,9 +24,16 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
   const { t } = useTranslation("battalion-nft");
   const [checkPhase, setCheckPhase] = useState(0);
 
-  // Sequential checkmark animation loop (0→1→2→3→0: accumulate then reset)
+  // Sequential checkmark animation (0→1→2→3→0: accumulate then reset, stops after 3 cycles)
   useEffect(() => {
+    let count = 0;
     const interval = setInterval(() => {
+      count++;
+      if (count >= 12) {
+        clearInterval(interval);
+        setCheckPhase(3);
+        return;
+      }
       setCheckPhase((prev) => (prev + 1) % 4);
     }, 600);
     return () => clearInterval(interval);
@@ -43,7 +50,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
 
         {/* Requirements */}
         <div className="text-left mb-6 md:mb-8 lg:mb-10">
-          <h5 className="text-nasun-nw4 font-medium mb-3">📋 {t("step1.requirements.title")}</h5>
+          <h5 className="text-nasun-nw4 font-medium mb-3"><FiClipboard className="inline w-5 h-5 mr-1" /> {t("step1.requirements.title")}</h5>
           <ul className="space-y-2 mb-4">
             <li className="flex items-start gap-2">
               <FiCheck
@@ -98,7 +105,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
 
         {/* Rewards */}
         <div className="text-left mb-6 md:mb-8">
-          <h5 className="text-nasun-nw4 font-medium mb-3">🎁 {t("step1.rewards.title")}</h5>
+          <h5 className="text-nasun-nw4 font-medium mb-3"><FiGift className="inline w-5 h-5 mr-1" /> {t("step1.rewards.title")}</h5>
           <ul className="space-y-2 text-nasun-white/80 font-rubik font-light">
             <li className="flex items-start gap-2">
               <FiAward className="mt-1 flex-shrink-0 text-nasun-nw4" /> {t("step1.rewards.item1")}

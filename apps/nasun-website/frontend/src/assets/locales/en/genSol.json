@@ -1,14 +1,13 @@
 {
   "hero": {
     "title": "Our First Original IP - GEN SOL",
-    "description": "A bold sci-fi universe designed to power games, films, streaming shows and merchandise at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and compelling characters driven by purpose and conflict. Beyond traditional mediums, we aim to pioneer new forms of entertainment that blur the lines between the digital and physical worlds."
+    "description": "Gen Sol is a bold sci-fi universe powering games, films, streaming shows and merchandise worldwide. With rich lore, striking visuals, and characters driven by purpose and conflict, Gen Sol pushes the boundaries of entertainment, blurring the lines between the digital and physical worlds."
   },
   "powerOfStories": {
     "title": "The Power of Stories",
-    "paragraph1": "Although there are other projects with similar aspirations, what sets Gen Sol apart is its singular focus on dramatic storytelling. Following the core values of Nasun, Gen Sol will not only engage the user as a narrative and technological experience, but it will give them an emotional one. By populating the Gen Sol Galaxy with exciting stories and compelling characters driven by strong motivations, the user will develop a deep relationship with the project that will capture their imaginations.",
-    "paragraph2": "For entertainment, Web3 has mainly focused on gaming, so why the inclusion of narrative content in Gen Sol's model?",
-    "paragraph3": "Engaging narrative content has always been a powerful economic driver for many other markets like merchandising as well as games. Gen Sol will provide the fertile ground for the development of these products to be offered in various marketplaces under one umbrella IP.",
-    "paragraph4": "People love good stories and all things connected to it. Whether it be a piece of art, toy or game, they become more meaningful and valuable because of these associations. Deep emotional ties with the stories develop, and it’s these strong relationships that will create value beyond the traditional markets."
+    "paragraph1": "What sets Gen Sol apart is its singular focus on dramatic storytelling. Guided by the core values of Nasun, it delivers not just a narrative or technological experience, but an emotional one. By populating the Gen Sol Galaxy with compelling characters and exciting stories, users form deep connections that capture their imagination.",
+    "paragraph2": "While Web3 entertainment has focused largely on gaming, narrative content offers unique opportunities. Stories drive engagement across multiple markets, from merchandise to games, creating value that extends beyond traditional offerings. Gen Sol provides a fertile ground for these products, all under one umbrella IP.",
+    "paragraph3": "People are drawn to good stories, as well as the art, toys, and games inspired by them. These emotional connections make the experiences richer and more meaningful, and it is through these bonds that Gen Sol will leave a lasting impact."
   },
   "pageTitle": "GEN SOL OVERVIEW",
   "button": "Coming Soon",
@@ -37,15 +36,15 @@
     "p5": "Because of the unified narrative and aesthetic ambitions of Gen Sol, both the narrative content and games will grow from the same seeds of story ideations and visual conceptualizations."
   },
   "narrative": {
-    "title": "Narrative Content",
-    "description": "From Emperors of intergalactic civilizations to petty thieves, all are bound by one obsession: Spectra—the unholy fuel that runs all of the Gen Sol Galaxy. To possess enough is to command wealth, power and even the holy grail of eternal life.",
+    "title": "Overarching Narrative",
+    "description": "From emperors of intergalactic civilizations to petty thieves, all are bound by one obsession: Spectra, the unholy fuel that powers the Gen Sol Galaxy. To possess enough means to command wealth, power, and even the holy grail of eternal life.",
     "category1": {
       "title": "FEATURE FILMS & FLAGSHIP",
-      "description": "Confront the central conflict on an epic scale as the main players do everything in their power to win the V Games."
+      "description": "Experience the central conflict on an epic scale as the main players do everything in their power to win the V Games."
     },
     "category2": {
       "title": "STREAMING SHOWS & TOURNAMENT GAMES",
-      "description": "Peel back the layers to reveal the intrigue, politics, and power plays leading up to the V Games."
+      "description": "Explore the intrigue, politics, and power plays that lead up to the V Games."
     },
     "category3": {
       "title": "ANIMATION & MULTIPLAYER SHOOTER",

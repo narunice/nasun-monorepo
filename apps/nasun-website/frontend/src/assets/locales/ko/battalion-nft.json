@@ -110,6 +110,8 @@
     },
     "fallbackNote": "💡 <strong>모든 태스크를 완료했다면</strong> \"다시 확인하기\" 버튼을 눌러보거나, 다음 단계로 진행하셔도 됩니다.",
     "goToTweet": "이벤트 게시물 보기",
+    "rateLimitWithTimer": "X API 속도 제한에 도달했습니다. {{time}} 후 다시 시도해 주세요.",
+    "retryIn": "{{time}} 후 재시도",
     "retry": "다시 확인하기",
     "button": "미션 확인하기",
     "nextButton": "다음 단계로",

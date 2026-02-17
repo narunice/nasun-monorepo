@@ -44,7 +44,7 @@ export const ErrorAlert: React.FC<ErrorAlertProps> = ({
 
   return (
     <div
-      className={`mb-6 p-4 rounded-lg border ${styles.container} max-w-2xl mx-auto ${className}`}
+      className={`mb-6 p-4 rounded-lg border ${styles.container} max-w-3xl mx-auto ${className}`}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-0.5">{styles.icon}</div>
