@@ -123,7 +123,7 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
       headers,
       body: JSON.stringify({
         error: 'Internal Server Error',
-        message: error.message || 'Failed to initialize Twitter OAuth',
+        message: 'Failed to initialize Twitter OAuth',
       }),
     };
   }
