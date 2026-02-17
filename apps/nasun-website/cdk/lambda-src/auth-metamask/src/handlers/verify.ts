@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { verifySignature } from '../utils/ethereum';
 import { getCognitoIdentityId } from '../utils/cognito';
@@ -120,11 +121,21 @@ Nonce: ${nonce}`;
     // 프로필 저장 실패해도 인증은 성공으로 처리
   }
 
+  // 7. Generate HMAC wallet proof token (for downstream register/withdraw Lambdas)
+  const walletProofSecret = process.env.WALLET_PROOF_SECRET;
+  if (!walletProofSecret || walletProofSecret.length < 32) {
+    throw new Error('WALLET_PROOF_SECRET is not configured');
+  }
+  const proofIssuedAt = new Date().toISOString();
+  const walletProof = createHmac('sha256', walletProofSecret)
+    .update(`${walletAddress.toLowerCase()}:${proofIssuedAt}`)
+    .digest('hex');
+
   console.log(`Verification successful for wallet: ${walletAddress}, identityId: ${identityId}`);
 
   return {
     statusCode: 200,
     headers: corsHeaders,
-    body: JSON.stringify({ identityId, token }),
+    body: JSON.stringify({ identityId, token, walletProof, proofIssuedAt }),
   };
 }

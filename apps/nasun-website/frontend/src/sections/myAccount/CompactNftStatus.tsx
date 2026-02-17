@@ -12,6 +12,8 @@ import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { checkWhitelistStatus, withdrawWhitelist } from "../../services/whitelistApi";
 import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
+import { authenticateWithMetaMask } from "../../services/metamaskApi";
+import { connectWallet, signMessage } from "../../utils/metamaskUtils";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { JoinWhitelistButton } from "@/components/whitelist/JoinWhitelistButton";
@@ -120,11 +122,10 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   };
 
   /**
-   * Battalion NFT Withdraw Handler (no signature required)
+   * Battalion NFT Withdraw Handler
+   * Authenticates with MetaMask to get HMAC wallet proof before withdrawing.
    */
   const handleBattalionWithdraw = async () => {
-    // Use the registered walletAddress from DynamoDB, not the current login wallet.
-    // The user may have registered with a different wallet (found via xUserId GSI fallback).
     const registeredWallet = battalionStatus?.walletAddress;
     if (!registeredWallet || isBattalionWithdrawing) return;
 
@@ -134,8 +135,26 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
 
     try {
       setIsBattalionWithdrawing(true);
+
+      // Authenticate with MetaMask to get wallet proof
+      const connectedAddress = await connectWallet();
+      if (connectedAddress.toLowerCase() !== registeredWallet.toLowerCase()) {
+        alert(`Please connect the registered wallet (${registeredWallet.slice(0, 6)}...${registeredWallet.slice(-4)}).`);
+        return;
+      }
+
+      const authResult = await authenticateWithMetaMask(connectedAddress, async (message) => {
+        return await signMessage(message, connectedAddress);
+      });
+
+      if (!authResult.walletProof || !authResult.proofIssuedAt) {
+        throw new Error("Failed to get wallet proof");
+      }
+
       await withdrawUserApi({
         walletAddress: registeredWallet.toLowerCase(),
+        walletProof: authResult.walletProof,
+        proofIssuedAt: authResult.proofIssuedAt,
       });
       resetBattalionStore();
       refetchBattalion();
