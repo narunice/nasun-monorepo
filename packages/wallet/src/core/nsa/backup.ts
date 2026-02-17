@@ -162,7 +162,7 @@ export async function restoreFromBackup(
     throw new NsaError('BACKUP_DECRYPT_FAILED', 'Invalid PIN or corrupted backup');
   }
 
-  const payloadStr = new TextDecoder().decode(plaintext);
+  let payloadStr: string | null = new TextDecoder().decode(plaintext);
   // Zero decrypted plaintext buffer
   new Uint8Array(plaintext).fill(0);
 
@@ -170,8 +170,12 @@ export async function restoreFromBackup(
   try {
     payload = JSON.parse(payloadStr) as BackupPayload;
   } catch {
+    payloadStr = null;
     throw new NsaError('BACKUP_INVALID_FORMAT', 'Corrupted backup payload');
   }
+  // Null reference after successful parse to allow earlier GC.
+  // JS strings are immutable — this does not zero memory, only drops the reference.
+  payloadStr = null;
 
   if (!payload.signerPrivateKey || !payload.accountObjectId) {
     throw new NsaError('BACKUP_INVALID_FORMAT', 'Missing required fields in backup');
